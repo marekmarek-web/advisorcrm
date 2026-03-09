@@ -54,6 +54,44 @@ CRM pro finanční poradce v ČR – MVP dle specifikace (domácnosti, pipeline,
    ```
    Otevřete [http://localhost:3000](http://localhost:3000).
 
+## Nasazení (production mimo localhost)
+
+Nejjednodušší je **Vercel** (Next.js, automatické deploye z GitHubu).
+
+1. **Vercel**
+   - Jděte na [vercel.com](https://vercel.com), přihlaste se (ideálně přes GitHub).
+   - **Add New** → **Project** → vyberte repozitář **marekmarek-web/advisorcrm**.
+   - **Root Directory:** klikněte **Edit** a zvolte **`apps/web`** (aplikace je v monorepu).
+   - Nechte **Build Command** a **Output** na automatických hodnotách (v `apps/web` je už `vercel.json` s `installCommand` pro monorepo).
+
+2. **Proměnné prostředí (Environment Variables)**
+   V projektu na Vercelu přidejte v **Settings → Environment Variables** (pro Production i Preview):
+   - `NEXT_PUBLIC_SUPABASE_URL` – URL tvého Supabase projektu
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` – anon klíč
+   - `SUPABASE_SERVICE_ROLE_KEY` – service role klíč
+   - `DATABASE_URL` – Postgres connection string (Supabase → Settings → Database → Connection string, pooler, např. `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres`)
+   - `NEXT_PUBLIC_APP_URL` – URL nasazené aplikace (např. `https://tvuj-projekt.vercel.app`), důležité pro auth callback a e-maily.
+
+3. **Supabase – povolené URL**
+   V Supabase Dashboard → **Authentication → URL Configuration** přidej do **Redirect URLs** tvou produkční adresu (např. `https://tvuj-projekt.vercel.app/**`).
+
+4. **Deploy**
+   Klikni **Deploy**. Po úspěšném buildu bude aplikace dostupná na adrese typu `https://advisorcrm-xxx.vercel.app`. Další push do `main` na GitHubu spustí automatický redeploy.
+
+**Jiné hosty (Netlify, Railway, atd.):** Build z monorepa: z kořene `pnpm install && pnpm --filter web build`, výstup Next.js je v `apps/web/.next`. Spuštění: `pnpm --filter web start` (nebo `node apps/web/.next/standalone/...` pokud máš `output: 'standalone'` v `next.config.js`).
+
+### Chyba „Application error: a server-side exception“ na Vercelu
+
+1. **Logy:** Vercel → tvůj projekt → **Deployments** → klikni na poslední deploy → **Functions** nebo **Runtime Logs**. Tam uvidíš skutečnou chybu (např. chybějící tabulka, špatné DATABASE_URL).
+2. **Schéma v Supabase:** Tabulky musí v Supabase existovat. Na svém počítači v repozitáři nastav v `apps/web/.env.local` stejné `DATABASE_URL` jako na Vercelu (tvůj Supabase projekt) a spusť:
+   ```bash
+   pnpm db:apply-schema
+   ```
+3. **DATABASE_URL na Vercelu:** Musí být **celý** connection string, např.  
+   `postgresql://postgres:TvojeHeslo@db.paoayamrcanxhsvkmdni.supabase.co:5432/postgres`  
+   Pro Vercel je vhodný **connection pooler** (Supabase → Project Settings → Database → Connection string → **Transaction** pooler, port 6543). Na konec můžeš přidat `?sslmode=require` (nebo kód to doplní sám).
+4. **Redirect URLs:** Supabase → Authentication → URL Configuration → Redirect URLs musí obsahovat tvou produkční adresu, např. `https://advisorcrm-web.vercel.app/**`.
+
 ## Struktura
 
 - `apps/web` – Next.js aplikace (WePlan MVP)

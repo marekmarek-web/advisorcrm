@@ -7,59 +7,78 @@ import { tenants, roles, memberships, clientContacts, clientInvitations, contact
 import { eq, and, gt } from "db";
 import { redirect } from "next/navigation";
 
+export type EnsureMembershipResult =
+  | { ok: true; redirectTo: string }
+  | { ok: false; error: string };
+
 /** Po prvním přihlášení (OAuth nebo signup) vytvoří workspace a uživatele jako Admin, pokud ještě nemá membership. */
-export async function ensureMembership(): Promise<{ redirectTo: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
+export async function ensureMembership(): Promise<EnsureMembershipResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      redirect("/login");
+    }
+    const existing = await getMembership(user.id);
+    if (existing) {
+      const redirectTo = existing.roleName === "Client" ? "/client" : "/portal/today";
+      return { ok: true, redirectTo };
+    }
+    const email = user.email ?? "";
+    const slug =
+      email.replace(/@.*/, "").replace(/[^a-z0-9]/gi, "-").toLowerCase().slice(0, 20) ||
+      "workspace";
+    const [tenant] = await db
+      .insert(tenants)
+      .values({
+        name: "Můj workspace",
+        slug: slug + "-" + Math.random().toString(36).slice(2, 8),
+      })
+      .returning({ id: tenants.id, slug: tenants.slug });
+    if (!tenant) return { ok: false, error: "Nepodařilo se vytvořit workspace." };
+    const [adminRole] = await db
+      .insert(roles)
+      .values({ tenantId: tenant.id, name: "Admin" })
+      .returning({ id: roles.id });
+    await db.insert(roles).values({ tenantId: tenant.id, name: "Advisor" }).returning({ id: roles.id });
+    await db.insert(roles).values({ tenantId: tenant.id, name: "Manager" }).returning({ id: roles.id });
+    await db.insert(roles).values({ tenantId: tenant.id, name: "Viewer" }).returning({ id: roles.id });
+    await db.insert(roles).values({ tenantId: tenant.id, name: "Client" }).returning({ id: roles.id });
+    if (!adminRole) return { ok: false, error: "Nepodařilo se vytvořit roli." };
+    await db.insert(memberships).values({
+      tenantId: tenant.id,
+      userId: user.id,
+      roleId: adminRole.id,
+    });
+    return { ok: true, redirectTo: "/portal/today" };
+  } catch (e) {
+    // Next.js redirect() throws – musíme to znovu vyhodit
+    if (e && typeof e === "object" && "digest" in e && String((e as { digest?: string }).digest).startsWith("NEXT_")) {
+      throw e;
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("relation") && msg.includes("does not exist")) {
+      return {
+        ok: false,
+        error: "V databázi chybí tabulky. V repozitáři spusť: pnpm db:apply-schema (s DATABASE_URL na tento Supabase projekt).",
+      };
+    }
+    if (msg.includes("connection") || msg.includes("ECONNREFUSED") || msg.includes("timeout")) {
+      return {
+        ok: false,
+        error: "Nepodařilo se připojit k databázi. Zkontrolujte DATABASE_URL na Vercelu a že Supabase projekt běží.",
+      };
+    }
+    if (msg.includes("authentication") || msg.includes("password")) {
+      return {
+        ok: false,
+        error: "Chyba přihlášení k databázi. Zkontrolujte heslo v DATABASE_URL na Vercelu.",
+      };
+    }
+    return { ok: false, error: msg || "Nepodařilo se dokončit registraci." };
   }
-  const existing = await getMembership(user.id);
-  if (existing) {
-    const redirectTo = existing.roleName === "Client" ? "/client" : "/portal/today";
-    return { redirectTo };
-  }
-  const email = user.email ?? "";
-  const slug =
-    email.replace(/@.*/, "").replace(/[^a-z0-9]/gi, "-").toLowerCase().slice(0, 20) ||
-    "workspace";
-  const [tenant] = await db
-    .insert(tenants)
-    .values({
-      name: "Můj workspace",
-      slug: slug + "-" + Math.random().toString(36).slice(2, 8),
-    })
-    .returning({ id: tenants.id, slug: tenants.slug });
-  if (!tenant) throw new Error("Failed to create tenant");
-  const [adminRole] = await db
-    .insert(roles)
-    .values({ tenantId: tenant.id, name: "Admin" })
-    .returning({ id: roles.id });
-  const [advisorRole] = await db
-    .insert(roles)
-    .values({ tenantId: tenant.id, name: "Advisor" })
-    .returning({ id: roles.id });
-  const [managerRole] = await db
-    .insert(roles)
-    .values({ tenantId: tenant.id, name: "Manager" })
-    .returning({ id: roles.id });
-  const [viewerRole] = await db
-    .insert(roles)
-    .values({ tenantId: tenant.id, name: "Viewer" })
-    .returning({ id: roles.id });
-  const [clientRole] = await db
-    .insert(roles)
-    .values({ tenantId: tenant.id, name: "Client" })
-    .returning({ id: roles.id });
-  if (!adminRole) throw new Error("Failed to create Admin role");
-  await db.insert(memberships).values({
-    tenantId: tenant.id,
-    userId: user.id,
-    roleId: adminRole.id,
-  });
-  return { redirectTo: "/portal/today" };
 }
 
 /** Vytvoří pozvánku do Client Zone a vrátí odkaz. E-mail se odešle v EPIC 7 (Resend). */
