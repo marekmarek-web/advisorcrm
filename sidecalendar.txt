@@ -1,0 +1,89 @@
+        {/* PRAVÁ ČÁST (Sticky Sidebar - Kalendář a Zprávy) */}
+        <aside className="w-full lg:w-[380px] bg-white border-l border-slate-100 flex flex-col h-[calc(100vh-73px)] sticky top-[73px]">
+          <div className="p-6 flex-1 overflow-y-auto hide-scrollbar space-y-8">
+            
+            {/* Hlavička Sidebaru */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Vítejte zpět!</h2>
+                <p className="text-sm font-bold text-slate-500">Váš přehled dne</p>
+              </div>
+              <button className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200">
+                <CalendarIcon size={18} />
+              </button>
+            </div>
+
+            {/* Kalendář (Karta Dne) - Přepracováno do 2026 vzhledu */}
+            <div className="relative rounded-[28px] bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-800 p-6 text-white shadow-xl shadow-indigo-900/20 overflow-hidden group">
+              {/* Dekorativní prvky */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700"></div>
+              
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 block mb-2 opacity-80">Dnes</span>
+              <h3 className="text-2xl font-black tracking-tight mb-6">8. března 2026</h3>
+              
+              <button className="absolute bottom-6 right-6 w-12 h-12 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all">
+                <Plus size={24} />
+              </button>
+            </div>
+
+            {/* Nejbližší události (Timeline) */}
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Agenda</h3>
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-slate-100">
+                
+                {AGENDA.map((item, index) => (
+                  <div key={item.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+                    {/* Ikona na ose */}
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-slate-50 text-slate-500 shadow-sm z-10 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                      {item.type === 'meeting' ? <Users size={16} /> : <Phone size={16} />}
+                    </div>
+                    
+                    {/* Obsah události */}
+                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl bg-white border border-slate-100 shadow-sm ml-4 md:ml-0 hover:border-indigo-200 transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{item.time}</span>
+                        <span className="text-[10px] font-bold text-slate-400">{item.date}</span>
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-sm">{item.title}</h4>
+                      <p className="text-xs font-medium text-slate-500 mt-1">{item.client}</p>
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+            </div>
+
+            {/* Zprávy od klientů */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Zprávy z portálu</h3>
+                <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black flex items-center justify-center">1</span>
+              </div>
+              <div className="space-y-3">
+                {MESSAGES.map(msg => (
+                  <div key={msg.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:shadow-sm transition-all cursor-pointer flex gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-700 flex items-center justify-center font-black text-xs flex-shrink-0">
+                      {msg.client.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline mb-0.5">
+                        <h4 className={`text-sm truncate pr-2 ${msg.unread ? 'font-black text-slate-900' : 'font-bold text-slate-700'}`}>{msg.client}</h4>
+                        <span className="text-[10px] font-bold text-slate-400 flex-shrink-0">{msg.time}</span>
+                      </div>
+                      <p className={`text-xs truncate ${msg.unread ? 'font-bold text-slate-800' : 'text-slate-500'}`}>{msg.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+          
+          {/* Spodní akční tlačítko v sidebaru (Nová aktivita z původního návrhu) */}
+          <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+             <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                <Plus size={18} /> Nová aktivita
+             </button>
+          </div>
+        </aside>
+      </div>

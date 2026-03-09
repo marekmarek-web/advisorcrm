@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advisor CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Monday-style design tokens */
+    :root {
+      --monday-bg: #f6f7fb;
+      --monday-surface: #ffffff;
+      --monday-border: #e6e9ef;
+      --monday-text: #323338;
+      --monday-muted: #676879;
+      --monday-blue: #0073ea;
+      --monday-row-hover: #f0f3ff;
+      --monday-radius: 8px;
+      --monday-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      margin: 0;
+      min-height: 100vh;
+      background: var(--monday-bg);
+      color: var(--monday-text);
+    }
+
+    /* Layout */
+    #screen-crm { min-height: 100vh; display: flex; }
+    .sidebar {
+      width: 260px;
+      min-height: 100vh;
+      background: var(--monday-surface);
+      border-right: 1px solid var(--monday-border);
+      flex-shrink: 0;
+      padding: 12px 0;
+    }
+    .sidebar .logo {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--monday-text);
+      padding: 8px 12px 12px;
+      border-bottom: 1px solid var(--monday-border);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sidebar .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--monday-blue);
+      color: white;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .sidebar .nav-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--monday-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 8px 12px 4px;
+    }
+    .sidebar nav a {
+      display: block;
+      padding: 8px 12px;
+      color: var(--monday-text);
+      text-decoration: none;
+      font-size: 13px;
+      border-radius: 6px;
+      margin: 0 8px;
+    }
+    .sidebar nav a:hover { background: var(--monday-row-hover); }
+    .sidebar nav a.active { background: var(--monday-row-hover); color: var(--monday-blue); font-weight: 600; }
+
+    .crm-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .crm-header {
+      background: var(--monday-surface);
+      border-bottom: 1px solid var(--monday-border);
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--monday-text);
+    }
+    .crm-content {
+      flex: 1;
+      padding: 16px;
+      overflow: auto;
+      background: var(--monday-bg);
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* KPI – ploché, bez karet */
+    .kpi-grid { display: flex; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+    .kpi-card {
+      background: var(--monday-surface);
+      border: 1px solid var(--monday-border);
+      border-radius: var(--monday-radius);
+      padding: 12px 16px;
+      min-width: 140px;
+    }
+    .kpi-card h3 { font-size: 12px; color: var(--monday-muted); margin: 0 0 4px; font-weight: 500; }
+    .kpi-card .val { font-size: 20px; font-weight: 700; color: var(--monday-text); font-variant-numeric: tabular-nums; }
+
+    /* Sekce – bez výrazného stínu */
+    .card {
+      background: var(--monday-surface);
+      border: 1px solid var(--monday-border);
+      border-radius: var(--monday-radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h3 { font-size: 13px; font-weight: 600; color: var(--monday-text); margin: 0 0 8px; }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--monday-blue); color: white; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-ghost { background: transparent; color: var(--monday-muted); border: 1px solid var(--monday-border); }
+    .btn-ghost:hover { background: var(--monday-row-hover); color: var(--monday-text); }
+
+    /* Tabulky – Monday vzhled */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--monday-border); border-radius: var(--monday-radius); background: var(--monday-surface); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--monday-border); border-right: 1px solid var(--monday-border); }
+    th:last-child, td:last-child { border-right: none; }
+    th {
+      background: var(--monday-surface);
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--monday-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--monday-row-hover); }
+
+    /* Pipeline – ploché sloupce */
+    .board-cols { display: flex; gap: 0; overflow-x: auto; padding-bottom: 8px; }
+    .board-col {
+      min-width: 220px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      padding: 12px;
+      margin-right: 8px;
+      border: 1px solid var(--monday-border);
+    }
+    .board-col h4 { font-size: 13px; font-weight: 600; color: var(--monday-text); margin: 0 0 12px; }
+    .board-item {
+      background: var(--monday-surface);
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      border: 1px solid var(--monday-border);
+      cursor: pointer;
+    }
+    .board-item:hover { background: var(--monday-row-hover); }
+
+    /* Modal */
+    #modal-contact {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #modal-contact .modal-inner {
+      background: var(--monday-surface);
+      border-radius: var(--monday-radius);
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      border: 1px solid var(--monday-border);
+    }
+    #modal-contact input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--monday-border);
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    #modal-contact label { display: block; font-size: 12px; font-weight: 600; color: var(--monday-muted); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div id="screen-crm">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-icon">A</span>
+        Advisor
+      </div>
+      <div class="nav-label">Hlavní</div>
+      <nav>
+        <a href="#" class="nav-link active" data-view="dnes">Přehled (Dnes)</a>
+        <a href="#" class="nav-link" data-view="kontakty">Kontakty</a>
+        <a href="#" class="nav-link" data-view="domacnosti">Domácnosti</a>
+        <a href="#" class="nav-link" data-view="pipeline">Pipeline</a>
+      </nav>
+    </aside>
+    <div class="crm-main">
+      <header class="crm-header" id="crm-title">Dnes</header>
+      <div class="crm-content">
+        <div id="view-dnes" class="view active">
+          <p style="color:var(--monday-muted); margin:0 0 16px; font-size:13px;">Přehled schůzek, úkolů a rizikových případů.</p>
+          <div class="kpi-grid">
+            <div class="kpi-card"><h3>Schůzky dnes</h3><div class="val" id="kpi-meetings">0</div></div>
+            <div class="kpi-card"><h3>Úkoly k splnění</h3><div class="val" id="kpi-tasks">0</div></div>
+            <div class="kpi-card"><h3>Otevřené případy</h3><div class="val" id="kpi-opportunities">0</div></div>
+          </div>
+          <div class="card">
+            <h3>Blížící se události</h3>
+            <p style="color:var(--monday-muted); font-size:13px; margin:0;">Žádné nadcházející události.</p>
+          </div>
+        </div>
+        <div id="view-kontakty" class="view">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <p style="color:var(--monday-muted); margin:0; font-size:13px;">Seznam kontaktů.</p>
+            <button type="button" class="btn btn-primary" id="btn-add-contact">+ Přidat kontakt</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Jméno</th><th>E-mail</th><th>Telefon</th></tr></thead>
+              <tbody id="contacts-tbody"></tbody>
+            </table>
+            <p id="contacts-empty" style="color:var(--monday-muted); font-size:13px; margin:12px 12px 0; padding-bottom:12px; display:none;">Zatím žádné kontakty.</p>
+          </div>
+        </div>
+        <div id="view-domacnosti" class="view">
+          <p style="color:var(--monday-muted); margin:0 0 16px; font-size:13px;">Domácnosti – vazba kontaktů.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Název</th><th>Počet členů</th></tr></thead>
+              <tbody id="households-tbody"></tbody>
+            </table>
+            <p id="households-empty" style="color:var(--monday-muted); font-size:13px; margin:12px 12px 0; padding-bottom:12px; display:none;">Zatím žádné domácnosti.</p>
+          </div>
+        </div>
+        <div id="view-pipeline" class="view">
+          <p style="color:var(--monday-muted); margin:0 0 16px; font-size:13px;">Případy podle stadia – hypo, investice, pojištění.</p>
+          <div class="board-cols" id="pipeline-board"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-contact">
+    <div class="modal-inner">
+      <h3 style="margin:0 0 16px; font-size:15px;">Nový kontakt</h3>
+      <form id="form-contact">
+        <label for="contact-name">Jméno</label>
+        <input type="text" id="contact-name" required>
+        <label for="contact-email">E-mail</label>
+        <input type="email" id="contact-email">
+        <label for="contact-phone">Telefon</label>
+        <input type="text" id="contact-phone">
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button type="submit" class="btn btn-primary">Uložit</button>
+          <button type="button" class="btn btn-ghost" id="btn-close-contact">Zrušit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    var STORAGE = 'advisor_crm_data';
+    var data = { user: null, contacts: [], households: [], opportunities: [] };
+
+    function loadData() {
+      try {
+        var s = localStorage.getItem(STORAGE);
+        if (s) { var d = JSON.parse(s); data.contacts = d.contacts || []; data.households = d.households || []; data.opportunities = d.opportunities || []; }
+        if (data.opportunities.length === 0) {
+          data.opportunities = [
+            { title: 'Hypotéka – Novák', stage: 'lead', type: 'hypo' },
+            { title: 'Investice – Svobodová', stage: 'qualify', type: 'invest' },
+            { title: 'Pojištění – Dvořák', stage: 'offer', type: 'pojist' }
+          ];
+          saveData();
+        }
+      } catch (e) {}
+    }
+    function saveData() {
+      try {
+        localStorage.setItem(STORAGE, JSON.stringify({ contacts: data.contacts, households: data.households, opportunities: data.opportunities }));
+      } catch (e) {}
+    }
+
+    function initCrm() {
+      renderContacts();
+      renderHouseholds();
+      renderPipeline();
+      updateKpis();
+    }
+
+    function showView(viewId) {
+      document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+      document.querySelectorAll('.nav-link').forEach(function(a) { a.classList.remove('active'); });
+      var el = document.getElementById('view-' + viewId);
+      if (el) el.classList.add('active');
+      var link = document.querySelector('.nav-link[data-view="' + viewId + '"]');
+      if (link) link.classList.add('active');
+      var titles = { dnes: 'Dnes', kontakty: 'Kontakty', domacnosti: 'Domácnosti', pipeline: 'Pipeline' };
+      document.getElementById('crm-title').textContent = titles[viewId] || viewId;
+    }
+
+    function updateKpis() {
+      var opps = data.opportunities.filter(function(o) { return o.stage !== 'closed'; });
+      document.getElementById('kpi-meetings').textContent = '0';
+      document.getElementById('kpi-tasks').textContent = '0';
+      document.getElementById('kpi-opportunities').textContent = opps.length;
+    }
+
+    function renderContacts() {
+      var tbody = document.getElementById('contacts-tbody');
+      var empty = document.getElementById('contacts-empty');
+      var rows = data.contacts.map(function(c) {
+        return '<tr><td>' + (c.name || '—') + '</td><td>' + (c.email || '—') + '</td><td>' + (c.phone || '—') + '</td></tr>';
+      }).join('');
+      tbody.innerHTML = rows;
+      empty.style.display = data.contacts.length === 0 ? 'block' : 'none';
+    }
+
+    function renderHouseholds() {
+      var tbody = document.getElementById('households-tbody');
+      var empty = document.getElementById('households-empty');
+      var rows = data.households.map(function(h) {
+        return '<tr><td>' + (h.name || '—') + '</td><td>' + (h.memberCount || 0) + '</td></tr>';
+      }).join('');
+      tbody.innerHTML = rows;
+      empty.style.display = data.households.length === 0 ? 'block' : 'none';
+    }
+
+    function renderPipeline() {
+      var stages = [{ id: 'lead', name: 'Lead' }, { id: 'qualify', name: 'Kvalifikace' }, { id: 'offer', name: 'Nabídka' }, { id: 'won', name: 'Uzavřeno' }];
+      var html = stages.map(function(st) {
+        var items = data.opportunities.filter(function(o) { return o.stage === st.id; });
+        var list = items.map(function(o) { return '<div class="board-item">' + (o.title || 'Případ') + '</div>'; }).join('');
+        return '<div class="board-col"><h4>' + st.name + '</h4>' + list + '</div>';
+      }).join('');
+      document.getElementById('pipeline-board').innerHTML = html;
+    }
+
+    document.querySelectorAll('.nav-link[data-view]').forEach(function(a) {
+      a.addEventListener('click', function(e) { e.preventDefault(); showView(a.getAttribute('data-view')); });
+    });
+
+    document.getElementById('btn-add-contact').addEventListener('click', function() {
+      document.getElementById('modal-contact').style.display = 'flex';
+    });
+    document.getElementById('btn-close-contact').addEventListener('click', function() {
+      document.getElementById('modal-contact').style.display = 'none';
+    });
+    document.getElementById('form-contact').addEventListener('submit', function(e) {
+      e.preventDefault();
+      data.contacts.push({
+        name: document.getElementById('contact-name').value.trim(),
+        email: document.getElementById('contact-email').value.trim(),
+        phone: document.getElementById('contact-phone').value.trim()
+      });
+      saveData();
+      document.getElementById('form-contact').reset();
+      document.getElementById('modal-contact').style.display = 'none';
+      renderContacts();
+    });
+
+    loadData();
+    initCrm();
+  </script>
+</body>
+</html>

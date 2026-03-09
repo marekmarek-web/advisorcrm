@@ -1,0 +1,54 @@
+---
+description: Responsive and mobile-first UX for all CRM screens. No desktop-only layouts; touch-friendly, app-like experience on all breakpoints.
+alwaysApply: true
+---
+
+# Responsive & Mobile-First (CRM)
+
+Everything must be designed for **desktop, tablet, and mobile** from the start. Do not create desktop-only layouts. Provide responsive, touch-friendly, app-like UX with proper mobile alternatives for hover actions, tables, side panels, filters, forms, and advanced interactions.
+
+## Core Rules
+
+1. **Mobile-first thinking** – Define layouts and interactions for mobile first, then enhance for tablet and desktop. Never rely on "it will just shrink."
+2. **No hover-only actions** – Every important action must be reachable without hover (tap/long-press/visible button). On mobile, hover does not exist.
+3. **Touch-friendly** – Tap targets min ~44px, spacing between clickable elements, no tiny icons-only buttons. Support swipe where it fits (e.g. swipe-to-delete).
+4. **Tables & boards** – Desktop: full table/board. Mobile/tablet: use stacked cards, list rows, horizontal scroll only when necessary, or alternate list/detail flow. Never only a shrunken table.
+5. **Side panels** – Desktop: right panel / inspector. Mobile/tablet: fullscreen detail, bottom sheet, or overlay/drawer. Panel must be closeable and usable with touch.
+6. **Forms** – Mobile-friendly: readable spacing, correct input types, sticky primary actions when helpful, validation visible on small viewport.
+7. **Navigation** – Desktop: sidebar/top nav. Mobile: bottom nav, collapsible menu, or drawer – not a squeezed desktop sidebar.
+
+## Breakpoint Behavior
+
+- **Mobile**: single column, card-based UI, sticky primary actions, bottom sheet for detail, minimal horizontal scroll.
+- **Tablet**: fewer columns than desktop, touch-first, side panels as overlay/drawer; tables as list or card hybrid.
+- **Desktop**: full dashboards, multi-panel layouts, hover as bonus; detailed tables/lists.
+
+## Per-Area Expectations
+
+| Area | Mobile | Tablet | Desktop |
+|------|--------|--------|---------|
+| Kontakty | Card list, drill-down detail | Simplified list | Full list/table |
+| Úkoly | Single-column feed, bottom sheet detail | Main column + drawer | Workspace + right panel |
+| Produkce | KPI stacked, list-style data | Fewer KPI per row, stacked charts | KPI + charts + tables |
+| Domácnosti | Stacked/accordion cards | Compact cards | Expanded cards/list |
+| Klientský profil | One-column, priority sections | Fewer columns | Hero + tabs + cards |
+| Board/tabulky | List/detail workflow | Reduced board | Full board |
+| Mindmap | Simplified viewer, fullscreen node panel, touch pan/zoom | Touch pan/zoom, limited chrome | Full canvas |
+
+## Forbidden
+
+- Desktop-only UI or "mobile as afterthought."
+- Solving mobile only with `overflow-x: auto` everywhere.
+- Hiding critical actions behind hover only.
+- Shrinking tap targets or text below usable size.
+- Side panels that can't be closed or used with touch.
+- Drag/drop that only works with mouse (provide touch fallback or alternate flow).
+
+## Technical
+
+- Use consistent breakpoints (e.g. Tailwind `sm`/`md`/`lg`/`xl`).
+- Prefer variant layouts per viewport over one layout that "fits all."
+- Keep same data and logic across breakpoints; change only presentation and interaction patterns.
+- Optimize for performance on mobile (lazy load, avoid heavy effects, efficient lists).
+
+**Dovětek ke každému UI zadání:** Also optimize the feature for mobile and tablet. It must feel like a real app on smaller screens, not a shrunk desktop layout. Preserve full functionality across breakpoints and provide touch-friendly alternatives where desktop relies on hover, dense tables, or side panels.

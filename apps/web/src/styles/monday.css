@@ -1,0 +1,103 @@
+/**
+ * Monday.com-style design tokens and utilities.
+ * No heavy shadows, no gradients, no card layouts.
+ */
+
+:root {
+  /* Background & surface */
+  --monday-bg: #f6f7fb;
+  --monday-surface: #ffffff;
+  --monday-border: #e6e9ef;
+
+  /* Text */
+  --monday-text: #323338;
+  --monday-text-muted: #676879;
+
+  /* Primary action */
+  --monday-blue: #0073ea;
+
+  /* Row hover */
+  --monday-row-hover: #f0f3ff;
+
+  /* Radius */
+  --monday-radius: 8px;
+  --monday-pill-radius: 9999px;
+
+  /* Shadow (max) */
+  --monday-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* Typography */
+  --monday-font-size: 13px;
+  --monday-font-size-sm: 12px;
+  --monday-line-height: 1.4;
+
+  /* Spacing (jednotné pro board a panely) */
+  --monday-spacing-xs: 4px;
+  --monday-spacing-sm: 8px;
+  --monday-spacing-md: 12px;
+  --monday-spacing-lg: 16px;
+  --monday-spacing-xl: 20px;
+}
+
+/* Status label colors (Monday-like) */
+:root {
+  --status-hotovo: #00c875;
+  --status-rozděláno: #fdab3d;
+  --status-k-podpisu: #ffcb00;
+  --status-zatím-ne: #c5c7d0;
+  --status-domluvit: #037f4c;
+  --status-x: #333333;
+  --status-done: #00c875;
+}
+
+/* Sticky grid utilities */
+.monday-board-wrap {
+  background: var(--monday-bg);
+  min-height: 100vh;
+  font-size: var(--monday-font-size);
+  color: var(--monday-text);
+}
+
+.monday-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--monday-surface);
+  border-bottom: 1px solid var(--monday-border);
+  box-shadow: var(--monday-shadow);
+}
+
+.monday-sticky-first-col {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: inherit;
+}
+
+/* Top-left header cell: sticky both directions */
+.monday-sticky-corner {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 15;
+  background: var(--monday-surface);
+}
+
+.monday-cell-sep {
+  border-right: 1px solid var(--monday-border);
+}
+
+.monday-row-hover:hover,
+.monday-row-hover:hover td {
+  background: var(--monday-row-hover);
+}
+
+/* Tabular numbers for BJ columns */
+.monday-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Input radius 6px */
+.monday-input {
+  border-radius: 6px;
+}

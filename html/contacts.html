@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontakty – Advisor CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --brand-main: #0B3A7A; --brand-dark: #0a0f29; --brand-light: #EAF3FF; --brand-border: #D6E6FF; }
+    body { font-family: Inter, sans-serif; margin: 0; min-height: 100vh; background: var(--brand-light); color: #1e293b; display: flex; flex-direction: column; }
+    header { background: white; border-bottom: 1px solid var(--brand-border); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+    header .logo { font-weight: 700; color: var(--brand-main); text-decoration: none; }
+    header nav a { color: #64748b; text-decoration: none; font-size: 0.875rem; margin-left: 16px; }
+    header nav a.active { color: var(--brand-main); font-weight: 600; }
+    main { flex: 1; padding: 24px 16px; }
+    main h1 { font-size: 1.5rem; font-weight: 700; color: var(--brand-dark); margin: 0 0 8px; }
+    .btn { display: inline-block; padding: 8px 16px; border-radius: 8px; font-weight: 600; background: var(--brand-main); color: white; text-decoration: none; }
+    .card { background: white; border: 1px solid var(--brand-border); border-radius: 12px; padding: 24px; margin-top: 16px; }
+    .card p { color: #64748b; font-size: 0.875rem; margin: 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="dashboard.html" class="logo">Advisor CRM</a>
+    <nav>
+      <a href="dashboard.html">Dnes</a>
+      <a href="contacts.html" class="active">Kontakty</a>
+      <a href="households.html">Domácnosti</a>
+      <a href="pipeline.html">Pipeline</a>
+      <a href="index.html">Úvod</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Kontakty</h1>
+    <a href="#" class="btn">+ Přidat kontakt</a>
+    <div class="card"><p>Seznam kontaktů.</p></div>
+  </main>
+</body>
+</html>

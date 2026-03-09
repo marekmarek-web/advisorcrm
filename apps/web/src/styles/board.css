@@ -1,0 +1,461 @@
+/* ───────────────────────────────────────────────────
+   Board design system – Grid-based (Monday/Notion/Airtable)
+   Sdílí tokeny s Nástěnkou (--wp-*) pro jednotný vzhled.
+   ─────────────────────────────────────────────────── */
+
+:root {
+  --board-bg: var(--wp-bg);
+  --board-surface: var(--wp-surface);
+  --board-header-bg: var(--wp-bg);
+  --board-cell-bg: var(--wp-surface);
+  --board-cell-hover: #f5f7fb;
+  --board-border: var(--wp-border);
+  --board-border-strong: #d6dce8;
+  --board-text: var(--wp-text);
+  --board-text-muted: var(--wp-text-muted);
+  --board-focus-ring: rgba(72, 95, 237, 0.35);
+  --board-selected-bg: rgba(72, 95, 237, 0.08);
+  --board-resize-active: var(--wp-cal-accent);
+  --board-shadow-sm: var(--wp-shadow-sm);
+  --board-shadow-menu: 0 12px 36px rgba(15, 23, 42, 0.12);
+  --board-radius: var(--wp-radius-sm);
+  --board-radius-sm: var(--wp-radius-xs);
+  --board-row-h: 44px;
+  --board-header-h: 40px;
+  --board-summary-h: 36px;
+}
+
+/* ── Shell (uvnitř wp-projects-section = stejný vzhled jako Nástěnka) ── */
+.b-shell {
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--wp-space-4);
+}
+
+/* ── Scroller ── */
+.b-scroller {
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 var(--wp-space-6) var(--wp-space-6);
+  scrollbar-width: thin;
+}
+.b-scroller::-webkit-scrollbar { height: 6px; width: 6px; }
+.b-scroller::-webkit-scrollbar-track { background: transparent; }
+.b-scroller::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+/* ── Group section (Monday style: plochá sekce, barevný akcent vlevo) ── */
+.b-group {
+  margin-bottom: var(--wp-space-5);
+}
+.b-group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--wp-space-2);
+  height: 44px;
+  padding: 0 var(--wp-space-2);
+  user-select: none;
+  cursor: pointer;
+  border-radius: var(--board-radius);
+  transition: background 0.15s ease;
+}
+.b-group-title:hover {
+  background: var(--wp-bg);
+}
+.b-group-bar {
+  width: 3px;
+  height: 20px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.b-group-name {
+  font-size: var(--wp-fs-md);
+  font-weight: var(--wp-fw-bold);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.b-group-count {
+  font-size: var(--wp-fs-xs);
+  color: var(--board-text-muted);
+  font-weight: 500;
+}
+.b-group-body {
+  border: 1px solid var(--board-border);
+  border-left-width: 3px;
+  border-radius: var(--wp-radius);
+  background: var(--board-surface);
+  box-shadow: var(--board-shadow-sm);
+  overflow: hidden;
+}
+
+/* ── Grid row (shared template) ── */
+.b-row {
+  display: grid;
+  grid-template-columns: var(--board-columns);
+  min-width: max-content;
+}
+
+/* ── Header row ── */
+.b-header-row {
+  background: var(--board-header-bg);
+  border-bottom: 1px solid var(--board-border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.b-header-row .b-cell {
+  min-height: var(--board-header-h);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--board-text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  background: var(--board-header-bg);
+}
+
+/* ── Cell (shared) ── */
+.b-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--board-row-h);
+  padding: 0 12px;
+  border-right: 1px solid var(--board-border);
+  border-bottom: 1px solid var(--board-border);
+  background: var(--board-cell-bg);
+  box-sizing: border-box;
+  transition: background 0.12s ease;
+}
+.b-cell:last-child { border-right: none; }
+
+/* ── Data row ── */
+.b-data-row .b-cell { background: var(--board-cell-bg); }
+.b-data-row:hover .b-cell { background: var(--board-cell-hover); }
+.b-data-row.is-selected .b-cell { background: var(--board-selected-bg); }
+
+/* ── Sticky first column (první sloupec vlevo, ostatní buňky na střed) ── */
+.b-cell-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: inherit;
+  justify-content: flex-start;
+}
+.b-cell-sticky::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -8px;
+  width: 8px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(0,0,0,0.03), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.b-scroller:not([data-scroll="0"]) .b-cell-sticky::after { opacity: 1; }
+.b-header-row .b-cell-sticky { z-index: 6; }
+
+/* ── Resize handle ── */
+.b-resize {
+  position: absolute;
+  top: 0;
+  right: -6px;
+  width: 12px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.b-resize-line {
+  width: 2px;
+  height: 0;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.15s ease, height 0.15s ease;
+}
+.b-resize:hover .b-resize-line,
+.b-cell:hover > .b-resize .b-resize-line {
+  background: var(--board-resize-active);
+  height: 24px;
+}
+body.b-resizing .b-resize-line {
+  background: var(--board-resize-active);
+  height: 100%;
+}
+body.b-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* ── Header cell content ── */
+.b-header-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.b-header-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.b-header-icon {
+  flex-shrink: 0;
+  color: var(--board-text-muted);
+  opacity: 0.7;
+}
+.b-header-menu-trigger {
+  opacity: 0;
+  flex-shrink: 0;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--board-text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+.b-cell:hover .b-header-menu-trigger { opacity: 1; }
+.b-header-menu-trigger:hover { background: rgba(0,0,0,0.05); }
+
+/* ── Status cell (no padding so color fills entire cell) ── */
+.b-cell-status { padding: 0; }
+.b-cell-status > div { width: 100%; height: 100%; }
+
+/* ── Status pill ── */
+.b-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--board-radius);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  cursor: pointer;
+  border: 0;
+  transition: opacity 0.15s, transform 0.1s;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.b-status-pill:hover { opacity: 0.9; }
+.b-status-pill:active { transform: scale(0.97); }
+.b-status-empty {
+  background: #eef1f6;
+  color: var(--board-text-muted);
+  box-shadow: none;
+}
+
+/* ── Status cell inside board ── */
+.b-cell > .relative { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.b-cell > .relative > button {
+  width: 100%;
+  height: 100%;
+  min-height: var(--board-row-h);
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 0;
+  transition: opacity 0.15s, filter 0.1s;
+}
+.b-cell > .relative > button:hover { filter: brightness(0.95); }
+
+/* ── Item cell name styling ── */
+.b-data-row .b-cell-sticky .text-\\[14px\\] {
+  line-height: 1.2;
+}
+
+/* ── Add row ── */
+.b-add-row .b-cell {
+  min-height: 36px;
+  background: var(--board-header-bg);
+  border-bottom: none;
+}
+.b-add-trigger {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--board-text-muted);
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.b-add-trigger:hover { color: var(--board-resize-active); }
+
+/* ── Summary row ── */
+.b-summary-row .b-cell {
+  min-height: var(--board-summary-h);
+  background: var(--board-header-bg);
+  border-bottom: none;
+}
+.b-summary-track {
+  width: 100%;
+  height: 6px;
+  background: #eef1f6;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+}
+.b-summary-seg {
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* ── Context menu ── */
+.b-menu {
+  position: fixed;
+  z-index: 500;
+  display: inline-block;
+  min-width: 200px;
+  width: max-content;
+  max-width: 320px;
+  padding: 6px;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--board-border);
+  border-radius: var(--board-radius);
+  box-shadow: var(--board-shadow-menu);
+  box-sizing: border-box;
+}
+.b-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--board-text);
+  border: 0;
+  background: transparent;
+  border-radius: var(--board-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+  box-sizing: border-box;
+  text-align: left;
+}
+.b-menu-item:hover { background: #f2f5fa; }
+.b-menu-item.is-danger { color: #dc2626; }
+.b-menu-item.is-danger:hover { background: #fef2f2; }
+.b-menu-sep {
+  height: 1px;
+  background: var(--board-border);
+  margin: 4px 6px;
+}
+
+/* ── Add group button ── */
+.b-add-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--board-text-muted);
+  border: 2px dashed var(--board-border);
+  border-radius: var(--board-radius);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.b-add-group:hover {
+  border-color: var(--board-resize-active);
+  color: var(--board-resize-active);
+}
+
+/* ── Drag feedback ── */
+.b-data-row[draggable="true"] { cursor: grab; }
+.b-data-row[draggable="true"]:active { cursor: grabbing; opacity: 0.7; }
+.b-header-row [draggable="true"] { cursor: grab; }
+.b-group-title[draggable="true"] { cursor: grab; }
+.b-group-title[draggable="true"]:active { cursor: grabbing; opacity: 0.7; }
+
+/* ── Focus ring ── */
+.b-cell:focus-within {
+  box-shadow: inset 0 0 0 2px var(--board-focus-ring);
+  z-index: 3;
+}
+.b-data-row:focus {
+  outline: none;
+}
+.b-data-row:focus-visible .b-cell {
+  background: var(--board-cell-hover);
+}
+.b-data-row:focus-visible .b-cell-sticky::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--board-resize-active);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── Header edit input ── */
+.b-header-edit-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--board-text);
+  border: 1px solid var(--board-resize-active);
+  border-radius: var(--board-radius-sm);
+  background: #fff;
+  outline: none;
+  box-sizing: border-box;
+}
+.b-checkbox {
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+/* ── Group name input ── */
+.b-group-name-input {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border: 1px solid var(--board-border-strong);
+  border-radius: var(--board-radius-sm);
+  padding: 2px 8px;
+  min-width: 120px;
+  outline: none;
+  background: #fff;
+}
+.b-group-name-input:focus {
+  box-shadow: 0 0 0 2px var(--board-focus-ring);
+}
+
+/* ── Action cell ── */
+.b-action-btn {
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--board-text-muted);
+  border-radius: var(--board-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.b-data-row:hover .b-action-btn { opacity: 1; }
+.b-action-btn:hover { background: rgba(0,0,0,0.06); color: var(--board-text); }

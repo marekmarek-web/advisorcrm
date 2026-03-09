@@ -1,0 +1,389 @@
+"use client";
+
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { 
+  Plus, Search, Bell, ZoomIn, ZoomOut, Maximize, 
+  Settings, Download, Sparkles, User, TrendingUp, 
+  Shield, Home, Target, Briefcase, FileText, MoreHorizontal
+} from 'lucide-react';
+
+// --- MOCK DATA ---
+const INITIAL_NODES = [
+  // Jádro
+  { id: 'root', x: 400, y: 350, type: 'core', title: 'Rodina Novákova', subtitle: 'Komplexní finanční plán' },
+  
+  // Kategorie
+  { id: 'cat-invest', x: 800, y: 150, type: 'category', title: 'Budování majetku', color: 'emerald', icon: 'TrendingUp' },
+  { id: 'cat-bydleni', x: 800, y: 350, type: 'category', title: 'Bydlení & Závazky', color: 'blue', icon: 'Home' },
+  { id: 'cat-zajisteni', x: 800, y: 550, type: 'category', title: 'Ochrana příjmů', color: 'rose', icon: 'Shield' },
+  { id: 'cat-cile', x: 50, y: 350, type: 'category', title: 'Životní cíle', color: 'amber', icon: 'Target' },
+
+  // Položky
+  { id: 'item-portu', x: 1200, y: 100, type: 'item', title: 'Portu - Děti', value: '450 000 Kč', status: 'active' },
+  { id: 'item-conseq', x: 1200, y: 200, type: 'item', title: 'Conseq Repofond', value: '1 200 000 Kč', status: 'active' },
+  
+  { id: 'item-hypo', x: 1200, y: 300, type: 'item', title: 'Hypotéka ČS', value: '- 4 500 000 Kč', status: 'active', detail: 'Fixace 2027' },
+  { id: 'item-stavebko', x: 1200, y: 400, type: 'item', title: 'Stavební spoření', value: 'CČ 1 000 000 Kč', status: 'pending' },
+
+  { id: 'item-zivotko', x: 1200, y: 500, type: 'item', title: 'Životní pojištění', value: 'Krytí 3M Kč', status: 'active' },
+  { id: 'item-odpovednost', x: 1200, y: 600, type: 'item', title: 'Poj. odpovědnosti', value: 'Navrženo', status: 'planned' },
+
+  { id: 'item-cil1', x: -250, y: 280, type: 'goal', title: 'Nové auto 2027', value: 'Cíl: 800 000 Kč', progress: 45 },
+  { id: 'item-cil2', x: -250, y: 420, type: 'goal', title: 'Předčasný důchod', value: 'Cíl: 15M Kč', progress: 12 },
+];
+
+const INITIAL_EDGES = [
+  { id: 'e1', source: 'root', target: 'cat-invest' },
+  { id: 'e2', source: 'root', target: 'cat-bydleni' },
+  { id: 'e3', source: 'root', target: 'cat-zajisteni' },
+  { id: 'e4', source: 'root', target: 'cat-cile' },
+  
+  { id: 'e5', source: 'cat-invest', target: 'item-portu' },
+  { id: 'e6', source: 'cat-invest', target: 'item-conseq' },
+  
+  { id: 'e7', source: 'cat-bydleni', target: 'item-hypo' },
+  { id: 'e8', source: 'cat-bydleni', target: 'item-stavebko' },
+  
+  { id: 'e9', source: 'cat-zajisteni', target: 'item-zivotko' },
+  { id: 'e10', source: 'cat-zajisteni', target: 'item-odpovednost', dashed: true },
+
+  { id: 'e11', source: 'cat-cile', target: 'item-cil1' },
+  { id: 'e12', source: 'cat-cile', target: 'item-cil2' },
+];
+
+// Mapování textu na ikony
+const IconMap = { TrendingUp, Shield, Home, Target, Briefcase, FileText, User };
+
+export default function MindmapView() {
+  const [nodes, setNodes] = useState(INITIAL_NODES);
+  const [edges, setEdges] = useState(INITIAL_EDGES);
+  
+  // Plátno a transformace
+  const canvasRef = useRef(null);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  
+  // Dragging stavy
+  const [draggingNodeId, setDraggingId] = useState(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+
+  // Vycentrování plátna po načtení
+  useEffect(() => {
+    if (canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      setPan({ x: rect.width / 2 - 400, y: rect.height / 2 - 350 });
+    }
+  }, []);
+
+  // --- LOGIKA DRAGGINGU ---
+  const handlePointerDown = (e, nodeId = null) => {
+    if (e.button !== 0) return; // Jen levé tlačítko
+    
+    if (nodeId) {
+      // Začátek tažení uzlu
+      e.stopPropagation();
+      const node = nodes.find(n => n.id === nodeId);
+      setDraggingId(nodeId);
+      // Uložíme si relativní pozici kliknutí vůči uzlu, abychom jím necukli
+      setStartPos({
+        x: (e.clientX - pan.x) / zoom - node.x,
+        y: (e.clientY - pan.y) / zoom - node.y
+      });
+    } else {
+      // Začátek posunu plátna (Panning)
+      setIsPanning(true);
+      setStartPos({
+        x: e.clientX - pan.x,
+        y: e.clientY - pan.y
+      });
+    }
+  };
+
+  const handlePointerMove = useCallback((e) => {
+    if (draggingNodeId) {
+      // Tažení uzlu
+      const newX = (e.clientX - pan.x) / zoom - startPos.x;
+      const newY = (e.clientY - pan.y) / zoom - startPos.y;
+      setNodes(prev => prev.map(n => n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n));
+    } else if (isPanning) {
+      // Tažení plátna
+      setPan({
+        x: e.clientX - startPos.x,
+        y: e.clientY - startPos.y
+      });
+    }
+  }, [draggingNodeId, isPanning, pan, zoom, startPos]);
+
+  const handlePointerUp = useCallback(() => {
+    setDraggingId(null);
+    setIsPanning(false);
+  }, []);
+
+  useEffect(() => {
+    if (draggingNodeId || isPanning) {
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+      return () => {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+      };
+    }
+  }, [draggingNodeId, isPanning, handlePointerMove, handlePointerUp]);
+
+  // --- AKCE ---
+  const handleZoom = (delta) => {
+    setZoom(prev => Math.min(Math.max(prev + delta, 0.4), 2));
+  };
+
+  const addNode = (parentId, type) => {
+    const parentNode = nodes.find(n => n.id === parentId);
+    const newNodeId = `node-${Date.now()}`;
+    const newNode = {
+      id: newNodeId,
+      // Nový uzel hodíme lehce doprava a dolů od rodiče
+      x: parentNode.x + (parentId === 'root' ? 400 : 300),
+      y: parentNode.y + Math.random() * 100 - 50,
+      type: type,
+      title: 'Nová položka',
+      value: '0 Kč',
+      status: 'planned'
+    };
+    
+    setNodes([...nodes, newNode]);
+    setEdges([...edges, { id: `e-${Date.now()}`, source: parentId, target: newNodeId }]);
+  };
+
+  // --- VYKRESLENÍ UZLU (NODE) ---
+  const renderNode = (node) => {
+    const isDragging = draggingNodeId === node.id;
+    const NodeIcon = IconMap[node.icon] || FileText;
+
+    let content = null;
+
+    // Styl 1: JÁDRO (Root)
+    if (node.type === 'core') {
+      content = (
+        <div className="bg-[#1a1c2e] text-white p-6 rounded-[24px] shadow-2xl shadow-indigo-900/30 border-2 border-indigo-500/30 w-72 text-center group">
+          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner">
+            <User size={32} className="text-white" />
+          </div>
+          <h2 className="text-2xl font-black tracking-tight mb-1">{node.title}</h2>
+          <p className="text-indigo-200 text-sm font-bold">{node.subtitle}</p>
+          
+          <button onClick={() => addNode(node.id, 'category')} className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 shadow-lg">
+            <Plus size={16} />
+          </button>
+        </div>
+      );
+    }
+    
+    // Styl 2: KATEGORIE (Pilíře)
+    else if (node.type === 'category') {
+      content = (
+        <div className={`bg-white p-5 rounded-2xl shadow-lg border border-slate-200 w-64 flex items-center gap-4 group transition-transform ${isDragging ? 'scale-105' : ''}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm bg-${node.color}-50 text-${node.color}-600 border border-${node.color}-100`}>
+            <NodeIcon size={24} />
+          </div>
+          <h3 className="font-black text-slate-800 text-lg leading-tight flex-1">{node.title}</h3>
+          
+          <button onClick={() => addNode(node.id, 'item')} className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 text-slate-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 shadow-md">
+            <Plus size={16} />
+          </button>
+        </div>
+      );
+    }
+
+    // Styl 3: POLOŽKA / PRODUKT
+    else if (node.type === 'item') {
+      content = (
+        <div className={`bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-sm border transition-all w-56 group
+          ${isDragging ? 'shadow-xl scale-105 border-indigo-300' : 'border-slate-200 hover:border-slate-300 hover:shadow-md'}
+          ${node.status === 'planned' ? 'border-dashed border-2 opacity-80' : ''}
+        `}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt</span>
+            <button className="text-slate-300 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
+              <MoreHorizontal size={14} />
+            </button>
+          </div>
+          <h4 className="font-bold text-slate-800 text-[15px] mb-1 leading-tight">{node.title}</h4>
+          <div className={`text-sm font-black ${node.value.includes('-') ? 'text-rose-600' : 'text-emerald-600'}`}>
+            {node.value}
+          </div>
+          {node.detail && <div className="text-xs text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100">{node.detail}</div>}
+        </div>
+      );
+    }
+
+    // Styl 4: CÍLE
+    else if (node.type === 'goal') {
+      content = (
+        <div className={`bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-2xl shadow-sm border border-amber-200 w-56 group
+          ${isDragging ? 'shadow-xl scale-105' : 'hover:shadow-md'}
+        `}>
+          <div className="flex items-center gap-2 mb-2 text-amber-700">
+            <Target size={16} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Cíl</span>
+          </div>
+          <h4 className="font-bold text-amber-950 text-[15px] mb-1 leading-tight">{node.title}</h4>
+          <div className="text-sm font-bold text-amber-800 mb-3">{node.value}</div>
+          
+          <div className="h-1.5 w-full bg-amber-200/50 rounded-full overflow-hidden">
+             <div className="h-full bg-amber-500 rounded-full" style={{ width: `${node.progress}%` }}></div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={node.id}
+        onPointerDown={(e) => handlePointerDown(e, node.id)}
+        style={{
+          position: 'absolute',
+          transform: `translate(${node.x}px, ${node.y}px)`,
+          // Posuneme kotevní bod do středu (vizuálně lepší pro napojování čar)
+          marginLeft: node.type === 'core' ? -144 : node.type === 'category' ? -128 : -112,
+          marginTop: -50,
+          cursor: isDragging ? 'grabbing' : 'grab',
+          zIndex: isDragging ? 50 : 10
+        }}
+      >
+        {content}
+      </div>
+    );
+  };
+
+  // --- VYKRESLENÍ ČAR (EDGES) ---
+  const renderEdges = () => {
+    return edges.map(edge => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+      
+      if (!sourceNode || !targetNode) return null;
+
+      // Zjednodušená matematika pro spojování středů
+      const startX = sourceNode.x;
+      const startY = sourceNode.y;
+      const endX = targetNode.x;
+      const endY = targetNode.y;
+
+      // Bezier control body pro plynulou křivku
+      const offset = Math.abs(endX - startX) / 2;
+      const pathData = `M ${startX} ${startY} C ${startX + offset} ${startY}, ${endX - offset} ${endY}, ${endX} ${endY}`;
+
+      return (
+        <path
+          key={edge.id}
+          d={pathData}
+          fill="none"
+          stroke={edge.dashed ? "#94a3b8" : "#cbd5e1"}
+          strokeWidth="3"
+          strokeDasharray={edge.dashed ? "8, 8" : "none"}
+          className="transition-all duration-300"
+        />
+      );
+    });
+  };
+
+  return (
+    <div className="h-screen flex flex-col font-lato text-slate-800 overflow-hidden bg-[#f8fafc]">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+        .font-lato { font-family: 'Lato', sans-serif; }
+        .dot-grid {
+          background-image: radial-gradient(#cbd5e1 1.5px, transparent 0);
+          background-size: 32px 32px;
+        }
+      `}</style>
+
+      {/* --- TOP NAV --- */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-3 z-50 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#1a1c2e] rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md">W</div>
+            <span className="font-black text-lg tracking-tight">WePlan</span>
+          </div>
+          <div className="h-4 w-px bg-slate-200"></div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-bold text-slate-900">Mapování: Rodina Novákova</h1>
+            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-md border border-emerald-100">Uloženo</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border border-amber-200 hover:shadow-md rounded-xl text-xs font-black uppercase tracking-widest transition-all">
+            <Sparkles size={14} className="text-amber-600" /> AI Návrh strategie
+          </button>
+          <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+             <Download size={16} />
+          </button>
+        </div>
+      </header>
+
+      {/* --- MAIN CANVAS AREA --- */}
+      <main 
+        ref={canvasRef}
+        onPointerDown={(e) => handlePointerDown(e)}
+        className={`flex-1 relative overflow-hidden dot-grid outline-none ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+      >
+        
+        {/* Transformační vrstva (Pan & Zoom) */}
+        <div 
+          style={{ 
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+            width: '100%',
+            height: '100%',
+            position: 'absolute'
+          }}
+        >
+          {/* SVG vrstva pro spojovací čáry */}
+          <svg className="absolute top-0 left-0 w-[5000px] h-[5000px] overflow-visible pointer-events-none z-0">
+            {renderEdges()}
+          </svg>
+
+          {/* HTML vrstva pro Uzly */}
+          <div className="absolute top-0 left-0 w-full h-full">
+            {nodes.map(renderNode)}
+          </div>
+        </div>
+
+        {/* --- FLOATING CONTROLS --- */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-slate-200 z-50">
+          <button onClick={() => handleZoom(-0.1)} className="p-3 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
+            <ZoomOut size={20} />
+          </button>
+          <div className="w-16 text-center font-black text-sm text-slate-700">
+            {Math.round(zoom * 100)}%
+          </div>
+          <button onClick={() => handleZoom(0.1)} className="p-3 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
+            <ZoomIn size={20} />
+          </button>
+          <div className="w-px h-6 bg-slate-200 mx-1"></div>
+          <button onClick={() => { setPan({ x: canvasRef.current.clientWidth / 2 - 400, y: canvasRef.current.clientHeight / 2 - 350 }); setZoom(1); }} className="p-3 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" title="Vycentrovat">
+            <Maximize size={20} />
+          </button>
+        </div>
+
+        {/* --- LEFT TOOLBAR --- */}
+        <div className="absolute left-6 top-6 flex flex-col gap-3 z-50">
+          <div className="bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-xl border border-slate-200 flex flex-col gap-1">
+             <button className="p-3 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors" title="Nástroj pro výběr">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+             </button>
+             <button className="p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors" title="Spojování uzlů (Link)">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+             </button>
+             <div className="w-10 h-px bg-slate-200 mx-auto my-1"></div>
+             <button className="p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors" title="Nastavení mapy">
+               <Settings size={20} />
+             </button>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  );
+}

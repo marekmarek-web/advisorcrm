@@ -1,0 +1,115 @@
+/**
+ * WePlan – globální design tokeny (DASHBOARD.txt design language).
+ * Jediný zdroj pravdy pro barvy, spacing, radius, shadow, typografii.
+ * Staré --monday-* jsou aliasy na --wp-* pro zpětnou kompatibilitu.
+ */
+
+:root {
+  /* ── Barvy (DASHBOARD.txt) ── */
+  --wp-bg: #f3f6fd;
+  --wp-surface: #ffffff;
+  --wp-border: #e9ebf0;
+  --wp-text: #1f1c2e;
+  --wp-text-muted: #4a4a4a;
+  --wp-primary: #1f1c2e;
+  --wp-primary-hover: #2d2a3e;
+  --wp-link: #1f1c2e;
+  --wp-link-hover-bg: #c3cff4;
+  --wp-link-active-bg: #1f1c2e;
+  --wp-link-active: #ffffff;
+  --wp-accent: #0073ea;
+  --wp-accent-hover: #0060c0;
+  --wp-success: #00c875;
+  --wp-warning: #fdab3d;
+  --wp-danger: #e5534b;
+  --wp-search-bg: #ffffff;
+  --wp-message-box-hover: #fafcff;
+  --wp-message-box-border: #e9ebf0;
+  --wp-button-bg: #1f1c24;
+
+  /* Calendar-specific (Calendar widget.txt) */
+  --wp-cal-accent: #485fed;
+  --wp-cal-accent-light: rgba(72, 95, 237, 0.12);
+  --wp-cal-hot: #ee6b51;
+  --wp-cal-done: #999999;
+  --wp-cal-active: #43ff28;
+
+  /* Task event colors (Calendar.txt) */
+  --wp-task-warning: #fdb44d;
+  --wp-task-warning-bg: #fef0db;
+  --wp-task-danger: #fa607e;
+  --wp-task-danger-bg: rgba(253, 197, 208, 0.7);
+  --wp-task-info: #4786ff;
+  --wp-task-info-bg: rgba(218, 231, 255, 0.7);
+  --wp-task-primary: #4786ff;
+
+  /* ── Spacing scale (4/8/12/16/24/32) ── */
+  --wp-space-0: 0;
+  --wp-space-1: 4px;
+  --wp-space-2: 8px;
+  --wp-space-3: 12px;
+  --wp-space-4: 16px;
+  --wp-space-5: 20px;
+  --wp-space-6: 24px;
+  --wp-space-8: 32px;
+
+  /* ── Radius scale (DASHBOARD.txt: 10, 20, 30, 32) ── */
+  --wp-radius-xs: 4px;
+  --wp-radius-sm: 8px;
+  --wp-radius: 10px;
+  --wp-radius-lg: 20px;
+  --wp-radius-xl: 30px;
+  --wp-radius-2xl: 32px;
+  --wp-pill-radius: 8px;
+
+  /* ── Shadow (DASHBOARD.txt search-wrapper shadow) ── */
+  --wp-shadow: 0 2px 6px 0 rgba(136, 148, 171, 0.2), 0 24px 20px -24px rgba(71, 82, 107, 0.1);
+  --wp-shadow-sm: 0 2px 6px rgba(136, 148, 171, 0.2);
+  --wp-shadow-lg: 0 2px 20px rgba(0, 0, 0, 0.1);
+
+  /* ── Typography (DM Sans from DASHBOARD.txt) ── */
+  --wp-font: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --wp-fs-xs: 12px;
+  --wp-fs-sm: 13px;
+  --wp-fs-base: 14px;
+  --wp-fs-md: 16px;
+  --wp-fs-lg: 18px;
+  --wp-fs-xl: 20px;
+  --wp-fs-2xl: 24px;
+  --wp-line-height: 1.4;
+  --wp-fw-normal: 400;
+  --wp-fw-medium: 500;
+  --wp-fw-semibold: 600;
+  --wp-fw-bold: 700;
+
+  /* ── Zpětná kompatibilita: monday-* → wp-* ── */
+  --monday-bg: var(--wp-bg);
+  --monday-surface: var(--wp-surface);
+  --monday-border: var(--wp-border);
+  --monday-text: var(--wp-text);
+  --monday-text-muted: var(--wp-text-muted);
+  --monday-blue: var(--wp-accent);
+  --monday-row-hover: var(--wp-link-hover-bg);
+  --monday-radius: var(--wp-radius-sm);
+  --monday-pill-radius: var(--wp-pill-radius);
+  --monday-shadow: var(--wp-shadow-sm);
+  --monday-font-size: var(--wp-fs-sm);
+  --monday-font-size-sm: var(--wp-fs-xs);
+  --monday-line-height: var(--wp-line-height);
+  --monday-spacing-xs: var(--wp-space-1);
+  --monday-spacing-sm: var(--wp-space-2);
+  --monday-spacing-md: var(--wp-space-3);
+  --monday-spacing-lg: var(--wp-space-4);
+  --monday-spacing-xl: var(--wp-space-5);
+}
+
+/* Status barvy (board/obchody) */
+:root {
+  --status-hotovo: #00c875;
+  --status-rozděláno: #fdab3d;
+  --status-k-podpisu: #ffcb00;
+  --status-zatím-ne: #c5c7d0;
+  --status-domluvit: #037f4c;
+  --status-x: #333333;
+  --status-done: #00c875;
+}

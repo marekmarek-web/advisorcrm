@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Branding dle osobni-web-finance: #0B3A7A, #0a0f29, #EAF3FF, #D6E6FF, #ffcc00 */
+@layer base {
+  :root {
+    --brand-main: var(--monday-blue);
+    --brand-dark: var(--monday-text);
+    --brand-light: var(--monday-bg);
+    --brand-border: var(--monday-border);
+    --brand-accent: #ffcc00;
+    --background: 214 100% 97%;
+    --foreground: 224 71% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 10%;
+    --primary: 217 84% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 215 16% 47%;
+    --muted: 214 32% 94%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 45 100% 50%;
+    --accent-foreground: 224 71% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 100% 90%;
+    --input: 214 32% 91%;
+    --ring: 217 84% 26%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply text-foreground antialiased;
+    background-color: var(--wp-bg);
+    font-family: var(--wp-font);
+  }
+}

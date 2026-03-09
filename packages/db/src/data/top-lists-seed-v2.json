@@ -1,0 +1,66 @@
+{
+  "project": "WePlan",
+  "generatedAt": "2026-03-03T16:47:49",
+  "note": "Top seznamy (pojišťovny/investiční společnosti/banky/penzijní společnosti) podle veřejně dohledatelných produktových řad. Nezaručuje dostupnost v Beplan; slouží jako seed. U každého partnera lze doplnit další interní varianty z brokerpool dropdownů.\nÚpravy v2: doplněny životní produkty z PDF (včetně Maxima MaxEfekt), segmenty mají plné české názvy; Slavia označena jako excluded dle požadavku.",
+  "segments": [
+    { "code": "ZP", "label": "Životní pojištění", "displayName": "Životní pojištění" },
+    { "code": "MAJ", "label": "Majetek (domácnost/nemovitost)", "displayName": "Majetek (domácnost/nemovitost)" },
+    { "code": "ODP", "label": "Odpovědnost", "displayName": "Odpovědnost" },
+    { "code": "AUTO_PR", "label": "Auto – povinné ručení", "displayName": "Auto – povinné ručení" },
+    { "code": "AUTO_HAV", "label": "Auto – havarijní pojištění", "displayName": "Auto – havarijní pojištění" },
+    { "code": "CEST", "label": "Cestovní pojištění", "displayName": "Cestovní pojištění" },
+    { "code": "INV", "label": "Investice", "displayName": "Investice" },
+    { "code": "DIP", "label": "Dlouhodobý investiční produkt (DIP)", "displayName": "Dlouhodobý investiční produkt (DIP)" },
+    { "code": "DPS", "label": "Doplňkové penzijní spoření (DPS)", "displayName": "Doplňkové penzijní spoření (DPS)" },
+    { "code": "HYPO", "label": "Hypotéky", "displayName": "Hypotéky" },
+    { "code": "UVER", "label": "Úvěry", "displayName": "Úvěry" },
+    { "code": "FIRMA_POJ", "label": "Pojištění firem", "displayName": "Pojištění firem" },
+    { "code": "ZDRAV", "label": "Zdraví / úraz / nemoc", "displayName": "Zdraví / úraz / nemoc" }
+  ],
+  "topLists": {
+    "pojistovny_top10": [
+      { "partner": "Allianz pojišťovna", "map": { "Životní pojištění": ["Život"], "Majetek (domácnost/nemovitost)": ["Allianz MůjDomov (domácnost/nemovitost/majetek+odpovědnost)"], "Odpovědnost": ["Allianz MůjDomov – odpovědnost (součást balíčků)"], "Auto – povinné ručení": ["Povinné ručení"], "Auto – havarijní pojištění": ["Havarijní pojištění (balíčky PLUS/EXTRA/MAX)"] } },
+      { "partner": "Kooperativa", "map": { "Životní pojištění": ["FLEXI"], "Majetek (domácnost/nemovitost)": ["Pojištění majetku (domácnost/nemovitost) – produktové řady dle webu/partnera (TBD)"], "Odpovědnost": ["Odpovědnost – obvykle součást majetkového pojištění (TBD)"] } },
+      { "partner": "UNIQA", "map": { "Životní pojištění": ["Život & Radost"], "Majetek (domácnost/nemovitost)": ["Pojištění bytu a domácnosti (balíčky MINI/PLUS/EXTRA)", "Pojištění domu a domácnosti (balíčky MINI/PLUS/EXTRA)"], "Odpovědnost": ["Pojištění odpovědnosti (balíčky PLUS/EXTRA)"] } },
+      { "partner": "ČPP", "map": { "Životní pojištění": ["NEON"] } },
+      { "partner": "NN Životní pojišťovna", "map": { "Životní pojištění": ["Orange"] } },
+      { "partner": "MetLife", "map": { "Životní pojištění": ["OneGuard"] } },
+      { "partner": "Pillow", "map": { "Zdraví / úraz / nemoc": ["Pojištění úrazu a nemoci"] } },
+      { "partner": "Komerční pojišťovna", "map": { "Životní pojištění": ["Elán"] } },
+      { "partner": "Slavia", "map": { "Životní pojištění": ["(TBD – veřejné názvy se liší dle produktových řad)"], "Majetek (domácnost/nemovitost)": ["(TBD)"], "Auto – povinné ručení": ["(TBD)"], "Auto – havarijní pojištění": ["(TBD)"] }, "excluded": true, "reason": "Uživatel nechce v TOP seznamech (doplníme až z interních dropdownů)." },
+      { "partner": "Maxima", "map": { "Životní pojištění": ["MaxEfekt"], "Majetek (domácnost/nemovitost)": ["(TBD)"], "Auto – povinné ručení": ["(TBD)"], "Auto – havarijní pojištění": ["(TBD)"] } }
+    ],
+    "investicni_spolecnosti_top10": [
+      { "partner": "Conseq", "map": { "Investice": ["Active Invest (Dynamický)", "Active Invest (Konzervativní)", "Active Invest (Vyvážený)", "Classic Invest"] } },
+      { "partner": "Investika", "map": { "Investice": ["INVESTIKA realitní fond (otevřený podílový fond)"] } },
+      { "partner": "Amundi", "map": { "Investice": ["Fondy a ETF (Amundi)"], "Dlouhodobý investiční produkt (DIP)": ["DIP (Amundi)"] } },
+      { "partner": "Cyrrus", "map": { "Investice": ["Investiční služby (brokers/portfolia) – produktové názvy dle nabídky (TBD)"] } },
+      { "partner": "J&T", "map": { "Investice": ["Investiční služby / fondy J&T (TBD)"] } },
+      { "partner": "ATRIS", "map": { "Investice": ["Investiční fondy ATRIS (TBD)"] } },
+      { "partner": "Avant", "map": { "Investice": ["SICAV / fondy AVANT (TBD)"] } },
+      { "partner": "Edward", "map": { "Investice": ["Investiční účty EDWARD"] } },
+      { "partner": "EIC", "map": { "Investice": ["Investiční účty EIC"] } },
+      { "partner": "Moventum", "map": { "Investice": ["Investiční platforma Moventum (TBD)"] } }
+    ],
+    "banky_top10": [
+      { "partner": "Česká spořitelna", "map": { "Hypotéky": ["Hypotéka (produktová řada)"], "Úvěry": ["Spotřebitelský úvěr (TBD)"] } },
+      { "partner": "ČSOB", "map": { "Hypotéky": ["Hypotéka (produktová řada)"], "Úvěry": ["Spotřebitelský úvěr (TBD)"] } },
+      { "partner": "Komerční banka", "map": { "Hypotéky": ["Hypotéka", "Hypotéka na udržitelné bydlení"], "Úvěry": ["Spotřebitelské úvěry (TBD)"] } },
+      { "partner": "Raiffeisenbank", "map": { "Hypotéky": ["Hypotéka na bydlení (Klasik)", "Hypotéka naruby", "Výstavba montovaného domu", "Refinancování hypotéky", "Hypotéka na pronájem", "Hypotéka na cokoliv"] } },
+      { "partner": "UniCredit", "map": { "Hypotéky": ["U hypotéka (účelová)", "U hypotéka (kombinovaná)", "Hypotéka pro mladé"], "Úvěry": ["PRESTO Business (hypo pro podnikatele – dle nabídky)"] } },
+      { "partner": "Moneta", "map": { "Hypotéky": ["Hypotéka", "Americká hypotéka"] } },
+      { "partner": "mBank", "map": { "Hypotéky": ["mHypotéka (produktová řada – TBD)"], "Úvěry": ["(TBD)"] } },
+      { "partner": "Oberbank", "map": { "Hypotéky": ["Hypotéky (produktová řada – TBD)"], "Úvěry": ["Úvěry (TBD)"] } },
+      { "partner": "ČSOB Hypoteční banka", "map": { "Hypotéky": ["Hypotéky (TBD)"] } },
+      { "partner": "Raiffeisen Leasing", "map": { "Úvěry": ["Leasing / financování (TBD)"] } }
+    ],
+    "penzijni_spolecnosti_top5": [
+      { "partner": "Allianz PS", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (III. pilíř)"] } },
+      { "partner": "KB Penzijní společnost", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } },
+      { "partner": "NN Penzijní společnost", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } },
+      { "partner": "Česká spořitelna PS", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } },
+      { "partner": "ČSOB PS", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } }
+    ]
+  },
+  "version": "v2"
+}

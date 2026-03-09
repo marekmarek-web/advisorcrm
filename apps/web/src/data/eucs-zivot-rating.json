@@ -1,0 +1,18 @@
+{
+  "source": "BEplan PDF – Hodnocení produktů (EUCS rating, informativní)",
+  "generatedAt": "2026-03-03T16:47:49",
+  "disclaimer": "Rating je pouze informativní. WePlan nedává doporučení. Poradce odpovídá za rozhodnutí.",
+  "segment": "Životní pojištění",
+  "items": [
+    { "partner": "UNIQA", "product": "Život & Radost", "rating_total": 9.3, "as_of": "2025-05-14" },
+    { "partner": "NN", "product": "Orange", "rating_total": 9.2, "as_of": "2025-11-24" },
+    { "partner": "Generali Česká", "product": "Bel Mondo 20", "rating_total": 8.9, "as_of": "2024-02-07" },
+    { "partner": "Allianz", "product": "Život", "rating_total": 8.7, "as_of": "2025-11-19" },
+    { "partner": "Kooperativa", "product": "FLEXI", "rating_total": 8.6, "as_of": "2025-10-21" },
+    { "partner": "Komerční pojišťovna", "product": "Elán", "rating_total": 8.7, "as_of": "2025-09-04" },
+    { "partner": "MetLife", "product": "OneGuard", "rating_total": 8.7, "as_of": "2024-10-03" },
+    { "partner": "Maxima", "product": "MaxEfekt", "rating_total": 8.3, "as_of": "2026-02-11" },
+    { "partner": "Pillow", "product": "Pojištění úrazu a nemoci", "rating_total": 8.0, "as_of": "2023-02-23" },
+    { "partner": "ČPP", "product": "NEON", "rating_total": 8.0, "as_of": "2024-04-23" }
+  ]
+}

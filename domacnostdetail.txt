@@ -1,0 +1,265 @@
+"use client";
+
+import React, { useState } from 'react';
+import { 
+  ArrowLeft, Edit2, Trash2, Plus, Search, MapPin, 
+  Phone, Mail, Target, Briefcase, TrendingUp, 
+  Shield, User, Baby, Sparkles, ChevronRight, Activity, Share2
+} from 'lucide-react';
+
+// --- MOCK DATA ---
+const HOUSEHOLD = {
+  id: 'h1',
+  name: 'Rodina Novákova',
+  address: 'Sluneční 145, Praha 4',
+  totalAum: '8 450 000 Kč',
+  health: 92,
+  status: 'VIP',
+  lastReview: '12. 01. 2026',
+  members: [
+    { id: 'c1', name: 'MUDr. Jan Novák', role: 'Hlava rodiny', email: 'jan.novak@example.cz', phone: '+420 777 123 456', aum: '5.2M Kč', products: 5, avatar: 'JN', type: 'adult' },
+    { id: 'c2', name: 'Ing. Eva Nováková', role: 'Manželka', email: 'eva.novakova@example.cz', phone: '+420 733 987 654', aum: '2.8M Kč', products: 3, avatar: 'EN', type: 'adult' },
+    { id: 'c3', name: 'Tomáš Novák', role: 'Syn (17 let)', email: 'tomas.n@example.cz', phone: '—', aum: '450k Kč', products: 1, avatar: 'TN', type: 'child' }
+  ],
+  goals: [
+    { id: 'g1', title: 'Vysoká škola pro Tomáše', target: '500 000 Kč', current: '450 000 Kč', progress: 90, color: 'emerald' },
+    { id: 'g2', title: 'Předčasné splacení hypotéky', target: '2 000 000 Kč', current: '800 000 Kč', progress: 40, color: 'blue' }
+  ],
+  pipeline: [
+    { id: 'p1', title: 'Refinancování hypotéky', stage: 'Příprava řešení', value: '4.5M Kč', owners: ['JN', 'EN'] },
+    { id: 'p2', title: 'Založení DIP', stage: 'Prezentace', value: '4k / měs', owners: ['EN'] }
+  ]
+};
+
+export default function HouseholdDetailView() {
+  const [activeTab, setActiveTab] = useState('prehled');
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] font-lato text-slate-800 pb-20">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+        .font-lato { font-family: 'Lato', sans-serif; }
+      `}</style>
+
+      {/* --- TOP NAV --- */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 py-4 sticky top-0 z-50 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <button className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+            <ArrowLeft size={16} /> Zpět na domácnosti
+          </button>
+          <div className="w-px h-6 bg-slate-200"></div>
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+             <span>Databáze</span>
+             <span className="opacity-30">/</span>
+             <span>Domácnosti</span>
+             <span className="opacity-30">/</span>
+             <span className="text-slate-800">{HOUSEHOLD.name}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:scale-105 transition-all active:scale-95">
+            <Sparkles size={16} /> Strategická mapa
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-[1400px] mx-auto p-8 space-y-8">
+        
+        {/* --- HLAVIČKA DOMÁCNOSTI --- */}
+        <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+          
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 flex items-center justify-center text-slate-400 shadow-inner">
+              <Share2 size={32} />
+            </div>
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight">{HOUSEHOLD.name}</h1>
+                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest rounded-md border border-amber-200">VIP Rodina</span>
+              </div>
+              <div className="flex items-center gap-4 text-sm font-bold text-slate-500">
+                <span className="flex items-center gap-1.5"><MapPin size={14} /> {HOUSEHOLD.address}</span>
+                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span>Poslední revize: {HOUSEHOLD.lastReview}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-8 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div>
+              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Společný majetek (AUM)</span>
+              <span className="text-2xl font-black text-indigo-600">{HOUSEHOLD.totalAum}</span>
+            </div>
+            <div className="w-px h-10 bg-slate-200"></div>
+            <div>
+              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                Health Score <Activity size={10} />
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-black text-emerald-500">{HOUSEHOLD.health}%</span>
+                <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${HOUSEHOLD.health}%` }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* --- HLAVNÍ OBSAH (Grid) --- */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          
+          {/* LEVÝ SLOUPEC: Členové rodiny */}
+          <div className="xl:col-span-2 space-y-6">
+            
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black text-slate-900">Členové domácnosti</h2>
+              <button className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-3 py-1.5 rounded-lg">
+                <Plus size={16} /> Přidat člena
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {HOUSEHOLD.members.map(member => (
+                <div key={member.id} className="bg-white p-5 rounded-[24px] border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all flex flex-col group">
+                  
+                  {/* Avatar a Role */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm border-2 border-white shadow-sm
+                        ${member.type === 'child' ? 'bg-amber-100 text-amber-700' : 'bg-slate-800 text-white'}
+                      `}>
+                        {member.type === 'child' ? <Baby size={20} /> : member.avatar}
+                      </div>
+                      <div>
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1 inline-block
+                          ${member.role === 'Hlava rodiny' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600'}
+                        `}>
+                          {member.role}
+                        </span>
+                        <h3 className="font-bold text-lg text-slate-900 leading-none">{member.name}</h3>
+                      </div>
+                    </div>
+                    <button className="text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100" title="Odebrat z domácnosti">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  {/* Kontakt */}
+                  <div className="space-y-1.5 mb-5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                      <Mail size={14} className="text-slate-400" /> {member.email}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                      <Phone size={14} className="text-slate-400" /> {member.phone}
+                    </div>
+                  </div>
+
+                  {/* Metriky a Akce */}
+                  <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Osobní AUM</span>
+                      <span className="text-sm font-black text-slate-800">{member.aum}</span>
+                    </div>
+                    <button className="flex items-center gap-1.5 px-4 py-2 bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 text-xs font-black uppercase tracking-widest rounded-xl transition-colors border border-slate-200 hover:border-indigo-200">
+                      Profil 360° <ChevronRight size={14} />
+                    </button>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+
+            {/* OBLAST PRO POZNÁMKY NEBO DOKUMENTY (Zástupce) */}
+            <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm mt-8">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Rodinné dokumenty a poznámky</h3>
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-500 transition-all cursor-pointer">
+                <Plus size={24} className="mb-2" />
+                <p className="text-sm font-bold">Přetáhněte společné dokumenty sem</p>
+                <p className="text-xs mt-1">SJM, oddací listy, společná daňová přiznání...</p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* PRAVÝ SLOUPEC: Společné cíle a Obchody */}
+          <div className="xl:col-span-1 space-y-6">
+            
+            {/* Widget: Rodinné cíle */}
+            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                <h3 className="font-black text-slate-900 flex items-center gap-2">
+                  <Target size={18} className="text-amber-500" /> Společné cíle
+                </h3>
+                <button className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors shadow-sm">
+                  <Plus size={16} />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                {HOUSEHOLD.goals.map(goal => (
+                  <div key={goal.id}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-slate-800">{goal.title}</span>
+                      <span className="text-xs font-black text-slate-900">{goal.progress}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-2">
+                      <div className={`h-full rounded-full bg-${goal.color}-500`} style={{ width: `${goal.progress}%` }}></div>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+                      <span>Naspořeno: <span className="text-slate-600">{goal.current}</span></span>
+                      <span>Cíl: {goal.target}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Widget: Společná Pipeline (Obchody) */}
+            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                <h3 className="font-black text-slate-900 flex items-center gap-2">
+                  <Briefcase size={18} className="text-indigo-500" /> Aktuální obchody
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                {HOUSEHOLD.pipeline.map(opp => (
+                  <div key={opp.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:shadow-sm transition-all cursor-pointer group">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                        {opp.stage}
+                      </span>
+                      <div className="flex -space-x-2">
+                        {opp.owners.map(initials => (
+                          <div key={initials} className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[8px] font-black border border-white">
+                            {initials}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-800 group-hover:text-indigo-600 transition-colors">{opp.title}</h4>
+                    <p className="text-xs font-bold text-slate-500 mt-1">{opp.value}</p>
+                  </div>
+                ))}
+                
+                <button className="w-full py-3 mt-2 border-2 border-dashed border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
+                  <Plus size={14} /> Nový obchod pro rodinu
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </main>
+
+      {/* --- FLOATING ACTIONS --- */}
+      <div className="fixed bottom-8 left-8 flex gap-3 z-50">
+        <button className="px-6 py-3 bg-white text-rose-600 border border-rose-100 rounded-2xl shadow-lg shadow-rose-900/5 font-black text-xs uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center gap-2">
+          <Trash2 size={16} /> Smazat domácnost
+        </button>
+      </div>
+
+    </div>
+  );
+}

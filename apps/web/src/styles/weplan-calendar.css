@@ -1,0 +1,758 @@
+/**
+ * WePlan Calendar – grid layout inspired by Calendar.txt
+ * Uses only --wp-* tokens. No template fonts, no gradients, no Ionicons.
+ */
+
+/* ── Calendar container (Calendar.txt .calendar-container) ── */
+.wp-cal-container {
+  width: 100%;
+  overflow: hidden;
+  box-shadow: var(--wp-shadow-lg);
+  border-radius: var(--wp-radius);
+  background: var(--wp-surface);
+}
+
+/* ── Calendar header (month + year + nav) ── */
+.wp-cal-header {
+  text-align: center;
+  padding: var(--wp-space-5) 0;
+  background: linear-gradient(to bottom, rgba(250, 251, 253, 1) 0%, rgba(255, 255, 255, 0) 100%);
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--wp-space-5) var(--wp-space-8);
+}
+
+.wp-cal-header h1 {
+  margin: 0;
+  font-size: var(--wp-fs-lg);
+  font-weight: var(--wp-fw-bold);
+  color: var(--wp-text);
+}
+
+.wp-cal-header .wp-cal-year {
+  margin: 2px 0 0 0;
+  font-size: var(--wp-fs-sm);
+  font-weight: var(--wp-fw-semibold);
+  color: var(--wp-text-muted);
+  opacity: 0.6;
+}
+
+.wp-cal-header button {
+  background: 0;
+  border: 0;
+  padding: var(--wp-space-2);
+  color: var(--wp-text-muted);
+  cursor: pointer;
+  outline: 0;
+  border-radius: var(--wp-radius-sm);
+  transition: background 0.15s;
+}
+
+.wp-cal-header button:hover {
+  background: var(--wp-link-hover-bg);
+}
+
+/* ── Nav + view toggles row ── */
+.wp-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--wp-space-3);
+}
+
+.wp-cal-views {
+  display: flex;
+  align-items: center;
+  gap: var(--wp-space-1);
+  background: var(--wp-bg);
+  border-radius: var(--wp-radius-sm);
+  padding: 2px;
+}
+
+.wp-cal-view-btn {
+  padding: var(--wp-space-1) var(--wp-space-3);
+  border-radius: var(--wp-radius-xs);
+  font-size: var(--wp-fs-xs);
+  font-weight: var(--wp-fw-medium);
+  border: none;
+  background: transparent;
+  color: var(--wp-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--wp-font);
+}
+
+.wp-cal-view-btn:hover {
+  color: var(--wp-text);
+}
+
+.wp-cal-view-btn.active {
+  background: var(--wp-surface);
+  color: var(--wp-text);
+  box-shadow: var(--wp-shadow-sm);
+  font-weight: var(--wp-fw-semibold);
+}
+
+/* ── Month grid (Calendar.txt) ── */
+.wp-cal-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  grid-template-rows: 50px;
+  grid-auto-rows: 120px;
+  overflow: auto;
+}
+
+/* ── Day name headers ── */
+.wp-cal-day-name {
+  font-size: var(--wp-fs-xs);
+  text-transform: uppercase;
+  color: var(--wp-text-muted);
+  text-align: center;
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  line-height: 50px;
+  font-weight: var(--wp-fw-medium);
+  letter-spacing: 0.05em;
+}
+
+/* ── Day cells ── */
+.wp-cal-day {
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  border-right: 1px solid rgba(166, 168, 179, 0.12);
+  text-align: right;
+  padding: 14px 20px 4px;
+  letter-spacing: 1px;
+  font-size: var(--wp-fs-xs);
+  box-sizing: border-box;
+  color: var(--wp-text-muted);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  overflow: hidden;
+}
+
+.wp-cal-day:hover {
+  background: rgba(195, 207, 244, 0.08);
+}
+
+.wp-cal-day:nth-of-type(7n + 7) {
+  border-right: 0;
+}
+
+/* ── Disabled days (Calendar.txt hatched pattern) ── */
+.wp-cal-day--disabled {
+  color: rgba(152, 160, 166, 0.6);
+  background-color: var(--wp-surface);
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f3f4f6' fill-opacity='1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Today highlight ── */
+.wp-cal-day--today {
+  background: rgba(72, 95, 237, 0.04);
+}
+
+.wp-cal-day--today .wp-cal-day-number {
+  background: var(--wp-cal-accent);
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--wp-fw-bold);
+  letter-spacing: 0;
+}
+
+/* Today style variants (settings) */
+.wp-cal-day--today-underline {
+  background: transparent;
+}
+.wp-cal-day--today-underline .wp-cal-day-number {
+  background: transparent;
+  color: var(--wp-cal-accent);
+  font-weight: var(--wp-fw-bold);
+  box-shadow: inset 0 -2px 0 var(--wp-cal-accent);
+  border-radius: 0;
+  width: auto;
+  height: auto;
+}
+.wp-cal-day--today-background {
+  background: var(--wp-cal-accent-light);
+}
+.wp-cal-day--today-background .wp-cal-day-number {
+  background: var(--wp-cal-accent);
+  color: #fff;
+}
+
+.wp-cal-week-day-header--today-pill .wp-cal-week-day-number {
+  background: var(--wp-cal-accent);
+  color: #fff;
+  border-radius: 50%;
+}
+.wp-cal-week-day-header--today-underline {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--wp-cal-accent);
+}
+.wp-cal-week-day-header--today-underline .wp-cal-week-day-number {
+  background: transparent;
+  color: var(--wp-cal-accent);
+  border-radius: 0;
+}
+.wp-cal-week-day-header--today-background {
+  background: var(--wp-cal-accent-light);
+}
+
+.wp-cal-week-cell--today-pill {
+  background: rgba(72, 95, 237, 0.02);
+}
+.wp-cal-week-cell--today-underline {
+  background: transparent;
+  box-shadow: inset 0 -1px 0 var(--wp-cal-accent);
+}
+.wp-cal-week-cell--today-background {
+  background: var(--wp-cal-accent-light);
+}
+
+/* Font size variants (settings) */
+.wp-cal-container--font-small .wp-cal-day-name,
+.wp-cal-container--font-small .wp-cal-day,
+.wp-cal-container--font-small .wp-cal-event,
+.wp-cal-container--font-small .wp-cal-week-time-label span,
+.wp-cal-container--font-small .wp-cal-week-day-header {
+  font-size: 11px;
+}
+.wp-cal-container--font-large .wp-cal-day-name,
+.wp-cal-container--font-large .wp-cal-day,
+.wp-cal-container--font-large .wp-cal-event,
+.wp-cal-container--font-large .wp-cal-week-time-label span,
+.wp-cal-container--font-large .wp-cal-week-day-header {
+  font-size: 13px;
+}
+
+/* ── Event blocks (Calendar.txt .task) ── */
+.wp-cal-event {
+  border-left-width: 3px;
+  border-left-style: solid;
+  padding: 4px 8px;
+  margin: 2px 4px;
+  font-size: 11px;
+  position: relative;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--wp-fw-medium);
+}
+
+.wp-cal-event:hover {
+  opacity: 0.85;
+}
+
+.wp-cal-event--warning {
+  border-left-color: var(--wp-task-warning);
+  background: var(--wp-task-warning-bg);
+  color: #c48a26;
+}
+
+.wp-cal-event--danger {
+  border-left-color: var(--wp-task-danger);
+  background: var(--wp-task-danger-bg);
+  color: #c44a5a;
+}
+
+.wp-cal-event--info {
+  border-left-color: var(--wp-task-info);
+  background: var(--wp-task-info-bg);
+  color: #2c5fcc;
+}
+
+.wp-cal-event--primary {
+  background: var(--wp-task-primary);
+  border: 0;
+  border-radius: var(--wp-radius-xs);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(71, 134, 255, 0.35);
+}
+
+.wp-cal-event--done {
+  border-left-color: var(--wp-cal-done);
+  background: #f5f5f5;
+  color: #999;
+  text-decoration: line-through;
+}
+
+.wp-cal-event--success {
+  border-left-color: var(--wp-success);
+  background: rgba(0, 200, 117, 0.12);
+  color: #037a48;
+}
+
+/* ── Event detail popover (Calendar.txt .task__detail) ── */
+.wp-cal-detail {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  background: var(--wp-surface);
+  border: 1px solid rgba(166, 168, 179, 0.2);
+  color: var(--wp-text);
+  padding: var(--wp-space-5);
+  box-sizing: border-box;
+  border-radius: var(--wp-radius-sm);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.wp-cal-detail::after,
+.wp-cal-detail::before {
+  bottom: 100%;
+  left: 30%;
+  border: solid transparent;
+  content: "";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+
+.wp-cal-detail::before {
+  border-bottom-color: rgba(166, 168, 179, 0.2);
+  border-width: 8px;
+  margin-left: -8px;
+}
+
+.wp-cal-detail::after {
+  border-bottom-color: var(--wp-surface);
+  border-width: 6px;
+  margin-left: -6px;
+}
+
+.wp-cal-detail h2 {
+  font-size: 15px;
+  margin: 0;
+  color: var(--wp-text);
+  font-weight: var(--wp-fw-semibold);
+}
+
+.wp-cal-detail p {
+  margin-top: var(--wp-space-1);
+  font-size: var(--wp-fs-xs);
+  margin-bottom: 0;
+  font-weight: var(--wp-fw-medium);
+  color: var(--wp-text-muted);
+}
+
+.wp-cal-detail .wp-cal-detail-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: var(--wp-fw-semibold);
+  padding: 2px 8px;
+  border-radius: var(--wp-pill-radius);
+  margin-top: var(--wp-space-2);
+}
+
+.wp-cal-detail-actions {
+  display: flex;
+  gap: var(--wp-space-2);
+  margin-top: var(--wp-space-3);
+  padding-top: var(--wp-space-3);
+  border-top: 1px solid var(--wp-border);
+}
+
+/* ── Week / Workweek grid – stejný styl jako Měsíc ── */
+.wp-cal-week-header {
+  display: grid;
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  background: linear-gradient(to bottom, rgba(250, 251, 253, 1) 0%, rgba(255, 255, 255, 0) 100%);
+  line-height: 50px;
+}
+
+.wp-cal-week-day-header {
+  text-align: center;
+  padding: var(--wp-space-2) 0;
+  border-right: 1px solid rgba(166, 168, 179, 0.12);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: var(--wp-fs-xs);
+  text-transform: uppercase;
+  color: var(--wp-text-muted);
+  font-weight: var(--wp-fw-medium);
+  letter-spacing: 0.05em;
+  font-family: var(--wp-font);
+}
+
+.wp-cal-week-day-header:last-child {
+  border-right: 0;
+}
+
+.wp-cal-week-day-header:hover {
+  background: rgba(195, 207, 244, 0.08);
+}
+
+.wp-cal-week-day-header--today {
+  background: rgba(72, 95, 237, 0.04);
+}
+
+/* Dnešek: stejný modrý pill jako v Měsíci */
+.wp-cal-week-day-header--today .wp-cal-week-day-number {
+  background: var(--wp-cal-accent);
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--wp-fw-bold);
+  letter-spacing: 0;
+  margin-top: 2px;
+}
+
+.wp-cal-week-day-header .wp-cal-week-day-number {
+  display: block;
+  font-size: var(--wp-fs-md);
+  font-weight: var(--wp-fw-semibold);
+  color: var(--wp-text);
+  margin-top: 2px;
+}
+
+.wp-cal-week-day-header--selected {
+  box-shadow: inset 0 -2px 0 var(--wp-cal-accent);
+}
+
+.wp-cal-week-time-grid {
+  display: grid;
+}
+
+.wp-cal-week-time-label {
+  border-right: 1px solid rgba(166, 168, 179, 0.12);
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  padding: 0 var(--wp-space-2);
+  text-align: right;
+  font-size: var(--wp-fs-xs);
+  color: var(--wp-text-muted);
+  font-weight: var(--wp-fw-medium);
+  font-family: var(--wp-font);
+}
+
+.wp-cal-week-time-label span {
+  font-size: var(--wp-fs-xs);
+  color: var(--wp-text-muted);
+  opacity: 0.8;
+  display: block;
+  margin-top: -6px;
+}
+
+.wp-cal-week-cell {
+  border-right: 1px solid rgba(166, 168, 179, 0.12);
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  min-height: 48px;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.wp-cal-week-cell:last-child {
+  border-right: 0;
+}
+
+.wp-cal-week-cell:hover {
+  background: rgba(195, 207, 244, 0.06);
+}
+
+.wp-cal-week-cell--today {
+  background: rgba(72, 95, 237, 0.02);
+}
+
+/* Události v týdnu: zůstávají uvnitř sloupce dne, text se zkrátí */
+.wp-cal-week-cell .wp-cal-event {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 2px 4px;
+  padding: 4px 8px;
+  text-align: left;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wp-cal-week-cell .wp-cal-event > span:nth-child(3) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Tasks side panel ── */
+.wp-cal-tasks-panel {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(166, 168, 179, 0.12);
+  background: var(--wp-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wp-cal-tasks-panel-header {
+  padding: var(--wp-space-3);
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  background: linear-gradient(to bottom, rgba(250, 251, 253, 1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.wp-cal-tasks-panel-header h3 {
+  font-size: var(--wp-fs-xs);
+  font-weight: var(--wp-fw-semibold);
+  color: var(--wp-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════
+   Calendar Widget (inspired by Calendar widget.txt)
+   ══════════════════════════════════════════ */
+
+.wp-cal-widget {
+  background: var(--wp-surface);
+  border-radius: var(--wp-radius);
+  border: 1px solid var(--wp-border);
+  box-shadow: var(--wp-shadow-sm);
+  overflow: hidden;
+}
+
+/* Today box (Calendar widget.txt .today-box) */
+.wp-cal-widget-today {
+  background: var(--wp-cal-accent);
+  color: #fff;
+  padding: var(--wp-space-6) var(--wp-space-6);
+  position: relative;
+}
+
+.wp-cal-widget-today .wp-cal-widget-breadcrumb {
+  font-weight: 300;
+  font-size: var(--wp-fs-sm);
+  opacity: 0.85;
+}
+
+.wp-cal-widget-today .wp-cal-widget-date {
+  font-size: var(--wp-fs-xl);
+  margin: 6px 0 0 0;
+  letter-spacing: 0.5px;
+  font-weight: var(--wp-fw-semibold);
+}
+
+.wp-cal-widget-today .wp-cal-widget-plus {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: var(--wp-space-6);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.05, 1.8, 1, 1.57);
+  background: transparent;
+  padding: 0;
+}
+
+.wp-cal-widget-today .wp-cal-widget-plus:hover {
+  transform: translateY(-55%);
+}
+
+.wp-cal-widget-plus-inner {
+  font-size: 18px;
+  font-weight: var(--wp-fw-bold);
+  background: #fff;
+  color: var(--wp-text-muted);
+  width: 36px;
+  height: 36px;
+  border: 4px solid var(--wp-cal-accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Events list */
+.wp-cal-widget-events {
+  padding: var(--wp-space-4) var(--wp-space-6);
+}
+
+.wp-cal-widget-events h3 {
+  color: var(--wp-text);
+  font-size: var(--wp-fs-md);
+  margin: 0 0 var(--wp-space-5);
+  font-weight: var(--wp-fw-bold);
+  position: relative;
+}
+
+.wp-cal-widget-events h3::before {
+  content: "";
+  display: block;
+  width: 50%;
+  height: 2px;
+  background-color: var(--wp-border);
+  position: absolute;
+  top: 50%;
+  right: 0;
+}
+
+.wp-cal-widget-event {
+  position: relative;
+  margin-bottom: var(--wp-space-5);
+  padding-left: 28px;
+  cursor: pointer;
+}
+
+.wp-cal-widget-event-icon {
+  position: absolute;
+  left: 0;
+  top: -2px;
+  font-size: 18px;
+}
+
+.wp-cal-widget-event-icon--hot { color: var(--wp-cal-hot); }
+.wp-cal-widget-event-icon--done { color: var(--wp-cal-done); }
+.wp-cal-widget-event-icon--active { color: var(--wp-cal-active); }
+.wp-cal-widget-event-icon--upcoming { color: var(--wp-text-muted); }
+
+.wp-cal-widget-event-time {
+  margin: 0;
+  color: var(--wp-text);
+  font-size: 15px;
+  font-weight: var(--wp-fw-bold);
+  letter-spacing: 0.5px;
+}
+
+.wp-cal-widget-event-duration {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  color: var(--wp-text-muted);
+  font-size: 10px;
+  font-weight: var(--wp-fw-bold);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.wp-cal-widget-event-desc {
+  margin-top: var(--wp-space-2);
+  color: var(--wp-text-muted);
+  font-size: var(--wp-fs-sm);
+  font-weight: 300;
+}
+
+.wp-cal-widget-event-client {
+  font-size: 11px;
+  color: var(--wp-text-muted);
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* Active event style (Calendar widget.txt .event.active) */
+.wp-cal-widget-event--active {
+  background: var(--wp-bg);
+  padding: var(--wp-space-4) var(--wp-space-4) var(--wp-space-2) 48px;
+  margin-bottom: var(--wp-space-8);
+  border-radius: var(--wp-radius-sm);
+  position: relative;
+}
+
+.wp-cal-widget-event--active::after {
+  content: "";
+  display: block;
+  width: 90%;
+  height: 8px;
+  background: var(--wp-surface);
+  border: 2px solid var(--wp-border);
+  border-top: 0;
+  border-radius: 0 0 var(--wp-radius-sm) var(--wp-radius-sm);
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.wp-cal-widget-event--active .wp-cal-widget-event-icon {
+  left: 20px;
+  top: var(--wp-space-4);
+}
+
+/* Add Event CTA (Calendar widget.txt .add-event-button) */
+.wp-cal-widget-cta {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  border: 0;
+  padding: 0;
+  background: var(--wp-cal-accent);
+  border-radius: var(--wp-radius-sm);
+  cursor: pointer;
+  box-shadow: 0 0 30px -6px var(--wp-cal-accent);
+  transition: opacity 0.2s;
+  font-family: var(--wp-font);
+}
+
+.wp-cal-widget-cta:hover {
+  opacity: 0.9;
+}
+
+.wp-cal-widget-cta:active {
+  position: relative;
+  top: 1px;
+  left: 1px;
+}
+
+.wp-cal-widget-cta-title {
+  color: #fff;
+  padding: 0 16px 0 20px;
+  font-size: 15px;
+  font-weight: var(--wp-fw-semibold);
+}
+
+.wp-cal-widget-cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 12px 14px;
+  border-radius: 0 var(--wp-radius-sm) var(--wp-radius-sm) 0;
+  color: #fff;
+  font-size: 20px;
+}
+
+/* ── New activity button (DASHBOARD.txt add-btn style) ── */
+.wp-cal-new-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--wp-space-1);
+  padding: var(--wp-space-2) var(--wp-space-3);
+  border-radius: var(--wp-radius-sm);
+  font-size: var(--wp-fs-xs);
+  font-weight: var(--wp-fw-semibold);
+  color: #fff;
+  background: var(--wp-cal-accent);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(72, 95, 237, 0.3);
+  transition: opacity 0.2s;
+  font-family: var(--wp-font);
+}
+
+.wp-cal-new-btn:hover {
+  opacity: 0.9;
+}

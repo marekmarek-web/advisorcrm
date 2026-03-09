@@ -1,0 +1,158 @@
+/* AiSearchBar – statické styly kvůli hydrataci (žádný inline <style>) */
+
+@property --weai-rotation {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.weai-search-bar {
+  --border-size: 4px;
+  --gradient: conic-gradient(from var(--weai-rotation) at 52% 49% in oklab, oklch(0.63 0.2 251.22) 27%, oklch(0.67 0.21 25.81) 33%, oklch(0.9 0.19 93.93) 41%, oklch(0.79 0.25 150.49) 49%, oklch(0.63 0.2 251.22) 65%, oklch(0.72 0.21 150.89) 93%, oklch(0.63 0.2 251.22));
+  animation: weai-bar-rotate 5s infinite linear;
+  border-radius: var(--wp-radius-sm);
+  background: none;
+  position: relative;
+  padding: 0;
+  border: 4px solid lightgray;
+  overflow: hidden;
+}
+
+/* Trigger (AI asistent button): glow těsně okolo buttonu, ne v rozích */
+.weai-search-bar.trigger {
+  overflow: visible;
+}
+
+.weai-search-bar::after {
+  content: "";
+  position: absolute;
+  display: block;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--gradient);
+  z-index: -1;
+  animation: weai-bar-rotate 5s infinite linear;
+  filter: blur(2px);
+}
+
+@keyframes weai-bar-rotate {
+  to {
+    --weai-rotation: 360deg;
+  }
+}
+
+.weai-search-bar .inner {
+  background: light-dark(white, #1a1c1e);
+  color: light-dark(#222, hsl(210, 8%, 66%));
+  padding: 1rem 0.75rem;
+  position: relative;
+  z-index: 2;
+  border-radius: inherit;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: system-ui;
+}
+
+.weai-search-bar .inner .input-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weai-search-bar .inner .input-wrap input {
+  text-align: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.weai-search-bar .border {
+  position: absolute;
+  inset: calc(var(--border-size) * -1);
+  mask: linear-gradient(white);
+  -webkit-mask: linear-gradient(white);
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.weai-search-bar .border::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: var(--gradient);
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  z-index: -1;
+  filter: blur(1px);
+}
+
+.weai-search-bar button,
+.weai-search-bar input {
+  color: light-dark(#222, hsl(210, 8%, 66%));
+  background: none;
+  border: none;
+}
+
+.weai-search-bar input[type="text"] {
+  font-size: 1rem;
+  font-family: system-ui;
+  font-weight: 300;
+}
+
+.weai-search-bar .file-btn {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.08));
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  font-size: 1.1rem;
+}
+
+.weai-search-bar .file-btn:hover {
+  background: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.12));
+}
+
+.weai-search-bar .file-err {
+  grid-column: 1 / -1;
+  font-size: 0.7rem;
+  color: oklch(0.55 0.2 25);
+}
+
+.weai-search-bar input:focus {
+  outline: none;
+}
+
+.weai-search-bar input:not(:placeholder-shown) {
+  color: light-dark(black, white);
+}
+
+.weai-search-bar.trigger {
+  cursor: pointer;
+  font-family: system-ui;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.weai-search-bar.trigger .border::after {
+  filter: blur(2px);
+}
+
+.weai-search-bar.trigger .inner {
+  grid-template-columns: 1fr;
+  padding: 0.75rem 1.25rem;
+}
+
+.weai-search-bar.trigger .inner span {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}

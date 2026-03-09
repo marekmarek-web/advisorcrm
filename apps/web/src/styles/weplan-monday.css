@@ -1,0 +1,1251 @@
+/**
+ * WePlan – Board layout, dropdowns, grid utilities.
+ * Design tokeny jsou v weplan-theme.css (--wp-* a --monday-* aliasy).
+ */
+
+/* ─────────────────────────────────────────────────────────
+   Board design tokens (Monday / Notion / Linear vibe)
+   ───────────────────────────────────────────────────────── */
+:root {
+  --bg-app: #f6f8fc;
+  --bg-board: #ffffff;
+  --bg-group: #ffffff;
+  --bg-header: #fbfcff;
+  --bg-cell: #ffffff;
+  --bg-cell-hover: #f8faff;
+  --border-soft: #e7ebf3;
+  --border-strong: #dbe2ee;
+  --text-main: #1e2430;
+  --text-muted: #7d8798;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08);
+  --radius-lg: var(--wp-radius-sm);
+  --radius-md: var(--wp-radius-sm);
+  --radius-sm: var(--wp-radius-xs);
+  --row-height: 56px;
+  --header-height: 54px;
+  --summary-height: 44px;
+}
+
+/* Board shell & scroll – lehký, vzdušný kontejner */
+.board-shell {
+  background: var(--bg-app);
+  min-height: 100%;
+  padding: 20px;
+}
+.board-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  padding-bottom: 10px;
+}
+.board-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.board-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.board-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* Resize handle – přesně na dělící čáře sloupce (hitbox 12px, čára na hraně) */
+.col-resize-hitbox {
+  position: absolute;
+  top: 0;
+  right: -6px;
+  width: 12px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.col-resize-line {
+  width: 2px;
+  height: 22px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.18s ease, height 0.18s ease;
+}
+.monday-th:hover .col-resize-line,
+.col-resize-hitbox:hover .col-resize-line {
+  background: #4f7cff;
+  height: 30px;
+}
+body.is-resizing .col-resize-line {
+  background: #4f7cff;
+  height: 34px;
+}
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Group section – flat Monday-style layout (NO card/pill/rounded container) */
+.group-section {
+  margin-bottom: 24px;
+}
+.group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px;
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+}
+.group-title-row:hover {
+  background: rgba(0, 0, 0, 0.015);
+}
+.group-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.group-toggle:hover {
+  color: var(--text-main);
+}
+.group-color {
+  width: 3px;
+  height: 20px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.group-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--text-main);
+}
+.group-count {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.group-body {
+  background: var(--bg-board);
+}
+
+/* Name cell – avatar + title (Monday/Notion vibe) */
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.avatar-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #eef2f8;
+  border: 1px solid var(--border-soft);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+.row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+/* Status buňka – pill nebo fill */
+.status-cell {
+  justify-content: center;
+}
+.status-pill {
+  min-width: 84px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.monday-table .monday-td-fullcell .status-pill,
+.monday-table .monday-td-fullcell > div > button {
+  min-width: 84px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+}
+
+/* Add row – řádek pro přidání klienta */
+.add-row {
+  min-height: 48px;
+  background: #fcfdff;
+  border-bottom: 1px solid var(--border-soft);
+}
+.add-row .board-cell,
+.add-row td {
+  min-height: 48px;
+  background: #fcfdff;
+}
+.add-row-trigger {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-row-trigger:hover {
+  color: #4f7cff;
+}
+
+/* Summary row – footer pod sloupci */
+.board-summary-row {
+  min-height: var(--summary-height);
+  background: var(--bg-header);
+  border-top: 1px solid var(--border-soft);
+}
+.board-summary-row td {
+  padding: 0 10px;
+  vertical-align: middle;
+  border-right: 1px solid var(--border-soft);
+  background: var(--bg-header);
+}
+.summary-track {
+  width: 100%;
+  height: 8px;
+  background: #eef2f7;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.summary-segment {
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* Tooltip system (volitelné rozšíření) */
+:root {
+  --tip-bg: #1e1e1e;
+  --tip-text: #f0f0f0;
+  --tip-border: #333;
+  --tip-accent: #e8ff47;
+  --tip-accent-dim: rgba(232, 255, 71, 0.12);
+  --tip-muted: #666;
+  --tip-surface: #161616;
+  --radius: var(--wp-radius-sm);
+  --radius1: var(--wp-radius-xs);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Monday board layout classes (preserved)
+   ───────────────────────────────────────────────────────── */
+
+.monday-board-wrap {
+  background: transparent;
+  font-size: var(--monday-font-size);
+  color: var(--monday-text);
+}
+
+.monday-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--monday-surface);
+  border-bottom: 1px solid var(--monday-border);
+  box-shadow: var(--monday-shadow);
+}
+
+/* Jednotný vzhled dropdownů (ne jako Windows 97). Panel se velikostí řídí obsahem – žádné natažení na viewport/rodiče. */
+.wp-dropdown {
+  min-width: 160px;
+  width: max-content;
+  max-width: min(400px, 100vw);
+  padding: 6px 0;
+  background: var(--monday-surface);
+  border: 1px solid var(--monday-border);
+  border-radius: var(--wp-radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  box-sizing: border-box;
+}
+.wp-dropdown-item,
+.wp-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--monday-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--wp-radius-xs);
+  margin: 0 4px;
+  transition: background 0.15s ease;
+  box-sizing: border-box;
+}
+.wp-dropdown-item:hover,
+.wp-dropdown button:hover {
+  background: var(--monday-row-hover);
+}
+.wp-dropdown-divider {
+  height: 1px;
+  background: var(--monday-border);
+  margin: 6px 0;
+}
+
+/* Board context menu – Monday/Notion/Linear vibe, kompaktní, žádný pill */
+.board-context-menu {
+  display: inline-block;
+  min-width: 220px;
+  width: max-content;
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(225, 231, 242, 0.9);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.14);
+  padding: 8px;
+  box-sizing: border-box;
+}
+.board-context-menu-inner {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+.board-context-item {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: max-content;
+  border-radius: var(--wp-radius-sm);
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 0.16s ease;
+  box-sizing: border-box;
+}
+.board-context-item:hover {
+  background: #f5f8ff;
+}
+.board-context-item.is-danger {
+  color: #dc2626;
+}
+.board-context-item.is-danger:hover {
+  background: #fef2f2;
+}
+
+/* Portálové dropdowny – vynucená velikost podle obsahu (inline-block = shrink to content) */
+#column-header-menu-portal,
+#cell-status-dropdown-portal,
+#cell-status-note-portal {
+  display: inline-block !important;
+  width: max-content !important;
+  max-width: min(320px, 100vw) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  align-self: flex-start !important;
+}
+
+.monday-sticky-first-col {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: inherit;
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.06);
+}
+
+.monday-sticky-corner {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 15;
+  background: var(--monday-surface);
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.06);
+}
+
+.monday-cell-sep {
+  border-right: 1px solid var(--monday-border);
+}
+
+/* Monday-style board table: zero-padding cells, white borders between status colors */
+.monday-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.monday-table th,
+.monday-table td {
+  box-sizing: border-box;
+}
+.monday-table .monday-td {
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-top: 0;
+  border-left: 0;
+  border-right: 1px solid var(--border-soft, var(--monday-border));
+  border-radius: 0;
+  overflow: hidden;
+  min-height: var(--row-height);
+  vertical-align: middle;
+  background: var(--bg-cell);
+  transition: background 0.16s ease;
+}
+.monday-table .monday-td.monday-td-fullcell {
+  height: 44px;
+  min-height: 44px;
+}
+.monday-table .monday-td > div,
+.monday-table .monday-td button {
+  border-radius: 0;
+}
+.monday-table .monday-td > div {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+}
+.monday-table .monday-td > div > button {
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+}
+.monday-table .monday-td.monday-td-fullcell > div,
+.monday-table .monday-td.monday-td-fullcell > div > button {
+  min-height: 44px;
+}
+.monday-table .monday-th {
+  border-right: 1px solid var(--border-soft, var(--monday-border));
+  min-height: var(--header-height);
+  background: var(--bg-header, var(--monday-surface));
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0 14px;
+}
+/* Sticky header řádek */
+.monday-table thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-header, var(--monday-surface));
+}
+.monday-table .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--bg-cell, var(--monday-surface));
+  box-shadow: 1px 0 0 0 var(--border-soft, var(--monday-border));
+}
+.monday-table .sticky-col::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 10px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(255,255,255,0), rgba(15, 23, 42, 0.04));
+}
+.monday-table .sticky-col-th {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 20;
+  background: var(--bg-header, var(--monday-surface));
+  box-shadow: 1px 0 0 0 var(--border-soft, var(--monday-border));
+}
+.monday-table .sticky-col-th::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 10px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(255,255,255,0), rgba(15, 23, 42, 0.04));
+}
+
+/* Board area scrollbars */
+.monday-board-wrap ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.monday-board-wrap ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.monday-board-wrap ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.monday-board-wrap ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Jednotný grid/karta napříč projektem (Board, Produkce, Kontakty, Úkoly, Obchody) */
+.wp-grid-card {
+  border: 1px solid var(--monday-border);
+  border-radius: var(--monday-radius);
+  background: var(--monday-surface);
+  box-shadow: var(--monday-shadow);
+}
+.wp-grid-header-row {
+  border-bottom: 1px solid var(--monday-border);
+  background: var(--monday-bg);
+  font-size: var(--monday-font-size-sm);
+  font-weight: 600;
+  color: var(--monday-text-muted);
+}
+
+.monday-row-hover:hover,
+.monday-row-hover:hover td {
+  background: var(--monday-row-hover);
+}
+
+.monday-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.monday-input {
+  border-radius: var(--wp-radius-xs);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Tooltip system (data-tip) – přesně z CSS Tooltips (Before & After).txt
+   ───────────────────────────────────────────────────────── */
+
+[data-tip] {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+[data-tip]::before {
+  content: attr(data-tip);
+  position: absolute;
+  background: var(--tip-bg);
+  color: var(--tip-text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 400;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: var(--radius1);
+  border: 1px solid var(--tip-border);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 10;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+[data-tip]::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 11;
+  width: 0;
+  height: 0;
+}
+
+[data-tip]:hover::before,
+[data-tip]:focus::before,
+[data-tip]:hover::after,
+[data-tip]:focus::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+[data-tip]:focus {
+  outline: none;
+}
+
+/* ── Position: top (default) ── */
+[data-tip]:not([data-pos])::before,
+[data-tip][data-pos="top"]::before {
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+}
+
+[data-tip]:not([data-pos]):hover::before,
+[data-tip]:not([data-pos]):focus::before,
+[data-tip][data-pos="top"]:hover::before,
+[data-tip][data-pos="top"]:focus::before {
+  transform: translateX(-50%) translateY(0);
+}
+
+[data-tip]:not([data-pos])::after,
+[data-tip][data-pos="top"]::after {
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--tip-border);
+}
+
+[data-tip]:not([data-pos]):hover::after,
+[data-tip]:not([data-pos]):focus::after,
+[data-tip][data-pos="top"]:hover::after,
+[data-tip][data-pos="top"]:focus::after {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Position: bottom ── */
+[data-tip][data-pos="bottom"]::before {
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+[data-tip][data-pos="bottom"]:hover::before,
+[data-tip][data-pos="bottom"]:focus::before {
+  transform: translateX(-50%) translateY(0);
+}
+
+[data-tip][data-pos="bottom"]::after {
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid var(--tip-border);
+}
+
+[data-tip][data-pos="bottom"]:hover::after,
+[data-tip][data-pos="bottom"]:focus::after {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Position: left ── */
+[data-tip][data-pos="left"]::before {
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(4px);
+}
+
+[data-tip][data-pos="left"]:hover::before,
+[data-tip][data-pos="left"]:focus::before {
+  transform: translateY(-50%) translateX(0);
+}
+
+[data-tip][data-pos="left"]::after {
+  right: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%) translateX(4px);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid var(--tip-border);
+}
+
+[data-tip][data-pos="left"]:hover::after,
+[data-tip][data-pos="left"]:focus::after {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ── Position: right ── */
+[data-tip][data-pos="right"]::before {
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+}
+
+[data-tip][data-pos="right"]:hover::before,
+[data-tip][data-pos="right"]:focus::before {
+  transform: translateY(-50%) translateX(0);
+}
+
+[data-tip][data-pos="right"]::after {
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid var(--tip-border);
+}
+
+[data-tip][data-pos="right"]:hover::after,
+[data-tip][data-pos="right"]:focus::after {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ── .btn a .icon-btn z template ── */
+.btn {
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid var(--tip-surface);
+  background: var(--tip-surface);
+  color: var(--tip-text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.btn:hover {
+  border-color: var(--tip-muted);
+  color: var(--tip-surface);
+  background: var(--tip-muted);
+  border-radius: var(--radius1);
+}
+
+.icon-btn {
+  width: 50px;
+  height: 45px;
+  border-radius: var(--radius);
+  border: 1px solid var(--tip-surface);
+  background: var(--tip-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.icon-btn:hover {
+  border-color: var(--tip-muted);
+  color: var(--tip-surface);
+  background: var(--tip-muted);
+  border-radius: var(--radius1);
+}
+
+/* ── Variant: accent (přesně z .txt: #e8ff47) ── */
+[data-tip][data-variant="accent"]::before {
+  background: var(--tip-accent);
+  color: #0d0d0d;
+  border-color: var(--tip-accent);
+  font-weight: 500;
+}
+
+[data-tip][data-variant="accent"]::after {
+  border-top-color: var(--tip-accent) !important;
+}
+
+/* ── Variant: danger (přesně z .txt: #ff4444) ── */
+[data-tip][data-variant="danger"]::before {
+  background: #ff4444;
+  color: #fff;
+  border-color: #ff4444;
+}
+
+[data-tip][data-variant="danger"]::after {
+  border-top-color: #ff4444 !important;
+}
+
+/* ── Variant: info (přesně z .txt: #2563eb) ── */
+[data-tip][data-variant="info"]::before {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+[data-tip][data-variant="info"]::after {
+  border-top-color: #2563eb !important;
+}
+
+/* ── Prose a note z template ── */
+.prose {
+  font-size: 1rem;
+  font-weight: 100;
+  line-height: 1.9;
+  color: var(--tip-muted);
+  max-width: 100%;
+}
+
+.prose [data-tip] {
+  color: var(--tip-text);
+  border-bottom: 1px dashed var(--tip-muted);
+  cursor: help;
+  display: inline;
+}
+
+.prose [data-tip]::before {
+  white-space: normal;
+  width: 200px;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.note {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--tip-muted);
+  font-weight: 100;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.note span {
+  color: var(--tip-accent);
+}
+
+/* ─────────────────────────────────────────────────────────
+   FAQ Accordion (z Responsive Accordion with SVG Toggle Icons.txt)
+   ───────────────────────────────────────────────────────── */
+.faq-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 95%;
+}
+
+.faq-container .wp-faq-details,
+.faq-container details {
+  font-size: 1rem;
+  background: #f6faff;
+  border-radius: 8px;
+  border: 1px solid #c3deff;
+  transition: border-color 0.3s ease-in-out;
+}
+
+.faq-container .wp-faq-details:hover,
+.faq-container details:hover {
+  border-color: #a4a1ff;
+}
+
+.faq-container summary,
+.faq-container .wp-faq-summary {
+  user-select: none;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  padding: 1em;
+  list-style: none;
+}
+
+.faq-container summary::-webkit-details-marker,
+.faq-container .wp-faq-summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-title {
+  color: #1c2035;
+  flex-grow: 1;
+  opacity: 0.65;
+  transition: opacity 250ms ease-in-out;
+}
+
+.faq-container summary:hover .faq-title,
+.faq-container .wp-faq-summary:hover .faq-title {
+  opacity: 1;
+}
+
+.faq-content {
+  color: #303651;
+  padding: 0.2em 1em 1em 1em;
+  font-weight: 300;
+  line-height: 1.5;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+details[open] .faq-content {
+  max-height: 1000px;
+}
+
+.expand-icon {
+  margin-left: auto;
+  transition: transform 150ms ease-out;
+}
+
+details[open] .icon-tabler-circle-plus {
+  display: none;
+}
+
+details:not([open]) .icon-tabler-circle-minus {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .faq-container {
+    width: 90%;
+    max-width: 600px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Swipe-to-Delete Notifications – přesně z template
+   ───────────────────────────────────────────────────────── */
+:root {
+  --notif-hue: 223;
+  --notif-white: hsl(var(--notif-hue) 0% 100%);
+  --notif-gray50: hsl(var(--notif-hue) 10% 95%);
+  --notif-gray300: hsl(var(--notif-hue) 10% 70%);
+  --notif-gray400: hsl(var(--notif-hue) 10% 60%);
+  --notif-gray500: hsl(var(--notif-hue) 10% 50%);
+  --notif-gray600: hsl(var(--notif-hue) 10% 40%);
+  --notif-gray800: hsl(var(--notif-hue) 10% 20%);
+  --notif-gray950: hsl(var(--notif-hue) 10% 5%);
+  --danger400: hsl(3 90% 60%);
+  --trans-dur: 0.3s;
+  --trans-timing: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.notification-center {
+  margin: auto;
+  padding: 0.75em;
+  max-width: 30em;
+  height: 100%;
+}
+
+/* Úkoly: stejný Swipe-to-Delete CSS jako notifikace, kontejner na celou šířku */
+.wp-tasks-swipe-list {
+  padding: var(--wp-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+.wp-tasks-swipe-list .notification-item {
+  max-width: 100%;
+}
+
+.notification-center__empty {
+  color: var(--notif-gray600);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  transition: color var(--trans-dur);
+}
+
+.notification-item {
+  animation: fade-scale-in calc(var(--trans-dur) * 2) var(--trans-timing) forwards;
+  border-radius: var(--wp-radius-sm);
+  box-shadow: 0 0.5em 0.5em hsla(0, 0%, 0%, 0.05);
+  margin-bottom: 0.5em;
+  max-height: 8em;
+  opacity: 0;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+  touch-action: pan-y;
+  transform: scale(0);
+  transition:
+    margin var(--trans-dur) var(--trans-timing),
+    max-height var(--trans-dur) var(--trans-timing),
+    transform var(--trans-dur) var(--trans-timing);
+}
+
+.notification-item__actions {
+  background-color: var(--danger400);
+  border-radius: var(--wp-radius-sm);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 1;
+}
+
+.notification-item__content {
+  background-color: light-dark(var(--notif-white), var(--notif-gray800));
+  cursor: grab;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875em;
+  padding: 1rem 1.25rem;
+  padding-inline-start: 1rem;
+  position: relative;
+  text-align: start;
+  transition:
+    background-color var(--trans-dur),
+    color var(--trans-dur),
+    transform var(--trans-dur) ease-out;
+  width: 100%;
+  z-index: 2;
+  border: none;
+  font: inherit;
+}
+
+.notification-item__content--dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+.notification-item__left-slot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.notification-item__content > span:not(.notification-item__left-slot) {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-item__delete-btn {
+  background: none;
+  border: none;
+  color: var(--notif-white);
+  cursor: pointer;
+  position: relative;
+  height: 100%;
+}
+
+.notification-item__delete-btn svg {
+  position: absolute;
+  top: calc(50% - 0.75em);
+  left: calc(50% - 0.75em);
+  width: 1.5em;
+  height: 1.5em;
+}
+
+.notification-item__icon-bg {
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 3em;
+  height: 3em;
+}
+
+.notification-item__icon-bg svg {
+  color: var(--notif-white);
+  width: 1.75em;
+  height: 1.75em;
+}
+
+.notification-item__message,
+.notification-item__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-item__message {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  margin-bottom: 0.5em;
+}
+
+.notification-item__sr {
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+}
+
+.notification-item__timestamp {
+  color: light-dark(var(--notif-gray600), var(--notif-gray300));
+  display: flex;
+  align-items: center;
+  gap: 0.375em;
+  transition: color var(--trans-dur);
+}
+
+.notification-item__title {
+  font-weight: 700;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  margin-bottom: 0.25em;
+}
+
+.notification-item__wrapper {
+  transition: opacity var(--trans-dur) var(--trans-timing);
+}
+
+.notification-item--deleting {
+  max-height: 0 !important;
+  margin-bottom: 0 !important;
+  pointer-events: none;
+}
+
+.notification-item--deleting .notification-item__wrapper {
+  opacity: 0;
+}
+
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Skeleton shimmer (respect reduced motion)
+   ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .wp-skeleton-line::after,
+  .wp-skeleton-avatar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.5),
+      transparent
+    );
+    animation: wp-skeleton-shimmer 1.2s ease-in-out infinite;
+  }
+}
+.wp-skeleton-line,
+.wp-skeleton-avatar {
+  position: relative;
+  overflow: hidden;
+}
+@keyframes wp-skeleton-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Typing dots (bouncing)
+   ───────────────────────────────────────────────────────── */
+
+.wp-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: wp-typing-bounce 0.6s ease-in-out infinite alternate;
+}
+.wp-typing-dots span:nth-child(2) { animation-delay: 0.1s; }
+.wp-typing-dots span:nth-child(3) { animation-delay: 0.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .wp-typing-dots span { animation: none; opacity: 0.7; }
+}
+@keyframes wp-typing-bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Modal panel (subtle elevation)
+   ───────────────────────────────────────────────────────── */
+
+.wp-modal-panel {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Micro-animations
+   ───────────────────────────────────────────────────────── */
+
+.wp-hover-lift {
+  transition: transform var(--wp-anim-fast) var(--wp-ease-out), box-shadow var(--wp-anim-fast) var(--wp-ease-out);
+}
+.wp-hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--wp-shadow-md);
+}
+
+.wp-hover-scale {
+  transition: transform var(--wp-anim-fast) var(--wp-ease-out);
+}
+.wp-hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.wp-hover-glow {
+  transition: box-shadow var(--wp-anim-fast) var(--wp-ease-out);
+}
+.wp-hover-glow:hover {
+  box-shadow: var(--wp-shadow-glow);
+}
+
+.wp-btn-press {
+  transition: transform 80ms var(--wp-ease-out);
+}
+.wp-btn-press:active {
+  transform: scale(0.97);
+}
+
+.wp-fade-in {
+  animation: wp-fade-in var(--wp-anim-normal) var(--wp-ease-out) forwards;
+}
+@keyframes wp-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wp-slide-in-right {
+  animation: wp-slide-in-right var(--wp-anim-normal) var(--wp-ease-out) forwards;
+}
+@keyframes wp-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.wp-slide-in-up {
+  animation: wp-slide-in-up var(--wp-anim-normal) var(--wp-ease-out) forwards;
+}
+@keyframes wp-slide-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Glassmorphism utility
+   ───────────────────────────────────────────────────────── */
+
+.wp-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Gradient text
+   ───────────────────────────────────────────────────────── */
+
+.wp-gradient-text {
+  background: var(--wp-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Gradient border
+   ───────────────────────────────────────────────────────── */
+
+.wp-gradient-border {
+  position: relative;
+}
+.wp-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--wp-gradient-primary);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}

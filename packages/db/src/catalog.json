@@ -1,0 +1,598 @@
+{
+  "version": "2026-03-01",
+  "rules": {
+    "stripTokens": [
+      "(PAYG)",
+      "(100)",
+      "(investiční)",
+      "(riziková)"
+    ],
+    "excludePartners": [
+      "Halali",
+      "test",
+      "test partneři",
+      "Slavia"
+    ],
+    "notes": [
+      "Kde není známý přesný název produktu, je použito placeholder jméno 'TBD - doplnit z dropdownu'",
+      "Produkty jsou zjednodušené na základní řady (bez PAYG/100, bez investiční/riziková)"
+    ]
+  },
+  "categories": [
+    "AUTO_HAV",
+    "AUTO_PR",
+    "CEST",
+    "DIP",
+    "DPS",
+    "FIRMA_POJ",
+    "HYPO",
+    "INV",
+    "MAJ",
+    "ODP",
+    "UVER",
+    "ZDRAV",
+    "ZP"
+  ],
+  "catalog": [
+    {
+      "partner": "Allianz pojišťovna",
+      "category": "AUTO_HAV",
+      "products": [
+        "Havarijní pojištění (balíčky PLUS/EXTRA/MAX)"
+      ]
+    },
+    {
+      "partner": "Allianz pojišťovna",
+      "category": "AUTO_PR",
+      "products": [
+        "Povinné ručení"
+      ]
+    },
+    {
+      "partner": "Allianz pojišťovna",
+      "category": "MAJ",
+      "products": [
+        "Allianz MůjDomov (domácnost/nemovitost/majetek+odpovědnost)"
+      ]
+    },
+    {
+      "partner": "Allianz pojišťovna",
+      "category": "ODP",
+      "products": [
+        "Allianz MůjDomov – odpovědnost (součást balíčků)"
+      ]
+    },
+    {
+      "partner": "Allianz pojišťovna",
+      "category": "ZP",
+      "products": [
+        "Allianz ŽIVOT -M-",
+        "Allianz ŽIVOT -Ž-",
+        "Život"
+      ]
+    },
+    {
+      "partner": "Allianz PS",
+      "category": "DPS",
+      "products": [
+        "Doplňkové penzijní spoření (III. pilíř)"
+      ]
+    },
+    {
+      "partner": "Amundi",
+      "category": "DIP",
+      "products": [
+        "DIP (Amundi)"
+      ]
+    },
+    {
+      "partner": "Amundi",
+      "category": "INV",
+      "products": [
+        "Fondy a ETF (Amundi)"
+      ]
+    },
+    {
+      "partner": "ATRIS",
+      "category": "INV",
+      "products": [
+        "Investiční fondy ATRIS (TBD)"
+      ]
+    },
+    {
+      "partner": "Avant",
+      "category": "INV",
+      "products": [
+        "SICAV / fondy AVANT (TBD)"
+      ]
+    },
+    {
+      "partner": "Conseq",
+      "category": "INV",
+      "products": [
+        "Active Invest - Dynamický",
+        "Active Invest - Konzervativní",
+        "Active Invest - Vyvážený",
+        "Classic Invest"
+      ]
+    },
+    {
+      "partner": "CREIF (DRFG)",
+      "category": "INV",
+      "products": [
+        "Czech Real Estate Fund (CREIF)"
+      ]
+    },
+    {
+      "partner": "Cyrrus",
+      "category": "INV",
+      "products": [
+        "Investiční služby (brokers/portfolia) – produktové názvy dle nabídky (TBD)"
+      ]
+    },
+    {
+      "partner": "Česká spořitelna",
+      "category": "HYPO",
+      "products": [
+        "Hypotéka (produktová řada)"
+      ]
+    },
+    {
+      "partner": "Česká spořitelna",
+      "category": "UVER",
+      "products": [
+        "Spotřebitelský úvěr (TBD)"
+      ]
+    },
+    {
+      "partner": "Česká spořitelna PS",
+      "category": "DPS",
+      "products": [
+        "Doplňkové penzijní spoření (DPS)"
+      ]
+    },
+    {
+      "partner": "ČPP",
+      "category": "AUTO_HAV",
+      "products": [
+        "TBD - ČPP HAV (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "ČPP",
+      "category": "AUTO_PR",
+      "products": [
+        "TBD - ČPP POV (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "ČPP",
+      "category": "MAJ",
+      "products": [
+        "TBD - ČPP Majetek (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "ČPP",
+      "category": "ODP",
+      "products": [
+        "TBD - ČPP Odpovědnost (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "ČPP",
+      "category": "ZP",
+      "products": [
+        "NEON"
+      ]
+    },
+    {
+      "partner": "ČSOB",
+      "category": "HYPO",
+      "products": [
+        "Hypotéka (produktová řada)"
+      ]
+    },
+    {
+      "partner": "ČSOB",
+      "category": "UVER",
+      "products": [
+        "Spotřebitelský úvěr (TBD)"
+      ]
+    },
+    {
+      "partner": "ČSOB Hypoteční banka",
+      "category": "HYPO",
+      "products": [
+        "Hypotéky (TBD)"
+      ]
+    },
+    {
+      "partner": "ČSOB pojišťovna",
+      "category": "MAJ",
+      "products": [
+        "TBD - ČSOB Majetek (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "ČSOB pojišťovna",
+      "category": "ZP",
+      "products": [
+        "TBD - ČSOB (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "ČSOB PS",
+      "category": "DPS",
+      "products": [
+        "Doplňkové penzijní spoření (DPS)"
+      ]
+    },
+    {
+      "partner": "Direct",
+      "category": "AUTO_HAV",
+      "products": [
+        "TBD - Direct HAV (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Direct",
+      "category": "AUTO_PR",
+      "products": [
+        "TBD - Direct POV (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Direct",
+      "category": "FIRMA_POJ",
+      "products": [
+        "TBD - Direct Pojištění firem (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Direct",
+      "category": "MAJ",
+      "products": [
+        "TBD - Direct Majetek (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Direct",
+      "category": "ODP",
+      "products": [
+        "TBD - Direct Odpovědnost (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Edward",
+      "category": "INV",
+      "products": [
+        "Investiční účty EDWARD"
+      ]
+    },
+    {
+      "partner": "EIC",
+      "category": "INV",
+      "products": [
+        "Investiční účty EIC"
+      ]
+    },
+    {
+      "partner": "Ibis",
+      "category": "INV",
+      "products": [
+        "iiplan"
+      ]
+    },
+    {
+      "partner": "Investika",
+      "category": "INV",
+      "products": [
+        "INVESTIKA realitní fond (otevřený podílový fond)"
+      ]
+    },
+    {
+      "partner": "INVESTIKA",
+      "category": "INV",
+      "products": [
+        "EFEKTIKA, fond akciových trhů",
+        "INVESTIKA realitní fond, otevřený podílový fond"
+      ]
+    },
+    {
+      "partner": "J&T",
+      "category": "INV",
+      "products": [
+        "Investiční služby / fondy J&T (TBD)"
+      ]
+    },
+    {
+      "partner": "KB Penzijní společnost",
+      "category": "DPS",
+      "products": [
+        "Doplňkové penzijní spoření (DPS)"
+      ]
+    },
+    {
+      "partner": "Komerční banka",
+      "category": "HYPO",
+      "products": [
+        "Hypotéka",
+        "Hypotéka na udržitelné bydlení"
+      ]
+    },
+    {
+      "partner": "Komerční banka",
+      "category": "UVER",
+      "products": [
+        "Spotřebitelské úvěry (TBD)"
+      ]
+    },
+    {
+      "partner": "Komerční pojišťovna",
+      "category": "ZP",
+      "products": [
+        "Elán"
+      ]
+    },
+    {
+      "partner": "Kooperativa",
+      "category": "AUTO_HAV",
+      "products": [
+        "TBD - Kooperativa HAV (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Kooperativa",
+      "category": "AUTO_PR",
+      "products": [
+        "TBD - Kooperativa POV (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Kooperativa",
+      "category": "MAJ",
+      "products": [
+        "TBD - Kooperativa Majetek (doplnit z dropdownu)",
+        "Pojištění majetku (domácnost/nemovitost) – produktové řady dle webu/partnera (TBD)"
+      ]
+    },
+    {
+      "partner": "Kooperativa",
+      "category": "ODP",
+      "products": [
+        "TBD - Kooperativa Odpovědnost (doplnit z dropdownu)",
+        "Odpovědnost – obvykle součást majetkového pojištění (TBD)"
+      ]
+    },
+    {
+      "partner": "Kooperativa",
+      "category": "ZP",
+      "products": [
+        "FLEXI"
+      ]
+    },
+    {
+      "partner": "Maxima",
+      "category": "AUTO_HAV",
+      "products": [
+        "TBD - doplnit z dropdownu"
+      ]
+    },
+    {
+      "partner": "Maxima",
+      "category": "AUTO_PR",
+      "products": [
+        "TBD - doplnit z dropdownu"
+      ]
+    },
+    {
+      "partner": "Maxima",
+      "category": "MAJ",
+      "products": [
+        "TBD - doplnit z dropdownu"
+      ]
+    },
+    {
+      "partner": "Maxima",
+      "category": "ZP",
+      "products": [
+        "MaxEfekt"
+      ]
+    },
+    {
+      "partner": "mBank",
+      "category": "HYPO",
+      "products": [
+        "mHypotéka (produktová řada – TBD)"
+      ]
+    },
+    {
+      "partner": "mBank",
+      "category": "UVER",
+      "products": [
+        "TBD - doplnit z dropdownu"
+      ]
+    },
+    {
+      "partner": "MetLife",
+      "category": "ZP",
+      "products": [
+        "Garde",
+        "Garde Risk",
+        "OneGuard"
+      ]
+    },
+    {
+      "partner": "Moneta",
+      "category": "HYPO",
+      "products": [
+        "Hypotéka",
+        "Americká hypotéka"
+      ]
+    },
+    {
+      "partner": "Moventum",
+      "category": "INV",
+      "products": [
+        "Investiční platforma Moventum (TBD)"
+      ]
+    },
+    {
+      "partner": "NN Penzijní společnost",
+      "category": "DPS",
+      "products": [
+        "Doplňkové penzijní spoření (DPS)"
+      ]
+    },
+    {
+      "partner": "NN Životní pojišťovna",
+      "category": "ZP",
+      "products": [
+        "Orange"
+      ]
+    },
+    {
+      "partner": "Oberbank",
+      "category": "HYPO",
+      "products": [
+        "Hypotéky (produktová řada – TBD)"
+      ]
+    },
+    {
+      "partner": "Oberbank",
+      "category": "UVER",
+      "products": [
+        "Úvěry (TBD)"
+      ]
+    },
+    {
+      "partner": "Pillow",
+      "category": "MAJ",
+      "products": [
+        "TBD - Pillow Majetek (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Pillow",
+      "category": "ODP",
+      "products": [
+        "TBD - Pillow Odpovědnost (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Pillow",
+      "category": "ZDRAV",
+      "products": [
+        "Pojištění úrazu a nemoci"
+      ]
+    },
+    {
+      "partner": "Pillow",
+      "category": "ZP",
+      "products": [
+        "URAN"
+      ]
+    },
+    {
+      "partner": "Raiffeisen Leasing",
+      "category": "UVER",
+      "products": [
+        "Leasing / financování (TBD)"
+      ]
+    },
+    {
+      "partner": "Raiffeisenbank",
+      "category": "HYPO",
+      "products": [
+        "TBD - RB Hypotéka (doplnit z dropdownu)",
+        "Hypotéka na bydlení (Klasik)",
+        "Hypotéka naruby",
+        "Výstavba montovaného domu",
+        "Refinancování hypotéky",
+        "Hypotéka na pronájem",
+        "Hypotéka na cokoliv"
+      ]
+    },
+    {
+      "partner": "Raiffeisenbank",
+      "category": "UVER",
+      "products": [
+        "TBD - RB Úvěr (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "RSTS",
+      "category": "HYPO",
+      "products": [
+        "TBD - RSTS Hypotéka/úvěry (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "UniCredit",
+      "category": "HYPO",
+      "products": [
+        "U hypotéka (účelová)",
+        "U hypotéka (kombinovaná)",
+        "Hypotéka pro mladé"
+      ]
+    },
+    {
+      "partner": "UniCredit",
+      "category": "UVER",
+      "products": [
+        "PRESTO Business (hypo pro podnikatele – dle nabídky)"
+      ]
+    },
+    {
+      "partner": "Uniqa",
+      "category": "FIRMA_POJ",
+      "products": [
+        "TBD - UNIQA Pojištění firem (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Uniqa",
+      "category": "MAJ",
+      "products": [
+        "TBD - UNIQA Majetek (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Uniqa",
+      "category": "ODP",
+      "products": [
+        "TBD - UNIQA Odpovědnost (doplnit z dropdownu)"
+      ]
+    },
+    {
+      "partner": "Uniqa",
+      "category": "ZP",
+      "products": [
+        "Život & Radost"
+      ]
+    },
+    {
+      "partner": "UNIQA",
+      "category": "MAJ",
+      "products": [
+        "Pojištění bytu a domácnosti (balíčky MINI/PLUS/EXTRA)",
+        "Pojištění domu a domácnosti (balíčky MINI/PLUS/EXTRA)"
+      ]
+    },
+    {
+      "partner": "UNIQA",
+      "category": "ODP",
+      "products": [
+        "Pojištění odpovědnosti (balíčky PLUS/EXTRA)"
+      ]
+    },
+    {
+      "partner": "UNIQA",
+      "category": "ZP",
+      "products": [
+        "Život & Radost"
+      ]
+    }
+  ]
+}
