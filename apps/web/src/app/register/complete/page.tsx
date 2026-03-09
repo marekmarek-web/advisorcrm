@@ -13,17 +13,27 @@ export default function RegisterCompletePage() {
     const next = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null;
     ensureMembership()
       .then((result) => {
+        if (!result || typeof result !== "object") {
+          setStatus("error");
+          setErrorMessage("Server nevrátil odpověď. Zkontrolujte na Vercelu env: DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+          return;
+        }
         if (result.ok) {
           setStatus("done");
           router.replace(next && next.startsWith("/") ? next : result.redirectTo);
         } else {
+          if (result.redirectTo) {
+            window.location.href = result.redirectTo;
+            return;
+          }
           setStatus("error");
-          setErrorMessage(result.error);
+          setErrorMessage(result.error || "Nepodařilo se dokončit registraci.");
         }
       })
       .catch((e) => {
         setStatus("error");
-        setErrorMessage(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        setErrorMessage(msg || "Chyba serveru. Na Vercelu v Deployment → Functions / Runtime Logs zkontroluj chybovou hlášku.");
       });
   }, [router]);
 

@@ -5,11 +5,10 @@ import { getMembership } from "@/lib/auth/get-membership";
 import { db } from "db";
 import { tenants, roles, memberships, clientContacts, clientInvitations, contacts } from "db";
 import { eq, and, gt } from "db";
-import { redirect } from "next/navigation";
 
 export type EnsureMembershipResult =
   | { ok: true; redirectTo: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; redirectTo?: string };
 
 /** Po prvním přihlášení (OAuth nebo signup) vytvoří workspace a uživatele jako Admin, pokud ještě nemá membership. */
 export async function ensureMembership(): Promise<EnsureMembershipResult> {
@@ -19,7 +18,7 @@ export async function ensureMembership(): Promise<EnsureMembershipResult> {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      redirect("/login");
+      return { ok: false, error: "Nejprve se přihlaste.", redirectTo: "/login" };
     }
     const existing = await getMembership(user.id);
     if (existing) {
@@ -54,10 +53,6 @@ export async function ensureMembership(): Promise<EnsureMembershipResult> {
     });
     return { ok: true, redirectTo: "/portal/today" };
   } catch (e) {
-    // Next.js redirect() throws – musíme to znovu vyhodit
-    if (e && typeof e === "object" && "digest" in e && String((e as { digest?: string }).digest).startsWith("NEXT_")) {
-      throw e;
-    }
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("relation") && msg.includes("does not exist")) {
       return {
@@ -75,6 +70,18 @@ export async function ensureMembership(): Promise<EnsureMembershipResult> {
       return {
         ok: false,
         error: "Chyba přihlášení k databázi. Zkontrolujte heslo v DATABASE_URL na Vercelu.",
+      };
+    }
+    if (msg.includes("SUPABASE") || msg.includes("supabase") || msg.includes("NEXT_PUBLIC")) {
+      return {
+        ok: false,
+        error: "Chybí nebo je špatně nastavená proměnná Supabase na Vercelu (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY).",
+      };
+    }
+    if (msg.includes("DATABASE_URL")) {
+      return {
+        ok: false,
+        error: "Na Vercelu v Environment Variables přidej DATABASE_URL (celý connection string z Supabase → Database).",
       };
     }
     return { ok: false, error: msg || "Nepodařilo se dokončit registraci." };
