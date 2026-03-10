@@ -246,7 +246,7 @@ export function LandingLoginPage() {
               <div className="flex justify-between items-center mb-2">
                 <label className="text-xs font-bold uppercase tracking-wider opacity-80">Heslo</label>
                 {isLogin && !token && (
-                  <Link href="/" className="text-xs font-bold opacity-60 hover:opacity-100 transition-opacity">
+                  <Link href="/forgot-password" className="text-xs font-bold opacity-60 hover:opacity-100 transition-opacity">
                     Zapomenuté heslo?
                   </Link>
                 )}
