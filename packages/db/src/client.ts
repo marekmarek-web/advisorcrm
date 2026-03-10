@@ -32,6 +32,6 @@ function getDb(): PostgresJsDatabase<typeof schema> {
 /** Lazy DB – chyba připojení vznikne až při prvním dotazu, takže ji může zachytit try/catch ve server action. */
 export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
   get(_, prop) {
-    return (getDb() as Record<string, unknown>)[prop as string];
+    return (getDb() as unknown as Record<string, unknown>)[prop as string];
   },
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { PortalSidebar, PORTAL_SIDEBAR_COLLAPSED_PX } from "./PortalSidebar";
 import { PortalHeaderSearch } from "./PortalHeaderSearch";
@@ -98,7 +98,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           <header className="wp-app-header shrink-0 gap-2">
             <div className="flex items-center gap-8 flex-1 min-w-0">
               <span className="font-bold text-xl shrink-0" style={{ color: "var(--wp-text)" }}>Aidvisora</span>
-              <PortalHeaderSearch onOpenGlobalSearch={() => globalSearchRef.current?.open()} />
+              <Suspense fallback={<div className="h-9 w-48 bg-slate-100 rounded animate-pulse" aria-hidden />}>
+                <PortalHeaderSearch onOpenGlobalSearch={() => globalSearchRef.current?.open()} />
+              </Suspense>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <Link href="/portal/cold-contacts" className="wp-btn wp-btn-ghost shrink-0" style={{ borderColor: "transparent" }} title="Import kontaktů pomocí AI">

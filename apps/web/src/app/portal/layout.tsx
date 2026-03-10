@@ -4,6 +4,9 @@ import { PortalShell } from "./PortalShell";
 import "@/styles/weplan-monday.css";
 import "@/styles/board.css";
 
+/** Portal je vždy dynamický – vyžaduje auth a DB, neprerenderovat při buildu. */
+export const dynamic = "force-dynamic";
+
 export default async function PortalLayout({
   children,
 }: {
