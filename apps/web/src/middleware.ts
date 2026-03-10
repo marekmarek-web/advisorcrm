@@ -10,6 +10,18 @@ export async function middleware(request: NextRequest) {
     url.searchParams.delete("error_description");
     return NextResponse.redirect(url);
   }
+  // Staré URL přihlášení/registrace → vždy nová úvodní stránka
+  if (request.nextUrl.pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+  if (request.nextUrl.pathname === "/register") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.searchParams.set("register", "1");
+    return NextResponse.redirect(url);
+  }
   // Dočasně: povolit dashboard bez přihlášení (nastav SKIP_AUTH=true v .env.local)
   if (process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
     return NextResponse.next();
@@ -33,26 +45,6 @@ export async function middleware(request: NextRequest) {
   });
 
   const { data: { user } } = await supabase.auth.getUser();
-
-  // /login: přihlášený → přesměrovat na next/portál; nepřihlášený → na úvodní stránku
-  if (request.nextUrl.pathname === "/login") {
-    const url = request.nextUrl.clone();
-    if (user) {
-      url.pathname = request.nextUrl.searchParams.get("next") || "/portal/today";
-      url.searchParams.delete("next");
-      return NextResponse.redirect(url);
-    }
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-  // /register → vždy úvodní stránka s register=1 (a token se zachová z query)
-  if (request.nextUrl.pathname === "/register") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.searchParams.set("register", "1");
-    return NextResponse.redirect(url);
-  }
-
   const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
   const isClientZone = request.nextUrl.pathname.startsWith("/client");
   const isBoard = request.nextUrl.pathname.startsWith("/board");
@@ -64,10 +56,16 @@ export async function middleware(request: NextRequest) {
     url.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
+  if (request.nextUrl.pathname === "/login" && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = request.nextUrl.searchParams.get("next") || "/portal/today";
+    url.searchParams.delete("next");
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*", "/client/:path*", "/board/:path*", "/portal/:path*", "/login", "/register", "/forgot-password"],
+  matcher: ["/", "/dashboard/:path*", "/client/:path*", "/board/:path*", "/portal/:path*", "/login", "/register"],
 };

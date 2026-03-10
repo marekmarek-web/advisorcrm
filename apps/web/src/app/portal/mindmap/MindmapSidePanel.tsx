@@ -54,22 +54,16 @@ export function MindmapSidePanel({
 
   const applyEdits = useCallback(() => {
     if (!node || !onUpdateNode) return;
-    const meta = { ...node.metadata };
+    const meta: NonNullable<MindmapNode["metadata"]> = { ...(node.metadata ?? {}) };
     if (node.type === "item" || node.type === "goal" || node.type === "category") {
-      if (meta) {
-        meta.value = editValue || undefined;
-        meta.detail = editDetail || undefined;
-        if (node.type === "goal") meta.progress = Math.min(100, Math.max(0, editProgress));
-      } else {
-        meta.value = editValue || undefined;
-        meta.detail = editDetail || undefined;
-        if (node.type === "goal") meta.progress = editProgress;
-      }
+      meta.value = editValue || undefined;
+      meta.detail = editDetail || undefined;
+      if (node.type === "goal") meta.progress = Math.min(100, Math.max(0, editProgress));
     }
     onUpdateNode(node.id, {
       title: editTitle.trim() || node.title,
       subtitle: editSubtitle.trim() || null,
-      metadata: Object.keys(meta ?? {}).length ? meta : null,
+      metadata: Object.keys(meta).length ? meta : null,
     });
   }, [node, onUpdateNode, editTitle, editSubtitle, editValue, editDetail, editProgress]);
 
@@ -121,7 +115,7 @@ export function MindmapSidePanel({
           {canEdit && !isCore ? (
             <select
               value={node.type}
-              onChange={(e) => onUpdateNode(node.id, { type: e.target.value as MindmapNode["type"] })}
+              onChange={(e) => onUpdateNode?.(node.id, { type: e.target.value as MindmapNode["type"] })}
               className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white"
             >
               {NODE_TYPES.map((t) => (

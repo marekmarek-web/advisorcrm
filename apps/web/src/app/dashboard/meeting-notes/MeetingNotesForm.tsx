@@ -47,7 +47,7 @@ export function MeetingNotesForm({
 
   useEffect(() => {
     if (editingNote) {
-      setContactId(editingNote.contactId);
+      setContactId(editingNote.contactId ?? "");
       setTemplateId(editingNote.templateId ?? "");
       setMeetingAt(
         new Date(editingNote.meetingAt).toISOString().slice(0, 16)
