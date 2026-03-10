@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import { Download, Sparkles } from "lucide-react";
 import { saveMindmap } from "@/app/actions/mindmap";
@@ -37,13 +37,25 @@ export function MindmapView({ initial }: MindmapViewProps) {
     viewport: initial.viewport,
   });
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const handleSave = useCallback(async () => {
-    await saveMindmap(initial.entityType, initial.entityId, {
-      viewport,
-      nodes,
-      edges,
-    });
-    setDirty(false);
+    setSaveError(null);
+    setSaving(true);
+    try {
+      await saveMindmap(initial.entityType, initial.entityId, {
+        viewport,
+        nodes,
+        edges,
+      });
+      setDirty(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Uložení selhalo.";
+      setSaveError(msg);
+    } finally {
+      setSaving(false);
+    }
   }, [initial.entityType, initial.entityId, viewport, nodes, edges, setDirty]);
 
   const handleAddNode = useCallback(
@@ -109,13 +121,19 @@ export function MindmapView({ initial }: MindmapViewProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {saveError && (
+            <span className="text-rose-600 text-sm" title={saveError}>
+              {saveError}
+            </span>
+          )}
           {dirty && (
             <button
               type="button"
               onClick={handleSave}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors"
+              disabled={saving}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Uložit
+              {saving ? "Ukládám…" : "Uložit"}
             </button>
           )}
           <button

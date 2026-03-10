@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { getMembership } from "@/lib/auth/get-membership";
 import { db } from "db";
 import { tenants, roles, memberships, clientContacts, clientInvitations, contacts } from "db";
@@ -168,4 +169,14 @@ export async function acceptClientInvitation(token: string, gdprConsent?: boolea
       .where(eq(contacts.id, inv.contactId));
   }
   return { ok: true };
+}
+
+/** Aktualizuje jméno přihlášeného uživatele v Supabase Auth (user_metadata.full_name). */
+export async function updatePortalProfile(fullName: string): Promise<void> {
+  await requireAuthInAction();
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    data: { full_name: fullName.trim() || null },
+  });
+  if (error) throw new Error(error.message);
 }
