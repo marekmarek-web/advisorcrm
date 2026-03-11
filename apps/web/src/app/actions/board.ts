@@ -43,11 +43,82 @@ const DEFAULT_GROUPS = [
   { id: "g2", name: "Rozpracované", color: "#00c875", collapsed: false },
 ];
 
-export async function getOrCreateBoardView(): Promise<{
+export async function listBoardViews(): Promise<{ id: string; name: string }[]> {
+  const auth = await requireAuthInAction();
+  const rows = await db
+    .select({ id: boardViews.id, name: boardViews.name })
+    .from(boardViews)
+    .where(eq(boardViews.tenantId, auth.tenantId))
+    .orderBy(asc(boardViews.updatedAt));
+  return rows.map((r) => ({ id: r.id, name: r.name ?? "Board" }));
+}
+
+export async function createBoardView(options: {
+  name: string;
+  copyColumnsFromViewId?: string | null;
+}): Promise<string> {
+  const auth = await requireAuthInAction();
+  let columnsConfig: unknown = DEFAULT_COLUMNS;
+  let groupsConfig: unknown = DEFAULT_GROUPS;
+  if (options.copyColumnsFromViewId) {
+    const [source] = await db
+      .select()
+      .from(boardViews)
+      .where(
+        and(
+          eq(boardViews.tenantId, auth.tenantId),
+          eq(boardViews.id, options.copyColumnsFromViewId)
+        )
+      )
+      .limit(1);
+    if (source?.columnsConfig) columnsConfig = source.columnsConfig;
+    if (source?.groupsConfig) groupsConfig = source.groupsConfig;
+  }
+  const [created] = await db
+    .insert(boardViews)
+    .values({
+      tenantId: auth.tenantId,
+      name: (options.name || "Nový board").trim(),
+      columnsConfig: columnsConfig as Record<string, unknown>,
+      groupsConfig: groupsConfig as Record<string, unknown>,
+    })
+    .returning({ id: boardViews.id });
+  return created.id;
+}
+
+export async function getOrCreateBoardView(viewId?: string | null): Promise<{
   view: BoardViewRow;
   items: BoardItemRow[];
 }> {
   const auth = await requireAuthInAction();
+
+  if (viewId) {
+    const existing = await db
+      .select()
+      .from(boardViews)
+      .where(
+        and(
+          eq(boardViews.tenantId, auth.tenantId),
+          eq(boardViews.id, viewId)
+        )
+      )
+      .limit(1);
+    if (existing.length > 0) {
+      const view = existing[0];
+      const items = await loadItemsForView(view.id);
+      return {
+        view: {
+          id: view.id,
+          name: view.name,
+          columnsConfig: view.columnsConfig as Column[] | null,
+          groupsConfig: view.groupsConfig as BoardViewRow["groupsConfig"],
+          groupBy: view.groupBy,
+          filters: view.filters as Record<string, unknown> | null,
+        },
+        items: items,
+      };
+    }
+  }
 
   const existing = await db
     .select()
@@ -71,6 +142,22 @@ export async function getOrCreateBoardView(): Promise<{
     view = created;
   }
 
+  const items = await loadItemsForView(view.id);
+  return {
+    view: {
+      id: view.id,
+      name: view.name,
+      columnsConfig: view.columnsConfig as Column[] | null,
+      groupsConfig: view.groupsConfig as BoardViewRow["groupsConfig"],
+      groupBy: view.groupBy,
+      filters: view.filters as Record<string, unknown> | null,
+    },
+    items: items,
+  };
+}
+
+async function loadItemsForView(viewId: string): Promise<BoardItemRow[]> {
+  const auth = await requireAuthInAction();
   const items = await db
     .select({
       id: boardItems.id,
@@ -84,31 +171,20 @@ export async function getOrCreateBoardView(): Promise<{
     })
     .from(boardItems)
     .leftJoin(contacts, eq(boardItems.contactId, contacts.id))
-    .where(eq(boardItems.viewId, view.id))
+    .where(eq(boardItems.viewId, viewId))
     .orderBy(asc(boardItems.sortOrder));
-
-  return {
-    view: {
-      id: view.id,
-      name: view.name,
-      columnsConfig: view.columnsConfig as Column[] | null,
-      groupsConfig: view.groupsConfig as BoardViewRow["groupsConfig"],
-      groupBy: view.groupBy,
-      filters: view.filters as Record<string, unknown> | null,
-    },
-    items: items.map((i) => ({
-      id: i.id,
-      groupId: i.groupId,
-      name: i.name,
-      cells: (i.cells ?? {}) as Record<string, string | number>,
-      contactId: i.contactId,
-      contactName:
-        i.contactFirstName != null && i.contactLastName != null
-          ? `${i.contactFirstName} ${i.contactLastName}`.trim()
-          : null,
-      sortOrder: i.sortOrder,
-    })),
-  };
+  return items.map((i) => ({
+    id: i.id,
+    groupId: i.groupId,
+    name: i.name,
+    cells: (i.cells ?? {}) as Record<string, string | number>,
+    contactId: i.contactId,
+    contactName:
+      i.contactFirstName != null && i.contactLastName != null
+        ? `${i.contactFirstName} ${i.contactLastName}`.trim()
+        : null,
+    sortOrder: i.sortOrder,
+  }));
 }
 
 export async function saveBoardViewConfig(

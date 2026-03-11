@@ -234,10 +234,33 @@ export default function EditContactPage() {
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px] border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 min-h-[44px] w-fit">
-                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={onAvatarChange} disabled={avatarUploading} />
-                      {avatarUploading ? "Nahrávám…" : "Nahrát fotku"}
-                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px] border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 min-h-[44px] w-fit">
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={onAvatarChange} disabled={avatarUploading} />
+                        {avatarUploading ? "Nahrávám…" : "Nahrát fotku"}
+                      </label>
+                      {avatarUrl && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setAvatarError(null);
+                            try {
+                              await updateContact(id, {
+                                firstName: form.firstName,
+                                lastName: form.lastName,
+                                avatarUrl: null,
+                              });
+                              setAvatarUrl(null);
+                            } catch (e) {
+                              setAvatarError(e instanceof Error ? e.message : "Odstranění fotky se nezdařilo");
+                            }
+                          }}
+                          className="px-3 py-2 rounded-[6px] border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 min-h-[44px]"
+                        >
+                          Odstranit fotku
+                        </button>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-500">JPEG, PNG, WebP nebo GIF, max 3 MB</p>
                     {avatarError && <p className="text-xs text-red-600">{avatarError}</p>}
                   </div>

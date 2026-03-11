@@ -39,9 +39,10 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [options, setOptions] = useState(() => getStatusLabels());
-  const [dropdownRect, setDropdownRect] = useState({ top: 0, left: 0 });
+  const [dropdownRect, setDropdownRect] = useState({ top: 0, left: 0, openUp: false });
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownHeightRef = useRef(280);
   const hasNote = Boolean(note && note.trim());
   const openNoteEditor = () => {
     setNoteDraft(note ?? "");
@@ -55,11 +56,14 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
   }, []);
 
   const updateDropdownPosition = useCallback(() => {
-    if (buttonRef.current) {
+    if (buttonRef.current && typeof window !== "undefined") {
       const rect = buttonRef.current.getBoundingClientRect();
+      const margin = 8;
+      const openUp = rect.bottom + dropdownHeightRef.current + margin > window.innerHeight - 48;
       setDropdownRect({
-        top: rect.bottom + 4,
+        top: openUp ? rect.top - dropdownHeightRef.current - 4 : rect.bottom + 4,
         left: rect.left + rect.width / 2,
+        openUp,
       });
     }
   }, []);
@@ -121,6 +125,9 @@ export function CellStatus({ value, onChange, className = "", fullCell = false, 
       id="cell-status-dropdown-portal"
       role="listbox"
       className="board-context-menu fixed z-[400]"
+      ref={(el) => {
+        if (el) dropdownHeightRef.current = el.getBoundingClientRect().height;
+      }}
       style={{
         top: dropdownRect.top,
         left: dropdownRect.left,

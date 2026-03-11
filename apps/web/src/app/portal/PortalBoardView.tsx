@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { ActivityEntry } from "@/app/components/monday/RightPanel";
 import { BoardHeader } from "@/app/components/monday/BoardHeader";
 import { Toolbar } from "@/app/components/monday/Toolbar";
@@ -14,6 +15,8 @@ import type { Board, Column, ColumnType, Group, Item } from "@/app/components/mo
 import { createSeedBoard, nextId, nextViewIdSeq, DEFAULT_CELLS } from "@/app/board/seed-data";
 import { loadPortalState, savePortalState } from "@/app/lib/portal-state";
 import {
+  listBoardViews,
+  createBoardView,
   saveBoardViewConfig,
   saveBoardItemsBatch,
   deleteBoardItems as deleteBoardItemsAction,
@@ -66,11 +69,17 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
     return getInitialPortalState();
   }, [initialBoard]);
 
+  const router = useRouter();
   const [board, setBoard] = useState<Board>(() => fallback.board);
   const [activeViewId, setActiveViewId] = useState(() => fallback.activeViewId);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(() => new Set(fallback.hiddenColumnIds));
+  const [viewsList, setViewsList] = useState<{ id: string; name: string }[]>([]);
+  const [newBoardModalOpen, setNewBoardModalOpen] = useState(false);
+  const [newBoardName, setNewBoardName] = useState("");
+  const [newBoardTemplateId, setNewBoardTemplateId] = useState<string>("");
+  const [newBoardCreating, setNewBoardCreating] = useState(false);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const initialLoad = useRef(true);
@@ -103,6 +112,11 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
       saveBoardItemsBatch(dbViewId, allItems).catch(() => {});
     }, 1500);
   }, [board, hiddenColumnIds, activeViewId, dbViewId]);
+  useEffect(() => {
+    if (!dbViewId) return;
+    listBoardViews().then(setViewsList).catch(() => setViewsList([]));
+  }, [dbViewId]);
+
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [sortColumnId, setSortColumnId] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -181,7 +195,16 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
     ).length;
   }, [board.items]);
 
-  const onViewChange = useCallback((viewId: string) => setActiveViewId(viewId), []);
+  const onViewChange = useCallback(
+    (viewId: string) => {
+      if (dbViewId && viewId !== dbViewId) {
+        router.push(`/portal/board?viewId=${encodeURIComponent(viewId)}`);
+        return;
+      }
+      setActiveViewId(viewId);
+    },
+    [dbViewId, router]
+  );
   const onViewNameChange = useCallback(
     (name: string) => {
       const trimmed = name.trim() || board.name;
@@ -195,6 +218,12 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
     [activeViewId, dbViewId, board.name]
   );
   const onAddView = useCallback(() => {
+    if (dbViewId) {
+      setNewBoardName("");
+      setNewBoardTemplateId(dbViewId);
+      setNewBoardModalOpen(true);
+      return;
+    }
     const newView = {
       id: nextViewIdSeq(),
       name: "Nástěnka",
@@ -202,7 +231,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
     };
     setBoard((b) => ({ ...b, views: [...b.views, newView] }));
     setActiveViewId(newView.id);
-  }, [activeView]);
+  }, [dbViewId, activeView]);
 
   const triggerTableLoading = useCallback(() => {
     setTableLoading(true);
@@ -558,8 +587,8 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
           <div className="flex items-center justify-between shrink-0 px-2 md:px-0" style={{ marginBottom: "var(--wp-space-4)" }}>
             <BoardHeader
               boardName={board.name}
-              views={board.views.map((v) => ({ id: v.id, name: v.name }))}
-              activeViewId={activeViewId}
+              views={viewsList.length > 0 ? viewsList : board.views.map((v) => ({ id: v.id, name: v.name }))}
+              activeViewId={dbViewId ?? activeViewId}
               onViewChange={onViewChange}
               onAddView={onAddView}
               onViewNameChange={dbViewId ? onViewNameChange : undefined}
@@ -783,6 +812,67 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
           )}
           </BoardShell>
         </div>
+        {newBoardModalOpen && (
+          <BaseModal open={true} onClose={() => setNewBoardModalOpen(false)} title="Nový board" maxWidth="sm">
+            <div className="px-4 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Název</label>
+                <input
+                  value={newBoardName}
+                  onChange={(e) => setNewBoardName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (document.getElementById("new-board-submit-btn") as HTMLButtonElement)?.click();
+                    }
+                  }}
+                  placeholder="např. Obchody Q1"
+                  className="w-full border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-monday-blue/20 focus:border-monday-blue rounded-[var(--wp-radius-sm)] min-h-[44px]"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Z šablony</label>
+                <select
+                  value={newBoardTemplateId}
+                  onChange={(e) => setNewBoardTemplateId(e.target.value)}
+                  className="w-full border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-monday-blue/20 rounded-[var(--wp-radius-sm)] min-h-[44px]"
+                >
+                  <option value="">Prázdný</option>
+                  {viewsList.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setNewBoardModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-[var(--wp-radius-sm)]">
+                  Zrušit
+                </button>
+                <button
+                  id="new-board-submit-btn"
+                  type="button"
+                  disabled={newBoardCreating}
+                  onClick={async () => {
+                    setNewBoardCreating(true);
+                    try {
+                      const id = await createBoardView({
+                        name: newBoardName.trim() || "Nový board",
+                        copyColumnsFromViewId: newBoardTemplateId || null,
+                      });
+                      setNewBoardModalOpen(false);
+                      router.push(`/portal/board?viewId=${encodeURIComponent(id)}`);
+                    } finally {
+                      setNewBoardCreating(false);
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-monday-blue hover:opacity-90 rounded-[var(--wp-radius-sm)] disabled:opacity-50 min-h-[44px]"
+                >
+                  {newBoardCreating ? "Vytvářím…" : "Vytvořit"}
+                </button>
+              </div>
+            </div>
+          </BaseModal>
+        )}
         {addGroupModalOpen && (
           <BaseModal open={true} onClose={() => setAddGroupModalOpen(false)} title="Přidat skupinu" maxWidth="sm">
             <div className="px-4 py-4 space-y-4">

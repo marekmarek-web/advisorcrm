@@ -165,20 +165,13 @@ export default async function ContactDetailPage({
   const smlouvyContent = (
     <div className="space-y-6 md:space-y-8">
       <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-50">
-          <h2 className="text-lg font-black text-slate-900">Produkty a smlouvy</h2>
-        </div>
         <div className="p-6">
           <ContractsSection contactId={id} />
           <ClientFinancialSummary contactId={id} />
-        </div>
-      </div>
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-50">
-          <h2 className="text-lg font-black text-slate-900">Platební instrukce</h2>
-        </div>
-        <div className="p-6">
-          <SendPaymentPdfButton contactId={id} />
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <h2 className="text-lg font-black text-slate-900 mb-2">Platební instrukce</h2>
+            <SendPaymentPdfButton contactId={id} />
+          </div>
         </div>
       </div>
     </div>
@@ -187,9 +180,6 @@ export default async function ContactDetailPage({
   const aktivitaContent = (
     <div className="space-y-6 md:space-y-8">
       <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-50">
-          <h2 className="text-lg font-black text-slate-900">Aktivita</h2>
-        </div>
         <div className="p-6">
           <ContactActivityTimeline contactId={id} />
         </div>
@@ -206,14 +196,9 @@ export default async function ContactDetailPage({
   );
 
   const zapiskyContent = (
-    <div className="space-y-6 md:space-y-8">
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-50">
-          <h2 className="text-lg font-black text-slate-900">Zápisky ze schůzek</h2>
-        </div>
-        <div className="p-6">
-          <ContactNotesSection contactId={id} />
-        </div>
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+      <div className="p-6">
+        <ContactNotesSection contactId={id} />
       </div>
     </div>
   );
@@ -230,16 +215,6 @@ export default async function ContactDetailPage({
   ];
 
   const initials = [contact.firstName, contact.lastName].map((s) => s?.charAt(0) ?? "").join("").toUpperCase() || "?";
-  const statusBadge = (() => {
-    if (contact.priority === "urgent" || contact.priority === "high") return { label: "Vysoká priorita", className: "bg-amber-100 text-amber-800 border-amber-200" };
-    if (contact.lifecycleStage === "client") return { label: "Klient", className: "bg-blue-100 text-blue-800 border-blue-200" };
-    if (contact.lifecycleStage === "lead") return { label: "Lead", className: "bg-slate-100 text-slate-700 border-slate-200" };
-    if (contact.lifecycleStage === "prospect") return { label: "Prospect", className: "bg-emerald-100 text-emerald-800 border-emerald-200" };
-    if (contact.lifecycleStage === "former_client") return { label: "Bývalý klient", className: "bg-slate-100 text-slate-500 border-slate-200" };
-    if (contact.tags && contact.tags.length > 0) return { label: contact.tags[0], className: "bg-blue-50 text-blue-700 border-blue-100" };
-    return null;
-  })();
-
   const addressLine = [contact.street, [contact.city, contact.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Kontakt";

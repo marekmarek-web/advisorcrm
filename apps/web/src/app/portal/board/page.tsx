@@ -13,12 +13,17 @@ function mergeColumnsWithDefaults(saved: Column[]): Column[] {
   });
 }
 
-export default async function BoardPage() {
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ viewId?: string }>;
+}) {
+  const { viewId: viewIdParam } = await searchParams;
   let dbViewId: string | undefined;
   let initialBoard: Board | undefined;
 
   try {
-    const data = await getOrCreateBoardView();
+    const data = await getOrCreateBoardView(viewIdParam ?? null);
     dbViewId = data.view.id;
 
     const savedColumns: Column[] = (data.view.columnsConfig as Column[]) ?? [];
