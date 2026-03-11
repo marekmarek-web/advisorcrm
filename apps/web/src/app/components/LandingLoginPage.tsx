@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Sun, Moon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { acceptClientInvitation } from "@/app/actions/auth";
 
@@ -66,7 +67,7 @@ export function LandingLoginPage() {
   const registerParam = searchParams.get("register");
   const errorParam = searchParams.get("error");
 
-  const [activeTheme, setActiveTheme] = useState<ThemeId>("darkElegance");
+  const [activeTheme, setActiveTheme] = useState<ThemeId>("original");
   const [isLogin, setIsLogin] = useState(() => !registerParam && !token);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -180,33 +181,44 @@ export function LandingLoginPage() {
         }
       `}</style>
 
-      {/* Přepínač stylů: Barevný / Tmavý */}
-      <div className="absolute top-6 left-0 right-0 flex justify-center z-50">
-        <div className="bg-black/20 backdrop-blur-md p-1.5 rounded-full shadow-lg border border-white/10 flex gap-1">
-          {Object.values(themes).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveTheme(t.id)}
-              className={`px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 ${
-                activeTheme === t.id ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              {t.name}
-            </button>
-          ))}
+      {/* Přepínač motivu: sluníčko (Barevný) / měsíček (Tmavý) – vpravo nahoře */}
+      <div className="absolute top-6 right-6 z-50">
+        <div className="bg-black/20 backdrop-blur-md p-1.5 rounded-full shadow-lg border border-white/10 flex gap-0.5">
+          <button
+            type="button"
+            onClick={() => setActiveTheme("original")}
+            className={`p-2.5 rounded-full transition-all duration-300 ${
+              activeTheme === "original" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white hover:bg-white/10"
+            }`}
+            aria-label="Barevný motiv"
+            title="Barevný motiv"
+          >
+            <Sun size={20} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTheme("darkElegance")}
+            className={`p-2.5 rounded-full transition-all duration-300 ${
+              activeTheme === "darkElegance" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white hover:bg-white/10"
+            }`}
+            aria-label="Tmavý motiv"
+            title="Tmavý motiv"
+          >
+            <Moon size={20} strokeWidth={2} />
+          </button>
         </div>
       </div>
 
       <div className="flex-1 flex justify-center items-center z-10 px-4 pt-16">
         <div className={`w-full max-w-md p-10 rounded-[32px] border transition-colors duration-700 ${current.cardStyle}`}>
           <div className="flex flex-col items-center mb-10">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold mb-4 transition-colors duration-700 ${current.logoBox}`}>
-              W
-            </div>
-            <h1 className="font-light text-[24px] md:text-[48px] tracking-[2px] mb-1" style={{ fontFamily: "var(--wp-font)" }}>
-              Aidvisora
-            </h1>
+            <img
+              src="/aidvisora-logo.png"
+              alt="Aidvisora"
+              className="h-16 md:h-20 w-auto max-w-[280px] object-contain mb-4"
+              width={280}
+              height={80}
+            />
             <p className="text-[14px] tracking-[1px] opacity-80 transition-all" style={{ fontFamily: "var(--wp-font)" }}>
               {token ? "Registrace do Client Zone" : isLogin ? "Vítejte zpět" : "Vytvořit nový účet"}
             </p>

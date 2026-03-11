@@ -232,18 +232,20 @@ export function PortalSidebar({
           width: isMobileState ? "min(85vw, 280px)" : `${effectiveWidth}px`,
         }}
       >
-        {/* Header: logo + collapse */}
+        {/* Header: Aidvisora logo + collapse */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 flex-shrink-0">
           <Link
             href="/portal"
-            className={`flex items-center gap-3 overflow-hidden min-w-0 ${collapsed ? "justify-center w-full" : ""}`}
+            className={`flex items-center overflow-hidden min-w-0 ${collapsed ? "justify-center w-full" : ""}`}
+            aria-label="Aidvisora – přejít na nástěnku"
           >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md bg-slate-900">
-              <svg viewBox="0 0 40 40" className="w-4 h-4" fill="currentColor" aria-hidden>
-                <path d="M20 6L8 34h4l2.5-7h11L28 34h4L20 6zm-2.2 20l2.8-8 2.8 8h-5.6z" />
-              </svg>
-            </div>
-            {!collapsed && <span className="font-bold text-base tracking-tight text-slate-900 truncate">Aidvisora</span>}
+            <img
+              src="/aidvisora-logo.png"
+              alt="Aidvisora"
+              className={`object-contain object-left shrink-0 ${collapsed ? "h-9 w-9" : "h-12 max-w-[220px]"}`}
+              width={220}
+              height={48}
+            />
           </Link>
           <div className="flex items-center gap-1 shrink-0">
             {onCollapsedChange && (
