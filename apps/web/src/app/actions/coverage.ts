@@ -19,48 +19,67 @@ export type GetCoverageResult = {
   summary: CoverageSummary;
 };
 
+const EMPTY_COVERAGE_RESULT: GetCoverageResult = {
+  resolvedItems: [],
+  summary: {
+    done: 0,
+    inProgress: 0,
+    none: 0,
+    notRelevant: 0,
+    opportunity: 0,
+    total: 0,
+  },
+};
+
 export async function getCoverageForContact(contactId: string): Promise<GetCoverageResult> {
-  const auth = await requireAuthInAction();
-  if (auth.roleName === "Client") {
-    if (auth.contactId !== contactId) throw new Error("Forbidden");
-  } else if (!hasPermission(auth.roleName, "contacts:read")) {
-    throw new Error("Forbidden");
-  }
-
-  const [contractsList, pipelineStages, coverageRows] = await Promise.all([
-    getContractsByContact(contactId),
-    getPipelineByContact(contactId),
-    db
-      .select()
-      .from(contactCoverage)
-      .where(and(eq(contactCoverage.tenantId, auth.tenantId), eq(contactCoverage.contactId, contactId))),
-  ]);
-
-  const contractsForCoverage = contractsList.map((c) => ({ id: c.id, segment: c.segment }));
-  const openOpportunities: { id: string; caseType: string }[] = [];
-  for (const stage of pipelineStages) {
-    for (const opp of stage.opportunities) {
-      openOpportunities.push({ id: opp.id, caseType: opp.caseType });
+  try {
+    const auth = await requireAuthInAction();
+    if (auth.roleName === "Client") {
+      if (auth.contactId !== contactId) throw new Error("Forbidden");
+    } else if (!hasPermission(auth.roleName, "contacts:read")) {
+      throw new Error("Forbidden");
     }
+
+    const [contractsList, pipelineStages, coverageRows] = await Promise.all([
+      getContractsByContact(contactId),
+      getPipelineByContact(contactId),
+      db
+        .select()
+        .from(contactCoverage)
+        .where(and(eq(contactCoverage.tenantId, auth.tenantId), eq(contactCoverage.contactId, contactId))),
+    ]);
+
+    const contractsForCoverage = contractsList.map((c) => ({ id: c.id, segment: c.segment }));
+    const openOpportunities: { id: string; caseType: string }[] = [];
+    for (const stage of pipelineStages) {
+      for (const opp of stage.opportunities) {
+        openOpportunities.push({ id: opp.id, caseType: opp.caseType });
+      }
+    }
+
+    const storedRows: ContactCoverageRow[] = coverageRows.map((r) => ({
+      id: r.id,
+      tenantId: r.tenantId,
+      contactId: r.contactId,
+      itemKey: r.itemKey,
+      segmentCode: r.segmentCode,
+      status: r.status,
+      linkedContractId: r.linkedContractId,
+      linkedOpportunityId: r.linkedOpportunityId,
+      notes: r.notes,
+      isRelevant: r.isRelevant,
+      updatedAt: r.updatedAt,
+      updatedBy: r.updatedBy,
+    }));
+
+    const { items, summary } = resolveCoverageItems(storedRows, contractsForCoverage, openOpportunities);
+    return { resolvedItems: items, summary };
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[getCoverageForContact]", contactId, err);
+    }
+    return EMPTY_COVERAGE_RESULT;
   }
-
-  const storedRows: ContactCoverageRow[] = coverageRows.map((r) => ({
-    id: r.id,
-    tenantId: r.tenantId,
-    contactId: r.contactId,
-    itemKey: r.itemKey,
-    segmentCode: r.segmentCode,
-    status: r.status,
-    linkedContractId: r.linkedContractId,
-    linkedOpportunityId: r.linkedOpportunityId,
-    notes: r.notes,
-    isRelevant: r.isRelevant,
-    updatedAt: r.updatedAt,
-    updatedBy: r.updatedBy,
-  }));
-
-  const { items, summary } = resolveCoverageItems(storedRows, contractsForCoverage, openOpportunities);
-  return { resolvedItems: items, summary };
 }
 
 export async function setCoverageStatus(

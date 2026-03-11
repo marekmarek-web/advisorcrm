@@ -28,6 +28,8 @@ import { ContactOpenTasksPreview } from "./ContactOpenTasksPreview";
 import { ContactNotesSection } from "./ContactNotesSection";
 import { ContactOverviewKpi } from "./ContactOverviewKpi";
 import { ContactLastNotePreview } from "./ContactLastNotePreview";
+import { ContactProductsPreview } from "./ContactProductsPreview";
+import { ContactAiAnalysisCard } from "./ContactAiAnalysisCard";
 import { ClientCoverageWidget } from "@/app/components/contacts/ClientCoverageWidget";
 
 export default async function ContactDetailPage({
@@ -45,16 +47,10 @@ export default async function ContactDetailPage({
   const overviewContent = (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
       <div className="xl:col-span-2 space-y-6">
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-50">
-            <h2 className="text-lg font-black text-slate-900">Pokrytí produktů</h2>
-          </div>
-          <div className="p-6">
-            <ClientCoverageWidget contactId={id} />
-          </div>
-        </div>
+        <ClientCoverageWidget contactId={id} />
         <ContactOverviewKpi contactId={id} />
         <ContactLastNotePreview contactId={id} />
+        <ContactProductsPreview contactId={id} />
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-50">
             <h2 className="text-lg font-black text-slate-900">Kontaktní údaje</h2>
@@ -157,6 +153,7 @@ export default async function ContactDetailPage({
 
       <aside className="xl:col-span-1 space-y-6">
         <ContactOpenTasksPreview contactId={id} />
+        <ContactAiAnalysisCard />
         {household && <ContactHouseholdCard household={household} />}
       </aside>
     </div>

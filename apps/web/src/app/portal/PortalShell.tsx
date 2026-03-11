@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef, Suspense } from "react";
 import { PortalSidebar, PORTAL_SIDEBAR_COLLAPSED_PX } from "./PortalSidebar";
 import { PortalHeaderSearch, type PortalHeaderSearchHandle } from "./PortalHeaderSearch";
+import { QuickNewMenu } from "./QuickNewMenu";
 import { NotificationBell } from "./NotificationBell";
 import { UserMenu } from "@/app/components/UserMenu";
 import { ToastProvider } from "@/app/components/Toast";
@@ -119,6 +120,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
               </Suspense>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <QuickNewMenu />
               <NotificationBell />
               <UserMenu />
             </div>

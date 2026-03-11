@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { BarChart2 } from "lucide-react";
 import {
   getCoverageForContact,
   setCoverageStatus,
@@ -63,7 +64,7 @@ function StatusIcon({ status }: { status: CoverageStatus }) {
   );
 }
 
-/** Summary bar – počty a progress z reálných dat. */
+/** Samostatný blok „Celkové pokrytí portfolia“ – nad kartou Pokrytí produktů. */
 export function CoverageSummaryBar({ summary }: { summary: CoverageSummary }) {
   const { done, inProgress, none, notRelevant, opportunity, total } = summary;
   const donePct = total ? (done / total) * 100 : 0;
@@ -71,25 +72,31 @@ export function CoverageSummaryBar({ summary }: { summary: CoverageSummary }) {
   const opportunityPct = total ? (opportunity / total) * 100 : 0;
 
   return (
-    <div className="rounded-[var(--wp-radius-lg)] border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">Celkové pokrytí portfolia</h3>
-      <p className="text-sm mb-2">
-        <span className="font-semibold" style={{ color: "var(--wp-success)" }}>{done} hotovo</span>
-        {", "}
-        <span className="font-semibold" style={{ color: "var(--wp-warning)" }}>{inProgress} řeší se</span>
-        {", "}
-        <span className="font-semibold" style={{ color: "var(--wp-accent)" }}>{opportunity} příležitost</span>
-        {", "}
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6 flex flex-col justify-center">
+      <h3 className="font-black text-slate-800 uppercase tracking-widest text-[11px] mb-4">Celkové pokrytí portfolia</h3>
+      <div className="flex gap-2 text-sm font-bold mb-3">
+        <span className="text-emerald-600">{done} hotovo</span>
+        <span className="text-slate-300">,</span>
+        <span className="text-amber-500">{inProgress} řeší se</span>
+        <span className="text-slate-300">,</span>
         <span className="text-slate-500">{none} nic</span>
-        {notRelevant > 0 && <span className="text-slate-400">, {notRelevant} nerelevantní</span>}
-      </p>
-      <div
-        className="flex overflow-hidden rounded-full"
-        style={{ height: 6, background: "var(--wp-border)", maxWidth: 320 }}
-      >
-        <div style={{ width: `${donePct}%`, background: "var(--wp-success)", transition: "width 0.3s" }} />
-        <div style={{ width: `${inProgressPct}%`, background: "var(--wp-warning)", transition: "width 0.3s" }} />
-        <div style={{ width: `${opportunityPct}%`, background: "var(--wp-accent)", transition: "width 0.3s" }} />
+        {opportunity > 0 && (
+          <>
+            <span className="text-slate-300">,</span>
+            <span className="text-indigo-500">{opportunity} příležitost</span>
+          </>
+        )}
+        {notRelevant > 0 && (
+          <>
+            <span className="text-slate-300">,</span>
+            <span className="text-slate-400">{notRelevant} nerelevantní</span>
+          </>
+        )}
+      </div>
+      <div className="h-2 w-full max-w-md mx-auto bg-slate-100 rounded-full overflow-hidden flex">
+        <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${donePct}%` }} />
+        <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${inProgressPct}%` }} />
+        <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${opportunityPct}%` }} />
       </div>
     </div>
   );
@@ -279,6 +286,22 @@ function CoverageItemRow({
   );
 }
 
+/** Barvy karet podle kategorie (spec klienti dash v2). */
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; icon: string }> = {
+  "Pojištění auta": { bg: "bg-indigo-50", border: "border-indigo-100", icon: "text-indigo-400" },
+  "Pojištění majetku": { bg: "bg-yellow-50", border: "border-yellow-100", icon: "text-yellow-500" },
+  "Pojištění odpovědnosti": { bg: "bg-emerald-50", border: "border-emerald-100", icon: "text-emerald-500" },
+  "Pojištění zaměstnanecké odpovědnosti": { bg: "bg-emerald-50", border: "border-emerald-100", icon: "text-emerald-500" },
+  "Životní pojištění": { bg: "bg-rose-50", border: "border-rose-100", icon: "text-rose-400" },
+  "Úvěry": { bg: "bg-amber-50", border: "border-amber-100", icon: "text-blue-500" },
+  "Investice": { bg: "bg-purple-50", border: "border-purple-100", icon: "text-purple-400" },
+  "DPS": { bg: "bg-blue-50", border: "border-blue-100", icon: "text-slate-500" },
+};
+
+function getCategoryStyle(category: string) {
+  return CATEGORY_COLORS[category] ?? { bg: "bg-slate-50", border: "border-slate-100", icon: "text-slate-500" };
+}
+
 /** Karta jedné kategorie (oblasti). */
 function CoverageAreaCard({
   category,
@@ -291,9 +314,14 @@ function CoverageAreaCard({
   contactId: string;
   onRefresh: () => void;
 }) {
+  const style = getCategoryStyle(category);
+  const initial = category.charAt(0).toUpperCase();
   return (
-    <div className="flex flex-col p-4 rounded-[var(--wp-radius-lg)] border border-slate-200 bg-white shadow-sm">
-      <h3 className="font-semibold text-sm text-slate-800 mb-3">{category}</h3>
+    <div className={`flex flex-col p-5 rounded-2xl border ${style.bg} ${style.border}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`text-lg font-black ${style.icon}`} aria-hidden>{initial}</span>
+        <h3 className="font-bold text-sm text-slate-800">{category}</h3>
+      </div>
       <div className="space-y-1.5">
         {items.map((item) => (
           <CoverageItemRow
@@ -363,44 +391,60 @@ export function ClientCoverageWidget({ contactId }: { contactId: string }) {
 
   if (loading) {
     return (
-      <div className="rounded-[var(--wp-radius-lg)] border border-slate-200 bg-white p-6 shadow-sm text-sm text-slate-500">
+      <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-sm text-sm text-slate-500">
         Načítám pokrytí…
       </div>
     );
   }
 
   return (
-    <div className="wp-card rounded-[var(--wp-radius-sm)]" style={{ padding: "var(--wp-space-6)" }}>
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-        <h2 className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--wp-text)" }}>
-          <span style={{ fontSize: 18 }} aria-hidden>📊</span>
-          Pokrytí produktů
-        </h2>
-        <Link
-          href={`/portal/contacts/${contactId}#obchody`}
-          className="font-medium text-sm flex items-center gap-1 min-h-[44px] flex items-center"
-          style={{ color: "var(--wp-accent)" }}
-        >
-          Obchody <span aria-hidden>→</span>
-        </Link>
-      </div>
+    <div className="space-y-6">
+      {/* Samostatný blok Celkové pokrytí portfolia (nad kartou) */}
+      {summary && summary.total > 0 && <CoverageSummaryBar summary={summary} />}
 
-      {summary && <CoverageSummaryBar summary={summary} />}
-
-      <p className="text-xs mt-3 mb-4" style={{ color: "var(--wp-text-muted)" }}>
-        Klikni na položku pro změnu stavu. Data vycházejí ze smluv a obchodů.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-        {Object.entries(byCategory).map(([category, categoryItems]) => (
-          <CoverageAreaCard
-            key={category}
-            category={category}
-            items={categoryItems}
-            contactId={contactId}
-            onRefresh={refetch}
-          />
-        ))}
+      {/* Karta Pokrytí produktů */}
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between">
+          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+            <BarChart2 size={20} className="text-indigo-500" aria-hidden />
+            Pokrytí produktů
+          </h2>
+          <Link
+            href={`/portal/contacts/${contactId}#obchody`}
+            className="text-sm font-black text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 min-h-[44px]"
+          >
+            Obchody <span aria-hidden>→</span>
+          </Link>
+        </div>
+        <div className="p-6">
+          {summary && (
+            <div className="max-w-md mx-auto mb-8 text-center">
+              <div className="flex justify-center gap-2 text-sm font-bold mb-2">
+                <span className="text-emerald-600">{summary.done} hotovo</span>
+                <span className="text-slate-300">,</span>
+                <span className="text-amber-500">{summary.inProgress} řeší se</span>
+                <span className="text-slate-300">,</span>
+                <span className="text-slate-500">{summary.none} nic</span>
+              </div>
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${summary.total ? (summary.done / summary.total) * 100 : 0}%` }} />
+                <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${summary.total ? (summary.inProgress / summary.total) * 100 : 0}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-3">Klikni na položku pro změnu stavu.</p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(byCategory).map(([category, categoryItems]) => (
+              <CoverageAreaCard
+                key={category}
+                category={category}
+                items={categoryItems}
+                contactId={contactId}
+                onRefresh={refetch}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
