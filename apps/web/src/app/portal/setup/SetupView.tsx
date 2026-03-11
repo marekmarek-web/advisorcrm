@@ -35,6 +35,7 @@ import { getQuickActionsConfig, setQuickActionsConfig } from "@/app/actions/pref
 import { listTenantMembers } from "@/app/actions/team";
 import {
   QUICK_ACTIONS_CATALOG,
+  getDefaultQuickActionsConfig,
   type QuickActionId,
 } from "@/lib/quick-actions";
 import { useToast } from "@/app/components/Toast";
@@ -246,18 +247,38 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [quickVisible, setQuickVisible] = useState<Record<string, boolean>>({});
   const [quickLoading, setQuickLoading] = useState(true);
   const [quickSaving, setQuickSaving] = useState(false);
+  const [quickLoadError, setQuickLoadError] = useState(false);
   useEffect(() => {
-    getQuickActionsConfig().then((c) => {
-      const catalogIds = QUICK_ACTIONS_CATALOG.map((a) => a.id);
-      const order = (c.order.length ? c.order.filter((id) => catalogIds.includes(id as QuickActionId)) : [...catalogIds]) as QuickActionId[];
-      const missing = catalogIds.filter((id) => !order.includes(id));
-      setQuickOrder([...order, ...missing]);
-      setQuickVisible(catalogIds.reduce<Record<string, boolean>>((acc, id) => {
-        acc[id] = c.visible[id] !== false;
-        return acc;
-      }, {}));
-      setQuickLoading(false);
-    });
+    getQuickActionsConfig()
+      .then((c) => {
+        const catalogIds = QUICK_ACTIONS_CATALOG.map((a) => a.id);
+        const order = (c.order.length ? c.order.filter((id) => catalogIds.includes(id as QuickActionId)) : [...catalogIds]) as QuickActionId[];
+        const missing = catalogIds.filter((id) => !order.includes(id));
+        setQuickOrder([...order, ...missing]);
+        setQuickVisible(
+          catalogIds.reduce<Record<string, boolean>>((acc, id) => {
+            acc[id] = c.visible[id] !== false;
+            return acc;
+          }, {})
+        );
+        setQuickLoadError(false);
+        setQuickLoading(false);
+      })
+      .catch(() => {
+        const def = getDefaultQuickActionsConfig();
+        const catalogIds = QUICK_ACTIONS_CATALOG.map((a) => a.id);
+        const order = (def.order.length ? def.order.filter((id) => catalogIds.includes(id as QuickActionId)) : [...catalogIds]) as QuickActionId[];
+        const missing = catalogIds.filter((id) => !order.includes(id));
+        setQuickOrder([...order, ...missing]);
+        setQuickVisible(
+          catalogIds.reduce<Record<string, boolean>>((acc, id) => {
+            acc[id] = def.visible[id] !== false;
+            return acc;
+          }, {})
+        );
+        setQuickLoadError(true);
+        setQuickLoading(false);
+      });
   }, []);
 
   const handleSaveQuickActions = useCallback(async () => {
@@ -455,6 +476,11 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                     <p className="text-sm text-slate-500">Načítám…</p>
                   ) : (
                     <div className="space-y-2">
+                      {quickLoadError && (
+                        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-2">
+                          Nastavení se nepodařilo načíst. Zobrazujeme výchozí položky – uložte pro uložení.
+                        </p>
+                      )}
                       {quickOrder.map((id, index) => {
                         const item = QUICK_ACTIONS_CATALOG.find((a) => a.id === id);
                         if (!item) return null;

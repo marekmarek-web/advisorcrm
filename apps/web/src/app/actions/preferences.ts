@@ -12,28 +12,32 @@ export type QuickActionsConfig = {
 };
 
 export async function getQuickActionsConfig(): Promise<QuickActionsConfig> {
-  const auth = await requireAuthInAction();
-  const row = await db
-    .select({ quickActions: advisorPreferences.quickActions })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId)
+  try {
+    const auth = await requireAuthInAction();
+    const row = await db
+      .select({ quickActions: advisorPreferences.quickActions })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, auth.tenantId),
+          eq(advisorPreferences.userId, auth.userId)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  const raw = row[0]?.quickActions;
-  if (!raw || typeof raw !== "object" || !("order" in raw) || !Array.isArray((raw as { order?: string[] }).order)) {
+    const raw = row[0]?.quickActions;
+    if (!raw || typeof raw !== "object" || !("order" in raw) || !Array.isArray((raw as { order?: string[] }).order)) {
+      return getDefaultQuickActionsConfig();
+    }
+    const data = raw as { order: string[]; visible?: Record<string, boolean> };
+    const visible = typeof data.visible === "object" && data.visible !== null ? data.visible : {};
+    return {
+      order: Array.isArray(data.order) ? data.order : getDefaultQuickActionsConfig().order,
+      visible,
+    };
+  } catch {
     return getDefaultQuickActionsConfig();
   }
-  const data = raw as { order: string[]; visible?: Record<string, boolean> };
-  const visible = typeof data.visible === "object" && data.visible !== null ? data.visible : {};
-  return {
-    order: Array.isArray(data.order) ? data.order : getDefaultQuickActionsConfig().order,
-    visible,
-  };
 }
 
 export async function setQuickActionsConfig(
