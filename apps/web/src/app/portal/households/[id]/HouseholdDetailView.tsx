@@ -11,6 +11,8 @@ import {
 } from "@/app/actions/households";
 import type { HouseholdDetail } from "@/app/actions/households";
 import type { OpportunityByHouseholdRow } from "@/app/actions/pipeline";
+import { getFinancialAnalysesForHousehold } from "@/app/actions/financial-analyses";
+import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 import { ConfirmDeleteModal } from "@/app/components/ConfirmDeleteModal";
 import { HouseholdIconDisplay, HouseholdIconPicker } from "./HouseholdIconPicker";
 
@@ -55,6 +57,15 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [analysesList, setAnalysesList] = useState<FinancialAnalysisListItem[]>([]);
+  const [analysesLoading, setAnalysesLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    getFinancialAnalysesForHousehold(household.id)
+      .then((rows) => { if (!cancelled) setAnalysesList(rows); })
+      .finally(() => { if (!cancelled) setAnalysesLoading(false); });
+    return () => { cancelled = true; };
+  }, [household.id]);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1279px)");
     const update = () => setIsMobile(mq.matches);
@@ -236,7 +247,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                 </div>
                 <div className="flex items-center shrink-0">
                   <Link
-                    href={`/portal/analyses?householdId=${household.id}`}
+                    href={`/portal/analyses/financial?householdId=${household.id}`}
                     className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors min-h-[44px]"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -472,15 +483,36 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
 
               {/* Finanční analýzy */}
               <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <h3 className="font-bold text-slate-900 px-4 sm:px-6 py-4 border-b border-slate-100">Finanční analýzy</h3>
-                <div className="p-4 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100">
+                  <h3 className="font-bold text-slate-900">Finanční analýzy</h3>
                   <Link
-                    href={`/portal/analyses?householdId=${household.id}`}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:underline min-h-[44px] items-center"
+                    href={`/portal/analyses/financial?householdId=${household.id}`}
+                    className="inline-flex items-center gap-2 rounded-xl bg-amber-500 text-white px-4 py-2.5 text-sm font-semibold hover:bg-amber-600 transition-colors min-h-[44px]"
                   >
-                    Přehled finančních analýz
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Nová analýza
                   </Link>
+                </div>
+                <div className="p-4 sm:p-6">
+                  {analysesLoading ? (
+                    <p className="text-sm text-slate-500">Načítám…</p>
+                  ) : analysesList.length === 0 ? (
+                    <p className="text-sm text-slate-500">Žádné analýzy. Vytvořte novou.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {analysesList.map((a) => (
+                        <li key={a.id} className="flex items-center justify-between gap-2 py-2 border-b border-slate-50 last:border-0">
+                          <span className="text-sm text-slate-700">
+                            {a.status === "draft" ? "Rozpracováno" : a.status === "completed" ? "Dokončeno" : a.status === "exported" ? "Exportováno" : a.status}
+                          </span>
+                          <span className="text-xs text-slate-400">{new Date(a.updatedAt).toLocaleDateString("cs-CZ")}</span>
+                          <Link href={`/portal/analyses/financial?id=${a.id}`} className="text-sm font-semibold text-amber-600 hover:underline min-h-[44px] flex items-center">
+                            Otevřít
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
 

@@ -198,6 +198,7 @@ export async function createTask(data: {
   description?: string;
   contactId?: string;
   dueDate?: string;
+  analysisId?: string;
 }): Promise<string | null> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
@@ -210,6 +211,7 @@ export async function createTask(data: {
       description: data.description?.trim() || null,
       contactId: data.contactId || null,
       dueDate: data.dueDate || null,
+      analysisId: data.analysisId || null,
       assignedTo: auth.userId,
       createdBy: auth.userId,
     })

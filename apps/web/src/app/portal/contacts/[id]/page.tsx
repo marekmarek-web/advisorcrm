@@ -31,6 +31,7 @@ import { ContactLastNotePreview } from "./ContactLastNotePreview";
 import { ContactProductsPreview } from "./ContactProductsPreview";
 import { ContactAiAnalysisCard } from "./ContactAiAnalysisCard";
 import { ClientCoverageWidget } from "@/app/components/contacts/ClientCoverageWidget";
+import { ContactFinancialAnalysesSection } from "@/app/dashboard/contacts/[id]/ContactFinancialAnalysesSection";
 
 export default async function ContactDetailPage({
   params,
@@ -51,6 +52,7 @@ export default async function ContactDetailPage({
         <ContactOverviewKpi contactId={id} />
         <ContactLastNotePreview contactId={id} />
         <ContactProductsPreview contactId={id} />
+        <ContactFinancialAnalysesSection contactId={id} />
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-50">
             <h2 className="text-lg font-black text-slate-900">Kontaktní údaje</h2>

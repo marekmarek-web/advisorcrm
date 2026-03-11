@@ -1,0 +1,222 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { useFinancialAnalysisStore as useStore } from "@/lib/analyses/financial/store";
+import { selectNetWorth, selectTotalTargetCapital, selectPortfolioFv } from "@/lib/analyses/financial/selectors";
+import { buildReportHTML } from "@/lib/analyses/financial/report";
+import { getGrowthChartData, getAllocationChartData } from "@/lib/analyses/financial/charts";
+import { formatCzk, safeNameForFile } from "@/lib/analyses/financial/formatters";
+import { uploadDocument } from "@/app/actions/documents";
+import { setFinancialAnalysisLastExportedAt } from "@/app/actions/financial-analyses";
+import { FileText, Printer, CloudUpload } from "lucide-react";
+import { Chart, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler } from "chart.js";
+
+Chart.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler);
+
+export function StepSummary() {
+  const data = useStore((s) => s.data);
+  const analysisId = useStore((s) => s.analysisId);
+  const [showPrintReport, setShowPrintReport] = useState(false);
+  const [reportHtml, setReportHtml] = useState("");
+  const [savingToDocs, setSavingToDocs] = useState(false);
+  const chartRefs = useRef<{ growth: Chart | null; allocation: Chart | null }>({ growth: null, allocation: null });
+  const canSaveToDocuments = Boolean(data.clientId);
+
+  const netWorth = selectNetWorth(data);
+  const totalGoals = selectTotalTargetCapital(data);
+  const portfolioFv = selectPortfolioFv(data);
+  const clientName = data.client?.name || "Klient";
+
+  const handlePrintReport = () => {
+    chartRefs.current.growth = null;
+    chartRefs.current.allocation = null;
+    setReportHtml(buildReportHTML(data));
+    setShowPrintReport(true);
+  };
+
+  const handleSaveReportToDocuments = async () => {
+    if (!canSaveToDocuments) return;
+    setSavingToDocs(true);
+    try {
+      const html = buildReportHTML(data);
+      const safe = safeNameForFile(clientName);
+      const date = new Date().toISOString().split("T")[0];
+      const filename = `financni-report-${safe}-${date}.html`;
+      const blob = new Blob([html], { type: "text/html" });
+      const file = new File([blob], filename, { type: "text/html" });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", filename);
+      await uploadDocument(data.clientId!, formData, { tags: ["financial-report"] });
+      if (analysisId) await setFinancialAnalysisLastExportedAt(analysisId);
+    } catch (e) {
+      console.error(e);
+      alert(typeof e === "object" && e && "message" in e ? (e as Error).message : "Nepodařilo se uložit report.");
+    } finally {
+      setSavingToDocs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showPrintReport || !reportHtml) return;
+
+    const drawCharts = () => {
+      const growthCanvas = document.getElementById("pdf-chart-growth") as HTMLCanvasElement | null;
+      const allocationCanvas = document.getElementById("pdf-chart-allocation") as HTMLCanvasElement | null;
+
+      if (growthCanvas) {
+        const { labels, values } = getGrowthChartData(data);
+        chartRefs.current.growth = new Chart(growthCanvas, {
+          type: "line",
+          data: {
+            labels: labels.map(String),
+            datasets: [{ label: "Hodnota portfolia (Kč)", data: values, borderColor: "rgb(15, 23, 42)", backgroundColor: "rgba(15, 23, 42, 0.1)", fill: true }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { title: { display: true, text: "Rok" } },
+              y: { beginAtZero: true },
+            },
+          },
+        });
+      }
+
+      if (allocationCanvas) {
+        const { labels, values } = getAllocationChartData(data);
+        chartRefs.current.allocation = new Chart(allocationCanvas, {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [{ data: values, backgroundColor: ["#0f172a", "#1e40af", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2"] }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "bottom" } },
+          },
+        });
+      }
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.print();
+        }, 300);
+      });
+    };
+
+    const t = setTimeout(drawCharts, 100);
+    return () => {
+      clearTimeout(t);
+      if (chartRefs.current.growth) {
+        chartRefs.current.growth.destroy();
+        chartRefs.current.growth = null;
+      }
+      if (chartRefs.current.allocation) {
+        chartRefs.current.allocation.destroy();
+        chartRefs.current.allocation = null;
+      }
+    };
+  }, [showPrintReport, reportHtml, data]);
+
+  useEffect(() => {
+    const afterPrint = () => setShowPrintReport(false);
+    window.addEventListener("afterprint", afterPrint);
+    return () => window.removeEventListener("afterprint", afterPrint);
+  }, []);
+
+  return (
+    <>
+      <div className="mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Shrnutí</h2>
+        <p className="text-slate-500 mt-1">Přehled a export / tisk reportu.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Klient</span>
+          <div className="text-lg font-bold text-slate-900 mt-1">{clientName || "—"}</div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Čisté jmění</span>
+          <div className="text-lg font-bold text-slate-900 mt-1">{formatCzk(netWorth)}</div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Cíle celkem</span>
+          <div className="text-lg font-bold text-amber-700 mt-1">{formatCzk(totalGoals)}</div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Projekce portfolia (FV)</span>
+          <div className="text-lg font-bold text-slate-800 mt-1">{formatCzk(portfolioFv)}</div>
+        </div>
+      </div>
+
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+        <h3 className="text-slate-800 font-bold mb-2 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-amber-600" />
+          Export / tisk reportu
+        </h3>
+        <p className="text-slate-600 text-sm mb-4">
+          Vygeneruje kompletní report včetně grafů a otevře dialog pro tisk. Pro uložení do PDF zvolte v dialogu tisku „Uložit jako PDF“.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handlePrintReport}
+            className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600"
+          >
+            <Printer className="w-5 h-5" /> Export / tisk reportu
+          </button>
+          {canSaveToDocuments && (
+            <button
+              type="button"
+              onClick={handleSaveReportToDocuments}
+              disabled={savingToDocs}
+              className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-700 text-white font-bold hover:bg-slate-800 disabled:opacity-50"
+            >
+              <CloudUpload className="w-5 h-5" /> {savingToDocs ? "Ukládám…" : "Uložit report do dokumentů"}
+            </button>
+          )}
+        </div>
+        {!canSaveToDocuments && (data.householdId || data.clientId === undefined) && (
+          <p className="text-xs text-slate-500 mt-2">Pro uložení reportu do dokumentů otevřete analýzu z profilu klienta (s clientId).</p>
+        )}
+      </div>
+
+      {showPrintReport && (
+        <div id="report-print-root" className="fixed inset-0 z-[9999] bg-white overflow-auto print:block" style={{ display: "block" }}>
+          <div className="sticky top-0 left-0 right-0 z-10 flex justify-end p-4 bg-white/95 print:hidden border-b border-slate-200">
+            <button
+              type="button"
+              onClick={() => setShowPrintReport(false)}
+              className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 font-semibold text-slate-700"
+              aria-label="Zavřít náhled"
+            >
+              Zavřít
+            </button>
+          </div>
+          <div
+            className="report-content p-6"
+            dangerouslySetInnerHTML={{ __html: reportHtml }}
+          />
+        </div>
+      )}
+
+      <style jsx global>{`
+        @media print {
+          body * { visibility: hidden; }
+          #report-print-root,
+          #report-print-root * { visibility: visible; }
+          #report-print-root {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            overflow: visible !important;
+          }
+        }
+      `}</style>
+    </>
+  );
+}

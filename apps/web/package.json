@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "node node_modules/next/dist/bin/next dev",
     "build": "node node_modules/next/dist/bin/next build",
-    "build:financial-lib": "esbuild src/lib/analyses/financial/index.ts --bundle --format=iife --global-name=FinancialAnalysisLib --outfile=public/financial-analysis-lib.js --platform=browser",
     "start": "node node_modules/next/dist/bin/next start",
     "lint": "node node_modules/next/dist/bin/next lint",
     "test": "vitest run",
@@ -21,6 +20,7 @@
     "@radix-ui/react-tabs": "^1.0.4",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
+    "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "db": "workspace:*",
@@ -29,11 +29,13 @@
     "next": "14.2.32",
     "pdf-lib": "^1.17.1",
     "react": "^18.3.1",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
     "resend": "^4.0.0",
     "styled-jsx": "^5.1.0",
     "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

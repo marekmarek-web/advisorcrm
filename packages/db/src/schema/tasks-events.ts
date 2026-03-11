@@ -1,12 +1,14 @@
 import { pgTable, uuid, text, timestamp, date, time, boolean } from "drizzle-orm/pg-core";
 import { contacts } from "./contacts";
 import { opportunities } from "./pipeline";
+import { financialAnalyses } from "./financial-analyses";
 
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull(),
   contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
   opportunityId: uuid("opportunity_id").references(() => opportunities.id, { onDelete: "set null" }),
+  analysisId: uuid("analysis_id").references(() => financialAnalyses.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   description: text("description"),
   dueDate: date("due_date"),

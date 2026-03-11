@@ -1,0 +1,651 @@
+/**
+ * Financial analysis – report generation (HTML string, insurance computation).
+ * Extracted from financni-analyza.html (Phase 1). Preserves behavior 1:1.
+ */
+
+import type { FinancialAnalysisData } from './types';
+import { CREDIT_WISH_BANKS } from './constants';
+import {
+  totalIncome,
+  totalExpense,
+  totalAssetsFromValues,
+  totalLiabilitiesFromValues,
+  futureRentMonthly,
+  capitalForRenta,
+  investmentFv,
+} from './calculations';
+import { formatCzk, getProductName, getStrategyDesc, getStrategyProfileLabel } from './formatters';
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ----- Insurance computation (same constants and logic as HTML) -----
+const GROSS_FROM_NET_FACTOR = 0.74;
+const RENT_RATE = 0.06;
+const RENT_MULTIPLIER = 200;
+const INVALIDITY_COST_INCREASE = 1.2;
+const RH1 = 1633;
+const RH2 = 2449;
+const RH3 = 4897;
+const MAX_REDUCED_DVZ = 2419;
+
+function calculateReducedDVZ(dvz: number): number {
+  let reduced = 0;
+  if (dvz <= RH1) reduced = dvz * 0.9;
+  else if (dvz <= RH2) reduced = RH1 * 0.9 + (dvz - RH1) * 0.6;
+  else if (dvz <= RH3) reduced = RH1 * 0.9 + (RH2 - RH1) * 0.6 + (dvz - RH2) * 0.3;
+  else reduced = RH1 * 0.9 + (RH2 - RH1) * 0.6 + (RH3 - RH2) * 0.3;
+  return Math.min(reduced, MAX_REDUCED_DVZ);
+}
+
+function estimateInvalidityPension(net: number, isOsvc: boolean): number {
+  const factor = isOsvc ? 0.7 : 1;
+  let pension = 0;
+  if (net <= 20000) pension = Math.round(net * 0.45);
+  else if (net <= 40000) pension = Math.round(9000 + (net - 20000) * 0.35);
+  else if (net <= 60000) pension = Math.round(16000 + (net - 40000) * 0.25);
+  else pension = Math.round(21000 + (net - 60000) * 0.15);
+  return Math.round(pension * factor);
+}
+
+export interface InsuranceResult {
+  netIncome: number;
+  totalExpenses: number;
+  totalLiquidAssets: number;
+  liquidReserve: number;
+  liquidInvestments: number;
+  loansTotal: number;
+  hasPartner: boolean;
+  childrenCount: number;
+  clientAge: number;
+  riskJob: string;
+  isOSVC: boolean;
+  partnerIncome: number;
+  totalParentsIncome: number;
+  invalidity: {
+    needBase: number;
+    needMonthly: number;
+    statePension: number;
+    ownAssetRenta: number;
+    gapMonthly: number;
+    capital: number;
+    rentaFromInsurance: number;
+  };
+  sickness: {
+    DVZ: number;
+    reducedDVZ: number;
+    sicknessDaily: number;
+    sicknessMonthly: number;
+    gapMonthly: number;
+    dailyBenefit: number;
+    totalMonthly: number;
+    reserveMonths: number;
+    optional: boolean;
+    isOSVC: boolean;
+  };
+  tn: { base: number; progress: number; max: number };
+  dailyComp: { daily: number; suggested: boolean; why: string };
+  death: {
+    liabilities: number;
+    familyProtection: number;
+    partnerLumpSum: number;
+    childrenLumpSum: number;
+    incomeReplacementCapital: number;
+    survivorStateSupport: number;
+    reserves: number;
+    coverage: number;
+    individual: boolean;
+  };
+  childInsurance: Array<{
+    name: string;
+    age: number;
+    invalidity: number;
+    tn: number;
+    tnProgress: number;
+    tnMax: number;
+    dailyComp: number;
+  }>;
+  partnerInsurance: {
+    name: string;
+    income: number;
+    invalidity: { capital: number; statePension: number; needMonthly: number };
+    sickness: { sicknessMonthly: number; dailyBenefit: number; gapMonthly: number };
+    tn: { base: number; progress: number; max: number };
+    death: { coverage: number };
+  } | null;
+}
+
+export function computeInsurance(data: FinancialAnalysisData): InsuranceResult {
+  const netIncome = Number(data.cashflow?.incomes?.main) || 0;
+  const partnerIncome = Number(data.cashflow?.incomes?.partner) || 0;
+  const children = data.children || [];
+  const childrenCount = children.length;
+  const loansTotal =
+    (Number(data.liabilities?.mortgage) || 0) +
+    (Number(data.liabilities?.loans) || 0) +
+    (Number(data.liabilities?.other) || 0);
+  const liquidReserve = Number(data.assets?.cash) || 0;
+  const liquidInvestments = Number(data.assets?.investments) || 0;
+  const hasPartner = Boolean(data.client?.hasPartner);
+  const riskJob = (data.insurance?.riskJob as string) || 'low';
+  const invalidity50Plus = Boolean(data.insurance?.invalidity50Plus);
+  const clientAge = parseInt(String(data.client?.age), 10) || 35;
+  const incomeType = data.cashflow?.incomeType || 'zamestnanec';
+  const isOSVC = incomeType === 'osvc';
+
+  const totalLiquidAssets = liquidReserve + liquidInvestments;
+  const totalExpenses = totalExpense(data.cashflow?.expenses ?? {});
+  const totalParentsIncome = netIncome + partnerIncome;
+  const currentYear = new Date().getFullYear();
+
+  // Invalidity
+  const invalidityNeedBase = Math.max(totalExpenses, netIncome);
+  const invalidityNeedMonthly = Math.round(invalidityNeedBase * INVALIDITY_COST_INCREASE);
+  const statePensionD3 = estimateInvalidityPension(netIncome, isOSVC);
+  const ownAssetRentaMonthly = Math.round((totalLiquidAssets * RENT_RATE) / 12);
+  const invalidityGapMonthly = Math.max(0, invalidityNeedMonthly - statePensionD3 - ownAssetRentaMonthly);
+  let invalidityCapital = Math.ceil((invalidityGapMonthly * RENT_MULTIPLIER) / 100000) * 100000;
+  if (invalidity50Plus && clientAge >= 50) invalidityCapital = Math.ceil((invalidityCapital * 0.5) / 100000) * 100000;
+  const invalidityRentaFromInsurance = Math.round(invalidityCapital / RENT_MULTIPLIER);
+
+  // Sickness
+  let sicknessDaily = 0,
+    sicknessMonthly = 0,
+    pnGapMonthly = netIncome,
+    DVZ = 0,
+    reducedDVZ = 0;
+  if (isOSVC) {
+    pnGapMonthly = netIncome;
+  } else {
+    const grossIncome = Math.round(netIncome / GROSS_FROM_NET_FACTOR);
+    DVZ = Math.round((grossIncome * 12) / 365);
+    reducedDVZ = calculateReducedDVZ(DVZ);
+    sicknessDaily = Math.round(reducedDVZ * 0.66);
+    sicknessMonthly = sicknessDaily * 30;
+    pnGapMonthly = Math.max(0, netIncome - sicknessMonthly);
+  }
+  const pnDailyBenefit = Math.ceil(pnGapMonthly / 30 / 100) * 100;
+  const pnTotalMonthly = sicknessMonthly + pnDailyBenefit * 30;
+  const pnReserveMonths = pnGapMonthly > 0 ? Math.floor(liquidReserve / pnGapMonthly) : 999;
+  const pnOptional = !isOSVC && pnReserveMonths >= 3;
+
+  // TN
+  let tnBase = 1000000;
+  if (netIncome >= 100000) tnBase = 3000000;
+  else if (netIncome >= 50000) tnBase = 2000000;
+  else if (netIncome >= 30000) tnBase = 1500000;
+  const tnProgress = 8;
+  const tnMax = tnBase * tnProgress;
+
+  // Daily comp
+  let doDaily = 0,
+    doSuggested = false,
+    doWhy = '';
+  if (riskJob === 'high') {
+    doDaily = 500;
+    doSuggested = true;
+    doWhy = 'Rizikové povolání (manuální práce)';
+  } else if (riskJob === 'medium') {
+    doDaily = 300;
+    doSuggested = true;
+    doWhy = 'Středně rizikové povolání';
+  } else {
+    doDaily = 150;
+    doWhy = 'Volitelné (kancelářská práce)';
+  }
+
+  // Death
+  const survivorStateSupport = 10000;
+  const yearsTo65 = Math.max(0, 65 - clientAge);
+  const partnerLumpSum = hasPartner ? 500000 : 0;
+  let childrenLumpSum = 0;
+  children.forEach((child) => {
+    let childAge = 10;
+    const yearMatch = String(child.birthDate || '').match(/(\d{4})/);
+    if (yearMatch) childAge = currentYear - parseInt(yearMatch[1], 10);
+    const yearsTo18 = Math.max(0, 18 - childAge);
+    childrenLumpSum += 200000 + yearsTo18 * 12 * 5000;
+  });
+  const monthlyNeedForFamily = Math.max(0, netIncome - survivorStateSupport);
+  const incomeReplacementYears = hasPartner ? Math.min(yearsTo65, 20) : 0;
+  const incomeReplacementCapital = monthlyNeedForFamily * 12 * incomeReplacementYears * 0.7;
+  const familyProtection = Math.max(incomeReplacementCapital, partnerLumpSum + childrenLumpSum);
+  const deathNeedTotal = loansTotal + familyProtection;
+  const deathCoverage = Math.ceil(Math.max(0, deathNeedTotal - totalLiquidAssets) / 100000) * 100000;
+  const deathIndividual = !hasPartner && childrenCount === 0 && loansTotal === 0;
+
+  // Child insurance
+  const childInsurance = children.map((child, idx) => {
+    let childAge = 10;
+    const yearMatch = String(child.birthDate || '').match(/(\d{4})/);
+    if (yearMatch) childAge = currentYear - parseInt(yearMatch[1], 10);
+    let invalidityChild: number, tnChild: number, doChild: number;
+    if (totalParentsIncome >= 50000) {
+      invalidityChild = 5000000;
+      tnChild = 2000000;
+      doChild = 500;
+    } else if (totalParentsIncome >= 30000) {
+      invalidityChild = 4000000;
+      tnChild = 1500000;
+      doChild = 400;
+    } else {
+      invalidityChild = 3000000;
+      tnChild = 1000000;
+      doChild = 300;
+    }
+    return {
+      name: child.name || `Dítě ${idx + 1}`,
+      age: childAge,
+      invalidity: invalidityChild,
+      tn: tnChild,
+      tnProgress: 8,
+      tnMax: tnChild * 8,
+      dailyComp: doChild,
+    };
+  });
+
+  // Partner insurance
+  let partnerInsurance: InsuranceResult['partnerInsurance'] = null;
+  if (hasPartner && partnerIncome > 0) {
+    const partnerGross = Math.round(partnerIncome / GROSS_FROM_NET_FACTOR);
+    const partnerDVZ = Math.round((partnerGross * 12) / 365);
+    const partnerReducedDVZ = calculateReducedDVZ(partnerDVZ);
+    const partnerSicknessDaily = Math.round(partnerReducedDVZ * 0.66);
+    const partnerSicknessMonthly = partnerSicknessDaily * 30;
+    const partnerPnGap = Math.max(0, partnerIncome - partnerSicknessMonthly);
+    const partnerPnDaily = Math.ceil(partnerPnGap / 30 / 100) * 100;
+    const partnerInvalidityNeed = Math.round(partnerIncome * INVALIDITY_COST_INCREASE);
+    const partnerStatePension = estimateInvalidityPension(partnerIncome, false);
+    const partnerInvalidityGap = Math.max(0, partnerInvalidityNeed - partnerStatePension);
+    let partnerInvalidityCapital = Math.ceil((partnerInvalidityGap * RENT_MULTIPLIER) / 100000) * 100000;
+    const partnerBirthYear = data.partner?.birthDate?.match(/(\d{4})/);
+    const partnerAge = partnerBirthYear ? currentYear - parseInt(partnerBirthYear[1], 10) : 35;
+    if (invalidity50Plus && partnerAge >= 50) partnerInvalidityCapital = Math.ceil((partnerInvalidityCapital * 0.5) / 100000) * 100000;
+    let partnerTnBase = 1000000;
+    if (partnerIncome >= 100000) partnerTnBase = 3000000;
+    else if (partnerIncome >= 50000) partnerTnBase = 2000000;
+    else if (partnerIncome >= 30000) partnerTnBase = 1500000;
+    partnerInsurance = {
+      name: data.partner?.name || 'Partner',
+      income: partnerIncome,
+      invalidity: { capital: partnerInvalidityCapital, statePension: partnerStatePension, needMonthly: partnerInvalidityNeed },
+      sickness: { sicknessMonthly: partnerSicknessMonthly, dailyBenefit: partnerPnDaily, gapMonthly: partnerPnGap },
+      tn: { base: partnerTnBase, progress: 8, max: partnerTnBase * 8 },
+      death: { coverage: Math.ceil((loansTotal * 0.5) / 100000) * 100000 },
+    };
+  }
+
+  return {
+    netIncome,
+    totalExpenses,
+    totalLiquidAssets,
+    liquidReserve,
+    liquidInvestments,
+    loansTotal,
+    hasPartner,
+    childrenCount,
+    clientAge,
+    riskJob,
+    isOSVC,
+    partnerIncome,
+    totalParentsIncome,
+    invalidity: {
+      needBase: invalidityNeedBase,
+      needMonthly: invalidityNeedMonthly,
+      statePension: statePensionD3,
+      ownAssetRenta: ownAssetRentaMonthly,
+      gapMonthly: invalidityGapMonthly,
+      capital: invalidityCapital,
+      rentaFromInsurance: invalidityRentaFromInsurance,
+    },
+    sickness: {
+      DVZ,
+      reducedDVZ,
+      sicknessDaily,
+      sicknessMonthly,
+      gapMonthly: pnGapMonthly,
+      dailyBenefit: pnDailyBenefit,
+      totalMonthly: pnTotalMonthly,
+      reserveMonths: pnReserveMonths,
+      optional: pnOptional,
+      isOSVC,
+    },
+    tn: { base: tnBase, progress: tnProgress, max: tnMax },
+    dailyComp: { daily: doDaily, suggested: doSuggested, why: doWhy },
+    death: {
+      liabilities: loansTotal,
+      familyProtection,
+      partnerLumpSum,
+      childrenLumpSum,
+      incomeReplacementCapital,
+      survivorStateSupport,
+      reserves: totalLiquidAssets,
+      coverage: deathCoverage,
+      individual: deathIndividual,
+    },
+    childInsurance,
+    partnerInsurance,
+  };
+}
+
+// ----- Report HTML builders -----
+function renderPasivaDetail(liabilities: FinancialAnalysisData['liabilities']): string {
+  if (!liabilities) return '';
+  const md = liabilities.mortgageDetails || { rate: 0, fix: 0, pay: 0 };
+  const list = liabilities.loansList || [];
+  const hasMortgage = (liabilities.mortgage || 0) > 0;
+  const hasMortgageDetail = hasMortgage && (md.rate || md.fix || md.pay);
+  const otherDesc = liabilities.otherDesc || '';
+  const hasOther = (liabilities.other || 0) > 0;
+  if (!hasMortgageDetail && list.length === 0 && !hasOther && !otherDesc) return '';
+  let html = '<div style="margin-top: 6mm; font-size: 9pt; color: #475569;">';
+  if (hasMortgage && hasMortgageDetail) {
+    html += `<div style="margin-bottom: 3mm;"><strong>Hypotéka – detail:</strong> Úrok ${Number(md.rate) || 0} %, Fixace ${Number(md.fix) || 0} let, Splátka ${formatCzk(Number(md.pay) || 0)}/měs.</div>`;
+  }
+  if (list.length > 0) {
+    html += '<div style="margin-bottom: 2mm;"><strong>Úvěry – detail:</strong></div><table class="table" style="width: 100%; font-size: 9pt;"><thead><tr><th>Typ / Popis</th><th style="text-align:right">Zůstatek</th><th style="text-align:center">Úrok %</th><th style="text-align:center">Splatnost</th><th style="text-align:right">Splátka</th></tr></thead><tbody>';
+    list.forEach((l) => {
+      const type = l.type || 'Úvěr';
+      const desc = l.desc ? ' – ' + escapeHtml(String(l.desc)) : '';
+      const balance = Number(l.balance) || 0;
+      const rate = Number(l.rate) || 0;
+      const fix = Number(l.fix) || 0;
+      const pay = Number(l.pay) || 0;
+      html += `<tr><td>${type}${desc}</td><td style="text-align:right">${formatCzk(balance)}</td><td style="text-align:center">${rate}</td><td style="text-align:center">${fix} let</td><td style="text-align:right">${formatCzk(pay)}</td></tr>`;
+    });
+    html += '</tbody></table>';
+  }
+  if (hasOther && otherDesc) html += '<div style="margin-top: 3mm;"><strong>Ostatní závazky:</strong> ' + escapeHtml(otherDesc) + '</div>';
+  html += '</div>';
+  return html;
+}
+
+function renderGoalsRows(goals: FinancialAnalysisData['goals']): string {
+  if (!goals?.length) return '<tr><td colspan="4" style="text-align:center; color:#94a3b8">Žádné cíle</td></tr>';
+  return goals
+    .map(
+      (g) =>
+        `<tr><td><span style="display: inline-block; background: #f1f5f9; color: #334155; padding: 1.5mm 4mm; border-radius: 2mm; font-weight: 600; font-size: 9pt;">${escapeHtml(g.name)}</span></td><td style="text-align:center">${g.years ?? 0} let</td><td style="text-align:right">${formatCzk(Math.round(g.computed?.fvTarget ?? 0))}</td><td style="text-align:right; font-weight:bold; color:#ffcc00;">${formatCzk(Math.round(g.computed?.pmt ?? 0))}</td></tr>`
+    )
+    .join('');
+}
+
+function renderInvestmentsRows(data: FinancialAnalysisData): string {
+  const invs = data.investments || [];
+  const conservative = data.strategy?.conservativeMode ?? false;
+  const getBadgeClass = (type: string) => {
+    if (type === 'lump') return 'inv-badge inv-badge-lump';
+    if (type === 'pension') return 'inv-badge inv-badge-pension';
+    return 'inv-badge inv-badge-monthly';
+  };
+  const getTypeName = (type: string) => (type === 'lump' ? 'Jednorázová' : type === 'pension' ? 'Penzijní' : 'Pravidelná');
+  return invs
+    .filter((i) => (i.amount || 0) > 0)
+    .map((i) => {
+      const displayRate = Math.max(0, (i.annualRate || 0) - (conservative ? 0.02 : 0));
+      const fv = i.computed?.fv ?? 0;
+      return `<tr><td><span class="fund-name">${getProductName(i.productKey)}</span></td><td><span class="${getBadgeClass(i.type)}">${getTypeName(i.type)}</span></td><td style="text-align:right; font-variant-numeric: tabular-nums;">${(i.amount ?? 0).toLocaleString('cs-CZ')} ${i.type === 'lump' ? 'Kč' : 'Kč/m'}</td><td><span class="yield-pill">${(displayRate * 100).toFixed(1)}%</span></td><td style="text-align:right; font-weight:700; color:#0B3A7A; font-variant-numeric: tabular-nums;">${formatCzk(Math.round(fv))}</td></tr>`;
+    })
+    .join('');
+}
+
+function renderInvestmentsTotal(data: FinancialAnalysisData): string {
+  const invs = data.investments || [];
+  let totalMonthly = 0,
+    totalLump = 0,
+    totalFV = 0;
+  invs.forEach((i) => {
+    if (i.type === 'lump') totalLump += i.amount ?? 0;
+    else totalMonthly += i.amount ?? 0;
+    totalFV += i.computed?.fv ?? 0;
+  });
+  return `<tr><td colspan="5" style="padding: 3mm;"><div class="total-summary-bar"><strong style="font-size: 10pt; color: #0f172a;">CELKEM</strong><div style="display: flex; gap: 3mm;"><div class="total-chip"><span class="total-chip-label">Jednorázově:</span><span class="total-chip-value">${totalLump.toLocaleString('cs-CZ')} Kč</span></div><div class="total-chip"><span class="total-chip-label">Měsíčně:</span><span class="total-chip-value">${totalMonthly.toLocaleString('cs-CZ')} Kč/m</span></div></div><div class="total-fv">${formatCzk(Math.round(totalFV))}</div></div></td></tr>`;
+}
+
+function renderCreditWishesPDF(list: FinancialAnalysisData['newCreditWishList']): string {
+  if (!Array.isArray(list) || list.length === 0) return '';
+  const purposeLabels: Record<string, string> = {
+    'bydleni-koupě': 'Bydlení – koupě nemovitosti',
+    'bydleni-rekonstrukce': 'Bydlení – rekonstrukce',
+    auto: 'Auto / vozidlo',
+    konsolidace: 'Konsolidace úvěrů',
+    ostatni: 'Ostatní',
+  };
+  const subTypeLabels: Record<string, string> = {
+    standard: 'Klasická',
+    investment: 'Investiční',
+    american: 'Americká',
+    consumer: 'Spotřebitelský',
+    auto: 'Auto / Leasing',
+    consolidation: 'Konsolidace',
+  };
+  let html = '<div class="pdf-section" style="margin-top: 10mm;"><div class="h2">Úvěry / hypotéky k vyřízení</div><table class="table" style="width: 100%; font-size: 9pt; margin-top: 5mm;"><thead><tr><th>Typ / Účel</th><th style="text-align:right">Částka</th><th style="text-align:center">LTV / Akontace</th><th style="text-align:center">Úrok %</th><th style="text-align:right">Měsíčně</th><th style="text-align:right">Celkem zaplatíte</th></tr></thead><tbody>';
+  list.forEach((item) => {
+    const bank = CREDIT_WISH_BANKS.find((b) => b.id === item.selectedBankId);
+    const bankName = bank ? bank.name : item.selectedBankId === 'other' ? 'Jiná banka' : 'Nezadáno';
+    const productLabel = item.product === 'mortgage' ? 'Hypotéka' : 'Úvěr';
+    const subTypeLabel = subTypeLabels[item.subType] ?? item.subType;
+    const purposeLabel = purposeLabels[item.purpose] ?? item.purpose;
+    let ltvAko = '—';
+    if (item.product === 'mortgage' && item.ltvPercent != null) ltvAko = item.ltvPercent + ' %';
+    else if (item.product === 'loan' && item.subType === 'auto' && item.akoPercent != null) ltvAko = item.akoPercent + ' %';
+    const rate = (item.estimatedRate ?? item.customRate ?? 0).toFixed(2).replace('.', ',');
+    html += `<tr><td><strong>${productLabel}</strong> (${subTypeLabel})<br/><span style="font-size:8pt; color:#64748b;">${purposeLabel}</span><br/><span style="font-size:8pt; color:#94a3b8;">${bankName}</span></td><td style="text-align:right">${Math.round(item.amount).toLocaleString('cs-CZ')} Kč</td><td style="text-align:center">${ltvAko}</td><td style="text-align:center">${rate} %</td><td style="text-align:right"><strong>${formatCzk(Math.round(item.estimatedMonthly))}</strong></td><td style="text-align:right"><strong>${formatCzk(Math.round(item.estimatedTotal))}</strong></td></tr>`;
+  });
+  html += '</tbody></table><p style="margin-top: 4mm; font-size: 8pt; color: #64748b;">Poznámka: Úrokové sazby jsou orientační.</p></div>';
+  return html;
+}
+
+function renderGoalCoverage(data: FinancialAnalysisData): string {
+  const totalTarget = (data.goals || []).reduce((acc, g) => acc + (g.computed?.fvTarget ?? 0), 0);
+  const totalFV = (data.investments || []).reduce((acc, i) => acc + (i.computed?.fv ?? 0), 0);
+  const coverage = totalTarget > 0 ? (totalFV / totalTarget) * 100 : 0;
+  const diff = totalFV - totalTarget;
+  const status = diff >= 0 ? 'Pokryto' : 'Chybí';
+  const color = diff >= 0 ? 'green' : 'red';
+  return `<div style="display:flex; justify-content:space-between;"><span>Celkem cíle: <strong>${formatCzk(Math.round(totalTarget))}</strong></span><span>Potenciál portfolia: <strong>${formatCzk(Math.round(totalFV))}</strong></span></div><div style="margin-top:5px; font-weight:bold; color:${color};">${status}: ${formatCzk(Math.abs(Math.round(diff)))} (${coverage.toFixed(0)} %)</div>`;
+}
+
+function renderRentaFormula(goals: FinancialAnalysisData['goals']): string {
+  const rentaGoals = (goals || []).filter((g) => g.type === 'renta' && ((Number(g.amount) || 0) > 0 || (g.computed?.fvTarget || 0) > 0));
+  if (rentaGoals.length === 0) return '';
+  const i = 0.03;
+  let html =
+    '<div style="background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; margin-top: 12px; font-size: 10pt; color: #334155;"><div style="font-weight: 700; margin-bottom: 6px; color: #0f172a;">Výpočet cíle „Finanční nezávislost (Renta)“</div><p style="margin: 0 0 6px 0;">Budoucí hodnota měsíční renty s ohledem na inflaci (3 % p.a.):</p><p style="margin: 0 0 4px 0; font-family: monospace; font-size: 11pt;"><strong>FV = P × (1 + i)<sup>n</sup></strong></p><p style="margin: 0 0 8px 0; font-size: 9pt;">kde <strong>P</strong> = dnešní požadovaná měsíční renta (Kč), <strong>i</strong> = 0,03 (3 % inflace), <strong>n</strong> = počet let do cíle.</p><p style="margin: 0 0 6px 0;">Potřebný kapitál k zajištění budoucí renty (předpoklad 6% výnosu):</p><p style="margin: 0 0 8px 0; font-family: monospace; font-size: 10pt;"><strong>Potřebný kapitál = (budoucí renta × 12) / 0,06</strong></p>';
+  rentaGoals.forEach((g, idx) => {
+    const P = Number(g.amount) || 0;
+    const n = Math.max(1, Number(g.years) || Number(g.horizon) || 1);
+    if (P <= 0) return;
+    const FV = P * Math.pow(1 + i, n);
+    const capital = (FV * 12) / 0.06;
+    html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;"><strong>Příklad ${rentaGoals.length > 1 ? idx + 1 + ': ' : ''}</strong>P = ${Math.round(P).toLocaleString('cs-CZ')} Kč/měs, n = ${n} let → FV = ${Math.round(FV).toLocaleString('cs-CZ')} Kč/měs → potřebný kapitál <strong>${Math.round(capital).toLocaleString('cs-CZ')} Kč</strong>.</div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function pdfClientExtra(client: FinancialAnalysisData['client']): string {
+  if (!client) return '';
+  const occ = client.occupation ? 'Povolání: ' + client.occupation : '';
+  const sport = client.sports ? 'Sporty: ' + client.sports : '';
+  if (!occ && !sport) return '';
+  return '<p style="margin-bottom: 4px; color: #64748b; font-size: 11px;">' + (occ ? occ + (sport ? '<br/>' : '') : '') + (sport ? sport : '') + '</p>';
+}
+
+function buildPages34(data: FinancialAnalysisData): string {
+  const today = new Date().toLocaleDateString('cs-CZ');
+  const clientName = data.client?.name || 'Klient';
+  const profileLabel = getStrategyProfileLabel(data.strategy?.profile ?? 'balanced');
+  const strategyDesc = getStrategyDesc(data.strategy?.profile ?? 'balanced');
+  const fundCount = (data.investments || []).filter((i) => (i.amount || 0) > 0).length;
+
+  return `
+    <section class="pdf-page">
+        <div class="pdf-section">
+            <div class="h2">Finanční cíle & Pokrytí</div>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size:12px;">${renderGoalCoverage(data)}</div>
+            <table class="table" style="margin-bottom: 30px;">
+                <thead><tr><th>Cíl</th><th style="text-align: center;">Horizont</th><th style="text-align: right;">Cílová částka</th><th style="text-align: right;">Potřeba měsíčně</th></tr></thead>
+                <tbody>${renderGoalsRows(data.goals)}</tbody>
+            </table>
+            ${renderRentaFormula(data.goals)}
+        </div>
+        ${renderCreditWishesPDF(data.newCreditWishList)}
+        <div class="pdf-section">
+            <div class="h2">Doporučené portfolio</div>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0 0 5px 0; font-size: 14px;"><strong>Strategie:</strong> ${profileLabel}</p>
+                <p style="margin: 0; font-size: 12px; color: #64748b;">${strategyDesc}</p>
+            </div>
+            <table class="table table-5col">
+                <thead><tr><th>Produkt</th><th style="text-align: center;">Typ</th><th style="text-align: right;">Vklad</th><th style="text-align: center;">Výnos</th><th style="text-align: right; color:#0B3A7A;">Předpoklad FV</th></tr></thead>
+                <tbody>${renderInvestmentsRows(data)}</tbody>
+                <tfoot>${renderInvestmentsTotal(data)}</tfoot>
+            </table>
+        </div>
+    </section>
+    <section class="pdf-page">
+        <div class="h2">Vývoj hodnoty majetku</div>
+        <div style="height: 90mm; width: 100%;"><canvas id="pdf-chart-growth"></canvas></div>
+        <div class="h2" style="margin-top:15px;">Rozložení aktiv</div>
+        <div style="height: 70mm; width: 100%;"><canvas id="pdf-chart-allocation"></canvas></div>
+        <div style="margin-top: 30px; font-size: 10px; color: #94a3b8; line-height: 1.4; border-top: 1px solid #e2e8f0; padding-top: 10px;"><strong>Upozornění:</strong> Minulé výnosy nejsou zárukou budoucích. Výpočty jsou modelové.</div>
+    </section>
+  `;
+}
+
+function renderInsurancePage(data: FinancialAnalysisData): string {
+  const ins = computeInsurance(data);
+  const fmt = (n: number) => Math.round(n).toLocaleString('cs-CZ');
+  if (ins.netIncome === 0) {
+    return `<section class="pdf-page"><div class="pdf-section"><div class="h2">Životní pojištění</div><div class="interpretation"><p><strong>Upozornění:</strong> Pro výpočet doporučeného pojištění je nutné zadat měsíční příjem v sekci Cashflow.</p></div></div></section>`;
+  }
+  const clientName = data.client?.name || 'Klient';
+  let pages = `<section class="pdf-page"><div class="pdf-section"><div class="h2">Životní pojištění – ${escapeHtml(clientName)}</div><p style="font-size: 10pt; color: #64748b; margin-bottom: 4mm;">Příjem: <strong>${fmt(ins.netIncome)} Kč</strong> čistého měsíčně ${ins.isOSVC ? '<span style="background: #fef3c7; color: #92400e; padding: 1mm 2mm; border-radius: 2mm; font-size: 8pt;">OSVČ</span>' : ''}</p><table class="table" style="margin-bottom: 6mm;"><thead><tr><th style="width: 50%;">Rizika</th><th style="width: 50%; text-align: right;">Pojistná částka</th></tr></thead><tbody><tr><td>Invalidita 2.–3. stupeň</td><td style="text-align: right; font-weight: bold;">${fmt(ins.invalidity.capital)} Kč</td></tr><tr><td>Trvalé následky</td><td style="text-align: right; font-weight: bold;">${fmt(ins.tn.base)} Kč (progrese ${ins.tn.progress}×)</td></tr><tr><td>Pracovní neschopnost</td><td style="text-align: right; font-weight: bold;">${fmt(ins.sickness.dailyBenefit)} Kč / den</td></tr><tr><td>Smrt</td><td style="text-align: right; font-weight: bold;">${ins.death.individual ? 'INDIVIDUÁLNĚ' : fmt(ins.death.coverage) + ' Kč'}</td></tr></tbody></table></div></section>`;
+  if (ins.partnerInsurance) {
+    const p = ins.partnerInsurance;
+    pages += `<section class="pdf-page"><div class="pdf-section"><div class="h2">Životní pojištění – ${escapeHtml(p.name)}</div><p style="font-size: 10pt; color: #64748b;">Příjem: <strong>${fmt(p.income)} Kč</strong></p><table class="table"><tbody><tr><td>Invalidita</td><td style="text-align: right;">${fmt(p.invalidity.capital)} Kč</td></tr><tr><td>PN</td><td style="text-align: right;">${fmt(p.sickness.dailyBenefit)} Kč/den</td></tr><tr><td>Smrt</td><td style="text-align: right;">${fmt(p.death.coverage)} Kč</td></tr></tbody></table></div></section>`;
+  }
+  if (ins.childInsurance.length > 0) {
+    pages += '<section class="pdf-page"><div class="pdf-section"><div class="h2">Doporučení pro děti</div><p style="font-size: 10pt;">Invalidita 3–5 mil. Kč, Trvalé následky max 2 mil. Kč.</p></div></section>';
+  }
+  return pages;
+}
+
+/**
+ * Build full report HTML string (for #report-root). Same structure as original buildReportHTML + buildPages34 + renderInsurancePage.
+ */
+export function buildReportHTML(data: FinancialAnalysisData): string {
+  const today = new Date().toLocaleDateString('cs-CZ');
+  const clientName = data.client?.name || 'Klient';
+  const assets = data.assets || {};
+  const liabilities = data.liabilities || {};
+  const totalAssets = totalAssetsFromValues(assets);
+  const totalLiabilities = totalLiabilitiesFromValues(liabilities);
+  const netWorthVal = totalAssets - totalLiabilities;
+  const inc = data.cashflow?.incomes ?? {};
+  const exp = data.cashflow?.expenses ?? {};
+  const totalInc = totalIncome(inc);
+  const totalExp = totalExpense(exp);
+  const otherIncSum = (inc.otherDetails || []).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+  const otherExpSum = (exp.otherDetails || []).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+  const surplusVal = totalInc - totalExp;
+  const reserveCash = data.cashflow?.reserveCash ?? 0;
+  const monthlyExp = totalExp;
+  const reserveMonths = monthlyExp > 0 ? (reserveCash / monthlyExp).toFixed(1) : 'N/A';
+
+  let netWorthText = 'Vaše čisté jmění je kladné, což značí zdravý finanční základ.';
+  if (netWorthVal < 0) netWorthText = 'Záporné čisté jmění je často způsobeno hypotékou na začátku splácení. Důležité je, že hodnota nemovitosti v čase roste a dluh klesá.';
+  let reserveText = `Rezerva pokrývá cca ${reserveMonths} měsíců výdajů.`;
+  if (reserveCash < 3 * monthlyExp) reserveText += ' Doporučujeme navýšit rezervu alespoň na 3-6 měsíců výdajů.';
+  else reserveText += ' Výše rezervy je dostatečná.';
+
+  let maxAsset = 0;
+  let maxAssetName = '';
+  if ((assets.realEstate || 0) > maxAsset) {
+    maxAsset = assets.realEstate!;
+    maxAssetName = 'Nemovitosti';
+  }
+  if ((assets.investments || 0) > maxAsset) {
+    maxAsset = assets.investments!;
+    maxAssetName = 'Investice';
+  }
+  if ((assets.cash || 0) > maxAsset) {
+    maxAsset = assets.cash!;
+    maxAssetName = 'Hotovost';
+  }
+  let balanceComment = `Největší položkou v majetku jsou ${maxAssetName}. `;
+  if ((liabilities.loans || 0) > 0) balanceComment += 'Pozor na spotřebitelské úvěry, doporučujeme prioritně doplatit.';
+  else balanceComment += 'Zadlužení je pod kontrolou.';
+
+  return `
+<div class="pdf">
+  <section class="pdf-page pdf-title-page">
+    <div style="text-align: center;">
+      <div style="width: 80px; height: 80px; background: #0a0f29; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; margin: 0 auto 20px;">M</div>
+      <h1 class="h1" style="font-size: 40px; margin-bottom: 10px;">FINANČNÍ PLÁN</h1>
+      <p style="font-size: 18px; color: #64748b; margin-bottom: 50px;">Komplexní strategie pro vaši budoucnost</p>
+      <div style="display: inline-block; text-align: left; background: #f8fafc; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; min-width: 300px;">
+        <p style="margin-bottom: 10px; color: #64748b; font-size: 12px; text-transform: uppercase; font-weight: bold;">Klient</p>
+        <h2 style="font-size: 24px; color: #0f172a; margin: 0 0 20px 0;">${escapeHtml(clientName)}</h2>
+        ${pdfClientExtra(data.client)}
+        <p style="margin-bottom: 10px; margin-top: 12px; color: #64748b; font-size: 12px; text-transform: uppercase; font-weight: bold;">Datum vyhotovení</p>
+        <h3 style="font-size: 16px; color: #0f172a; margin: 0;">${today}</h3>
+      </div>
+    </div>
+  </section>
+  <section class="pdf-page">
+    <div class="pdf-section">
+      <div class="h2">Přehled situace</div>
+      <div class="kpi">
+        <div class="box"><span class="lbl">Čisté jmění</span><div class="val" style="color: #0B3A7A;">${formatCzk(netWorthVal)}</div></div>
+        <div class="box"><span class="lbl">Měsíční bilance</span><div class="val" style="color: #ffcc00;">${formatCzk(surplusVal)}</div></div>
+        <div class="box"><span class="lbl">Rezerva</span><div class="val" style="color: #0f172a;">${formatCzk(reserveCash)}</div></div>
+      </div>
+      <div class="interpretation"><p><strong>Interpretace:</strong> ${netWorthText} ${reserveText}</p></div>
+    </div>
+    <div class="pdf-section">
+      <div class="h2">Majetek vs. Závazky</div>
+      <div style="font-size: 10pt; color: #52607a; margin-bottom: 2mm;"><em>Rychlá analýza: ${balanceComment}</em></div>
+      <div style="display: flex; gap: 8mm;">
+        <div style="flex: 1;">
+          <table class="table"><thead><tr><th colspan="2">Aktiva</th></tr></thead><tbody>
+            <tr><td>Hotovost & Rezerva</td><td style="text-align:right">${formatCzk(assets.cash || 0)}</td></tr>
+            <tr><td>Nemovitosti</td><td style="text-align:right">${formatCzk(assets.realEstate || 0)}</td></tr>
+            <tr><td>Investice</td><td style="text-align:right">${formatCzk(assets.investments || 0)}</td></tr>
+            <tr><td>Penzijní</td><td style="text-align:right">${formatCzk(assets.pension || 0)}</td></tr>
+            <tr><td>Ostatní</td><td style="text-align:right">${formatCzk(assets.other || 0)}</td></tr>
+            <tr style="font-weight:bold; background:#f8fafc"><td>CELKEM</td><td style="text-align:right">${formatCzk(totalAssets)}</td></tr>
+          </tbody></table>
+        </div>
+        <div style="flex: 1;">
+          <table class="table"><thead><tr><th colspan="2">Pasiva</th></tr></thead><tbody>
+            <tr><td>Hypotéka</td><td style="text-align:right">${formatCzk(liabilities.mortgage || 0)}</td></tr>
+            <tr><td>Úvěry</td><td style="text-align:right">${formatCzk(liabilities.loans || 0)}</td></tr>
+            <tr><td>Ostatní</td><td style="text-align:right">${formatCzk(liabilities.other || 0)}</td></tr>
+            <tr style="font-weight:bold; background:#f8fafc"><td>CELKEM</td><td style="text-align:right">${formatCzk(totalLiabilities)}</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+      ${renderPasivaDetail(liabilities)}
+    </div>
+    <div class="pdf-section" style="margin-top: 10mm;">
+      <div class="h2">Cashflow</div>
+      <table class="table">
+        <thead><tr><th>Příjmy</th><th style="text-align: right;">Částka</th><th>Výdaje</th><th style="text-align: right;">Částka</th></tr></thead>
+        <tbody>
+          <tr><td>Hlavní příjem</td><td style="text-align:right">${formatCzk(inc.main || 0)}</td><td>Bydlení & Energie</td><td style="text-align:right">${formatCzk((exp.housing || 0) + (exp.energy || 0))}</td></tr>
+          <tr><td>Partner</td><td style="text-align:right">${formatCzk(inc.partner || 0)}</td><td>Spotřeba & Jídlo</td><td style="text-align:right">${formatCzk((exp.food || 0) + (exp.transport || 0))}</td></tr>
+          <tr><td>Ostatní</td><td style="text-align:right">${formatCzk(otherIncSum)}</td><td>Ostatní výdaje</td><td style="text-align:right">${formatCzk(otherExpSum + (exp.children || 0) + (exp.insurance || 0))}</td></tr>
+          <tr style="font-weight:bold; background:#f8fafc"><td>CELKEM</td><td style="text-align:right">${formatCzk(totalInc)}</td><td>CELKEM</td><td style="text-align:right">${formatCzk(totalExp)}</td></tr>
+          <tr style="background:#e0f2fe; color:#0B3A7A; font-weight:800;"><td colspan="3">Volná kapacita na investice</td><td style="text-align:right">${formatCzk(surplusVal)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  ${buildPages34(data)}
+  ${renderInsurancePage(data)}
+</div>
+  `.trim();
+}
