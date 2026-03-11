@@ -83,6 +83,13 @@
   --wp-fw-semibold: 600;
   --wp-fw-bold: 700;
 
+  /* ── Z-index (drawer above sticky/fixed content, AI widget below drawer) ── */
+  --z-drawer-overlay: 100;
+  --z-drawer-panel: 101;
+  --z-sticky-header: 50;
+  --z-fixed-cta: 45;
+  --z-ai-widget: 40;
+
   /* ── Zpětná kompatibilita: monday-* → wp-* ── */
   --monday-bg: var(--wp-bg);
   --monday-surface: var(--wp-surface);

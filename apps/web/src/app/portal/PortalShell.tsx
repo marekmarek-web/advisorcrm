@@ -12,7 +12,6 @@ import { ToastProvider } from "@/app/components/Toast";
 import { AiSearchBar } from "@/app/components/AiSearchBar";
 
 const MOBILE_BREAKPOINT = 768;
-const MOBILE_SIDEBAR_MARGIN = 48;
 
 const SIDEBAR_STORAGE_KEY = "portal-sidebar";
 const SIDEBAR_CONTENT_GAP_PX = 24;
@@ -57,8 +56,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     setSidebarStateInitialized(true);
   }, [sidebarStateInitialized]);
 
+  const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
+
   const mainMarginPx = useMemo(() => {
-    if (!isDesktop) return MOBILE_SIDEBAR_MARGIN;
+    if (!isDesktop) return 0;
     const sidebarPx = sidebarCollapsed ? PORTAL_SIDEBAR_COLLAPSED_PX : sidebarWidth;
     return sidebarPx + SIDEBAR_CONTENT_GAP_PX;
   }, [isDesktop, sidebarCollapsed, sidebarWidth]);
@@ -95,9 +96,21 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           onResize={handleSidebarResize}
           onCollapsedChange={handleSidebarCollapsed}
           onMount={initSidebarState}
+          mobileDrawerOpen={sidebarDrawerOpen}
+          onMobileDrawerClose={() => setSidebarDrawerOpen(false)}
         />
-        <div className="flex flex-col flex-1 min-w-0 ml-12 md:ml-0" style={{ marginLeft: mainMarginPx, transition: "margin-left 200ms ease-in-out" }}>
-          <header className="wp-app-header shrink-0 flex flex-wrap items-center gap-3 sm:gap-4 md:gap-6">
+        <div className="flex flex-col flex-1 min-w-0" style={{ marginLeft: mainMarginPx, transition: "margin-left 200ms ease-in-out" }}>
+          <header className="wp-app-header shrink-0 flex flex-wrap items-center gap-2 sm:gap-4 md:gap-6">
+            <button
+              type="button"
+              onClick={() => setSidebarDrawerOpen(true)}
+              className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Otevřít menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" viewBox="0 0 24 24">
+                <path d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+              </svg>
+            </button>
             <Link href="/portal" className="shrink-0 flex items-center" aria-label="Aidvisora – úvod">
               <img src="/logo.png" alt="Aidvisora" className="h-8 w-auto max-w-[140px] object-contain" />
             </Link>
@@ -120,8 +133,15 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         </div>
         <GlobalSearch ref={globalSearchRef} />
 
-        {/* Aidvisora – fixed dole v pravém rohu obrazovky */}
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+        {/* Aidvisora – fixed with safe area, below drawer z-index */}
+        <div
+          className="fixed flex flex-col items-end gap-2"
+          style={{
+            bottom: "max(1rem, env(safe-area-inset-bottom, 1rem))",
+            right: "max(1rem, env(safe-area-inset-right, 1rem))",
+            zIndex: "var(--z-ai-widget, 40)",
+          }}
+        >
           {aiSearchOpen ? (
             <div className="flex items-center gap-2 w-full max-w-[420px]">
               <AiSearchBar

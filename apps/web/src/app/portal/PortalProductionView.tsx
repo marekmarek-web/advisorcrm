@@ -164,19 +164,18 @@ export function PortalProductionView() {
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full" style={{ animation: "wp-fade-in 0.3s ease" }}>
       <div className="wp-projects-section flex-1 min-w-0 pb-8">
-        {/* --- Header: title, period label, period switcher, export --- */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6" style={{ marginBottom: "var(--wp-space-8)" }}>
+        {/* --- Header: compact on mobile --- */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6" style={{ marginBottom: "var(--wp-space-6)" }}>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2" style={{ color: "var(--wp-text)" }}>
+            <h1 className="text-xl md:text-3xl font-bold tracking-tight mb-1 md:mb-2" style={{ color: "var(--wp-text)" }}>
               Produkce
             </h1>
             <p className="text-sm font-medium flex items-center gap-2" style={{ color: "var(--wp-text-muted)" }}>
               <Calendar size={16} style={{ color: "var(--wp-accent, #4f46e5)" }} />
-              Aktuální období:{" "}
               <span style={{ color: "var(--wp-text)" }}>{data ? data.periodLabel : loading ? "Načítám…" : "—"}</span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 md:gap-4">
             <div
               className="flex items-center rounded-[var(--wp-radius-sm)] p-1 border"
               style={{ background: "var(--wp-bg)", borderColor: "var(--wp-border)" }}
@@ -186,7 +185,7 @@ export function PortalProductionView() {
                   key={opt.value}
                   type="button"
                   onClick={() => setPeriod(opt.value)}
-                  className={`px-4 py-2 rounded-[var(--wp-radius-xs)] text-xs font-semibold uppercase tracking-wide transition-all ${
+                  className={`px-3 md:px-4 py-2 rounded-[var(--wp-radius-xs)] text-xs font-semibold uppercase tracking-wide transition-all min-h-[44px] md:min-h-0 ${
                     period === opt.value
                       ? "shadow-sm border"
                       : "opacity-80 hover:opacity-100"
@@ -205,10 +204,10 @@ export function PortalProductionView() {
               type="button"
               onClick={handleExport}
               disabled={!data || data.rows.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--wp-radius-sm)] text-xs font-semibold uppercase tracking-wide border transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--wp-radius-sm)] text-xs font-semibold uppercase tracking-wide border transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
               style={{ background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)", color: "var(--wp-text)" }}
             >
-              <Download size={16} /> Export dat
+              <Download size={16} /> Export
             </button>
           </div>
         </div>
@@ -231,11 +230,11 @@ export function PortalProductionView() {
           </p>
         ) : (
           <>
-            {/* --- KPI cards (modern dashboard) --- */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+            {/* --- KPI cards: compact on mobile --- */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-8">
               {/* Card 1: Vybrané období – gradient */}
               <div
-                className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] text-white shadow-md relative overflow-hidden min-h-[120px] md:min-h-0"
+                className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] text-white shadow-md relative overflow-hidden min-h-[100px] md:min-h-0"
                 style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}
               >
                 <Calendar className="absolute -right-4 -bottom-4 w-24 h-24 md:w-32 md:h-32 text-white/10" aria-hidden />
@@ -370,19 +369,69 @@ export function PortalProductionView() {
                   className="px-4 md:px-8 py-4 md:py-6 border-b flex flex-wrap items-center justify-between gap-4"
                   style={{ background: "var(--wp-bg)", borderColor: "var(--wp-border)" }}
                 >
-                  <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--wp-text)" }}>
+                  <h2 className="text-base md:text-lg font-bold flex items-center gap-2" style={{ color: "var(--wp-text)" }}>
                     <BarChart3 size={20} style={{ color: "var(--wp-accent, #4f46e5)" }} /> Detail produkce
                   </h2>
                   {data.rows.length > 0 && (
                     <Link
                       href={`/portal/contracts?period=${period}`}
-                      className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                      className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 hover:underline min-h-[44px] items-center"
                     >
-                      Smlouvy v tomto období <ExternalLink size={14} />
+                      Smlouvy <ExternalLink size={14} />
                     </Link>
                   )}
                 </div>
-                <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
+                {/* Mobile: card list */}
+                <div className="md:hidden p-4 space-y-3 overflow-y-auto">
+                  {data.rows.length === 0 ? (
+                    <p className="text-sm py-4 text-center" style={{ color: "var(--wp-text-muted)" }}>
+                      Žádné smlouvy v tomto období.
+                    </p>
+                  ) : (
+                    data.rows.map((r, idx) => (
+                      <div
+                        key={`${r.segment}-${r.partnerName ?? ""}-${idx}`}
+                        className="p-4 rounded-[var(--wp-radius-sm)] border"
+                        style={{ background: "var(--wp-bg)", borderColor: "var(--wp-border)" }}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-sm font-semibold" style={{ color: "var(--wp-text)" }}>
+                            {r.segmentLabel}
+                          </span>
+                          <span
+                            className="inline-flex items-center justify-center min-w-8 h-8 rounded-full text-sm font-bold px-2 shrink-0"
+                            style={{ background: "var(--wp-bg-card)", color: "var(--wp-text)" }}
+                          >
+                            {r.count}
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium mb-2" style={{ color: "var(--wp-text-muted)" }}>
+                          {r.partnerName ?? "—"}
+                        </p>
+                        <div className="flex justify-between text-sm">
+                          <span style={{ color: "var(--wp-text-muted)" }}>Pojistné:</span>
+                          <span className="font-bold" style={{ color: "var(--wp-text)" }}>
+                            {r.totalPremium.toLocaleString("cs-CZ")} Kč
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs mt-1" style={{ color: "var(--wp-text-muted)" }}>
+                          <span>Roční ekv.:</span>
+                          <span>{r.totalAnnual.toLocaleString("cs-CZ")} Kč</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {data.rows.length > 0 && (
+                    <div className="pt-2 border-t" style={{ borderColor: "var(--wp-border)" }}>
+                      <div className="flex justify-between text-sm font-semibold" style={{ color: "var(--wp-text)" }}>
+                        <span>Celkem</span>
+                        <span>{data.totalPremium.toLocaleString("cs-CZ")} Kč</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Desktop: table */}
+                <div className="hidden md:block flex-1 min-w-0 overflow-x-auto overflow-y-auto">
                   <table className="w-full min-w-[640px] text-left border-collapse">
                     <thead>
                       <tr className="border-b" style={{ borderColor: "var(--wp-border)" }}>

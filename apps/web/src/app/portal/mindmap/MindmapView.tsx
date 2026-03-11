@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { Download, Sparkles } from "lucide-react";
 import { saveMindmap } from "@/app/actions/mindmap";
@@ -41,6 +41,15 @@ export function MindmapView({ initial }: MindmapViewProps) {
 
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSave = useCallback(async () => {
     setSaveError(null);
@@ -97,24 +106,24 @@ export function MindmapView({ initial }: MindmapViewProps) {
   const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) ?? null : null;
 
   return (
-    <div className="h-screen flex flex-col bg-[#f8fafc] text-slate-800 overflow-hidden">
-      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-3 z-50 flex items-center justify-between shadow-sm shrink-0">
-        <div className="flex items-center gap-6">
+    <div className="h-screen flex flex-col bg-[#f8fafc] text-slate-800 overflow-hidden pb-[env(safe-area-inset-bottom)]">
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 md:px-6 py-3 z-50 flex items-center justify-between gap-2 shadow-sm shrink-0">
+        <div className="flex items-center gap-2 md:gap-6 min-w-0">
           {initial.entityType === "standalone" && (
             <Link
               href="/portal/mindmap"
-              className="text-slate-500 hover:text-slate-800 text-sm font-medium"
+              className="text-slate-500 hover:text-slate-800 text-sm font-medium shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center md:min-h-0 md:min-w-0 md:flex-initial"
             >
-              ← Výběr map
+              ← <span className="hidden sm:inline">Výběr map</span>
             </Link>
           )}
-          <div className="h-4 w-px bg-slate-200" />
-          <div className="flex items-center gap-2">
-            <h1 className="font-bold text-slate-900">
+          <div className="h-4 w-px bg-slate-200 hidden md:block" />
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="font-bold text-slate-900 truncate text-base md:text-lg">
               {initial.entityType === "standalone" ? initial.entityName : `Mapování: ${initial.entityName}`}
             </h1>
             <span
-              className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
+              className={`shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
                 dirty ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-600 border-emerald-100"
               }`}
             >
@@ -122,13 +131,13 @@ export function MindmapView({ initial }: MindmapViewProps) {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
           {saveError && (
-            <span className="text-rose-600 text-sm" title={saveError}>
+            <span className="text-rose-600 text-xs md:text-sm truncate max-w-[120px] md:max-w-none" title={saveError}>
               {saveError}
             </span>
           )}
-          {dirty && (
+          {!isMobile && dirty && (
             <button
               type="button"
               onClick={handleSave}
@@ -138,19 +147,58 @@ export function MindmapView({ initial }: MindmapViewProps) {
               {saving ? "Ukládám…" : "Uložit"}
             </button>
           )}
-          <button
-            type="button"
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border border-amber-200 hover:shadow-md rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-          >
-            <Sparkles size={14} className="text-amber-600" /> AI Návrh strategie
-          </button>
-          <button
-            type="button"
-            className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-            title="Export"
-          >
-            <Download size={16} />
-          </button>
+          {!isMobile && (
+            <>
+              <button
+                type="button"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border border-amber-200 hover:shadow-md rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+              >
+                <Sparkles size={14} className="text-amber-600" /> AI Návrh strategie
+              </button>
+              <button
+                type="button"
+                className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
+                title="Export"
+              >
+                <Download size={16} />
+              </button>
+            </>
+          )}
+          {isMobile && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen((o) => !o)}
+                className="min-w-[44px] min-h-[44px] rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50"
+                aria-label="Menu"
+              >
+                <span className="text-lg font-bold">⋯</span>
+              </button>
+              {mobileMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMobileMenuOpen(false)} aria-hidden />
+                  <div className="absolute right-0 top-full mt-1 py-2 min-w-[200px] bg-white rounded-xl shadow-xl border border-slate-200 z-50">
+                    {dirty && (
+                      <button
+                        type="button"
+                        onClick={() => { handleSave(); setMobileMenuOpen(false); }}
+                        disabled={saving}
+                        className="w-full text-left px-4 py-3 text-sm font-bold text-indigo-600 disabled:opacity-50 min-h-[44px]"
+                      >
+                        {saving ? "Ukládám…" : "Uložit"}
+                      </button>
+                    )}
+                    <button type="button" className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 flex items-center gap-2 min-h-[44px]">
+                      <Sparkles size={16} className="text-amber-600" /> AI Návrh strategie
+                    </button>
+                    <button type="button" className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 flex items-center gap-2 min-h-[44px]">
+                      <Download size={16} /> Export
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -172,13 +220,16 @@ export function MindmapView({ initial }: MindmapViewProps) {
               })
             }
           />
-          <MindmapToolbar />
+          <div className="hidden md:block">
+            <MindmapToolbar />
+          </div>
           <MindmapControls
             viewport={viewport}
             onZoom={(delta) =>
               updateViewport({ zoom: Math.min(Math.max(viewport.zoom + delta, 0.4), 2) })
             }
             onCenter={handleCenter}
+            mobile={isMobile}
           />
         </div>
         <div

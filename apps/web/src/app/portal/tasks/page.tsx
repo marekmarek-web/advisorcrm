@@ -381,25 +381,25 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-12" style={{ color: "var(--wp-text)" }}>
-      <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-6 md:py-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
+    <div className="min-h-screen bg-[#f8fafc] pb-[max(3rem,calc(1rem+env(safe-area-inset-bottom)))]" style={{ color: "var(--wp-text)" }}>
+      <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 md:py-8 grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8">
         {/* --- Hlavní panel --- */}
-        <div className="xl:col-span-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        <div className="xl:col-span-8 space-y-4 md:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4">
+            <h1 className="text-xl md:text-3xl font-bold text-slate-900 tracking-tight">
               Moje úkoly
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => document.getElementById("new-task-form")?.scrollIntoView({ behavior: "smooth" })}
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-[var(--wp-radius-sm)] text-sm font-semibold shadow-sm hover:bg-indigo-700 transition-all min-h-[44px]"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-[var(--wp-radius-sm)] text-sm font-semibold shadow-sm hover:bg-indigo-700 transition-all min-h-[44px] min-w-[44px]"
               >
                 <Plus size={18} /> Vytvořit úkol
               </button>
               <button
                 type="button"
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-sm hover:bg-slate-50 transition-all w-fit min-h-[44px]"
+                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-sm hover:bg-slate-50 transition-all w-fit min-h-[44px]"
                 title="Připravujeme"
               >
                 <LayoutList size={16} /> Šablony úkolů
@@ -407,11 +407,11 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Smart input pro nový úkol */}
+          {/* Smart input pro nový úkol: na mobilu plně stacked */}
           <form
             id="new-task-form"
             onSubmit={handleCreate}
-            className="bg-white p-3 rounded-[var(--wp-radius-sm)] border border-indigo-100 shadow-lg shadow-indigo-900/5 flex flex-col md:flex-row items-stretch md:items-center gap-3 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-300 transition-all"
+            className="bg-white p-4 md:p-3 rounded-[var(--wp-radius-sm)] border border-indigo-100 shadow-lg shadow-indigo-900/5 flex flex-col gap-3 md:gap-3 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-300 transition-all"
           >
             {createError && (
               <p
@@ -421,42 +421,44 @@ export default function TasksPage() {
                 {createError}
               </p>
             )}
-            <div className="flex-1 flex items-center gap-3 w-full px-2 md:px-3">
-              <Plus size={20} className="text-indigo-500 shrink-0" />
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Co potřebujete udělat? (např. Zavolat panu Novákovi)"
-                className="flex-1 min-w-0 py-3 bg-transparent text-slate-800 font-medium placeholder:text-slate-400 outline-none text-sm border-none"
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={newContactId}
-                onChange={(e) => setNewContactId(e.target.value)}
-                className="flex items-center gap-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs font-medium hover:bg-slate-100 transition-colors min-h-[44px]"
-              >
-                <option value="">Klient</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.firstName} {c.lastName}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="date"
-                value={newDueDate}
-                onChange={(e) => setNewDueDate(e.target.value)}
-                className="flex items-center gap-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs font-medium hover:bg-slate-100 transition-colors min-h-[44px]"
-              />
-              <button
-                type="submit"
-                disabled={submitting || !newTitle.trim()}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
-              >
-                {submitting ? "…" : "Přidat"}
-              </button>
+            <div className="flex flex-col md:flex-row md:items-center gap-3 w-full">
+              <div className="flex-1 flex items-center gap-3 w-full px-0 md:px-2">
+                <Plus size={20} className="text-indigo-500 shrink-0 hidden md:block" />
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Co potřebujete udělat? (např. Zavolat panu Novákovi)"
+                  className="flex-1 min-w-0 py-3 md:py-3 px-3 md:px-0 bg-slate-50 md:bg-transparent border border-slate-200 md:border-none rounded-xl md:rounded-none text-slate-800 font-medium placeholder:text-slate-400 outline-none text-base md:text-sm"
+                />
+              </div>
+              <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2">
+                <select
+                  value={newContactId}
+                  onChange={(e) => setNewContactId(e.target.value)}
+                  className="w-full md:w-auto flex items-center gap-1.5 px-3 py-3 md:py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm md:text-xs font-medium hover:bg-slate-100 transition-colors min-h-[44px]"
+                >
+                  <option value="">Klient</option>
+                  {contacts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.firstName} {c.lastName}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                  className="w-full md:w-auto flex items-center gap-1.5 px-3 py-3 md:py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm md:text-xs font-medium hover:bg-slate-100 transition-colors min-h-[44px]"
+                />
+                <button
+                  type="submit"
+                  disabled={submitting || !newTitle.trim()}
+                  className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-base md:text-sm font-bold shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                >
+                  {submitting ? "…" : "Vytvořit"}
+                </button>
+              </div>
             </div>
           </form>
 
@@ -465,26 +467,26 @@ export default function TasksPage() {
             <div className="relative">
               <Search
                 size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Hledat úkol..."
-                className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                className="w-full pl-11 pr-4 py-3 md:py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 min-h-[44px]"
               />
             </div>
           )}
 
-          {/* Taby */}
-          <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto">
+          {/* Taby: scrollovatelné na mobilu, touch-friendly */}
+          <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto snap-x snap-mandatory scrollbar-thin -mx-4 px-4 md:mx-0 md:px-0">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => handleFilterChange(f.key)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap min-h-[44px] snap-start ${
                   filter === f.key
                     ? "border-indigo-600 text-indigo-600"
                     : "border-transparent text-slate-500 hover:text-slate-800"
@@ -523,7 +525,7 @@ export default function TasksPage() {
               ))}
             </div>
           ) : filteredBySearch.length === 0 ? (
-            <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm p-12">
+            <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm p-6 md:p-12">
               <EmptyState
                 icon="✓"
                 title="Žádné úkoly"
@@ -666,18 +668,18 @@ export default function TasksPage() {
               />
             </div>
           </div>
-          <div className="flex gap-3 p-4 border-t border-slate-200 shrink-0">
+          <div className="flex gap-3 p-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-200 shrink-0">
             <button
               type="button"
               onClick={closeMobileEdit}
-              className="flex-1 wp-btn wp-btn-ghost py-3"
+              className="flex-1 wp-btn wp-btn-ghost py-3 min-h-[44px]"
             >
               Zrušit
             </button>
             <button
               type="button"
               onClick={handleSaveEdit}
-              className="flex-1 wp-btn wp-btn-primary py-3"
+              className="flex-1 wp-btn wp-btn-primary py-3 min-h-[44px]"
             >
               Uložit
             </button>

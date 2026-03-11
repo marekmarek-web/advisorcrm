@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Pin,
@@ -137,7 +137,17 @@ export function NotesVisionBoard({
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [maxZIndex, setMaxZIndex] = useState(10);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"feed" | "board">("feed");
   const boardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const defaultForm = {
     title: "",
@@ -338,32 +348,118 @@ export function NotesVisionBoard({
         .notes-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/80 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#1a1c2e] rounded-xl flex items-center justify-center text-white font-bold text-lg">W</div>
-          <div>
-            <h1 className="font-bold text-lg text-slate-900 tracking-tight leading-none" style={{ color: "var(--wp-text)" }}>Zápisky</h1>
-            <p className="text-[11px] font-bold tracking-wider uppercase leading-none mt-0.5" style={{ color: "var(--wp-text-muted)" }}>Vision Board</p>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/80 shrink-0 gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <div className="w-9 h-9 bg-[#1a1c2e] rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0">W</div>
+          <div className="min-w-0">
+            <h1 className="font-bold text-base md:text-lg text-slate-900 tracking-tight leading-none truncate" style={{ color: "var(--wp-text)" }}>Zápisky</h1>
+            <p className="text-[11px] font-bold tracking-wider uppercase leading-none mt-0.5 hidden md:block" style={{ color: "var(--wp-text-muted)" }}>Vision Board</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 hover:shadow-md rounded-xl text-sm font-bold transition-all"
-          >
-            <Sparkles size={16} className="text-amber-500" /> AI Sumarizace
-          </button>
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          {!isMobile && (
+            <button
+              type="button"
+              className="flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 hover:shadow-md rounded-xl text-sm font-bold transition-all"
+            >
+              <Sparkles size={16} className="text-amber-500" /> AI Sumarizace
+            </button>
+          )}
           <button
             type="button"
             onClick={handleOpenNew}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1a1c2e] text-white rounded-xl font-bold text-sm hover:bg-[#2a2d4a] shadow-lg transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1a1c2e] text-white rounded-xl font-bold text-sm hover:bg-[#2a2d4a] shadow-lg transition-all active:scale-95 min-h-[44px] min-w-[44px]"
           >
-            <Plus size={18} /> Nový zápis
+            <Plus size={18} /> <span className="hidden sm:inline">Nový zápis</span>
           </button>
         </div>
       </div>
 
-      <main ref={boardRef} className="flex-1 relative overflow-auto notes-dot-grid cursor-crosshair min-h-0">
+      {isMobile && (
+        <div className="flex rounded-lg border border-slate-200 p-1 bg-slate-100/80 mx-4 mt-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileTab("feed")}
+            className={`flex-1 py-2.5 text-sm font-bold rounded-md transition-all min-h-[44px] ${mobileTab === "feed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}
+          >
+            Zápisky
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("board")}
+            className={`flex-1 py-2.5 text-sm font-bold rounded-md transition-all min-h-[44px] ${mobileTab === "board" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}
+          >
+            Board
+          </button>
+        </div>
+      )}
+
+      {isMobile && mobileTab === "feed" && (
+        <main className="flex-1 overflow-auto min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {filteredNotes.length === 0 ? (
+            <div className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-slate-100">
+                <FileText size={28} style={{ color: "var(--brand-main)" }} />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800 mb-2">Žádné zápisky</h2>
+              <p className="text-slate-500 text-sm mb-6">Vytvořte zápisek nebo přepněte na Board.</p>
+              <button
+                type="button"
+                onClick={handleOpenNew}
+                className="flex items-center gap-2 px-6 py-3 text-white rounded-xl font-bold shadow-lg"
+                style={{ backgroundColor: "var(--brand-main)" }}
+              >
+                <Plus size={20} /> Nový zápisek
+              </button>
+            </div>
+          ) : (
+            <ul className="p-4 space-y-3">
+              {filteredNotes.map((note) => {
+                const design = getProductDesign(note.domain);
+                return (
+                  <li key={note.id}>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEdit(note, e)}
+                      className="w-full text-left notes-glass-card rounded-2xl border border-slate-100 shadow-lg p-4 transition-shadow active:scale-[0.99] min-h-[44px]"
+                    >
+                      <div className="flex justify-between items-start gap-2 mb-2">
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase border ${design.color}`}>
+                          {design.icon}
+                          {DOMAINS.find((d) => d.value === note.domain)?.label ?? note.domain}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                          <Calendar size={12} />
+                          {formatDateCZ(note.meetingAt)}
+                        </div>
+                      </div>
+                      <h3 className="font-bold text-slate-800 text-base leading-tight mb-2">
+                        {contentTitle(note.content)}
+                      </h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                          <User size={12} className="text-slate-500" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-600">{note.contactName}</span>
+                      </div>
+                      <p className="text-[13px] text-slate-600 leading-relaxed line-clamp-2">
+                        {contentBody(note.content) || <span className="text-slate-400 italic">Bez obsahu…</span>}
+                      </p>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </main>
+      )}
+
+      <main
+        ref={boardRef}
+        className={`flex-1 relative overflow-auto notes-dot-grid cursor-crosshair min-h-0 ${
+          isMobile && mobileTab === "board" ? "max-h-[55vh] rounded-xl mx-4 border border-slate-200" : ""
+        } ${isMobile && mobileTab === "feed" ? "hidden" : ""}`}
+      >
         {notes.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-white/80 backdrop-blur-xl p-10 rounded-[32px] border border-slate-200 shadow-2xl flex flex-col items-center max-w-md text-center pointer-events-auto">

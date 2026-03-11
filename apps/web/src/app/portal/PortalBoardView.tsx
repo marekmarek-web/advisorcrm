@@ -119,6 +119,15 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
   const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
   const [addGroupName, setAddGroupName] = useState("");
   const [addGroupColor, setAddGroupColor] = useState(GROUP_COLORS[0]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const activeView = useMemo(() => board.views.find((v) => v.id === activeViewId), [board.views, activeViewId]);
   const columns = activeView?.columns ?? [];
@@ -542,9 +551,9 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <main className="flex-1 flex min-h-0 overflow-hidden">
+      <main className="flex-1 flex min-h-0 overflow-hidden flex-col md:flex-row">
         <div className="wp-projects-section flex-1 min-w-0 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between" style={{ marginBottom: "var(--wp-space-4)" }}>
+          <div className="flex items-center justify-between shrink-0 px-2 md:px-0" style={{ marginBottom: "var(--wp-space-4)" }}>
             <BoardHeader
               boardName={board.name}
               views={board.views.map((v) => ({ id: v.id, name: v.name }))}
@@ -554,6 +563,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
               onViewNameChange={dbViewId ? onViewNameChange : undefined}
             />
           </div>
+          {!isMobile && (
           <Toolbar
             searchQuery={searchQuery}
             onSearchChange={(q) => {
@@ -593,7 +603,78 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
               triggerTableLoading();
             }}
           />
-          <KPIBar openCasesCount={kpiOpenCases} potentialDeals={kpiPotentialDeals} />
+          )}
+          {!isMobile && <KPIBar openCasesCount={kpiOpenCases} potentialDeals={kpiPotentialDeals} />}
+          {isMobile && (
+            <div className="flex items-center gap-2 px-2 pb-2 relative shrink-0">
+              <input
+                type="text"
+                placeholder="Hledat…"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); triggerTableLoading(); }}
+                className="flex-1 min-w-0 min-h-[44px] px-3 py-2 text-sm border border-slate-200 rounded-[var(--wp-radius-sm)]"
+              />
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen((o) => !o)}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--wp-radius-sm)] border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  aria-label="Filtry a řazení"
+                >
+                  ⋮
+                </button>
+                {mobileMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setMobileMenuOpen(false)} aria-hidden />
+                    <div className="absolute right-0 top-full mt-1 py-2 min-w-[200px] bg-white border border-slate-200 rounded-[var(--wp-radius-sm)] shadow-lg z-40">
+                      <div className="px-3 py-2 border-b border-slate-100">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1.5">Status</p>
+                        <select
+                          value={filterStatus ?? ""}
+                          onChange={(e) => { setFilterStatus(e.target.value || null); triggerTableLoading(); }}
+                          className="w-full min-h-[44px] px-2 text-sm border border-slate-200 rounded-[var(--wp-radius-sm)]"
+                        >
+                          <option value="">Všechny</option>
+                          {["hotovo", "rozděláno", "k-podpisu", "zatím-ne", "domluvit"].map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="px-3 py-2">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1.5">Seřadit</p>
+                        <select
+                          value={sortColumnId ?? "item"}
+                          onChange={(e) => { setSortColumnId(e.target.value || null); triggerTableLoading(); }}
+                          className="w-full min-h-[44px] px-2 text-sm border border-slate-200 rounded-[var(--wp-radius-sm)] mb-2"
+                        >
+                          <option value="item">Jméno klienta</option>
+                          {visibleColumns.filter((c) => c.id !== "item").map((c) => (
+                            <option key={c.id} value={c.id}>{c.title}</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setSortDir("asc"); triggerTableLoading(); }}
+                            className={`flex-1 min-h-[44px] text-sm rounded-[var(--wp-radius-sm)] border ${sortDir === "asc" ? "border-slate-400 bg-slate-100" : "border-slate-200"}`}
+                          >
+                            A→Z
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSortDir("desc"); triggerTableLoading(); }}
+                            className={`flex-1 min-h-[44px] text-sm rounded-[var(--wp-radius-sm)] border ${sortDir === "desc" ? "border-slate-400 bg-slate-100" : "border-slate-200"}`}
+                          >
+                            Z→A
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           <BoardShell>
             <SelectionBar
             count={selection.size}
@@ -602,6 +683,64 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
             onMoveToGroup={onMoveSelectedToGroup}
             groupOptions={filteredAndSortedGroups.map((g) => ({ id: g.id, name: g.name }))}
           />
+          {isMobile ? (
+            <div className="flex-1 overflow-y-auto px-2 pb-8 space-y-4">
+              {filteredAndSortedGroups.map((group) => {
+                const groupItems = group.itemIds.map((id) => board.items[id]).filter(Boolean) as Item[];
+                return (
+                  <div key={group.id} className="rounded-[var(--wp-radius-sm)] border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    <div
+                      className="px-4 py-3 flex items-center justify-between border-b border-slate-100"
+                      style={{ backgroundColor: group.color ? `${group.color}20` : "var(--wp-bg)" }}
+                    >
+                      <span className="font-semibold text-sm text-slate-800">{group.name}</span>
+                      <span className="text-xs text-slate-500">{groupItems.length} položek</span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {groupItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedItemId(item.id)}
+                          className="w-full text-left px-4 py-3 min-h-[44px] flex flex-col gap-1 hover:bg-slate-50 transition-colors"
+                        >
+                          <span className="font-medium text-slate-900">{item.name}</span>
+                          {item.contactName && (
+                            <span className="text-xs text-slate-500">{item.contactName}</span>
+                          )}
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {visibleColumns.slice(0, 4).map((col) => {
+                              const val = item.cells[col.id];
+                              if (val == null || val === "") return null;
+                              return (
+                                <span key={col.id} className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                  {col.title}: {String(val)}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => onAddItem(group.id)}
+                        className="w-full px-4 py-3 text-left text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 min-h-[44px]"
+                      >
+                        + Přidat položku
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={onOpenAddGroupModal}
+                className="w-full py-3 px-4 rounded-[var(--wp-radius-sm)] border-2 border-dashed border-slate-200 text-slate-500 font-medium text-sm hover:border-slate-300 hover:text-slate-700 min-h-[44px]"
+              >
+                + Přidat skupinu
+              </button>
+            </div>
+          ) : (
           <BoardScroller visibleColumns={visibleColumns} actionColumnWidth={48}>
             {filteredAndSortedGroups.map((group, gi) => {
               const groupItems = group.itemIds.map((id) => board.items[id]).filter(Boolean) as Item[];
@@ -639,6 +778,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
               + Přidat skupinu
             </button>
           </BoardScroller>
+          )}
           </BoardShell>
         </div>
         {addGroupModalOpen && (
@@ -702,6 +842,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
             contactId={board.items[selectedItemId].contactId ?? undefined}
             contacts={panelContacts}
             onContactChange={(contactId, contactName) => onItemContactChange(selectedItemId, contactId, contactName)}
+            mobileFullScreen={isMobile}
           />
         )}
       </main>

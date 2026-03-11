@@ -325,8 +325,116 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
               </div>
             )}
 
-            {/* --- Table --- */}
-            <div className="bg-white rounded-[var(--wp-radius-sm)] border border-slate-200 shadow-sm overflow-hidden">
+            {/* --- Mobile: card list --- */}
+            <div className="md:hidden space-y-3">
+              {tableLoading && (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-[var(--wp-radius-sm)] border border-slate-200 p-4 animate-pulse">
+                      <div className="flex gap-3">
+                        <SkeletonLine className="h-12 w-12 rounded-full shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <SkeletonLine className="h-4 w-32" />
+                          <SkeletonLine className="h-3 w-48" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!tableLoading &&
+                filteredList.map((c) => {
+                  const isSelected = selectedIds.has(c.id);
+                  const colorClass = avatarColor(`${c.firstName} ${c.lastName}`);
+                  const badge = lifecycleBadge(c.lifecycleStage);
+                  return (
+                    <div
+                      key={c.id}
+                      className={`bg-white rounded-[var(--wp-radius-sm)] border shadow-sm overflow-hidden ${
+                        isSelected ? "border-indigo-300 ring-1 ring-indigo-200" : "border-slate-200"
+                      }`}
+                    >
+                      <div className="p-4 flex gap-3">
+                        <div className="shrink-0 flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(c.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-5 w-5"
+                            aria-label={`Vybrat ${c.firstName} ${c.lastName}`}
+                          />
+                        </div>
+                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold border border-white shadow-sm shrink-0 ${colorClass}`}>
+                          {getInitials(c)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={`/portal/contacts/${c.id}`}
+                            className="font-bold text-slate-900 text-[15px] hover:text-indigo-600 transition-colors block truncate"
+                          >
+                            {c.firstName} {c.lastName}
+                          </Link>
+                          <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                          <div className="mt-2 flex flex-col gap-0.5 text-[13px] text-slate-600">
+                            {c.email && (
+                              <a href={`mailto:${c.email}`} className="flex items-center gap-2 truncate">
+                                <Mail size={12} className="text-slate-400 shrink-0" />
+                                <span className="truncate">{c.email}</span>
+                              </a>
+                            )}
+                            {c.phone && (
+                              <a href={`tel:${c.phone.replace(/\s/g, "")}`} className="flex items-center gap-2">
+                                <Phone size={12} className="text-slate-400 shrink-0" />
+                                {c.phone}
+                              </a>
+                            )}
+                          </div>
+                          {c.tags && c.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {c.tags.slice(0, 3).map((t) => (
+                                <span key={t} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[11px] font-medium rounded border border-slate-200">
+                                  {t}
+                                </span>
+                              ))}
+                              {c.tags.length > 3 && <span className="text-[11px] text-slate-400">+{c.tags.length - 3}</span>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="px-4 pb-4 flex items-center justify-end gap-2 flex-wrap">
+                        {c.phone && (
+                          <a href={`tel:${c.phone.replace(/\s/g, "")}`} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-[var(--wp-radius-sm)]" aria-label="Zavolat">
+                            <Phone size={20} />
+                          </a>
+                        )}
+                        {c.email && (
+                          <a href={`mailto:${c.email}`} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-[var(--wp-radius-sm)]" aria-label="E-mail">
+                            <Mail size={20} />
+                          </a>
+                        )}
+                        <Link href={`/portal/tasks?contactId=${c.id}`} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-[var(--wp-radius-sm)]" aria-label="Přidat úkol">
+                          <CheckSquare size={20} />
+                        </Link>
+                        <Link href={`/portal/contacts/${c.id}`} className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 border border-slate-200 text-slate-700 text-sm font-semibold rounded-[var(--wp-radius-sm)] hover:bg-slate-200">
+                          Detail <ArrowRight size={16} />
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              {!tableLoading && (
+                <p className="text-xs font-medium text-slate-500 px-2">
+                  Zobrazeno {filteredList.length} kontaktů
+                  {(lifecycleFilter || tagFilter || searchQuery.trim()) && ` (z ${list.length} celkem)`}
+                </p>
+              )}
+            </div>
+
+            {/* --- Desktop: table --- */}
+            <div className="hidden md:block bg-white rounded-[var(--wp-radius-sm)] border border-slate-200 shadow-sm overflow-hidden">
               <div className="overflow-x-auto relative">
                 {tableLoading && (
                   <div className="absolute inset-0 z-10 bg-white/80 flex items-center justify-center pointer-events-none">
@@ -494,8 +602,8 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
                   </tbody>
                 </table>
               </div>
-              {/* Footer: Zobrazeno X kontaktů */}
-              <div className="px-4 md:px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              {/* Footer: Zobrazeno X kontaktů (desktop only) */}
+              <div className="hidden md:flex px-4 md:px-6 py-3 border-t border-slate-100 bg-slate-50/50 items-center justify-between">
                 <span className="text-xs font-medium text-slate-500">
                   Zobrazeno {filteredList.length} kontaktů
                   {(lifecycleFilter || tagFilter || searchQuery.trim()) && ` (z ${list.length} celkem)`}

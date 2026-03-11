@@ -33,9 +33,11 @@ interface RightPanelProps {
   contacts?: ContactOption[];
   /** Callback při změně vazby na kontakt (volitelné). */
   onContactChange?: (contactId: string | null, contactName: string | null) => void;
+  /** Na mobilu zobrazit jako fullscreen overlay (drawer). */
+  mobileFullScreen?: boolean;
 }
 
-export function RightPanel({ itemId, itemName, onClose, getActivity, appendActivity, contactId, contacts = [], onContactChange }: RightPanelProps) {
+export function RightPanel({ itemId, itemName, onClose, getActivity, appendActivity, contactId, contacts = [], onContactChange, mobileFullScreen }: RightPanelProps) {
   const [tab, setTab] = useState<TabId>("activity");
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,13 +81,19 @@ export function RightPanel({ itemId, itemName, onClose, getActivity, appendActiv
   ];
 
   return (
-    <div className="w-[380px] flex-shrink-0 border-l border-[var(--board-border)] bg-white flex flex-col h-full shadow-[-4px_0_16px_rgba(0,0,0,0.04)]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--board-border)]">
+    <div
+      className={
+        mobileFullScreen
+          ? "fixed inset-0 z-[var(--z-drawer-panel,101)] w-full max-w-full bg-white flex flex-col shadow-[-4px_0_16px_rgba(0,0,0,0.04)] md:relative md:inset-auto md:z-auto md:w-[380px] md:flex-shrink-0 border-l border-[var(--board-border)] h-full"
+          : "w-[380px] flex-shrink-0 border-l border-[var(--board-border)] bg-white flex flex-col h-full shadow-[-4px_0_16px_rgba(0,0,0,0.04)]"
+      }
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--board-border)] min-h-[44px]">
         <h3 className="font-semibold text-[var(--board-text)] text-[15px] truncate">{itemName}</h3>
         <button
           type="button"
           onClick={onClose}
-          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--board-cell-hover)] text-[var(--board-text-muted)] transition-colors"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-[var(--board-cell-hover)] text-[var(--board-text-muted)] transition-colors"
           aria-label="Zavřít"
         >
           ×

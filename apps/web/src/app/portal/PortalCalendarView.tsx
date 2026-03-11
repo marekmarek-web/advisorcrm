@@ -277,6 +277,14 @@ export function PortalCalendarView() {
   const searchParams = useSearchParams();
   const [settings, setSettings] = useState<CalendarSettings>(() => loadCalendarSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
   const [mode, setMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -437,42 +445,49 @@ export function PortalCalendarView() {
     loadDayTasks(selectedDate);
   }
 
+  useEffect(() => {
+    if (isMobile && mode === "workweek") setMode("week");
+  }, [isMobile]);
+
+  const timeColWidth = isMobile ? 40 : 56;
+  const viewModesMobile: ViewMode[] = ["week", "month"];
+
   return (
-    <div className="flex flex-col min-h-0 h-full">
+    <div className="flex flex-col min-h-0 h-full pb-[max(1rem,env(safe-area-inset-bottom))]">
       {/* ── Calendar.txt-style container (settings applied via CSS vars) ── */}
       <div
         className={`wp-cal-container wp-cal-container--today-${settings.todayStyle} wp-cal-container--font-${settings.fontSize} flex flex-col h-full`}
         style={cssVarsFromSettings(settings)}
       >
-        {/* Header */}
-        <div className="wp-cal-header">
-          <div>
-            <h1 style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {headerLabel}
-              <button type="button" onClick={() => setCurrentDate(new Date())} style={{ fontSize: 11, padding: "2px 10px", borderRadius: 20, background: "var(--wp-cal-accent)", color: "#fff", fontWeight: 600 }}>
+        {/* Header: compact on mobile */}
+        <div className={`wp-cal-header ${isMobile ? "flex flex-col gap-2 md:flex-row md:gap-0" : ""}`}>
+          <div className={isMobile ? "flex items-center justify-between gap-2" : ""}>
+            <h1 style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="text-base md:text-xl">{headerLabel}{isMobile ? ` · ${yearLabel}` : ""}</span>
+              <button type="button" onClick={() => setCurrentDate(new Date())} className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0" style={{ fontSize: 11, padding: isMobile ? "10px 12px" : "2px 10px", borderRadius: 20, background: "var(--wp-cal-accent)", color: "#fff", fontWeight: 600 }}>
                 Dnes
               </button>
             </h1>
-            <p className="wp-cal-year">{yearLabel}</p>
+            {!isMobile && <p className="wp-cal-year">{yearLabel}</p>}
           </div>
-          <div className="wp-cal-nav">
-            <button type="button" onClick={() => navigate(-1)} aria-label="Předchozí">
+          <div className={`wp-cal-nav ${isMobile ? "flex flex-wrap items-center gap-1" : ""}`}>
+            <button type="button" onClick={() => navigate(-1)} className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0 flex items-center justify-center" aria-label="Předchozí">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" d="M15 19l-7-7 7-7"/></svg>
             </button>
-            <button type="button" onClick={() => navigate(1)} aria-label="Další">
+            <button type="button" onClick={() => navigate(1)} className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0 flex items-center justify-center" aria-label="Další">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" d="M9 5l7 7-7 7"/></svg>
             </button>
-            <div className="wp-cal-views">
-              {(["month", "week", "workweek"] as ViewMode[]).map((m) => (
-                <button key={m} type="button" onClick={() => setMode(m)} className={`wp-cal-view-btn ${mode === m ? "active" : ""}`}>
+            <div className={`wp-cal-views ${isMobile ? "flex rounded-lg border border-[var(--board-border)] p-0.5 bg-[var(--wp-bg)]" : ""}`}>
+              {(isMobile ? viewModesMobile : (["month", "week", "workweek"] as ViewMode[])).map((m) => (
+                <button key={m} type="button" onClick={() => setMode(m)} className={`wp-cal-view-btn ${mode === m ? "active" : ""} ${isMobile ? "flex-1 min-h-[40px] text-sm rounded-md" : ""}`}>
                   {m === "month" ? "Měsíc" : m === "week" ? "Týden" : "Pracovní týden"}
                 </button>
               ))}
             </div>
-            <button type="button" onClick={() => setSettingsOpen(true)} className="wp-cal-view-btn" aria-label="Nastavení kalendáře" title="Nastavení">
+            <button type="button" onClick={() => setSettingsOpen(true)} className="wp-cal-view-btn min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0 flex items-center justify-center" aria-label="Nastavení kalendáře" title="Nastavení">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066 0-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             </button>
-            <button type="button" onClick={() => openNew(todayStr)} className="wp-cal-new-btn">
+            <button type="button" onClick={() => openNew(todayStr)} className="wp-cal-new-btn min-h-[44px] md:min-h-0 shrink-0">
               <span style={{ fontSize: 14 }}>+</span> Nová aktivita
             </button>
           </div>
@@ -533,9 +548,9 @@ export function PortalCalendarView() {
           </div>
         ) : (
           /* ═══ WEEK / WORKWEEK VIEW ═══ */
-          <div className="flex-1 flex overflow-hidden min-h-0">
-            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-              <div className="wp-cal-week-header shrink-0" style={{ gridTemplateColumns: `56px repeat(${weekDays.length}, 1fr)` }}>
+          <div className={`flex-1 flex overflow-hidden min-h-0 ${isMobile ? "flex-col" : ""}`}>
+            <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${isMobile ? "min-h-[280px]" : ""}`}>
+              <div className="wp-cal-week-header shrink-0" style={{ gridTemplateColumns: `${timeColWidth}px repeat(${weekDays.length}, 1fr)` }}>
                 <div style={{ borderRight: "1px solid rgba(166,168,179,0.12)" }} />
                 {weekDays.map((day) => {
                   const ds = formatDate(day);
@@ -557,11 +572,11 @@ export function PortalCalendarView() {
               </div>
 
               <div className="flex-1 overflow-auto">
-                <div className="wp-cal-week-time-grid" style={{ gridTemplateColumns: `56px repeat(${weekDays.length}, 1fr)` }}>
+                <div className="wp-cal-week-time-grid" style={{ gridTemplateColumns: `${timeColWidth}px repeat(${weekDays.length}, 1fr)` }}>
                   {HOURS.map((hour) => (
                     <div key={`row-${hour}`} className="contents">
                       <div className="wp-cal-week-time-label">
-                        <span>{hour}:00</span>
+                        <span>{isMobile ? String(hour) : `${hour}:00`}</span>
                       </div>
                       {weekDays.map((day) => {
                         const ds = formatDate(day);
@@ -604,8 +619,8 @@ export function PortalCalendarView() {
               </div>
             </div>
 
-            {/* Tasks side panel */}
-            <div className="wp-cal-tasks-panel">
+            {/* Tasks panel: side on desktop, stacked below on mobile */}
+            <div className={`wp-cal-tasks-panel ${isMobile ? "shrink-0 max-h-[40vh] border-t" : ""}`}>
               <div className="wp-cal-tasks-panel-header">
                 <h3>
                   Úkoly pro {new Date(selectedDate + "T12:00:00").toLocaleDateString("cs-CZ", { weekday: "short", day: "numeric", month: "short" })}

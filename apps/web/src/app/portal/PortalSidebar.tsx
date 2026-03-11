@@ -37,6 +37,8 @@ interface PortalSidebarProps {
   onResize?: (width: number) => void;
   onCollapsedChange?: (collapsed: boolean) => void;
   onMount?: () => void;
+  mobileDrawerOpen?: boolean;
+  onMobileDrawerClose?: () => void;
 }
 
 type NavItem = { href: string; label: string; Icon: LucideIcon; badgeKey?: "tasks" | null };
@@ -105,10 +107,32 @@ export function PortalSidebar({
   onResize,
   onCollapsedChange,
   onMount,
+  mobileDrawerOpen = false,
+  onMobileDrawerClose,
 }: PortalSidebarProps = {}) {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const [isMobileState, setIsMobileState] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobileState(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const isControlled = onMobileDrawerClose != null;
+  const mobileOpen = isMobileState && (isControlled ? mobileDrawerOpen : internalMobileOpen);
+  const setMobileOpen = useCallback(
+    (open: boolean) => {
+      if (isControlled) {
+        if (!open) onMobileDrawerClose?.();
+      } else {
+        setInternalMobileOpen(open);
+      }
+    },
+    [isControlled, onMobileDrawerClose]
+  );
   const [openTasksCount, setOpenTasksCount] = useState<number | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const resizeRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -118,8 +142,9 @@ export function PortalSidebar({
   }, [onMount]);
 
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    if (isControlled) onMobileDrawerClose?.();
+    else setInternalMobileOpen(false);
+  }, [pathname, isControlled, onMobileDrawerClose]);
 
   useEffect(() => {
     getOpenTasksCount().then(setOpenTasksCount).catch(() => setOpenTasksCount(0));
@@ -139,6 +164,15 @@ export function PortalSidebar({
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen, setMobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [mobileOpen]);
 
   const handleResizeStart = useCallback(
@@ -178,29 +212,10 @@ export function PortalSidebar({
 
   return (
     <>
-      {/* Mobile strip */}
-      <div
-        className="md:hidden fixed left-0 top-0 bottom-0 z-20 w-12 flex flex-col items-center pt-3 gap-2 bg-white border-r border-slate-200 shadow-sm"
-      >
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm bg-slate-900">
-          <svg viewBox="0 0 40 40" className="w-4 h-4" fill="currentColor" aria-hidden>
-            <path d="M20 6L8 34h4l2.5-7h11L28 34h4L20 6zm-2.2 20l2.8-8 2.8 8h-5.6z" />
-          </svg>
-        </div>
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
-          aria-label="Otevřít menu"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" viewBox="0 0 24 24">
-            <path d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-          </svg>
-        </button>
-      </div>
-
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 z-30 bg-black/40"
+          className="md:hidden fixed inset-0 bg-black/40"
+          style={{ zIndex: "var(--z-drawer-overlay, 100)" }}
           onClick={() => setMobileOpen(false)}
           aria-hidden
         />
@@ -209,11 +224,13 @@ export function PortalSidebar({
       <aside
         className={[
           "fixed left-0 top-0 bottom-0 flex flex-col shrink-0 bg-white border-r border-slate-200 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.06)]",
-          "transition-[width] duration-200 ease-in-out",
+          "transition-[transform,width] duration-200 ease-in-out",
           "md:z-20 md:translate-x-0",
-          mobileOpen ? "z-40 translate-x-0" : "z-40 -translate-x-full",
+          mobileOpen ? "translate-x-0 z-[101]" : "-translate-x-full z-[101]",
         ].join(" ")}
-        style={{ width: effectiveWidth }}
+        style={{
+          width: isMobileState ? "min(85vw, 280px)" : `${effectiveWidth}px`,
+        }}
       >
         {/* Header: logo + collapse */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 flex-shrink-0">

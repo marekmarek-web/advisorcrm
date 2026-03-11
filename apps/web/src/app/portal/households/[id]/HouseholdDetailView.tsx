@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -53,6 +53,15 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
   const [memberContactId, setMemberContactId] = useState("");
   const [memberRole, setMemberRole] = useState("member");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1279px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   function handleRename(e: React.FormEvent) {
     e.preventDefault();
@@ -112,46 +121,84 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
     <>
       <div className="min-h-screen bg-slate-100 pb-24">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm border-b border-slate-200 px-4 sm:px-6 md:px-8 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm border-b border-slate-200 px-4 sm:px-6 md:px-8 py-3 md:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-6 min-w-0">
             <Link
               href="/portal/households"
-              className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors shrink-0"
+              className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors shrink-0 min-h-[44px] items-center md:min-h-0"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-              Zpět na domácnosti
+              <span className="hidden sm:inline">Zpět na domácnosti</span>
             </Link>
-            <span className="w-px h-5 bg-slate-200 shrink-0" aria-hidden />
+            <span className="w-px h-5 bg-slate-200 shrink-0 hidden sm:block" aria-hidden />
             <nav className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 min-w-0 truncate" aria-label="Breadcrumb">
-              <Link href="/portal" className="hover:text-slate-600 truncate">Databáze</Link>
-              <span aria-hidden className="opacity-50">/</span>
+              <Link href="/portal" className="hover:text-slate-600 truncate hidden md:inline">Databáze</Link>
+              <span aria-hidden className="opacity-50 hidden md:inline">/</span>
               <Link href="/portal/households" className="hover:text-slate-600 truncate">Domácnosti</Link>
               <span aria-hidden className="opacity-50">/</span>
               <span className="text-slate-800 normal-case tracking-normal truncate">{household.name}</span>
             </nav>
           </div>
-          <Link
-            href={`/portal/mindmap?householdId=${household.id}`}
-            className="flex items-center gap-2 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-bold uppercase tracking-wide shadow-lg shadow-indigo-900/20 hover:opacity-95 transition-opacity min-h-[44px] shrink-0"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            Strategická mapa
-          </Link>
+          {!isMobile && (
+            <Link
+              href={`/portal/mindmap?householdId=${household.id}`}
+              className="flex items-center gap-2 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-bold uppercase tracking-wide shadow-lg shadow-indigo-900/20 hover:opacity-95 transition-opacity min-h-[44px] shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Strategická mapa
+            </Link>
+          )}
+          {isMobile && (
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setHeaderMenuOpen((o) => !o)}
+                className="min-w-[44px] min-h-[44px] rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50"
+                aria-label="Menu"
+              >
+                <span className="text-lg font-bold">⋯</span>
+              </button>
+              {headerMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setHeaderMenuOpen(false)} aria-hidden />
+                  <div className="absolute right-0 top-full mt-1 py-2 min-w-[220px] bg-white rounded-xl shadow-xl border border-slate-200 z-50">
+                    <Link
+                      href={`/portal/mindmap?householdId=${household.id}`}
+                      onClick={() => setHeaderMenuOpen(false)}
+                      className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 min-h-[44px]"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      Strategická mapa
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => { setHeaderMenuOpen(false); handleDeleteHousehold(); }}
+                      disabled={pending}
+                      className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 min-h-[44px] disabled:opacity-50"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      Smazat domácnost
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </header>
 
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
-          {/* Hero card */}
+          {/* Hero card: compact on mobile */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="p-4 sm:p-6 md:p-8">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6 min-w-0">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 md:gap-6">
+                <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-6 min-w-0">
                   <div className="relative shrink-0">
                     <HouseholdIconDisplay iconId={household.icon} />
                     <button
                       type="button"
                       onClick={() => setIconPickerOpen((o) => !o)}
                       disabled={pending}
-                      className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-slate-600 hover:bg-slate-300 text-xs disabled:opacity-50"
+                      className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-slate-600 hover:bg-slate-300 text-xs disabled:opacity-50 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0"
                       aria-label="Změnit ikonu"
                     >
                       &#9998;
@@ -163,7 +210,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                         <input
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
-                          className="rounded-xl border border-slate-200 px-3 py-2 font-semibold text-lg max-w-full w-full sm:w-auto min-w-[200px]"
+                          className="rounded-xl border border-slate-200 px-3 py-2 font-semibold text-base md:text-lg max-w-full w-full sm:w-auto min-w-[160px] md:min-w-[200px]"
                           autoFocus
                           required
                         />
@@ -176,11 +223,11 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                       </form>
                     ) : (
                       <>
-                        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight truncate">{household.name}</h1>
+                        <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight truncate">{household.name}</h1>
                         <p className="text-sm text-slate-500 mt-1">
                           {household.members.length} {household.members.length === 1 ? "člen" : household.members.length >= 2 && household.members.length <= 4 ? "členové" : "členů"}
                         </p>
-                        <button type="button" onClick={() => setRenaming(true)} className="text-sm font-medium mt-2 text-indigo-600 hover:underline">
+                        <button type="button" onClick={() => setRenaming(true)} className="text-sm font-medium mt-2 text-indigo-600 hover:underline min-h-[44px] md:min-h-0 flex items-center">
                           Přejmenovat
                         </button>
                       </>
@@ -193,7 +240,8 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                     className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors min-h-[44px]"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    Přehled finančních analýz
+                    <span className="hidden sm:inline">Přehled finančních analýz</span>
+                    <span className="sm:hidden">Analýzy</span>
                   </Link>
                 </div>
               </div>
@@ -452,18 +500,6 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
           </div>
         </main>
 
-        {/* Floating delete – visible on mobile/tablet when sidebar delete is hidden */}
-        <div className="fixed bottom-8 left-4 z-40 xl:hidden">
-          <button
-            type="button"
-            onClick={handleDeleteHousehold}
-            disabled={pending}
-            className="flex items-center gap-2 px-5 py-3 bg-white text-rose-600 border border-rose-200 rounded-2xl shadow-lg font-bold text-xs uppercase tracking-wider hover:bg-rose-50 transition-colors disabled:opacity-50 min-h-[44px]"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Smazat domácnost
-          </button>
-        </div>
       </div>
 
       <ConfirmDeleteModal
