@@ -219,6 +219,16 @@ export function StepSummary() {
 
       <style jsx global>{`
         @media print {
+          @page { size: A4 portrait; margin: 0; }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
           body * { visibility: hidden; }
           #report-print-root,
           #report-print-root * { visibility: visible; }
@@ -228,6 +238,24 @@ export function StepSummary() {
             top: 0 !important;
             width: 100% !important;
             overflow: visible !important;
+          }
+          .pdf-page {
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
+            margin: 0 !important;
+            padding: 15mm !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            page-break-after: always !important;
+            background: white !important;
+            box-sizing: border-box !important;
+          }
+          .pdf-page:last-child { page-break-after: auto !important; }
+          .avoid-break {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>

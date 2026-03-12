@@ -3,6 +3,7 @@
  */
 
 import type { NormalizedReportPayload } from "./types";
+import { PDF_STYLES } from "@/lib/analyses/financial/report";
 
 function escapeHtml(s: string): string {
   return s
@@ -23,7 +24,7 @@ export function renderReportToHTML(payload: NormalizedReportPayload): string {
 
   if (exportMode === "business_only" && businessSections?.rawBlocks?.length) {
     const inner = businessSections.rawBlocks.join("\n");
-    return `<div class="pdf">\n${inner}\n</div>`;
+    return `<style>${PDF_STYLES}</style>\n<div class="pdf">\n${inner}\n</div>`;
   }
 
   if (exportMode === "combined") {
@@ -59,8 +60,8 @@ export function renderReportToHTML(payload: NormalizedReportPayload): string {
     if (businessSections?.rawBlocks?.length) {
       parts.push(businessSections.rawBlocks.join("\n"));
     }
-    return `<div class="pdf">\n${parts.join("\n")}\n</div>`;
+    return `<style>${PDF_STYLES}</style>\n<div class="pdf">\n${parts.join("\n")}\n</div>`;
   }
 
-  return `<div class="pdf"><section class="pdf-page"><p>Žádný obsah.</p></section></div>`;
+  return `<style>${PDF_STYLES}</style>\n<div class="pdf"><section class="pdf-page"><p>Žádný obsah.</p></section></div>`;
 }

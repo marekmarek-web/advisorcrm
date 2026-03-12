@@ -109,6 +109,13 @@ export interface CompanyRisks {
   cyber?: boolean;
 }
 
+/** Detail u vybraných rizik (Majetek, Přerušení, Odpovědnost) – pojistný limit, stáří smlouvy. */
+export interface CompanyRiskDetails {
+  property?: { limit?: number; contractYears?: number };
+  interruption?: { limit?: number; contractYears?: number };
+  liability?: { limit?: number; contractYears?: number };
+}
+
 export interface AssetListItem {
   id: number;
   type: string;
@@ -311,6 +318,8 @@ export interface FinancialAnalysisData {
   companyBenefits?: CompanyBenefits;
   /** Pojištění firmy – rizika (Majetek, Přerušení, …) – když includeCompany */
   companyRisks?: CompanyRisks;
+  /** Detail rizik: pojistný limit, stáří smlouvy u property/interruption/liability */
+  companyRiskDetails?: CompanyRiskDetails;
   cashflow: CashflowState;
   assets: AssetsState;
   liabilities: LiabilitiesState;

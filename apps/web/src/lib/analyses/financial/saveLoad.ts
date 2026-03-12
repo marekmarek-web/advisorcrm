@@ -173,6 +173,20 @@ export function mergeLoadedState(
       cyber: Boolean(r.cyber),
     };
   }
+  if (p.companyRiskDetails && typeof p.companyRiskDetails === 'object') {
+    const rd = p.companyRiskDetails as Record<string, unknown>;
+    data.companyRiskDetails = {};
+    ['property', 'interruption', 'liability'].forEach((key) => {
+      const item = rd[key];
+      if (item && typeof item === 'object') {
+        const obj = item as Record<string, unknown>;
+        (data.companyRiskDetails as Record<string, { limit?: number; contractYears?: number }>)[key] = {
+          limit: Number(obj.limit) || undefined,
+          contractYears: Number(obj.contractYears) || undefined,
+        };
+      }
+    });
+  }
   if (p.clientId != null) data.clientId = String(p.clientId);
   if (p.householdId != null) data.householdId = String(p.householdId);
   if (p.notes !== undefined) data.notes = p.notes == null ? null : String(p.notes);

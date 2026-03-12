@@ -97,7 +97,7 @@ export function StepCompanyOutput() {
 
       {showPrint && reportHtml && (
         <div className="mt-6">
-          <div className="flex justify-end">
+          <div className="flex justify-end print:hidden">
             <button
               type="button"
               onClick={() => window.print()}
@@ -107,11 +107,60 @@ export function StepCompanyOutput() {
             </button>
           </div>
           <div
-            className="mt-4 p-4 bg-white border border-slate-200 rounded-xl overflow-auto max-h-[70vh] print:max-h-none print:border-0"
+            id="company-report-print-root"
+            className="mt-4 p-4 bg-white border border-slate-200 rounded-xl overflow-auto max-h-[70vh] print:max-h-none print:border-0 print:p-0 print:m-0 print:overflow-visible"
             dangerouslySetInnerHTML={{ __html: reportHtml }}
           />
         </div>
       )}
+
+      <style jsx global>{`
+        @media print {
+          @page { size: A4 portrait; margin: 0; }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          body * { visibility: hidden; }
+          #company-report-print-root,
+          #company-report-print-root * { visibility: visible; }
+          #company-report-print-root {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            overflow: visible !important;
+            max-height: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .pdf-page {
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
+            margin: 0 !important;
+            padding: 15mm !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            page-break-after: always !important;
+            background: white !important;
+            box-sizing: border-box !important;
+          }
+          .pdf-page:last-child { page-break-after: auto !important; }
+          .avoid-break {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }

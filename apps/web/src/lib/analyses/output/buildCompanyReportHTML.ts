@@ -10,6 +10,7 @@ import {
   directorInsuranceRec,
   recalcStrategy,
 } from "@/lib/analyses/company-fa/calculations";
+import { PDF_STYLES } from "@/lib/analyses/financial/report";
 
 function escapeHtml(s: string): string {
   return s

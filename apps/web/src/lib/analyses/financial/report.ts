@@ -17,6 +17,152 @@ import {
 } from './calculations';
 import { formatCzk, getProductName, getStrategyDesc, getStrategyProfileLabel } from './formatters';
 
+export const PDF_STYLES = `
+@page { size: A4; margin: 10mm; }
+.pdf {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  color: #0b1220;
+  background: #ffffff;
+}
+.pdf-page {
+  width: 210mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  padding: 15mm;
+  box-sizing: border-box;
+  page-break-after: always;
+  page-break-before: auto;
+  position: relative;
+  background-color: white;
+  overflow: visible;
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+.pdf-page:last-child { page-break-after: auto; }
+.pdf-section {
+  margin-bottom: 20px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+}
+.force-break { page-break-before: always; }
+.h1 { font-size: 22pt; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; margin-bottom: 5mm; }
+.h2 {
+  font-size: 14pt;
+  font-weight: 800;
+  margin-top: 6mm;
+  margin-bottom: 5mm;
+  color: #0B3A7A;
+  border-left: 4px solid #ffcc00;
+  padding-left: 4mm;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  min-height: 18px;
+  page-break-after: avoid;
+}
+.muted { color: #52607a; font-size: 9pt; }
+.badge { border: 1px solid #e6e9f2; border-radius: 999px; padding: 1mm 3mm; font-size: 8pt; display: inline-block; white-space: nowrap; }
+.inv-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7pt;
+  padding: 1.6mm 3.6mm;
+  border-radius: 2mm;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  min-width: 18mm;
+  min-height: 6mm;
+  height: auto;
+  line-height: 1;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+.inv-badge-lump { background: #dbeafe; color: #1e40af; }
+.inv-badge-monthly { background: #d1fae5; color: #065f46; }
+.inv-badge-pension { background: #fef3c7; color: #92400e; }
+.yield-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8pt;
+  padding: 1.6mm 2.5mm;
+  border-radius: 2mm;
+  background: #f0fdf4;
+  color: #166534;
+  font-weight: 600;
+  min-width: 10mm;
+  min-height: 5mm;
+  height: auto;
+  line-height: 1;
+}
+.table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; page-break-inside: avoid; table-layout: fixed; }
+.table th { text-align: left; font-size: 9pt; color: #52607a; border-bottom: 2px solid #e6e9f2; padding: 2.5mm 2mm; font-weight: 700; }
+.table td { font-size: 10pt; border-bottom: 1px solid #f1f3f8; padding: 2.5mm 2mm; color: #0f172a; vertical-align: middle; }
+.table th:nth-child(2), .table th:nth-child(4), .table td:nth-child(2), .table td:nth-child(4) { text-align: center; }
+.table tr { page-break-inside: avoid; }
+.table tr:last-child td { border-bottom: none; }
+.table-5col { table-layout: fixed; }
+.table-5col td { vertical-align: middle; padding: 3mm 2mm; }
+.table-5col th:nth-child(1), .table-5col td:nth-child(1) { width: 28%; text-align: left; padding-left: 3mm; }
+.table-5col th:nth-child(2), .table-5col td:nth-child(2) { width: 15%; text-align: center; }
+.table-5col th:nth-child(3), .table-5col td:nth-child(3) { width: 17%; text-align: right; font-variant-numeric: tabular-nums; }
+.table-5col th:nth-child(4), .table-5col td:nth-child(4) { width: 12%; text-align: center; }
+.table-5col th:nth-child(5), .table-5col td:nth-child(5) { width: 28%; text-align: right; font-weight: 700; color: #0B3A7A; font-variant-numeric: tabular-nums; }
+.table-5col .fund-name {
+  font-weight: 700;
+  line-height: 1.15;
+  color: #0f172a;
+}
+.total-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4mm;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  padding: 3mm 4mm;
+  border-radius: 3mm;
+  border: 1px solid #bae6fd;
+}
+.total-chip {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 2mm;
+  padding: 2mm 3mm;
+  font-size: 8pt;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.total-chip-label { color: #64748b; font-weight: 500; }
+.total-chip-value { color: #0f172a; font-weight: 700; margin-left: 1.5mm; }
+.total-fv { font-size: 13pt; font-weight: 800; color: #0B3A7A; white-space: nowrap; }
+.kpi { display: flex; gap: 4mm; margin-bottom: 8mm; }
+.kpi .box { flex: 1; border: 1px solid #e6e9f2; border-radius: 4mm; padding: 4mm; text-align: center; }
+.kpi .val { font-size: 14pt; font-weight: 800; color: #0f172a; }
+.kpi .lbl { font-size: 8pt; color: #52607a; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 1mm; display: block; }
+.interpretation { background-color: #f8fafc; padding: 4mm; border-radius: 2mm; margin-bottom: 8mm; border-left: 3px solid #64748b; font-size: 9pt; color: #475569; }
+.interpretation strong { color: #334155; }
+.fund-card { margin-bottom: 5mm; padding: 4mm; border: 1px solid #e2e8f0; border-radius: 3mm; page-break-inside: avoid; background: #fff; }
+.fund-card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2mm; border-bottom: 1px dashed #f1f3f8; padding-bottom: 2mm; }
+.fund-title { font-weight: 800; font-size: 11pt; color: #0B3A7A; }
+.fund-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; font-size: 9pt; }
+.fund-label { font-size: 8pt; color: #64748b; font-weight: 600; text-transform: uppercase; }
+.fund-text { color: #334155; line-height: 1.4; }
+.product-tags { display: flex; gap: 2mm; margin-top: 1mm; }
+.tag { font-size: 7pt; padding: 0.5mm 2mm; border-radius: 2px; background: #f1f5f9; color: #475569; }
+.assumptions-box { background: #fefce8; border: 1px solid #fef08a; padding: 4mm; border-radius: 2mm; font-size: 9pt; color: #854d0e; margin-top: 5mm; }
+.footer { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; font-size: 7pt; color: #7a869e; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 2mm; }
+.pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ffcc00; padding-bottom: 2mm; margin-bottom: 6mm; font-size: 9pt; }
+.pdf-title-page { display: flex; flex-direction: column; justify-content: center; height: 260mm; }
+`;
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -716,6 +862,7 @@ function renderCompanyPDFSection(data: FinancialAnalysisData): string {
   const cf = data.companyFinance ?? {};
   const runway = companyRunway(data.companyFinance);
   const risks = data.companyRisks ?? {};
+  const riskDetails = data.companyRiskDetails ?? {};
   const riskCount = COMPANY_RISK_LABELS.filter((r) => risks[r.key]).length;
   const benefits = data.companyBenefits ?? {};
   const benefitLabels: string[] = [];
@@ -760,6 +907,13 @@ function renderCompanyPDFSection(data: FinancialAnalysisData): string {
           ${COMPANY_RISK_LABELS.map((r) => `<tr><td>${r.label}</td><td style="text-align: center;">${risks[r.key] ? 'Ano' : 'Ne'}</td></tr>`).join('')}
         </tbody>
       </table>
+      ${(riskDetails.property?.limit != null || riskDetails.property?.contractYears != null || riskDetails.interruption?.limit != null || riskDetails.interruption?.contractYears != null || riskDetails.liability?.limit != null || riskDetails.liability?.contractYears != null) ? `
+      <p style="font-size: 8pt; color: #64748b; margin-top: 3mm;">Detail: ${[
+        riskDetails.property && (riskDetails.property.limit != null || riskDetails.property.contractYears != null) ? `Majetek – limit ${formatCzk(riskDetails.property.limit ?? 0)} Kč, stáří ${riskDetails.property.contractYears ?? '—'} let` : null,
+        riskDetails.interruption && (riskDetails.interruption.limit != null || riskDetails.interruption.contractYears != null) ? `Přerušení – limit ${formatCzk(riskDetails.interruption.limit ?? 0)} Kč` : null,
+        riskDetails.liability && (riskDetails.liability.limit != null || riskDetails.liability.contractYears != null) ? `Odpovědnost – limit ${formatCzk(riskDetails.liability.limit ?? 0)} Kč` : null,
+      ].filter(Boolean).join('; ') || '—'}</p>
+      ` : ''}
     </div>
     <div class="pdf-section" style="margin-top: 8mm;">
       <div class="h2">Benefity</div>
@@ -828,6 +982,7 @@ export function buildReportHTML(data: FinancialAnalysisData, options?: BuildRepo
   else balanceComment += 'Zadlužení je pod kontrolou.';
 
   return `
+<style>${PDF_STYLES}</style>
 <div class="pdf">
   <section class="pdf-page pdf-title-page">
     <div style="text-align: center;">

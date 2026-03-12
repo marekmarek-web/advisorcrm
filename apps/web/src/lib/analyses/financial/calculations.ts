@@ -61,6 +61,40 @@ export function companyRunway(cf: CompanyFinance | undefined): number | null {
   return reserve / monthlySurplus;
 }
 
+// ----- Benefit calculator (FA s.r.o. – varianta mzda vs. benefit) -----
+/** Podíl čisté mzdy z hrubé (po odvodech zaměstnance). */
+export const BENEFIT_NET_RATIO = 0.67;
+/** Náklad firmy na hrubou mzdu (1 + odvody cca 33,8 %). */
+export const BENEFIT_EMPLOYER_COST_FACTOR = 1.338;
+/** Daňová úspora majitelů na benefit (odhad podílu úspory). */
+export const BENEFIT_DIRECTORS_TAX_SAVINGS_RATE = 0.21;
+
+/** Ekvivalent hrubé mzdy pro daný čistý příspěvek (1 osoba, Kč/měs). */
+export function benefitGrossEquiv(amountPerPerson: number): number {
+  if (amountPerPerson <= 0) return 0;
+  return amountPerPerson / BENEFIT_NET_RATIO;
+}
+
+/** Náklad firmy na mzdu (1 osoba, Kč/měs) – varianta A. */
+export function benefitEmployerCost(grossEquiv: number): number {
+  return grossEquiv * BENEFIT_EMPLOYER_COST_FACTOR;
+}
+
+/** Čistá mzda zaměstnance (1 osoba, Kč/měs) – varianta A. */
+export function benefitNetForEmployee(grossEquiv: number): number {
+  return grossEquiv * BENEFIT_NET_RATIO;
+}
+
+/** Úspora firmy při benefit vs. mzda (ročně): (náklad mzda − náklad benefit) × počet × 12. */
+export function benefitSavingsEmployees(employerCost: number, amountPerPerson: number, count: number): number {
+  return (employerCost - amountPerPerson) * count * 12;
+}
+
+/** Daňová úspora majitelů (ročně): příspěvek jednatelům × 12 × 0.21. */
+export function benefitDirectorsTaxSavings(directorsAmountMonthly: number): number {
+  return directorsAmountMonthly * 12 * BENEFIT_DIRECTORS_TAX_SAVINGS_RATE;
+}
+
 // ----- Assets / Liabilities -----
 
 export function totalAssetsFromValues(assets: {
