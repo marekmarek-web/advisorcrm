@@ -358,8 +358,12 @@ export default function TasksPage() {
           </button>
           <button
             type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              startEdit(t);
+            }}
             className="p-2 text-slate-400 hover:bg-slate-100 rounded-[var(--wp-radius-sm)] transition-colors"
-            aria-hidden
+            aria-label="Více možností"
           >
             <MoreVertical size={16} />
           </button>
@@ -393,7 +397,13 @@ export default function TasksPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => newTaskFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                onClick={() => {
+                  newTaskFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  const titleInput = newTaskFormRef.current?.querySelector<HTMLInputElement>("input[type='text']");
+                  if (titleInput) {
+                    setTimeout(() => titleInput.focus(), 400);
+                  }
+                }}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-[var(--wp-radius-sm)] text-sm font-semibold shadow-sm hover:bg-indigo-700 transition-all min-h-[44px] min-w-[44px]"
               >
                 <Plus size={18} /> Vytvořit úkol
@@ -538,11 +548,15 @@ export default function TasksPage() {
                     : "Vytvořte první úkol pomocí formuláře nahoře."
                 }
                 actionLabel={searchQuery.trim() ? "Zrušit hledání" : "Vytvořit úkol"}
-                onAction={() =>
-                  searchQuery.trim()
-                    ? setSearchQuery("")
-                    : document.getElementById("new-task-form")?.scrollIntoView({ behavior: "smooth" })
-                }
+                onAction={() => {
+                  if (searchQuery.trim()) {
+                    setSearchQuery("");
+                  } else {
+                    newTaskFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    const titleInput = newTaskFormRef.current?.querySelector<HTMLInputElement>("input[type='text']");
+                    if (titleInput) setTimeout(() => titleInput.focus(), 400);
+                  }
+                }}
               />
             </div>
           ) : (

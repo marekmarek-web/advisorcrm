@@ -20,9 +20,9 @@ export const COVERAGE_CATEGORIES: CoverageCategory[] = [
   },
   {
     type: "expandable",
-    category: "Pojištění majetku",
+    category: "Majetek",
     items: [
-      { code: "NEM", label: "Nemovitost" },
+      { code: "MAJ", label: "Nemovitost" },
       { code: "MAJ", label: "Domácnost" },
       { code: "MAJ", label: "Obojí" },
     ],

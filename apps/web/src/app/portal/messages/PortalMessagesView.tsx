@@ -15,6 +15,7 @@ import {
   type ConversationListItem,
   type MessageAttachmentRow,
 } from "@/app/actions/messages";
+import { getContact } from "@/app/actions/contacts";
 
 const POLL_INTERVAL = 10_000;
 
@@ -109,7 +110,13 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       return;
     }
     const conv = conversations.find((c) => c.contactId === selectedContactId);
-    if (conv) setContactName(conv.contactName);
+    if (conv) {
+      setContactName(conv.contactName);
+    } else {
+      getContact(selectedContactId).then((c) => {
+        if (c) setContactName([c.firstName, c.lastName].filter(Boolean).join(" ") || "Kontakt");
+      }).catch(() => {});
+    }
 
     let cancelled = false;
     getMessages(selectedContactId).then((data) => {

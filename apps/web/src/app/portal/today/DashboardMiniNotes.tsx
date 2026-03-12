@@ -82,7 +82,7 @@ export function DashboardMiniNotes({ initialNotes }: { initialNotes: MeetingNote
     return (
       <div className="mt-8 rounded-2xl sm:rounded-3xl border border-slate-100 bg-white shadow-sm p-6">
         <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 mb-1">
-          <FileText size={18} className="text-indigo-600" /> Vision Board
+          <FileText size={18} className="text-indigo-600" /> Zápisky
         </h3>
         <p className="text-xs font-bold text-slate-500 mb-4">Rychlé poznámky a nápady</p>
         <p className="text-sm text-slate-500 mb-4">Zatím žádné zápisky.</p>
@@ -166,7 +166,7 @@ export function DashboardMiniNotes({ initialNotes }: { initialNotes: MeetingNote
       <div className="px-4 sm:px-5 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-            <FileText size={18} className="text-indigo-600" /> Vision Board
+            <FileText size={18} className="text-indigo-600" /> Zápisky
           </h3>
           <p className="text-xs font-bold text-slate-500 mt-0.5">Rychlé poznámky a nápady</p>
         </div>

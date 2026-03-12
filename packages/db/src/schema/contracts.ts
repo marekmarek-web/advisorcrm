@@ -22,7 +22,7 @@ export const contractSegments = [
 /** Mapování kódu segmentu na plný název pro UI. */
 export const SEGMENT_LABELS: Record<string, string> = {
   ZP: "Životní pojištění",
-  MAJ: "Majetek (domácnost/nemovitost)",
+  MAJ: "Majetek",
   ODP: "Odpovědnost",
   AUTO_PR: "Auto – povinné ručení",
   AUTO_HAV: "Auto – havarijní pojištění",
@@ -34,7 +34,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   UVER: "Úvěry",
   FIRMA_POJ: "Pojištění firem",
   ZDRAV: "Zdraví / úraz / nemoc",
-  NEM: "Nemovitosti / NEM-DOM",
+  NEM: "Majetek",
 };
 
 /** Katalog partnerů (globální nebo per-tenant). */

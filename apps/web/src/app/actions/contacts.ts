@@ -288,8 +288,16 @@ export async function uploadContactAvatar(contactId: string, formData: FormData)
       : uploadError.message;
     throw new Error(msg);
   }
-  const { data: urlData } = admin.storage.from("documents").getPublicUrl(path);
-  const url = urlData?.publicUrl ?? null;
+  const { data: signedData } = await admin.storage
+    .from("documents")
+    .createSignedUrl(path, 60 * 60 * 24 * 365);
+  let url: string | null = null;
+  if (signedData?.signedUrl) {
+    url = signedData.signedUrl;
+  } else {
+    const { data: urlData } = admin.storage.from("documents").getPublicUrl(path);
+    url = urlData?.publicUrl ?? null;
+  }
   if (url) {
     await db
       .update(contacts)

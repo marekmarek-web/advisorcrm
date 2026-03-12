@@ -24,6 +24,7 @@ import {
   createMeetingNote,
   updateMeetingNote,
   deleteMeetingNote,
+  summarizeMeetingNotes,
 } from "@/app/actions/meeting-notes";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { ContactRow } from "@/app/actions/contacts";
@@ -161,6 +162,8 @@ export function NotesVisionBoard({
   const [formData, setFormData] = useState(defaultForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -353,16 +356,28 @@ export function NotesVisionBoard({
           <div className="w-9 h-9 bg-[#1a1c2e] rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0">W</div>
           <div className="min-w-0">
             <h1 className="font-bold text-base md:text-lg text-slate-900 tracking-tight leading-none truncate" style={{ color: "var(--wp-text)" }}>Zápisky</h1>
-            <p className="text-[11px] font-bold tracking-wider uppercase leading-none mt-0.5 hidden md:block" style={{ color: "var(--wp-text-muted)" }}>Vision Board</p>
+            <p className="text-[11px] font-bold tracking-wider uppercase leading-none mt-0.5 hidden md:block" style={{ color: "var(--wp-text-muted)" }}>Nástěnka zápisků</p>
           </div>
         </div>
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
           {!isMobile && (
             <button
               type="button"
-              className="flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 hover:shadow-md rounded-xl text-sm font-bold transition-all"
+              disabled={aiLoading || notes.length === 0}
+              onClick={async () => {
+                setAiLoading(true);
+                try {
+                  const result = await summarizeMeetingNotes();
+                  setAiSummary(result);
+                } catch {
+                  setAiSummary("Sumarizace se nezdařila.");
+                } finally {
+                  setAiLoading(false);
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 hover:shadow-md rounded-xl text-sm font-bold transition-all disabled:opacity-50"
             >
-              <Sparkles size={16} className="text-amber-500" /> AI Sumarizace
+              <Sparkles size={16} className="text-amber-500" /> {aiLoading ? "Zpracovávám…" : "AI Sumarizace"}
             </button>
           )}
           <button
@@ -575,6 +590,37 @@ export function NotesVisionBoard({
         })}
       </main>
 
+      {aiSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden border border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                <Sparkles size={18} className="text-amber-500" /> AI Sumarizace
+              </h2>
+              <button
+                type="button"
+                onClick={() => setAiSummary(null)}
+                className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <pre className="whitespace-pre-wrap text-sm text-slate-700 font-medium leading-relaxed">{aiSummary}</pre>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setAiSummary(null)}
+                className="px-5 py-2.5 bg-[#1a1c2e] text-white rounded-xl font-bold text-sm hover:bg-[#2a2d4a] transition-all"
+              >
+                Zavřít
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-[480px] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
@@ -583,7 +629,7 @@ export function NotesVisionBoard({
                 <h2 className="font-bold text-xl text-slate-800">
                   {editingId ? "Upravit zápisek" : "Nový zápisek"}
                 </h2>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Vision Board</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Zápisky</p>
               </div>
               <button
                 type="button"

@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Edit2,
-  FileText,
   Mail,
   Phone,
   MapPin,
@@ -14,12 +13,10 @@ import { getContact } from "@/app/actions/contacts";
 import { getHouseholdForContact } from "@/app/actions/households";
 import { ContractsSection } from "@/app/dashboard/contacts/[id]/ContractsSection";
 import { DocumentsSection } from "@/app/dashboard/contacts/[id]/DocumentsSection";
-import { InviteToClientZoneButton } from "@/app/dashboard/contacts/[id]/InviteToClientZoneButton";
 import { SendPaymentPdfButton } from "@/app/dashboard/contacts/[id]/SendPaymentPdfButton";
 import { ContactActivityTimeline } from "@/app/dashboard/contacts/[id]/ContactActivityTimeline";
 import { ChatThread } from "@/app/components/ChatThread";
 import { ClientFinancialSummary } from "@/app/components/contacts/ClientFinancialSummary";
-import { ComplianceSection } from "@/app/components/contacts/ComplianceSection";
 import { ContactTabLayout } from "./ContactTabLayout";
 import { ContactTasksAndEvents } from "./ContactTasksAndEvents";
 import { ContactOpportunityBoard } from "./ContactOpportunityBoard";
@@ -53,104 +50,6 @@ export default async function ContactDetailPage({
         <ContactLastNotePreview contactId={id} />
         <ContactProductsPreview contactId={id} />
         <ContactFinancialAnalysesSection contactId={id} />
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-50">
-            <h2 className="text-lg font-black text-slate-900">Kontaktní údaje</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-              <p className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-mail</span>
-                <span className="text-slate-800">{contact.email ?? "—"}</span>
-              </p>
-              <p className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefon</span>
-                <span className="text-slate-800">{contact.phone ?? "—"}</span>
-              </p>
-              {contact.title && (
-                <p className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Titul</span>
-                  <span className="text-slate-800">{contact.title}</span>
-                </p>
-              )}
-              {contact.birthDate && (
-                <p className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Datum narození</span>
-                  <span className="text-slate-800">{contact.birthDate}</span>
-                </p>
-              )}
-              {(contact.street || contact.city || contact.zip) && (
-                <p className="flex flex-col gap-0.5 md:col-span-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Adresa</span>
-                  <span className="text-slate-800">
-                    {[contact.street, [contact.city, contact.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
-                  </span>
-                </p>
-              )}
-              {contact.lifecycleStage && (
-                <p className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fáze</span>
-                  <span className="text-slate-800 capitalize">
-                    {contact.lifecycleStage === "former_client" ? "Bývalý klient" : contact.lifecycleStage === "client" ? "Klient" : contact.lifecycleStage}
-                  </span>
-                </p>
-              )}
-              {contact.priority && (
-                <p className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Priorita</span>
-                  <span className="text-slate-800">
-                    {contact.priority === "low" ? "Nízká" : contact.priority === "normal" ? "Běžná" : contact.priority === "high" ? "Vysoká" : contact.priority === "urgent" ? "Urgentní" : contact.priority}
-                  </span>
-                </p>
-              )}
-              {contact.tags && contact.tags.length > 0 && (
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Štítky</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {contact.tags.map((tag) => (
-                      <span key={tag} className="inline-block rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 border border-slate-200">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(contact.nextServiceDue || contact.serviceCycleMonths) && (
-                <p className="flex flex-col gap-0.5 md:col-span-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Servisní cyklus</span>
-                  <span className="text-slate-800">
-                    {contact.serviceCycleMonths ?? "—"} měsíců
-                    {contact.nextServiceDue && <> · Příští servis: {contact.nextServiceDue}</>}
-                  </span>
-                </p>
-              )}
-              {contact.gdprConsentAt && (
-                <p className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Souhlas GDPR</span>
-                  <span className="text-slate-800">{new Date(contact.gdprConsentAt).toLocaleString("cs-CZ")}</span>
-                </p>
-              )}
-              {(contact.referralSource || contact.referralContactName) && (
-                <p className="flex flex-col gap-0.5 md:col-span-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Doporučení</span>
-                  <span className="text-slate-800">
-                    {[contact.referralSource, contact.referralContactName].filter(Boolean).join(" – ")}
-                    {contact.referralContactId && (
-                      <Link href={`/portal/contacts/${contact.referralContactId}`} className="ml-2 text-indigo-600 hover:underline">
-                        kontakt
-                      </Link>
-                    )}
-                  </span>
-                </p>
-              )}
-            </div>
-            {contact.email && (
-              <div className="mt-6 pt-4 border-t border-slate-100">
-                <InviteToClientZoneButton contactId={id} />
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       <aside className="xl:col-span-1 space-y-6">
@@ -210,7 +109,6 @@ export default async function ContactDetailPage({
     { id: "aktivita" as const, label: "Aktivita", content: aktivitaContent },
     { id: "ukoly" as const, label: "Úkoly a schůzky", content: <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden"><div className="px-6 py-5 border-b border-slate-50"><h2 className="text-lg font-black text-slate-900">Úkoly a schůzky</h2></div><div className="p-6"><ContactTasksAndEvents contactId={id} /></div></div> },
     { id: "obchody" as const, label: "Obchody", content: <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden"><div className="px-6 py-5 border-b border-slate-50"><h2 className="text-lg font-black text-slate-900">Obchody</h2></div><div className="p-6"><ContactOpportunityBoard contactId={id} /></div></div> },
-    { id: "kyc" as const, label: "KYC & AML", content: <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden"><div className="px-6 py-5 border-b border-slate-50"><h2 className="text-lg font-black text-slate-900">KYC & AML</h2></div><div className="p-6"><ComplianceSection contactId={id} /></div></div> },
   ];
 
   const initials = [contact.firstName, contact.lastName].map((s) => s?.charAt(0) ?? "").join("").toUpperCase() || "?";
@@ -242,12 +140,6 @@ export default async function ContactDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <Link
-            href={`/portal/contacts/${id}/summary`}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all min-h-[44px]"
-          >
-            <FileText size={16} /> Klientská zpráva
-          </Link>
           <Link
             href={`/portal/contacts/${id}/edit`}
             className="flex items-center gap-2 px-5 py-2 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"

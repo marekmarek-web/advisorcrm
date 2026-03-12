@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Download, Filter, Phone, Mail, CheckSquare, ArrowRight } from "lucide-react";
+import { Search, Plus, Download, Phone, Mail, CheckSquare, ArrowRight, MessageSquare } from "lucide-react";
 import { NewClientWizard } from "@/app/components/weplan/NewClientWizard";
 import { useToast } from "@/app/components/Toast";
 import { EmptyState } from "@/app/components/EmptyState";
@@ -418,6 +418,9 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
                         <Link href={`/portal/tasks?contactId=${c.id}`} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-[var(--wp-radius-sm)]" aria-label="Přidat úkol">
                           <CheckSquare size={20} />
                         </Link>
+                        <Link href={`/portal/messages?contact=${c.id}`} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-[var(--wp-radius-sm)]" aria-label="Napsat zprávu">
+                          <MessageSquare size={20} />
+                        </Link>
                         <Link href={`/portal/contacts/${c.id}`} className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 border border-slate-200 text-slate-700 text-sm font-semibold rounded-[var(--wp-radius-sm)] hover:bg-slate-200">
                           Detail <ArrowRight size={16} />
                         </Link>
@@ -587,6 +590,14 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
                                 aria-label="Přidat úkol"
                               >
                                 <CheckSquare size={16} />
+                              </Link>
+                              <Link
+                                href={`/portal/messages?contact=${c.id}`}
+                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-[var(--wp-radius-sm)] transition-all"
+                                title="Napsat zprávu"
+                                aria-label="Napsat zprávu"
+                              >
+                                <MessageSquare size={16} />
                               </Link>
                               <Link
                                 href={`/portal/contacts/${c.id}`}

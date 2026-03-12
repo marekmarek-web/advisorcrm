@@ -161,3 +161,52 @@ export async function deleteMeetingNote(id: string) {
     .delete(meetingNotes)
     .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, id)));
 }
+
+export async function summarizeMeetingNotes(): Promise<string> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+  const rows = await db
+    .select({
+      id: meetingNotes.id,
+      meetingAt: meetingNotes.meetingAt,
+      domain: meetingNotes.domain,
+      content: meetingNotes.content,
+      contactId: meetingNotes.contactId,
+    })
+    .from(meetingNotes)
+    .where(eq(meetingNotes.tenantId, auth.tenantId))
+    .orderBy(desc(meetingNotes.meetingAt))
+    .limit(20);
+
+  if (rows.length === 0) return "Žádné zápisky k sumarizaci.";
+
+  const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
+  const contactList = contactIds.length
+    ? await db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName }).from(contacts).where(eq(contacts.tenantId, auth.tenantId))
+    : [];
+  const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
+
+  const domainLabels: Record<string, string> = {
+    hypo: "Hypotéka",
+    investice: "Investice",
+    pojisteni: "Pojištění",
+    komplex: "Komplexní plán",
+  };
+
+  const byDomain: Record<string, string[]> = {};
+  for (const r of rows) {
+    const domain = domainLabels[r.domain] ?? r.domain ?? "Ostatní";
+    const c = r.content as Record<string, unknown> | null;
+    const title = (c && typeof c.title === "string" && c.title.trim()) ? c.title : "Zápisek";
+    const contact = r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný";
+    const date = r.meetingAt ? new Date(r.meetingAt).toLocaleDateString("cs-CZ") : "";
+    if (!byDomain[domain]) byDomain[domain] = [];
+    byDomain[domain].push(`• ${title} (${contact}, ${date})`);
+  }
+
+  let summary = `Shrnutí ${rows.length} zápisků:\n\n`;
+  for (const [domain, items] of Object.entries(byDomain)) {
+    summary += `${domain} (${items.length}):\n${items.join("\n")}\n\n`;
+  }
+  return summary.trim();
+}

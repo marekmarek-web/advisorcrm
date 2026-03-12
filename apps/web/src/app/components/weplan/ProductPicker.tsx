@@ -103,9 +103,15 @@ export function ProductPicker({
           className="w-full rounded-[6px] border border-monday-border px-2 py-1.5 text-monday-text bg-monday-surface focus:outline-none focus:ring-1 focus:ring-monday-blue"
         >
           <option value="">— vyberte</option>
-          {partners
-            .filter((p) => !segment || p.segment === segment)
-            .map((p) => (
+          {(() => {
+            const filtered = partners.filter((p) => !segment || p.segment === segment);
+            const seen = new Set<string>();
+            return filtered.filter((p) => {
+              if (seen.has(p.id)) return false;
+              seen.add(p.id);
+              return true;
+            });
+          })().map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} {p.segment ? `(${segmentLabel(p.segment)})` : ""}
               </option>

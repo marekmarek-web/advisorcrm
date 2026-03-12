@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export type ContactTabId = "prehled" | "smlouvy" | "dokumenty" | "zapisky" | "aktivita" | "ukoly" | "obchody" | "kyc";
+export type ContactTabId = "prehled" | "smlouvy" | "dokumenty" | "zapisky" | "aktivita" | "ukoly" | "obchody";
 
-const TAB_IDS: ContactTabId[] = ["prehled", "smlouvy", "dokumenty", "zapisky", "aktivita", "ukoly", "obchody", "kyc"];
+const TAB_IDS: ContactTabId[] = ["prehled", "smlouvy", "dokumenty", "zapisky", "aktivita", "ukoly", "obchody"];
 
 export function ContactTabLayout({
   tabs,
@@ -17,8 +17,9 @@ export function ContactTabLayout({
 
   const readHash = useCallback(() => {
     if (typeof window === "undefined") return;
-    const hash = window.location.hash.slice(1) as ContactTabId;
-    if (hash && TAB_IDS.includes(hash)) setActiveId(hash);
+    const raw = window.location.hash.slice(1);
+    const tabPart = raw.split("&")[0] as ContactTabId;
+    if (tabPart && TAB_IDS.includes(tabPart)) setActiveId(tabPart);
   }, []);
 
   useEffect(() => {

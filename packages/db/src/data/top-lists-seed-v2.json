@@ -4,7 +4,7 @@
   "note": "Top seznamy (pojišťovny/investiční společnosti/banky/penzijní společnosti) podle veřejně dohledatelných produktových řad. Nezaručuje dostupnost v Beplan; slouží jako seed. U každého partnera lze doplnit další interní varianty z brokerpool dropdownů.\nÚpravy v2: doplněny životní produkty z PDF (včetně Maxima MaxEfekt), segmenty mají plné české názvy; Slavia označena jako excluded dle požadavku.",
   "segments": [
     { "code": "ZP", "label": "Životní pojištění", "displayName": "Životní pojištění" },
-    { "code": "MAJ", "label": "Majetek (domácnost/nemovitost)", "displayName": "Majetek (domácnost/nemovitost)" },
+    { "code": "MAJ", "label": "Majetek", "displayName": "Majetek" },
     { "code": "ODP", "label": "Odpovědnost", "displayName": "Odpovědnost" },
     { "code": "AUTO_PR", "label": "Auto – povinné ručení", "displayName": "Auto – povinné ručení" },
     { "code": "AUTO_HAV", "label": "Auto – havarijní pojištění", "displayName": "Auto – havarijní pojištění" },
@@ -19,16 +19,16 @@
   ],
   "topLists": {
     "pojistovny_top10": [
-      { "partner": "Allianz pojišťovna", "map": { "Životní pojištění": ["Život"], "Majetek (domácnost/nemovitost)": ["Allianz MůjDomov (domácnost/nemovitost/majetek+odpovědnost)"], "Odpovědnost": ["Allianz MůjDomov – odpovědnost (součást balíčků)"], "Auto – povinné ručení": ["Povinné ručení"], "Auto – havarijní pojištění": ["Havarijní pojištění (balíčky PLUS/EXTRA/MAX)"] } },
-      { "partner": "Kooperativa", "map": { "Životní pojištění": ["FLEXI"], "Majetek (domácnost/nemovitost)": ["Pojištění majetku (domácnost/nemovitost) – produktové řady dle webu/partnera (TBD)"], "Odpovědnost": ["Odpovědnost – obvykle součást majetkového pojištění (TBD)"] } },
-      { "partner": "UNIQA", "map": { "Životní pojištění": ["Život & Radost"], "Majetek (domácnost/nemovitost)": ["Pojištění bytu a domácnosti (balíčky MINI/PLUS/EXTRA)", "Pojištění domu a domácnosti (balíčky MINI/PLUS/EXTRA)"], "Odpovědnost": ["Pojištění odpovědnosti (balíčky PLUS/EXTRA)"] } },
+      { "partner": "Allianz pojišťovna", "map": { "Životní pojištění": ["Život"], "Majetek": ["Allianz MůjDomov (domácnost/nemovitost/majetek+odpovědnost)"], "Odpovědnost": ["Allianz MůjDomov – odpovědnost (součást balíčků)"], "Auto – povinné ručení": ["Povinné ručení"], "Auto – havarijní pojištění": ["Havarijní pojištění (balíčky PLUS/EXTRA/MAX)"] } },
+      { "partner": "Kooperativa", "map": { "Životní pojištění": ["FLEXI"], "Majetek": ["Pojištění majetku (domácnost/nemovitost) – produktové řady dle webu/partnera (TBD)"], "Odpovědnost": ["Odpovědnost – obvykle součást majetkového pojištění (TBD)"] } },
+      { "partner": "UNIQA", "map": { "Životní pojištění": ["Život & Radost"], "Majetek": ["Pojištění bytu a domácnosti (balíčky MINI/PLUS/EXTRA)", "Pojištění domu a domácnosti (balíčky MINI/PLUS/EXTRA)"], "Odpovědnost": ["Pojištění odpovědnosti (balíčky PLUS/EXTRA)"] } },
       { "partner": "ČPP", "map": { "Životní pojištění": ["NEON"] } },
       { "partner": "NN Životní pojišťovna", "map": { "Životní pojištění": ["Orange"] } },
       { "partner": "MetLife", "map": { "Životní pojištění": ["OneGuard"] } },
-      { "partner": "Pillow", "map": { "Zdraví / úraz / nemoc": ["Pojištění úrazu a nemoci"] } },
+      { "partner": "Pillow", "map": { "Životní pojištění": ["Pojištění úrazu a nemoci"] } },
       { "partner": "Komerční pojišťovna", "map": { "Životní pojištění": ["Elán"] } },
-      { "partner": "Slavia", "map": { "Životní pojištění": ["(TBD – veřejné názvy se liší dle produktových řad)"], "Majetek (domácnost/nemovitost)": ["(TBD)"], "Auto – povinné ručení": ["(TBD)"], "Auto – havarijní pojištění": ["(TBD)"] }, "excluded": true, "reason": "Uživatel nechce v TOP seznamech (doplníme až z interních dropdownů)." },
-      { "partner": "Maxima", "map": { "Životní pojištění": ["MaxEfekt"], "Majetek (domácnost/nemovitost)": ["(TBD)"], "Auto – povinné ručení": ["(TBD)"], "Auto – havarijní pojištění": ["(TBD)"] } }
+      { "partner": "Slavia", "map": { "Životní pojištění": ["(TBD – veřejné názvy se liší dle produktových řad)"], "Majetek": ["(TBD)"], "Auto – povinné ručení": ["(TBD)"], "Auto – havarijní pojištění": ["(TBD)"] }, "excluded": true, "reason": "Uživatel nechce v TOP seznamech (doplníme až z interních dropdownů)." },
+      { "partner": "Maxima", "map": { "Životní pojištění": ["MaxEfekt"], "Majetek": ["(TBD)"], "Auto – povinné ručení": ["(TBD)"], "Auto – havarijní pojištění": ["(TBD)"] } }
     ],
     "investicni_spolecnosti_top10": [
       { "partner": "Conseq", "map": { "Investice": ["Active Invest (Dynamický)", "Active Invest (Konzervativní)", "Active Invest (Vyvážený)", "Classic Invest"] } },

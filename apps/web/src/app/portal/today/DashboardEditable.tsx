@@ -328,7 +328,7 @@ export function DashboardEditable({ kpis, initialNotes = [] }: { kpis: Dashboard
       {/* Left panel: main content */}
       <div className="wp-projects-section flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 lg:pr-4">
         {/* Header */}
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 m-0 tracking-tight">Moje nástěnka</h2>
             <p className="text-sm font-bold text-slate-500 mt-1 m-0">
@@ -341,7 +341,7 @@ export function DashboardEditable({ kpis, initialNotes = [] }: { kpis: Dashboard
         </div>
 
         {/* KPI cards – live, clickable, modern SaaS style */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
           {KPI_CARDS.map((card) => {
             const IconComponent = card.Icon;
             return (
@@ -487,7 +487,7 @@ export function DashboardEditable({ kpis, initialNotes = [] }: { kpis: Dashboard
         })()}
 
         {/* Widget grid – draggable cards, modern SaaS style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 pb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 pb-8">
           {visibleOrder.map((id) => {
             const href = widgetHref[id];
             const WidgetIconComponent = WIDGET_ICONS[id];
@@ -516,7 +516,7 @@ export function DashboardEditable({ kpis, initialNotes = [] }: { kpis: Dashboard
                 onDragEnd={handleDragEnd}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, id)}
-                className={`cursor-grab active:cursor-grabbing rounded-2xl sm:rounded-3xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow ${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""} ${href ? "ring-1 ring-slate-100" : ""}`}
+                className={`cursor-grab active:cursor-grabbing rounded-2xl sm:rounded-3xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow ${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""} ${href ? "ring-1 ring-slate-100" : ""}`}
               >
                 {href ? (
                   <Link href={href} className="block -m-5 p-5 rounded-2xl sm:rounded-3xl hover:bg-slate-50/80 transition-colors text-inherit no-underline" aria-label={`Přejít na ${WIDGET_LABELS[id]}`}>
@@ -534,8 +534,10 @@ export function DashboardEditable({ kpis, initialNotes = [] }: { kpis: Dashboard
           })}
         </div>
 
-        {/* Mini Vision Board – dole na nástěnce */}
-        <DashboardMiniNotes initialNotes={initialNotes} />
+        {/* Zápisky – dole na nástěnce */}
+        <div className="mb-8">
+          <DashboardMiniNotes initialNotes={initialNotes} />
+        </div>
       </div>
 
       {/* Right panel: side calendar – vizuálně oddělená plocha */}

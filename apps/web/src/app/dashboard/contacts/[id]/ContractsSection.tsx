@@ -55,6 +55,19 @@ export function ContractsSection({ contactId }: { contactId: string }) {
 
   useEffect(() => load(), [contactId]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (hash.includes("add=1")) {
+      setAdding(true);
+    }
+    const onHashChange = () => {
+      if (window.location.hash.includes("add=1")) setAdding(true);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

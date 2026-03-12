@@ -32,6 +32,7 @@ export function ContactProductsPreview({ contactId }: { contactId: string }) {
         <Link
           href="#smlouvy"
           className="text-sm font-black text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 min-h-[44px]"
+          onClick={() => { window.location.hash = "smlouvy"; }}
         >
           Zobrazit vše <ChevronRight size={16} />
         </Link>
@@ -71,7 +72,7 @@ export function ContactProductsPreview({ contactId }: { contactId: string }) {
           ))
         )}
         <Link
-          href="#smlouvy"
+          href="#smlouvy&add=1"
           className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 mt-2 min-h-[44px]"
         >
           <span className="text-base">+</span> Přidat produkt
