@@ -66,6 +66,10 @@ ALTER TABLE board_views ADD COLUMN IF NOT EXISTS groups_config jsonb;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type text DEFAULT 'schuzka';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS reminder_at timestamptz;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS opportunity_id uuid REFERENCES opportunities(id) ON DELETE SET NULL;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS status text;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS notes text;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS meeting_link text;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS task_id uuid REFERENCES tasks(id) ON DELETE SET NULL;
 CREATE TABLE IF NOT EXISTS notification_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,

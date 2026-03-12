@@ -20,6 +20,10 @@ export type EventRow = {
   location: string | null;
   reminderAt: Date | null;
   assignedTo: string | null;
+  status: string | null;
+  notes: string | null;
+  meetingLink: string | null;
+  taskId: string | null;
   contactName?: string | null;
   createdAt: Date;
 };
@@ -62,6 +66,10 @@ export async function listEvents(filters?: {
       location: events.location,
       reminderAt: events.reminderAt,
       assignedTo: events.assignedTo,
+      status: events.status,
+      notes: events.notes,
+      meetingLink: events.meetingLink,
+      taskId: events.taskId,
       createdAt: events.createdAt,
       contactFirstName: contacts.firstName,
       contactLastName: contacts.lastName,
@@ -84,6 +92,10 @@ export async function listEvents(filters?: {
     location: r.location,
     reminderAt: r.reminderAt,
     assignedTo: r.assignedTo,
+    status: r.status ?? null,
+    notes: r.notes ?? null,
+    meetingLink: r.meetingLink ?? null,
+    taskId: r.taskId ?? null,
     createdAt: r.createdAt,
     contactName: r.contactFirstName && r.contactLastName
       ? `${r.contactFirstName} ${r.contactLastName}`
@@ -144,6 +156,10 @@ export async function createEvent(form: {
   reminderAt?: string;
   contactId?: string;
   opportunityId?: string;
+  status?: string;
+  notes?: string;
+  meetingLink?: string;
+  taskId?: string;
 }): Promise<string | null> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
@@ -160,6 +176,10 @@ export async function createEvent(form: {
       reminderAt: form.reminderAt ? new Date(form.reminderAt) : null,
       contactId: form.contactId || null,
       opportunityId: form.opportunityId || null,
+      status: form.status?.trim() || null,
+      notes: form.notes?.trim() || null,
+      meetingLink: form.meetingLink?.trim() || null,
+      taskId: form.taskId || null,
       assignedTo: auth.userId,
     })
     .returning({ id: events.id });
@@ -182,6 +202,10 @@ export async function updateEvent(
     reminderAt?: string;
     contactId?: string;
     opportunityId?: string;
+    status?: string;
+    notes?: string;
+    meetingLink?: string;
+    taskId?: string;
   }
 ): Promise<void> {
   const auth = await requireAuthInAction();
@@ -198,6 +222,10 @@ export async function updateEvent(
       ...(form.contactId != null && { contactId: form.contactId || null }),
       ...(form.opportunityId != null && { opportunityId: form.opportunityId || null }),
       ...(form.reminderAt != null && { reminderAt: form.reminderAt ? new Date(form.reminderAt) : null }),
+      ...(form.status != null && { status: form.status.trim() || null }),
+      ...(form.notes != null && { notes: form.notes.trim() || null }),
+      ...(form.meetingLink != null && { meetingLink: form.meetingLink.trim() || null }),
+      ...(form.taskId != null && { taskId: form.taskId || null }),
       updatedAt: new Date(),
     })
     .where(and(eq(events.tenantId, auth.tenantId), eq(events.id, id)));

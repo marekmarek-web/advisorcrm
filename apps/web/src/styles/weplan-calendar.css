@@ -792,3 +792,385 @@
   background: var(--wp-primary-hover);
   opacity: 0.95;
 }
+
+/* ── Current time line ── */
+.wp-cal-current-time {
+  pointer-events: none;
+}
+
+.wp-cal-current-time-badge {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── Context panel (right sidebar) ── */
+.wp-cal-context-panel {
+  width: 300px;
+  min-width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(166, 168, 179, 0.12);
+  background: var(--wp-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wp-cal-context-panel--mobile {
+  width: 100%;
+  min-width: 0;
+  max-height: 45vh;
+  border-left: 0;
+  border-top: 1px solid rgba(166, 168, 179, 0.12);
+}
+
+.wp-cal-context-panel--collapsed .wp-cal-context-panel-body {
+  display: none;
+}
+
+.wp-cal-context-panel-header {
+  padding: var(--wp-space-3);
+  border-bottom: 1px solid rgba(166, 168, 179, 0.12);
+  background: linear-gradient(to bottom, rgba(250, 251, 253, 1) 0%, rgba(255, 255, 255, 0) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wp-space-2);
+  min-height: 44px;
+}
+
+.wp-cal-context-panel-toggle {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--wp-text-muted);
+  cursor: pointer;
+  border-radius: var(--wp-radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+
+.wp-cal-context-panel-toggle:hover {
+  background: var(--wp-link-hover-bg);
+  color: var(--wp-text);
+}
+
+.wp-cal-context-panel-header h3 {
+  font-size: var(--wp-fs-sm);
+  font-weight: var(--wp-fw-semibold);
+  color: var(--wp-text);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.wp-cal-context-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--wp-space-3);
+  min-height: 0;
+}
+
+.wp-cal-context-detail-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: var(--wp-fw-semibold);
+  padding: 2px 8px;
+  border-radius: var(--wp-pill-radius);
+  margin-bottom: var(--wp-space-2);
+}
+
+.wp-cal-context-detail-title {
+  font-size: 15px;
+  margin: 0 0 var(--wp-space-1);
+  font-weight: var(--wp-fw-semibold);
+  color: var(--wp-text);
+}
+
+.wp-cal-context-detail-time,
+.wp-cal-context-detail-contact,
+.wp-cal-context-detail-meta,
+.wp-cal-context-detail-notes {
+  font-size: var(--wp-fs-xs);
+  color: var(--wp-text-muted);
+  margin: 0 0 var(--wp-space-1);
+}
+
+.wp-cal-context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wp-space-2);
+  margin-top: var(--wp-space-4);
+  padding-top: var(--wp-space-3);
+  border-top: 1px solid var(--wp-border);
+}
+
+.wp-cal-context-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--wp-radius-sm);
+  border: 1px solid var(--wp-border);
+  background: var(--wp-bg);
+  color: var(--wp-text);
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wp-cal-context-btn:hover {
+  background: var(--wp-link-hover-bg);
+}
+
+.wp-cal-context-btn--primary {
+  background: var(--wp-cal-accent);
+  border-color: var(--wp-cal-accent);
+  color: #fff;
+}
+
+.wp-cal-context-btn--primary:hover {
+  opacity: 0.9;
+}
+
+.wp-cal-context-btn--danger {
+  color: var(--wp-danger);
+  border-color: var(--wp-danger);
+}
+
+.wp-cal-context-badge {
+  background: var(--wp-danger);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+.wp-cal-context-section {
+  margin-bottom: var(--wp-space-4);
+}
+
+.wp-cal-context-section h4 {
+  font-size: var(--wp-fs-xs);
+  font-weight: var(--wp-fw-semibold);
+  color: var(--wp-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--wp-space-2);
+}
+
+.wp-cal-context-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.wp-cal-context-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--wp-space-2);
+  padding: var(--wp-space-2) 0;
+  font-size: var(--wp-fs-sm);
+  border-bottom: 1px solid rgba(166, 168, 179, 0.08);
+  flex-wrap: wrap;
+}
+
+.wp-cal-context-list-time {
+  font-weight: 600;
+  color: var(--wp-text);
+  min-width: 36px;
+}
+
+.wp-cal-context-list-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wp-cal-context-list-title--done {
+  text-decoration: line-through;
+  color: var(--wp-text-muted);
+}
+
+.wp-cal-context-list-contact {
+  font-size: 10px;
+  color: var(--wp-text-muted);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wp-cal-context-task-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.wp-cal-context-empty,
+.wp-cal-context-muted {
+  font-size: var(--wp-fs-xs);
+  color: var(--wp-text-muted);
+  margin: 0;
+}
+
+.wp-cal-context-link {
+  font-size: var(--wp-fs-xs);
+  font-weight: 500;
+  color: var(--wp-cal-accent);
+  display: inline-block;
+  margin-top: var(--wp-space-2);
+}
+
+.wp-cal-context-link--badge {
+  padding: 4px 8px;
+  background: rgba(72, 95, 237, 0.08);
+  border-radius: var(--wp-radius-sm);
+}
+
+/* ── Quick event form ── */
+.wp-cal-quick-form {
+  min-width: 280px;
+}
+
+.wp-cal-quick-form-type {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--wp-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.wp-cal-quick-form-type:hover,
+.wp-cal-quick-form-type.active {
+  transform: scale(1.05);
+}
+
+.wp-cal-quick-form-title {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--wp-border);
+  background: transparent;
+  color: var(--wp-text);
+  font-family: var(--wp-font);
+}
+
+.wp-cal-quick-form-title::placeholder {
+  color: var(--wp-text-muted);
+}
+
+.wp-cal-quick-form-input {
+  font-size: 13px;
+}
+
+/* ── Week/day grid – absolute event blocks ── */
+.wp-cal-week-day-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.wp-cal-week-body {
+  position: relative;
+}
+
+.wp-cal-week-time-col {
+  border-right: 1px solid rgba(166, 168, 179, 0.12);
+}
+
+.wp-cal-week-time-label--header {
+  border: 0;
+  background: transparent;
+}
+
+.wp-cal-week-day-col {
+  border-right: 1px solid rgba(166, 168, 179, 0.12);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.wp-cal-week-day-col:hover {
+  background: rgba(195, 207, 244, 0.04);
+}
+
+.wp-cal-week-day-col--today {
+  background: rgba(72, 95, 237, 0.02);
+}
+
+.wp-cal-week-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  text-align: left;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  overflow: hidden;
+  border-left: 3px solid currentColor;
+}
+
+.wp-cal-week-event:hover {
+  opacity: 0.95;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.wp-cal-week-event--selected {
+  box-shadow: 0 0 0 2px var(--wp-cal-accent);
+}
+
+.wp-cal-week-event-time {
+  font-weight: 700;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.wp-cal-week-event-icon {
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.wp-cal-week-event-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wp-cal-week-event-contact {
+  opacity: 0.75;
+  font-size: 10px;
+}
+
+/* Event category: muted (interní, osobní) ── */
+.wp-cal-event--muted {
+  border-left-color: var(--wp-text-muted);
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--wp-text-muted);
+}

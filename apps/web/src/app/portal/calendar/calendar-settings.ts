@@ -17,6 +17,10 @@ export interface CalendarSettings {
   showWeekNumbers: boolean;
   fontSize: CalendarFontSize;
   todayStyle: TodayStyle;
+  /** Color of the current time line (e.g. #e5534b) */
+  currentTimeLineColor?: string;
+  /** Width of the current time line in pixels */
+  currentTimeLineWidth?: number;
 }
 
 const STORAGE_KEY = "weplan_calendar_settings";
@@ -38,6 +42,8 @@ export const DEFAULT_SETTINGS: CalendarSettings = {
   showWeekNumbers: true,
   fontSize: "base",
   todayStyle: "pill",
+  currentTimeLineColor: "#e5534b",
+  currentTimeLineWidth: 2,
 };
 
 export const CALENDAR_PRESETS: Record<CalendarPresetId, CalendarSettings> = {

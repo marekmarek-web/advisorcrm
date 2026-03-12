@@ -44,6 +44,10 @@ export const events = pgTable("events", {
   location: text("location"),
   reminderAt: timestamp("reminder_at", { withTimezone: true }),
   assignedTo: text("assigned_to"),
+  status: text("status"),
+  notes: text("notes"),
+  meetingLink: text("meeting_link"),
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

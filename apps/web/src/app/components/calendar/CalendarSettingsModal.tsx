@@ -205,6 +205,41 @@ export function CalendarSettingsModal({
             </div>
           </div>
 
+          {/* Čára aktuálního času */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--wp-text)" }}>
+              Čára aktuálního času
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-[var(--wp-text-muted)]">Barva</span>
+                <input
+                  type="color"
+                  value={form.currentTimeLineColor ?? "#e5534b"}
+                  onChange={(e) => setForm((f) => ({ ...f, currentTimeLineColor: e.target.value }))}
+                  className="w-8 h-8 rounded cursor-pointer border border-[var(--wp-border)]"
+                />
+                <input
+                  type="text"
+                  value={form.currentTimeLineColor ?? "#e5534b"}
+                  onChange={(e) => setForm((f) => ({ ...f, currentTimeLineColor: e.target.value }))}
+                  className="wp-input w-24 text-sm font-mono"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--wp-text-muted)]">Tloušťka (px)</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={6}
+                  value={form.currentTimeLineWidth ?? 2}
+                  onChange={(e) => setForm((f) => ({ ...f, currentTimeLineWidth: Math.min(6, Math.max(1, Number(e.target.value) || 2)) }))}
+                  className="wp-input w-16 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Označování – dnešek */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: "var(--wp-text)" }}>

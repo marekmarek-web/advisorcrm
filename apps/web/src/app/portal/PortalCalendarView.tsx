@@ -6,6 +6,7 @@ import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
 import { getTasksForDate, completeTask, reopenTask, type TaskRow } from "@/app/actions/tasks";
+import { getUnreadConversationsCount } from "@/app/actions/messages";
 import { BaseModal } from "@/app/components/BaseModal";
 import { useToast } from "@/app/components/Toast";
 import { CalendarSettingsModal } from "@/app/components/calendar/CalendarSettingsModal";
@@ -14,22 +15,13 @@ import {
   saveCalendarSettings,
   type CalendarSettings,
 } from "@/app/portal/calendar/calendar-settings";
+import { getEventCategory } from "@/app/portal/calendar/event-categories";
+import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
+import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel";
+import { QuickEventForm, type QuickEventFormValues } from "@/app/portal/calendar/QuickEventForm";
+import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
 
-type ViewMode = "month" | "week" | "workweek";
-
-const EVENT_TYPES = [
-  { id: "schuzka", label: "Schůzka", icon: "📅", color: "#579bfc", calClass: "wp-cal-event--primary" },
-  { id: "ukol", label: "Úkol", icon: "✅", color: "#00c875", calClass: "wp-cal-event--success" },
-  { id: "telefonat", label: "Telefonát", icon: "📞", color: "#fdab3d", calClass: "wp-cal-event--warning" },
-  { id: "mail", label: "E-mail", icon: "✉️", color: "#a25ddc", calClass: "wp-cal-event--info" },
-  { id: "kafe", label: "Kafe", icon: "☕", color: "#ff642e", calClass: "wp-cal-event--danger" },
-] as const;
-
-function getEventTypeInfo(type: string | null) {
-  return EVENT_TYPES.find((t) => t.id === type) ?? EVENT_TYPES[0];
-}
-
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 7);
+type ViewMode = "day" | "month" | "week" | "workweek";
 
 const DAY_NAMES_MON = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
 const DAY_NAMES_SUN = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
@@ -67,6 +59,9 @@ interface EventFormData {
   contactId: string;
   opportunityId: string;
   reminderMinutes: number;
+  status: string;
+  notes: string;
+  meetingLink: string;
 }
 
 const REMINDER_OPTIONS: { value: number; label: string }[] = [
@@ -76,7 +71,7 @@ const REMINDER_OPTIONS: { value: number; label: string }[] = [
   { value: 1440, label: "1 den před" },
 ];
 
-const EMPTY_FORM: EventFormData = { title: "", eventType: "schuzka", startAt: "", endAt: "", allDay: false, location: "", contactId: "", opportunityId: "", reminderMinutes: 0 };
+const EMPTY_FORM: EventFormData = { title: "", eventType: "schuzka", startAt: "", endAt: "", allDay: false, location: "", contactId: "", opportunityId: "", reminderMinutes: 0, status: "", notes: "", meetingLink: "" };
 
 type OpportunityOption = { id: string; title: string; contactId: string | null };
 
@@ -86,14 +81,16 @@ const DAY_NAMES_FULL = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek",
 function EventDetailPopover({
   event,
   onEdit,
+  onQuickEdit,
   onClose,
 }: {
   event: EventRow;
   onEdit: () => void;
+  onQuickEdit?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const typeInfo = getEventTypeInfo(event.eventType);
+  const typeInfo = getEventCategory(event.eventType);
   const start = new Date(event.startAt);
   const end = event.endAt ? new Date(event.endAt) : null;
 
@@ -131,6 +128,11 @@ function EventDetailPopover({
         <button type="button" className="wp-btn wp-btn-primary" style={{ fontSize: 12, padding: "4px 12px", background: "var(--wp-cal-accent)", borderColor: "var(--wp-cal-accent)" }} onClick={onEdit}>
           Upravit
         </button>
+        {onQuickEdit && (
+          <button type="button" className="wp-btn wp-btn-ghost" style={{ fontSize: 12, padding: "4px 12px" }} onClick={onQuickEdit}>
+            Rychlá úprava
+          </button>
+        )}
         <button type="button" className="wp-btn wp-btn-ghost" style={{ fontSize: 12, padding: "4px 12px" }} onClick={onClose}>
           Zavřít
         </button>
@@ -174,7 +176,7 @@ function EventFormModal({
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
         <div className="px-5 py-5 space-y-5 overflow-y-auto">
           <div className="flex flex-wrap items-center gap-2">
-            {EVENT_TYPES.map((t) => (
+            {CALENDAR_EVENT_CATEGORIES.filter((t) => ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"].includes(t.id)).map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -233,6 +235,23 @@ function EventFormModal({
               <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="Adresa / odkaz" className="wp-input" />
             </div>
             <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Odkaz na schůzku</label>
+              <input value={form.meetingLink} onChange={(e) => setForm((f) => ({ ...f, meetingLink: e.target.value }))} placeholder="https://…" className="wp-input" type="url" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Stav</label>
+              <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="wp-select">
+                <option value="">—</option>
+                <option value="scheduled">Naplánováno</option>
+                <option value="confirmed">Potvrzeno</option>
+                <option value="done">Hotovo</option>
+                <option value="cancelled">Zrušeno</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Připomenutí</label>
               <select value={form.reminderMinutes} onChange={(e) => setForm((f) => ({ ...f, reminderMinutes: Number(e.target.value) }))} className="wp-select">
                 {REMINDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -240,10 +259,21 @@ function EventFormModal({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Poznámka</label>
+            <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Poznámky k události…" className="wp-input w-full min-h-[80px]" rows={3} />
+          </div>
+
           <label className="flex items-center gap-2.5 text-sm" style={{ color: "var(--wp-text-muted)" }}>
             <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((f) => ({ ...f, allDay: e.target.checked }))} className="rounded w-4 h-4" style={{ borderColor: "var(--wp-border)" }} />
             Celý den
           </label>
+
+          {form.contactId && (
+            <p className="text-sm">
+              <a href="/portal/messages" className="text-[var(--wp-cal-accent)] underline">Otevřít zprávy</a>
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 px-5 py-3 shrink-0" style={{ borderTop: "1px solid var(--wp-border)", background: "var(--wp-bg)" }}>
@@ -254,7 +284,10 @@ function EventFormModal({
             <button type="button" onClick={() => onDelete(initial.id!)} className="wp-btn" style={{ color: "var(--wp-danger)", borderColor: "var(--wp-danger)" }}>Smazat</button>
           )}
           {initial.id && onFollowUp && (
-            <button type="button" onClick={() => onFollowUp(initial.id!, "event")} className="wp-btn wp-btn-ghost">+ Follow-up</button>
+            <>
+              <button type="button" onClick={() => onFollowUp(initial.id!, "event")} className="wp-btn wp-btn-ghost">+ Follow-up událost</button>
+              <button type="button" onClick={() => onFollowUp(initial.id!, "task")} className="wp-btn wp-btn-ghost">Založit návazný úkol</button>
+            </>
           )}
           <div className="flex-1" />
           <button type="button" onClick={onClose} className="wp-btn wp-btn-ghost">Zavřít</button>
@@ -296,9 +329,16 @@ export function PortalCalendarView() {
   const [selectedDate, setSelectedDate] = useState(todayStrInitial);
   const [dayTasks, setDayTasks] = useState<TaskRow[]>([]);
   const [dayTasksLoading, setDayTasksLoading] = useState(false);
-  const [tasksPanelCollapsed, setTasksPanelCollapsed] = useState(false);
+  const [contextPanelCollapsed, setContextPanelCollapsed] = useState(false);
+  const [quickFormSlot, setQuickFormSlot] = useState<{ dateStr: string; hour: number } | null>(null);
+  const [quickFormEvent, setQuickFormEvent] = useState<EventRow | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   const dayNames = useMemo(() => getDayNames(settings.firstDayOfWeek), [settings.firstDayOfWeek]);
+
+  useEffect(() => {
+    getUnreadConversationsCount().then(setUnreadMessagesCount).catch(() => setUnreadMessagesCount(0));
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -316,18 +356,24 @@ export function PortalCalendarView() {
   useEffect(() => { loadDayTasks(selectedDate); }, [selectedDate, loadDayTasks]);
 
   const rangeStart = useMemo(() => {
+    if (mode === "day") return new Date(selectedDate + "T00:00:00");
     if (mode === "week" || mode === "workweek") return startOfWeek(currentDate, settings.firstDayOfWeek);
     return new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  }, [mode, currentDate, settings.firstDayOfWeek]);
+  }, [mode, currentDate, selectedDate, settings.firstDayOfWeek]);
 
   const rangeEnd = useMemo(() => {
+    if (mode === "day") {
+      const d = new Date(selectedDate + "T00:00:00");
+      d.setDate(d.getDate() + 1);
+      return d;
+    }
     if (mode === "week" || mode === "workweek") {
       const d = new Date(rangeStart);
       d.setDate(d.getDate() + (mode === "workweek" ? 5 : 7));
       return d;
     }
     return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-  }, [mode, currentDate, rangeStart]);
+  }, [mode, currentDate, rangeStart, selectedDate]);
 
   const loadEvents = useCallback(() => {
     setLoading(true);
@@ -343,10 +389,10 @@ export function PortalCalendarView() {
     const start = form.startAt ? new Date(form.startAt) : null;
     const reminderAt = form.reminderMinutes > 0 && start ? new Date(start.getTime() - form.reminderMinutes * 60 * 1000).toISOString() : undefined;
     if (id) {
-      await updateEvent(id, { title: form.title, eventType: form.eventType, startAt: form.startAt, endAt: form.endAt || undefined, allDay: form.allDay, location: form.location || undefined, reminderAt, contactId: form.contactId || undefined, opportunityId: form.opportunityId || undefined });
+      await updateEvent(id, { title: form.title, eventType: form.eventType, startAt: form.startAt, endAt: form.endAt || undefined, allDay: form.allDay, location: form.location || undefined, reminderAt, contactId: form.contactId || undefined, opportunityId: form.opportunityId || undefined, status: form.status || undefined, notes: form.notes || undefined, meetingLink: form.meetingLink || undefined });
       toast.showToast("Aktivita upravena");
     } else {
-      await createEvent({ title: form.title, eventType: form.eventType, startAt: form.startAt, endAt: form.endAt || undefined, allDay: form.allDay, location: form.location || undefined, reminderAt, contactId: form.contactId || undefined, opportunityId: form.opportunityId || undefined });
+      await createEvent({ title: form.title, eventType: form.eventType, startAt: form.startAt, endAt: form.endAt || undefined, allDay: form.allDay, location: form.location || undefined, reminderAt, contactId: form.contactId || undefined, opportunityId: form.opportunityId || undefined, status: form.status || undefined, notes: form.notes || undefined, meetingLink: form.meetingLink || undefined });
       toast.showToast("Aktivita vytvořena");
     }
     loadEvents();
@@ -368,15 +414,42 @@ export function PortalCalendarView() {
     tomorrow.setHours(10, 0, 0, 0);
     await createFollowUp(sourceId, type, { title, startAt: type === "event" ? tomorrow.toISOString() : undefined, dueDate: type === "task" ? formatDate(tomorrow) : undefined, contactId: source?.contactId || undefined });
     setModal(null);
+    setQuickFormEvent(null);
     loadEvents();
   }, [events, loadEvents]);
+
+  const handleQuickSave = useCallback(async (values: QuickEventFormValues, id?: string) => {
+    if (id) {
+      await updateEvent(id, { title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined });
+      toast.showToast("Aktivita upravena");
+    } else {
+      await createEvent({ title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined });
+      toast.showToast("Aktivita vytvořena");
+    }
+    setQuickFormSlot(null);
+    setQuickFormEvent(null);
+    loadEvents();
+  }, [loadEvents, toast]);
+
+  const handleMarkEventDone = useCallback(async (ev: EventRow) => {
+    await updateEvent(ev.id, { status: "done" });
+    toast.showToast("Událost označena jako hotová");
+    setDetailEvent(null);
+    loadEvents();
+  }, [loadEvents, toast]);
 
   function navigate(dir: -1 | 1) {
     setCurrentDate((prev) => {
       const d = new Date(prev);
-      if (mode === "week" || mode === "workweek") d.setDate(d.getDate() + dir * (mode === "workweek" ? 5 : 7));
+      if (mode === "day") d.setDate(d.getDate() + dir);
+      else if (mode === "week" || mode === "workweek") d.setDate(d.getDate() + dir * (mode === "workweek" ? 5 : 7));
       else d.setMonth(d.getMonth() + dir);
       return d;
+    });
+    if (mode === "day") setSelectedDate((prev) => {
+      const d = new Date(prev + "T12:00:00");
+      d.setDate(d.getDate() + dir);
+      return d.toISOString().slice(0, 10);
     });
   }
 
@@ -395,17 +468,18 @@ export function PortalCalendarView() {
       else if (diffM <= 60) reminderMinutes = 60;
       else if (diffM <= 1440) reminderMinutes = 1440;
     }
-    setModal({ id: ev.id, title: ev.title, eventType: ev.eventType ?? "schuzka", startAt: start.toISOString().slice(0, 16), endAt: ev.endAt ? new Date(ev.endAt).toISOString().slice(0, 16) : "", allDay: ev.allDay ?? false, location: ev.location ?? "", contactId: ev.contactId ?? "", opportunityId: ev.opportunityId ?? "", reminderMinutes });
+    setModal({ id: ev.id, title: ev.title, eventType: ev.eventType ?? "schuzka", startAt: start.toISOString().slice(0, 16), endAt: ev.endAt ? new Date(ev.endAt).toISOString().slice(0, 16) : "", allDay: ev.allDay ?? false, location: ev.location ?? "", contactId: ev.contactId ?? "", opportunityId: ev.opportunityId ?? "", reminderMinutes, status: ev.status ?? "", notes: ev.notes ?? "", meetingLink: ev.meetingLink ?? "" });
     setDetailEvent(null);
   }
 
   const weekDays = useMemo(() => {
+    if (mode === "day") return [new Date(selectedDate + "T12:00:00")];
     const result: Date[] = [];
     const d = new Date(rangeStart);
     const count = mode === "workweek" ? 5 : 7;
     for (let i = 0; i < count; i++) { result.push(new Date(d)); d.setDate(d.getDate() + 1); }
     return result;
-  }, [rangeStart, mode]);
+  }, [rangeStart, mode, selectedDate]);
 
   const monthDays = useMemo(() => {
     if (mode !== "month") return [];
@@ -429,13 +503,16 @@ export function PortalCalendarView() {
   }, [events]);
 
   const headerLabel = useMemo(() => {
+    if (mode === "day") {
+      return new Date(selectedDate + "T12:00:00").toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" });
+    }
     if (mode === "week" || mode === "workweek") {
       const weekNum = Math.ceil(((rangeStart.getTime() - new Date(rangeStart.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
       const suffix = mode === "workweek" ? " (Po–Pá)" : "";
       return settings.showWeekNumbers ? `${weekNum}. týden${suffix}` : `Týden${suffix}`;
     }
     return currentDate.toLocaleDateString("cs-CZ", { month: "long" });
-  }, [mode, currentDate, rangeStart, settings.showWeekNumbers]);
+  }, [mode, currentDate, rangeStart, selectedDate, settings.showWeekNumbers]);
 
   const yearLabel = useMemo(() => currentDate.getFullYear().toString(), [currentDate]);
   const todayStr = formatDate(new Date());
@@ -451,7 +528,7 @@ export function PortalCalendarView() {
   }, [isMobile]);
 
   const timeColWidth = isMobile ? 40 : 56;
-  const viewModesMobile: ViewMode[] = ["week", "month"];
+  const viewModesMobile: ViewMode[] = ["day", "week", "month"];
 
   return (
     <div className="flex flex-col min-h-0 h-full pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -465,7 +542,16 @@ export function PortalCalendarView() {
           <div className={isMobile ? "flex items-center justify-between gap-2" : ""}>
             <h1 style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="text-base md:text-xl">{headerLabel}{isMobile ? ` · ${yearLabel}` : ""}</span>
-              <button type="button" onClick={() => setCurrentDate(new Date())} className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0" style={{ fontSize: 11, padding: isMobile ? "10px 12px" : "2px 10px", borderRadius: 20, background: "var(--wp-cal-accent)", color: "#fff", fontWeight: 600 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const today = new Date();
+                  setCurrentDate(today);
+                  setSelectedDate(formatDate(today));
+                }}
+                className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0"
+                style={{ fontSize: 11, padding: isMobile ? "10px 12px" : "2px 10px", borderRadius: 20, background: "var(--wp-cal-accent)", color: "#fff", fontWeight: 600 }}
+              >
                 Dnes
               </button>
             </h1>
@@ -479,9 +565,9 @@ export function PortalCalendarView() {
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" d="M9 5l7 7-7 7"/></svg>
             </button>
             <div className={`wp-cal-views ${isMobile ? "flex rounded-lg border border-[var(--board-border)] p-0.5 bg-[var(--wp-bg)]" : ""}`}>
-              {(isMobile ? viewModesMobile : (["month", "week", "workweek"] as ViewMode[])).map((m) => (
+              {(isMobile ? viewModesMobile : (["day", "month", "week", "workweek"] as ViewMode[])).map((m) => (
                 <button key={m} type="button" onClick={() => setMode(m)} className={`wp-cal-view-btn ${mode === m ? "active" : ""} ${isMobile ? "flex-1 min-h-[40px] text-sm rounded-md" : ""}`}>
-                  {m === "month" ? "Měsíc" : m === "week" ? "Týden" : "Pracovní týden"}
+                  {m === "day" ? "Den" : m === "month" ? "Měsíc" : m === "week" ? "Týden" : "Pracovní týden"}
                 </button>
               ))}
             </div>
@@ -519,7 +605,7 @@ export function PortalCalendarView() {
                 >
                   <span className={isToday ? "wp-cal-day-number" : ""}>{day.getDate()}</span>
                   {!isDisabled && dayEvents.slice(0, 3).map((ev) => {
-                    const typeInfo = getEventTypeInfo(ev.eventType);
+                    const typeInfo = getEventCategory(ev.eventType);
                     return (
                       <div
                         key={ev.id}
@@ -535,7 +621,7 @@ export function PortalCalendarView() {
                           {ev.contactName && <span style={{ opacity: 0.65, fontSize: 10 }}> · {ev.contactName}</span>}
                         </span>
                         {detailEvent?.id === ev.id && (
-                          <EventDetailPopover event={ev} onEdit={() => openEdit(ev)} onClose={() => setDetailEvent(null)} />
+                          <EventDetailPopover event={ev} onEdit={() => openEdit(ev)} onQuickEdit={() => { setQuickFormEvent(ev); setDetailEvent(null); }} onClose={() => setDetailEvent(null)} />
                         )}
                       </div>
                     );
@@ -548,131 +634,48 @@ export function PortalCalendarView() {
             })}
           </div>
         ) : (
-          /* ═══ WEEK / WORKWEEK VIEW ═══ */
+          /* ═══ DAY / WEEK / WORKWEEK VIEW ═══ */
           <div className={`flex-1 flex overflow-hidden min-h-0 ${isMobile ? "flex-col" : ""}`}>
-            <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${isMobile ? "min-h-[280px]" : ""}`}>
-              <div className="wp-cal-week-header shrink-0" style={{ gridTemplateColumns: `${timeColWidth}px repeat(${weekDays.length}, 1fr)` }}>
-                <div style={{ borderRight: "1px solid rgba(166,168,179,0.12)" }} />
-                {weekDays.map((day) => {
-                  const ds = formatDate(day);
-                  const isToday = ds === todayStr;
-                  const isSelected = ds === selectedDate;
-                  const dayIdx = settings.firstDayOfWeek === 0 ? day.getDay() : (day.getDay() === 0 ? 6 : day.getDay() - 1);
-                  return (
-                    <button
-                      key={ds}
-                      type="button"
-                      onClick={() => setSelectedDate(ds)}
-                      className={`wp-cal-week-day-header ${isToday ? `wp-cal-week-day-header--today wp-cal-week-day-header--today-${settings.todayStyle}` : ""} ${isSelected ? "wp-cal-week-day-header--selected" : ""}`}
-                    >
-                      <span>{dayNames[dayIdx]}</span>
-                      <span className="wp-cal-week-day-number">{day.getDate()}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex-1 overflow-auto">
-                <div className="wp-cal-week-time-grid" style={{ gridTemplateColumns: `${timeColWidth}px repeat(${weekDays.length}, 1fr)` }}>
-                  {HOURS.map((hour) => (
-                    <div key={`row-${hour}`} className="contents">
-                      <div className="wp-cal-week-time-label">
-                        <span>{isMobile ? String(hour) : `${hour}:00`}</span>
-                      </div>
-                      {weekDays.map((day) => {
-                        const ds = formatDate(day);
-                        const isToday = ds === todayStr;
-                        const dayEvts = (eventsByDate.get(ds) ?? []).filter((ev) => new Date(ev.startAt).getHours() === hour);
-                        return (
-                          <div
-                            key={`${ds}-${hour}`}
-                            className={`wp-cal-week-cell ${isToday ? `wp-cal-week-cell--today wp-cal-week-cell--today-${settings.todayStyle}` : ""}`}
-                            onClick={() => openNew(ds, hour)}
-                          >
-                            {dayEvts.map((ev) => {
-                              const typeInfo = getEventTypeInfo(ev.eventType);
-                              return (
-                                <button
-                                  key={ev.id}
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setDetailEvent(detailEvent?.id === ev.id ? null : ev); }}
-                                  className={`wp-cal-event ${typeInfo.calClass}`}
-                                  title={`${typeInfo.label}: ${ev.title}${ev.contactName ? ` – ${ev.contactName}` : ""} – ${formatTime(new Date(ev.startAt))}`}
-                                >
-                                  <span style={{ fontWeight: 700, fontSize: 10, flexShrink: 0 }}>{formatTime(new Date(ev.startAt))}</span>
-                                  <span style={{ fontSize: 10, flexShrink: 0 }}>{typeInfo.icon}</span>
-                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1 1 0", minWidth: 0 }}>
-                                    {ev.title}
-                                    {ev.contactName && <span style={{ opacity: 0.65, fontSize: 10 }}> · {ev.contactName}</span>}
-                                  </span>
-                                  {detailEvent?.id === ev.id && (
-                                    <EventDetailPopover event={ev} onEdit={() => openEdit(ev)} onClose={() => setDetailEvent(null)} />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${isMobile ? "min-h-[280px]" : ""}`} style={{ position: "relative" }}>
+              <WeekDayGrid
+                mode={mode}
+                weekDays={weekDays}
+                dayNames={dayNames}
+                eventsByDate={eventsByDate}
+                selectedDate={selectedDate}
+                todayStr={todayStr}
+                todayStyle={settings.todayStyle}
+                firstDayOfWeek={settings.firstDayOfWeek}
+                timeColWidth={timeColWidth}
+                onSlotClick={(dateStr, hour) => setQuickFormSlot({ dateStr, hour })}
+                onEventClick={(ev) => { setDetailEvent(detailEvent?.id === ev.id ? null : ev); }}
+                onDaySelect={setSelectedDate}
+                selectedEventId={detailEvent?.id ?? null}
+                isMobile={isMobile}
+                currentTimeLineColor={settings.currentTimeLineColor}
+                currentTimeLineWidth={settings.currentTimeLineWidth}
+              />
             </div>
 
-            {/* Tasks panel: side on desktop, stacked below on mobile; rozevíratelný */}
-            <div className={`wp-cal-tasks-panel ${isMobile ? "shrink-0 max-h-[40vh] border-t" : ""} ${tasksPanelCollapsed ? "wp-cal-tasks-panel--collapsed" : ""}`}>
-              <div className="wp-cal-tasks-panel-header">
-                <h3>
-                  Úkoly pro {new Date(selectedDate + "T12:00:00").toLocaleDateString("cs-CZ", { weekday: "short", day: "numeric", month: "short" })}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setTasksPanelCollapsed((c) => !c)}
-                  className="wp-cal-tasks-panel-toggle"
-                  aria-label={tasksPanelCollapsed ? "Rozbalit panel Úkoly" : "Sbalit panel Úkoly"}
-                >
-                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ transform: tasksPanelCollapsed ? "rotate(180deg)" : "none" }}>
-                    <path strokeLinecap="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-              <div className="wp-cal-tasks-panel-body flex-1 overflow-auto p-3 min-h-0">
-                {dayTasksLoading ? (
-                  <p style={{ fontSize: "var(--wp-fs-xs)", color: "var(--wp-text-muted)" }}>Načítám…</p>
-                ) : dayTasks.length === 0 ? (
-                  <p style={{ fontSize: "var(--wp-fs-xs)", color: "var(--wp-text-muted)" }}>Žádné úkoly na tento den.</p>
-                ) : (
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                    {dayTasks.map((task) => (
-                      <li key={task.id} className="flex items-center gap-2 text-sm" style={{ marginBottom: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleDayTask(task)}
-                          className="shrink-0 flex items-center justify-center"
-                          style={{
-                            width: 16, height: 16, borderRadius: 3,
-                            border: task.completedAt ? "none" : "1.5px solid var(--wp-border)",
-                            background: task.completedAt ? "var(--wp-success)" : "transparent",
-                            color: "#fff", fontSize: 10,
-                          }}
-                          aria-label={task.completedAt ? "Znovu otevřít" : "Splnit"}
-                        >
-                          {task.completedAt ? "✓" : ""}
-                        </button>
-                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: task.completedAt ? "line-through" : "none", color: task.completedAt ? "var(--wp-text-muted)" : "var(--wp-text)" }}>
-                          {task.title}
-                        </span>
-                        {task.contactName && <span style={{ fontSize: 10, color: "var(--wp-text-muted)", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={task.contactName}>{task.contactName}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <a href="/portal/tasks" style={{ display: "block", marginTop: 8, fontSize: "var(--wp-fs-xs)", fontWeight: 500, color: "var(--wp-cal-accent)" }}>
-                  Všechny úkoly →
-                </a>
-              </div>
-            </div>
+            <CalendarContextPanel
+              selectedEvent={detailEvent}
+              selectedDate={selectedDate}
+              dayEvents={eventsByDate.get(selectedDate) ?? []}
+              dayTasks={dayTasks}
+              dayTasksLoading={dayTasksLoading}
+              unreadMessagesCount={unreadMessagesCount}
+              onEditEvent={(ev) => openEdit(ev)}
+              onQuickEditEvent={(ev) => { setQuickFormEvent(ev); setDetailEvent(null); }}
+              onDeleteEvent={async (ev) => { await handleDelete(ev.id); setDetailEvent(null); }}
+              onFollowUp={(eventId) => handleFollowUp(eventId, "event")}
+              onOpenFullEdit={openEdit}
+              onMarkDone={handleMarkEventDone}
+              onToggleTask={handleToggleDayTask}
+              onRefresh={() => { loadEvents(); loadDayTasks(selectedDate); }}
+              collapsed={contextPanelCollapsed}
+              onToggleCollapsed={() => setContextPanelCollapsed((c) => !c)}
+              isMobile={isMobile}
+            />
           </div>
         )}
       </div>
@@ -687,6 +690,21 @@ export function PortalCalendarView() {
           onFollowUp={modal.id ? handleFollowUp : undefined}
           onClose={() => setModal(null)}
         />
+      )}
+
+      {(quickFormSlot || quickFormEvent) && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-black/20" onClick={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}>
+          <div className="wp-cal-quick-form-wrapper bg-[var(--wp-surface)] rounded-lg shadow-xl border border-[var(--wp-border)] p-4 min-w-[320px] max-w-[420px]" onClick={(e) => e.stopPropagation()}>
+            <QuickEventForm
+              initialStart={quickFormSlot ? `${quickFormSlot.dateStr}T${String(quickFormSlot.hour).padStart(2, "0")}:00` : new Date(quickFormEvent!.startAt).toISOString().slice(0, 16)}
+              initialEnd={quickFormSlot ? `${quickFormSlot.dateStr}T${String(Math.min(quickFormSlot.hour + 1, 23)).padStart(2, "0")}:00` : quickFormEvent?.endAt ? new Date(quickFormEvent.endAt).toISOString().slice(0, 16) : undefined}
+              initialValues={quickFormEvent ? { id: quickFormEvent.id, title: quickFormEvent.title, eventType: quickFormEvent.eventType ?? "schuzka", contactId: quickFormEvent.contactId ?? "", notes: quickFormEvent.notes ?? "" } : undefined}
+              contacts={contacts}
+              onSave={handleQuickSave}
+              onClose={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}
+            />
+          </div>
+        </div>
       )}
 
       <CalendarSettingsModal
