@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
@@ -18,6 +19,7 @@ import {
 import { getEventCategory } from "@/app/portal/calendar/event-categories";
 import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
 import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel";
+import { CalendarLeftPanel } from "@/app/portal/calendar/CalendarLeftPanel";
 import { QuickEventForm, type QuickEventFormValues } from "@/app/portal/calendar/QuickEventForm";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
 
@@ -43,6 +45,19 @@ function startOfWeek(d: Date, firstDayOfWeek: 0 | 1): Date {
 
 function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function getWeekNumber(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+const MONTH_NAMES = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
+function formatMonthYear(date: Date): string {
+  return `${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function formatTime(d: Date): string {
@@ -420,10 +435,10 @@ export function PortalCalendarView() {
 
   const handleQuickSave = useCallback(async (values: QuickEventFormValues, id?: string) => {
     if (id) {
-      await updateEvent(id, { title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined });
+      await updateEvent(id, { title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined, location: values.location || undefined });
       toast.showToast("Aktivita upravena");
     } else {
-      await createEvent({ title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined });
+      await createEvent({ title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined, location: values.location || undefined });
       toast.showToast("Aktivita vytvořena");
     }
     setQuickFormSlot(null);
@@ -527,136 +542,148 @@ export function PortalCalendarView() {
     if (isMobile && mode === "workweek") setMode("week");
   }, [isMobile]);
 
-  const timeColWidth = isMobile ? 40 : 56;
+  const timeColWidth = 60;
   const viewModesMobile: ViewMode[] = ["day", "week", "month"];
 
+  const toolbarTitle = useMemo(() => {
+    if (mode === "month") return formatMonthYear(currentDate);
+    const weekNum = getWeekNumber(rangeStart);
+    return `${weekNum}. týden (${formatMonthYear(currentDate)})`;
+  }, [mode, currentDate, rangeStart]);
+
   return (
-    <div className="flex flex-col min-h-0 h-full pb-[max(1rem,env(safe-area-inset-bottom))]">
-      {/* ── Calendar.txt-style container (settings applied via CSS vars) ── */}
+    <div className="flex flex-col min-h-0 h-full pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#f1f5f9]">
       <div
-        className={`wp-cal-container wp-cal-container--today-${settings.todayStyle} wp-cal-container--font-${settings.fontSize} flex flex-col h-full`}
+        className={`wp-cal-container wp-cal-container--today-${settings.todayStyle} wp-cal-container--font-${settings.fontSize} flex flex-col flex-1 min-h-0`}
         style={cssVarsFromSettings(settings)}
       >
-        {/* Header: compact on mobile */}
-        <div className={`wp-cal-header ${isMobile ? "flex flex-col gap-2 md:flex-row md:gap-0" : ""}`}>
-          <div className={isMobile ? "flex items-center justify-between gap-2" : ""}>
-            <h1 style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="text-base md:text-xl">{headerLabel}{isMobile ? ` · ${yearLabel}` : ""}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  const today = new Date();
-                  setCurrentDate(today);
-                  setSelectedDate(formatDate(today));
-                }}
-                className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0"
-                style={{ fontSize: 11, padding: isMobile ? "10px 12px" : "2px 10px", borderRadius: 20, background: "var(--wp-cal-accent)", color: "#fff", fontWeight: 600 }}
-              >
-                Dnes
-              </button>
-            </h1>
-            {!isMobile && <p className="wp-cal-year">{yearLabel}</p>}
-          </div>
-          <div className={`wp-cal-nav ${isMobile ? "flex flex-wrap items-center gap-1" : ""}`}>
-            <button type="button" onClick={() => navigate(-1)} className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0 flex items-center justify-center" aria-label="Předchozí">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" d="M15 19l-7-7 7-7"/></svg>
-            </button>
-            <button type="button" onClick={() => navigate(1)} className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0 flex items-center justify-center" aria-label="Další">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
-            <div className={`wp-cal-views ${isMobile ? "flex rounded-lg border border-[var(--board-border)] p-0.5 bg-[var(--wp-bg)]" : ""}`}>
-              {(isMobile ? viewModesMobile : (["day", "month", "week", "workweek"] as ViewMode[])).map((m) => (
-                <button key={m} type="button" onClick={() => setMode(m)} className={`wp-cal-view-btn ${mode === m ? "active" : ""} ${isMobile ? "flex-1 min-h-[40px] text-sm rounded-md" : ""}`}>
-                  {m === "day" ? "Den" : m === "month" ? "Měsíc" : m === "week" ? "Týden" : "Pracovní týden"}
-                </button>
-              ))}
-            </div>
-            <button type="button" onClick={() => setSettingsOpen(true)} className="wp-cal-view-btn min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 shrink-0 flex items-center justify-center" aria-label="Nastavení kalendáře" title="Nastavení">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066 0-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            </button>
-            <button type="button" onClick={() => openNew(todayStr)} className="wp-cal-new-btn min-h-[44px] md:min-h-0 shrink-0">
-              <span style={{ fontSize: 14 }}>+</span> Nová aktivita
-            </button>
-          </div>
-        </div>
+        <div className="flex-1 flex overflow-hidden p-4 gap-4 min-h-0">
+          <CalendarLeftPanel
+            baseDate={currentDate}
+            selectedDate={selectedDate}
+            onSelectDate={(dateStr) => {
+              setSelectedDate(dateStr);
+              const d = new Date(dateStr + "T12:00:00");
+              setCurrentDate(d);
+            }}
+            onToday={() => {
+              const today = new Date();
+              setCurrentDate(today);
+              setSelectedDate(formatDate(today));
+            }}
+          />
 
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p style={{ color: "var(--wp-text-muted)", fontSize: "var(--wp-fs-sm)" }}>Načítám kalendář…</p>
-          </div>
-        ) : mode === "month" ? (
-          /* ═══ MONTH GRID (Calendar.txt layout) ═══ */
-          <div className="wp-cal-grid flex-1">
-            {dayNames.map((d) => (
-              <span key={d} className="wp-cal-day-name">{d}</span>
-            ))}
-            {monthDays.map((day, idx) => {
-              const ds = formatDate(day);
-              const isToday = ds === todayStr;
-              const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-              const dayEvents = eventsByDate.get(ds) ?? [];
-              const isDisabled = !isCurrentMonth;
-
-              return (
-                <div
-                  key={ds + idx}
-                  className={`wp-cal-day ${isDisabled ? "wp-cal-day--disabled" : ""} ${isToday ? `wp-cal-day--today wp-cal-day--today-${settings.todayStyle}` : ""}`}
-                  onClick={isDisabled ? undefined : () => openNew(ds)}
+          <main className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative min-w-0">
+            <div className="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-white z-20 flex-wrap gap-2">
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => { const today = new Date(); setCurrentDate(today); setSelectedDate(formatDate(today)); }}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors min-h-[44px] sm:min-h-0"
                 >
-                  <span className={isToday ? "wp-cal-day-number" : ""}>{day.getDate()}</span>
-                  {!isDisabled && dayEvents.slice(0, 3).map((ev) => {
-                    const typeInfo = getEventCategory(ev.eventType);
+                  Dnes
+                </button>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => navigate(-1)} className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" aria-label="Předchozí">
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button type="button" onClick={() => navigate(1)} className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" aria-label="Další">
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+                <h2 className="text-lg font-black text-slate-900">{toolbarTitle}</h2>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="bg-slate-100 p-1 rounded-lg flex items-center">
+                  {(["workweek", "week", "month"] as const).map((m) => (
+                    <button key={m} type="button" onClick={() => setMode(m)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all min-h-[40px] sm:min-h-0 ${mode === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                      {m === "workweek" ? "Pracovní" : m === "week" ? "Týden" : "Měsíc"}
+                    </button>
+                  ))}
+                </div>
+                <div className="w-px h-5 bg-slate-200 hidden sm:block" />
+                <button type="button" onClick={() => setContextPanelCollapsed((c) => !c)} className={`p-1.5 rounded-lg transition-colors hidden sm:flex ${!contextPanelCollapsed ? "text-indigo-600 bg-indigo-50" : "text-slate-400 hover:bg-slate-100"}`} title="Přepnout postranní panel">
+                  {!contextPanelCollapsed ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+                </button>
+                <button type="button" onClick={() => openNew(todayStr)} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm transition-all active:scale-95 min-h-[44px] sm:min-h-0">
+                  <Plus size={16} /> Vytvořit
+                </button>
+                <button type="button" onClick={() => setSettingsOpen(true)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 sm:block hidden" aria-label="Nastavení">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066 0-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-slate-500 text-sm">Načítám kalendář…</p>
+              </div>
+            ) : mode === "month" ? (
+              <div className="flex-1 flex flex-col bg-white overflow-auto min-h-0">
+                <div className="grid grid-cols-7 border-b border-slate-200 bg-white z-20 flex-shrink-0">
+                  {["PO", "ÚT", "ST", "ČT", "PÁ", "SO", "NE"].map((d, i) => (
+                    <div key={i} className="py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-100 last:border-r-0">{d}</div>
+                  ))}
+                </div>
+                <div className="flex-1 grid grid-cols-7 grid-rows-5 bg-slate-100 gap-[1px] min-h-0">
+                  {monthDays.map((day, idx) => {
+                    const ds = formatDate(day);
+                    const isToday = ds === todayStr;
+                    const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                    const dayEvents = eventsByDate.get(ds) ?? [];
+                    const isPast = ds < todayStr;
                     return (
                       <div
-                        key={ev.id}
-                        className={`wp-cal-event ${typeInfo.calClass}`}
-                        onClick={(e) => { e.stopPropagation(); setDetailEvent(detailEvent?.id === ev.id ? null : ev); }}
-                        title={`${typeInfo.label}: ${ev.title}${ev.contactName ? ` – ${ev.contactName}` : ""}`}
-                        style={{ display: "flex", alignItems: "center", gap: 3 }}
+                        key={idx}
+                        onClick={() => isCurrentMonth && openNew(ds)}
+                        className={`relative p-2 bg-white transition-colors group cursor-pointer min-h-[80px] ${!isCurrentMonth ? "text-slate-300 bg-slate-50/50" : "text-slate-700 hover:bg-slate-50"} ${isPast && isCurrentMonth ? "wp-cal-striped-past opacity-80" : ""}`}
                       >
-                        <span style={{ fontWeight: 700, fontSize: 10, flexShrink: 0 }}>{formatTime(new Date(ev.startAt))}</span>
-                        <span style={{ fontSize: 10, flexShrink: 0 }}>{typeInfo.icon}</span>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                          {ev.title}
-                          {ev.contactName && <span style={{ opacity: 0.65, fontSize: 10 }}> · {ev.contactName}</span>}
-                        </span>
-                        {detailEvent?.id === ev.id && (
-                          <EventDetailPopover event={ev} onEdit={() => openEdit(ev)} onQuickEdit={() => { setQuickFormEvent(ev); setDetailEvent(null); }} onClose={() => setDetailEvent(null)} />
-                        )}
+                        <span className={`absolute top-2 right-2 text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-indigo-600 text-white shadow-md" : ""}`}>{day.getDate()}</span>
+                        <div className="mt-8 space-y-1">
+                          {dayEvents.slice(0, 4).map((ev) => {
+                            const typeInfo = getEventCategory(ev.eventType);
+                            return (
+                              <div
+                                key={ev.id}
+                                onClick={(e) => { e.stopPropagation(); setDetailEvent(detailEvent?.id === ev.id ? null : ev); }}
+                                className={`px-1.5 py-0.5 text-[9px] font-bold rounded border truncate hover:shadow-sm transition-shadow ${typeInfo.tailwindClass}`}
+                              >
+                                {formatTime(new Date(ev.startAt))} {ev.title}
+                              </div>
+                            );
+                          })}
+                          {dayEvents.length > 4 && <span className="text-[9px] text-slate-500">+{dayEvents.length - 4}</span>}
+                        </div>
                       </div>
                     );
                   })}
-                  {!isDisabled && dayEvents.length > 3 && (
-                    <span style={{ fontSize: 10, color: "var(--wp-text-muted)" }}>+{dayEvents.length - 3} dalších</span>
-                  )}
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          /* ═══ DAY / WEEK / WORKWEEK VIEW ═══ */
-          <div className={`flex-1 flex overflow-hidden min-h-0 ${isMobile ? "flex-col" : ""}`}>
-            <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${isMobile ? "min-h-[280px]" : ""}`} style={{ position: "relative" }}>
-              <WeekDayGrid
-                mode={mode}
-                weekDays={weekDays}
-                dayNames={dayNames}
-                eventsByDate={eventsByDate}
-                selectedDate={selectedDate}
-                todayStr={todayStr}
-                todayStyle={settings.todayStyle}
-                firstDayOfWeek={settings.firstDayOfWeek}
-                timeColWidth={timeColWidth}
-                onSlotClick={(dateStr, hour) => setQuickFormSlot({ dateStr, hour })}
-                onEventClick={(ev) => { setDetailEvent(detailEvent?.id === ev.id ? null : ev); }}
-                onDaySelect={setSelectedDate}
-                selectedEventId={detailEvent?.id ?? null}
-                isMobile={isMobile}
-                currentTimeLineColor={settings.currentTimeLineColor}
-                currentTimeLineWidth={settings.currentTimeLineWidth}
-              />
-            </div>
+              </div>
+            ) : (
+              <div className={`flex-1 flex flex-col overflow-hidden min-h-0 ${isMobile ? "min-h-[280px]" : ""}`}>
+                <WeekDayGrid
+                  mode={mode}
+                  weekDays={weekDays}
+                  dayNames={dayNames}
+                  eventsByDate={eventsByDate}
+                  selectedDate={selectedDate}
+                  todayStr={todayStr}
+                  todayStyle={settings.todayStyle}
+                  firstDayOfWeek={settings.firstDayOfWeek}
+                  timeColWidth={timeColWidth}
+                  onSlotClick={(dateStr, hour) => setQuickFormSlot({ dateStr, hour })}
+                  onEventClick={(ev) => setDetailEvent(detailEvent?.id === ev.id ? null : ev)}
+                  onDaySelect={setSelectedDate}
+                  selectedEventId={detailEvent?.id ?? null}
+                  isMobile={isMobile}
+                  currentTimeLineColor={settings.currentTimeLineColor}
+                  currentTimeLineWidth={settings.currentTimeLineWidth}
+                />
+              </div>
+            )}
+          </main>
 
+          {!contextPanelCollapsed && (
             <CalendarContextPanel
               selectedEvent={detailEvent}
               selectedDate={selectedDate}
@@ -672,12 +699,12 @@ export function PortalCalendarView() {
               onMarkDone={handleMarkEventDone}
               onToggleTask={handleToggleDayTask}
               onRefresh={() => { loadEvents(); loadDayTasks(selectedDate); }}
-              collapsed={contextPanelCollapsed}
-              onToggleCollapsed={() => setContextPanelCollapsed((c) => !c)}
+              collapsed={false}
+              onToggleCollapsed={() => setContextPanelCollapsed(true)}
               isMobile={isMobile}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {modal && (
@@ -693,12 +720,12 @@ export function PortalCalendarView() {
       )}
 
       {(quickFormSlot || quickFormEvent) && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-black/20" onClick={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}>
-          <div className="wp-cal-quick-form-wrapper bg-[var(--wp-surface)] rounded-lg shadow-xl border border-[var(--wp-border)] p-4 min-w-[320px] max-w-[420px]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center wp-cal-modal-overlay bg-slate-900/30 backdrop-blur-sm p-4" onClick={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}>
+          <div className="wp-cal-modal-content w-full max-w-[600px]" onClick={(e) => e.stopPropagation()}>
             <QuickEventForm
               initialStart={quickFormSlot ? `${quickFormSlot.dateStr}T${String(quickFormSlot.hour).padStart(2, "0")}:00` : new Date(quickFormEvent!.startAt).toISOString().slice(0, 16)}
               initialEnd={quickFormSlot ? `${quickFormSlot.dateStr}T${String(Math.min(quickFormSlot.hour + 1, 23)).padStart(2, "0")}:00` : quickFormEvent?.endAt ? new Date(quickFormEvent.endAt).toISOString().slice(0, 16) : undefined}
-              initialValues={quickFormEvent ? { id: quickFormEvent.id, title: quickFormEvent.title, eventType: quickFormEvent.eventType ?? "schuzka", contactId: quickFormEvent.contactId ?? "", notes: quickFormEvent.notes ?? "" } : undefined}
+              initialValues={quickFormEvent ? { id: quickFormEvent.id, title: quickFormEvent.title, eventType: quickFormEvent.eventType ?? "schuzka", contactId: quickFormEvent.contactId ?? "", notes: quickFormEvent.notes ?? "", location: quickFormEvent.location ?? "" } : undefined}
               contacts={contacts}
               onSave={handleQuickSave}
               onClose={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}
