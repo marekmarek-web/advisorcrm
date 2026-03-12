@@ -5,6 +5,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm --filter web dev",
+    "dev:demo": "pnpm --filter web dev:demo",
     "lint": "pnpm -r lint",
     "db:generate": "pnpm --filter db generate",
     "db:migrate": "pnpm --filter db migrate",

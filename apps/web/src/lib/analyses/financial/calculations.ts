@@ -3,8 +3,14 @@
  * Extracted from financni-analyza.html (Phase 1). Preserve formulas 1:1.
  */
 
-import type { FinancialAnalysisData, CashflowIncomes, CashflowExpenses, GoalEntry, InvestmentEntry } from './types';
-import { RENTA_INFLATION, RENTA_WITHDRAWAL_RATE } from './constants';
+import type { FinancialAnalysisData, CashflowIncomes, CashflowExpenses, GoalEntry, InvestmentEntry, InsuranceExpenseItem, BenefitVsSalaryComparison } from './types';
+import { RENTA_INFLATION, RENTA_WITHDRAWAL_RATE, BENEFIT_OPTIMIZATION } from './constants';
+
+/** Options for benefit vs salary comparison (optional owner tax savings for director/owner). */
+export interface ComputeBenefitVsSalaryOptions extends BenefitVsSalaryOptions {
+  /** Apply owner tax savings (for director/owner/partner_company). */
+  isOwnerRole?: boolean;
+}
 
 // ----- Cashflow -----
 
@@ -21,9 +27,11 @@ export function totalExpense(expenses: CashflowExpenses): number {
   const f = Number(expenses?.food) || 0;
   const t = Number(expenses?.transport) || 0;
   const c = Number(expenses?.children) || 0;
-  const i = Number(expenses?.insurance) || 0;
+  const insuranceSum = (expenses?.insuranceItems?.length ?? 0) > 0
+    ? (expenses.insuranceItems as InsuranceExpenseItem[]).reduce((a, b) => a + (Number(b.amount) || 0), 0)
+    : Number(expenses?.insurance) || 0;
   const otherSum = (expenses?.otherDetails || []).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-  return h + e + f + t + c + i + otherSum;
+  return h + e + f + t + c + insuranceSum + otherSum;
 }
 
 export function surplus(incomes: CashflowIncomes, expenses: CashflowExpenses): number {
@@ -217,4 +225,71 @@ export function ownResourcesFromLtv(amount: number, ltvPercent: number): number 
 export function ownResourcesFromAko(amount: number, akoPercent: number): number {
   if (amount <= 0) return 0;
   return Math.round((amount * akoPercent) / 100 / 1000) * 1000;
+}
+
+// ----- Income protection: benefit vs salary comparison -----
+
+export interface BenefitVsSalaryOptions {
+  netFromGrossFactor?: number;
+  deductionsPercent?: number;
+  employerCostFactor?: number;
+}
+
+/**
+ * Compute Variant A (salary increase) vs Variant B (company benefit) for a given monthly net contribution.
+ * Uses configurable rates from BENEFIT_OPTIMIZATION unless overridden.
+ */
+export function computeBenefitVsSalaryComparison(
+  companyContributionMonthly: number,
+  options?: ComputeBenefitVsSalaryOptions
+): BenefitVsSalaryComparison {
+  if (companyContributionMonthly <= 0) {
+    return {
+      salaryIncreaseGrossEquivalent: 0,
+      salaryVariantCompanyCost: 0,
+      salaryVariantNetToPerson: 0,
+      benefitVariantCompanyCost: 0,
+      benefitVariantNetToInsurance: 0,
+      estimatedSavings: 0,
+      ownerTaxSavingsAnnual: 0,
+      explanation: undefined,
+    };
+  }
+  const netFactor = options?.netFromGrossFactor ?? BENEFIT_OPTIMIZATION.netFromGrossFactor;
+  const employerFactor = options?.employerCostFactor ?? BENEFIT_OPTIMIZATION.employerCostFactor;
+  const isOwnerRole = options?.isOwnerRole ?? false;
+  const ownerTaxPct = BENEFIT_OPTIMIZATION.ownerTaxSavingsPercent ?? 0;
+
+  const benefitVariantCompanyCost = companyContributionMonthly;
+  const benefitVariantNetToInsurance = companyContributionMonthly;
+  const companyContributionAnnual = companyContributionMonthly * 12;
+
+  const salaryVariantNetToPerson = companyContributionMonthly;
+  const grossEquivalent = netFactor > 0 ? companyContributionMonthly / netFactor : 0;
+  const salaryVariantCompanyCost = Math.round(grossEquivalent * employerFactor * 100) / 100;
+  const salaryIncreaseGrossEquivalent = Math.round(grossEquivalent * 100) / 100;
+
+  const estimatedSavingsMonthly = salaryVariantCompanyCost - benefitVariantCompanyCost;
+  const estimatedSavingsAnnual = Math.round(estimatedSavingsMonthly * 12 * 100) / 100;
+
+  const ownerTaxSavingsAnnual =
+    isOwnerRole && ownerTaxPct > 0
+      ? Math.round((companyContributionAnnual * ownerTaxPct) / 100)
+      : undefined;
+
+  const explanation =
+    estimatedSavingsMonthly > 0
+      ? `Při firemním příspěvku ${companyContributionMonthly.toLocaleString('cs-CZ')} Kč/měsíc firma ušetří oproti navýšení mzdy cca ${estimatedSavingsAnnual.toLocaleString('cs-CZ')} Kč ročně. Celá částka jde do pojištění.`
+      : undefined;
+
+  return {
+    salaryIncreaseGrossEquivalent,
+    salaryVariantCompanyCost,
+    salaryVariantNetToPerson,
+    benefitVariantCompanyCost,
+    benefitVariantNetToInsurance,
+    estimatedSavings: estimatedSavingsAnnual,
+    ownerTaxSavingsAnnual,
+    explanation,
+  };
 }

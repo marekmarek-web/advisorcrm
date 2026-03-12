@@ -21,12 +21,21 @@ export function StepStrategy() {
   const data = useStore((s) => s.data);
   const setStrategyProfile = useStore((s) => s.setStrategyProfile);
   const setConservativeMode = useStore((s) => s.setConservativeMode);
+  const setInsurance = useStore((s) => s.setInsurance);
   const updateInvestment = useStore((s) => s.updateInvestment);
 
   const profile = data.strategy?.profile ?? "balanced";
   const conservativeMode = data.strategy?.conservativeMode ?? false;
+  const invalidity50Plus = data.insurance?.invalidity50Plus ?? false;
   const investments = data.investments ?? [];
   const totals = selectStrategyTotals(data);
+
+  const applyYieldOffset = (inv: (typeof investments)[0], offset: -1 | 0 | 1) => {
+    const base = inv.annualRate ?? 0.06;
+    const newRate = Math.round((base + offset * 0.01) * 100) / 100;
+    const clamped = Math.max(0.01, Math.min(0.25, newRate));
+    updateInvestment(inv.productKey, inv.type, "annualRate", clamped);
+  };
 
   return (
     <>
@@ -47,7 +56,7 @@ export function StepStrategy() {
                   onClick={() => setStrategyProfile(o.value)}
                   className={`min-h-[44px] px-5 py-2 rounded-xl font-semibold transition-colors ${
                     profile === o.value
-                      ? "bg-amber-500 text-white shadow"
+                      ? "bg-indigo-500 text-white shadow"
                       : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
                   }`}
                 >
@@ -60,22 +69,45 @@ export function StepStrategy() {
                 type="checkbox"
                 checked={conservativeMode}
                 onChange={(e) => setConservativeMode(e.target.checked)}
-                className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                className="w-5 h-5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-400"
               />
               <span className="text-sm font-semibold text-slate-700">Konzervativní režim (snížené výnosy v projekci)</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer mt-4 pt-4 border-t border-slate-200">
+              <input
+                type="checkbox"
+                checked={invalidity50Plus}
+                onChange={(e) => setInsurance({ invalidity50Plus: e.target.checked })}
+                className="w-5 h-5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-400"
+              />
+              <span className="text-sm font-semibold text-slate-700">Pro osoby 50+ použít 50 % částky na invaliditu (dobrovolná volba poradce)</span>
             </label>
           </div>
 
           <div>
             <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2">
-              <PieChart className="w-5 h-5 text-amber-600" />
+              <PieChart className="w-5 h-5 text-indigo-600" />
               Produkty a částky
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {investments.map((inv) => (
                 <div key={inv.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                   <div className="font-bold text-slate-800 text-sm mb-2">{getProductName(inv.productKey)}</div>
-                  <div className="text-xs text-slate-500 mb-3">{getTypeLabel(inv.type)} · {formatPercent(inv.annualRate ?? 0)}</div>
+                  <div className="text-xs text-slate-500 mb-2">{getTypeLabel(inv.type)}</div>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <span className="text-xs font-semibold text-slate-600">Zhodnocení:</span>
+                    {([-1, 0, 1] as const).map((off) => (
+                      <button
+                        key={off}
+                        type="button"
+                        onClick={() => applyYieldOffset(inv, off)}
+                        className="min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-700"
+                      >
+                        {off === -1 ? "−1 %" : off === 0 ? "0" : "+1 %"}
+                      </button>
+                    ))}
+                    <span className="text-xs text-slate-500 ml-1">→ {(inv.annualRate ?? 0) * 100} % p.a.</span>
+                  </div>
                   <div className="space-y-2">
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 mb-0.5">
@@ -101,7 +133,7 @@ export function StepStrategy() {
                       />
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-slate-100 text-sm font-bold text-amber-700">
+                  <div className="mt-3 pt-3 border-t border-slate-100 text-sm font-bold text-indigo-700">
                     FV: {formatCzk(inv.computed?.fv ?? 0)}
                   </div>
                 </div>
@@ -113,7 +145,7 @@ export function StepStrategy() {
         <div className="lg:col-span-1">
           <div className="sticky top-4 bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
             <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-amber-600" />
+              <TrendingUp className="w-5 h-5 text-indigo-600" />
               Shrnutí portfolia
             </h3>
             <div className="space-y-3">
@@ -138,7 +170,7 @@ export function StepStrategy() {
               <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Profil</span>
               <div className="font-semibold text-slate-800 mt-1">{getStrategyProfileLabel(profile)}</div>
               {conservativeMode && (
-                <div className="text-xs text-amber-700 mt-1">+ konzervativní režim</div>
+                <div className="text-xs text-indigo-700 mt-1">+ konzervativní režim</div>
               )}
             </div>
           </div>

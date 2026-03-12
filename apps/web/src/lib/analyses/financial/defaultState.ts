@@ -6,17 +6,16 @@
 import type { FinancialAnalysisData, InvestmentEntry } from './types';
 import { TOTAL_STEPS } from './constants';
 
-/** Default investments list (pre-populated in init). */
+/** Default investments list (pre-populated in init). AlgoImperial removed. */
 export function getDefaultInvestments(): InvestmentEntry[] {
   return [
-    { id: 1, productKey: 'imperial', type: 'lump', amount: 0, years: 10, annualRate: 0.12, computed: { fv: 0 } },
-    { id: 2, productKey: 'creif', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
-    { id: 3, productKey: 'atris', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
-    { id: 4, productKey: 'penta', type: 'lump', amount: 0, years: 10, annualRate: 0.09, computed: { fv: 0 } },
-    { id: 5, productKey: 'ishares', type: 'monthly', amount: 0, years: 20, annualRate: 0.12, computed: { fv: 0 } },
-    { id: 6, productKey: 'fidelity2040', type: 'monthly', amount: 0, years: 20, annualRate: 0.07, computed: { fv: 0 } },
-    { id: 7, productKey: 'atris', type: 'monthly', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
-    { id: 8, productKey: 'conseq', type: 'pension', amount: 0, years: 30, annualRate: 0.06, computed: { fv: 0 } },
+    { id: 1, productKey: 'creif', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+    { id: 2, productKey: 'atris', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+    { id: 3, productKey: 'penta', type: 'lump', amount: 0, years: 10, annualRate: 0.09, computed: { fv: 0 } },
+    { id: 4, productKey: 'ishares', type: 'monthly', amount: 0, years: 20, annualRate: 0.12, computed: { fv: 0 } },
+    { id: 5, productKey: 'fidelity2040', type: 'monthly', amount: 0, years: 20, annualRate: 0.07, computed: { fv: 0 } },
+    { id: 6, productKey: 'atris', type: 'monthly', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+    { id: 7, productKey: 'conseq', type: 'pension', amount: 0, years: 30, annualRate: 0.06, computed: { fv: 0 } },
   ];
 }
 
@@ -33,13 +32,13 @@ export function getDefaultState(): FinancialAnalysisData {
       sports: '',
       hasPartner: false,
     },
-    partner: { name: '', birthDate: '' },
+    partner: { name: '', birthDate: '', occupation: '', sports: '' },
     children: [],
     cashflow: {
       incomeType: 'zamestnanec',
       incomeGross: 0,
       incomes: { otherDetails: [] },
-      expenses: { otherDetails: [] },
+      expenses: { otherDetails: [], insuranceItems: [] },
       reserveCash: 0,
       reserveTargetMonths: 6,
       reserveGap: 0,
@@ -70,6 +69,8 @@ export function getDefaultState(): FinancialAnalysisData {
     strategy: { profile: 'balanced', conservativeMode: false },
     investments: getDefaultInvestments(),
     insurance: { riskJob: 'low', invalidity50Plus: false },
+    incomeProtection: { persons: [] },
+    notes: null,
   };
 }
 

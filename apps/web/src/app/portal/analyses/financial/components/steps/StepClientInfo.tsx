@@ -53,7 +53,7 @@ export function StepClientInfo() {
                 type="text"
                 value={client.name}
                 onChange={(e) => setClient({ name: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
                 placeholder=""
               />
             </div>
@@ -63,8 +63,8 @@ export function StepClientInfo() {
                 type="text"
                 value={client.birthDate}
                 onChange={(e) => setClient({ birthDate: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
-                placeholder="RRRR-MM-DD nebo D.M.RRRR"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
+                placeholder="RRRR-MM-DD"
               />
             </div>
             <div className="md:col-span-1">
@@ -79,7 +79,7 @@ export function StepClientInfo() {
                 type="email"
                 value={client.email}
                 onChange={(e) => setClient({ email: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
                 placeholder=""
               />
             </div>
@@ -89,7 +89,7 @@ export function StepClientInfo() {
                 type="tel"
                 value={client.phone}
                 onChange={(e) => setClient({ phone: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
                 placeholder=""
               />
             </div>
@@ -99,7 +99,7 @@ export function StepClientInfo() {
                 type="text"
                 value={client.occupation}
                 onChange={(e) => setClient({ occupation: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
                 placeholder=""
               />
             </div>
@@ -109,7 +109,7 @@ export function StepClientInfo() {
                 type="text"
                 value={client.sports}
                 onChange={(e) => setClient({ sports: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
                 placeholder=""
               />
             </div>
@@ -122,31 +122,52 @@ export function StepClientInfo() {
             id="has-partner"
             checked={client.hasPartner}
             onChange={(e) => setClient({ hasPartner: e.target.checked })}
-            className="w-5 h-5 text-amber-500 rounded border-slate-300 focus:ring-amber-400"
+            className="w-5 h-5 text-indigo-500 rounded border-slate-300 focus:ring-indigo-400"
           />
           <label htmlFor="has-partner" className="text-slate-700 font-bold cursor-pointer select-none">Přidat partnera / partnerku</label>
         </div>
 
         {client.hasPartner && (
           <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-            <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4">Partner</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-1">
+            <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-widest mb-4">Partner</h3>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="md:col-span-4">
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Jméno partnera</label>
                 <input
                   type="text"
                   value={partner.name}
                   onChange={(e) => setPartner({ name: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
+                  placeholder=""
                 />
               </div>
-              <div className="md:col-span-1">
+              <div className="md:col-span-3">
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Datum narození</label>
                 <input
                   type="text"
                   value={partner.birthDate}
                   onChange={(e) => setPartner({ birthDate: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
+                  placeholder="RRRR-MM-DD"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Povolání partnera</label>
+                <input
+                  type="text"
+                  value={partner.occupation ?? ""}
+                  onChange={(e) => setPartner({ occupation: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
+                  placeholder=""
+                />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Sporty</label>
+                <input
+                  type="text"
+                  value={partner.sports ?? ""}
+                  onChange={(e) => setPartner({ sports: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
                   placeholder=""
                 />
               </div>
@@ -160,7 +181,7 @@ export function StepClientInfo() {
             <button
               type="button"
               onClick={() => addChild()}
-              className="min-h-[44px] text-sm font-bold text-amber-600 hover:text-amber-800 bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200 flex items-center gap-1"
+              className="min-h-[44px] text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-200 flex items-center gap-1"
             >
               <PlusCircle className="w-4 h-4" />
               Přidat dítě

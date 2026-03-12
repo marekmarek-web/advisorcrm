@@ -2,15 +2,34 @@
 
 Závěrečná fáze migrace: parity vůči původní HTML verzi, QA, odstranění legacy runtime, cleanup, error handling, responsive a testovatelnost.
 
+**Finální audit Fáze 8** (parity osobní i firemní FA, import, shared facts, report/PDF, Zajištění příjmů, cleanup, rizika a doporučení) je v **[../PHASE8_FINAL_AUDIT.md](../PHASE8_FINAL_AUDIT.md)**.
+
+---
+
+## Kroky osobní FA (8 kroků)
+
+Aktuální wizard má **8 kroků** (constants: `STEP_TITLES`, `TOTAL_STEPS = 8`):
+
+1. Klient  
+2. Cashflow  
+3. Majetek  
+4. Úvěry  
+5. Cíle  
+6. Strategie  
+7. **Zajištění příjmů** (income protection – více osob, pojišťovny, rizika, firemní/osobní úhrada, optimalizace jednatel/majitel)  
+8. Shrnutí (report, grafy, tisk, export do dokumentů)
+
+Původní HTML měl 7 kroků (Shrnutí bylo krok 7); rozšíření o krok 7 „Zajištění příjmů“ a přesunutí Shrnutí na krok 8 je záměrné.
+
 ---
 
 ## 1. Parity audit vůči původní HTML verzi
 
-Ověřeno podle [PHASE1_AUDIT.md](./PHASE1_AUDIT.md) a přímého porovnání modulů s odpovědnostmi vytaženými z `financni-analyza.html`.
+Ověřeno podle [PHASE1_AUDIT.md](./PHASE1_AUDIT.md) a přímého porovnání modulů s odpovědnostmi vytaženými z `financni-analyza.html`. Rozšíření o krok Zajištění příjmů a detaily parity jsou v [../PHASE8_FINAL_AUDIT.md](../PHASE8_FINAL_AUDIT.md).
 
 | Oblast | Stav | Poznámka |
 |--------|------|----------|
-| Kroky a pole | Shodné | 7 kroků (Klient, Cashflow, Majetek, Úvěry, Cíle, Strategie, Shrnutí). Struktura `FinancialAnalysisData` v types.ts odpovídá AppState v HTML (client, partner, children, cashflow, assets, liabilities, goals, newCreditWishList, strategy, investments, insurance). |
+| Kroky a pole | Shodné (rozšířeno) | 8 kroků (Klient, Cashflow, Majetek, Úvěry, Cíle, Strategie, **Zajištění příjmů**, Shrnutí). Struktura `FinancialAnalysisData` v types.ts odpovídá AppState v HTML + **incomeProtection** (persons, plány, funding, benefitVsSalaryComparison), **_provenance** pro shared facts. |
 | Výpočty | Shodné | calculations.ts: RENTA_INFLATION 0.03, RENTA_WITHDRAWAL_RATE 0.06; futureRentMonthly, capitalForRenta, goalFvTarget, pmtToReachFv, computeGoalComputed; monthlyPayment, totalRepayment; totalIncome/Expense, surplus, reserveTarget; totalAssetsFromValues, totalLiabilitiesFromValues, netWorth; investmentFv s conservative -2 %; strategyTotals; loansListBalanceSum, loansListPaymentsSum; ownResourcesFromLtv/FromAko. |
 | Selectors | Shodné | selectors.ts mapuje KPI (totalIncome, totalExpense, surplus, reserveTarget/Gap, isReserveMet, totalAssets, totalLiabilities, netWorth, totalMonthlySavings, totalTargetCapital, strategyTotals, portfolioFv) na data. |
 | Save/load | Shodné | saveLoad.ts: mergeLoadedState po sekcích (client, partner, children, cashflow, assets, liabilities, goals s computeGoalComputed, strategy, newCreditWishList + migrace newCreditWish, investments, insurance, clientId, householdId); saveToStorage/loadFromStorage; exportToFile/importFromFile; clearStorage. |
@@ -29,8 +48,9 @@ Ověřeno podle [PHASE1_AUDIT.md](./PHASE1_AUDIT.md) a přímého porovnání mo
 - **Krok 4 – Úvěry:** Úvěry, credit wishes (CREDIT_WISH_BANKS), měsíční splátka / totalRepayment.
 - **Krok 5 – Cíle:** Cíle (renta, horizon), přepočet FV/PMT; graf cíle.
 - **Krok 6 – Strategie:** Profil, konzervativní režim, investice, FV strategie.
-- **Krok 7 – Shrnutí:** KPI, report HTML, grafy (růst, alokace), tisk, export do dokumentů (clientId), export JSON.
-- **CRM:** Otevření z klienta (?clientId=) a z domácnosti (?householdId=); uložení draftu; načtení draftu (?id=); export reportu do dokumentů; routing a datová integrita.
+- **Krok 7 – Zajištění příjmů:** Osoby, pojišťovny, rizika, měsíční/roční příspěvky, zdroj úhrady (firma/osobní/OSVČ), optimalizace jednatel/majitel (benefit vs mzda).
+- **Krok 8 – Shrnutí:** KPI, report HTML (včetně zajištění příjmů a optimalizace), grafy (růst, alokace), tisk, export do dokumentů (clientId), export JSON.
+- **CRM:** Otevření z klienta (?clientId=) a z domácnosti (?householdId=); uložení draftu; načtení draftu (?id=); export reportu do dokumentů; propojení s firmou a shared facts (načtení/aktualizace/odpojení); routing a datová integrita.
 
 *(Manuální QA průchod doporučen před release; tento dokument slouží jako checklist.)*
 

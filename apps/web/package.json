@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node node_modules/next/dist/bin/next dev",
+    "dev:demo": "cross-env NEXT_PUBLIC_SKIP_AUTH=true node node_modules/next/dist/bin/next dev",
     "build": "node node_modules/next/dist/bin/next build",
     "start": "node node_modules/next/dist/bin/next start",
     "lint": "node node_modules/next/dist/bin/next lint",
@@ -38,6 +39,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "@playwright/test": "^1.49.0",
     "@types/node": "^20.10.0",
     "@types/react": "^18.3.12",

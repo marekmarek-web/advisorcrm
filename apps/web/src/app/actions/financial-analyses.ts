@@ -21,6 +21,8 @@ export type FinancialAnalysisRow = {
   createdAt: Date;
   updatedAt: Date;
   lastExportedAt: Date | null;
+  linkedCompanyId: string | null;
+  lastRefreshedFromSharedAt: Date | null;
 };
 
 export type FinancialAnalysisListItem = {
@@ -29,6 +31,12 @@ export type FinancialAnalysisListItem = {
   createdAt: Date;
   updatedAt: Date;
   lastExportedAt: Date | null;
+  contactId: string | null;
+  householdId: string | null;
+  clientName?: string | null;
+  /** Phase 7: link to company and last refresh from shared facts */
+  linkedCompanyId?: string | null;
+  lastRefreshedFromSharedAt?: Date | null;
 };
 
 export async function getFinancialAnalysis(id: string): Promise<FinancialAnalysisRow | null> {
@@ -41,6 +49,39 @@ export async function getFinancialAnalysis(id: string): Promise<FinancialAnalysi
   return row ? (row as FinancialAnalysisRow) : null;
 }
 
+export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem[]> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  const rows = await db
+    .select({
+      id: financialAnalyses.id,
+      status: financialAnalyses.status,
+      createdAt: financialAnalyses.createdAt,
+      updatedAt: financialAnalyses.updatedAt,
+      lastExportedAt: financialAnalyses.lastExportedAt,
+      contactId: financialAnalyses.contactId,
+      householdId: financialAnalyses.householdId,
+      payload: financialAnalyses.payload,
+    })
+    .from(financialAnalyses)
+    .where(eq(financialAnalyses.tenantId, auth.tenantId))
+    .orderBy(desc(financialAnalyses.updatedAt));
+  return rows.map((r) => {
+    const payload = r.payload as { data?: { client?: { name?: string } } } | null;
+    const clientName = payload?.data?.client?.name ?? null;
+    return {
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      lastExportedAt: r.lastExportedAt,
+      contactId: r.contactId,
+      householdId: r.householdId,
+      clientName: clientName ?? null,
+    } as FinancialAnalysisListItem;
+  });
+}
+
 export async function getFinancialAnalysesForContact(contactId: string): Promise<FinancialAnalysisListItem[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
@@ -51,13 +92,25 @@ export async function getFinancialAnalysesForContact(contactId: string): Promise
       createdAt: financialAnalyses.createdAt,
       updatedAt: financialAnalyses.updatedAt,
       lastExportedAt: financialAnalyses.lastExportedAt,
+      linkedCompanyId: financialAnalyses.linkedCompanyId,
+      lastRefreshedFromSharedAt: financialAnalyses.lastRefreshedFromSharedAt,
     })
     .from(financialAnalyses)
     .where(
       and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.contactId, contactId))
     )
     .orderBy(desc(financialAnalyses.updatedAt));
-  return rows as FinancialAnalysisListItem[];
+  return rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    lastExportedAt: r.lastExportedAt,
+    contactId,
+    householdId: null,
+    linkedCompanyId: r.linkedCompanyId ?? undefined,
+    lastRefreshedFromSharedAt: r.lastRefreshedFromSharedAt ?? undefined,
+  })) as FinancialAnalysisListItem[];
 }
 
 export async function getFinancialAnalysesForHousehold(householdId: string): Promise<FinancialAnalysisListItem[]> {
@@ -88,9 +141,6 @@ export async function saveFinancialAnalysisDraft(params: {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
   const { id, contactId, householdId, payload } = params;
-  if (!id && !contactId && !householdId) {
-    throw new Error("At least one of contactId or householdId is required when creating an analysis.");
-  }
   const now = new Date();
   if (id) {
     await db
@@ -143,4 +193,145 @@ export async function setFinancialAnalysisLastExportedAt(id: string): Promise<vo
       updatedAt: new Date(),
     })
     .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, id)));
+}
+
+/** Phase 7: set link metadata (linked company, last refreshed from shared facts). */
+export async function setFinancialAnalysisLinkMetadata(
+  id: string,
+  params: { linkedCompanyId?: string | null; lastRefreshedFromSharedAt?: Date | null }
+): Promise<void> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  await db
+    .update(financialAnalyses)
+    .set({
+      ...params,
+      updatedBy: auth.userId,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(financialAnalyses.tenantId, auth.tenantId),
+        eq(financialAnalyses.id, id),
+        eq(financialAnalyses.type, "financial")
+      )
+    );
+}
+
+/** Phase 7: list personal analyses linked to a company. */
+export async function getPersonalAnalysesLinkedToCompany(companyId: string): Promise<FinancialAnalysisListItem[]> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  const rows = await db
+    .select({
+      id: financialAnalyses.id,
+      status: financialAnalyses.status,
+      createdAt: financialAnalyses.createdAt,
+      updatedAt: financialAnalyses.updatedAt,
+      lastExportedAt: financialAnalyses.lastExportedAt,
+      contactId: financialAnalyses.contactId,
+      householdId: financialAnalyses.householdId,
+      payload: financialAnalyses.payload,
+      lastRefreshedFromSharedAt: financialAnalyses.lastRefreshedFromSharedAt,
+    })
+    .from(financialAnalyses)
+    .where(
+      and(
+        eq(financialAnalyses.tenantId, auth.tenantId),
+        eq(financialAnalyses.type, "financial"),
+        eq(financialAnalyses.linkedCompanyId, companyId)
+      )
+    )
+    .orderBy(desc(financialAnalyses.updatedAt));
+  return rows.map((r) => {
+    const payload = r.payload as { data?: { client?: { name?: string } } } | null;
+    const clientName = payload?.data?.client?.name ?? null;
+    return {
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      lastExportedAt: r.lastExportedAt,
+      contactId: r.contactId,
+      householdId: r.householdId,
+      clientName: clientName ?? null,
+      lastRefreshedFromSharedAt: r.lastRefreshedFromSharedAt ?? undefined,
+    } as FinancialAnalysisListItem & { lastRefreshedFromSharedAt?: Date | null };
+  });
+}
+
+/** Phase 7: apply refresh from shared facts into personal analysis (merge patch, set provenance, save, set link metadata). */
+export async function applyRefreshFromShared(
+  analysisId: string,
+  linkedCompanyId: string,
+  options?: { paths?: string[] }
+): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  const analysis = await getFinancialAnalysis(analysisId);
+  if (!analysis || analysis.type !== "financial" || !analysis.contactId) {
+    return { ok: false, error: "Analysis not found or not personal" };
+  }
+  const { getSharedFactsForContact } = await import("./shared-facts");
+  const rows = await getSharedFactsForContact(analysis.contactId);
+  const facts = rows.map((r) => ({
+    id: r.id,
+    factType: r.factType,
+    value: r.value,
+    contactId: r.contactId,
+    companyId: r.companyId!,
+  }));
+  const currentData = (analysis.payload as { data: Record<string, unknown>; currentStep: number }).data;
+  const currentStep = (analysis.payload as { data: Record<string, unknown>; currentStep: number }).currentStep;
+  const { sharedFactsToProposedPersonalPatch } = await import("@/lib/analyses/shared-facts/sharedFactsMapper");
+  const { mergePatchWithProvenance, getPathsTouchedByPatch } = await import(
+    "@/lib/analyses/shared-facts/refreshFromShared"
+  );
+  const patch = sharedFactsToProposedPersonalPatch(facts, currentData as import("@/lib/analyses/financial/types").FinancialAnalysisData);
+  const pathsToApply = options?.paths?.length ? options.paths : getPathsTouchedByPatch(patch);
+  if (pathsToApply.length === 0) {
+    await setFinancialAnalysisLinkMetadata(analysisId, { linkedCompanyId, lastRefreshedFromSharedAt: new Date() });
+    return { ok: true };
+  }
+  const { data: mergedData } = mergePatchWithProvenance(
+    currentData as import("@/lib/analyses/financial/types").FinancialAnalysisData,
+    patch,
+    pathsToApply
+  );
+  await db
+    .update(financialAnalyses)
+    .set({
+      payload: { data: mergedData as Record<string, unknown>, currentStep },
+      updatedBy: auth.userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, analysisId)));
+  await setFinancialAnalysisLinkMetadata(analysisId, { linkedCompanyId, lastRefreshedFromSharedAt: new Date() });
+  return { ok: true };
+}
+
+/** Phase 7: clear link metadata and mark former linked paths as overridden (Odpojit). */
+export async function clearFinancialAnalysisLink(analysisId: string): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  const analysis = await getFinancialAnalysis(analysisId);
+  if (!analysis || analysis.type !== "financial") return { ok: false, error: "Analysis not found" };
+  const payload = analysis.payload as { data: Record<string, unknown> & { _provenance?: Record<string, string> }; currentStep: number };
+  const data = { ...payload.data };
+  const prov = data._provenance ?? {};
+  for (const k of Object.keys(prov)) {
+    if (prov[k] === "linked") prov[k] = "overridden";
+  }
+  data._provenance = prov;
+  await db
+    .update(financialAnalyses)
+    .set({
+      linkedCompanyId: null,
+      lastRefreshedFromSharedAt: null,
+      payload: { ...payload, data },
+      updatedBy: auth.userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, analysisId)));
+  return { ok: true };
 }

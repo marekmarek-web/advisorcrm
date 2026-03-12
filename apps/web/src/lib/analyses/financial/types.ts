@@ -17,6 +17,8 @@ export interface ClientInfo {
 export interface PartnerInfo {
   name: string;
   birthDate: string;
+  occupation?: string;
+  sports?: string;
 }
 
 export interface ChildEntry {
@@ -37,6 +39,16 @@ export interface CashflowIncomes {
   otherDetails?: OtherDetailItem[];
 }
 
+export type InsuranceItemType = "majetkové" | "odpovědnost" | "životní";
+
+export interface InsuranceExpenseItem {
+  id: number;
+  type: InsuranceItemType;
+  insurer?: string;
+  amount: number;
+  note?: string;
+}
+
 export interface CashflowExpenses {
   housing?: number;
   energy?: number;
@@ -44,6 +56,7 @@ export interface CashflowExpenses {
   transport?: number;
   children?: number;
   insurance?: number;
+  insuranceItems?: InsuranceExpenseItem[];
   loans?: number;
   otherDetails?: OtherDetailItem[];
 }
@@ -63,6 +76,7 @@ export interface AssetListItem {
   id: number;
   type: string;
   value: number;
+  note?: string;
 }
 
 export interface AssetsState {
@@ -169,6 +183,85 @@ export interface InsuranceState {
   invalidity50Plus: boolean;
 }
 
+/** Income protection step – risk types. */
+export type InsuredRiskType =
+  | 'death'
+  | 'invalidity'
+  | 'sickness'
+  | 'tn'
+  | 'critical_illness'
+  | 'hospitalization';
+
+/** Funding source for an insurance plan or risk. */
+export type InsuranceFundingSource = 'company' | 'personal' | 'osvc';
+
+export interface InsuredRiskEntry {
+  riskType: InsuredRiskType;
+  enabled: boolean;
+  coverageAmount?: number;
+  finalPrice?: number;
+  fundingSource?: InsuranceFundingSource;
+  note?: string;
+}
+
+export interface IncomeProtectionPlan {
+  id: string;
+  provider: string;
+  policyType?: string;
+  annualContribution?: number;
+  monthlyPremium?: number;
+  fundingSource?: InsuranceFundingSource;
+  insuredRisks: InsuredRiskEntry[];
+  notes?: string;
+}
+
+/** Role type for income protection person (drives optimization section). */
+export type IncomeProtectionRoleType =
+  | 'client'
+  | 'partner'
+  | 'child'
+  | 'director'
+  | 'owner'
+  | 'partner_company';
+
+export type IncomeProtectionEmploymentType = 'employee' | 'osvc' | 'mixed';
+
+export interface BenefitVsSalaryComparison {
+  salaryIncreaseGrossEquivalent?: number;
+  salaryVariantCompanyCost?: number;
+  salaryVariantNetToPerson?: number;
+  benefitVariantCompanyCost?: number;
+  benefitVariantNetToInsurance?: number;
+  estimatedSavings?: number;
+  /** Daňová úspora majitelů (ročně) při benefitu – pro jednatele/majitele/společníka. */
+  ownerTaxSavingsAnnual?: number;
+  explanation?: string;
+}
+
+export interface PersonProtectionFunding {
+  benefitOptimizationEnabled: boolean;
+  companyContributionMonthly?: number;
+  companyContributionAnnual?: number;
+  personalContributionMonthly?: number;
+  osvcContributionMonthly?: number;
+  benefitVsSalaryComparison?: BenefitVsSalaryComparison;
+  notes?: string;
+}
+
+export interface IncomeProtectionPerson {
+  personKey: string;
+  displayName: string;
+  role: string;
+  roleType?: IncomeProtectionRoleType;
+  employmentType?: IncomeProtectionEmploymentType;
+  insurancePlans: IncomeProtectionPlan[];
+  funding?: PersonProtectionFunding;
+}
+
+export interface IncomeProtectionState {
+  persons: IncomeProtectionPerson[];
+}
+
 export interface FinancialAnalysisData {
   client: ClientInfo;
   partner: PartnerInfo;
@@ -181,9 +274,13 @@ export interface FinancialAnalysisData {
   strategy: StrategyState;
   investments: InvestmentEntry[];
   insurance: InsuranceState;
+  /** Zajištění příjmů – modelace pojištění po osobách, plány, zdroj úhrady, optimalizace pro jednatele/majitele */
+  incomeProtection?: IncomeProtectionState;
   /** Optional CRM link – set from URL ?clientId= / ?householdId= */
   clientId?: string;
   householdId?: string;
+  /** Poznámky k analýze – uložené s analýzou, připravené na převod do úkolů / zápisků */
+  notes?: string | null;
 }
 
 export interface PersistedState {

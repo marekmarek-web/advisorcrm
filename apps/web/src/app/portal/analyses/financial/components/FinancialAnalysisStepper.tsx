@@ -24,7 +24,7 @@ export function FinancialAnalysisStepper() {
               onClick={() => goToStep(stepNum)}
               className={clsx(
                 "stepper-item flex-1 flex flex-col items-center min-w-0 sm:min-w-[60px]",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 rounded-lg"
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 rounded-lg"
               )}
               aria-current={isActive ? "step" : undefined}
               aria-label={`Krok ${stepNum}: ${title}`}
@@ -32,8 +32,8 @@ export function FinancialAnalysisStepper() {
               <div
                 className={clsx(
                   "w-10 h-10 sm:w-11 sm:h-11 min-w-[40px] sm:min-w-[44px] rounded-full flex items-center justify-center font-semibold text-base border-2 transition-all",
-                  isActive && "border-amber-400 text-amber-600 bg-white shadow-[0_0_0_4px_rgba(251,191,36,0.15)]",
-                  isCompleted && "bg-amber-400 border-amber-400 text-white",
+                  isActive && "border-indigo-500 text-indigo-600 bg-white shadow-[0_0_0_4px_rgba(99,102,241,0.2)]",
+                  isCompleted && "bg-indigo-500 border-indigo-500 text-white",
                   !isActive && !isCompleted && "border-slate-300 text-slate-500 bg-white"
                 )}
               >

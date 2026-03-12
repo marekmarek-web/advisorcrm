@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFinancialAnalysisStore } from "@/lib/analyses/financial/store";
+import { createTask } from "@/app/actions/tasks";
+import { createMeetingNote } from "@/app/actions/meeting-notes";
 import { FinancialAnalysisStepper } from "./FinancialAnalysisStepper";
 import { FinancialAnalysisToolbar } from "./FinancialAnalysisToolbar";
 import { StepClientInfo } from "./steps/StepClientInfo";
@@ -9,7 +13,10 @@ import { StepAssetsLiabilities } from "./steps/StepAssetsLiabilities";
 import { StepCredits } from "./steps/StepCredits";
 import { StepGoals } from "./steps/StepGoals";
 import { StepStrategy } from "./steps/StepStrategy";
+import { StepIncomeProtection } from "./steps/StepIncomeProtection";
 import { StepSummary } from "./steps/StepSummary";
+import { PersonalFALinkBanner } from "./PersonalFALinkBanner";
+import { StickyNote, CheckSquare, FileText } from "lucide-react";
 
 const STEP_COMPONENTS = [
   StepClientInfo,
@@ -18,16 +25,63 @@ const STEP_COMPONENTS = [
   StepCredits,
   StepGoals,
   StepStrategy,
+  StepIncomeProtection,
   StepSummary,
 ];
 
 export function FinancialAnalysisLayout() {
+  const router = useRouter();
+  const [convertLoading, setConvertLoading] = useState<"task" | "note" | null>(null);
+  const [convertError, setConvertError] = useState<string | null>(null);
   const currentStep = useFinancialAnalysisStore((s) => s.currentStep);
   const totalSteps = useFinancialAnalysisStore((s) => s.totalSteps);
+  const notes = useFinancialAnalysisStore((s) => s.data.notes ?? "");
+  const data = useFinancialAnalysisStore((s) => s.data);
+  const analysisId = useFinancialAnalysisStore((s) => s.analysisId);
+  const setData = useFinancialAnalysisStore((s) => s.setData);
   const prevStep = useFinancialAnalysisStore((s) => s.prevStep);
   const nextStep = useFinancialAnalysisStore((s) => s.nextStep);
 
   const StepComponent = STEP_COMPONENTS[currentStep - 1];
+
+  async function handleConvertToTask() {
+    setConvertError(null);
+    setConvertLoading("task");
+    try {
+      const title = notes.trim().split(/\n/)[0]?.slice(0, 200) || "Úkol z finanční analýzy";
+      const id = await createTask({
+        title,
+        description: notes.trim() || undefined,
+        contactId: data.clientId ?? undefined,
+        analysisId: analysisId ?? undefined,
+      });
+      if (id) router.push("/portal/tasks");
+      else setConvertError("Úkol se nepodařilo vytvořit.");
+    } catch (e) {
+      setConvertError(e instanceof Error ? e.message : "Nepodařilo se vytvořit úkol.");
+    } finally {
+      setConvertLoading(null);
+    }
+  }
+
+  async function handleConvertToNote() {
+    setConvertError(null);
+    setConvertLoading("note");
+    try {
+      const id = await createMeetingNote({
+        contactId: data.clientId ?? null,
+        meetingAt: new Date().toISOString().slice(0, 16),
+        domain: "financial_analysis",
+        content: { obsah: notes.trim() || "Poznámky z finanční analýzy." },
+      });
+      if (id) router.push("/portal/notes");
+      else setConvertError("Zápisek se nepodařilo vytvořit.");
+    } catch (e) {
+      setConvertError(e instanceof Error ? e.message : "Nepodařilo se vytvořit zápisek.");
+    } finally {
+      setConvertLoading(null);
+    }
+  }
 
   return (
     <div className="flex-grow flex flex-col items-center pt-6 pb-20 px-3 sm:px-4">
@@ -39,7 +93,11 @@ export function FinancialAnalysisLayout() {
 
       <FinancialAnalysisStepper />
 
-      <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 md:p-10 mb-20 shadow-lg">
+      <div className="w-full max-w-6xl mb-4">
+        <PersonalFALinkBanner />
+      </div>
+
+      <div className="w-full max-w-6xl rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 md:p-10 mb-20 shadow-lg">
         <FinancialAnalysisToolbar />
 
         <div className="min-h-[320px]">
@@ -61,10 +119,46 @@ export function FinancialAnalysisLayout() {
               <button
                 type="button"
                 onClick={() => nextStep()}
-                className="min-h-[44px] px-6 py-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold rounded-xl shadow-md"
+                className="min-h-[44px] px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-md"
               >
                 Další
               </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-slate-200">
+          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+            <StickyNote className="w-4 h-4 text-indigo-600" />
+            Poznámky k analýze
+          </h3>
+          <textarea
+            value={notes}
+            onChange={(e) => setData({ notes: e.target.value })}
+            placeholder="Poznámky k analýze – uloží se s analýzou. Můžete je později převést na úkol nebo do zápisků."
+            className="w-full min-h-[100px] px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-y"
+          />
+          <div className="flex flex-wrap gap-3 mt-2 items-center">
+            <button
+              type="button"
+              onClick={handleConvertToTask}
+              disabled={convertLoading !== null}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 min-h-[44px]"
+            >
+              <CheckSquare className="w-4 h-4" />
+              {convertLoading === "task" ? "Vytvářím…" : "Převést na úkol"}
+            </button>
+            <button
+              type="button"
+              onClick={handleConvertToNote}
+              disabled={convertLoading !== null}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 min-h-[44px]"
+            >
+              <FileText className="w-4 h-4" />
+              {convertLoading === "note" ? "Vytvářím…" : "Do zápisků"}
+            </button>
+            {convertError && (
+              <span className="text-sm text-red-600">{convertError}</span>
             )}
           </div>
         </div>

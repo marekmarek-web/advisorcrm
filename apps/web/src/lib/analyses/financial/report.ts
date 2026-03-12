@@ -533,10 +533,103 @@ function renderInsurancePage(data: FinancialAnalysisData): string {
   return pages;
 }
 
+/** Navržené řešení zajištění příjmů (grid) + optional optimalizace pro jednatele/majitele. */
+function renderIncomeProtectionProposed(data: FinancialAnalysisData, reportOptions?: BuildReportHTMLOptions): string {
+  const persons = data.incomeProtection?.persons ?? [];
+  if (persons.length === 0) return '';
+
+  const hasPlans = persons.some((p) => (p.insurancePlans?.length ?? 0) > 0);
+  if (!hasPlans) return '';
+
+  const roleLabel = (r: string | undefined) => {
+    const labels: Record<string, string> = { client: 'Klient', partner: 'Partner', child: 'Dítě', director: 'Jednatel/ka', owner: 'Majitel', partner_company: 'Společník' };
+    return r ? (labels[r] ?? r) : '–';
+  };
+  let html = '<section class="pdf-page"><div class="pdf-section"><div class="h2">Zajištění příjmů – navržené řešení</div>';
+  html += '<table class="table"><thead><tr><th>Osoba</th><th>Role</th><th>Pojišťovna</th><th>Rizika</th><th>Měsíční / roční</th><th>Zdroj úhrady</th><th>Poznámka</th></tr></thead><tbody>';
+  let totalMonthly = 0;
+  const fundingLabels: Record<string, string> = { company: 'Firma', personal: 'Osobně', osvc: 'OSVČ' };
+  persons.forEach((person) => {
+    (person.insurancePlans ?? []).forEach((plan) => {
+      const monthly = plan.monthlyPremium ?? (plan.annualContribution ?? 0) / 12;
+      totalMonthly += monthly;
+      const risks = (plan.insuredRisks ?? []).filter((r) => r.enabled).map((r) => r.riskType).join(', ') || '–';
+      const price = plan.monthlyPremium != null ? `${formatCzk(plan.monthlyPremium)}/měs` : plan.annualContribution != null ? `${formatCzk(plan.annualContribution)}/rok` : '–';
+      const funding = plan.fundingSource ? fundingLabels[plan.fundingSource] ?? plan.fundingSource : '–';
+      html += `<tr><td>${escapeHtml(person.displayName ?? '')}</td><td>${escapeHtml(roleLabel(person.roleType))}</td><td>${escapeHtml(plan.provider ?? '')}</td><td>${escapeHtml(risks)}</td><td style="text-align:right">${price}</td><td>${escapeHtml(funding)}</td><td>${escapeHtml(plan.notes ?? '')}</td></tr>`;
+    });
+  });
+  html += '</tbody></table>';
+  html += `<p style="font-weight:bold; margin-top: 4mm;">Celková měsíční cena: ${formatCzk(totalMonthly)}</p>`;
+  html += '</div></section>';
+
+  const companyMonthlyForPerson = (p: typeof persons[0]) =>
+    (p.insurancePlans ?? []).filter((pl) => pl.fundingSource === 'company').reduce((s, pl) => s + (pl.monthlyPremium ?? (pl.annualContribution ?? 0) / 12), 0);
+  const anyOptimization = persons.some((p) => p.funding?.benefitOptimizationEnabled && ((p.funding?.companyContributionMonthly ?? 0) > 0 || companyMonthlyForPerson(p) > 0));
+  if (anyOptimization) {
+    html += '<section class="pdf-page"><div class="pdf-section"><div class="h2">Optimalizace zajištění příjmů</div>';
+    persons.forEach((person) => {
+      const companyFromPlansVal = companyMonthlyForPerson(person);
+      if (!person.funding?.benefitOptimizationEnabled || ((person.funding.companyContributionMonthly ?? 0) <= 0 && companyFromPlansVal <= 0)) return;
+      const f = person.funding;
+      const comp = f.benefitVsSalaryComparison;
+      const plans = person.insurancePlans ?? [];
+      const companyFromPlans = companyFromPlansVal;
+      const totalPerson = plans.reduce((s, pl) => s + (pl.monthlyPremium ?? (pl.annualContribution ?? 0) / 12), 0);
+      const personalOsvc = Math.max(0, totalPerson - companyFromPlans);
+      const roleLabelMap: Record<string, string> = { client: 'Klient', partner: 'Partner', director: 'Jednatel/ka', owner: 'Majitel', partner_company: 'Společník' };
+      const roleLabel = person.roleType ? roleLabelMap[person.roleType] ?? person.roleType : person.role;
+      html += `<div style="margin-bottom: 6mm;"><strong>${escapeHtml(person.displayName ?? '')}</strong> <span style="color:#64748b; font-size: 9pt;">(${escapeHtml(roleLabel ?? '')})</span>`;
+      html += '<table class="table" style="margin-top: 2mm;"><tbody>';
+      const provLabel = reportOptions?.provenance?.["incomeProtection.persons"]
+        ? (reportOptions.linkedCompanyName ? ` (sdílený údaj z firmy ${reportOptions.linkedCompanyName})` : " (sdílený údaj)")
+        : "";
+      html += `<tr><td>Firma platí${provLabel}</td><td style="text-align:right">${formatCzk(f.companyContributionMonthly ?? companyFromPlans)} Kč/měs</td></tr>`;
+      if (personalOsvc > 0) {
+        html += `<tr><td>Osobně / OSVČ doplácí</td><td style="text-align:right">${formatCzk(personalOsvc)} Kč/měs</td></tr>`;
+      }
+      html += `<tr><td>Celkové měsíční pojistné</td><td style="text-align:right">${formatCzk(totalPerson)} Kč/měs</td></tr>`;
+      if (comp?.salaryVariantCompanyCost != null) {
+        html += `<tr><td>Varianta A – navýšení mzdy (náklad firmy)</td><td style="text-align:right">${formatCzk(comp.salaryVariantCompanyCost)}/měs</td></tr>`;
+      }
+      if (comp?.benefitVariantCompanyCost != null) {
+        html += `<tr><td>Varianta B – firemní příspěvek (náklad firmy)</td><td style="text-align:right">${formatCzk(comp.benefitVariantCompanyCost)}/měs</td></tr>`;
+      }
+      if (comp?.estimatedSavings != null && comp.estimatedSavings > 0) {
+        html += `<tr><td><strong>Úspora firmy ročně</strong></td><td style="text-align:right; font-weight:bold;">${formatCzk(comp.estimatedSavings)}</td></tr>`;
+      }
+      if (comp?.ownerTaxSavingsAnnual != null && comp.ownerTaxSavingsAnnual > 0) {
+        html += `<tr><td>Daňová úspora majitelů (ročně)</td><td style="text-align:right">${formatCzk(comp.ownerTaxSavingsAnnual)}</td></tr>`;
+      }
+      html += '</tbody></table>';
+      if (comp?.explanation) {
+        html += `<p style="font-size: 9pt; color: #64748b; margin-top: 2mm;">${escapeHtml(comp.explanation)}</p>`;
+      }
+      html += '</div>';
+    });
+    html += '</div></section>';
+  }
+  return html;
+}
+
+/** Phase 7: options for report labels (linked/overridden from company). */
+export interface BuildReportHTMLOptions {
+  provenance?: Record<string, "linked" | "overridden">;
+  linkedCompanyName?: string | null;
+}
+
+function provenanceSuffix(path: string, opts?: BuildReportHTMLOptions): string {
+  if (!opts?.provenance?.[path]) return "";
+  const label = opts.linkedCompanyName
+    ? ` (příjem/závazek z firmy ${opts.linkedCompanyName} – sdílený údaj)`
+    : " (sdílený údaj)";
+  return `<span style="font-size:9pt;color:#64748b;">${label}</span>`;
+}
+
 /**
  * Build full report HTML string (for #report-root). Same structure as original buildReportHTML + buildPages34 + renderInsurancePage.
  */
-export function buildReportHTML(data: FinancialAnalysisData): string {
+export function buildReportHTML(data: FinancialAnalysisData, options?: BuildReportHTMLOptions): string {
   const today = new Date().toLocaleDateString('cs-CZ');
   const clientName = data.client?.name || 'Klient';
   const assets = data.assets || {};
@@ -550,10 +643,16 @@ export function buildReportHTML(data: FinancialAnalysisData): string {
   const totalExp = totalExpense(exp);
   const otherIncSum = (inc.otherDetails || []).reduce((a, b) => a + (Number(b.amount) || 0), 0);
   const otherExpSum = (exp.otherDetails || []).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+  const insuranceSum = (exp.insuranceItems?.length ?? 0) > 0
+    ? (exp.insuranceItems as Array<{ amount?: number }>).reduce((a, b) => a + (Number(b.amount) || 0), 0)
+    : Number(exp.insurance) || 0;
   const surplusVal = totalInc - totalExp;
   const reserveCash = data.cashflow?.reserveCash ?? 0;
   const monthlyExp = totalExp;
   const reserveMonths = monthlyExp > 0 ? (reserveCash / monthlyExp).toFixed(1) : 'N/A';
+  const provMain = provenanceSuffix("cashflow.incomes.main", options);
+  const provOtherLiab = provenanceSuffix("liabilities.other", options);
+  const provIncomeProt = provenanceSuffix("incomeProtection.persons", options);
 
   let netWorthText = 'Vaše čisté jmění je kladné, což značí zdravý finanční základ.';
   if (netWorthVal < 0) netWorthText = 'Záporné čisté jmění je často způsobeno hypotékou na začátku splácení. Důležité je, že hodnota nemovitosti v čase roste a dluh klesá.';
@@ -623,7 +722,7 @@ export function buildReportHTML(data: FinancialAnalysisData): string {
           <table class="table"><thead><tr><th colspan="2">Pasiva</th></tr></thead><tbody>
             <tr><td>Hypotéka</td><td style="text-align:right">${formatCzk(liabilities.mortgage || 0)}</td></tr>
             <tr><td>Úvěry</td><td style="text-align:right">${formatCzk(liabilities.loans || 0)}</td></tr>
-            <tr><td>Ostatní</td><td style="text-align:right">${formatCzk(liabilities.other || 0)}</td></tr>
+            <tr><td>Ostatní${provOtherLiab}</td><td style="text-align:right">${formatCzk(liabilities.other || 0)}</td></tr>
             <tr style="font-weight:bold; background:#f8fafc"><td>CELKEM</td><td style="text-align:right">${formatCzk(totalLiabilities)}</td></tr>
           </tbody></table>
         </div>
@@ -635,9 +734,9 @@ export function buildReportHTML(data: FinancialAnalysisData): string {
       <table class="table">
         <thead><tr><th>Příjmy</th><th style="text-align: right;">Částka</th><th>Výdaje</th><th style="text-align: right;">Částka</th></tr></thead>
         <tbody>
-          <tr><td>Hlavní příjem</td><td style="text-align:right">${formatCzk(inc.main || 0)}</td><td>Bydlení & Energie</td><td style="text-align:right">${formatCzk((exp.housing || 0) + (exp.energy || 0))}</td></tr>
+          <tr><td>Hlavní příjem${provMain}</td><td style="text-align:right">${formatCzk(inc.main || 0)}</td><td>Bydlení & Energie</td><td style="text-align:right">${formatCzk((exp.housing || 0) + (exp.energy || 0))}</td></tr>
           <tr><td>Partner</td><td style="text-align:right">${formatCzk(inc.partner || 0)}</td><td>Spotřeba & Jídlo</td><td style="text-align:right">${formatCzk((exp.food || 0) + (exp.transport || 0))}</td></tr>
-          <tr><td>Ostatní</td><td style="text-align:right">${formatCzk(otherIncSum)}</td><td>Ostatní výdaje</td><td style="text-align:right">${formatCzk(otherExpSum + (exp.children || 0) + (exp.insurance || 0))}</td></tr>
+          <tr><td>Ostatní příjmy${(options?.provenance?.["cashflow.incomes.otherDetails"] ? provenanceSuffix("cashflow.incomes.otherDetails", options) : "")}</td><td style="text-align:right">${formatCzk(otherIncSum)}</td><td>Ostatní výdaje</td><td style="text-align:right">${formatCzk(otherExpSum + (exp.children || 0) + insuranceSum)}</td></tr>
           <tr style="font-weight:bold; background:#f8fafc"><td>CELKEM</td><td style="text-align:right">${formatCzk(totalInc)}</td><td>CELKEM</td><td style="text-align:right">${formatCzk(totalExp)}</td></tr>
           <tr style="background:#e0f2fe; color:#0B3A7A; font-weight:800;"><td colspan="3">Volná kapacita na investice</td><td style="text-align:right">${formatCzk(surplusVal)}</td></tr>
         </tbody>
@@ -646,6 +745,15 @@ export function buildReportHTML(data: FinancialAnalysisData): string {
   </section>
   ${buildPages34(data)}
   ${renderInsurancePage(data)}
+  ${renderIncomeProtectionProposed(data, options)}
+  ${(data.notes != null && String(data.notes).trim() !== '') ? `
+  <section class="pdf-page">
+    <div class="pdf-section">
+      <div class="h2">Poznámky k analýze</div>
+      <div style="white-space: pre-wrap; font-size: 10pt; color: #334155;">${escapeHtml(String(data.notes).trim())}</div>
+    </div>
+  </section>
+  ` : ''}
 </div>
   `.trim();
 }

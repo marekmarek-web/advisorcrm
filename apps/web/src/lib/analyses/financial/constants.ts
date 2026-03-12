@@ -6,17 +6,6 @@
 import type { FundDetail, LiabilityProviderGroup, CreditWishBank } from './types';
 
 export const FUND_DETAILS: Record<string, FundDetail> = {
-  imperial: {
-    name: 'AlgoImperial',
-    manager: 'Imperium Finance',
-    goal: 'Absolutní výnos nezávislý na trhu',
-    assets: 'Algoritmické strategie, futures',
-    yield: 'Obchodování volatility',
-    risks: 'Technické selhání, Nízká volatilita trhu, Kreditní riziko',
-    liquidity: 'Měsíční (T+15)',
-    suitable: 'Dynamičtí investoři hledající diverzifikaci',
-    why: 'Snižuje korelaci portfolia s akciovým trhem a stabilizuje výnosy.',
-  },
   creif: {
     name: 'CREIF',
     manager: 'Generali Investments',
@@ -166,16 +155,78 @@ export const LIABILITY_PROVIDERS: LiabilityProviderGroup[] = [
   { group: '—', names: ['Jiný / neuvedeno'] },
 ];
 
+/** Flat list of all provider names for dropdowns. */
+export function getLiabilityProviderOptions(): string[] {
+  return LIABILITY_PROVIDERS.flatMap((g) => g.names);
+}
+
+export const LOAN_TYPES = [
+  'Spotřebitelský úvěr',
+  'Kreditní karta',
+  'Kontokorent',
+  'Leasing',
+  'Jiný',
+] as const;
+
+export const INVESTMENT_ASSET_TYPES = ['Akcie', 'Dluhopisy', 'Krypto', 'ETF', 'Jiné'] as const;
+export const PENSION_ASSET_TYPES = ['DPS', 'DIP', 'PP'] as const;
+
 export const CREDIT_WISH_BANKS: CreditWishBank[] = [
   { id: 'unicredit', name: 'UniCredit Bank', rateHypo: 4.19, rateLoan: 6.2 },
   { id: 'rb', name: 'Raiffeisenbank', rateHypo: 4.29, rateLoan: 6.5 },
   { id: 'csob', name: 'ČSOB / Komerční banka', rateHypo: 4.39, rateLoan: 6.9 },
+  { id: 'cs', name: 'Česká spořitelna', rateHypo: 4.49, rateLoan: 6.5 },
+  { id: 'moneta', name: 'MONETA Money Bank', rateHypo: 4.35, rateLoan: 6.8 },
+  { id: 'fio', name: 'Fio banka', rateHypo: 4.25, rateLoan: 6.4 },
+  { id: 'mbank', name: 'mBank', rateHypo: 4.45, rateLoan: 6.7 },
+  { id: 'airbank', name: 'Air Bank', rateHypo: 4.29, rateLoan: 6.3 },
+  { id: 'other', name: 'Jiná banka', rateHypo: 4.5, rateLoan: 7 },
 ];
+
+export const CREDIT_PURPOSE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'bydleni-koupě', label: 'Bydlení – koupě nemovitosti' },
+  { value: 'bydleni-rekonstrukce', label: 'Bydlení – rekonstrukce' },
+  { value: 'auto', label: 'Auto / vozidlo' },
+  { value: 'konsolidace', label: 'Konsolidace úvěrů' },
+  { value: 'ostatni', label: 'Ostatní' },
+];
+
+export const LTV_OPTIONS = [80, 90, 95] as const;
 
 export const STORAGE_KEY = 'financial_plan_state';
 
 export const RENTA_INFLATION = 0.03;
 export const RENTA_WITHDRAWAL_RATE = 0.06;
+
+/** Přepočet čistá ↔ hrubá mzda (pro pojištění). */
+export const GROSS_FROM_NET_FACTOR = 0.74;
+
+/** Zajištění příjmů – kalkulačka mzda vs benefit. Sazby jsou v constants; pro multi-tenant lze v budoucnu číst z tenant config. */
+export const BENEFIT_OPTIMIZATION = {
+  /** Koeficient čistá z hrubé (např. 0,67 → z 1000 Kč hrubé cca 670 Kč čistého). */
+  netFromGrossFactor: 0.67,
+  /** Odvody z hrubé mzdy v % (např. 33,8). */
+  deductionsPercent: 33.8,
+  /** Náklad firmy na 1 Kč hrubé (odvody zaměstnavatele, např. 1,338). */
+  employerCostFactor: 1.338,
+  /** Daňová úspora majitelů při benefitu (21 %). */
+  ownerTaxSavingsPercent: 21,
+} as const;
+
+/** České pojišťovny pro dropdown. */
+export const INSURANCE_COMPANIES_CS: string[] = [
+  "ČSOB Pojišťovna",
+  "Allianz pojišťovna",
+  "Generali Pojišťovna",
+  "Kooperativa",
+  "Slavia pojišťovna",
+  "Česká podnikatelská pojišťovna",
+  "HDI pojišťovna",
+  "UNIQA",
+  "AXA",
+  "Pojistíme.cz",
+  "Jiná / neuvedeno",
+];
 
 export const STEP_TITLES = [
   'Klient',
@@ -184,7 +235,8 @@ export const STEP_TITLES = [
   'Úvěry',
   'Cíle',
   'Strategie',
+  'Zajištění příjmů',
   'Shrnutí',
 ] as const;
 
-export const TOTAL_STEPS = 7;
+export const TOTAL_STEPS = 8;

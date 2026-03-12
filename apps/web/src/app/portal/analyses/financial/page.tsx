@@ -7,17 +7,22 @@ import { useFinancialAnalysisStore } from "@/lib/analyses/financial/store";
 import { FinancialAnalysisLayout } from "./components/FinancialAnalysisLayout";
 import { getFinancialAnalysis } from "@/app/actions/financial-analyses";
 
+const PERSONAL_FA_IMPORT_KEY = "financial_analysis_import";
+
 export default function FinancialAnalysisPage() {
   const searchParams = useSearchParams();
   const hydrate = useFinancialAnalysisStore((s) => s.hydrate);
   const setLinkIds = useFinancialAnalysisStore((s) => s.setLinkIds);
   const loadFromServerPayload = useFinancialAnalysisStore((s) => s.loadFromServerPayload);
   const setAnalysisId = useFinancialAnalysisStore((s) => s.setAnalysisId);
+  const setLinkMetadata = useFinancialAnalysisStore((s) => s.setLinkMetadata);
+  const loadFromFile = useFinancialAnalysisStore((s) => s.loadFromFile);
 
   const [loadState, setLoadState] = useState<"idle" | "loading" | "ok" | "error">("idle");
 
   useEffect(() => {
     const id = searchParams.get("id");
+    const fromImport = searchParams.get("fromImport");
     if (id) {
       setLoadState("loading");
       getFinancialAnalysis(id)
@@ -27,6 +32,10 @@ export default function FinancialAnalysisPage() {
               loadFromServerPayload(row.payload ?? {});
               setAnalysisId(row.id);
               setLinkIds(row.contactId ?? undefined, row.householdId ?? undefined);
+              setLinkMetadata(
+                (row as { linkedCompanyId?: string | null; lastRefreshedFromSharedAt?: Date | null }).linkedCompanyId ?? null,
+                (row as { linkedCompanyId?: string | null; lastRefreshedFromSharedAt?: Date | null }).lastRefreshedFromSharedAt ?? null
+              );
               setLoadState("ok");
             } catch {
               setLoadState("error");
@@ -38,9 +47,18 @@ export default function FinancialAnalysisPage() {
         .catch(() => setLoadState("error"));
       return;
     }
-    setLoadState("ok");
+    if (fromImport === "1" && typeof window !== "undefined") {
+      const json = window.sessionStorage.getItem(PERSONAL_FA_IMPORT_KEY);
+      if (json) {
+        window.sessionStorage.removeItem(PERSONAL_FA_IMPORT_KEY);
+        const ok = loadFromFile(json);
+        setLoadState(ok ? "ok" : "error");
+        return;
+      }
+    }
     hydrate();
-  }, [searchParams, hydrate, loadFromServerPayload, setAnalysisId, setLinkIds]);
+    setLoadState("ok");
+  }, [searchParams, hydrate, loadFromServerPayload, setAnalysisId, setLinkIds, loadFromFile]);
 
   useEffect(() => {
     const id = searchParams.get("id");
@@ -66,7 +84,7 @@ export default function FinancialAnalysisPage() {
         <p className="text-slate-500 text-sm mb-4">Zkontrolujte připojení nebo zkuste začít novou analýzu.</p>
         <Link
           href="/portal/analyses/financial"
-          className="min-h-[44px] px-6 py-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold rounded-xl"
+          className="min-h-[44px] px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl"
         >
           Začít novou analýzu
         </Link>

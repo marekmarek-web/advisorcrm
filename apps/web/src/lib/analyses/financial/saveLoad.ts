@@ -5,7 +5,7 @@
 
 import type { FinancialAnalysisData, PersistedState } from './types';
 import { getDefaultState, getDefaultInvestments } from './defaultState';
-import { STORAGE_KEY } from './constants';
+import { STORAGE_KEY, TOTAL_STEPS } from './constants';
 import { computeGoalComputed } from './calculations';
 import { exportFilename } from './formatters';
 
@@ -22,7 +22,7 @@ export function mergeLoadedState(
   const data: FinancialAnalysisData = JSON.parse(JSON.stringify(defaultData));
   const currentStep = Math.min(
     Math.max(1, Number(parsed?.currentStep) || 1),
-    7
+    TOTAL_STEPS
   );
 
   if (!parsed?.data) return { data, currentStep };
@@ -50,8 +50,17 @@ export function mergeLoadedState(
       if (!Array.isArray(data.cashflow.incomes.otherDetails)) data.cashflow.incomes.otherDetails = [];
     }
     if (cf.expenses && typeof cf.expenses === 'object') {
+      const exp = cf.expenses as Record<string, unknown>;
       Object.assign(data.cashflow.expenses, cf.expenses);
       if (!Array.isArray(data.cashflow.expenses.otherDetails)) data.cashflow.expenses.otherDetails = [];
+      if (Array.isArray(exp.insuranceItems)) {
+        data.cashflow.expenses.insuranceItems = exp.insuranceItems as FinancialAnalysisData['cashflow']['expenses']['insuranceItems'];
+      } else if (typeof exp.insurance === 'number' && exp.insurance > 0) {
+        data.cashflow.expenses.insuranceItems = [
+          { id: Date.now(), type: 'životní', amount: exp.insurance, insurer: undefined, note: undefined },
+        ];
+      }
+      if (!data.cashflow.expenses.insuranceItems) data.cashflow.expenses.insuranceItems = [];
     }
   }
 
@@ -124,8 +133,20 @@ export function mergeLoadedState(
     Object.assign(data.insurance, p.insurance);
   }
 
+  if (p.incomeProtection && typeof p.incomeProtection === 'object') {
+    const ip = p.incomeProtection as Record<string, unknown>;
+    if (Array.isArray(ip.persons)) {
+      data.incomeProtection = { persons: ip.persons as NonNullable<FinancialAnalysisData['incomeProtection']>['persons'] };
+    }
+  }
+
   if (p.clientId != null) data.clientId = String(p.clientId);
   if (p.householdId != null) data.householdId = String(p.householdId);
+  if (p.notes !== undefined) data.notes = p.notes == null ? null : String(p.notes);
+
+  if (p._provenance && typeof p._provenance === 'object') {
+    (data as Record<string, unknown>)._provenance = { ...(p._provenance as Record<string, string>) };
+  }
 
   return { data, currentStep };
 }

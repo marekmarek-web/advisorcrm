@@ -4,11 +4,11 @@
  */
 
 import { create } from "zustand";
-import type { FinancialAnalysisData, ChildEntry, GoalEntry, CreditWishEntry, LoanEntry, InvestmentEntry, AssetListItem, OtherDetailItem } from "./types";
+import type { FinancialAnalysisData, ChildEntry, GoalEntry, CreditWishEntry, LoanEntry, InvestmentEntry, AssetListItem, OtherDetailItem, InsuranceExpenseItem, InsuranceItemType, IncomeProtectionState, IncomeProtectionPerson, IncomeProtectionPlan, InsuredRiskEntry, PersonProtectionFunding } from "./types";
 import { getDefaultState } from "./defaultState";
 import { TOTAL_STEPS } from "./constants";
 import { loadFromStorage, saveToStorage, clearStorage, mergeLoadedState, type LoadedState } from "./saveLoad";
-import { computeGoalComputed } from "./calculations";
+import { computeGoalComputed, computeBenefitVsSalaryComparison } from "./calculations";
 import { loansListBalanceSum, loansListPaymentsSum, monthlyPayment } from "./calculations";
 import { ownResourcesFromLtv, ownResourcesFromAko } from "./calculations";
 import { recomputeInvestmentsFv } from "./charts";
@@ -19,6 +19,10 @@ export interface FinancialAnalysisStore {
   totalSteps: number;
   /** CRM analysis id when loaded/saved from server. */
   analysisId: string | null;
+  /** Phase 7: link to company and last refresh time (from server row). */
+  linkedCompanyId: string | null;
+  lastRefreshedFromSharedAt: Date | null;
+  setLinkMetadata: (linkedCompanyId: string | null, lastRefreshedFromSharedAt: Date | null) => void;
   /** Hydrate from localStorage on mount (call once in layout/page). */
   hydrate: () => void;
   /** Load state from server payload (e.g. after getFinancialAnalysis). Merges with default state. */
@@ -46,13 +50,16 @@ export interface FinancialAnalysisStore {
   addExpenseOther: (desc: string, amount: number) => void;
   updateExpenseOther: (id: number, patch: { desc?: string; amount?: number }) => void;
   removeExpenseOther: (id: number) => void;
+  addExpenseInsuranceItem: (item: { type: InsuranceItemType; insurer?: string; amount: number; note?: string }) => void;
+  updateExpenseInsuranceItem: (id: number, patch: Partial<Omit<InsuranceExpenseItem, "id">>) => void;
+  removeExpenseInsuranceItem: (id: number) => void;
   // Assets
   setAssetsField: (key: string, value: number) => void;
   addAssetInvestment: (type: string, value: number) => void;
-  updateAssetInvestment: (id: number, patch: { type?: string; value?: number }) => void;
+  updateAssetInvestment: (id: number, patch: { type?: string; value?: number; note?: string }) => void;
   removeAssetInvestment: (id: number) => void;
   addAssetPension: (type: string, value: number) => void;
-  updateAssetPension: (id: number, patch: { type?: string; value?: number }) => void;
+  updateAssetPension: (id: number, patch: { type?: string; value?: number; note?: string }) => void;
   removeAssetPension: (id: number) => void;
   recalcAssetTotals: () => void;
   // Liabilities
@@ -75,6 +82,15 @@ export interface FinancialAnalysisStore {
   recalcInvestmentsFv: () => void;
   // Insurance
   setInsurance: (partial: Partial<FinancialAnalysisData["insurance"]>) => void;
+  // Income protection (Zajištění příjmů)
+  setIncomeProtection: (partial: Partial<IncomeProtectionState>) => void;
+  setIncomeProtectionPerson: (personKey: string, partial: Partial<IncomeProtectionPerson>) => void;
+  addIncomeProtectionPlan: (personKey: string, plan: Omit<IncomeProtectionPlan, "id">) => void;
+  updateIncomeProtectionPlan: (personKey: string, planId: string, partial: Partial<IncomeProtectionPlan>) => void;
+  removeIncomeProtectionPlan: (personKey: string, planId: string) => void;
+  setIncomeProtectionPlanRisks: (personKey: string, planId: string, risks: InsuredRiskEntry[]) => void;
+  setIncomeProtectionPersonFunding: (personKey: string, partial: Partial<PersonProtectionFunding>) => void;
+  recalcBenefitVsSalary: (personKey: string) => void;
   // CRM link (from URL)
   setLinkIds: (clientId?: string, householdId?: string) => void;
 }
@@ -97,6 +113,12 @@ export const useFinancialAnalysisStore = create<FinancialAnalysisStore>((set, ge
   currentStep: 1,
   totalSteps: TOTAL_STEPS,
   analysisId: null,
+  linkedCompanyId: null,
+  lastRefreshedFromSharedAt: null,
+
+  setLinkMetadata: (linkedCompanyId, lastRefreshedFromSharedAt) => {
+    set({ linkedCompanyId, lastRefreshedFromSharedAt });
+  },
 
   hydrate: () => {
     const loaded = loadFromStorage();
@@ -319,6 +341,57 @@ export const useFinancialAnalysisStore = create<FinancialAnalysisStore>((set, ge
           expenses: {
             ...s.data.cashflow.expenses,
             otherDetails: (s.data.cashflow.expenses.otherDetails || []).filter((i) => i.id !== id),
+          },
+        },
+      },
+    }));
+    get().saveToStorage();
+  },
+
+  addExpenseInsuranceItem: (item) => {
+    const newItem: InsuranceExpenseItem = { id: Date.now(), type: item.type, amount: item.amount, insurer: item.insurer, note: item.note };
+    set((s) => ({
+      data: {
+        ...s.data,
+        cashflow: {
+          ...s.data.cashflow,
+          expenses: {
+            ...s.data.cashflow.expenses,
+            insuranceItems: [...(s.data.cashflow.expenses.insuranceItems || []), newItem],
+          },
+        },
+      },
+    }));
+    get().saveToStorage();
+  },
+
+  updateExpenseInsuranceItem: (id, patch) => {
+    set((s) => ({
+      data: {
+        ...s.data,
+        cashflow: {
+          ...s.data.cashflow,
+          expenses: {
+            ...s.data.cashflow.expenses,
+            insuranceItems: (s.data.cashflow.expenses.insuranceItems || []).map((i) =>
+              i.id === id ? { ...i, ...patch } : i
+            ),
+          },
+        },
+      },
+    }));
+    get().saveToStorage();
+  },
+
+  removeExpenseInsuranceItem: (id) => {
+    set((s) => ({
+      data: {
+        ...s.data,
+        cashflow: {
+          ...s.data.cashflow,
+          expenses: {
+            ...s.data.cashflow.expenses,
+            insuranceItems: (s.data.cashflow.expenses.insuranceItems || []).filter((i) => i.id !== id),
           },
         },
       },
@@ -624,6 +697,119 @@ export const useFinancialAnalysisStore = create<FinancialAnalysisStore>((set, ge
     get().saveToStorage();
   },
 
+  setIncomeProtection: (partial) => {
+    set((s) => ({
+      data: {
+        ...s.data,
+        incomeProtection: {
+          persons: s.data.incomeProtection?.persons ?? [],
+          ...partial,
+        },
+      },
+    }));
+    get().saveToStorage();
+  },
+
+  setIncomeProtectionPerson: (personKey, partial) => {
+    set((s) => {
+      const persons = s.data.incomeProtection?.persons ?? [];
+      const next = persons.map((p) =>
+        p.personKey === personKey ? { ...p, ...partial } : p
+      );
+      return { data: { ...s.data, incomeProtection: { persons: next } } };
+    });
+    get().saveToStorage();
+  },
+
+  addIncomeProtectionPlan: (personKey, planInput) => {
+    const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `plan-${Date.now()}`;
+    const plan: IncomeProtectionPlan = { ...planInput, id, insuredRisks: planInput.insuredRisks ?? [] };
+    set((s) => {
+      const persons = s.data.incomeProtection?.persons ?? [];
+      const next = persons.map((p) =>
+        p.personKey === personKey
+          ? { ...p, insurancePlans: [...(p.insurancePlans ?? []), plan] }
+          : p
+      );
+      return { data: { ...s.data, incomeProtection: { persons: next } } };
+    });
+    get().saveToStorage();
+  },
+
+  updateIncomeProtectionPlan: (personKey, planId, partial) => {
+    set((s) => {
+      const persons = s.data.incomeProtection?.persons ?? [];
+      const next = persons.map((p) => {
+        if (p.personKey !== personKey) return p;
+        const plans = (p.insurancePlans ?? []).map((pl) =>
+          pl.id === planId ? { ...pl, ...partial } : pl
+        );
+        return { ...p, insurancePlans: plans };
+      });
+      return { data: { ...s.data, incomeProtection: { persons: next } } };
+    });
+    get().saveToStorage();
+  },
+
+  removeIncomeProtectionPlan: (personKey, planId) => {
+    set((s) => {
+      const persons = s.data.incomeProtection?.persons ?? [];
+      const next = persons.map((p) =>
+        p.personKey === personKey
+          ? { ...p, insurancePlans: (p.insurancePlans ?? []).filter((pl) => pl.id !== planId) }
+          : p
+      );
+      return { data: { ...s.data, incomeProtection: { persons: next } } };
+    });
+    get().saveToStorage();
+  },
+
+  setIncomeProtectionPlanRisks: (personKey, planId, risks) => {
+    set((s) => {
+      const persons = s.data.incomeProtection?.persons ?? [];
+      const next = persons.map((p) => {
+        if (p.personKey !== personKey) return p;
+        const plans = (p.insurancePlans ?? []).map((pl) =>
+          pl.id === planId ? { ...pl, insuredRisks: risks } : pl
+        );
+        return { ...p, insurancePlans: plans };
+      });
+      return { data: { ...s.data, incomeProtection: { persons: next } } };
+    });
+    get().saveToStorage();
+  },
+
+  setIncomeProtectionPersonFunding: (personKey, partial) => {
+    set((s) => {
+      const persons = s.data.incomeProtection?.persons ?? [];
+      const next = persons.map((p) => {
+        if (p.personKey !== personKey) return p;
+        const funding: PersonProtectionFunding = {
+          benefitOptimizationEnabled: p.funding?.benefitOptimizationEnabled ?? false,
+          ...p.funding,
+          ...partial,
+        };
+        return { ...p, funding };
+      });
+      return { data: { ...s.data, incomeProtection: { persons: next } } };
+    });
+    get().saveToStorage();
+  },
+
+  recalcBenefitVsSalary: (personKey) => {
+    const { data } = get();
+    const persons = data.incomeProtection?.persons ?? [];
+    const person = persons.find((p) => p.personKey === personKey);
+    const monthly = person?.funding?.companyContributionMonthly ?? 0;
+    if (monthly <= 0) return;
+    const isOwnerRole =
+      person?.roleType === "director" ||
+      person?.roleType === "owner" ||
+      person?.roleType === "partner_company";
+    const comparison = computeBenefitVsSalaryComparison(monthly, { isOwnerRole });
+    get().setIncomeProtectionPersonFunding(personKey, { benefitVsSalaryComparison: comparison });
+  },
+
   setLinkIds: (clientId, householdId) => {
     set((s) => ({
       data: {
@@ -635,3 +821,4 @@ export const useFinancialAnalysisStore = create<FinancialAnalysisStore>((set, ge
     get().saveToStorage();
   },
 }));
+

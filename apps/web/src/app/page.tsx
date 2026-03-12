@@ -1,7 +1,9 @@
 /**
  * Úvodní stránka Aidvisora – přihlášení s animovaným pozadím.
  * Témata: Barevný přechod a Tmavá elegance. Funkční přihlášení a tlačítko Otevřít Portál.
+ * V demo režimu (NEXT_PUBLIC_SKIP_AUTH=true) přesměruje rovnou na /portal.
  */
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { LandingLoginPage } from "./components/LandingLoginPage";
 
@@ -17,6 +19,9 @@ function LandingFallback() {
 }
 
 export default function HomePage() {
+  if (process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
+    redirect("/portal");
+  }
   return (
     <Suspense fallback={<LandingFallback />}>
       <LandingLoginPage />

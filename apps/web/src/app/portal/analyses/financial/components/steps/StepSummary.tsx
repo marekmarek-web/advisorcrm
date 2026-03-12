@@ -8,7 +8,7 @@ import { getGrowthChartData, getAllocationChartData } from "@/lib/analyses/finan
 import { formatCzk, safeNameForFile } from "@/lib/analyses/financial/formatters";
 import { uploadDocument } from "@/app/actions/documents";
 import { setFinancialAnalysisLastExportedAt } from "@/app/actions/financial-analyses";
-import { FileText, Printer, CloudUpload } from "lucide-react";
+import { FileText, Printer, CloudUpload, StickyNote } from "lucide-react";
 import { Chart, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler } from "chart.js";
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler);
@@ -27,10 +27,14 @@ export function StepSummary() {
   const portfolioFv = selectPortfolioFv(data);
   const clientName = data.client?.name || "Klient";
 
+  const reportOptions = (data as Record<string, unknown>)._provenance
+    ? { provenance: (data as Record<string, unknown>)._provenance as Record<string, "linked" | "overridden">, linkedCompanyName: undefined as string | null }
+    : undefined;
+
   const handlePrintReport = () => {
     chartRefs.current.growth = null;
     chartRefs.current.allocation = null;
-    setReportHtml(buildReportHTML(data));
+    setReportHtml(buildReportHTML(data, reportOptions));
     setShowPrintReport(true);
   };
 
@@ -38,7 +42,7 @@ export function StepSummary() {
     if (!canSaveToDocuments) return;
     setSavingToDocs(true);
     try {
-      const html = buildReportHTML(data);
+      const html = buildReportHTML(data, reportOptions);
       const safe = safeNameForFile(clientName);
       const date = new Date().toISOString().split("T")[0];
       const filename = `financni-report-${safe}-${date}.html`;
@@ -144,7 +148,7 @@ export function StepSummary() {
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Cíle celkem</span>
-          <div className="text-lg font-bold text-amber-700 mt-1">{formatCzk(totalGoals)}</div>
+          <div className="text-lg font-bold text-indigo-700 mt-1">{formatCzk(totalGoals)}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Projekce portfolia (FV)</span>
@@ -152,9 +156,19 @@ export function StepSummary() {
         </div>
       </div>
 
+      {(data.notes != null && String(data.notes).trim() !== "") && (
+        <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-6 mb-8">
+          <h3 className="text-slate-800 font-bold mb-2 flex items-center gap-2">
+            <StickyNote className="w-5 h-5 text-indigo-600" />
+            Poznámky k analýze
+          </h3>
+          <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans">{data.notes}</pre>
+        </div>
+      )}
+
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
         <h3 className="text-slate-800 font-bold mb-2 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-amber-600" />
+          <FileText className="w-5 h-5 text-indigo-600" />
           Export / tisk reportu
         </h3>
         <p className="text-slate-600 text-sm mb-4">
@@ -164,7 +178,7 @@ export function StepSummary() {
           <button
             type="button"
             onClick={handlePrintReport}
-            className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600"
+            className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500"
           >
             <Printer className="w-5 h-5" /> Export / tisk reportu
           </button>

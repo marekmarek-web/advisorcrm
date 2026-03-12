@@ -3,7 +3,11 @@
 import { useFinancialAnalysisStore as useStore } from "@/lib/analyses/financial/store";
 import { selectTotalAssets, selectTotalLiabilities, selectNetWorth } from "@/lib/analyses/financial/selectors";
 import { formatCzk } from "@/lib/analyses/financial/formatters";
+import { getLiabilityProviderOptions, LOAN_TYPES, INVESTMENT_ASSET_TYPES, PENSION_ASSET_TYPES } from "@/lib/analyses/financial/constants";
 import { Building2, Landmark, Plus, Trash2 } from "lucide-react";
+import { ProvenanceBadge } from "../ProvenanceBadge";
+
+const providerOptions = getLiabilityProviderOptions();
 
 function InputAmount({
   label,
@@ -20,7 +24,7 @@ function InputAmount({
           type="number"
           value={value || ""}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="w-full pl-4 pr-12 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400"
+          className="w-full pl-4 pr-12 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
         />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">Kč</span>
       </div>
@@ -39,6 +43,7 @@ export function StepAssetsLiabilities() {
   const removeAssetPension = useStore((s) => s.removeAssetPension);
   const setLiabilitiesField = useStore((s) => s.setLiabilitiesField);
   const addLoan = useStore((s) => s.addLoan);
+  const updateLoan = useStore((s) => s.updateLoan);
   const removeLoan = useStore((s) => s.removeLoan);
 
   const totalAssets = selectTotalAssets(data);
@@ -80,35 +85,45 @@ export function StepAssetsLiabilities() {
             <InputAmount label="Hotovost (účty, hotovost)" value={assets.cash} onChange={(v) => setAssetsField("cash", v)} id="asset-cash" />
             <InputAmount label="Nemovitosti (odhad)" value={assets.realEstate} onChange={(v) => setAssetsField("realEstate", v)} id="asset-realestate" />
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Investice (jednotky, podíly)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Investice (Akcie, Fondy, Dluhopisy, Krypto, ETF)</label>
               <div className="space-y-2 mb-2">
                 {(assets.investmentsList || []).map((item) => (
-                  <div key={item.id} className="flex flex-wrap gap-2 items-center bg-white rounded-lg p-2 border border-slate-100">
-                    <input type="text" value={item.type || ""} onChange={(e) => updateAssetInvestment(item.id, { type: e.target.value })} placeholder="Typ" className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm" />
-                    <input type="number" value={item.value || ""} onChange={(e) => updateAssetInvestment(item.id, { value: parseFloat(e.target.value) || 0 })} placeholder="0" className="w-28 px-2 py-1.5 border border-slate-200 rounded text-sm" />
+                  <div key={item.id} className="flex flex-wrap gap-2 items-center bg-white rounded-lg p-3 border border-slate-100">
+                    <select value={item.type || "Akcie"} onChange={(e) => updateAssetInvestment(item.id, { type: e.target.value })} className="min-w-[120px] px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                      {INVESTMENT_ASSET_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <input type="number" value={item.value || ""} onChange={(e) => updateAssetInvestment(item.id, { value: parseFloat(e.target.value) || 0 })} placeholder="0" className="w-28 px-2 py-2 border border-slate-200 rounded-lg text-sm" />
                     <span className="text-slate-500 text-sm">Kč</span>
+                    <input type="text" value={item.note ?? ""} onChange={(e) => updateAssetInvestment(item.id, { note: e.target.value })} placeholder="Poznámka" className="flex-1 min-w-0 px-2 py-2 border border-slate-200 rounded-lg text-sm" />
                     <button type="button" onClick={() => removeAssetInvestment(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={() => addAssetInvestment("Investice", 0)} className="text-sm text-green-600 font-bold flex items-center gap-1 hover:underline">
+              <button type="button" onClick={() => addAssetInvestment("Akcie", 0)} className="text-sm text-indigo-600 font-bold flex items-center gap-1 hover:underline">
                 <Plus className="w-4 h-4" /> Přidat investici
               </button>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Důchody / penze (souhrn)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Penzijní / DIP / DPS</label>
               <div className="space-y-2 mb-2">
                 {(assets.pensionList || []).map((item) => (
-                  <div key={item.id} className="flex flex-wrap gap-2 items-center bg-white rounded-lg p-2 border border-slate-100">
-                    <input type="text" value={item.type || ""} onChange={(e) => updateAssetPension(item.id, { type: e.target.value })} placeholder="Typ" className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm" />
-                    <input type="number" value={item.value || ""} onChange={(e) => updateAssetPension(item.id, { value: parseFloat(e.target.value) || 0 })} placeholder="0" className="w-28 px-2 py-1.5 border border-slate-200 rounded text-sm" />
+                  <div key={item.id} className="flex flex-wrap gap-2 items-center bg-white rounded-lg p-3 border border-slate-100">
+                    <select value={item.type || "DPS"} onChange={(e) => updateAssetPension(item.id, { type: e.target.value })} className="min-w-[80px] px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                      {PENSION_ASSET_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <input type="number" value={item.value || ""} onChange={(e) => updateAssetPension(item.id, { value: parseFloat(e.target.value) || 0 })} placeholder="0" className="w-28 px-2 py-2 border border-slate-200 rounded-lg text-sm" />
                     <span className="text-slate-500 text-sm">Kč</span>
+                    <input type="text" value={item.note ?? ""} onChange={(e) => updateAssetPension(item.id, { note: e.target.value })} placeholder="Poznámka / detail" className="flex-1 min-w-0 px-2 py-2 border border-slate-200 rounded-lg text-sm" />
                     <button type="button" onClick={() => removeAssetPension(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={() => addAssetPension("Penze", 0)} className="text-sm text-green-600 font-bold flex items-center gap-1 hover:underline">
-                <Plus className="w-4 h-4" /> Přidat penzi
+              <button type="button" onClick={() => addAssetPension("DPS", 0)} className="text-sm text-indigo-600 font-bold flex items-center gap-1 hover:underline">
+                <Plus className="w-4 h-4" /> Přidat penzijní produkt
               </button>
             </div>
             <InputAmount label="Ostatní aktiva" value={assets.other} onChange={(v) => setAssetsField("other", v)} id="asset-other" />
@@ -129,25 +144,47 @@ export function StepAssetsLiabilities() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1" htmlFor="liab-mortgage-provider">Poskytovatel hypotéky</label>
-              <input id="liab-mortgage-provider" type="text" value={liab.mortgageProvider ?? ""} onChange={(e) => setLiabilitiesField("mortgageProvider", e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl" />
+              <select id="liab-mortgage-provider" value={liab.mortgageProvider ?? ""} onChange={(e) => setLiabilitiesField("mortgageProvider", e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl">
+                <option value="">— Vyberte poskytovatele —</option>
+                {providerOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Úvěry (kromě hypotéky)</label>
               <div className="space-y-2 mb-2">
                 {(liab.loansList || []).map((loan) => (
-                  <div key={loan.id} className="flex flex-wrap gap-2 items-center bg-white rounded-lg p-3 border border-slate-100">
-                    <span className="text-slate-600 text-sm">{loan.desc || "Úvěr"}</span>
-                    <span className="font-semibold text-slate-800">{formatCzk(Number(loan.balance) || 0)}</span>
-                    {loan.pay != null && <span className="text-slate-500 text-sm">splátka {formatCzk(Number(loan.pay))}</span>}
-                    <button type="button" onClick={() => removeLoan(loan.id)} className="ml-auto min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                  <div key={loan.id} className="flex flex-wrap gap-2 items-stretch bg-white rounded-lg p-3 border border-slate-100">
+                    <select value={loan.type ?? LOAN_TYPES[0]} onChange={(e) => updateLoan(loan.id, { type: e.target.value })} className="min-w-[140px] px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                      {LOAN_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <select value={loan.provider ?? ""} onChange={(e) => updateLoan(loan.id, { provider: e.target.value })} className="min-w-[140px] px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                      <option value="">— Poskytovatel —</option>
+                      {providerOptions.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                    <input type="number" value={Number(loan.balance) || ""} onChange={(e) => updateLoan(loan.id, { balance: parseFloat(e.target.value) || 0 })} placeholder="Zůstatek" className="w-28 px-2 py-2 border border-slate-200 rounded-lg text-sm" />
+                    <span className="text-slate-500 text-sm flex items-center">Kč</span>
+                    <input type="number" value={Number(loan.rate) || ""} onChange={(e) => updateLoan(loan.id, { rate: parseFloat(e.target.value) || 0 })} placeholder="Sazba %" className="w-20 px-2 py-2 border border-slate-200 rounded-lg text-sm" />
+                    <input type="number" value={Number(loan.pay) || ""} onChange={(e) => updateLoan(loan.id, { pay: parseFloat(e.target.value) || 0 })} placeholder="Splátka" className="w-24 px-2 py-2 border border-slate-200 rounded-lg text-sm" />
+                    <button type="button" onClick={() => removeLoan(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={() => addLoan({ balance: 0, desc: "Úvěr" })} className="text-sm text-red-600 font-bold flex items-center gap-1 hover:underline">
+              <button type="button" onClick={() => addLoan({ type: LOAN_TYPES[0], provider: "", balance: 0 })} className="text-sm text-indigo-600 font-bold flex items-center gap-1 hover:underline">
                 <Plus className="w-4 h-4" /> Přidat úvěr
               </button>
             </div>
-            <InputAmount label="Ostatní pasiva" value={liab.other} onChange={(v) => setLiabilitiesField("other", v)} id="liab-other" />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <InputAmount label="Ostatní pasiva" value={liab.other} onChange={(v) => setLiabilitiesField("other", v)} id="liab-other" />
+              </div>
+              <ProvenanceBadge path="liabilities.other" data={data as Record<string, unknown>} />
+            </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1" htmlFor="liab-other-desc">Popis ostatních pasiv</label>
               <input id="liab-other-desc" type="text" value={liab.otherDesc ?? ""} onChange={(e) => setLiabilitiesField("otherDesc", e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl" />

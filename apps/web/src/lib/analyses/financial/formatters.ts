@@ -52,7 +52,6 @@ export function exportFilename(clientName: string): string {
 
 /** Product display names. */
 export const PRODUCT_NAMES: Record<string, string> = {
-  imperial: 'AlgoImperial',
   creif: 'CREIF',
   atris: 'ATRIS',
   penta: 'PENTA',

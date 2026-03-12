@@ -22,14 +22,18 @@ import { Target, Plus, Trash2, Pencil } from "lucide-react";
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 const GOAL_TYPES = [
-  { value: "renta", label: "Důchod / renta (měsíční příjem)" },
-  { value: "jina", label: "Jiný cíl (cílový kapitál)" },
+  { value: "renta", label: "Finanční nezávislost (Renta)" },
+  { value: "deti", label: "Děti (Studium / Start)" },
+  { value: "bydleni", label: "Bydlení (Koupě / Rekonstrukce)" },
+  { value: "auto", label: "Krátkodobý cíl (Auto / Svatba)" },
+  { value: "jine", label: "Jiný cíl" },
 ] as const;
 
 const STRATEGY_OPTIONS = [
-  { value: 0.05, label: "Konzervativní (~5 %)" },
-  { value: 0.07, label: "Vyvážený (~7 %)" },
-  { value: 0.09, label: "Dynamický (~9 %)" },
+  { value: 0.05, label: "Konzervativní (5 % p.a.)" },
+  { value: 0.07, label: "Vyvážená (7 % p.a.)" },
+  { value: 0.09, label: "Dynamická (9 % p.a.)" },
+  { value: 0.12, label: "Dynamická+ (12 % p.a.)" },
 ] as const;
 
 export function StepGoals() {
@@ -38,7 +42,7 @@ export function StepGoals() {
   const updateGoal = useStore((s) => s.updateGoal);
   const removeGoal = useStore((s) => s.removeGoal);
 
-  const [type, setType] = useState<"renta" | "jina">("jina");
+  const [type, setType] = useState<string>("renta");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState(0);
   const [horizon, setHorizon] = useState(10);
@@ -68,7 +72,7 @@ export function StepGoals() {
   };
 
   const handleEdit = (g: (typeof goals)[0]) => {
-    setType((g.type === "renta" ? "renta" : "jina") as "renta" | "jina");
+    setType(g.type ?? "renta");
     setName(g.name);
     setAmount(g.amount ?? 0);
     setHorizon(g.horizon ?? g.years ?? 10);
@@ -95,8 +99,8 @@ export function StepGoals() {
             {
               label: "Projekce (spoření)",
               data: projectionData,
-              borderColor: "rgb(245, 158, 11)",
-              backgroundColor: "rgba(245, 158, 11, 0.2)",
+              borderColor: "rgb(99, 102, 241)",
+              backgroundColor: "rgba(99, 102, 241, 0.2)",
               fill: true,
             },
           ],
@@ -118,7 +122,7 @@ export function StepGoals() {
           </div>
           <div className="bg-white border border-slate-200 rounded-lg px-4 py-2 shadow-sm">
             <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Měsíčně spoření</span>
-            <span className="text-lg font-bold text-amber-700">{formatCzk(totalMonthly)}</span>
+            <span className="text-lg font-bold text-indigo-700">{formatCzk(totalMonthly)}</span>
           </div>
         </div>
       </div>
@@ -126,7 +130,7 @@ export function StepGoals() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
           <h3 className="text-slate-800 font-bold mb-6 flex items-center gap-2">
-            <Target className="w-5 h-5 text-amber-600" />
+            <Target className="w-5 h-5 text-indigo-600" />
             {editingId != null ? "Upravit cíl" : "Přidat cíl"}
           </h3>
           <div className="space-y-4">
@@ -171,7 +175,7 @@ export function StepGoals() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={handleAdd} className="min-h-[44px] flex-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600">
+              <button type="button" onClick={handleAdd} className="min-h-[44px] flex-1 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500">
                 <Plus className="w-5 h-5" /> {editingId != null ? "Uložit" : "Přidat cíl"}
               </button>
               {editingId != null && (
@@ -192,7 +196,7 @@ export function StepGoals() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800">{g.name}</div>
                     <div className="text-sm text-slate-500">{g.type === "renta" ? "Renta" : "Kapitál"} · {formatCzk(g.computed?.fvTarget ?? 0)} · {g.horizon ?? g.years} let</div>
-                    <div className="text-sm font-bold text-amber-700 mt-1">Měsíčně {formatCzk(g.computed?.pmt ?? 0)}</div>
+                    <div className="text-sm font-bold text-indigo-700 mt-1">Měsíčně {formatCzk(g.computed?.pmt ?? 0)}</div>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button type="button" onClick={() => { handleEdit(g); setChartGoalId(g.id); }} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg" aria-label="Upravit"><Pencil className="w-4 h-4" /></button>
@@ -212,7 +216,7 @@ export function StepGoals() {
                     key={g.id}
                     type="button"
                     onClick={() => setChartGoalId(g.id)}
-                    className={`min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold ${chartGoalId === g.id ? "bg-amber-500 text-white" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"}`}
+                    className={`min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold ${chartGoalId === g.id ? "bg-indigo-500 text-white" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"}`}
                   >
                     {g.name}
                   </button>

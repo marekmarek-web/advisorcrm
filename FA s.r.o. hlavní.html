@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanční plánování | Marek Marek – Vstupní analýza</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { brand: { dark: '#0a0f29', orange: '#ea8d00', gold: '#fbbf24', main: '#0B3A7A', light: '#EAF3FF', border: '#D6E6FF' } }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root { --color-bg: #EAF3FF; --color-accent: #ea8d00; --color-border: #D6E6FF; }
+        body { background: var(--color-bg); font-family: 'Inter', sans-serif; user-select: none; -webkit-user-select: none; cursor: default; }
+        body input, body textarea, body select, .copyable, #report-root, #report-root * { user-select: text; -webkit-user-select: text; }
+        body input:focus, body textarea:focus, body select:focus { caret-color: var(--color-accent); }
+        
+        /* Utility */
+        .hidden { display: none !important; }
+        
+        /* UI Components */
+        .glass-header { background: #0a0f29; color: white; }
+        
+        /* Stepper */
+        .stepper-item { position: relative; flex: 1; }
+        .stepper-item::before { content: ''; position: absolute; top: 22px; left: calc(-50% + 22px); right: calc(50% + 22px); height: 2px; background: #cbd5e1; z-index: 1; }
+        .stepper-item:first-child::before { display: none; }
+        .stepper-circle { width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 2px solid #cbd5e1; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 600; position: relative; z-index: 10; margin: 0 auto; transition: all 0.3s; }
+        .stepper-item.active .stepper-circle { border-color: var(--color-accent); color: var(--color-accent); box-shadow: 0 0 0 4px rgba(234,141,0,0.15); }
+        .stepper-item.completed .stepper-circle { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+        .stepper-item.completed + .stepper-item::before { background: var(--color-accent); }
+        
+        /* Forms */
+        .form-input { background: #fff; border: 1px solid var(--color-border); border-radius: 0.75rem; transition: all 0.2s; }
+        .form-input:focus { border-color: var(--color-accent); outline: none; box-shadow: 0 0 0 3px rgba(234,141,0,0.1); }
+        .input-below-recommended .form-input { border-color: #dc2626; background: #fef2f2; }
+        .input-below-recommended .form-input:focus { box-shadow: 0 0 0 3px rgba(220,38,38,0.2); }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem; }
+        
+        /* Buttons */
+        .btn-primary { background: linear-gradient(135deg, #ea8d00, #fbbf24); color: #0a0f29; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 15px rgba(234,141,0,0.3); }
+        .btn-secondary { background: #fff; border: 1px solid #e2e8f0; color: #64748b; font-weight: 600; cursor: pointer; }
+        
+        /* Layout */
+        .wizard-card { background: #fff; border: 1px solid rgba(214,230,255,0.6); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); border-radius: 1.5rem; }
+        .hero-bg { position: absolute; top: 0; left: 0; width: 100%; height: 400px; background: linear-gradient(to bottom right, #0a0f29, #1e3a6e); clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%); z-index: 0; }
+        
+        /* Animation */
+        .step-content { display: none; animation: fadeIn 0.4s ease-out; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Cards */
+        .kpi-card { background: #fff; border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.25rem; transition: all 0.2s; }
+        .kpi-card:hover { border-color: var(--color-accent); }
+        .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        
+        .layer-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+        .layer-company { background: #dbeafe; color: #1e40af; }
+        .layer-director { background: #fef3c7; color: #92400e; }
+        
+        .tab-pill { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 9999px; font-weight: 600; font-size: 0.875rem; cursor: pointer; background: white; color: #64748b; border: 2px solid transparent; }
+        .tab-pill.active { background: var(--color-accent); color: white; }
+        
+        .checkbox-card { background: white; border: 2px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; cursor: pointer; transition: all 0.2s; display: block; }
+        .checkbox-card.checked { border-color: var(--color-accent); background: #fffbeb; }
+        .checkbox-card input { display: none; }
+        
+        .exec-card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
+        .exec-card-header { padding: 1rem 1.5rem; font-weight: 700; color: white; }
+        .exec-card-body { padding: 1.5rem; }
+        
+        .semafor { display: flex; gap: 8px; align-items: center; }
+        .semafor-light { width: 28px; height: 28px; border-radius: 50%; opacity: 0.3; }
+        .semafor-light.active { opacity: 1; box-shadow: 0 0 15px currentColor; }
+        .semafor-red { background: #ef4444; color: #ef4444; }
+        .semafor-yellow { background: #f59e0b; color: #f59e0b; }
+        .semafor-green { background: #10b981; color: #10b981; }
+        
+        /* PDF Styles – 1:1 FP-final UX/UI */
+        #report-root { position: fixed; left: -9999px; top: 0; width: 210mm; background: white; user-select: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #report-root, #report-root * { visibility: visible; }
+            #report-root { position: absolute; left: 0; top: 0; }
+        }
+        @page { size: A4; margin: 10mm; }
+        .pdf { font-family: Inter, system-ui, sans-serif; color: #0b1220; background: #fff; }
+        .pdf-page { width: 210mm; min-height: 297mm; max-height: 297mm; padding: 15mm; box-sizing: border-box; page-break-after: always; position: relative; background: #fff; overflow: visible; margin: 0; }
+        .pdf-page:last-child { page-break-after: auto; }
+        .pdf-section { margin-bottom: 20px; page-break-inside: avoid; break-inside: avoid; }
+        .pdf .h1 { font-size: 22pt; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; margin-bottom: 5mm; }
+        .pdf .h2 { font-size: 14pt; font-weight: 800; margin-top: 6mm; margin-bottom: 5mm; color: #0B3A7A; border-left: 4px solid #ea8d00; padding-left: 4mm; line-height: 1; display: flex; align-items: center; min-height: 18px; page-break-after: avoid; }
+        .pdf .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ea8d00; padding-bottom: 2mm; margin-bottom: 6mm; font-size: 9pt; }
+        .pdf .footer { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; font-size: 7pt; color: #7a869e; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 2mm; }
+        .pdf .table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; page-break-inside: avoid; table-layout: fixed; }
+        .pdf .table th { text-align: left; font-size: 9pt; color: #52607a; border-bottom: 2px solid #e6e9f2; padding: 2.5mm 2mm; font-weight: 700; }
+        .pdf .table td { font-size: 10pt; border-bottom: 1px solid #f1f3f8; padding: 2.5mm 2mm; color: #0f172a; vertical-align: middle; }
+        .pdf .table th:nth-child(2), .pdf .table th:nth-child(4), .pdf .table td:nth-child(2), .pdf .table td:nth-child(4) { text-align: center; }
+        .pdf .table tr { page-break-inside: avoid; }
+        .pdf .table tr:last-child td { border-bottom: none; }
+        .pdf .table-5col { table-layout: fixed; }
+        .pdf .table-5col td { vertical-align: middle; padding: 3mm 2mm; }
+        .pdf .table-5col th:nth-child(1), .pdf .table-5col td:nth-child(1) { width: 28%; text-align: left; padding-left: 3mm; }
+        .pdf .table-5col th:nth-child(2), .pdf .table-5col td:nth-child(2) { width: 15%; text-align: center; }
+        .pdf .table-5col th:nth-child(3), .pdf .table-5col td:nth-child(3) { width: 17%; text-align: right; font-variant-numeric: tabular-nums; }
+        .pdf .table-5col th:nth-child(4), .pdf .table-5col td:nth-child(4) { width: 12%; text-align: center; }
+        .pdf .table-5col th:nth-child(5), .pdf .table-5col td:nth-child(5) { width: 28%; text-align: right; font-weight: 700; color: #0B3A7A; font-variant-numeric: tabular-nums; }
+        .pdf .table-5col .fund-name { font-weight: 700; line-height: 1.15; color: #0f172a; }
+        .pdf .kpi { display: flex; gap: 4mm; margin-bottom: 8mm; flex-wrap: wrap; }
+        .pdf .kpi .box { flex: 1; border: 1px solid #e6e9f2; border-radius: 4mm; padding: 4mm; text-align: center; }
+        .pdf .kpi .val { font-size: 14pt; font-weight: 800; color: #0f172a; }
+        .pdf .kpi .lbl { font-size: 8pt; color: #52607a; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 1mm; display: block; }
+        .pdf .kpi .sub { font-size: 7pt; color: #94a3b8; margin-top: 1mm; }
+        .pdf .recommendation { background: #f0fdf4; border-left: 4px solid #10b981; padding: 3mm 4mm; font-size: 9pt; margin: 3mm 0; }
+        .pdf .interpretation { background: #f8fafc; padding: 4mm; border-radius: 2mm; margin-bottom: 8mm; border-left: 3px solid #64748b; font-size: 9pt; color: #475569; }
+        .pdf .interpretation strong { color: #334155; }
+        .pdf .risk-matrix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 4mm 0; }
+        .pdf .risk-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 2mm; padding: 3mm; text-align: center; }
+        .pdf .risk-item.covered { background: #f0fdf4; border-color: #bbf7d0; }
+        .pdf .risk-item.not-covered { background: #fef2f2; border-color: #fecaca; }
+        .pdf .insurance-item { background: #f8fafc; padding: 3mm; border-radius: 2mm; text-align: center; border: 1px solid #e2e8f0; }
+        .pdf .insurance-item .lbl { font-size: 7pt; color: #64748b; text-transform: uppercase; margin-bottom: 1mm; }
+        .pdf .insurance-item .val { font-size: 11pt; font-weight: 700; color: #0f172a; }
+        .pdf .insurance-item .val.val-below { color: #dc2626 !important; }
+        .pdf .inv-badge { display: inline-flex; align-items: center; justify-content: center; font-size: 7pt; padding: 1.6mm 3.6mm; border-radius: 2mm; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; width: 22mm; min-height: 6mm; height: 6mm; line-height: 1; box-sizing: border-box; }
+        .pdf .table-5col td:nth-child(2) { text-align: center; vertical-align: middle; }
+        .pdf .table-5col td:nth-child(2) .inv-badge { margin: 0 auto; }
+        .pdf .table-5col td:nth-child(4) { text-align: center; vertical-align: middle; }
+        .pdf .table-5col td:nth-child(4) .yield-pill { margin: 0 auto; }
+        .pdf .inv-badge-lump { background: #dbeafe; color: #1e40af; }
+        .pdf .inv-badge-monthly { background: #d1fae5; color: #065f46; }
+        .pdf .inv-badge-pension { background: #fef3c7; color: #92400e; }
+        .pdf .yield-pill { display: inline-flex; align-items: center; justify-content: center; font-size: 8pt; padding: 1.6mm 2.5mm; border-radius: 2mm; background: #f0fdf4; color: #166534; font-weight: 600; min-width: 10mm; min-height: 5mm; height: auto; line-height: 1; }
+        .pdf .total-summary-bar { display: flex; align-items: center; justify-content: space-between; gap: 4mm; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 3mm 4mm; border-radius: 3mm; border: 1px solid #bae6fd; }
+        .pdf .total-summary-bar .total-chip { min-width: 28mm; text-align: center; }
+        .pdf .total-summary-bar .total-fv { text-align: right; }
+        .pdf .total-chip { background: white; border: 1px solid #e2e8f0; border-radius: 2mm; padding: 2mm 3mm; font-size: 8pt; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-flex; align-items: center; justify-content: center; }
+        .pdf .total-chip-label { color: #64748b; font-weight: 500; }
+        .pdf .total-chip-value { color: #0f172a; font-weight: 700; margin-left: 1.5mm; }
+        .pdf .total-fv { font-size: 13pt; font-weight: 800; color: #0B3A7A; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <header class="glass-header fixed w-full z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-brand-orange rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md"><i class="fas fa-building"></i></div>
+                    <div><span class="text-lg font-bold tracking-tight">Finanční plánování</span><span class="text-xs block opacity-70">Marek Marek | Vstupní analýza</span></div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="app.exportData()" class="text-sm px-4 py-2 rounded-lg border border-white/20 hover:bg-white/10 flex items-center gap-2"><i class="fas fa-download"></i> <span class="hidden sm:inline">Uložit</span></button>
+                    <label class="text-sm px-4 py-2 rounded-lg border border-white/20 hover:bg-white/10 flex items-center gap-2 cursor-pointer"><i class="fas fa-upload"></i> <span class="hidden sm:inline">Načíst</span><input type="file" accept=".json" class="hidden" onchange="app.importData(event)"></label>
+                    <button onclick="app.reset()" class="text-sm px-4 py-2 rounded-lg hover:bg-white/10 text-red-300"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="hero-bg"></div>
+
+    <main class="pt-28 pb-16 px-4 relative z-10">
+        <div class="wizard-card max-w-5xl mx-auto p-8 md:p-12">
+            
+            <!-- STEPPER -->
+            <div class="flex justify-between mb-12 overflow-x-auto pb-4">
+                <div class="stepper-item active" data-step="1"><div class="stepper-circle">1</div><span class="text-xs mt-2 block text-center text-slate-500 font-medium">Firma</span></div>
+                <div class="stepper-item" data-step="2"><div class="stepper-circle">2</div><span class="text-xs mt-2 block text-center text-slate-500 font-medium">Finance</span></div>
+                <div class="stepper-item" data-step="3"><div class="stepper-circle">3</div><span class="text-xs mt-2 block text-center text-slate-500 font-medium">Benefity</span></div>
+                <div class="stepper-item" data-step="4"><div class="stepper-circle">4</div><span class="text-xs mt-2 block text-center text-slate-500 font-medium">Výstup</span></div>
+            </div>
+
+            <!-- KROK 1: FIRMA -->
+            <div id="step-1" class="step-content active">
+                <div class="flex justify-between items-start mb-6">
+                    <div><h2 class="text-3xl font-bold text-slate-900">Firma &amp; Jednatel</h2><p class="text-slate-500 mt-1">Základní identifikace (60 sekund).</p></div>
+                    <div class="layer-badge layer-company"><i class="fas fa-building"></i> Firma</div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
+                    <h3 class="text-lg font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">Společnost</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div class="md:col-span-5"><label class="form-label">Název společnosti</label><input type="text" id="company-name" class="form-input w-full px-4 py-3" placeholder=""></div>
+                        <div class="md:col-span-3"><label class="form-label">IČO</label><input type="text" id="company-ico" class="form-input w-full px-4 py-3" placeholder=""></div>
+                        <div class="md:col-span-4">
+                            <label class="form-label">Obor + Rizikovost</label>
+                            <select id="company-industry" class="form-input w-full px-4 py-3 cursor-pointer">
+                                <option value="office">Kancelář / IT</option>
+                                <option value="services">Služby</option>
+                                <option value="light-manufacturing">Lehká výroba</option>
+                                <option value="heavy-manufacturing">Těžká výroba</option>
+                                <option value="construction">Stavebnictví</option>
+                                <option value="transport">Doprava</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-3"><label class="form-label">Počet zaměstnanců</label><input type="number" id="company-employees" class="form-input w-full px-4 py-3" placeholder="" value=""></div>
+                        <div class="md:col-span-3"><label class="form-label">Z toho 3. kategorie</label><input type="number" id="company-cat3" class="form-input w-full px-4 py-3" placeholder=""></div>
+                        <div class="md:col-span-3"><label class="form-label">Průměrná hrubá mzda</label><div class="relative"><input type="number" id="company-avg-wage" class="form-input w-full px-4 pr-12 py-3" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                        <div class="md:col-span-3"><label class="form-label">Závislost TOP klient</label><div class="relative"><input type="number" id="company-top-client" class="form-input w-full px-4 pr-10 py-3" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">%</span></div></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-slate-800">Jednatelé</h3>
+                        <button type="button" id="btn-add-director" class="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Přidat jednatele</button>
+                    </div>
+                    <div id="directors-container"></div>
+                </div>
+
+                <div class="bg-white border border-brand-border/60 rounded-2xl p-6">
+                    <h3 class="text-sm font-bold text-brand-main uppercase tracking-widest mb-4">Rychlý náhled</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="kpi-card"><div class="kpi-icon bg-blue-100 text-blue-600 mb-2"><i class="fas fa-users"></i></div><div class="text-2xl font-bold text-slate-900" id="kpi-employees">—</div><div class="text-xs text-slate-500 uppercase font-bold">Zaměstnanců</div></div>
+                        <div class="kpi-card"><div class="kpi-icon bg-orange-100 text-orange-600 mb-2"><i class="fas fa-money-bill-wave"></i></div><div class="text-2xl font-bold text-slate-900" id="kpi-wage-fund">—</div><div class="text-xs text-slate-500 uppercase font-bold">Mzdový fond/měs</div></div>
+                        <div class="kpi-card"><div class="kpi-icon bg-red-100 text-red-600 mb-2"><i class="fas fa-hard-hat"></i></div><div class="text-2xl font-bold text-slate-900" id="kpi-cat3">—</div><div class="text-xs text-slate-500 uppercase font-bold">3. kategorie</div></div>
+                        <div class="kpi-card"><div class="kpi-icon bg-purple-100 text-purple-600 mb-2"><i class="fas fa-industry"></i></div><div class="text-2xl font-bold text-slate-900" id="kpi-risk-level">—</div><div class="text-xs text-slate-500 uppercase font-bold">Rizikovost</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KROK 2: FINANCE -->
+            <div id="step-2" class="step-content">
+                <div class="flex justify-between items-start mb-6">
+                    <div><h2 class="text-3xl font-bold text-slate-900">Finance firmy</h2><p class="text-slate-500 mt-1">Orientační čísla (2-3 minuty).</p></div>
+                    <div class="layer-badge layer-company"><i class="fas fa-chart-line"></i> Finance</div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <h3 class="text-brand-main font-bold mb-6 flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-brand-main"><i class="fas fa-arrow-trend-up"></i></div>Výnosy a zisk</h3>
+                        <div class="space-y-4">
+                            <div><label class="form-label">Roční tržby</label><div class="relative"><input type="number" id="company-revenue" class="form-input w-full pl-4 pr-12 py-3 font-bold" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                            <div><label class="form-label">Roční zisk / EBITDA</label><div class="relative"><input type="number" id="company-profit" class="form-input w-full pl-4 pr-12 py-3" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <h3 class="text-green-600 font-bold mb-6 flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600"><i class="fas fa-piggy-bank"></i></div>Rezervy a závazky</h3>
+                        <div class="space-y-4">
+                            <div><label class="form-label">Hotovostní rezerva firmy</label><div class="relative"><input type="number" id="company-reserve" class="form-input w-full pl-4 pr-12 py-3" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                            <div><label class="form-label">Úvěry / Leasingy - měsíční splátka</label><div class="relative"><input type="number" id="company-loan-payment" class="form-input w-full pl-4 pr-12 py-3" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                        </div>
+                        <div id="inflation-warning" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 flex-shrink-0"><i class="fas fa-fire-alt"></i></div>
+                                <div class="text-red-800 text-sm font-medium"><span id="inflation-loss-text">⚠️ Pozor: Při 3,5% inflaci tato hotovost letos reálně ztratí na hodnotě <span id="inflation-loss-amount">—</span> Kč.</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                        <div><span class="text-xs text-slate-500 uppercase font-bold">Roční tržby</span><div id="fin-revenue" class="text-xl font-bold text-slate-900">—</div></div>
+                        <div><span class="text-xs text-slate-500 uppercase font-bold">Roční zisk</span><div id="fin-profit" class="text-xl font-bold text-green-600">—</div></div>
+                        <div><span class="text-xs text-slate-500 uppercase font-bold">Cash runway</span><div id="fin-runway" class="text-xl font-bold text-brand-orange">—</div></div>
+                        <div><span class="text-xs text-slate-500 uppercase font-bold">Dluhová služba</span><div id="fin-debt" class="text-xl font-bold text-red-500">—</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KROK 3: BENEFITY & RIZIKA -->
+            <div id="step-3" class="step-content">
+                <div class="flex justify-between items-start mb-6">
+                    <div><h2 class="text-3xl font-bold text-slate-900">Benefity &amp; Rizika</h2><p class="text-slate-500 mt-1">Co máte a co chybí (1 minuta).</p></div>
+                </div>
+
+                <div class="flex gap-3 mb-8 flex-wrap">
+                    <button class="tab-pill active" data-tab="benefits"><i class="fas fa-gift"></i> Benefity</button>
+                    <button class="tab-pill" data-tab="risks"><i class="fas fa-shield-alt"></i> Pojištění firmy</button>
+                    <button class="tab-pill" data-tab="director-ins"><i class="fas fa-user-shield"></i> Pojištění jednatele</button>
+                    <button class="tab-pill" data-tab="investment"><i class="fas fa-chart-line"></i> Investice</button>
+                </div>
+
+                <div id="tab-benefits" class="tab-content">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">Přispíváte zaměstnancům?</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <label class="checkbox-card" onclick="toggleCard(this)">
+                                <input type="checkbox" id="benefit-dps">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><i class="fas fa-piggy-bank"></i></div>
+                                    <div><div class="font-bold text-slate-900">DPS</div><div class="text-xs text-slate-500">Penzijní připojištění</div></div>
+                                    <i class="fas fa-check-circle text-brand-orange ml-auto hidden check-icon"></i>
+                                </div>
+                            </label>
+                            <label class="checkbox-card" onclick="toggleCard(this)">
+                                <input type="checkbox" id="benefit-dip">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600"><i class="fas fa-chart-line"></i></div>
+                                    <div><div class="font-bold text-slate-900">DIP</div><div class="text-xs text-slate-500">Dlouhodobé investice</div></div>
+                                    <i class="fas fa-check-circle text-brand-orange ml-auto hidden check-icon"></i>
+                                </div>
+                            </label>
+                            <label class="checkbox-card" onclick="toggleCard(this)">
+                                <input type="checkbox" id="benefit-izp">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><i class="fas fa-umbrella"></i></div>
+                                    <div><div class="font-bold text-slate-900">IŽP</div><div class="text-xs text-slate-500">Životní pojištění</div></div>
+                                    <i class="fas fa-check-circle text-brand-orange ml-auto hidden check-icon"></i>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div id="benefit-details" class="bg-white p-4 rounded-xl border border-slate-200">
+                            <h4 class="font-bold text-slate-800 mb-3">Detail příspěvků – Zaměstnanci</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div><label class="form-label">Příspěvek na osobu/měs (zaměstnanci)</label><div class="relative"><input type="number" id="benefit-amount" class="form-input w-full pl-4 pr-12 py-2" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                                <div><label class="form-label">Kolika zaměstnancům</label><input type="number" id="benefit-count" class="form-input w-full px-4 py-2" placeholder="" value=""></div>
+                                <div><label class="form-label">Roční náklad firmy (zaměstnanci)</label><div id="benefit-yearly" class="form-input w-full px-4 py-2 bg-slate-50 text-brand-main font-bold text-center">—</div></div>
+                            </div>
+                            <h4 class="font-bold text-slate-800 mb-3">Příspěvky jednatelům (majitelé)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label class="form-label">Kolik přispíváte jednatelům měsíčně? (celkem)</label><div class="relative"><input type="number" id="benefit-directors-amount" class="form-input w-full pl-4 pr-12 py-2" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                                <div class="flex items-end"><div id="benefit-directors-yearly" class="text-sm text-slate-600">Roční náklad: —</div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-200">
+                        <h3 class="text-green-700 font-bold mb-4 flex items-center gap-2"><i class="fas fa-calculator"></i> Kalkulačka benefitů</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-white p-4 rounded-xl border border-green-200">
+                                <h4 class="font-bold text-slate-800 mb-3">Varianta A: Navýšení mzdy</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between"><span class="text-slate-600">Hrubá mzda navíc:</span><span id="calc-wage-gross" class="font-bold">—</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-600">Odvody (33,8%):</span><span id="calc-wage-tax" class="font-bold text-red-500">—</span></div>
+                                    <div class="flex justify-between border-t pt-2"><span class="font-bold">Náklad firmy:</span><span id="calc-wage-total" class="font-bold text-red-600">—</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-600">Zaměstnanec čistého:</span><span id="calc-wage-net" class="font-bold">—</span></div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl border border-green-300 ring-2 ring-green-200">
+                                <h4 class="font-bold text-green-700 mb-3"><i class="fas fa-star text-brand-gold mr-1"></i> Varianta B: Benefit</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between"><span class="text-slate-600">Příspěvek:</span><span id="calc-benefit-amount" class="font-bold">—</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-600">Odvody:</span><span class="font-bold text-green-600">0 Kč</span></div>
+                                    <div class="flex justify-between border-t pt-2"><span class="font-bold">Náklad firmy:</span><span id="calc-benefit-total" class="font-bold text-green-600">—</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-600">Zaměstnanec dostane:</span><span id="calc-benefit-net" class="font-bold text-green-600">—</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-4 bg-green-100 rounded-xl text-center">
+                                <div class="text-green-700 font-bold text-lg">Úspora (zaměstnanci): <span id="calc-savings" class="text-2xl">—</span> ročně</div>
+                            </div>
+                            <div class="p-4 bg-amber-100 rounded-xl text-center">
+                                <div class="text-amber-800 font-bold text-lg">Daňová úspora majitelů: <span id="calc-directors-tax-savings" class="text-2xl">—</span> ročně</div>
+                                <div class="text-amber-700 text-sm mt-1">Efektivní vytažení zisku (DIP/IŽP)</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-4 bg-white rounded-xl border border-slate-200">
+                            <p class="font-bold text-slate-800 mb-3 text-sm">Co se stane s 1000 Kč nákladu firmy?</p>
+                            <div class="flex gap-6 items-end justify-center" style="min-height: 120px;">
+                                <div class="flex flex-col items-center flex-1 max-w-[180px]">
+                                    <span class="text-xs font-semibold text-slate-600 mb-2">Mzda</span>
+                                    <div class="w-full rounded-t-lg overflow-hidden border border-slate-200 flex flex-col-reverse" style="height: 100px;">
+                                        <div class="h-[55%] bg-slate-300 flex items-center justify-center text-xs font-bold text-slate-700">Zaměstnanec ~550 Kč</div>
+                                        <div class="h-[45%] bg-red-500 flex items-center justify-center text-xs font-bold text-white">Stát bere ~450 Kč</div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center flex-1 max-w-[180px]">
+                                    <span class="text-xs font-semibold text-slate-600 mb-2">Benefit</span>
+                                    <div class="w-full rounded-t-lg overflow-hidden border border-green-300 flex flex-col" style="height: 100px;">
+                                        <div class="h-full bg-green-500 flex items-center justify-center text-xs font-bold text-white">100 % jde vám / zaměstnanci</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="transfer-to-company-block" class="mt-4 p-4 bg-emerald-100 border border-emerald-300 rounded-xl hidden">
+                            <h4 class="font-bold text-emerald-900 mb-2"><i class="fas fa-hand-holding-usd mr-2"></i>Daňová optimalizace – převod na firmu</h4>
+                            <p id="transfer-to-company-text" class="text-emerald-800 text-sm">Pokud převedete platbu <span id="transfer-amount">—</span> Kč/měs na firmu (jako benefit), ušetříte rodině/firmě ročně <span id="transfer-savings">—</span>.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-risks" class="tab-content hidden">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">Jaká pojištění má firma?</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div class="risk-card-detailed bg-white border-2 border-slate-200 rounded-xl p-4" data-risk="property">
+                                <label class="checkbox-card flex mb-3" onclick="toggleCard(this)"><input type="checkbox" id="risk-property"><div class="flex items-center gap-3 w-full"><div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><i class="fas fa-building"></i></div><div><div class="font-bold">Majetek</div><div class="text-xs text-slate-500">Máme sjednáno</div></div><i class="fas fa-check-circle text-green-500 ml-auto hidden check-icon"></i></div></label>
+                                <div id="risk-property-detail" class="risk-detail hidden space-y-2 pt-2 border-t border-slate-100">
+                                    <div><label class="form-label text-xs">Pojistný limit (cca) Kč</label><input type="number" id="risk-property-limit" class="form-input w-full px-3 py-2 text-sm" placeholder="" value=""></div>
+                                    <div><label class="form-label text-xs">Stáří smlouvy (roky)</label><input type="number" id="risk-property-contractYears" class="form-input w-full px-3 py-2 text-sm" placeholder="" value=""></div>
+                                </div>
+                            </div>
+                            <div class="risk-card-detailed bg-white border-2 border-slate-200 rounded-xl p-4" data-risk="interruption">
+                                <label class="checkbox-card flex mb-3" onclick="toggleCard(this)"><input type="checkbox" id="risk-interruption"><div class="flex items-center gap-3 w-full"><div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600"><i class="fas fa-pause-circle"></i></div><div><div class="font-bold">Přerušení provozu</div><div class="text-xs text-slate-500">Máme sjednáno</div></div><i class="fas fa-check-circle text-green-500 ml-auto hidden check-icon"></i></div></label>
+                                <div id="risk-interruption-detail" class="risk-detail hidden space-y-2 pt-2 border-t border-slate-100">
+                                    <div><label class="form-label text-xs">Pojistný limit (cca) Kč</label><input type="number" id="risk-interruption-limit" class="form-input w-full px-3 py-2 text-sm" placeholder="" value=""></div>
+                                    <div><label class="form-label text-xs">Stáří smlouvy (roky)</label><input type="number" id="risk-interruption-contractYears" class="form-input w-full px-3 py-2 text-sm" placeholder="" value=""></div>
+                                </div>
+                            </div>
+                            <div class="risk-card-detailed bg-white border-2 border-slate-200 rounded-xl p-4" data-risk="liability">
+                                <label class="checkbox-card flex mb-3" onclick="toggleCard(this)"><input type="checkbox" id="risk-liability"><div class="flex items-center gap-3 w-full"><div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600"><i class="fas fa-gavel"></i></div><div><div class="font-bold">Odpovědnost</div><div class="text-xs text-slate-500">Máme sjednáno</div></div><i class="fas fa-check-circle text-green-500 ml-auto hidden check-icon"></i></div></label>
+                                <div id="risk-liability-detail" class="risk-detail hidden space-y-2 pt-2 border-t border-slate-100">
+                                    <div><label class="form-label text-xs">Pojistný limit (cca) Kč</label><input type="number" id="risk-liability-limit" class="form-input w-full px-3 py-2 text-sm" placeholder="" value=""></div>
+                                    <div><label class="form-label text-xs">Stáří smlouvy (roky)</label><input type="number" id="risk-liability-contractYears" class="form-input w-full px-3 py-2 text-sm" placeholder="" value=""></div>
+                                </div>
+                            </div>
+                            <label class="checkbox-card" onclick="toggleCard(this)"><div class="flex items-center gap-3 w-full"><input type="checkbox" id="risk-director"><div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0"><i class="fas fa-user-tie"></i></div><div><div class="font-bold">D&amp;O</div><div class="text-xs text-slate-500">Odpovědnost statutárů</div></div><i class="fas fa-info-circle text-slate-400 cursor-help ml-auto tooltip-trigger" title="Pojištění odpovědnosti statutárních orgánů. Chrání váš osobní majetek, pokud způsobíte firmě škodu."></i><i class="fas fa-check-circle text-green-500 hidden check-icon"></i></div></label>
+                            <label class="checkbox-card flex mb-3" onclick="toggleCard(this)"><input type="checkbox" id="risk-fleet"><div class="flex items-center gap-3 w-full"><div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600"><i class="fas fa-truck"></i></div><div><div class="font-bold">Flotila</div></div><i class="fas fa-check-circle text-green-500 ml-auto hidden check-icon"></i></div></label>
+                            <label class="checkbox-card" onclick="toggleCard(this)"><div class="flex items-center gap-3 w-full"><input type="checkbox" id="risk-cyber"><div class="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600 flex-shrink-0"><i class="fas fa-shield-virus"></i></div><div><div class="font-bold">Kyber</div><div class="text-xs text-slate-500">Únik dat, ransomware</div></div><i class="fas fa-info-circle text-slate-400 cursor-help ml-auto tooltip-trigger" title="Krytí pro případ úniku dat, GDPR pokut nebo hackerského útoku (ransomware)."></i><i class="fas fa-check-circle text-green-500 hidden check-icon"></i></div></label>
+                        </div>
+                        <div class="mt-6 p-4 bg-white rounded-xl border border-slate-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-slate-800">Skóre rizik</span>
+                                <span id="risk-score" class="text-2xl font-bold text-brand-orange">0/6</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3 mb-3">
+                                <div id="risk-progress" class="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-3 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                            <div id="risk-gaps" class="text-sm text-red-600"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-investment" class="tab-content hidden">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2">Investiční strategie</h3>
+                        <p class="text-slate-500 text-sm mb-6">Sestavení portfolia a projekce budoucí hodnoty. Zadané fondy se objeví v PDF reportu.</p>
+                        <label class="form-label mb-3 block">Vyberte investiční profil</label>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8" id="strategy-profiles">
+                            <div class="cursor-pointer border-2 border-transparent bg-slate-50 p-5 rounded-2xl hover:border-brand-orange/50 transition-all strategy-card relative overflow-hidden group" data-profile="dynamic">
+                                <div class="flex justify-between items-start mb-3">
+                                    <span class="font-bold text-slate-900 text-lg">Dynamický</span>
+                                    <span class="bg-brand-orange/10 text-brand-orange px-2 py-1 rounded text-xs font-bold">9 % p.a.</span>
+                                </div>
+                                <p class="text-xs text-slate-500 leading-relaxed">Maximální růst pro dlouhodobé cíle (10+ let).</p>
+                                <div class="check-icon absolute top-3 right-3 hidden text-brand-orange"><i class="fas fa-check-circle"></i></div>
+                            </div>
+                            <div class="cursor-pointer border-2 border-transparent bg-slate-50 p-5 rounded-2xl hover:border-blue-400/50 transition-all strategy-card relative overflow-hidden group" data-profile="balanced">
+                                <div class="flex justify-between items-start mb-3">
+                                    <span class="font-bold text-slate-900 text-lg">Vyvážený</span>
+                                    <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">7 % p.a.</span>
+                                </div>
+                                <p class="text-xs text-slate-500 leading-relaxed">Kompromis mezi výnosem a stabilitou (5-10 let).</p>
+                                <div class="check-icon absolute top-3 right-3 hidden text-blue-600"><i class="fas fa-check-circle"></i></div>
+                            </div>
+                            <div class="cursor-pointer border-2 border-transparent bg-slate-50 p-5 rounded-2xl hover:border-green-400/50 transition-all strategy-card relative overflow-hidden group" data-profile="conservative">
+                                <div class="flex justify-between items-start mb-3">
+                                    <span class="font-bold text-slate-900 text-lg">Konzervativní</span>
+                                    <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">5 % p.a.</span>
+                                </div>
+                                <p class="text-xs text-slate-500 leading-relaxed">Ochrana kapitálu s mírným zhodnocením.</p>
+                                <div class="check-icon absolute top-3 right-3 hidden text-green-600"><i class="fas fa-check-circle"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col lg:flex-row gap-8 items-start">
+                            <div class="w-full lg:w-2/3 space-y-6">
+                                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                                    <h4 class="font-bold text-slate-900 mb-4 flex items-center gap-3">
+                                        <span class="w-8 h-8 rounded-full bg-blue-50 text-brand-main flex items-center justify-center text-sm"><i class="fas fa-sack-dollar"></i></span>
+                                        Jednorázové investice
+                                    </h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                            <div class="flex justify-between mb-3"><span class="font-bold text-slate-800">AlgoImperial</span><span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">12% p.a.</span></div>
+                                            <div class="space-y-2">
+                                                <div class="relative"><input type="number" id="inv-imperial-amount" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">Kč</span></div>
+                                                <div class="relative"><input type="number" id="inv-imperial-years" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">roků</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                            <div class="flex justify-between mb-3"><span class="font-bold text-slate-800">CREIF</span><span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">6% p.a.</span></div>
+                                            <div class="space-y-2">
+                                                <div class="relative"><input type="number" id="inv-creif-amount" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">Kč</span></div>
+                                                <div class="relative"><input type="number" id="inv-creif-years" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">roků</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                            <div class="flex justify-between mb-3"><span class="font-bold text-slate-800">PENTA</span><select id="inv-penta-rate" class="text-[10px] bg-slate-200 border-none rounded py-0.5 px-1 font-bold text-slate-600 cursor-pointer"><option value="0.09">9% p.a.</option><option value="0.10">10% p.a.</option></select></div>
+                                            <div class="space-y-2">
+                                                <div class="relative"><input type="number" id="inv-penta-amount" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">Kč</span></div>
+                                                <div class="relative"><input type="number" id="inv-penta-years" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">roků</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                            <div class="flex justify-between mb-3"><span class="font-bold text-slate-800">ATRIS (Vklad)</span><span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">6% p.a.</span></div>
+                                            <div class="space-y-2">
+                                                <div class="relative"><input type="number" id="inv-atris-lump-amount" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">Kč</span></div>
+                                                <div class="relative"><input type="number" id="inv-atris-lump-years" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">roků</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-white border border-brand-orange/30 rounded-2xl p-6 shadow-sm">
+                                    <h4 class="font-bold text-slate-900 mb-4 flex items-center gap-3">
+                                        <span class="w-8 h-8 rounded-full bg-orange-50 text-brand-orange flex items-center justify-center text-sm"><i class="fas fa-sync-alt"></i></span>
+                                        Pravidelné investice
+                                    </h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                            <div class="flex justify-between mb-3"><span class="font-bold text-slate-800">ETF World (iShares)</span><span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">12% p.a.</span></div>
+                                            <div class="space-y-2">
+                                                <div class="relative"><input type="number" id="inv-ishares-amount" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">Kč/m</span></div>
+                                                <div class="relative"><input type="number" id="inv-ishares-years" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">roků</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                            <div class="flex justify-between mb-3"><span class="font-bold text-slate-800">Fidelity 2040</span><span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">7% p.a.</span></div>
+                                            <div class="space-y-2">
+                                                <div class="relative"><input type="number" id="inv-fidelity2040-amount" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">Kč/m</span></div>
+                                                <div class="relative"><input type="number" id="inv-fidelity2040-years" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">roků</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                                    <h4 class="font-bold text-slate-900 mb-4 flex items-center gap-3">
+                                        <span class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fas fa-piggy-bank"></i></span>
+                                        Penzijní spoření
+                                    </h4>
+                                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 max-w-md">
+                                        <div class="flex justify-between mb-3"><span class="font-bold text-slate-800">Conseq Globální</span><span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">9,5% p.a.</span></div>
+                                        <div class="space-y-2">
+                                            <div class="relative"><input type="number" id="inv-conseq-amount" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">Kč/m</span></div>
+                                            <div class="relative"><input type="number" id="inv-conseq-years" class="form-input w-full pl-3 pr-10 py-2 text-sm" placeholder=""><span class="absolute right-3 top-2 text-xs text-slate-400">roků</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-full lg:w-1/3 lg:sticky lg:top-24">
+                                <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-2xl ring-1 ring-white/10">
+                                    <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                                        <h4 class="font-bold text-lg">Můj návrh</h4>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[10px] text-slate-400 uppercase tracking-wide">Konzervativní</span>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="conservative-toggle" class="sr-only peer">
+                                                <div class="relative w-9 h-5 bg-slate-700 rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-orange"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-8 text-center">
+                                        <p class="text-slate-400 text-xs uppercase tracking-widest mb-1">Budoucí hodnota (FV)</p>
+                                        <div class="text-4xl font-extrabold text-white" id="strat-total-fv">0 Kč</div>
+                                        <p class="text-brand-gold text-xs mt-1" id="strat-profit-label">+0 zisk</p>
+                                    </div>
+                                    <div class="space-y-3 text-sm">
+                                        <div class="flex justify-between p-3 bg-white/5 rounded-lg"><span class="text-slate-400">Jednorázově</span><span class="font-bold" id="summary-lump-total">0 Kč</span></div>
+                                        <div class="flex justify-between p-3 bg-white/5 rounded-lg"><span class="text-slate-400">Měsíčně</span><span class="font-bold" id="summary-monthly-total">0 Kč</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-director-ins" class="tab-content hidden">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">Pojištění jednatele</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <div><label class="form-label">Pojistná částka - Smrt</label><div class="relative"><input type="number" id="dir-ins-death" class="form-input w-full pl-4 pr-12 py-2" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                                <div><label class="form-label">Pojistná částka - Invalidita (sjednáno)</label><div class="relative"><input type="number" id="dir-ins-invalidity" class="form-input w-full pl-4 pr-12 py-2" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                                <div><label class="form-label">Stupeň invalidity (pro výpočet)</label><select id="dir-ins-invalidity-degree" class="form-input w-full px-4 py-2 cursor-pointer"><option value="3">3. stupeň (100 % krytí)</option><option value="2">2. stupeň (100 % krytí)</option><option value="1">1. stupeň (25 % doplněk)</option></select></div>
+                                <div><label class="form-label">Odhad státního invalidního důchodu (měsíčně Kč)</label><div class="relative"><input type="number" id="dir-ins-state-pension" class="form-input w-full pl-4 pr-12 py-2" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč</span></div></div>
+                                <div><label class="form-label">Denní odškodné - PN</label><div class="relative"><input type="number" id="dir-ins-sick" class="form-input w-full pl-4 pr-12 py-2" placeholder="" value=""><span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Kč/den</span></div></div>
+                            </div>
+                            <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
+                                <h4 class="font-bold text-amber-800 mb-3"><i class="fas fa-lightbulb mr-2"></i>Doporučené zajištění (pravidlo 6 % renty)</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between"><span class="text-amber-700">Smrt (5× roční):</span><span id="rec-death" class="font-bold text-amber-900">—</span></div>
+                                    <div class="flex justify-between"><span class="text-amber-700">Invalidita – potřebná částka:</span><span id="rec-invalidity" class="font-bold text-amber-900">—</span></div>
+                                    <div class="flex justify-between"><span class="text-amber-700">Chybějící krytí invalidity:</span><span id="rec-invalidity-gap" class="font-bold text-red-600">—</span></div>
+                                    <div class="flex justify-between"><span class="text-amber-700">PN (60% měs./den):</span><span id="rec-sick" class="font-bold text-amber-900">—</span></div>
+                                </div>
+                                <div class="mt-3 pt-3 border-t border-amber-200 text-xs text-amber-600" id="osvc-warning" style="display:none;">⚠️ OSVČ nemá nárok na nemocenskou od ČSSZ!</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KROK 4: VÝSTUP -->
+            <div id="step-4" class="step-content">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-gradient-to-br from-brand-orange to-brand-gold text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg"><i class="fas fa-chart-pie"></i></div>
+                    <h2 class="text-3xl font-bold text-slate-900 mb-2">Přehled situace</h2>
+                    <p class="text-slate-500">Kompletní přehled s doporučeními.</p>
+                </div>
+
+                <div class="bg-gradient-to-r from-brand-dark to-blue-900 text-white rounded-2xl p-8 mb-8">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div>
+                            <div class="text-blue-200 text-sm uppercase tracking-widest mb-2">Celkové hodnocení</div>
+                            <div id="verdict-text" class="text-2xl font-bold">Analyzuji...</div>
+                            <div id="verdict-subtitle" class="text-blue-300 mt-1">Zadejte data pro vyhodnocení</div>
+                        </div>
+                        <div class="semafor">
+                            <div id="semafor-red" class="semafor-light semafor-red"></div>
+                            <div id="semafor-yellow" class="semafor-light semafor-yellow"></div>
+                            <div id="semafor-green" class="semafor-light semafor-green"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="valuation-card" class="hidden mb-8 p-6 rounded-2xl border-2 bg-gradient-to-br from-slate-50 to-white" style="border-color: #0B3A7A;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white" style="background: linear-gradient(135deg, #0B3A7A, #1e3a6e);"><i class="fas fa-building"></i></div>
+                        <div>
+                            <div class="text-sm uppercase tracking-wide font-semibold text-slate-500">Orientační hodnota firmy</div>
+                            <div class="text-2xl font-bold text-slate-900">Hodnota vaší firmy (odhad): <span id="valuation-amount">—</span></div>
+                            <p class="text-slate-600 text-sm mt-1">Máte tuto hodnotu krytou pro případ výpadku klíčové osoby?</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="exec-card">
+                        <div class="exec-card-header bg-gradient-to-r from-green-500 to-emerald-500"><i class="fas fa-arrow-trend-up mr-2"></i> TOP 3 Příležitosti</div>
+                        <div class="exec-card-body">
+                            <div class="space-y-3">
+                                <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold flex-shrink-0">1</div>
+                                    <div><div class="font-bold text-slate-900">Zaměstnanecké benefity</div><div class="text-sm text-slate-600">Úspora: <span class="font-bold text-green-600" id="opp-1-value">—</span>/rok</div></div>
+                                </div>
+                                <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold flex-shrink-0">2</div>
+                                    <div><div class="font-bold text-slate-900">Investice volného CF</div><div class="text-sm text-slate-600">Měsíčně: <span class="font-bold text-green-600" id="opp-2-value">—</span></div></div>
+                                </div>
+                                <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold flex-shrink-0">3</div>
+                                    <div><div class="font-bold text-slate-900">Daňová optimalizace</div><div class="text-sm text-slate-600">Dle situace jednatele</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="exec-card">
+                        <div class="exec-card-header bg-gradient-to-r from-red-500 to-rose-500"><i class="fas fa-exclamation-triangle mr-2"></i> TOP 3 Rizika</div>
+                        <div class="exec-card-body">
+                            <div class="space-y-3">
+                                <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                                    <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold flex-shrink-0">1</div>
+                                    <div><div class="font-bold text-slate-900" id="risk-1-title">Riziko klíčové osoby</div><div class="text-sm text-slate-600" id="risk-1-desc">Závislost na jednateli</div></div>
+                                </div>
+                                <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                                    <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold flex-shrink-0">2</div>
+                                    <div><div class="font-bold text-slate-900" id="risk-2-title">Odpovědnost</div><div class="text-sm text-slate-600" id="risk-2-desc">Chybí D&amp;O pojištění</div></div>
+                                </div>
+                                <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                                    <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold flex-shrink-0">3</div>
+                                    <div><div class="font-bold text-slate-900">Koncentrace klientů</div><div class="text-sm text-slate-600">TOP klient: <span id="risk-3-value">—</span>%</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 mb-8">
+                    <div class="flex items-start gap-4">
+                        <div class="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0"><i class="fas fa-bolt text-amber-600 text-2xl"></i></div>
+                        <div>
+                            <h4 class="font-bold text-amber-900 text-lg mb-2">Rychlé doporučení</h4>
+                            <p id="quick-win-text" class="text-amber-800">Zadejte údaje pro konkrétní doporučení.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="audit-tip-block" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8">
+                    <h4 class="font-bold text-amber-800 mb-2"><i class="fas fa-clipboard-check mr-2"></i> Tip na audit</h4>
+                    <p id="audit-tip-text" class="text-amber-800 text-sm"></p>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h3 class="font-bold text-slate-900 text-lg mb-4"><i class="fas fa-tasks text-brand-orange mr-2"></i> Další kroky do 30 dní</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div class="w-6 h-6 rounded-full bg-brand-orange text-white flex items-center justify-center text-xs font-bold">1</div><span id="action-1">Vyhodnotit data...</span></div>
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div class="w-6 h-6 rounded-full bg-brand-orange text-white flex items-center justify-center text-xs font-bold">2</div><span id="action-2">Vyhodnotit data...</span></div>
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div class="w-6 h-6 rounded-full bg-brand-orange text-white flex items-center justify-center text-xs font-bold">3</div><span id="action-3">Vyhodnotit data...</span></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-8">
+                    <h3 class="font-bold text-slate-800 mb-4">Skóre spolupráce</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <div class="bg-white p-3 rounded-lg border border-slate-200 text-center"><div id="score-employees" class="text-2xl font-bold text-slate-400">—</div><div class="text-xs text-slate-500">5+ zam.</div></div>
+                        <div class="bg-white p-3 rounded-lg border border-slate-200 text-center"><div id="score-cat3" class="text-2xl font-bold text-slate-400">—</div><div class="text-xs text-slate-500">3. kat.</div></div>
+                        <div class="bg-white p-3 rounded-lg border border-slate-200 text-center"><div id="score-insurance" class="text-2xl font-bold text-slate-400">—</div><div class="text-xs text-slate-500">Chybí poj.</div></div>
+                        <div class="bg-white p-3 rounded-lg border border-slate-200 text-center"><div id="score-cash" class="text-2xl font-bold text-slate-400">—</div><div class="text-xs text-slate-500">Má hotovost</div></div>
+                        <div class="bg-white p-3 rounded-lg border border-slate-200 text-center"><div id="score-family" class="text-2xl font-bold text-slate-400">—</div><div class="text-xs text-slate-500">Má rodinu</div></div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <div class="text-sm text-slate-500">Celkové skóre:</div>
+                        <div id="total-score" class="text-4xl font-bold text-brand-orange">0/5</div>
+                        <div id="score-verdict" class="text-sm text-slate-600 mt-1">Zadejte data</div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center gap-4">
+                    <button id="btn-pdf" class="btn-primary px-8 py-4 rounded-xl flex items-center gap-3 shadow-lg hover:scale-105 transition-transform">
+                        <i class="fas fa-file-pdf text-xl"></i>
+                        <div class="text-left leading-tight">
+                            <div class="text-xs opacity-80 font-normal">Kompletní report</div>
+                            <div class="font-bold">Stáhnout PDF</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- NAVIGATION -->
+            <div class="mt-10 flex justify-between pt-8 border-t border-slate-100">
+                <button id="btn-prev" class="btn-secondary px-6 py-3 rounded-xl hidden flex items-center gap-2"><i class="fas fa-arrow-left"></i> Zpět</button>
+                <div class="flex items-center gap-4 ml-auto">
+                    <button id="btn-next" class="btn-primary px-8 py-3 rounded-xl flex items-center gap-2 shadow-lg">Další <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+            
+            <!-- PDF CONTAINER -->
+            <div id="report-root"></div>
+            
+        </div>
+    </main>
+
+    <script>
+        // ==================== GLOBAL HELPERS ====================
+        function toggleCard(card) {
+            var checkbox = card.querySelector('input[type="checkbox"]');
+            if (!checkbox) return;
+            var checkIcon = card.querySelector('.check-icon');
+            checkbox.checked = !checkbox.checked;
+            card.classList.toggle('checked', checkbox.checked);
+            if (checkIcon) checkIcon.classList.toggle('hidden', !checkbox.checked);
+            if (window.app) app.onCheckboxChange(checkbox.id, checkbox.checked);
+        }
+
+        // ==================== APP ====================
+        class App {
+            constructor() {
+                this.step = 1;
+                this.totalSteps = 4;
+                this.FUND_LOGOS = ['AlgoImperial', 'Creif', 'ATRIS', 'Fidelity', 'iShares', 'PENTA', 'Conseq'];
+                this.logoCache = {};
+                this.data = {
+                    company: { name: '', ico: '', industry: 'office', employees: 0, cat3: 0, avgWage: 0, topClient: 0 },
+                    directors: [],
+                    finance: { revenue: 0, profit: 0, reserve: 0, loanPayment: 0 },
+                    benefits: { dps: false, dip: false, izp: false, amount: 0, count: 0, directorsAmount: 0 },
+                    risks: {
+                        property: { has: false, limit: 0, contractYears: 0 },
+                        interruption: { has: false, limit: 0, contractYears: 0 },
+                        liability: { has: false, limit: 0, contractYears: 0 },
+                        director: false, fleet: false, cyber: false
+                    },
+                    directorIns: { death: 0, invalidity: 0, sick: 0, invalidityDegree: 3, statePensionMonthly: 0 }
+                };
+                this.data.investment = { goal: 'renta', targetAmount: 0, targetRentaMonthly: 0, horizonYears: 10, currentAssets: 0, strategy: 'balanced' };
+                this.data.strategy = { profile: 'balanced', conservativeMode: false };
+                this.data.investments = [
+                    { productKey: 'imperial', type: 'lump', amount: 0, years: 10, annualRate: 0.12, computed: { fv: 0 } },
+                    { productKey: 'creif', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+                    { productKey: 'atris', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+                    { productKey: 'penta', type: 'lump', amount: 0, years: 10, annualRate: 0.09, computed: { fv: 0 } },
+                    { productKey: 'ishares', type: 'monthly', amount: 0, years: 20, annualRate: 0.12, computed: { fv: 0 } },
+                    { productKey: 'fidelity2040', type: 'monthly', amount: 0, years: 20, annualRate: 0.07, computed: { fv: 0 } },
+                    { productKey: 'conseq', type: 'pension', amount: 0, years: 30, annualRate: 0.095, computed: { fv: 0 } }
+                ];
+                this.INV_STRATEGY_RATES = { conservative: 0.05, balanced: 0.07, dynamic: 0.09 };
+                this.INV_FUNDS = [
+                    { name: 'AlgoImperial', yieldPct: 12 }, { name: 'iShares MSCI World', yieldPct: 12 },
+                    { name: 'Penta Public', yieldPct: 9.5 }, { name: 'CREIF / ATRIS', yieldPct: 6 }, { name: 'Fidelity 2040', yieldPct: 7 }
+                ];
+                this._defaultDirector = function() {
+                    return { name: '', age: null, share: 100, hasSpouse: false, childrenCount: 0, incomeType: 'employee', netIncome: 0, savings: 0, goal: 'tax', benefits: { dps: false, dip: false, izp: false, amountMonthly: 0 }, paysFromOwn: false, paysFromOwnAmount: 0, hasOldPension: false };
+                };
+                this.init();
+            }
+
+            init() {
+                var imported = sessionStorage.getItem('fp_import_data');
+                if (imported) {
+                    try {
+                        var parsed = JSON.parse(imported);
+                        this.data = this.migrateImportedData(parsed);
+                        sessionStorage.removeItem('fp_import_data');
+                    } catch (e) { sessionStorage.removeItem('fp_import_data'); }
+                }
+                if (this.data.directors.length === 0) this.data.directors.push(this._defaultDirector());
+                this.ensureInvestmentsAndStrategy();
+                this.bindNav();
+                this.bindInputs();
+                this.bindInvestmentInputs();
+                this.bindDirectorDelegation();
+                this.bindTabs();
+                document.getElementById('btn-pdf').addEventListener('click', () => this.generatePDF());
+                this.renderDirectors();
+                this.syncRiskDetails();
+                this.syncBenefitAndRiskCheckboxes();
+                this.populateFormFromData();
+                this.updateStrategyUI();
+                this.recalcStrategy();
+                this.updateView();
+            }
+
+            populateFormFromData() {
+                var c = this.data.company || {};
+                var f = this.data.finance || {};
+                var b = this.data.benefits || {};
+                var ins = this.data.directorIns || {};
+                var set = function(id, val) { var el = document.getElementById(id); if (el && val !== undefined && val !== null && val !== '') el.value = val; };
+                var setEmpty = function(id, val) { var el = document.getElementById(id); if (el) el.value = (val !== undefined && val !== null && val !== '') ? String(val) : ''; };
+                setEmpty('company-name', c.name);
+                setEmpty('company-ico', c.ico);
+                set('company-industry', c.industry || 'office');
+                setEmpty('company-employees', c.employees);
+                setEmpty('company-cat3', c.cat3);
+                setEmpty('company-avg-wage', c.avgWage);
+                setEmpty('company-top-client', c.topClient);
+                setEmpty('company-revenue', f.revenue);
+                setEmpty('company-profit', f.profit);
+                setEmpty('company-reserve', f.reserve);
+                setEmpty('company-loan-payment', f.loanPayment);
+                setEmpty('benefit-amount', b.amount);
+                setEmpty('benefit-count', b.count);
+                setEmpty('benefit-directors-amount', b.directorsAmount);
+                setEmpty('dir-ins-death', ins.death);
+                setEmpty('dir-ins-invalidity', ins.invalidity);
+                setEmpty('dir-ins-invalidity-degree', ins.invalidityDegree);
+                setEmpty('dir-ins-state-pension', ins.statePensionMonthly);
+                setEmpty('dir-ins-sick', ins.sick);
+            }
+
+            ensureInvestmentsAndStrategy() {
+                if (!this.data.strategy) this.data.strategy = { profile: 'balanced', conservativeMode: false };
+                var defaultInvs = [
+                    { productKey: 'imperial', type: 'lump', amount: 0, years: 10, annualRate: 0.12, computed: { fv: 0 } },
+                    { productKey: 'creif', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+                    { productKey: 'atris', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+                    { productKey: 'penta', type: 'lump', amount: 0, years: 10, annualRate: 0.09, computed: { fv: 0 } },
+                    { productKey: 'ishares', type: 'monthly', amount: 0, years: 20, annualRate: 0.12, computed: { fv: 0 } },
+                    { productKey: 'fidelity2040', type: 'monthly', amount: 0, years: 20, annualRate: 0.07, computed: { fv: 0 } },
+                    { productKey: 'conseq', type: 'pension', amount: 0, years: 30, annualRate: 0.095, computed: { fv: 0 } }
+                ];
+                if (!Array.isArray(this.data.investments) || this.data.investments.length === 0) this.data.investments = defaultInvs;
+            }
+
+            updateInvestment(productKey, type, field, value) {
+                var inv = this.data.investments.find(function(i) { return i.productKey === productKey && i.type === type; });
+                if (inv) {
+                    inv[field] = field === 'annualRate' ? parseFloat(value) : (parseFloat(value) || 0);
+                    this.recalcStrategy();
+                }
+            }
+
+            setStrategyProfile(profile) {
+                this.data.strategy.profile = profile || 'balanced';
+                this.updateStrategyUI();
+            }
+
+            setConservativeMode(isConservative) {
+                this.data.strategy.conservativeMode = !!isConservative;
+                this.recalcStrategy();
+            }
+
+            recalcStrategy() {
+                var self = this;
+                var totalFV = 0, totalLump = 0, totalMonthly = 0;
+                var invs = this.data.investments || [];
+                var conservative = this.data.strategy && this.data.strategy.conservativeMode;
+                var calcFVLump = function(amount, years, rate) { return amount * Math.pow(1 + rate, years); };
+                var calcFVReg = function(monthly, years, rate) {
+                    var r = rate / 12, n = years * 12;
+                    if (r === 0) return monthly * n;
+                    return monthly * ((Math.pow(1 + r, n) - 1) / r);
+                };
+                invs.forEach(function(inv) {
+                    var rate = Math.max(0, (inv.annualRate || 0) - (conservative ? 0.02 : 0));
+                    var fv = 0;
+                    if (inv.type === 'lump') {
+                        fv = calcFVLump(inv.amount || 0, inv.years || 0, rate);
+                        totalLump += (inv.amount || 0);
+                    } else if (inv.type === 'monthly' || inv.type === 'pension') {
+                        fv = calcFVReg(inv.amount || 0, inv.years || 0, rate);
+                        totalMonthly += (inv.amount || 0);
+                    }
+                    totalFV += fv;
+                    inv.computed = inv.computed || {};
+                    inv.computed.fv = fv;
+                });
+                var totalInvested = totalLump + totalMonthly * 12 * (invs.filter(function(i) { return i.type !== 'lump'; }).reduce(function(s, i) { return s + (i.years || 0); }, 0) || 1);
+                var elFV = document.getElementById('strat-total-fv');
+                if (elFV) elFV.textContent = Math.round(totalFV).toLocaleString('cs-CZ') + ' Kč';
+                var elProfit = document.getElementById('strat-profit-label');
+                if (elProfit) elProfit.textContent = '+' + Math.round(totalFV - totalInvested).toLocaleString('cs-CZ') + ' zisk';
+                var elLump = document.getElementById('summary-lump-total');
+                if (elLump) elLump.textContent = Math.round(totalLump).toLocaleString('cs-CZ') + ' Kč';
+                var elMon = document.getElementById('summary-monthly-total');
+                if (elMon) elMon.textContent = Math.round(totalMonthly).toLocaleString('cs-CZ') + ' Kč';
+            }
+
+            updateStrategyUI() {
+                var profile = this.data.strategy && this.data.strategy.profile ? this.data.strategy.profile : 'balanced';
+                document.querySelectorAll('.strategy-card').forEach(function(el) {
+                    var p = el.getAttribute('data-profile');
+                    el.classList.remove('border-brand-orange', 'border-blue-500', 'border-green-400');
+                    el.querySelectorAll('.check-icon').forEach(function(icon) { icon.classList.add('hidden'); });
+                    if (p === profile) {
+                        if (profile === 'dynamic') el.classList.add('border-brand-orange');
+                        else if (profile === 'balanced') el.classList.add('border-blue-500');
+                        else el.classList.add('border-green-400');
+                        var check = el.querySelector('.check-icon');
+                        if (check) check.classList.remove('hidden');
+                    }
+                });
+                var toggle = document.getElementById('conservative-toggle');
+                if (toggle) toggle.checked = !!(this.data.strategy && this.data.strategy.conservativeMode);
+            }
+
+            bindInvestmentInputs() {
+                var self = this;
+                var map = [
+                    { id: 'inv-imperial-amount', key: 'imperial', type: 'lump', field: 'amount' },
+                    { id: 'inv-imperial-years', key: 'imperial', type: 'lump', field: 'years' },
+                    { id: 'inv-creif-amount', key: 'creif', type: 'lump', field: 'amount' },
+                    { id: 'inv-creif-years', key: 'creif', type: 'lump', field: 'years' },
+                    { id: 'inv-atris-lump-amount', key: 'atris', type: 'lump', field: 'amount' },
+                    { id: 'inv-atris-lump-years', key: 'atris', type: 'lump', field: 'years' },
+                    { id: 'inv-penta-amount', key: 'penta', type: 'lump', field: 'amount' },
+                    { id: 'inv-penta-years', key: 'penta', type: 'lump', field: 'years' },
+                    { id: 'inv-ishares-amount', key: 'ishares', type: 'monthly', field: 'amount' },
+                    { id: 'inv-ishares-years', key: 'ishares', type: 'monthly', field: 'years' },
+                    { id: 'inv-fidelity2040-amount', key: 'fidelity2040', type: 'monthly', field: 'amount' },
+                    { id: 'inv-fidelity2040-years', key: 'fidelity2040', type: 'monthly', field: 'years' },
+                    { id: 'inv-conseq-amount', key: 'conseq', type: 'pension', field: 'amount' },
+                    { id: 'inv-conseq-years', key: 'conseq', type: 'pension', field: 'years' }
+                ];
+                map.forEach(function(item) {
+                    var el = document.getElementById(item.id);
+                    if (el) el.addEventListener('input', function() { self.updateInvestment(item.key, item.type, item.field, el.value); });
+                });
+                var pentaRate = document.getElementById('inv-penta-rate');
+                if (pentaRate) pentaRate.addEventListener('change', function() { self.updateInvestment('penta', 'lump', 'annualRate', pentaRate.value); });
+                document.querySelectorAll('.strategy-card').forEach(function(card) {
+                    card.addEventListener('click', function() { self.setStrategyProfile(card.getAttribute('data-profile')); });
+                });
+                var consToggle = document.getElementById('conservative-toggle');
+                if (consToggle) consToggle.addEventListener('change', function() { self.setConservativeMode(consToggle.checked); });
+            }
+
+            syncBenefitAndRiskCheckboxes() {
+                var b = this.data.benefits;
+                var r = this.data.risks;
+                ['dps', 'dip', 'izp'].forEach(function(k) {
+                    var el = document.getElementById('benefit-' + k);
+                    if (el) el.checked = !!b[k];
+                });
+                ['director', 'fleet', 'cyber'].forEach(function(k) {
+                    var el = document.getElementById('risk-' + k);
+                    if (el) {
+                        el.checked = !!r[k];
+                        var card = el.closest('label.checkbox-card');
+                        if (card) {
+                            card.classList.toggle('checked', !!r[k]);
+                            var icon = card.querySelector('.check-icon');
+                            if (icon) icon.classList.toggle('hidden', !r[k]);
+                        }
+                    }
+                });
+            }
+
+            syncRiskDetails() {
+                var r = this.data.risks;
+                ['property', 'interruption', 'liability'].forEach(function(k) {
+                    var obj = r[k] && typeof r[k] === 'object' ? r[k] : null;
+                    var cb = document.getElementById('risk-' + k);
+                    var detail = document.getElementById('risk-' + k + '-detail');
+                    if (obj && cb && detail) {
+                        cb.checked = !!obj.has;
+                        detail.classList.toggle('hidden', !obj.has);
+                        var limitEl = document.getElementById('risk-' + k + '-limit');
+                        var yearsEl = document.getElementById('risk-' + k + '-contractYears');
+                        if (limitEl) limitEl.value = obj.limit || '';
+                        if (yearsEl) yearsEl.value = obj.contractYears || '';
+                    }
+                });
+            }
+
+            getBaseUrl() { return 'https://www.marek-marek.cz'; }
+            getAssetUrl(path) { var base = this.getBaseUrl(); return base + (path.indexOf('/') === 0 ? path : '/' + path); }
+            loadImageAsDataUrl(url) {
+                var self = this;
+                return new Promise(function(resolve, reject) {
+                    var img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = function() {
+                        try {
+                            var c = document.createElement('canvas');
+                            c.width = img.naturalWidth;
+                            c.height = img.naturalHeight;
+                            var ctx = c.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            resolve(c.toDataURL('image/png'));
+                        } catch (e) { reject(e); }
+                    };
+                    img.onerror = function() { reject(new Error('Failed to load ' + url)); };
+                    img.src = url;
+                });
+            }
+            ensureLogosLoaded() {
+                var self = this;
+                if (Object.keys(self.logoCache).length >= self.FUND_LOGOS.length) return Promise.resolve();
+                var promises = self.FUND_LOGOS.map(function(key) {
+                    var url = self.getAssetUrl('/images/' + key + '.png');
+                    return self.loadImageAsDataUrl(url).then(function(dataUrl) { self.logoCache[key] = dataUrl; }).catch(function() {});
+                });
+                return Promise.all(promises);
+            }
+            applyLogoDataUrls(rootEl) {
+                var self = this;
+                if (!rootEl) return;
+                rootEl.querySelectorAll('[data-logo]').forEach(function(img) {
+                    var key = img.getAttribute('data-logo');
+                    if (self.logoCache[key]) img.src = self.logoCache[key];
+                });
+            }
+            fmt(n) { return n ? Math.round(n).toLocaleString('cs-CZ') + ' Kč' : '—'; }
+            fmtShort(n) { if (!n) return '—'; if (n >= 1e6) return (n/1e6).toFixed(1) + ' mil.'; if (n >= 1e3) return Math.round(n/1e3) + ' tis.'; return n.toLocaleString('cs-CZ'); }
+            getProductName(key) {
+                var names = { imperial: 'AlgoImperial', creif: 'CREIF', atris: 'ATRIS', penta: 'PENTA', ishares: 'iShares MSCI World', fidelity2040: 'Fidelity Target 2040', conseq: 'Conseq Globální' };
+                return names[key] || key;
+            }
+
+            bindNav() {
+                var self = this;
+                document.getElementById('btn-next').addEventListener('click', function() {
+                    if (self.step === self.totalSteps) self.generatePDF();
+                    else { self.step++; self.updateView(); }
+                });
+                document.getElementById('btn-prev').addEventListener('click', function() {
+                    if (self.step > 1) { self.step--; self.updateView(); }
+                });
+            }
+
+            updateView() {
+                var self = this;
+                document.querySelectorAll('.stepper-item').forEach(function(el, i) {
+                    el.classList.remove('active', 'completed');
+                    if (i + 1 < self.step) el.classList.add('completed');
+                    if (i + 1 === self.step) el.classList.add('active');
+                });
+                document.querySelectorAll('.step-content').forEach(function(el, i) {
+                    el.classList.toggle('active', i + 1 === self.step);
+                });
+                document.getElementById('btn-prev').classList.toggle('hidden', this.step === 1);
+                var btnNext = document.getElementById('btn-next');
+                btnNext.innerHTML = this.step === this.totalSteps ? '<i class="fas fa-file-pdf mr-2"></i> Generovat PDF' : 'Další <i class="fas fa-arrow-right ml-2"></i>';
+                
+                if (this.step === 1) this.updateStep1();
+                if (this.step === 2) this.updateStep2();
+                if (this.step === 3) this.updateStep3();
+                if (this.step === 4) this.updateStep4();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            bindTabs() {
+                document.querySelectorAll('.tab-pill').forEach(function(pill) {
+                    pill.addEventListener('click', function() {
+                        var tab = pill.dataset.tab;
+                        document.querySelectorAll('.tab-pill').forEach(function(p) { p.classList.remove('active'); });
+                        pill.classList.add('active');
+                        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.add('hidden'); });
+                        var tabEl = document.getElementById('tab-' + tab);
+                        if (tabEl) tabEl.classList.remove('hidden');
+                    });
+                });
+            }
+
+            bindInputs() {
+                var self = this;
+                // Company
+                this.bind('company-name', function(v) { self.data.company.name = v; });
+                this.bind('company-ico', function(v) { self.data.company.ico = v; });
+                this.bind('company-industry', function(v) { self.data.company.industry = v; self.updateStep1(); });
+                this.bind('company-employees', function(v) { self.data.company.employees = parseInt(v) || 0; self.updateStep1(); });
+                this.bind('company-cat3', function(v) { self.data.company.cat3 = parseInt(v) || 0; self.updateStep1(); });
+                this.bind('company-avg-wage', function(v) { self.data.company.avgWage = parseInt(v) || 0; self.updateStep1(); });
+                this.bind('company-top-client', function(v) { self.data.company.topClient = parseInt(v) || 0; });
+                // Finance
+                this.bind('company-revenue', function(v) { self.data.finance.revenue = parseFloat(v) || 0; self.updateStep2(); });
+                this.bind('company-profit', function(v) { self.data.finance.profit = parseFloat(v) || 0; self.updateStep2(); });
+                this.bind('company-reserve', function(v) { self.data.finance.reserve = parseFloat(v) || 0; self.updateStep2(); });
+                this.bind('company-loan-payment', function(v) { self.data.finance.loanPayment = parseFloat(v) || 0; self.updateStep2(); });
+                // Benefits
+                this.bind('benefit-amount', function(v) { self.data.benefits.amount = parseFloat(v) || 0; self.updateBenefitCalc(); });
+                this.bind('benefit-count', function(v) { self.data.benefits.count = parseInt(v) || 0; self.updateBenefitCalc(); });
+                this.bind('benefit-directors-amount', function(v) { self.data.benefits.directorsAmount = parseFloat(v) || 0; self.updateBenefitCalc(); });
+                // Director insurance
+                this.bind('dir-ins-death', function(v) { self.data.directorIns.death = parseFloat(v) || 0; self.updateStep3(); });
+                this.bind('dir-ins-invalidity', function(v) { self.data.directorIns.invalidity = parseFloat(v) || 0; self.updateStep3(); });
+                this.bind('dir-ins-invalidity-degree', function(v) { self.data.directorIns.invalidityDegree = parseInt(v, 10) || 3; self.updateStep3(); });
+                this.bind('dir-ins-state-pension', function(v) { self.data.directorIns.statePensionMonthly = parseFloat(v) || 0; self.updateStep3(); });
+                this.bind('dir-ins-sick', function(v) { self.data.directorIns.sick = parseFloat(v) || 0; });
+                // Risk details (limit, contractYears)
+                ['property', 'interruption', 'liability'].forEach(function(k) {
+                    self.bind('risk-' + k + '-limit', function(v) { if (self.data.risks[k] && typeof self.data.risks[k] === 'object') self.data.risks[k].limit = parseFloat(v) || 0; self.updateRiskScore(); });
+                    self.bind('risk-' + k + '-contractYears', function(v) { if (self.data.risks[k] && typeof self.data.risks[k] === 'object') self.data.risks[k].contractYears = parseInt(v, 10) || 0; self.updateRiskScore(); });
+                });
+            }
+
+            bind(id, callback) {
+                var el = document.getElementById(id);
+                if (el) el.addEventListener('input', function() { callback(el.value); });
+            }
+
+            renderDirectors() {
+                var self = this;
+                var container = document.getElementById('directors-container');
+                if (!container) return;
+                var html = '';
+                this.data.directors.forEach(function(d, i) {
+                    var canRemove = self.data.directors.length > 1;
+                    html += '<div class="director-card bg-white p-5 rounded-xl border-2 border-slate-200 mb-4 shadow-sm" data-index="' + i + '">' +
+                        '<div class="flex justify-between items-center mb-4"><span class="font-bold text-slate-700">Jednatel ' + (i + 1) + '</span>' +
+                        (canRemove ? '<button type="button" class="director-remove text-red-600 text-sm hover:underline" data-index="' + i + '"><i class="fas fa-trash-alt mr-1"></i> Odebrat</button>' : '') + '</div>' +
+                        '<div class="grid grid-cols-1 md:grid-cols-12 gap-4">' +
+                        '<div class="md:col-span-4"><label class="form-label">Jméno</label><input type="text" class="form-input w-full px-4 py-2 director-field" data-field="name" value="' + (d.name || '') + '" placeholder=""></div>' +
+                        '<div class="md:col-span-2"><label class="form-label">Věk</label><input type="number" class="form-input w-full px-4 py-2 director-field" data-field="age" value="' + (d.age != null ? d.age : '') + '" placeholder=""></div>' +
+                        '<div class="md:col-span-2"><label class="form-label">Podíl %</label><input type="number" class="form-input w-full px-4 py-2 director-field" data-field="share" value="' + (d.share != null ? d.share : '') + '" placeholder=""></div>' +
+                        '<div class="md:col-span-2 flex items-end pb-1"><label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600"><input type="checkbox" class="director-field w-4 h-4 rounded" data-field="hasSpouse" ' + (d.hasSpouse ? 'checked' : '') + '> Manžel/ka</label></div>' +
+                        '<div class="md:col-span-2"><label class="form-label">Počet dětí</label><input type="number" class="form-input w-full px-4 py-2 director-field" data-field="childrenCount" value="' + (d.childrenCount != null ? d.childrenCount : '') + '" placeholder=""></div>' +
+                        '<div class="md:col-span-4"><label class="form-label">Typ příjmu</label><select class="form-input w-full px-3 py-2 director-field cursor-pointer" data-field="incomeType">' +
+                        '<option value="employee"' + (d.incomeType === 'employee' ? ' selected' : '') + '>Zaměstnanec</option><option value="osvc"' + (d.incomeType === 'osvc' ? ' selected' : '') + '>OSVČ</option></select></div>' +
+                        '<div class="md:col-span-4"><label class="form-label">Čistý měsíční příjem (Kč)</label><input type="number" class="form-input w-full px-4 py-2 director-field" data-field="netIncome" value="' + (d.netIncome || '') + '" placeholder=""></div>' +
+                        '<div class="md:col-span-4"><label class="form-label">Osobní rezervy</label><select class="form-input w-full px-3 py-2 director-field cursor-pointer" data-field="savings">' +
+                        '<option value="0"' + (d.savings === 0 ? ' selected' : '') + '>0 - 500 tis.</option><option value="500000"' + (d.savings === 500000 ? ' selected' : '') + '>500 tis. - 2 mil.</option><option value="2000000"' + (d.savings === 2000000 ? ' selected' : '') + '>2 mil.+</option></select></div>' +
+                        '<div class="md:col-span-4"><label class="form-label">Hlavní cíl</label><select class="form-input w-full px-3 py-2 director-field cursor-pointer" data-field="goal">' +
+                        '<option value="security"' + (d.goal === 'security' ? ' selected' : '') + '>Bezpečí rodiny</option><option value="rent"' + (d.goal === 'rent' ? ' selected' : '') + '>Pasivní příjem</option><option value="tax"' + (d.goal === 'tax' || !d.goal ? ' selected' : '') + '>Daňová optimalizace</option></select></div>' +
+                        '<div class="md:col-span-12 border-t border-slate-200 pt-4 mt-2"><h4 class="text-sm font-bold text-slate-700 mb-3">Využívá benefity?</h4>' +
+                        '<div class="flex flex-wrap gap-4 items-center mb-3">' +
+                        '<label class="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" class="director-field director-benefit" data-field="benefitsDps" ' + (d.benefits && d.benefits.dps ? 'checked' : '') + '> DPS</label>' +
+                        '<label class="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" class="director-field director-benefit" data-field="benefitsDip" ' + (d.benefits && d.benefits.dip ? 'checked' : '') + '> DIP</label>' +
+                        '<label class="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" class="director-field director-benefit" data-field="benefitsIzp" ' + (d.benefits && d.benefits.izp ? 'checked' : '') + '> IŽP</label>' +
+                        '<div class="flex items-center gap-2"><label class="text-sm text-slate-600">Částka měsíčně (Kč)</label><input type="number" class="form-input w-28 px-2 py-1 director-field text-sm" data-field="benefitsAmountMonthly" value="' + (d.benefits && d.benefits.amountMonthly ? d.benefits.amountMonthly : '') + '" placeholder=""></div>' +
+                        '</div>' +
+                        '<div class="border-t border-slate-100 pt-3 mt-3 space-y-2">' +
+                        '<p class="text-xs font-semibold text-slate-600">Platíte si životní / penzijní / DIP ze svého (z čisté mzdy)?</p>' +
+                        '<div class="flex flex-wrap gap-4 items-center">' +
+                        '<label class="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" class="director-field" name="dir-pays-own-' + i + '" data-field="paysFromOwn" data-value="false" ' + (!(d.paysFromOwn) ? 'checked' : '') + '> Ne</label>' +
+                        '<label class="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" class="director-field" name="dir-pays-own-' + i + '" data-field="paysFromOwn" data-value="true" ' + (d.paysFromOwn ? 'checked' : '') + '> Ano</label>' +
+                        '<span class="director-pays-own-amount-wrap ' + (d.paysFromOwn ? '' : 'hidden') + '"><label class="text-sm text-slate-600">Měsíční částka celkem (Kč)</label><input type="number" class="form-input w-28 px-2 py-1 director-field text-sm ml-2" data-field="paysFromOwnAmount" value="' + (d.paysFromOwnAmount || '') + '" placeholder=""></span>' +
+                        '</div>' +
+                        '<p class="text-xs font-semibold text-slate-600 mt-2">Máte staré penzijní připojištění (transformovaný fond)?</p>' +
+                        '<div class="flex gap-4"><label class="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" class="director-field" name="dir-old-pension-' + i + '" data-field="hasOldPension" data-value="false" ' + (!(d.hasOldPension) ? 'checked' : '') + '> Ne</label>' +
+                        '<label class="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" class="director-field" name="dir-old-pension-' + i + '" data-field="hasOldPension" data-value="true" ' + (d.hasOldPension ? 'checked' : '') + '> Ano <span class="text-amber-600 text-xs">(nízký výnos)</span></label></div>' +
+                        '</div></div>' +
+                        '</div></div>';
+                });
+                container.innerHTML = html;
+                container.querySelectorAll('.director-remove').forEach(function(btn) {
+                    btn.addEventListener('click', function() { self.removeDirector(+this.getAttribute('data-index')); });
+                });
+                var addBtn = document.getElementById('btn-add-director');
+                if (addBtn && !addBtn._bound) {
+                    addBtn._bound = true;
+                    addBtn.addEventListener('click', function() { self.addDirector(); });
+                }
+            }
+
+            addDirector() {
+                this.data.directors.push(this._defaultDirector());
+                this.renderDirectors();
+            }
+
+            removeDirector(index) {
+                this.data.directors.splice(index, 1);
+                if (this.data.directors.length === 0) this.data.directors.push(this._defaultDirector());
+                this.renderDirectors();
+                this.updateStep1();
+            }
+
+            bindDirectorDelegation() {
+                var self = this;
+                var container = document.getElementById('directors-container');
+                if (!container) return;
+                container.addEventListener('input', function(e) {
+                    var card = e.target.closest('.director-card');
+                    if (!card || !e.target.classList.contains('director-field')) return;
+                    var i = +card.getAttribute('data-index');
+                    var dir = self.data.directors[i];
+                    if (!dir) return;
+                    var field = e.target.getAttribute('data-field');
+                    if (field === 'name') dir.name = e.target.value;
+                    else if (field === 'age') dir.age = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                    else if (field === 'share') dir.share = e.target.value === '' ? 100 : parseInt(e.target.value, 10);
+                    else if (field === 'hasSpouse') dir.hasSpouse = e.target.checked;
+                    else if (field === 'childrenCount') dir.childrenCount = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                    else if (field === 'incomeType') dir.incomeType = e.target.value;
+                    else if (field === 'netIncome') dir.netIncome = parseFloat(e.target.value) || 0;
+                    else if (field === 'savings') dir.savings = parseFloat(e.target.value) || 0;
+                    else if (field === 'goal') dir.goal = e.target.value || 'tax';
+                    else if (field === 'benefitsDps') { if (!dir.benefits) dir.benefits = { dps: false, dip: false, izp: false, amountMonthly: 0 }; dir.benefits.dps = e.target.checked; }
+                    else if (field === 'benefitsDip') { if (!dir.benefits) dir.benefits = { dps: false, dip: false, izp: false, amountMonthly: 0 }; dir.benefits.dip = e.target.checked; }
+                    else if (field === 'benefitsIzp') { if (!dir.benefits) dir.benefits = { dps: false, dip: false, izp: false, amountMonthly: 0 }; dir.benefits.izp = e.target.checked; }
+                    else if (field === 'benefitsAmountMonthly') { if (!dir.benefits) dir.benefits = { dps: false, dip: false, izp: false, amountMonthly: 0 }; dir.benefits.amountMonthly = parseFloat(e.target.value) || 0; }
+                    else if (field === 'paysFromOwnAmount') dir.paysFromOwnAmount = parseFloat(e.target.value) || 0;
+                    if (self.step === 3) self.updateStep3();
+                });
+                container.addEventListener('change', function(e) {
+                    if (!e.target.classList.contains('director-field')) return;
+                    var card = e.target.closest('.director-card');
+                    if (!card) return;
+                    var i = +card.getAttribute('data-index');
+                    var dir = self.data.directors[i];
+                    if (!dir) return;
+                    var field = e.target.getAttribute('data-field');
+                    if (field === 'hasSpouse') dir.hasSpouse = e.target.checked;
+                    else if (field === 'incomeType') dir.incomeType = e.target.value;
+                    else if (field === 'savings') dir.savings = parseFloat(e.target.value) || 0;
+                    else if (field === 'goal') dir.goal = e.target.value || 'tax';
+                    else if (field === 'paysFromOwn') { dir.paysFromOwn = e.target.getAttribute('data-value') === 'true'; var wrap = card.querySelector('.director-pays-own-amount-wrap'); if (wrap) wrap.classList.toggle('hidden', !dir.paysFromOwn); }
+                    else if (field === 'hasOldPension') dir.hasOldPension = e.target.getAttribute('data-value') === 'true';
+                    else if (field === 'benefitsDps') { if (!dir.benefits) dir.benefits = { dps: false, dip: false, izp: false, amountMonthly: 0 }; dir.benefits.dps = e.target.checked; }
+                    else if (field === 'benefitsDip') { if (!dir.benefits) dir.benefits = { dps: false, dip: false, izp: false, amountMonthly: 0 }; dir.benefits.dip = e.target.checked; }
+                    else if (field === 'benefitsIzp') { if (!dir.benefits) dir.benefits = { dps: false, dip: false, izp: false, amountMonthly: 0 }; dir.benefits.izp = e.target.checked; }
+                    if (self.step === 3) self.updateStep3();
+                });
+            }
+
+            onCheckboxChange(id, checked) {
+                if (id.startsWith('benefit-')) {
+                    var key = id.replace('benefit-', '');
+                    this.data.benefits[key] = checked;
+                }
+                if (id.startsWith('risk-')) {
+                    var key = id.replace('risk-', '');
+                    if (key === 'property' || key === 'interruption' || key === 'liability') {
+                        this.data.risks[key].has = checked;
+                        var detail = document.getElementById('risk-' + key + '-detail');
+                        if (detail) detail.classList.toggle('hidden', !checked);
+                    } else {
+                        this.data.risks[key] = checked;
+                    }
+                    this.updateRiskScore();
+                }
+            }
+
+            toggleRiskDetail(key) {
+                var checked = document.getElementById('risk-' + key) && document.getElementById('risk-' + key).checked;
+                if (this.data.risks[key] && typeof this.data.risks[key] === 'object') this.data.risks[key].has = checked;
+                var detail = document.getElementById('risk-' + key + '-detail');
+                if (detail) detail.classList.toggle('hidden', !checked);
+            }
+
+            updateStep1() {
+                var c = this.data.company;
+                document.getElementById('kpi-employees').textContent = c.employees || '—';
+                document.getElementById('kpi-wage-fund').textContent = c.employees && c.avgWage ? this.fmtShort(c.employees * c.avgWage) : '—';
+                document.getElementById('kpi-cat3').textContent = c.cat3 || '0';
+                var risks = { 'office': 'Nízká', 'services': 'Nízká', 'light-manufacturing': 'Střední', 'heavy-manufacturing': 'Vysoká', 'construction': 'Vysoká', 'transport': 'Vysoká' };
+                document.getElementById('kpi-risk-level').textContent = risks[c.industry] || '—';
+            }
+
+            updateStep2() {
+                var f = this.data.finance;
+                var c = this.data.company;
+                document.getElementById('fin-revenue').textContent = this.fmtShort(f.revenue);
+                document.getElementById('fin-profit').textContent = this.fmtShort(f.profit);
+                var monthlyExp = (c.employees * c.avgWage * 1.34) + f.loanPayment;
+                var runway = f.reserve && monthlyExp > 0 ? Math.floor(f.reserve / monthlyExp) : 0;
+                document.getElementById('fin-runway').textContent = runway + ' měs.';
+                document.getElementById('fin-debt').textContent = this.fmt(f.loanPayment * 12) + '/rok';
+                var inflationLoss = (f.reserve || 0) * 0.035;
+                var infEl = document.getElementById('inflation-warning');
+                if (infEl) {
+                    if (inflationLoss > 1000) {
+                        infEl.classList.remove('hidden');
+                        var amtEl = document.getElementById('inflation-loss-amount');
+                        if (amtEl) amtEl.textContent = this.fmt(Math.round(inflationLoss));
+                    } else {
+                        infEl.classList.add('hidden');
+                    }
+                }
+            }
+
+            updateStep3() {
+                this.updateBenefitCalc();
+                this.updateRiskScore();
+                this.updateInsuranceRec();
+                this.restoreInvestmentInputs();
+                this.recalcStrategy();
+                this.updateStrategyUI();
+            }
+
+            updateInvestmentCalc() {
+                var inv = this.data.investment || {};
+                var goal = inv.goal || 'renta';
+                var targetAmount = inv.targetAmount || 0;
+                var targetRenta = inv.targetRentaMonthly || 0;
+                var horizon = Math.max(1, inv.horizonYears || 10);
+                var current = inv.currentAssets || 0;
+                var rAnnual = this.INV_STRATEGY_RATES[inv.strategy] || 0.07;
+                var rMonthly = Math.pow(1 + rAnnual, 1/12) - 1;
+                var nMonths = horizon * 12;
+                var fvTarget = targetAmount;
+                if (goal === 'renta' && targetRenta > 0) fvTarget = targetRenta / 0.005;
+                var fvCurrent = current * Math.pow(1 + rAnnual, horizon);
+                var shortfall = Math.max(0, fvTarget - fvCurrent);
+                var pmt = 0;
+                if (shortfall > 0 && nMonths > 0 && rMonthly > 0) pmt = shortfall * rMonthly / (Math.pow(1 + rMonthly, nMonths) - 1);
+                var elShort = document.getElementById('inv-shortfall');
+                if (elShort) elShort.textContent = this.fmt(Math.round(shortfall));
+                var elPmt = document.getElementById('inv-pmt');
+                if (elPmt) elPmt.textContent = this.fmt(Math.round(pmt));
+            }
+
+            restoreInvestmentInputs() {
+                var invs = this.data.investments || [];
+                var set = function(key, type, field, id) {
+                    var item = invs.find(function(i) { return i.productKey === key && i.type === type; });
+                    var el = document.getElementById(id);
+                    if (el && item) el.value = (item[field] != null && item[field] !== '') ? item[field] : '';
+                };
+                set('imperial', 'lump', 'amount', 'inv-imperial-amount'); set('imperial', 'lump', 'years', 'inv-imperial-years');
+                set('creif', 'lump', 'amount', 'inv-creif-amount'); set('creif', 'lump', 'years', 'inv-creif-years');
+                set('atris', 'lump', 'amount', 'inv-atris-lump-amount'); set('atris', 'lump', 'years', 'inv-atris-lump-years');
+                set('penta', 'lump', 'amount', 'inv-penta-amount'); set('penta', 'lump', 'years', 'inv-penta-years');
+                set('ishares', 'monthly', 'amount', 'inv-ishares-amount'); set('ishares', 'monthly', 'years', 'inv-ishares-years');
+                set('fidelity2040', 'monthly', 'amount', 'inv-fidelity2040-amount'); set('fidelity2040', 'monthly', 'years', 'inv-fidelity2040-years');
+                set('conseq', 'pension', 'amount', 'inv-conseq-amount'); set('conseq', 'pension', 'years', 'inv-conseq-years');
+                var pentaItem = invs.find(function(i) { return i.productKey === 'penta' && i.type === 'lump'; });
+                var pentaRateEl = document.getElementById('inv-penta-rate');
+                if (pentaRateEl && pentaItem && pentaItem.annualRate != null) pentaRateEl.value = String(pentaItem.annualRate);
+            }
+
+            updateBenefitCalc() {
+                var b = this.data.benefits;
+                var amount = b.amount || 0;
+                var count = b.count || this.data.company.employees || 0;
+                var yearlyCost = amount * count * 12;
+                var yearlyEl = document.getElementById('benefit-yearly');
+                if (yearlyEl) yearlyEl.textContent = this.fmt(yearlyCost);
+                
+                var grossEquiv = amount > 0 ? amount / 0.67 : 0;
+                var employerCost = grossEquiv * 1.338;
+                var netForEmployee = grossEquiv * 0.67;
+                
+                document.getElementById('calc-wage-gross').textContent = this.fmt(grossEquiv * count);
+                document.getElementById('calc-wage-tax').textContent = this.fmt((employerCost - grossEquiv) * count);
+                document.getElementById('calc-wage-total').textContent = this.fmt(employerCost * count);
+                document.getElementById('calc-wage-net').textContent = this.fmt(netForEmployee * count);
+                
+                document.getElementById('calc-benefit-amount').textContent = this.fmt(amount * count);
+                document.getElementById('calc-benefit-total').textContent = this.fmt(amount * count);
+                document.getElementById('calc-benefit-net').textContent = this.fmt(amount * count);
+                
+                var savings = (employerCost - amount) * count * 12;
+                document.getElementById('calc-savings').textContent = this.fmt(savings);
+                
+                var directorsAmount = b.directorsAmount || 0;
+                var directorsYearly = directorsAmount * 12;
+                var dirYearlyEl = document.getElementById('benefit-directors-yearly');
+                if (dirYearlyEl) dirYearlyEl.textContent = 'Roční náklad: ' + this.fmt(directorsYearly);
+                var taxSavingsOwners = directorsYearly * 0.21;
+                var dirTaxEl = document.getElementById('calc-directors-tax-savings');
+                if (dirTaxEl) dirTaxEl.textContent = this.fmt(taxSavingsOwners);
+                var totalFromOwn = (this.data.directors || []).reduce(function(sum, d) { return sum + (d.paysFromOwn ? (d.paysFromOwnAmount || 0) : 0); }, 0);
+                var transferBlock = document.getElementById('transfer-to-company-block');
+                var transferAmountEl = document.getElementById('transfer-amount');
+                var transferSavingsEl = document.getElementById('transfer-savings');
+                if (transferBlock && transferAmountEl && transferSavingsEl) {
+                    if (totalFromOwn > 0) {
+                        transferBlock.classList.remove('hidden');
+                        var yearlyFromOwn = totalFromOwn * 12;
+                        var grossEquiv = totalFromOwn / 0.67;
+                        var companySavings = yearlyFromOwn * 0.19;
+                        var directorSavings = (grossEquiv * 1.338 - totalFromOwn) * 12 * 0.15;
+                        var totalTransferSavings = companySavings + directorSavings;
+                        transferAmountEl.textContent = Math.round(totalFromOwn).toLocaleString('cs-CZ');
+                        transferSavingsEl.textContent = this.fmt(Math.round(totalTransferSavings));
+                    } else {
+                        transferBlock.classList.add('hidden');
+                    }
+                }
+            }
+
+            updateRiskScore() {
+                var r = this.data.risks;
+                var propHas = r.property && typeof r.property === 'object' ? r.property.has : !!r.property;
+                var interHas = r.interruption && typeof r.interruption === 'object' ? r.interruption.has : !!r.interruption;
+                var liabHas = r.liability && typeof r.liability === 'object' ? r.liability.has : !!r.liability;
+                var covered = [propHas, interHas, liabHas, r.director, r.fleet, r.cyber].filter(Boolean).length;
+                document.getElementById('risk-score').textContent = covered + '/6';
+                document.getElementById('risk-progress').style.width = (covered / 6 * 100) + '%';
+                var gaps = [];
+                if (!propHas) gaps.push('Majetek');
+                if (!liabHas) gaps.push('Odpovědnost');
+                if (!r.director) gaps.push('D&O');
+                var gapsEl = document.getElementById('risk-gaps');
+                gapsEl.innerHTML = gaps.length > 0 ? '<i class="fas fa-exclamation-triangle mr-1"></i> Chybí: ' + gaps.join(', ') : '<i class="fas fa-check-circle text-green-500 mr-1"></i> OK';
+            }
+
+            getRiskAuditTips() {
+                var r = this.data.risks;
+                var revenue = this.data.finance.revenue || 0;
+                var tips = [];
+                ['property', 'interruption', 'liability'].forEach(function(k) {
+                    var obj = r[k] && typeof r[k] === 'object' ? r[k] : null;
+                    if (obj && obj.has) {
+                        if (obj.contractYears > 3) tips.push('Smlouvy starší 3 let');
+                        if (k === 'liability' && obj.limit > 0 && revenue > 0 && obj.limit < revenue) tips.push('Nízké limity odpovědnosti');
+                    }
+                });
+                return tips;
+            }
+
+            calculateInsuranceGap() {
+                var firstDir = (this.data.directors && this.data.directors[0]) || null;
+                var income = firstDir ? (firstDir.netIncome || 0) : 0;
+                var ins = this.data.directorIns || {};
+                var statePension = ins.statePensionMonthly > 0 ? ins.statePensionMonthly : (income * 0.5);
+                var requiredMonthly = income;
+                if (requiredMonthly <= 0) return { needed: 0, gap: 0, recommended: 0 };
+                var neededCapital = (requiredMonthly - statePension) / 0.005;
+                if (neededCapital < 0) neededCapital = 0;
+                var degree = parseInt(ins.invalidityDegree, 10) || 3;
+                if (degree === 1) neededCapital = neededCapital * 0.25;
+                var current = ins.invalidity || 0;
+                var gap = Math.max(0, neededCapital - current);
+                return { needed: neededCapital, gap: gap, recommended: neededCapital };
+            }
+
+            updateInsuranceRec() {
+                var firstDir = (this.data.directors && this.data.directors[0]) || null;
+                var income = firstDir ? (firstDir.netIncome || 0) : 0;
+                var yearly = income * 12;
+                var recDeath = yearly * 5, recInv = 0, recSickPerDay = Math.round(income * 0.6 / 30);
+                document.getElementById('rec-death').textContent = this.fmt(recDeath);
+                var invGap = this.calculateInsuranceGap();
+                recInv = invGap.recommended;
+                document.getElementById('rec-invalidity').textContent = this.fmt(Math.round(recInv));
+                var gapEl = document.getElementById('rec-invalidity-gap');
+                if (gapEl) gapEl.textContent = invGap.gap > 0 ? this.fmt(Math.round(invGap.gap)) : '—';
+                document.getElementById('rec-sick').textContent = this.fmt(recSickPerDay) + '/den';
+                var osvcWarning = document.getElementById('osvc-warning');
+                if (osvcWarning) osvcWarning.style.display = (firstDir && firstDir.incomeType === 'osvc') ? 'block' : 'none';
+                var ins = this.data.directorIns || {};
+                var deathEl = document.getElementById('dir-ins-death'), invEl = document.getElementById('dir-ins-invalidity'), sickEl = document.getElementById('dir-ins-sick');
+                var deathWrap = deathEl && deathEl.closest('div'), invWrap = invEl && invEl.closest('div'), sickWrap = sickEl && sickEl.closest('div');
+                if (deathWrap) deathWrap.classList.toggle('input-below-recommended', (ins.death || 0) < recDeath);
+                if (invWrap) invWrap.classList.toggle('input-below-recommended', (ins.invalidity || 0) < recInv);
+                if (sickWrap) sickWrap.classList.toggle('input-below-recommended', (ins.sick || 0) < recSickPerDay);
+            }
+
+            updateStep4() {
+                var c = this.data.company;
+                var directors = this.data.directors || [];
+                var firstDir = directors[0];
+                var f = this.data.finance;
+                var r = this.data.risks;
+                var propHas = r.property && typeof r.property === 'object' ? r.property.has : !!r.property;
+                var liabHas = r.liability && typeof r.liability === 'object' ? r.liability.has : !!r.liability;
+                
+                var hasBenefits = (this.data.benefits.dps || this.data.benefits.dip || this.data.benefits.izp) || (this.data.benefits.directorsAmount || 0) > 0;
+                var scores = {
+                    employees: c.employees >= 5,
+                    cat3: c.cat3 > 0,
+                    insurance: !liabHas || !r.director,
+                    cash: f.reserve > 0,
+                    family: directors.some(function(d) { return d.hasSpouse || (d.childrenCount && d.childrenCount > 0); })
+                };
+                
+                var icons = { true: '✓', false: '—' };
+                var colors = { true: 'text-green-600', false: 'text-slate-400' };
+                
+                for (var key in scores) {
+                    var el = document.getElementById('score-' + key);
+                    if (el) {
+                        el.textContent = icons[scores[key]];
+                        el.className = 'text-2xl font-bold ' + colors[scores[key]];
+                    }
+                }
+                
+                var totalScore = 0;
+                for (var k in scores) if (scores[k]) totalScore++;
+                document.getElementById('total-score').textContent = totalScore + '/5';
+                
+                var verdictText, verdictSub, semafor;
+                if (totalScore >= 4) {
+                    verdictText = '✅ Vysoký potenciál spolupráce';
+                    verdictSub = 'Existuje několik oblastí s významným dopadem.';
+                    semafor = 'green';
+                } else if (totalScore >= 2) {
+                    verdictText = '📊 Střední potenciál';
+                    verdictSub = 'Jsou zde příležitosti k prověření.';
+                    semafor = 'yellow';
+                } else {
+                    verdictText = '⏸️ Nízká priorita';
+                    verdictSub = 'Momentálně není urgentní potřeba.';
+                    semafor = 'red';
+                }
+                
+                document.getElementById('verdict-text').textContent = verdictText;
+                document.getElementById('verdict-subtitle').textContent = verdictSub;
+                
+                ['red', 'yellow', 'green'].forEach(function(col) {
+                    var light = document.getElementById('semafor-' + col);
+                    if (light) light.classList.toggle('active', col === semafor);
+                });
+
+                var valuation = (f.profit || 0) * 5;
+                var valCard = document.getElementById('valuation-card');
+                var valAmount = document.getElementById('valuation-amount');
+                if (valCard && valAmount) {
+                    if (valuation > 0) {
+                        valCard.classList.remove('hidden');
+                        valAmount.textContent = this.fmt(Math.round(valuation));
+                    } else {
+                        valCard.classList.add('hidden');
+                    }
+                }
+                
+                document.getElementById('score-verdict').textContent = totalScore >= 3 ? 'Má smysl řešit' : 'Sledujte situaci';
+                
+                var auditTips = this.getRiskAuditTips();
+                var auditBlock = document.getElementById('audit-tip-block');
+                var auditText = document.getElementById('audit-tip-text');
+                if (auditBlock && auditText) {
+                    if (auditTips.length > 0) {
+                        auditBlock.classList.remove('hidden');
+                        auditText.textContent = 'Tip na audit: ' + auditTips.join(' / ');
+                    } else {
+                        auditBlock.classList.add('hidden');
+                    }
+                }
+                
+                // Opportunities
+                var benefitSavings = (this.data.benefits.amount || 0) * (c.employees || 0) * 12 * 0.34;
+                document.getElementById('opp-1-value').textContent = this.fmt(benefitSavings);
+                
+                var freeMonthly = Math.max(0, (f.profit || 0) / 12 - (f.loanPayment || 0));
+                document.getElementById('opp-2-value').textContent = this.fmt(freeMonthly);
+                
+                document.getElementById('risk-3-value').textContent = c.topClient || '0';
+                
+                // Quick win
+                var quickWin = c.employees >= 5 
+                    ? 'Zavedení benefitního programu pro ' + c.employees + ' zaměstnanců může ušetřit firmu ' + this.fmt(benefitSavings) + ' ročně.'
+                    : 'Prověřte pojištění odpovědnosti a D&O jednatele.';
+                document.getElementById('quick-win-text').textContent = quickWin;
+                
+                // Actions
+                var actions = [];
+                if (!r.director) actions.push('Sjednat D&O pojištění jednatele');
+                if (!liabHas) actions.push('Prověřit pojištění odpovědnosti');
+                if (c.employees >= 5) actions.push('Připravit návrh benefitního programu');
+                if (c.cat3 > 0) actions.push('Zkontrolovat pojištění 3. kategorie');
+                if (firstDir && firstDir.netIncome > 0) actions.push('Navrhnout životní pojištění jednatele');
+                
+                ['action-1', 'action-2', 'action-3'].forEach(function(id, i) {
+                    document.getElementById(id).textContent = actions[i] || 'Vyhodnotit detaily...';
+                });
+            }
+
+            exportData() {
+                var blob = new Blob([JSON.stringify(this.data, null, 2)], { type: 'application/json' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'fp-' + (this.data.company.name || 'klient') + '-' + new Date().toISOString().split('T')[0] + '.json';
+                a.click();
+            }
+
+            importData(e) {
+                var self = this;
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    try {
+                        var raw = JSON.parse(ev.target.result);
+                        var migrated = self.migrateImportedData(raw);
+                        sessionStorage.setItem('fp_import_data', JSON.stringify(migrated));
+                        location.reload();
+                    } catch (err) {
+                        alert('Chyba při načítání souboru.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            migrateImportedData(raw) {
+                var data = JSON.parse(JSON.stringify(raw));
+                if (data.director && !data.directors) {
+                    var dir = data.director;
+                    data.directors = [{ name: dir.name || '', age: dir.birthYear != null ? (new Date().getFullYear() - dir.birthYear) : null, share: dir.share != null ? dir.share : 100, hasSpouse: !!dir.hasFamily, childrenCount: 0, incomeType: dir.incomeType || 'employee', netIncome: dir.netIncome || 0, savings: dir.savings || 0, goal: dir.goal || 'tax', benefits: { dps: false, dip: false, izp: false, amountMonthly: 0 }, paysFromOwn: false, paysFromOwnAmount: 0, hasOldPension: false }];
+                    delete data.director;
+                }
+                if (!data.investment) data.investment = { goal: 'renta', targetAmount: 0, targetRentaMonthly: 0, horizonYears: 10, currentAssets: 0, strategy: 'balanced' };
+                if (!data.strategy) data.strategy = { profile: 'balanced', conservativeMode: false };
+                if (!Array.isArray(data.investments) || data.investments.length === 0) {
+                    data.investments = [
+                        { productKey: 'imperial', type: 'lump', amount: 0, years: 10, annualRate: 0.12, computed: { fv: 0 } },
+                        { productKey: 'creif', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+                        { productKey: 'atris', type: 'lump', amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
+                        { productKey: 'penta', type: 'lump', amount: 0, years: 10, annualRate: 0.09, computed: { fv: 0 } },
+                        { productKey: 'ishares', type: 'monthly', amount: 0, years: 20, annualRate: 0.12, computed: { fv: 0 } },
+                        { productKey: 'fidelity2040', type: 'monthly', amount: 0, years: 20, annualRate: 0.07, computed: { fv: 0 } },
+                        { productKey: 'conseq', type: 'pension', amount: 0, years: 30, annualRate: 0.095, computed: { fv: 0 } }
+                    ];
+                }
+                if (!data.directorIns) data.directorIns = { death: 0, invalidity: 0, sick: 0, invalidityDegree: 3, statePensionMonthly: 0 };
+                if (data.directorIns.invalidityDegree == null) data.directorIns.invalidityDegree = 3;
+                if (data.directorIns.statePensionMonthly == null) data.directorIns.statePensionMonthly = 0;
+                if (!Array.isArray(data.directors)) data.directors = [];
+                if (!data.risks) data.risks = { property: { has: false, limit: 0, contractYears: 0 }, interruption: { has: false, limit: 0, contractYears: 0 }, liability: { has: false, limit: 0, contractYears: 0 }, director: false, fleet: false, cyber: false };
+                var r = data.risks;
+                if (typeof r.property === 'boolean') data.risks.property = { has: r.property, limit: 0, contractYears: 0 };
+                if (typeof r.interruption === 'boolean') data.risks.interruption = { has: r.interruption, limit: 0, contractYears: 0 };
+                if (typeof r.liability === 'boolean') data.risks.liability = { has: r.liability, limit: 0, contractYears: 0 };
+                if (data.risks.director === undefined) data.risks.director = false;
+                if (data.risks.fleet === undefined) data.risks.fleet = false;
+                if (data.risks.cyber === undefined) data.risks.cyber = false;
+                return data;
+            }
+
+            reset() {
+                if (confirm('Opravdu vymazat všechna data?')) location.reload();
+            }
+
+            async generatePDF() {
+                var self = this;
+                var root = document.getElementById('report-root');
+                await this.ensureLogosLoaded();
+                root.innerHTML = this.buildPDFHTML();
+                this.applyLogoDataUrls(root);
+                setTimeout(function() { window.print(); }, 500);
+            }
+
+            buildPDFHTML() {
+                var d = this.data;
+                var today = new Date().toLocaleDateString('cs-CZ');
+                var companyName = d.company.name || 'Společnost';
+                var directors = d.directors || [];
+                var directorName = directors.length ? directors.map(function(x) { return x.name; }).filter(Boolean).join(', ') : 'Jednatel';
+                var firstDir = directors[0];
+                var self = this;
+                
+                var employees = d.company.employees || 0;
+                var avgWage = d.company.avgWage || 0;
+                var wageFund = employees * avgWage;
+                var revenue = d.finance.revenue || 0;
+                var profit = d.finance.profit || 0;
+                var reserve = d.finance.reserve || 0;
+                var loanPayment = d.finance.loanPayment || 0;
+                var monthlyExp = wageFund * 1.34 + loanPayment;
+                var runway = reserve && monthlyExp > 0 ? Math.floor(reserve / monthlyExp) : 0;
+                var directorIncome = firstDir ? (firstDir.netIncome || 0) : 0;
+                var yearlyIncome = directorIncome * 12;
+                var isOsvc = firstDir && firstDir.incomeType === 'osvc';
+                var benefitSavings = (d.benefits.amount || 0) * (employees || 0) * 12 * 0.34;
+                var r = d.risks || {};
+                var propHas = r.property && typeof r.property === 'object' ? r.property.has : !!r.property;
+                var interHas = r.interruption && typeof r.interruption === 'object' ? r.interruption.has : !!r.interruption;
+                var liabHas = r.liability && typeof r.liability === 'object' ? r.liability.has : !!r.liability;
+                var risksCount = [propHas, interHas, liabHas, r.director, r.fleet, r.cyber].filter(Boolean).length;
+                var auditTips = this.getRiskAuditTips();
+                
+                var hdr = function(t) { return '<div class="pdf-header"><span style="font-weight:bold;color:#0f172a;">' + t + '</span><span style="color:#64748b;">Vypracoval: <strong>Marek Marek</strong> dne: <strong>' + today + '</strong> pro: <strong>' + (directorName || companyName) + '</strong></span></div>'; };
+                var ftr = function(p) { return '<div class="footer"><span>Marek Marek - Privátní finanční plánování | www.marek-marek.cz | +420 778 511 166</span><span>Strana ' + p + '</span></div>'; };
+                
+                var riskItems = [
+                    { key: 'property', name: 'Majetek', icon: 'fa-building' },
+                    { key: 'interruption', name: 'Přerušení', icon: 'fa-pause-circle' },
+                    { key: 'liability', name: 'Odpovědnost', icon: 'fa-gavel' },
+                    { key: 'director', name: 'D&O', icon: 'fa-user-tie' },
+                    { key: 'fleet', name: 'Flotila', icon: 'fa-truck' },
+                    { key: 'cyber', name: 'Kyber', icon: 'fa-shield-virus' }
+                ];
+                
+                return '<div class="pdf">' +
+                    '<section class="pdf-page" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;">' +
+                        '<div style="width:100px;height:100px;background:linear-gradient(135deg,#0a0f29,#1e3a6e);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:40px;"><i class="fas fa-building"></i></div>' +
+                        '<h1 class="h1" style="font-size:42px;">FINANČNÍ PLÁNOVÁNÍ</h1>' +
+                        '<p style="font-size:18px;color:#64748b;margin-bottom:50px;">Marek Marek | Vstupní analýza</p>' +
+                        '<div style="background:#f8fafc;padding:40px 60px;border-radius:16px;border:1px solid #e2e8f0;">' +
+                            '<p style="color:#64748b;font-size:10px;text-transform:uppercase;margin-bottom:6px;">Společnost</p>' +
+                            '<h2 style="font-size:26px;color:#0f172a;margin:0 0 24px 0;">' + companyName + '</h2>' +
+                            '<p style="color:#64748b;font-size:10px;text-transform:uppercase;margin-bottom:6px;">Jednatel</p>' +
+                            '<h3 style="font-size:20px;color:#0f172a;margin:0 0 24px 0;">' + directorName + '</h3>' +
+                            '<p style="color:#64748b;font-size:10px;text-transform:uppercase;margin-bottom:6px;">Datum</p>' +
+                            '<p style="font-size:16px;color:#0f172a;margin:0;">' + today + '</p>' +
+                        '</div>' +
+                        ftr(1) +
+                    '</section>' +
+                    
+                    '<section class="pdf-page">' + hdr('PŘEHLED SITUACE') +
+                        '<div class="h2">Klíčové ukazatele</div>' +
+                        '<div class="kpi">' +
+                            '<div class="box"><span class="lbl">Zaměstnanci</span><div class="val" style="color:#0B3A7A;">' + employees + '</div></div>' +
+                            '<div class="box"><span class="lbl">Mzdový fond</span><div class="val">' + self.fmtShort(wageFund) + '</div><span class="sub">měsíčně</span></div>' +
+                            '<div class="box"><span class="lbl">Roční tržby</span><div class="val">' + self.fmtShort(revenue) + '</div></div>' +
+                            '<div class="box"><span class="lbl">Roční zisk</span><div class="val" style="color:#10b981;">' + self.fmtShort(profit) + '</div></div>' +
+                        '</div>' +
+                        '<div class="kpi">' +
+                            '<div class="box"><span class="lbl">Cash rezerva</span><div class="val">' + self.fmt(reserve) + '</div><span class="sub">' + runway + ' měsíců</span></div>' +
+                            '<div class="box"><span class="lbl">Dluhová služba</span><div class="val" style="color:#ef4444;">' + self.fmt(loanPayment) + '</div><span class="sub">měsíčně</span></div>' +
+                            '<div class="box"><span class="lbl">3. kategorie</span><div class="val">' + (d.company.cat3 || 0) + '</div></div>' +
+                            '<div class="box"><span class="lbl">TOP klient</span><div class="val">' + (d.company.topClient || 0) + '%</div></div>' +
+                        '</div>' +
+                        '<div class="h2">TOP 3 Příležitosti</div>' +
+                        '<table class="table"><tbody>' +
+                            '<tr style="background:#f0fdf4;"><td style="width:30px;font-weight:700;color:#10b981;">1</td><td><strong>Zaměstnanecké benefity</strong></td><td style="text-align:right;color:#10b981;font-weight:700;">' + self.fmt(benefitSavings) + '/rok</td></tr>' +
+                            '<tr style="background:#f0fdf4;"><td style="font-weight:700;color:#10b981;">2</td><td><strong>Investice volného CF</strong></td><td style="text-align:right;color:#10b981;font-weight:700;">' + self.fmt(Math.max(0, profit/12 - loanPayment)) + '/měs</td></tr>' +
+                            '<tr style="background:#f0fdf4;"><td style="font-weight:700;color:#10b981;">3</td><td><strong>Daňová optimalizace</strong></td><td style="text-align:right;">Dle analýzy</td></tr>' +
+                        '</tbody></table>' +
+                        '<div class="recommendation"><strong>Rychlé doporučení:</strong> ' + (employees >= 5 ? 'Zavedení benefitního programu může ušetřit ' + self.fmt(benefitSavings) + ' ročně.' : 'Prověřte pojištění odpovědnosti.') + '</div>' +
+                        '<div class="h2" style="margin-top:6mm;">Doporučení – souhrn</div>' +
+                        (function() {
+                            var taxSavings = (d.benefits.directorsAmount || 0) * 12 * 0.21;
+                            var fromOwn = (d.directors || []).reduce(function(s, dir) { return s + (dir.paysFromOwn ? (dir.paysFromOwnAmount || 0) * 12 : 0); }, 0);
+                            if (fromOwn > 0) {
+                                var grossEquiv = (d.directors || []).reduce(function(s, dir) { return s + (dir.paysFromOwn ? (dir.paysFromOwnAmount || 0) : 0); }, 0) / 0.67;
+                                taxSavings += (grossEquiv * 1.338 * 12 - fromOwn) * 0.15;
+                            }
+                            var invGap = self.calculateInsuranceGap();
+                            var inv = d.investment || {};
+                            var r = self.INV_STRATEGY_RATES && self.INV_STRATEGY_RATES[inv.strategy] ? self.INV_STRATEGY_RATES[inv.strategy] : 0.07;
+                            var rM = Math.pow(1 + r, 1/12) - 1;
+                            var nMonths = Math.max(1, (inv.horizonYears || 10) * 12);
+                            var fvTarget = inv.goal === 'renta' && (inv.targetRentaMonthly || 0) > 0 ? (inv.targetRentaMonthly || 0) / 0.005 : (inv.targetAmount || 0);
+                            var fvCurrent = (inv.currentAssets || 0) * Math.pow(1 + r, inv.horizonYears || 10);
+                            var shortfall = Math.max(0, fvTarget - fvCurrent);
+                            var pmt = shortfall > 0 && rM > 0 ? shortfall * rM / (Math.pow(1 + rM, nMonths) - 1) : 0;
+                            return '<table class="table"><tbody>' +
+                                '<tr><td>Daňová úspora (díky benefitům)</td><td style="text-align:right;font-weight:700;">' + self.fmt(Math.round(taxSavings)) + '</td></tr>' +
+                                '<tr><td>Chybějící krytí invalidity</td><td style="text-align:right;font-weight:700;">' + self.fmt(Math.round(invGap.gap)) + '</td></tr>' +
+                                '<tr><td>Potřebná investice (měsíčně) pro splnění cílů</td><td style="text-align:right;font-weight:700;">' + self.fmt(Math.round(pmt)) + '</td></tr>' +
+                                '</tbody></table>';
+                        })() +
+                        ftr(2) +
+                    '</section>' +
+                    
+                    '<section class="pdf-page">' + hdr('FIREMNÍ POJIŠTĚNÍ') +
+                        '<div class="h2">Analýza rizik</div>' +
+                        '<div class="kpi"><div class="box" style="flex:2;"><span class="lbl">Pokrytí rizik</span><div class="val" style="color:' + (risksCount >= 4 ? '#10b981' : '#ef4444') + ';">' + risksCount + '/6</div></div></div>' +
+                        '<div class="risk-matrix">' +
+                            riskItems.map(function(it) {
+                                var covered = (it.key === 'property' ? propHas : it.key === 'interruption' ? interHas : it.key === 'liability' ? liabHas : d.risks[it.key]);
+                                return '<div class="risk-item ' + (covered ? 'covered' : 'not-covered') + '"><div style="font-size:14pt;margin-bottom:2mm;"><i class="fas ' + it.icon + '" style="color:' + (covered ? '#10b981' : '#ef4444') + ';"></i></div><div style="font-size:8pt;font-weight:600;">' + it.name + '</div><div style="font-size:7pt;color:' + (covered ? '#10b981' : '#ef4444') + ';">' + (covered ? 'Kryto' : 'Nekryto') + '</div></div>';
+                            }).join('') +
+                        '</div>' +
+                        (auditTips.length > 0 ? '<div class="interpretation" style="margin-top:4mm;"><strong>Tip na audit:</strong> ' + auditTips.join(' / ') + '</div>' : '') +
+                        '<div class="h2">Pojištění jednatele</div>' +
+                        '<div class="insurance-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">' +
+                            '<div class="insurance-item"><span class="lbl">Smrt (Doporučeno)</span><div class="val">' + self.fmt(yearlyIncome * 5) + '</div></div>' +
+                            '<div class="insurance-item"><span class="lbl">Invalidita (Doporučeno)</span><div class="val">' + self.fmt(yearlyIncome * 3) + '</div></div>' +
+                            '<div class="insurance-item"><span class="lbl">PN (Doporučeno)</span><div class="val">' + self.fmt(Math.round(directorIncome * 0.6 / 30)) + '/den</div></div>' +
+                            '<div class="insurance-item"><span class="lbl">Aktuálně nastaveno (Smrt)</span><div class="val' + (d.directorIns.death < yearlyIncome * 5 ? ' val-below' : '') + '">' + self.fmt(d.directorIns.death) + '</div></div>' +
+                            '<div class="insurance-item"><span class="lbl">Aktuálně nastaveno (Inv.)</span><div class="val' + (d.directorIns.invalidity < yearlyIncome * 3 ? ' val-below' : '') + '">' + self.fmt(d.directorIns.invalidity) + '</div></div>' +
+                            '<div class="insurance-item"><span class="lbl">Aktuálně nastaveno (PN)</span><div class="val' + (d.directorIns.sick < Math.round(directorIncome * 0.6 / 30) ? ' val-below' : '') + '">' + self.fmt(d.directorIns.sick) + '/den</div></div>' +
+                        '</div>' +
+                        (isOsvc ? '<div class="warning-box" style="margin-top:10px;"><strong>Upozornění pro OSVČ:</strong> Nemáte nárok na státní nemocenskou, pokud si neplatíte dobrovolné pojištění. Doporučujeme zvýšit krytí v komerčním pojištění.</div>' : '') +
+                        ftr(3) +
+                    '</section>' +
+                    (function() {
+                        var strat = d.strategy || {};
+                        var strategyLabel = strat.profile === 'conservative' ? 'Konzervativní' : strat.profile === 'dynamic' ? 'Dynamická' : 'Vyvážená';
+                        var invs = (d.investments || []).filter(function(i) { return (i.amount || 0) > 0; });
+                        var totalLump = 0, totalMonthly = 0, totalFV = 0;
+                        invs.forEach(function(i) {
+                            if (i.type === 'lump') totalLump += i.amount || 0;
+                            else totalMonthly += (i.amount || 0);
+                            totalFV += i.computed && i.computed.fv ? i.computed.fv : 0;
+                        });
+                        var getTypeName = function(t) { return t === 'lump' ? 'Jednorázová' : (t === 'pension' ? 'Penzijní' : 'Pravidelná'); };
+                        var getBadgeClass = function(t) { return t === 'lump' ? 'inv-badge inv-badge-lump' : (t === 'pension' ? 'inv-badge inv-badge-pension' : 'inv-badge inv-badge-monthly'); };
+                        var portfolioRows = invs.map(function(i) {
+                            var rate = (i.annualRate || 0) * 100;
+                            var amt = i.amount || 0;
+                            var fv = i.computed && i.computed.fv ? i.computed.fv : 0;
+                            var vklad = Math.round(amt).toLocaleString('cs-CZ') + (i.type === 'lump' ? ' Kč' : ' Kč/m');
+                            return '<tr><td><span class="fund-name">' + self.getProductName(i.productKey) + '</span></td><td><span class="' + getBadgeClass(i.type) + '">' + getTypeName(i.type) + '</span></td><td style="text-align:right;font-variant-numeric:tabular-nums">' + vklad + '</td><td><span class="yield-pill">' + rate.toFixed(1) + '%</span></td><td style="text-align:right;font-weight:700;color:#0B3A7A;font-variant-numeric:tabular-nums">' + Math.round(fv).toLocaleString('cs-CZ') + ' Kč</td></tr>';
+                        }).join('');
+                        var page4 = '<section class="pdf-page">' + hdr('CÍLE A STRATEGIE') +
+                            '<div class="pdf-section"><div class="h2">Doporučené portfolio</div>' +
+                            '<p style="font-size:9pt;color:#64748b;margin-bottom:4mm;">Strategie: <strong>' + strategyLabel + '</strong>. V PDF je pouze to, co jste zvolili v sekci Investice.</p>' +
+                            (portfolioRows ? '<table class="table table-5col"><thead><tr><th>Produkt</th><th style="text-align:center">Typ</th><th style="text-align:right">Vklad</th><th style="text-align:center">Výnos</th><th style="text-align:right;color:#0B3A7A">Předpoklad FV</th></tr></thead><tbody>' + portfolioRows + '</tbody><tfoot><tr><td colspan="5" style="padding:3mm;"><div class="total-summary-bar"><strong style="font-size:10pt;color:#0f172a;">CELKEM</strong><div style="display:flex;gap:3mm;"><div class="total-chip"><span class="total-chip-label">Jednorázově:</span><span class="total-chip-value">' + Math.round(totalLump).toLocaleString('cs-CZ') + ' Kč</span></div><div class="total-chip"><span class="total-chip-label">Měsíčně:</span><span class="total-chip-value">' + Math.round(totalMonthly).toLocaleString('cs-CZ') + ' Kč/m</span></div></div><div class="total-fv">' + Math.round(totalFV).toLocaleString('cs-CZ') + ' Kč</div></div></td></tr></tfoot></table>' : '<p style="color:#64748b;">Žádné fondy nebyly vybrány. Vyplňte částky v kroku 3 → Investice.</p>') +
+                            '</div>' + ftr(4) + '</section>';
+                        var PDF_FUNDS = [
+                            { key:'imperial', name:'AlgoImperial', badge:'Dynamický', badgeColor:'#dc2626', risk:'5/7', goal:'Absolutní výnos', horizon:'5+ let', minInvest:'1 000 000 Kč', currency:'CZK', liquidity:'Měsíční', description:'AlgoImperial je dynamický fond využívající algoritmické strategie pro dosažení absolutního výnosu nezávisle na tržních podmínkách.', strategy:'Fond kombinuje kvantitativní analýzu s aktivním řízením rizika. Využívá pokročilé matematické modely pro identifikaci tržních neefektivit a arbitrážních příležitostí napříč různými třídami aktiv.', benefits:['Nízká korelace s tradičními trhy','Aktivní řízení rizika','Systematický investiční přístup','Diverzifikace portfolia'], representation:'Algoritmické strategie, Futures, Opce', morningstar:0, zlataKoruna:false },
+                            { key:'creif', name:'CREIF', badge:'Nemovitostní', badgeColor:'#0B3A7A', risk:'3/7', goal:'Stabilní výnos z nájmů', horizon:'5+ let', minInvest:'1 000 000 Kč', currency:'EUR', liquidity:'Čtvrtletní', description:'CREIF je nemovitostní fond zaměřený na prémiové komerční nemovitosti ve střední Evropě s důrazem na stabilní příjem z nájmů.', strategy:'Fond investuje do kancelářských budov, logistických center a retailových parků v České republice, Polsku a dalších zemích CEE regionu. Důraz je kladen na kvalitní nájemce a dlouhodobé nájemní smlouvy.', benefits:['Stabilní příjem z nájmů','Ochrana proti inflaci','Diverzifikace v rámci CEE','Profesionální správa nemovitostí'], representation:'Kancelářské budovy, Logistická centra, Retail', morningstar:0, zlataKoruna:false },
+                            { key:'atris', name:'ATRIS', badge:'Alternativní', badgeColor:'#ea8d00', risk:'4/7', goal:'Diverzifikace & Ochrana', horizon:'7+ let', minInvest:'500 000 Kč', currency:'CZK', liquidity:'Pololetní', description:'ATRIS je alternativní fond investující do energetické infrastruktury a obnovitelných zdrojů energie s cílem dlouhodobého stabilního výnosu.', strategy:'Fond se zaměřuje na projekty v oblasti solární a větrné energie, bioplynové stanice a energetickou infrastrukturu. Investice jsou geograficky diverzifikovány napříč střední a západní Evropou.', benefits:['Ochrana proti inflaci','Stabilní cash flow z provozu','ESG kompatibilní investice','Nízká korelace s akciovými trhy'], representation:'Solární parky, Větrné elektrárny, Bioplyn', morningstar:0, zlataKoruna:false },
+                            { key:'penta', name:'PENTA', badge:'Private Equity', badgeColor:'#7c3aed', risk:'4/7', goal:'Růst hodnoty firem', horizon:'7-10 let', minInvest:'1 000 000 Kč', currency:'EUR', liquidity:'Omezená', description:'PENTA je private equity fond zaměřený na akvizice a rozvoj společností v regionu střední a východní Evropy.', strategy:'Fond investuje do etablovaných společností s potenciálem růstu. Aktivně se podílí na strategickém řízení a operativním zlepšování firem v portfoliu. Mezi známé investice patří Dr.Max, Fortuna či Aero Vodochody.', benefits:['Přístup k privátním investicím','Aktivní správa portfoliových firem','Potenciál nadprůměrných výnosů','Zkušený investiční tým'], representation:'Healthcare, Gaming, Aerospace, Retail', morningstar:0, zlataKoruna:false },
+                            { key:'ishares', name:'iShares MSCI World', badge:'Akciové ETF', badgeColor:'#059669', risk:'5/7', goal:'Globální růst', horizon:'10+ let', minInvest:'Bez limitu', currency:'USD', liquidity:'Denní', description:'iShares MSCI World ETF je pasivně řízený fond kopírující index MSCI World — investuje do 1 320 společností z 23 rozvinutých zemí a pokrývá 85 % tržní kapitalizace vyspělého světa.', strategy:'Index je vážený tržní kapitalizací. Největší zastoupení mají USA (72 %), Japonsko (5,4 %), Velká Británie (3,7 %) a Kanada (2,9 %). Největší sektory: technologie (28 %), finance (14 %), spotřební zboží (10 %) a průmysl (10 %). Top 10 holdings tvoří 28 % portfolia.', benefits:['Diverzifikace do 1 320 firem','Morningstar Bronze medaile','Vysoká likvidita','Transparentní složení'], representation:'NVIDIA, Apple, Microsoft, Amazon, Alphabet, Broadcom, Meta, Tesla', morningstar:4, zlataKoruna:false },
+                            { key:'fidelity2040', name:'Fidelity Target 2040', badge:'Smíšený', badgeColor:'#0891b2', risk:'4/7', goal:'Cílové datum 2040', horizon:'Do roku 2040', minInvest:'Bez limitu', currency:'EUR', liquidity:'Denní', description:'Fidelity Freedom 2040 je fond životního cyklu s aktivní správou. Investuje do 45 podkladových Fidelity fondů a spravuje přes 32 miliard USD. Alokace: 90 % akcie, 10 % dluhopisy a hotovost.', strategy:'Fond využívá strategii "glide path" — postupně snižuje rizikovost s blížícím se cílovým datem. Aktuálně: 44 % US akcie, 36 % zahraniční akcie, 17 % dluhopisy. Největší podkladový fond je Fidelity Series Equity-Income (large-cap US akcie).', benefits:['Automatická správa alokace','Profesionální rebalancing','Vhodné pro penzijní spoření','Aktivní výběr titulů'], representation:'US akcie, Mezinárodní akcie, Inv. grade dluhopisy, High-yield dluhopisy', morningstar:0, zlataKoruna:false },
+                            { key:'conseq', name:'Conseq Globální Akciový', badge:'Účastnický fond', badgeColor:'#dc2626', risk:'5/7', goal:'Dlouhodobý růst', horizon:'5+ let', minInvest:'100 Kč', currency:'CZK', liquidity:'Denní', description:'Conseq Globální Akciový účastnický fond je dynamický penzijní fond (DPS) investující na akciových trzích v různých regionech světa včetně rozvíjejících se trhů. Vítěz Zlaté koruny 2024 v kategorii Penzijní spoření.', strategy:'Fond investuje přímo do akcií nebo prostřednictvím ETF a finančních derivátů. Důraz na akcie ze střední Evropy pro snížení měnového rizika. Od založení (2013) dosáhl zhodnocení +224 % (9,5 % p.a.). Roční výkonnost 2024: +12,4 %, 2023: +21,9 %.', benefits:['🏆 Zlatá koruna 2024 — 1. místo','Státní příspěvek až 340 Kč/měs','Daňové zvýhodnění do 36 000 Kč/rok','Možnost garance prostředků'], representation:'Akcie ČR, Polsko, Rakousko, Německo, USA + ETF na EM', morningstar:0, zlataKoruna:true }
+                        ];
+                        var usedKeys = {};
+                        invs.forEach(function(i) { usedKeys[i.productKey] = i; });
+                        var pageNum = 5;
+                        var fundPages = '';
+                        PDF_FUNDS.forEach(function(fund) {
+                            var inv = usedKeys[fund.key];
+                            if (!inv || (inv.amount || 0) <= 0) return;
+                            var amount = inv.amount || 0;
+                            var fv = inv.computed && inv.computed.fv ? inv.computed.fv : 0;
+                            var invType = inv.type === 'lump' ? 'Jednorázová' : (inv.type === 'pension' ? 'Penzijní spoření' : 'Pravidelná');
+                            var invLabel = amount.toLocaleString('cs-CZ') + ' Kč' + (inv.type !== 'lump' ? '/měs' : '');
+                            var pillMorningstar = fund.morningstar ? '<span style="display:inline-block;margin-left:2mm;font-size:10pt;color:#fbbf24;">' + '★'.repeat(fund.morningstar) + '☆'.repeat(5 - fund.morningstar) + '</span><span style="font-size:8pt;color:#64748b;margin-left:1mm;">Morningstar</span>' : '';
+                            var pillZlata = fund.zlataKoruna ? '<span style="display:inline-block;margin-left:2mm;background:#fef3c7;color:#92400e;padding:1mm 3mm;border-radius:2mm;font-size:7pt;font-weight:600;">🏆 ZLATÁ KORUNA 2024</span>' : '';
+                            fundPages += '<section class="pdf-page">' + hdr('DETAIL PRODUKTU') +
+                                '<div class="pdf-section">' +
+                                '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6mm;">' +
+                                '<div>' +
+                                '<h2 style="font-size:18pt;font-weight:700;color:#0f172a;margin:0 0 2mm 0;">' + fund.name + '</h2>' +
+                                '<span style="display:inline-block;background:' + fund.badgeColor + ';color:white;padding:1.5mm 4mm;border-radius:2mm;font-size:8pt;font-weight:600;">' + fund.badge + '</span>' +
+                                pillMorningstar + pillZlata +
+                                '</div>' +
+                                '<div style="text-align:right;">' +
+                                '<div style="font-size:9pt;color:#64748b;">Vaše investice</div>' +
+                                '<div style="font-size:14pt;font-weight:700;color:#0B3A7A;">' + invLabel + '</div>' +
+                                '</div></div>' +
+                                '<p style="font-size:10pt;color:#334155;line-height:1.6;margin-bottom:5mm;">' + fund.description + '</p>' +
+                                '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3mm;margin-bottom:6mm;">' +
+                                '<div style="background:#f8fafc;padding:3mm;border-radius:2mm;text-align:center;"><div style="font-size:8pt;color:#64748b;margin-bottom:1mm;">Riziko</div><div style="font-size:11pt;font-weight:700;color:#0f172a;">' + fund.risk + '</div></div>' +
+                                '<div style="background:#f8fafc;padding:3mm;border-radius:2mm;text-align:center;"><div style="font-size:8pt;color:#64748b;margin-bottom:1mm;">Horizont</div><div style="font-size:11pt;font-weight:700;color:#0f172a;">' + fund.horizon + '</div></div>' +
+                                '<div style="background:#f8fafc;padding:3mm;border-radius:2mm;text-align:center;"><div style="font-size:8pt;color:#64748b;margin-bottom:1mm;">Likvidita</div><div style="font-size:11pt;font-weight:700;color:#0f172a;">' + fund.liquidity + '</div></div></div>' +
+                                '<div class="h2">Investiční strategie</div>' +
+                                '<p style="font-size:10pt;color:#334155;line-height:1.6;margin-bottom:5mm;">' + fund.strategy + '</p>' +
+                                '<div class="h2">Klíčové výhody</div>' +
+                                '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:2mm;margin-bottom:5mm;">' +
+                                (fund.benefits || []).map(function(b) { return '<div style="display:flex;align-items:center;gap:2mm;font-size:9pt;color:#334155;"><span style="color:#059669;font-weight:bold;">✓</span> ' + b + '</div>'; }).join('') + '</div>' +
+                                '<div class="h2">Základní parametry</div>' +
+                                '<table class="table" style="margin-bottom:5mm;"><tbody>' +
+                                '<tr><td style="width:40%;color:#64748b;">Investiční cíl</td><td style="font-weight:600;">' + fund.goal + '</td></tr>' +
+                                '<tr><td style="color:#64748b;">Min. investice</td><td style="font-weight:600;">' + fund.minInvest + '</td></tr>' +
+                                '<tr><td style="color:#64748b;">Měna fondu</td><td style="font-weight:600;">' + fund.currency + '</td></tr>' +
+                                '<tr><td style="color:#64748b;">Typické zastoupení</td><td style="font-weight:600;">' + fund.representation + '</td></tr></tbody></table>' +
+                                '<div style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);padding:4mm;border-radius:3mm;border:1px solid #bae6fd;">' +
+                                '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                                '<div><div style="font-size:8pt;color:#64748b;">Očekávaná hodnota na konci horizontu</div><div style="font-size:14pt;font-weight:700;color:#0B3A7A;">' + Math.round(fv).toLocaleString('cs-CZ') + ' Kč</div></div>' +
+                                '<div style="text-align:right;"><div style="font-size:8pt;color:#64748b;">Typ investice</div><div style="font-size:11pt;font-weight:600;color:#334155;">' + invType + '</div></div></div></div>' +
+                                '</div>' + ftr(pageNum++) + '</section>';
+                        });
+                        var invNeed = directorIncome * 1.2;
+                        var statePension = d.directorIns.statePensionMonthly || Math.round(directorIncome * 0.5);
+                        var invCapital = Math.ceil(Math.max(0, (invNeed - statePension) * 200) / 100000) * 100000;
+                        var pnDaily = Math.round(directorIncome * 0.6 / 30);
+                        var deathCov = yearlyIncome * 5;
+                        var tnBase = directorIncome >= 100000 ? 3000000 : (directorIncome >= 50000 ? 2000000 : 1000000);
+                        var zajisteniPage = '<section class="pdf-page">' + hdr('ZAJIŠTĚNÍ PŘÍJMŮ' + (directorName ? ' – ' + directorName : '')) +
+                            '<div class="h2">Životní pojištění' + (directorName ? ' – ' + directorName : ' jednatele') + '</div>' +
+                            '<p style="font-size:10pt;color:#64748b;margin-bottom:4mm;">Příjem: <strong>' + Math.round(directorIncome || 0).toLocaleString('cs-CZ') + ' Kč</strong> čistého měsíčně' + (isOsvc ? ' <span style="background:#fef3c7;color:#92400e;padding:1mm 2mm;border-radius:2mm;font-size:8pt;">OSVČ</span>' : '') + '</p>' +
+                            '<table class="table" style="margin-bottom:6mm;"><thead><tr><th style="width:50%;">Rizika</th><th style="width:50%;text-align:right;">Pojistná částka / nastavení</th></tr></thead><tbody>' +
+                            '<tr><td><i class="fas fa-wheelchair" style="color:#0B3A7A;margin-right:2mm;"></i> Invalidita 2.–3. stupeň</td><td style="text-align:right;font-weight:bold;color:#0B3A7A;">' + Math.round(invCapital).toLocaleString('cs-CZ') + ' Kč</td></tr>' +
+                            '<tr><td><i class="fas fa-bone" style="color:#0B3A7A;margin-right:2mm;"></i> Trvalé následky od 0,5 % a od 10 %</td><td style="text-align:right;font-weight:bold;color:#0B3A7A;">' + Math.round(tnBase).toLocaleString('cs-CZ') + ' Kč <span style="font-weight:normal;color:#64748b;">(progrese 8×)</span></td></tr>' +
+                            '<tr><td><i class="fas fa-bed" style="color:#0B3A7A;margin-right:2mm;"></i> Pracovní neschopnost od 29. dne zpětně</td><td style="text-align:right;font-weight:bold;color:#0B3A7A;">' + Math.round(pnDaily).toLocaleString('cs-CZ') + ' Kč / den</td></tr>' +
+                            '<tr><td><i class="fas fa-heart" style="color:#0B3A7A;margin-right:2mm;"></i> Smrt z jakýchkoliv příčin</td><td style="text-align:right;font-weight:bold;color:#0B3A7A;">' + Math.round(deathCov).toLocaleString('cs-CZ') + ' Kč</td></tr></tbody></table>' +
+                            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;font-size:8pt;">' +
+                            '<div style="background:#f8fafc;padding:4mm;border-radius:2mm;border-left:3px solid #0B3A7A;"><div style="font-weight:700;color:#0B3A7A;margin-bottom:2mm;font-size:9pt;">INVALIDITA</div><div style="color:#475569;line-height:1.5;">Potřeba při invaliditě: <strong>' + Math.round(invNeed).toLocaleString('cs-CZ') + ' Kč/měs</strong><br>z pojištění: <strong>' + Math.round(invCapital/200).toLocaleString('cs-CZ') + ' Kč</strong><br>státní důchod: <strong>' + Math.round(statePension).toLocaleString('cs-CZ') + ' Kč</strong>' + (isOsvc ? ' (OSVČ nižší)' : '') + '</div></div>' +
+                            '<div style="background:#f8fafc;padding:4mm;border-radius:2mm;border-left:3px solid ' + (isOsvc ? '#dc2626' : '#0B3A7A') + ';"><div style="font-weight:700;color:' + (isOsvc ? '#dc2626' : '#0B3A7A') + ';margin-bottom:2mm;font-size:9pt;">PRACOVNÍ NESCHOPNOST' + (isOsvc ? ' ⚠️ OSVČ' : '') + '</div><div style="color:#475569;line-height:1.5;">' + (isOsvc ? '<strong style="color:#dc2626;">OSVČ nemá nárok na nemocenskou!</strong><br>Musíte pokrýt celý příjem ' + Math.round(directorIncome).toLocaleString('cs-CZ') + ' Kč. PN ' + Math.round(pnDaily).toLocaleString('cs-CZ') + ' Kč/den.' : 'PN ' + Math.round(pnDaily).toLocaleString('cs-CZ') + ' Kč/den = ' + Math.round(pnDaily*30).toLocaleString('cs-CZ') + ' Kč/měs.') + '</div></div>' +
+                            '<div style="background:#f8fafc;padding:4mm;border-radius:2mm;border-left:3px solid #0B3A7A;"><div style="font-weight:700;color:#0B3A7A;margin-bottom:2mm;font-size:9pt;">TRVALÉ NÁSLEDKY</div><div style="color:#475569;line-height:1.5;">Základ: <strong>' + Math.round(tnBase).toLocaleString('cs-CZ') + ' Kč</strong><br>S progresí 8×: až <strong>' + Math.round(tnBase*8).toLocaleString('cs-CZ') + ' Kč</strong></div></div>' +
+                            '<div style="background:#f8fafc;padding:4mm;border-radius:2mm;border-left:3px solid #0B3A7A;"><div style="font-weight:700;color:#0B3A7A;margin-bottom:2mm;font-size:9pt;">SMRT</div><div style="color:#475569;line-height:1.5;">Doporučeno: <strong>' + Math.round(deathCov).toLocaleString('cs-CZ') + ' Kč</strong> (5× roční příjem)</div></div></div>' +
+                            (isOsvc ? '<div style="font-size:7pt;color:#94a3b8;margin-top:4mm;padding-top:2mm;border-top:1px solid #e2e8f0;"><strong>OSVČ:</strong> Bez dobrovolného pojištění nemá nárok na nemocenskou od ČSSZ.</div>' : '') +
+                            ftr(pageNum) + '</section>';
+                        return page4 + fundPages + zajisteniPage;
+                    })() +
+                    '</div>';
+            }
+        }
+        
+        // Start App
+        window.addEventListener('DOMContentLoaded', () => {
+            window.app = new App();
+        });
+    </script>
+</body>
+</html>
