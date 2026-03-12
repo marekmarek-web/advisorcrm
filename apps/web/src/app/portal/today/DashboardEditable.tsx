@@ -336,7 +336,7 @@ export function DashboardEditable({
                 Roční ekvivalent: {totalAnnual.toLocaleString("cs-CZ")} Kč · {totalCount} smluv
               </div>
               {target != null && target > 0 && (
-                <div className="text-xs font-bold text-slate-500 mt-0.5">Cíl: {target.toLocaleString("cs-CZ")} Kč</div>
+                <div className="text-xs font-bold text-slate-500 mt-0.5">Cíl: {Number(target).toLocaleString("cs-CZ")} Kč</div>
               )}
             </div>
             {target != null && target > 0 && (
