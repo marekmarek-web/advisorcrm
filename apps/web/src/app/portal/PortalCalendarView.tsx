@@ -801,9 +801,9 @@ export function PortalCalendarView() {
             if (id != null) {
               loadDayTasks(selectedDate);
               setNewTaskModal(null);
-              toast?.success("Úkol byl vytvořen.");
+              toast.showToast("Úkol byl vytvořen.", "success");
             } else {
-              toast?.error("Úkol se nepodařilo vytvořit.");
+              toast.showToast("Úkol se nepodařilo vytvořit.", "error");
             }
           }}
           onClose={() => setNewTaskModal(null)}
