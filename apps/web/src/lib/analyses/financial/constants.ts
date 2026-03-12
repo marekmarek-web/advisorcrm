@@ -228,6 +228,8 @@ export const INSURANCE_COMPANIES_CS: string[] = [
   "Slavia pojišťovna",
   "Česká podnikatelská pojišťovna",
   "HDI pojišťovna",
+  "Maxima pojišťovna",
+  "NN pojišťovna",
   "UNIQA",
   "AXA",
   "Pojistíme.cz",

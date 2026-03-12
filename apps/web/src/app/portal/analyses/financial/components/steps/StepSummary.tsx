@@ -19,6 +19,7 @@ export function StepSummary() {
   const [showPrintReport, setShowPrintReport] = useState(false);
   const [reportHtml, setReportHtml] = useState("");
   const [savingToDocs, setSavingToDocs] = useState(false);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const chartRefs = useRef<{ growth: Chart | null; allocation: Chart | null }>({ growth: null, allocation: null });
   const canSaveToDocuments = Boolean(data.clientId);
 
@@ -34,6 +35,7 @@ export function StepSummary() {
   const handlePrintReport = () => {
     chartRefs.current.growth = null;
     chartRefs.current.allocation = null;
+    setIsPreparingPrint(true);
     setReportHtml(buildReportHTML(data, reportOptions));
     setShowPrintReport(true);
   };
@@ -105,6 +107,7 @@ export function StepSummary() {
 
       requestAnimationFrame(() => {
         setTimeout(() => {
+          setIsPreparingPrint(false);
           window.print();
         }, 300);
       });
@@ -178,9 +181,10 @@ export function StepSummary() {
           <button
             type="button"
             onClick={handlePrintReport}
-            className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500"
+            disabled={isPreparingPrint}
+            className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-60"
           >
-            <Printer className="w-5 h-5" /> Export / tisk reportu
+            <Printer className="w-5 h-5" /> {isPreparingPrint ? "Připravuji tisk…" : "Export / tisk reportu"}
           </button>
           {canSaveToDocuments && (
             <button
@@ -199,21 +203,11 @@ export function StepSummary() {
       </div>
 
       {showPrintReport && (
-        <div id="report-print-root" className="fixed inset-0 z-[9999] bg-white overflow-auto print:block" style={{ display: "block" }}>
-          <div className="sticky top-0 left-0 right-0 z-10 flex justify-end p-4 bg-white/95 print:hidden border-b border-slate-200">
-            <button
-              type="button"
-              onClick={() => setShowPrintReport(false)}
-              className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 font-semibold text-slate-700"
-              aria-label="Zavřít náhled"
-            >
-              Zavřít
-            </button>
-          </div>
-          <div
-            className="report-content p-6"
-            dangerouslySetInnerHTML={{ __html: reportHtml }}
-          />
+        <div
+          id="report-print-root"
+          style={{ position: "fixed", left: "-9999px", top: 0, width: "210mm", zIndex: 9999 }}
+        >
+          <div dangerouslySetInnerHTML={{ __html: reportHtml }} />
         </div>
       )}
 
