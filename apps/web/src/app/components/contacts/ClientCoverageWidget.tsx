@@ -388,7 +388,7 @@ function CoverageAreaCard({
   const Icon = spec.icon;
   const single = items.length === 1;
   return (
-    <div className={`relative rounded-[28px] p-5 flex flex-col group hover:bg-white/80 transition-all duration-500 overflow-hidden border border-white/60 bg-white/40 backdrop-blur-[12px] shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}>
+    <div className={`relative rounded-[28px] p-5 flex flex-col h-full group hover:bg-white/80 transition-all duration-500 overflow-hidden border border-white/60 bg-white/40 backdrop-blur-[12px] shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}>
       <div className={`absolute inset-0 bg-gradient-to-br ${spec.from} ${spec.to} opacity-50 group-hover:opacity-100 transition-opacity duration-500 z-0`} aria-hidden />
       <div className="relative z-10 flex flex-col items-center justify-center mb-6 text-center pt-2">
         <div className={`w-14 h-14 bg-white rounded-2xl shadow-md ${spec.shadowColor}/20 mb-4 flex items-center justify-center ${spec.iconColor} group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-500`}>
