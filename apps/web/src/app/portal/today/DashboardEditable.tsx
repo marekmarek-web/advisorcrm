@@ -24,6 +24,7 @@ import {
   BarChart3,
   FileText,
   TrendingUp,
+  type LucideIcon,
 } from "lucide-react";
 import type { DashboardKpis } from "@/app/actions/dashboard";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
