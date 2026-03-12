@@ -1,0 +1,583 @@
+"use client";
+
+import React, { useState, useMemo } from 'react';
+import { 
+  Search, Bell, Plus, ChevronLeft, ChevronRight, 
+  Calendar as CalendarIcon, User, Video, MapPin, 
+  MoreHorizontal, Sparkles, Clock, CheckCircle2, 
+  X, Mail, Phone, Edit2, Link as LinkIcon, Trash2,
+  Users, Check
+} from 'lucide-react';
+
+// --- CUSTOM ICONS ---
+const PanelRightClose = ({ size, className }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <line x1="15" y1="3" x2="15" y2="21" />
+    <path d="m10 15-3-3 3-3" />
+  </svg>
+);
+
+const PanelRightOpen = ({ size, className }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <line x1="15" y1="3" x2="15" y2="21" />
+    <path d="m8 9 3 3-3 3" />
+  </svg>
+);
+
+const ArrowRight = ({ size, className }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
+  </svg>
+);
+
+const CheckSquare = ({ size, className }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 11 12 14 22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </svg>
+);
+
+const Coffee = ({ size, className }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+    <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+    <line x1="9" y1="2" x2="9" y2="4" />
+    <line x1="15" y1="2" x2="15" y2="4" />
+  </svg>
+);
+
+// --- HELPER FUNKCE PRO DATUMY ---
+const getWeekNumber = (d) => {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1)/7);
+};
+
+const formatMonthYear = (date) => {
+  const months = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+  return `${months[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+const isSameDay = (d1, d2) => {
+  return d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
+};
+
+const formatDateTimeLocal = (date, hour) => {
+  const d = new Date(date);
+  if (hour !== null) d.setHours(hour, 0, 0, 0);
+  // Posun o timezone offset pro správný ISO string
+  const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+  return (new Date(d - tzoffset)).toISOString().slice(0, 16);
+};
+
+// --- MOCK DATA UDÁLOSTÍ ---
+// Přiřazeno k absolutním datům v Březnu 2026 (pro testování dema)
+const EVENTS_DATA = [
+  { id: 1, dateStr: '2026-03-09', title: 'Interní porada', time: '9:00 - 10:00', startHour: 9, duration: 1, type: 'internal', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { id: 2, dateStr: '2026-03-10', title: 'Příprava: Dvořákovi', time: '10:00 - 12:00', startHour: 10, duration: 2, type: 'admin', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { id: 3, dateStr: '2026-03-12', title: 'Prezentace portfolia', client: 'MUDr. Jan Novák', time: '10:30 - 12:00', startHour: 10.5, duration: 1.5, type: 'meeting', color: 'bg-indigo-100 text-indigo-800 border-indigo-300', location: 'Kancelář (Zasedačka A)' },
+  { id: 4, dateStr: '2026-03-12', title: 'Online Konzultace (DIP)', client: 'Kristýna Benešová', time: '14:00 - 15:00', startHour: 14, duration: 1, type: 'video', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', location: 'Google Meet', meetLink: 'meet.google.com/abc-def' },
+  { id: 5, dateStr: '2026-03-13', title: 'Servisní hovor', client: 'Petr Malý', time: '13:00 - 13:30', startHour: 13, duration: 0.5, type: 'call', color: 'bg-blue-50 text-blue-700 border-blue-200' }
+];
+
+const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8:00 do 18:00
+
+export default function ModernCalendarView() {
+  // --- STAVY ---
+  // Výchozí datum pro demo simulujeme jako 12.3.2026 (aby odpovídalo Mock datům)
+  const TODAY = new Date(2026, 2, 12); 
+  const [baseDate, setBaseDate] = useState(new Date(2026, 2, 12));
+  const [view, setView] = useState('work_week'); // 'month', 'week', 'work_week'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isNewActivityOpen, setIsNewActivityOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [activityType, setActivityType] = useState('meeting');
+  const [newActivityData, setNewActivityData] = useState({ start: '', end: '' });
+
+  // --- LOGIKA KALENDÁŘE (DYNAMICKÉ DNY) ---
+  const currentDays = useMemo(() => {
+    const days = [];
+    const startOfWeek = new Date(baseDate);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Pondělí jako první den
+    startOfWeek.setDate(diff);
+
+    const numDays = view === 'work_week' ? 5 : 7;
+    const dayNames = ['NE', 'PO', 'ÚT', 'ST', 'ČT', 'PÁ', 'SO'];
+
+    for (let i = 0; i < numDays; i++) {
+      const current = new Date(startOfWeek);
+      current.setDate(startOfWeek.getDate() + i);
+      days.push({
+        dateObj: current,
+        dateStr: `${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`,
+        name: dayNames[current.getDay()],
+        date: `${current.getDate()}.`,
+        fullDate: `${current.getDate()}. ${['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'][current.getMonth()]}`,
+        isToday: isSameDay(current, TODAY),
+        isPast: current < TODAY && !isSameDay(current, TODAY)
+      });
+    }
+    return days;
+  }, [baseDate, view]);
+
+  const monthDays = useMemo(() => {
+    if (view !== 'month') return [];
+    const days = [];
+    const startOfMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+    const startDay = startOfMonth.getDay();
+    const diff = startDay === 0 ? 6 : startDay - 1; // Odpočet do předchozího pondělí
+    
+    const startDate = new Date(startOfMonth);
+    startDate.setDate(startDate.getDate() - diff);
+
+    for (let i = 0; i < 35; i++) { // 5 týdnů mřížka
+      const current = new Date(startDate);
+      current.setDate(startDate.getDate() + i);
+      days.push({
+        dateObj: current,
+        dateStr: `${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`,
+        dayNum: current.getDate(),
+        isCurrentMonth: current.getMonth() === baseDate.getMonth(),
+        isToday: isSameDay(current, TODAY),
+        isPast: current < TODAY && !isSameDay(current, TODAY)
+      });
+    }
+    return days;
+  }, [baseDate, view]);
+
+  // --- AKCE PRO NAVIGACI V ČASE ---
+  const handlePrev = () => {
+    const newDate = new Date(baseDate);
+    if (view === 'month') newDate.setMonth(newDate.getMonth() - 1);
+    else newDate.setDate(newDate.getDate() - 7);
+    setBaseDate(newDate);
+  };
+
+  const handleNext = () => {
+    const newDate = new Date(baseDate);
+    if (view === 'month') newDate.setMonth(newDate.getMonth() + 1);
+    else newDate.setDate(newDate.getDate() + 7);
+    setBaseDate(newDate);
+  };
+
+  const handleToday = () => {
+    setBaseDate(new Date(2026, 2, 12)); // Simulace Dneška
+  };
+
+  // --- CLICK TO ADD ---
+  const handleTimeClick = (dateObj, hour) => {
+    const startStr = formatDateTimeLocal(dateObj, hour);
+    const endStr = formatDateTimeLocal(dateObj, hour ? hour + 1 : 9); // Výchozí délka 1h
+    
+    setNewActivityData({ start: startStr, end: endStr });
+    setIsNewActivityOpen(true);
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-[#f1f5f9] font-lato text-slate-800 overflow-hidden">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+        .font-lato { font-family: 'Lato', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .modern-grid {
+          background-image: linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
+          background-size: 100% 60px; /* 1 hodina = 60px */
+        }
+        .bg-striped-past {
+          background-image: repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #f1f5f9 10px, #f1f5f9 20px);
+        }
+
+        /* Animované AI Tlačítko Aidvisora */
+        .ai-button-wrapper { position: relative; display: inline-flex; border-radius: 9999px; overflow: hidden; padding: 2px; cursor: pointer; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); transition: transform 0.2s ease; }
+        .ai-button-wrapper:hover { transform: translateY(-2px); }
+        .ai-button-wrapper::before { content: ''; position: absolute; top: -150%; left: -150%; width: 400%; height: 400%; background: conic-gradient(#3b82f6, #06b6d4, #10b981, #eab308, #f97316, #ef4444, #ec4899, #8b5cf6, #3b82f6); animation: spin-gradient 4s linear infinite; z-index: 0; }
+        .ai-button-inner { position: relative; background-color: #ffffff; border-radius: 9999px; padding: 8px 20px; display: flex; align-items: center; gap: 8px; z-index: 1; }
+        @keyframes spin-gradient { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Animace pro modaly */
+        .modal-overlay { animation: fadeIn 0.2s ease-out forwards; }
+        .modal-content { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      `}</style>
+
+      {/* --- GLOBAL TOP NAV --- */}
+      <header className="bg-white px-6 py-3 flex items-center justify-between shadow-sm z-20 flex-shrink-0">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-[#1a1c2e] rounded-xl flex items-center justify-center text-white font-black text-sm">W</div>
+            <span className="font-black text-xl tracking-tight text-[#5b2b90]">Aidvisora</span>
+          </div>
+          
+          <div className="relative group hidden md:block w-80">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={14} className="text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            </div>
+            <input 
+              type="text" 
+              placeholder="Hledat událost, klienta (Cmd + K)..." 
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-100 border-none rounded-lg text-sm font-medium outline-none focus:bg-indigo-50/50 focus:ring-2 focus:ring-indigo-200 transition-all text-slate-700"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => handleTimeClick(baseDate, null)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
+          >
+            <Plus size={16} /> Vytvořit
+          </button>
+          <div className="w-px h-5 bg-slate-200 mx-1"></div>
+          <button className="p-1.5 text-slate-400 hover:text-slate-800 rounded-md hover:bg-slate-100 transition-colors"><Bell size={18} /></button>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-100 text-indigo-700 border border-indigo-200 flex items-center justify-center text-xs font-black cursor-pointer">MD</div>
+        </div>
+      </header>
+
+      {/* --- APP BODY --- */}
+      <div className="flex flex-1 overflow-hidden p-4 gap-4">
+        
+        {/* LEVÝ PANEL (Kontext a filtry) */}
+        <aside className="w-64 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden lg:flex flex-shrink-0">
+          <div className="p-5 border-b border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-800 text-sm">{formatMonthYear(baseDate)}</h3>
+            </div>
+            
+            {/* Malá mřížka měsíce v sidebaru */}
+            <div className="grid grid-cols-7 mb-2">
+              {['PO', 'ÚT', 'ST', 'ČT', 'PÁ', 'SO', 'NE'].map((d, i) => (
+                <div key={i} className="text-[10px] font-black text-slate-400 text-center">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 31 }).map((_, i) => {
+                const day = i + 1;
+                const isToday = day === TODAY.getDate() && baseDate.getMonth() === TODAY.getMonth();
+                const isSelected = day === baseDate.getDate();
+                return (
+                  <div 
+                    key={i} 
+                    className={`h-7 flex items-center justify-center text-xs rounded-full cursor-pointer
+                      ${isToday ? 'bg-indigo-600 text-white font-bold shadow-md' : 
+                        isSelected ? 'bg-indigo-100 text-indigo-700 font-bold' : 
+                        'text-slate-600 hover:bg-slate-100'}
+                    `}
+                  >
+                    {day}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="p-5 flex-1 overflow-y-auto hide-scrollbar">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Moje kalendáře</h4>
+            <div className="space-y-2.5">
+              <label className="flex items-center gap-3 cursor-pointer group"><input type="checkbox" defaultChecked className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">Klientské schůzky</span></label>
+              <label className="flex items-center gap-3 cursor-pointer group"><input type="checkbox" defaultChecked className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500" style={{ accentColor: '#f59e0b'}} /><span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">Úkoly a administrativa</span></label>
+              <label className="flex items-center gap-3 cursor-pointer group"><input type="checkbox" defaultChecked className="w-4 h-4 rounded border-slate-300 text-slate-500 focus:ring-slate-500" style={{ accentColor: '#64748b'}} /><span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">Interní porady</span></label>
+            </div>
+          </div>
+        </aside>
+
+        {/* HLAVNÍ OBLAST KALENDÁŘE */}
+        <main className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative">
+          
+          {/* Toolbar Kalendáře */}
+          <div className="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-white z-20">
+            <div className="flex items-center gap-4">
+              <button onClick={handleToday} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors">
+                Dnes
+              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={handlePrev} className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"><ChevronLeft size={18} /></button>
+                <button onClick={handleNext} className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"><ChevronRight size={18} /></button>
+              </div>
+              <h2 className="text-lg font-black text-slate-900">
+                {view === 'month' ? formatMonthYear(baseDate) : `${getWeekNumber(baseDate)}. týden (${formatMonthYear(baseDate)})`}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Apple-style segmented control */}
+              <div className="bg-slate-100 p-1 rounded-lg flex items-center">
+                <button onClick={() => setView('work_week')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${view === 'work_week' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Pracovní</button>
+                <button onClick={() => setView('week')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${view === 'week' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Týden</button>
+                <button onClick={() => setView('month')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${view === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Měsíc</button>
+              </div>
+              
+              <div className="w-px h-5 bg-slate-200 mx-1 hidden sm:block"></div>
+
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-1.5 rounded-lg transition-colors hidden sm:block ${isSidebarOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:bg-slate-100'}`} title="Přepnout postranní panel">
+                {isSidebarOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Mřížka */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-white relative">
+            
+            {/* --- MĚSÍČNÍ POHLED --- */}
+            {view === 'month' && (
+              <div className="flex-1 flex flex-col bg-white">
+                <div className="grid grid-cols-7 border-b border-slate-200 bg-white z-20 flex-shrink-0">
+                  {['PO', 'ÚT', 'ST', 'ČT', 'PÁ', 'SO', 'NE'].map((d, i) => (
+                    <div key={i} className="py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-100 last:border-r-0">{d}</div>
+                  ))}
+                </div>
+                <div className="flex-1 grid grid-cols-7 grid-rows-5 bg-slate-100 gap-[1px]">
+                  {monthDays.map((day, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => handleTimeClick(day.dateObj, null)}
+                      className={`relative p-2 bg-white transition-colors group cursor-pointer
+                        ${!day.isCurrentMonth ? 'text-slate-300 bg-slate-50/50' : 'text-slate-700 hover:bg-slate-50'}
+                        ${day.isPast && day.isCurrentMonth ? 'bg-striped-past opacity-80' : ''}
+                      `}
+                    >
+                      <span className={`absolute top-2 right-2 text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full
+                        ${day.isToday ? 'bg-indigo-600 text-white shadow-md' : ''}
+                      `}>
+                        {day.dayNum}
+                      </span>
+                      
+                      {/* Vykreslení událostí v měsíci */}
+                      <div className="mt-8 space-y-1">
+                        {EVENTS_DATA.filter(e => e.dateStr === day.dateStr).map(e => (
+                          <div 
+                            key={e.id} 
+                            onClick={(ev) => { ev.stopPropagation(); setSelectedEvent(e); }}
+                            className={`px-1.5 py-0.5 text-[9px] font-bold rounded border truncate hover:shadow-sm transition-shadow ${e.color}`}
+                          >
+                            {e.time.split(' - ')[0]} {e.title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* --- DENNÍ / TÝDENNÍ POHLED --- */}
+            {(view === 'work_week' || view === 'week') && (
+              <>
+                {/* Hlavička Dnů (Sticky) */}
+                <div className="flex border-b border-slate-100 bg-white/95 backdrop-blur-sm z-30 pl-[60px] pr-2">
+                  {currentDays.map((day, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center py-3 border-r border-slate-50 last:border-0 relative">
+                      <span className={`text-[10px] font-black tracking-widest uppercase mb-1 ${day.isToday ? 'text-indigo-600' : 'text-slate-400'}`}>{day.name}</span>
+                      <span className={`text-xl font-medium ${day.isToday ? 'bg-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-full shadow-md' : 'text-slate-800'}`}>{day.date.replace('.', '')}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto hide-scrollbar relative">
+                  <div className="flex min-h-[660px]"> {/* 11 hodin * 60px */}
+                    
+                    {/* Časová osa vlevo */}
+                    <div className="w-[60px] flex-shrink-0 border-r border-slate-50 bg-white relative z-10">
+                      {HOURS.map((hour, idx) => (
+                        <div key={idx} className="h-[60px] relative">
+                          <span className="absolute -top-2.5 right-2 text-[10px] font-bold text-slate-400">{hour}:00</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Mřížka s událostmi */}
+                    <div className="flex-1 flex relative modern-grid">
+                      {/* Indikátor aktuálního času (Ukázka pro 10:45) */}
+                      <div className="absolute left-0 w-full h-[2px] bg-rose-500 z-20 pointer-events-none" style={{ top: '165px' }}>
+                        <div className="absolute -left-1.5 -top-1.5 w-3.5 h-3.5 bg-rose-500 rounded-full border-2 border-white shadow-sm"></div>
+                      </div>
+
+                      {currentDays.map((day, dayIdx) => (
+                        <div key={dayIdx} className={`flex-1 border-r border-slate-50 relative ${day.isPast ? 'bg-striped-past opacity-80' : ''}`}>
+                          
+                          {/* Interaktivní pozadí pro Click-to-add */}
+                          <div className="absolute inset-0 flex flex-col z-0">
+                            {HOURS.map(hour => (
+                              <div 
+                                key={hour} 
+                                onClick={() => handleTimeClick(day.dateObj, hour)}
+                                className="flex-1 border-b border-transparent hover:border-indigo-200 hover:bg-indigo-50/50 cursor-pointer transition-colors group/cell flex items-center pl-2"
+                              >
+                                <Plus size={14} className="text-indigo-400 opacity-0 group-hover/cell:opacity-100" />
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Existující Události */}
+                          {EVENTS_DATA.filter(e => e.dateStr === day.dateStr).map(event => {
+                            const topPx = (event.startHour - 8) * 60;
+                            const heightPx = event.duration * 60;
+                            
+                            return (
+                              <div 
+                                key={event.id}
+                                onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
+                                className={`absolute left-1.5 right-1.5 rounded-xl p-2.5 border cursor-pointer transition-all duration-200 overflow-hidden
+                                  ${event.color} border-l-[3px] 
+                                  ${selectedEvent?.id === event.id ? 'ring-2 ring-indigo-400 ring-offset-1 shadow-lg scale-[1.02] z-30' : 'hover:shadow-md hover:scale-[1.01] z-10'}
+                                `}
+                                style={{ top: `${topPx}px`, height: `${heightPx}px` }}
+                              >
+                                <h4 className="font-bold text-[13px] leading-tight truncate mb-0.5">{event.title}</h4>
+                                <div className="text-[10px] font-black uppercase tracking-wider opacity-70 mb-1">{event.time}</div>
+                                
+                                {event.client && heightPx > 60 && (
+                                  <div className="flex items-center gap-1.5 text-xs font-semibold opacity-90 truncate mt-2 bg-white/40 w-fit px-1.5 py-0.5 rounded">
+                                    <User size={10} /> {event.client}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+          </div>
+        </main>
+
+        {/* PRAVÝ PANEL (Kontextový detail události a Agenda) */}
+        {isSidebarOpen && (
+          <aside className="w-80 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden z-30 transition-all">
+            
+            {/* Detail vybrané události */}
+            {selectedEvent ? (
+              <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                      <CalendarIcon size={12} /> {selectedEvent.dateStr}
+                    </div>
+                    <h2 className="text-lg font-black text-slate-900 leading-tight">{selectedEvent.title}</h2>
+                  </div>
+                  <button onClick={() => setSelectedEvent(null)} className="p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 rounded-md transition-colors shadow-sm shrink-0">
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-6 flex-1 overflow-y-auto">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><Clock size={14} /></div>
+                      <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Čas</p><p className="text-sm font-bold text-slate-800">{selectedEvent.time}</p></div>
+                    </div>
+                    {selectedEvent.location && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">{selectedEvent.type === 'video' ? <Video size={14} /> : <MapPin size={14} />}</div>
+                        <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Místo</p><p className="text-sm font-bold text-slate-800">{selectedEvent.location}</p></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedEvent.meetLink && (
+                    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex flex-col gap-2">
+                      <button className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"><Video size={16} /> Připojit se k hovoru</button>
+                    </div>
+                  )}
+
+                  {selectedEvent.client && (
+                    <div className="pt-4 border-t border-slate-100">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Účastník</p>
+                      <div className="flex items-center justify-between group cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+                            {selectedEvent.client.split(' ').map(n => n[0]).join('').substring(0,2)}
+                          </div>
+                          <div><p className="text-sm font-bold text-slate-900 group-hover:text-indigo-600">{selectedEvent.client}</p><p className="text-[11px] font-medium text-slate-500">Otevřít profil klienta</p></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 border-t border-slate-100 bg-white grid grid-cols-2 gap-2">
+                  <button className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg"><Edit2 size={14} /> Upravit</button>
+                  <button className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 rounded-lg"><Trash2 size={14} /> Smazat</button>
+                </div>
+              </div>
+            ) : (
+              // Běžná Agenda
+              <div className="flex-1 flex flex-col animate-in fade-in">
+                <div className="p-6 border-b border-slate-100 bg-white flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Agenda • {formatMonthYear(baseDate)}</h3>
+                  <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-indigo-600 p-1 rounded-md hover:bg-slate-100"><X size={16}/></button>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto hide-scrollbar space-y-4 bg-slate-50/30">
+                  <div className="bg-gradient-to-b from-amber-50 to-orange-50/30 p-4 rounded-2xl border border-amber-100 shadow-sm mt-2">
+                    <div className="flex items-center gap-2 mb-2"><Sparkles size={14} className="text-amber-500" /><span className="text-[10px] font-black uppercase tracking-widest text-amber-800">AI Připomínka</span></div>
+                    <p className="text-xs font-medium text-amber-900/80 leading-relaxed mb-3">Zítra má narozeniny klient <strong>Petr Černý</strong>. Chcete mu automaticky odeslat přání?</p>
+                    <button className="w-full py-2 bg-white text-amber-700 text-xs font-bold rounded-xl border border-amber-200 hover:bg-amber-100 shadow-sm">Naplánovat e-mail</button>
+                  </div>
+                  <div className="pt-4 text-center">
+                    <p className="text-sm font-medium text-slate-500 mb-2">Klikněte na jakoukoliv událost v mřížce pro zobrazení detailu.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </aside>
+        )}
+      </div>
+
+      {/* --- MODAL: NOVÁ AKTIVITA --- */}
+      {isNewActivityOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center modal-overlay bg-slate-900/30 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] flex flex-col modal-content overflow-hidden border border-slate-100">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg font-bold text-slate-900">Nová aktivita</h2>
+              <button onClick={() => setIsNewActivityOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-200"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { id: 'meeting', label: 'Schůzka', icon: CalendarIcon, color: 'bg-indigo-500 text-white border-indigo-500' },
+                  { id: 'task', label: 'Úkol', icon: CheckSquare, color: 'text-emerald-700 hover:bg-emerald-50 border-slate-200' },
+                  { id: 'call', label: 'Telefonát', icon: Phone, color: 'text-rose-600 hover:bg-rose-50 border-slate-200' },
+                  { id: 'email', label: 'E-mail', icon: Mail, color: 'text-slate-600 hover:bg-slate-100 border-slate-200' },
+                  { id: 'coffee', label: 'Kafe', icon: Coffee, color: 'text-amber-700 hover:bg-amber-50 border-slate-200' }
+                ].map(type => (
+                  <button key={type.id} onClick={() => setActivityType(type.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all ${activityType === type.id ? type.color : 'text-slate-600 hover:bg-slate-50 border-slate-200 shadow-sm'}`}>
+                    <type.icon size={16} className={activityType === type.id && type.id !== 'meeting' ? '' : activityType === type.id ? 'text-white/80' : 'text-slate-400'} /> {type.label}
+                  </button>
+                ))}
+              </div>
+              <input type="text" placeholder="Název aktivity..." className="w-full text-xl font-bold text-slate-800 placeholder:text-slate-400 border-b-2 border-slate-200 hover:border-slate-300 focus:border-indigo-500 py-2 outline-none transition-colors bg-transparent" />
+              
+              {/* Dynamické předvyplnění datumu a času z kliknutí na mřížku */}
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Začátek</label><input type="datetime-local" value={newActivityData.start} onChange={e=>setNewActivityData({...newActivityData, start: e.target.value})} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-100" /></div>
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Konec</label><input type="datetime-local" value={newActivityData.end} onChange={e=>setNewActivityData({...newActivityData, end: e.target.value})} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-100" /></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Kontakt</label><select className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none"><option>— žádný —</option><option>Rodina Novákova</option></select></div>
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Místo</label><input type="text" placeholder="Adresa / odkaz" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none" /></div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between">
+              <button onClick={() => setIsNewActivityOpen(false)} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md transition-colors">Vytvořit</button>
+              <button onClick={() => setIsNewActivityOpen(false)} className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors px-4 py-2">Zavřít</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

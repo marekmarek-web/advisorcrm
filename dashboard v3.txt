@@ -1,0 +1,357 @@
+"use client";
+
+import React, { useState, useRef } from 'react';
+import { 
+  Search, Bell, Plus, Briefcase, Users,
+  GripVertical, Activity, CheckSquare, MessageCircle, 
+  TrendingUp, PieChart, Sparkles, ArrowRight, Phone, Mail,
+  MoreVertical, Clock, AlertCircle, ChevronRight
+} from 'lucide-react';
+
+// --- MOCK DATA PRO WIDGETY ---
+const MOCK_DATA = {
+  kpis: [
+    { title: "Měsíční produkce", value: "345 000 Kč", target: "500k Kč", progress: 69, color: "emerald" },
+    { title: "Aktivní obchody", value: "14", target: "12.5M Kč v pipeline", progress: 0, color: "blue" },
+    { title: "AUM", value: "142.5M Kč", target: "+2.4M tento měsíc", progress: 0, color: "indigo" },
+  ],
+  tasks: [
+    { id: 1, text: "Zavolat Dvořákovým ohledně retence", time: "Dnes 14:00", urgent: true },
+    { id: 2, text: "Připravit návrh pro Nováka (DIP)", time: "Dnes 16:30", urgent: false },
+    { id: 3, text: "Odeslat smlouvy na centrálu", time: "Zítra", urgent: false },
+  ],
+  messages: [
+    { id: 1, client: "Kristýna Benešová", text: "Dobrý den, posílám ty výpisy...", time: "10:45", unread: true, initials: "KB", color: "bg-purple-100 text-purple-700" },
+    { id: 2, client: "Petr Malý", text: "Můžeme tu schůzku posunout?", time: "Včera", unread: false, initials: "PM", color: "bg-slate-100 text-slate-700" },
+  ],
+  pipeline: [
+    { id: 1, title: "Hypotéka 4.5M", client: "Rodina Černých", stage: "Příprava", value: "4.5M Kč" },
+    { id: 2, title: "Pravidelná investice", client: "Jana Veselá", stage: "Podpisy", value: "10k/m" },
+  ],
+  production: {
+    current: 345000, target: 500000,
+    segments: [
+      { name: "Život", pct: 45, color: "bg-indigo-500" },
+      { name: "Investice", pct: 35, color: "bg-emerald-500" },
+      { name: "Hypotéky", pct: 20, color: "bg-blue-500" },
+    ]
+  },
+  clients: [
+    { id: 1, name: "Karel Svoboda", reason: "Narozeniny (60 let)", action: "Přát" },
+    { id: 2, name: "Rodina Novákova", reason: "Fixace hypotéky za 6 měs.", action: "Zavolat" },
+  ],
+  analyses: [
+    { id: 1, title: "Komplexní plán", client: "MUDr. Jan Novák", status: "Rozpracováno", updated: "Před 2 dny" },
+  ]
+};
+
+// --- WIDGET KOMPONENTY ---
+
+const WidgetAI = () => (
+  <div className="bg-gradient-to-br from-[#1a1c2e] to-indigo-950 p-6 rounded-[24px] text-white shadow-xl shadow-indigo-900/10 relative overflow-hidden h-full flex flex-col justify-center">
+    <Sparkles className="absolute -top-6 -right-6 w-32 h-32 text-indigo-500/20" />
+    <div className="relative z-10">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-2 bg-indigo-500/30 rounded-lg text-indigo-300"><Sparkles size={16} /></div>
+        <h3 className="text-xs font-black uppercase tracking-widest text-indigo-200">AI Asistent</h3>
+      </div>
+      <p className="text-sm font-medium leading-relaxed text-indigo-50 mb-5">
+        Dobrý den Martine, dnes máte <strong className="text-white">1 urgentní úkol</strong> (Dvořákovi). Klientka Benešová vám poslala výpisy přes portál. Doporučuji nejdříve vyřešit smlouvy.
+      </p>
+      <button className="flex items-center justify-between w-full px-4 py-3 bg-white/10 hover:bg-white/20 transition-colors rounded-xl text-sm font-bold backdrop-blur-sm border border-white/10">
+        Přejít na dnešní agendu <ArrowRight size={16} />
+      </button>
+    </div>
+  </div>
+);
+
+const WidgetTasks = () => (
+  <div className="flex flex-col h-full">
+    <div className="space-y-3 flex-1">
+      {MOCK_DATA.tasks.map(t => (
+        <div key={t.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group">
+          <button className="mt-0.5 text-slate-300 hover:text-emerald-500 transition-colors"><div className="w-5 h-5 rounded-md border-2 border-current"></div></button>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-slate-800 leading-tight mb-1 group-hover:text-indigo-600 transition-colors">{t.text}</p>
+            <div className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${t.urgent ? 'text-rose-500' : 'text-slate-400'}`}>
+              <Clock size={10} /> {t.time}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+    <button className="mt-4 text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">Zobrazit všechny úkoly <ChevronRight size={14}/></button>
+  </div>
+);
+
+const WidgetMessages = () => (
+  <div className="flex flex-col h-full">
+    <div className="space-y-3 flex-1">
+      {MOCK_DATA.messages.map(m => (
+        <div key={m.id} className={`flex items-start gap-3 p-3 rounded-xl transition-colors border ${m.unread ? 'bg-indigo-50/50 border-indigo-100' : 'bg-white border-transparent hover:bg-slate-50'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${m.color}`}>{m.initials}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-center mb-0.5">
+              <span className="text-sm font-bold text-slate-900 truncate">{m.client}</span>
+              <span className="text-[10px] font-bold text-slate-400 shrink-0">{m.time}</span>
+            </div>
+            <p className={`text-xs truncate ${m.unread ? 'font-bold text-indigo-900' : 'font-medium text-slate-500'}`}>{m.text}</p>
+          </div>
+          {m.unread && <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-2"></div>}
+        </div>
+      ))}
+    </div>
+    <button className="mt-4 text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">Přejít do zpráv <ChevronRight size={14}/></button>
+  </div>
+);
+
+const WidgetPipeline = () => (
+  <div className="flex flex-col h-full">
+    <div className="space-y-3 flex-1">
+      {MOCK_DATA.pipeline.map(p => (
+        <div key={p.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all group cursor-pointer">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{p.stage}</span>
+            <span className="text-xs font-black text-slate-700">{p.value}</span>
+          </div>
+          <h4 className="font-bold text-sm text-slate-800">{p.title}</h4>
+          <p className="text-xs font-medium text-slate-500 mt-0.5 flex items-center gap-1"><Users size={12}/> {p.client}</p>
+        </div>
+      ))}
+    </div>
+    <button className="mt-4 text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">Otevřít Board <ChevronRight size={14}/></button>
+  </div>
+);
+
+const WidgetProduction = () => {
+  const pct = Math.round((MOCK_DATA.production.current / MOCK_DATA.production.target) * 100);
+  return (
+    <div className="flex flex-col h-full justify-center">
+      <div className="text-center mb-6">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Produkce tento měsíc</span>
+        <div className="text-3xl font-black text-slate-900">{MOCK_DATA.production.current.toLocaleString()} Kč</div>
+        <div className="text-xs font-bold text-slate-500 mt-1">Cíl: {MOCK_DATA.production.target.toLocaleString()} Kč</div>
+      </div>
+      <div className="mb-2 flex justify-between text-xs font-bold">
+        <span className="text-indigo-600">{pct}% splněno</span>
+      </div>
+      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+        {MOCK_DATA.production.segments.map(s => (
+          <div key={s.name} className={`h-full ${s.color} border-r border-white/20`} style={{ width: `${s.pct}%` }} title={s.name}></div>
+        ))}
+      </div>
+      <div className="flex justify-center gap-4 mt-4">
+        {MOCK_DATA.production.segments.map(s => (
+          <div key={s.name} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className={`w-2 h-2 rounded-full ${s.color}`}></div> {s.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const WidgetClients = () => (
+  <div className="flex flex-col h-full">
+    <div className="space-y-3 flex-1">
+      {MOCK_DATA.clients.map(c => (
+        <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50/30 border border-amber-100/50">
+          <div>
+            <h4 className="font-bold text-sm text-slate-800">{c.name}</h4>
+            <p className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-0.5"><AlertCircle size={12}/> {c.reason}</p>
+          </div>
+          <button className="p-2 bg-white text-slate-600 hover:text-indigo-600 border border-slate-200 rounded-lg shadow-sm transition-colors"><Phone size={14}/></button>
+        </div>
+      ))}
+    </div>
+    <button className="mt-4 text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">Servisní přehled <ChevronRight size={14}/></button>
+  </div>
+);
+
+const WidgetAnalyses = () => (
+  <div className="flex flex-col h-full">
+    <div className="space-y-3 flex-1">
+      {MOCK_DATA.analyses.map(a => (
+        <div key={a.id} className="p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group bg-gradient-to-br from-white to-slate-50">
+          <div className="flex justify-between items-start mb-2">
+            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><PieChart size={16}/></div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{a.updated}</span>
+          </div>
+          <h4 className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors">{a.title}</h4>
+          <p className="text-xs font-medium text-slate-500 mt-1">{a.client}</p>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{a.status}</span>
+            <ArrowRight size={14} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// --- SEZNAM DOSTUPNÝCH WIDGETŮ ---
+const WIDGETS_CONFIG = {
+  'ai': { id: 'ai', title: 'Shrnutí dne', icon: Sparkles, component: WidgetAI, colSpan: 'md:col-span-2 xl:col-span-1' },
+  'tasks': { id: 'tasks', title: 'Moje úkoly', icon: CheckSquare, component: WidgetTasks, colSpan: 'md:col-span-1 xl:col-span-1' },
+  'messages': { id: 'messages', title: 'Zprávy od klientů', icon: MessageCircle, component: WidgetMessages, colSpan: 'md:col-span-1 xl:col-span-1' },
+  'pipeline': { id: 'pipeline', title: 'Aktivní obchody', icon: Briefcase, component: WidgetPipeline, colSpan: 'md:col-span-1 xl:col-span-1' },
+  'production': { id: 'production', title: 'Produkce', icon: TrendingUp, component: WidgetProduction, colSpan: 'md:col-span-2 xl:col-span-1' },
+  'clients': { id: 'clients', title: 'Péče o klienty', icon: Users, component: WidgetClients, colSpan: 'md:col-span-1 xl:col-span-1' },
+  'analyses': { id: 'analyses', title: 'Finanční analýzy', icon: PieChart, component: WidgetAnalyses, colSpan: 'md:col-span-1 xl:col-span-1' },
+};
+
+// --- HLAVNÍ KOMPONENTA ---
+export default function MainDashboard() {
+  // Stav pořadí widgetů pro Drag & Drop
+  const [widgetOrder, setWidgetOrder] = useState(['ai', 'tasks', 'messages', 'pipeline', 'production', 'clients', 'analyses']);
+  
+  // Refy pro drag & drop logiku
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
+
+  const handleDragStart = (e, index) => {
+    dragItem.current = index;
+    // Vizuální zpětná vazba pro prvek, který se táhne
+    setTimeout(() => {
+      e.target.classList.add('opacity-50');
+    }, 0);
+  };
+
+  const handleDragEnter = (e, index) => {
+    dragOverItem.current = index;
+    e.preventDefault();
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.classList.remove('opacity-50');
+    
+    if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+      const _widgetOrder = [...widgetOrder];
+      const draggedItem = _widgetOrder.splice(dragItem.current, 1)[0];
+      _widgetOrder.splice(dragOverItem.current, 0, draggedItem);
+      setWidgetOrder(_widgetOrder);
+    }
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] font-lato text-slate-800 flex flex-col pb-20">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+        .font-lato { font-family: 'Lato', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Smooth transitions for grid items */
+        .widget-item {
+          transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        .widget-item.dragging {
+          opacity: 0.4;
+          transform: scale(0.98);
+        }
+      `}</style>
+
+      {/* --- TOP NAV --- */}
+      <header className="bg-white/80 backdrop-blur-md px-8 py-4 z-50 flex items-center justify-between border-b border-slate-100 sticky top-0">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#1a1c2e] rounded-lg flex items-center justify-center text-white font-black text-sm">W</div>
+            <span className="font-black text-lg tracking-tight hidden sm:block">WePlan</span>
+          </div>
+          <div className="relative group hidden lg:block w-96">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Hledat (Cmd+K)..." 
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-100/70 border border-transparent rounded-xl text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all text-slate-700"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button className="p-2 text-slate-400 hover:text-indigo-600 relative transition-colors">
+            <Bell size={20} />
+            <span className="absolute top-1.5 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-[#2a2d4a] transition-all active:scale-95">
+            <Plus size={16} /> Nový
+          </button>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center text-xs font-black cursor-pointer shadow-sm ml-2">
+            MD
+          </div>
+        </div>
+      </header>
+
+      {/* --- MAIN CONTENT --- */}
+      <main className="flex-1 p-6 md:p-10 max-w-[1600px] w-full mx-auto space-y-8">
+        
+        {/* Hlavička & Globální KPI (Nejsou draggable, fixní kotva nahoře) */}
+        <div>
+          <div className="flex justify-between items-end mb-6">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Dobrý den, Martine 👋</h1>
+              <p className="text-sm font-bold text-slate-500 mt-1">Dnes je úterý 12. března 2026. Zde je váš přehled.</p>
+            </div>
+            <div className="hidden md:flex gap-2">
+              <button className="p-2 text-slate-400 hover:bg-white hover:shadow-sm rounded-xl border border-transparent hover:border-slate-200 transition-all">
+                <MoreVertical size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {MOCK_DATA.kpis.map((kpi, i) => (
+              <div key={i} className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm flex flex-col justify-center">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{kpi.title}</span>
+                <div className="flex items-end gap-3 mb-1">
+                  <span className="text-3xl font-black tracking-tight text-slate-900">{kpi.value}</span>
+                </div>
+                <span className={`text-xs font-bold text-${kpi.color}-600`}>{kpi.target}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* DRAGGABLE WIDGET GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr">
+          {widgetOrder.map((widgetId, index) => {
+            const widget = WIDGETS_CONFIG[widgetId];
+            if (!widget) return null;
+            const WidgetComponent = widget.component;
+
+            return (
+              <div 
+                key={widget.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragEnter={(e) => handleDragEnter(e, index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                className={`widget-item bg-white rounded-[24px] border border-slate-100 shadow-sm flex flex-col h-[320px] group/widget hover:shadow-md transition-shadow ${widget.colSpan || ''}`}
+              >
+                {/* Hlavička Widgetu s Drag Handle */}
+                <div className="px-6 py-5 flex items-center justify-between border-b border-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <widget.icon size={18} className="text-slate-400" />
+                    <h2 className="font-bold text-slate-900 text-sm">{widget.title}</h2>
+                  </div>
+                  {/* Grip / Drag handle */}
+                  <div className="p-1 text-slate-200 group-hover/widget:text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 rounded transition-colors">
+                    <GripVertical size={16} />
+                  </div>
+                </div>
+                
+                {/* Obsah Widgetu */}
+                <div className="p-6 flex-1 overflow-y-auto hide-scrollbar">
+                  <WidgetComponent />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+      </main>
+    </div>
+  );
+}
