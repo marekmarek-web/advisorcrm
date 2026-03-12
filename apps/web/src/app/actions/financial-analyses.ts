@@ -287,21 +287,21 @@ export async function applyRefreshFromShared(
   const { mergePatchWithProvenance, getPathsTouchedByPatch } = await import(
     "@/lib/analyses/shared-facts/refreshFromShared"
   );
-  const patch = sharedFactsToProposedPersonalPatch(facts, currentData as import("@/lib/analyses/financial/types").FinancialAnalysisData);
+  const patch = sharedFactsToProposedPersonalPatch(facts, currentData as unknown as import("@/lib/analyses/financial/types").FinancialAnalysisData);
   const pathsToApply = options?.paths?.length ? options.paths : getPathsTouchedByPatch(patch);
   if (pathsToApply.length === 0) {
     await setFinancialAnalysisLinkMetadata(analysisId, { linkedCompanyId, lastRefreshedFromSharedAt: new Date() });
     return { ok: true };
   }
   const { data: mergedData } = mergePatchWithProvenance(
-    currentData as import("@/lib/analyses/financial/types").FinancialAnalysisData,
+    currentData as unknown as import("@/lib/analyses/financial/types").FinancialAnalysisData,
     patch,
     pathsToApply
   );
   await db
     .update(financialAnalyses)
     .set({
-      payload: { data: mergedData as Record<string, unknown>, currentStep },
+      payload: { data: mergedData as unknown as Record<string, unknown>, currentStep },
       updatedBy: auth.userId,
       updatedAt: new Date(),
     })

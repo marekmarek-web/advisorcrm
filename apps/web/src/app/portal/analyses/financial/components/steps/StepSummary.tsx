@@ -27,8 +27,8 @@ export function StepSummary() {
   const portfolioFv = selectPortfolioFv(data);
   const clientName = data.client?.name || "Klient";
 
-  const reportOptions = (data as Record<string, unknown>)._provenance
-    ? { provenance: (data as Record<string, unknown>)._provenance as Record<string, "linked" | "overridden">, linkedCompanyName: undefined as string | null }
+  const reportOptions = (data as unknown as Record<string, unknown>)._provenance
+    ? { provenance: (data as unknown as Record<string, unknown>)._provenance as Record<string, "linked" | "overridden">, linkedCompanyName: undefined as unknown as string | null }
     : undefined;
 
   const handlePrintReport = () => {

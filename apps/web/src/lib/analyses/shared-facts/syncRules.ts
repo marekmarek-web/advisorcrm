@@ -61,6 +61,6 @@ export function getPersonalPathForFactType(
   _contactIndex: number
 ): string[] {
   const paths = SHARED_TO_PERSONAL_PATHS[factType];
-  if (Array.isArray(paths)) return paths;
-  return paths.map((fn) => fn(_contactIndex));
+  if (Array.isArray(paths) && (paths.length === 0 || typeof paths[0] === "string")) return paths as string[];
+  return (paths as ((contactIndex: number) => string)[]).map((fn) => fn(_contactIndex));
 }

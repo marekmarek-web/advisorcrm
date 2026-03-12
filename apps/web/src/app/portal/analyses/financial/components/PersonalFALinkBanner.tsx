@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Building2, RefreshCw, LinkOff, Loader2 } from "lucide-react";
+import { Building2, RefreshCw, Unlink, Loader2 } from "lucide-react";
 import { getCompaniesForContact } from "@/app/actions/company-person-links";
 import { getSharedFactsForContact } from "@/app/actions/shared-facts";
 import { applyRefreshFromShared, clearFinancialAnalysisLink, getFinancialAnalysis } from "@/app/actions/financial-analyses";
@@ -149,7 +149,7 @@ export function PersonalFALinkBanner() {
               disabled={unlinkLoading}
               className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
-              {unlinkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkOff className="h-4 w-4" />}
+              {unlinkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
               Odpojit analýzu
             </button>
           )}

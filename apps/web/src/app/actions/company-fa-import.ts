@@ -2,7 +2,7 @@
 
 import { db } from "db";
 import { contacts } from "db";
-import { eq, and, ilike, or } from "db";
+import { eq, and, or, sql } from "db";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { createCompany } from "./companies";
@@ -54,8 +54,8 @@ export async function getCompanyFaImportPreview(normalizedPayload: CompanyFaPayl
         and(
           eq(contacts.tenantId, auth.tenantId),
           or(
-            ilike(contacts.firstName, `%${parts[0]}%`),
-            ilike(contacts.lastName, `%${parts[0]}%`)
+            sql`${contacts.firstName} ILIKE ${`%${parts[0]}%`}`,
+            sql`${contacts.lastName} ILIKE ${`%${parts[0]}%`}`
           )
         )
       )

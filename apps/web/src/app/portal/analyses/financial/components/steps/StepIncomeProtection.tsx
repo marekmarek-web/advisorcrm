@@ -203,7 +203,7 @@ export function StepIncomeProtection() {
                     <label className="block">
                       <span className="text-sm font-medium text-slate-700 flex flex-wrap items-center gap-2">
                         Měsíční příspěvek firmy (Kč)
-                        <ProvenanceBadge path="incomeProtection.persons" data={data as Record<string, unknown>} />
+                        <ProvenanceBadge path="incomeProtection.persons" data={data as unknown as Record<string, unknown>} />
                       </span>
                       <input
                         type="number"

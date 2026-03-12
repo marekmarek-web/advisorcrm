@@ -105,14 +105,14 @@ export function StepCashflow() {
             <div className="flex-1 min-w-0">
               <InputAmount label="Čistá mzda (hlavní příjem)" value={inc.main ?? 0} onChange={handleMainIncomeNet} id="income-main" />
             </div>
-            <ProvenanceBadge path="cashflow.incomes.main" data={data as Record<string, unknown>} />
+            <ProvenanceBadge path="cashflow.incomes.main" data={data as unknown as Record<string, unknown>} />
           </div>
             <InputAmount label="Hrubá mzda (pro pojištění)" value={data.cashflow.incomeGross ?? 0} onChange={handleMainIncomeGross} id="income-gross" />
             <InputAmount label="Příjem partnera (čistého)" value={inc.partner ?? 0} onChange={(v) => setCashflowField("incomes.partner", v)} id="income-partner" />
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1 flex flex-wrap items-center gap-2">
                 Ostatní (nájem, dávky…)
-                <ProvenanceBadge path="cashflow.incomes.otherDetails" data={data as Record<string, unknown>} />
+                <ProvenanceBadge path="cashflow.incomes.otherDetails" data={data as unknown as Record<string, unknown>} />
               </label>
               <div className="space-y-2 mb-2">
                 {incomeOther.map((item) => (

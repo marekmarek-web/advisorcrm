@@ -145,7 +145,7 @@ export function mergeLoadedState(
   if (p.notes !== undefined) data.notes = p.notes == null ? null : String(p.notes);
 
   if (p._provenance && typeof p._provenance === 'object') {
-    (data as Record<string, unknown>)._provenance = { ...(p._provenance as Record<string, string>) };
+    (data as unknown as Record<string, unknown>)._provenance = { ...(p._provenance as Record<string, string>) };
   }
 
   return { data, currentStep };

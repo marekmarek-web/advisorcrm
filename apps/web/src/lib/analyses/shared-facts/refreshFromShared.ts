@@ -57,9 +57,9 @@ export function mergePatchWithProvenance(
   }
 
   if (data._provenance) {
-    (data as Record<string, unknown>)._provenance = provenance;
+    (data as unknown as Record<string, unknown>)._provenance = provenance;
   } else {
-    (data as Record<string, unknown>)._provenance = provenance;
+    (data as unknown as Record<string, unknown>)._provenance = provenance;
   }
   return { data, provenance };
 }

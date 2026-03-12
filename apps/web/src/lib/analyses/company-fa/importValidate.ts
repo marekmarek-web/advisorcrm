@@ -85,10 +85,10 @@ export function normalizeCompanyFaPayload(raw: CompanyFaImportPayload): CompanyF
         share: typeof dir.share === "number" ? dir.share : 100,
         hasSpouse: !!dir.hasFamily,
         childrenCount: 0,
-        incomeType: (dir.incomeType as string) || "employee",
+        incomeType: dir.incomeType === "osvc" ? "osvc" : "employee",
         netIncome: Number(dir.netIncome) || 0,
         savings: Number(dir.savings) || 0,
-        goal: (dir.goal as string) || "tax",
+        goal: (dir.goal === "security" || dir.goal === "rent" || dir.goal === "tax" ? dir.goal : "tax"),
       }),
     ];
     delete data.director;
@@ -175,7 +175,7 @@ export function normalizeCompanyFaPayload(raw: CompanyFaImportPayload): CompanyF
     };
   }
 
-  return data as CompanyFaPayload;
+  return data as unknown as CompanyFaPayload;
 }
 
 function ensureRiskDetail(v: unknown): RiskDetail {

@@ -41,7 +41,7 @@ export function diffSnapshotAgainstShared(
   const patchData = patch as Record<string, unknown>;
   const items: DiffItem[] = [];
 
-  if (patchData.cashflow?.incomes) {
+  if ((patchData.cashflow as Record<string, unknown> | undefined)?.incomes) {
     const inc = (patchData.cashflow as Record<string, unknown>).incomes as Record<string, unknown>;
     if (inc.main != null) {
       const cur = (data.cashflow as Record<string, unknown>)?.incomes as Record<string, unknown>;
@@ -79,7 +79,7 @@ export function diffSnapshotAgainstShared(
     });
   }
 
-  if (patchData.incomeProtection?.persons) {
+  if ((patchData.incomeProtection as { persons?: unknown[] } | undefined)?.persons) {
     const persons = (patchData.incomeProtection as { persons: unknown[] }).persons;
     const first = persons[0] as Record<string, unknown> | undefined;
     const companyMonthly = first?.funding && typeof first.funding === "object"

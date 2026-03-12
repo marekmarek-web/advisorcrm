@@ -183,7 +183,7 @@ export function StepAssetsLiabilities() {
               <div className="flex-1 min-w-0">
                 <InputAmount label="Ostatní pasiva" value={liab.other} onChange={(v) => setLiabilitiesField("other", v)} id="liab-other" />
               </div>
-              <ProvenanceBadge path="liabilities.other" data={data as Record<string, unknown>} />
+              <ProvenanceBadge path="liabilities.other" data={data as unknown as Record<string, unknown>} />
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1" htmlFor="liab-other-desc">Popis ostatních pasiv</label>
