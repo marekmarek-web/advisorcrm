@@ -21,6 +21,8 @@ export interface CalendarSettings {
   currentTimeLineColor?: string;
   /** Width of the current time line in pixels */
   currentTimeLineWidth?: number;
+  /** Custom colors per event type (eventType id -> hex). Overrides default Tailwind. */
+  eventTypeColors?: Record<string, string>;
 }
 
 const STORAGE_KEY = "weplan_calendar_settings";

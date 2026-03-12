@@ -1,14 +1,62 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { formatDateLocal } from "./date-utils";
+
+const QUICK_NOTES_STORAGE_KEY = "weplan_calendar_quick_notes";
 
 const MONTH_NAMES = [
   "Leden", "Únor", "Březen", "Duben", "Květen", "Červen",
   "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec",
 ];
 
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+function QuickNotes() {
+  const [value, setValue] = useState("");
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(QUICK_NOTES_STORAGE_KEY);
+      setValue(raw ?? "");
+    } catch {
+      setValue("");
+    }
+    setLoaded(true);
+  }, []);
+
+  const save = useCallback((next: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(QUICK_NOTES_STORAGE_KEY, next);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleBlur = () => save(value);
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    setValue(next);
+    save(next);
+  };
+
+  if (!loaded) return null;
+  return (
+    <>
+      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+        Rychlé poznámky
+      </h4>
+      <textarea
+        value={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        placeholder="Poznámky k dnešnímu dni…"
+        className="w-full min-h-[120px] p-3 text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 resize-y"
+        rows={5}
+      />
+    </>
+  );
 }
 
 export interface CalendarLeftPanelProps {
@@ -16,9 +64,6 @@ export interface CalendarLeftPanelProps {
   selectedDate: string;
   onSelectDate: (dateStr: string) => void;
   onToday: () => void;
-  /** Optional: filter by event type (e.g. show only some calendars) */
-  calendarFilters?: { clients: boolean; tasks: boolean; internal: boolean };
-  onCalendarFiltersChange?: (f: { clients: boolean; tasks: boolean; internal: boolean }) => void;
 }
 
 export function CalendarLeftPanel({
@@ -26,10 +71,8 @@ export function CalendarLeftPanel({
   selectedDate,
   onSelectDate,
   onToday,
-  calendarFilters = { clients: true, tasks: true, internal: true },
-  onCalendarFiltersChange,
 }: CalendarLeftPanelProps) {
-  const todayStr = formatDate(new Date());
+  const todayStr = formatDateLocal(new Date());
   const daysInMonth = useMemo(() => {
     const year = baseDate.getFullYear();
     const month = baseDate.getMonth();
@@ -84,62 +127,8 @@ export function CalendarLeftPanel({
           })}
         </div>
       </div>
-      <div className="p-5 flex-1 overflow-y-auto wp-cal-hide-scrollbar">
-        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
-          Moje kalendáře
-        </h4>
-        <div className="space-y-2.5">
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={calendarFilters.clients}
-              onChange={() =>
-                onCalendarFiltersChange?.({
-                  ...calendarFilters,
-                  clients: !calendarFilters.clients,
-                })
-              }
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
-              Klientské schůzky
-            </span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={calendarFilters.tasks}
-              onChange={() =>
-                onCalendarFiltersChange?.({
-                  ...calendarFilters,
-                  tasks: !calendarFilters.tasks,
-                })
-              }
-              className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
-              style={{ accentColor: "#f59e0b" }}
-            />
-            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
-              Úkoly a administrativa
-            </span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={calendarFilters.internal}
-              onChange={() =>
-                onCalendarFiltersChange?.({
-                  ...calendarFilters,
-                  internal: !calendarFilters.internal,
-                })
-              }
-              className="w-4 h-4 rounded border-slate-300 text-slate-500 focus:ring-slate-500"
-              style={{ accentColor: "#64748b" }}
-            />
-            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
-              Interní porady
-            </span>
-          </label>
-        </div>
+      <div className="p-5 flex-1 overflow-y-auto wp-cal-hide-scrollbar flex flex-col min-h-0">
+        <QuickNotes />
       </div>
     </aside>
   );

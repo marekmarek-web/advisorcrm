@@ -3,18 +3,15 @@
 import { useMemo, useCallback } from "react";
 import { Plus, User } from "lucide-react";
 import type { EventRow } from "@/app/actions/events";
+import { formatDateLocal } from "./date-utils";
 import { getEventStyle } from "./event-categories";
 import { CurrentTimeLine } from "./CurrentTimeLine";
 
-/** Kalendar.txt: 8:00–18:00, 60px per hour */
-const START_HOUR = 8;
-const END_HOUR = 19;
+/** 7:00–23:00, 60px per hour */
+const START_HOUR = 7;
+const END_HOUR = 24;
 const PIXELS_PER_HOUR = 60;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR);
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 
 function formatTime(d: Date): string {
   return d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
@@ -41,6 +38,8 @@ export interface WeekDayGridProps {
   startHour?: number;
   endHour?: number;
   pixelsPerHour?: number;
+  /** Custom colors per event type (id → hex). When set, event blocks use inline backgroundColor/borderLeftColor. */
+  eventTypeColors?: Record<string, string>;
 }
 
 const defaultStartHour = START_HOUR;
@@ -67,6 +66,7 @@ export function WeekDayGrid({
   startHour = defaultStartHour,
   endHour = defaultEndHour,
   pixelsPerHour = defaultPixelsPerHour,
+  eventTypeColors,
 }: WeekDayGridProps) {
   const hours = useMemo(
     () => Array.from({ length: endHour - startHour }, (_, i) => i + startHour),
@@ -74,7 +74,7 @@ export function WeekDayGrid({
   );
   const totalHeight = (endHour - startHour) * pixelsPerHour;
   const todayColumnIndex = useMemo(() => {
-    return weekDays.findIndex((d) => formatDate(d) === todayStr);
+    return weekDays.findIndex((d) => formatDateLocal(d) === todayStr);
   }, [weekDays, todayStr]);
 
   const handleSlotClick = useCallback(
@@ -90,7 +90,7 @@ export function WeekDayGrid({
       <div className="flex border-b border-slate-100 bg-white/95 backdrop-blur-sm z-30 shrink-0 pr-2">
         <div className="w-[60px] flex-shrink-0 border-r border-slate-50" aria-hidden />
         {weekDays.map((day) => {
-          const ds = formatDate(day);
+          const ds = formatDateLocal(day);
           const isToday = ds === todayStr;
           const isSelected = ds === selectedDate;
           const dayIdx = firstDayOfWeek === 0 ? day.getDay() : (day.getDay() === 0 ? 6 : day.getDay() - 1);
@@ -143,10 +143,13 @@ export function WeekDayGrid({
 
           {/* Day columns: modern-grid bg + click cells + events */}
           {weekDays.map((day) => {
-            const ds = formatDate(day);
+            const ds = formatDateLocal(day);
             const isToday = ds === todayStr;
             const isPast = ds < todayStr;
             const dayEvents = eventsByDate.get(ds) ?? [];
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinutes = now.getMinutes();
 
             return (
               <div
@@ -154,18 +157,21 @@ export function WeekDayGrid({
                 className={`flex-1 border-r border-slate-50 relative ${isPast ? "wp-cal-striped-past opacity-80" : ""}`}
                 style={{ height: totalHeight }}
               >
-                {/* Click-to-add: hour cells with hover + Plus */}
+                {/* Click-to-add: hour cells with hover + Plus; gray past hours in today column */}
                 <div className="absolute inset-0 flex flex-col z-0 wp-cal-modern-grid">
-                  {hours.map((h) => (
-                    <div
-                      key={h}
-                      onClick={() => handleSlotClick(ds, h)}
-                      className="border-b border-transparent hover:border-indigo-200 hover:bg-indigo-50/50 cursor-pointer transition-colors group/cell flex items-center pl-2 shrink-0"
-                      style={{ height: pixelsPerHour }}
-                    >
-                      <Plus size={14} className="text-indigo-400 opacity-0 group-hover/cell:opacity-100 shrink-0" />
-                    </div>
-                  ))}
+                  {hours.map((h) => {
+                    const isPastHour = isToday && (h < currentHour || (h === currentHour && currentMinutes >= 0));
+                    return (
+                      <div
+                        key={h}
+                        onClick={() => handleSlotClick(ds, h)}
+                        className={`border-b border-transparent hover:border-indigo-200 hover:bg-indigo-50/50 cursor-pointer transition-colors group/cell flex items-center pl-2 shrink-0 ${isPastHour ? "wp-cal-past-hour-today" : ""}`}
+                        style={{ height: pixelsPerHour }}
+                      >
+                        <Plus size={14} className="text-indigo-400 opacity-0 group-hover/cell:opacity-100 shrink-0" />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Event blocks – kalendar.txt style with Tailwind */}
@@ -178,18 +184,25 @@ export function WeekDayGrid({
                   const durationMin = (end.getTime() - start.getTime()) / (60 * 1000);
                   const topPx = topMin * (pixelsPerHour / 60);
                   const heightPx = Math.max(20, durationMin * (pixelsPerHour / 60));
-                  const style = getEventStyle(ev.eventType);
+                  const customColor = eventTypeColors?.[ev.eventType ?? ""];
+                  const style = getEventStyle(ev.eventType, customColor);
                   const selected = selectedEventId === ev.id;
+                  const useInlineColor = Boolean(customColor);
 
                   return (
                     <button
                       key={ev.id}
                       type="button"
                       className={`absolute left-1.5 right-1.5 rounded-xl p-2.5 border border-l-[3px] cursor-pointer transition-all duration-200 overflow-hidden text-left
-                        ${style.tailwindClass}
+                        ${useInlineColor ? "text-gray-800 border-gray-300" : style.tailwindClass}
                         ${selected ? "ring-2 ring-indigo-400 ring-offset-1 shadow-lg scale-[1.02] z-30" : "hover:shadow-md hover:scale-[1.01] z-10"}
                       `}
-                      style={{ top: topPx, height: heightPx, minHeight: 20 }}
+                      style={{
+                        top: topPx,
+                        height: heightPx,
+                        minHeight: 20,
+                        ...(useInlineColor ? { backgroundColor: style.color, borderLeftColor: style.color } : {}),
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         onEventClick(ev);

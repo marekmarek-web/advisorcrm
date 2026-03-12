@@ -53,6 +53,18 @@
   scrollbar-width: none;
 }
 
+/* Past hours within "today" column (grayed) */
+.wp-cal-past-hour-today {
+  background: repeating-linear-gradient(
+    -45deg,
+    #f8fafc,
+    #f8fafc 6px,
+    #f1f5f9 6px,
+    #f1f5f9 12px
+  );
+  opacity: 0.7;
+}
+
 /* ── Calendar header (month + year + nav) ── */
 .wp-cal-header {
   text-align: center;

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BaseModal } from "@/app/components/BaseModal";
 import type { CalendarSettings, CalendarPresetId, TodayStyle, CalendarFontSize } from "@/app/portal/calendar/calendar-settings";
 import { getPresetSettings, ensureAccentLight } from "@/app/portal/calendar/calendar-settings";
+import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
 
 const PRESET_OPTIONS: { id: CalendarPresetId; label: string }[] = [
   { id: "default", label: "Aidvisora výchozí" },
@@ -29,6 +30,20 @@ const ACCENT_SWATCHES = [
   "#e5534b",
   "#fdab3d",
   "#4a4a4a",
+];
+
+/** Předvolené barvy pro typy událostí (max 10). */
+const EVENT_TYPE_PALETTE = [
+  "#579bfc", // indigo/modrá – schůzka
+  "#fdab3d", // amber – telefonát
+  "#ff642e", // oranž – kafe
+  "#a25ddc", // fialová – mail
+  "#00c875", // zelená – úkol
+  "#e5534b", // červená – priorita
+  "#00a86b", // zelená – servis
+  "#6b7280", // šedá – interní
+  "#6366f1", // indigo – administrativa
+  "#0ea5e9", // sky – review
 ];
 
 export interface CalendarSettingsModalProps {
@@ -237,6 +252,48 @@ export function CalendarSettingsModal({
                   className="wp-input w-16 text-sm"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Barvy typů událostí – předvolená paleta */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--wp-text)" }}>
+              Barvy typů událostí
+            </label>
+            <p className="text-xs text-[var(--wp-text-muted)] mb-2">Vyberte barvu z palety. Klik na stejnou barvu zruší výběr (výchozí barva typu).</p>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {CALENDAR_EVENT_CATEGORIES.map((cat) => {
+                const current = form.eventTypeColors?.[cat.id] ?? cat.color;
+                return (
+                  <div key={cat.id} className="flex items-center gap-3 flex-wrap">
+                    <span className="text-sm w-28 shrink-0 font-medium" style={{ color: "var(--wp-text)" }}>{cat.label}</span>
+                    <span className="w-6 h-6 rounded shrink-0 border-2 border-[var(--wp-border)] shadow-sm" style={{ backgroundColor: current }} title={current} />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {EVENT_TYPE_PALETTE.map((hex) => {
+                        const isSelected = current === hex;
+                        return (
+                          <button
+                            key={hex}
+                            type="button"
+                            onClick={() =>
+                              setForm((f) => {
+                                const next = { ...(f.eventTypeColors ?? {}) };
+                                if (next[cat.id] === hex) delete next[cat.id];
+                                else next[cat.id] = hex;
+                                return { ...f, eventTypeColors: Object.keys(next).length ? next : undefined };
+                              })
+                            }
+                            className={`w-7 h-7 rounded-full border-2 shadow-sm transition-transform hover:scale-110 ${isSelected ? "ring-2 ring-offset-1 ring-[var(--wp-cal-accent)]" : "border-transparent"}`}
+                            style={{ backgroundColor: hex }}
+                            aria-label={hex}
+                            title={hex}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

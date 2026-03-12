@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { formatDateLocal } from "./date-utils";
 
 export interface CurrentTimeLineProps {
   /** First hour shown in the grid (e.g. 7) */
@@ -49,9 +50,9 @@ export function CurrentTimeLine({
   }, []);
 
   const isDayView = dayColumnCount === 1;
-  const viewDateStr = formatDate(viewDate);
-  const todayStr = formatDate(todayDate);
-  const nowStr = formatDate(now);
+  const viewDateStr = formatDateLocal(viewDate);
+  const todayStr = formatDateLocal(todayDate);
+  const nowStr = formatDateLocal(now);
 
   const showInDayView = isDayView && viewDateStr === todayStr;
   const showInWeekView = !isDayView && todayColumnIndex >= 0;
@@ -113,8 +114,4 @@ export function CurrentTimeLine({
       )}
     </div>
   );
-}
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }

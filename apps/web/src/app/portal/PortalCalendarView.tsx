@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus } from
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
-import { getTasksForDate, completeTask, reopenTask, type TaskRow } from "@/app/actions/tasks";
+import { getTasksForDate, completeTask, reopenTask, createTask, type TaskRow } from "@/app/actions/tasks";
 import { getUnreadConversationsCount } from "@/app/actions/messages";
 import { BaseModal } from "@/app/components/BaseModal";
 import { useToast } from "@/app/components/Toast";
@@ -16,6 +16,7 @@ import {
   saveCalendarSettings,
   type CalendarSettings,
 } from "@/app/portal/calendar/calendar-settings";
+import { formatDateLocal } from "@/app/portal/calendar/date-utils";
 import { getEventCategory } from "@/app/portal/calendar/event-categories";
 import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
 import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel";
@@ -43,9 +44,7 @@ function startOfWeek(d: Date, firstDayOfWeek: 0 | 1): Date {
   return new Date(d.getFullYear(), d.getMonth(), diff);
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+const formatDate = formatDateLocal;
 
 function getWeekNumber(d: Date): number {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -91,6 +90,74 @@ const EMPTY_FORM: EventFormData = { title: "", eventType: "schuzka", startAt: ""
 type OpportunityOption = { id: string; title: string; contactId: string | null };
 
 const DAY_NAMES_FULL = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"];
+
+/* ────────── New Task Modal ────────── */
+function NewTaskModal({
+  dueDate: initialDueDate,
+  onSave,
+  onClose,
+}: {
+  dueDate: string;
+  onSave: (title: string, dueDate: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState(initialDueDate);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDueDate(initialDueDate);
+  }, [initialDueDate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const t = title.trim();
+    if (!t) return;
+    setSaving(true);
+    try {
+      await onSave(t, dueDate);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <BaseModal open onClose={onClose} title="Nový úkol" maxWidth="sm">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Název</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Název úkolu"
+            className="wp-input w-full"
+            autoFocus
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Datum splnění</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="wp-input w-full"
+          />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} className="wp-btn" style={{ background: "var(--wp-bg)", color: "var(--wp-text)" }}>
+            Zrušit
+          </button>
+          <button type="submit" className="wp-btn wp-btn-primary" disabled={saving || !title.trim()}>
+            {saving ? "Vytvářím…" : "Vytvořit"}
+          </button>
+        </div>
+      </form>
+    </BaseModal>
+  );
+}
 
 /* ────────── Event Detail Popover ────────── */
 function EventDetailPopover({
@@ -344,6 +411,8 @@ export function PortalCalendarView() {
   const [selectedDate, setSelectedDate] = useState(todayStrInitial);
   const [dayTasks, setDayTasks] = useState<TaskRow[]>([]);
   const [dayTasksLoading, setDayTasksLoading] = useState(false);
+  /** When set, new-task modal is open with this due date. */
+  const [newTaskModal, setNewTaskModal] = useState<{ dueDate: string } | null>(null);
   const [contextPanelCollapsed, setContextPanelCollapsed] = useState(false);
   const [quickFormSlot, setQuickFormSlot] = useState<{ dateStr: string; hour: number } | null>(null);
   const [quickFormEvent, setQuickFormEvent] = useState<EventRow | null>(null);
@@ -642,11 +711,14 @@ export function PortalCalendarView() {
                         <div className="mt-8 space-y-1">
                           {dayEvents.slice(0, 4).map((ev) => {
                             const typeInfo = getEventCategory(ev.eventType);
+                            const customColor = settings.eventTypeColors?.[ev.eventType ?? ""];
+                            const useInlineColor = Boolean(customColor);
                             return (
                               <div
                                 key={ev.id}
                                 onClick={(e) => { e.stopPropagation(); setDetailEvent(detailEvent?.id === ev.id ? null : ev); }}
-                                className={`px-1.5 py-0.5 text-[9px] font-bold rounded border truncate hover:shadow-sm transition-shadow ${typeInfo.tailwindClass}`}
+                                className={`px-1.5 py-0.5 text-[9px] font-bold rounded border truncate hover:shadow-sm transition-shadow ${useInlineColor ? "text-gray-800 border-gray-300" : typeInfo.tailwindClass}`}
+                                style={useInlineColor ? { backgroundColor: customColor, borderColor: customColor } : undefined}
                               >
                                 {formatTime(new Date(ev.startAt))} {ev.title}
                               </div>
@@ -678,6 +750,7 @@ export function PortalCalendarView() {
                   isMobile={isMobile}
                   currentTimeLineColor={settings.currentTimeLineColor}
                   currentTimeLineWidth={settings.currentTimeLineWidth}
+                  eventTypeColors={settings.eventTypeColors}
                 />
               </div>
             )}
@@ -698,6 +771,7 @@ export function PortalCalendarView() {
               onOpenFullEdit={openEdit}
               onMarkDone={handleMarkEventDone}
               onToggleTask={handleToggleDayTask}
+              onAddTask={(dateStr) => setNewTaskModal({ dueDate: dateStr })}
               onRefresh={() => { loadEvents(); loadDayTasks(selectedDate); }}
               collapsed={false}
               onToggleCollapsed={() => setContextPanelCollapsed(true)}
@@ -716,6 +790,23 @@ export function PortalCalendarView() {
           onDelete={modal.id ? handleDelete : undefined}
           onFollowUp={modal.id ? handleFollowUp : undefined}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {newTaskModal && (
+        <NewTaskModal
+          dueDate={newTaskModal.dueDate}
+          onSave={async (title, dueDate) => {
+            const id = await createTask({ title, dueDate });
+            if (id != null) {
+              loadDayTasks(selectedDate);
+              setNewTaskModal(null);
+              toast?.success("Úkol byl vytvořen.");
+            } else {
+              toast?.error("Úkol se nepodařilo vytvořit.");
+            }
+          }}
+          onClose={() => setNewTaskModal(null)}
         />
       )}
 

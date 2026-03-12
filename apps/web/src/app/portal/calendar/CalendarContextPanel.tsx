@@ -72,6 +72,8 @@ export interface CalendarContextPanelProps {
   onMarkDone: (event: EventRow) => void;
   onToggleTask: (task: TaskRow) => void;
   onRefresh: () => void;
+  /** Called when user clicks "Přidat úkol"; parent should open new-task modal with this date. */
+  onAddTask?: (dateStr: string) => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
   isMobile?: boolean;
@@ -89,6 +91,7 @@ export function CalendarContextPanel({
   onOpenFullEdit,
   onMarkDone,
   onToggleTask,
+  onAddTask,
   onToggleCollapsed,
   isMobile = false,
 }: CalendarContextPanelProps) {
@@ -248,7 +251,48 @@ export function CalendarContextPanel({
           </p>
         </div>
 
-        <p className="text-sm font-medium text-slate-500 text-center pt-2">
+        {/* Úkoly – hlavní sekce */}
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">Úkoly</h4>
+          {dayTasksLoading ? (
+            <p className="text-sm text-slate-500">Načítám…</p>
+          ) : dayTasks.length === 0 ? (
+            <p className="text-sm text-slate-500 mb-2">Žádné úkoly na tento den</p>
+          ) : (
+            <ul className="space-y-2 mb-3">
+              {dayTasks.map((task) => (
+                <li key={task.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onToggleTask(task)}
+                    className="w-5 h-5 rounded border-2 border-slate-300 flex items-center justify-center shrink-0 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                    style={task.completedAt ? { background: "var(--wp-success)", borderColor: "var(--wp-success)" } : {}}
+                    aria-label={task.completedAt ? "Znovu otevřít" : "Splnit"}
+                  >
+                    {task.completedAt && <span className="text-white text-xs">✓</span>}
+                  </button>
+                  <span className={`text-sm ${task.completedAt ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                    {task.title}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {onAddTask && (
+            <button
+              type="button"
+              onClick={() => onAddTask(selectedDate)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
+            >
+              + Přidat úkol
+            </button>
+          )}
+          <Link href="/portal/tasks" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 mt-2 inline-block">
+            Všechny úkoly →
+          </Link>
+        </section>
+
+        <p className="text-sm font-medium text-slate-500 text-center pt-0">
           Klikněte na jakoukoliv událost v mřížce pro zobrazení detailu.
         </p>
 
@@ -274,37 +318,6 @@ export function CalendarContextPanel({
                 })}
             </ul>
           )}
-        </section>
-
-        <section>
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Úkoly</h4>
-          {dayTasksLoading ? (
-            <p className="text-sm text-slate-500">Načítám…</p>
-          ) : dayTasks.length === 0 ? (
-            <p className="text-sm text-slate-500">Žádné úkoly na tento den</p>
-          ) : (
-            <ul className="space-y-2">
-              {dayTasks.map((task) => (
-                <li key={task.id} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onToggleTask(task)}
-                    className="w-5 h-5 rounded border-2 border-slate-300 flex items-center justify-center shrink-0 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
-                    style={task.completedAt ? { background: "var(--wp-success)", borderColor: "var(--wp-success)" } : {}}
-                    aria-label={task.completedAt ? "Znovu otevřít" : "Splnit"}
-                  >
-                    {task.completedAt && <span className="text-white text-xs">✓</span>}
-                  </button>
-                  <span className={`text-sm ${task.completedAt ? "text-slate-400 line-through" : "text-slate-800"}`}>
-                    {task.title}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link href="/portal/tasks" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 mt-2 inline-block">
-            Všechny úkoly →
-          </Link>
         </section>
 
         {freeSlots.length > 0 && (
