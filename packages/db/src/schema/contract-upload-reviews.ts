@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, timestamp, bigint, jsonb } from "drizzle-orm/pg-core";
+import { contacts } from "./contacts";
 
 /** Processing status for contract upload pipeline. */
 export type ContractProcessingStatus =
@@ -31,6 +32,19 @@ export const contractUploadReviews = pgTable("contract_upload_reviews", {
   reasonsForReview: jsonb("reasons_for_review").$type<string[]>(),
   reviewStatus: text("review_status").$type<ContractReviewStatus>().default("pending"),
   uploadedBy: text("uploaded_by"),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectReason: text("reject_reason"),
+  appliedBy: text("applied_by"),
+  appliedAt: timestamp("applied_at", { withTimezone: true }),
+  /** Resolved client: selected from candidates. Null + createNewClientConfirmed = create new. */
+  matchedClientId: uuid("matched_client_id").references(() => contacts.id, { onDelete: "set null" }),
+  /** If true and matchedClientId is null, apply will create a new client from draft. */
+  createNewClientConfirmed: text("create_new_client_confirmed").$type<"true" | null>(),
+  /** After apply: created/linked entity ids for audit. */
+  applyResultPayload: jsonb("apply_result_payload"),
+  /** Optional reason for approve/reject (e.g. "confirmed match"). */
+  reviewDecisionReason: text("review_decision_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

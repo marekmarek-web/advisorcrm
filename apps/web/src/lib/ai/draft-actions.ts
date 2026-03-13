@@ -1,17 +1,8 @@
 import type { ExtractedContractSchema } from "./extraction-schemas";
-import type { DraftActionBase, ExtractedClientMatchCandidate } from "./review-queue";
+import type { DraftActionBase } from "./review-queue";
 
-/**
- * Find CRM contact candidates matching extracted contract client.
- * Does not write to DB; returns draft candidates with score for review.
- */
-export function findClientCandidates(
-  _extracted: ExtractedContractSchema,
-  _tenantId: string
-): Promise<ExtractedClientMatchCandidate[]> {
-  // TODO: query contacts by fullName / email / companyId and return matches with score
-  return Promise.resolve([]);
-}
+export { findClientCandidates } from "./client-matching";
+export type { ClientMatchingContext } from "./client-matching";
 
 export function buildCreateClientDraft(extracted: ExtractedContractSchema): DraftActionBase {
   const c = extracted.client;

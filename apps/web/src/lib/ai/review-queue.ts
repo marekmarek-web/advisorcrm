@@ -16,6 +16,33 @@ export interface ExtractedClientMatchCandidate {
   reason?: string;
 }
 
+/** Confidence tier for client matching. */
+export type MatchConfidence = "high" | "medium" | "low";
+
+/** Which fields contributed to the match. */
+export interface MatchedFields {
+  fullName?: boolean;
+  firstName?: boolean;
+  lastName?: boolean;
+  birthDate?: boolean;
+  personalId?: boolean;
+  companyId?: boolean;
+  email?: boolean;
+  phone?: boolean;
+  address?: boolean;
+}
+
+/** Full client match candidate from matching engine (Phase 4). */
+export interface ClientMatchCandidate {
+  clientId: string;
+  score: number;
+  confidence: MatchConfidence;
+  reasons: string[];
+  matchedFields: MatchedFields;
+  /** Display name for UI (from CRM contact). */
+  displayName?: string;
+}
+
 export type DraftActionType = "create_client" | "create_contract" | "create_task" | "create_payment" | "draft_email";
 
 export interface DraftActionBase {

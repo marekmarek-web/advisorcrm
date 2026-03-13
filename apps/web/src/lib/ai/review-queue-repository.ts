@@ -3,6 +3,16 @@ import { contractUploadReviews } from "db";
 import { eq, and, desc } from "drizzle-orm";
 import type { ContractProcessingStatus, ContractReviewStatus } from "db";
 
+export type ApplyResultPayload = {
+  createdClientId?: string;
+  linkedClientId?: string;
+  createdContractId?: string;
+  createdPaymentId?: string;
+  createdTaskId?: string;
+  createdNoteId?: string;
+  createdEmailDraftId?: string;
+};
+
 export type ContractReviewRow = {
   id: string;
   tenantId: string;
@@ -19,6 +29,15 @@ export type ContractReviewRow = {
   reasonsForReview: string[] | null;
   reviewStatus: ContractReviewStatus | null;
   uploadedBy: string | null;
+  reviewedBy: string | null;
+  reviewedAt: Date | null;
+  rejectReason: string | null;
+  appliedBy: string | null;
+  appliedAt: Date | null;
+  matchedClientId: string | null;
+  createNewClientConfirmed: string | null;
+  applyResultPayload: ApplyResultPayload | null;
+  reviewDecisionReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -109,6 +128,15 @@ export async function updateContractReview(
     confidence?: number | null;
     reasonsForReview?: string[] | null;
     reviewStatus?: ContractReviewStatus;
+    reviewedBy?: string | null;
+    reviewedAt?: Date | null;
+    rejectReason?: string | null;
+    appliedBy?: string | null;
+    appliedAt?: Date | null;
+    matchedClientId?: string | null;
+    createNewClientConfirmed?: string | null;
+    applyResultPayload?: ApplyResultPayload | null;
+    reviewDecisionReason?: string | null;
   }
 ): Promise<void> {
   await db

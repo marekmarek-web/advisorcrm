@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { createContractReview, updateContractReview } from "@/lib/ai/review-queue-repository";
 import { extractContractFromFile } from "@/lib/ai/contract-extraction";
 import { findClientCandidates, buildAllDraftActions } from "@/lib/ai/draft-actions";
+import { isMatchingAmbiguous } from "@/lib/ai/client-matching";
 import { logOpenAICall } from "@/lib/openai";
 
 export const dynamic = "force-dynamic";
@@ -135,7 +136,10 @@ export async function POST(request: Request) {
     if (data.missingFields?.length) reasonsForReview.push("missing_fields");
 
     const draftActions = buildAllDraftActions(data);
-    const clientMatchCandidates = await findClientCandidates(data, tenantId);
+    const clientMatchCandidates = await findClientCandidates(data, { tenantId });
+    if (isMatchingAmbiguous(clientMatchCandidates)) {
+      reasonsForReview.push("ambiguous_client_match");
+    }
 
     await updateContractReview(reviewId, tenantId, {
       processingStatus: needsHumanReview ? "review_required" : "extracted",
