@@ -22,7 +22,6 @@ import { getEventCategory } from "@/app/portal/calendar/event-categories";
 import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
 import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel";
 import { CalendarLeftPanel } from "@/app/portal/calendar/CalendarLeftPanel";
-import { QuickEventForm, type QuickEventFormValues } from "@/app/portal/calendar/QuickEventForm";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
 import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 
@@ -83,11 +82,12 @@ interface EventFormData {
 const REMINDER_OPTIONS: { value: number; label: string }[] = [
   { value: 0, label: "Žádná" },
   { value: 15, label: "15 min před" },
+  { value: 30, label: "30 min před" },
   { value: 60, label: "1 h před" },
   { value: 1440, label: "1 den před" },
 ];
 
-const EMPTY_FORM: EventFormData = { title: "", eventType: "schuzka", startAt: "", endAt: "", allDay: false, location: "", contactId: "", opportunityId: "", reminderMinutes: 0, status: "", notes: "", meetingLink: "" };
+const EMPTY_FORM: EventFormData = { title: "", eventType: "schuzka", startAt: "", endAt: "", allDay: false, location: "", contactId: "", opportunityId: "", reminderMinutes: 30, status: "", notes: "", meetingLink: "" };
 
 type OpportunityOption = { id: string; title: string; contactId: string | null };
 
@@ -350,7 +350,7 @@ function EventFormModal({
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setForm((f) => ({ ...f, eventType: t.id }))}
+                  onClick={() => setForm((f) => ({ ...f, eventType: t.id, reminderMinutes: (t.id === "ukol" || t.id === "priorita") ? 15 : 30 }))}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
                     isActive ? "border-current text-white shadow-sm" : "text-slate-500 hover:border-slate-300 hover:bg-slate-50"
                   }`}
@@ -375,11 +375,11 @@ function EventFormModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Datum a čas</label>
-              <input type="datetime-local" value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))} className="wp-input" />
+              <input type="datetime-local" step={300} value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))} className="wp-input" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Konec</label>
-              <input type="datetime-local" value={form.endAt} onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))} className="wp-input" />
+              <input type="datetime-local" step={300} value={form.endAt} onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))} className="wp-input" />
             </div>
           </div>
 
@@ -506,8 +506,6 @@ export function PortalCalendarView() {
   /** When set, new-task modal is open with this due date. */
   const [newTaskModal, setNewTaskModal] = useState<{ dueDate: string } | null>(null);
   const [contextPanelCollapsed, setContextPanelCollapsed] = useState(false);
-  const [quickFormSlot, setQuickFormSlot] = useState<{ dateStr: string; hour: number } | null>(null);
-  const [quickFormEvent, setQuickFormEvent] = useState<EventRow | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   const dayNames = useMemo(() => getDayNames(settings.firstDayOfWeek), [settings.firstDayOfWeek]);
@@ -635,22 +633,8 @@ export function PortalCalendarView() {
     tomorrow.setHours(10, 0, 0, 0);
     await createFollowUp(sourceId, type, { title, startAt: type === "event" ? tomorrow.toISOString() : undefined, dueDate: type === "task" ? formatDate(tomorrow) : undefined, contactId: source?.contactId || undefined });
     setModal(null);
-    setQuickFormEvent(null);
     loadEvents();
   }, [events, loadEvents]);
-
-  const handleQuickSave = useCallback(async (values: QuickEventFormValues, id?: string) => {
-    if (id) {
-      await updateEvent(id, { title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined, location: values.location || undefined });
-      toast.showToast("Aktivita upravena");
-    } else {
-      await createEvent({ title: values.title, eventType: values.eventType, startAt: values.startAt, endAt: values.endAt, contactId: values.contactId || undefined, notes: values.notes || undefined, location: values.location || undefined });
-      toast.showToast("Aktivita vytvořena");
-    }
-    setQuickFormSlot(null);
-    setQuickFormEvent(null);
-    loadEvents();
-  }, [loadEvents, toast]);
 
   const handleMarkEventDone = useCallback(async (ev: EventRow) => {
     await updateEvent(ev.id, { status: "done" });
@@ -890,7 +874,7 @@ export function PortalCalendarView() {
                   todayStyle={settings.todayStyle}
                   firstDayOfWeek={settings.firstDayOfWeek}
                   timeColWidth={timeColWidth}
-                  onSlotClick={(dateStr, hour) => setQuickFormSlot({ dateStr, hour })}
+                  onSlotClick={(dateStr, hour) => openNew(dateStr, hour)}
                   onEventClick={(ev) => setDetailEvent(detailEvent?.id === ev.id ? null : ev)}
                   onDaySelect={setSelectedDate}
                   selectedEventId={detailEvent?.id ?? null}
@@ -912,7 +896,7 @@ export function PortalCalendarView() {
               dayTasksLoading={dayTasksLoading}
               unreadMessagesCount={unreadMessagesCount}
               onEditEvent={(ev) => openEdit(ev)}
-              onQuickEditEvent={(ev) => { setQuickFormEvent(ev); setDetailEvent(null); }}
+              onQuickEditEvent={openEdit}
               onDeleteEvent={handleDeleteEvent}
               onFollowUp={(eventId) => handleFollowUp(eventId, "event")}
               onOpenFullEdit={openEdit}
@@ -966,22 +950,6 @@ export function PortalCalendarView() {
           }}
           onClose={() => setNewTaskModal(null)}
         />
-      )}
-
-      {(quickFormSlot || quickFormEvent) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center wp-cal-modal-overlay bg-slate-900/30 backdrop-blur-sm p-4" onClick={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}>
-          <div className="wp-cal-modal-content w-full max-w-[600px]" onClick={(e) => e.stopPropagation()}>
-            <QuickEventForm
-              initialStart={quickFormSlot ? `${quickFormSlot.dateStr}T${String(quickFormSlot.hour).padStart(2, "0")}:00` : new Date(quickFormEvent!.startAt).toISOString().slice(0, 16)}
-              initialEnd={quickFormSlot ? `${quickFormSlot.dateStr}T${String(Math.min(quickFormSlot.hour + 1, 23)).padStart(2, "0")}:00` : quickFormEvent?.endAt ? new Date(quickFormEvent.endAt).toISOString().slice(0, 16) : undefined}
-              initialValues={quickFormEvent ? { id: quickFormEvent.id, title: quickFormEvent.title, eventType: quickFormEvent.eventType ?? "schuzka", contactId: quickFormEvent.contactId ?? "", notes: quickFormEvent.notes ?? "", location: quickFormEvent.location ?? "" } : undefined}
-              contacts={contacts}
-              eventTypeColors={settings.eventTypeColors}
-              onSave={handleQuickSave}
-              onClose={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}
-            />
-          </div>
-        </div>
       )}
 
       <CalendarSettingsModal

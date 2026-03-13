@@ -161,6 +161,7 @@ export function QuickEventForm({
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Začátek</label>
               <input
                 type="datetime-local"
+                step={300}
                 value={form.startAt}
                 onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-100"
@@ -170,6 +171,7 @@ export function QuickEventForm({
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Konec</label>
               <input
                 type="datetime-local"
+                step={300}
                 value={form.endAt}
                 onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-100"

@@ -70,7 +70,7 @@ export function OpportunityNotesTab({
       {contactId ? (
         <form onSubmit={handleAdd} className="rounded-xl border border-slate-200 p-4 space-y-2">
           <label className="block text-sm font-medium text-slate-700">Datum schůzky</label>
-          <input type="datetime-local" name="meetingAt" className="rounded border border-slate-300 px-2 py-1 text-sm w-full max-w-xs" required />
+          <input type="datetime-local" step={300} name="meetingAt" className="rounded border border-slate-300 px-2 py-1 text-sm w-full max-w-xs" required />
           <label className="block text-sm font-medium text-slate-700">Poznámka</label>
           <textarea name="body" rows={3} className="rounded border border-slate-300 px-2 py-1 text-sm w-full" required />
           <button type="submit" disabled={saving} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
