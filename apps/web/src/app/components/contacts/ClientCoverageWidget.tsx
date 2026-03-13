@@ -25,6 +25,7 @@ import {
 import type { ResolvedCoverageItem, CoverageSummary } from "@/app/lib/coverage/types";
 import type { CoverageStatus } from "@/app/lib/coverage/types";
 import { getAllCoverageItemKeys } from "@/app/lib/coverage/item-keys";
+import { useToast } from "@/app/components/Toast";
 
 /** Zobrazené názvy kategorií podle spec „pokryti produktu.txt“. */
 const DISPLAY_CATEGORY_NAMES: Record<string, string> = {
@@ -302,6 +303,7 @@ function CoverageItemRow({
   single?: boolean;
 }) {
   const [updating, setUpdating] = useState(false);
+  const toast = useToast();
   const isDone = item.status === "done";
   const isPending = item.status === "in_progress" || item.status === "opportunity";
   const isNone = !isDone && !isPending;
@@ -313,6 +315,10 @@ function CoverageItemRow({
         status: nextStatus(item.status),
       });
       onStatusChange();
+      toast.showToast("Stav pokrytí uložen", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Změna stavu se nepovedla";
+      toast.showToast(message, "error");
     } finally {
       setUpdating(false);
     }

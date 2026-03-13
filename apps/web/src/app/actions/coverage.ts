@@ -19,18 +19,6 @@ export type GetCoverageResult = {
   summary: CoverageSummary;
 };
 
-const EMPTY_COVERAGE_RESULT: GetCoverageResult = {
-  resolvedItems: [],
-  summary: {
-    done: 0,
-    inProgress: 0,
-    none: 0,
-    notRelevant: 0,
-    opportunity: 0,
-    total: 0,
-  },
-};
-
 export async function getCoverageForContact(contactId: string): Promise<GetCoverageResult> {
   try {
     const auth = await requireAuthInAction();
@@ -78,7 +66,7 @@ export async function getCoverageForContact(contactId: string): Promise<GetCover
     if (process.env.NODE_ENV === "development") {
       console.error("[getCoverageForContact]", contactId, err);
     }
-    return EMPTY_COVERAGE_RESULT;
+    throw err instanceof Error ? err : new Error("Nepodařilo se načíst pokrytí produktů");
   }
 }
 

@@ -34,6 +34,7 @@ CRM pro finanční poradce v ČR – MVP dle specifikace (domácnosti, pipeline,
      ```
      Případně z kořene: `node packages/db/src/apply-schema.mjs`
    - Jinak pro nový projekt: `pnpm db:push`
+   - Tabulka `contact_coverage` (pokrytí produktů v kartě klienta) se vytvoří při `db:apply-schema` nebo `db:push`. Používáte-li jen SQL migrace, spusťte `packages/db/migrations/add-contact-coverage.sql`.
 
    **Storage:** Pro nahrávání dokumentů vytvořte v Supabase Dashboard → Storage bucket s názvem `documents`.
 
