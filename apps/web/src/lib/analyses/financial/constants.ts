@@ -274,6 +274,7 @@ export const INSURANCE_COMPANIES_CS: string[] = [
   "NN pojišťovna",
   "UNIQA",
   "AXA",
+  "MetLife",
   "Jiná / neuvedeno",
 ];
 
