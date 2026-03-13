@@ -13,6 +13,7 @@ import {
   type TaskRow,
 } from "@/app/actions/tasks";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
+import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 import { EmptyState } from "@/app/components/EmptyState";
 import { SkeletonLine } from "@/app/components/Skeleton";
 import { SwipeTaskItem } from "@/app/components/SwipeTaskItem";
@@ -249,20 +250,15 @@ export default function TasksPage() {
             style={{ minHeight: 40 }}
           />
           <div className="flex flex-wrap gap-2">
-            <select
-              value={editForm.contactId}
-              onChange={(e) =>
-                setEditForm({ ...editForm, contactId: e.target.value })}
-              className={selectCls}
-              style={{ minWidth: 180, minHeight: 40 }}
-            >
-              <option value="">— žádný kontakt</option>
-              {contacts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.firstName} {c.lastName}
-                </option>
-              ))}
-            </select>
+            <div style={{ minWidth: 180 }}>
+              <ContactSearchInput
+                value={editForm.contactId}
+                contacts={contacts}
+                onChange={(contactId) => setEditForm({ ...editForm, contactId })}
+                placeholder="Vyhledat klienta…"
+                className="min-h-[40px]"
+              />
+            </div>
             <input
               type="date"
               value={editForm.dueDate}
@@ -452,18 +448,15 @@ export default function TasksPage() {
                 />
               </div>
               <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2">
-                <select
-                  value={newContactId}
-                  onChange={(e) => setNewContactId(e.target.value)}
-                  className="w-full md:w-auto flex items-center gap-1.5 px-3 py-3 md:py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm md:text-xs font-medium hover:bg-slate-100 transition-colors min-h-[44px]"
-                >
-                  <option value="">Klient</option>
-                  {contacts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.firstName} {c.lastName}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full md:w-auto min-w-0">
+                  <ContactSearchInput
+                    value={newContactId}
+                    contacts={contacts}
+                    onChange={setNewContactId}
+                    placeholder="Klient"
+                    className="min-h-[44px] py-3 md:py-2.5"
+                  />
+                </div>
                 <input
                   type="date"
                   value={newDueDate}
@@ -666,19 +659,13 @@ export default function TasksPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Klient</label>
-              <select
+              <ContactSearchInput
                 value={editForm.contactId}
-                onChange={(e) => setEditForm({ ...editForm, contactId: e.target.value })}
-                className={selectCls}
-                style={{ minHeight: 44 }}
-              >
-                <option value="">— žádný kontakt</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.firstName} {c.lastName}
-                  </option>
-                ))}
-              </select>
+                contacts={contacts}
+                onChange={(contactId) => setEditForm({ ...editForm, contactId })}
+                placeholder="Vyhledat klienta…"
+                className="min-h-[44px]"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Termín</label>

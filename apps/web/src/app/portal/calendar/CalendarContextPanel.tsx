@@ -204,9 +204,9 @@ export function CalendarContextPanel({
             <button
               type="button"
               onClick={() => onOpenFullEdit(selectedEvent)}
-              className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg"
+              className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg"
             >
-              <Edit2 size={14} /> Upravit
+              <Edit2 size={14} className="text-blue-600" /> Upravit
             </button>
             <button
               type="button"

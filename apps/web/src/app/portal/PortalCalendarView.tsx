@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, MoreVertical, X } from "lucide-react";
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
@@ -23,6 +24,7 @@ import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel
 import { CalendarLeftPanel } from "@/app/portal/calendar/CalendarLeftPanel";
 import { QuickEventForm, type QuickEventFormValues } from "@/app/portal/calendar/QuickEventForm";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
+import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 
 type ViewMode = "day" | "month" | "week" | "workweek";
 
@@ -159,6 +161,87 @@ function NewTaskModal({
   );
 }
 
+/* ────────── Event Detail Popup (overlay) ────────── */
+function EventDetailPopup({
+  event,
+  contacts,
+  onEdit,
+  onDelete,
+  onClose,
+}: {
+  event: EventRow;
+  contacts: ContactRow[];
+  onEdit: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const start = new Date(event.startAt);
+  const end = event.endAt ? new Date(event.endAt) : null;
+  const dateTimeStr = `${start.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" })} • ${formatTime(start)}${end ? `–${formatTime(end)}` : ""}`;
+  const contact = event.contactId ? contacts.find((c) => c.id === event.contactId) : null;
+  const mailtoHref = (() => {
+    const subject = encodeURIComponent(event.title);
+    const body = encodeURIComponent(`${event.title}\n${dateTimeStr}\n${event.location || ""}\n${event.notes || ""}`);
+    if (contact?.email) return `mailto:${contact.email}?subject=${subject}&body=${body}`;
+    return `mailto:?subject=${subject}&body=${body}`;
+  })();
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 bg-slate-50/50">
+          <h2 className="text-lg font-black text-slate-900 leading-tight truncate flex-1">{event.title}</h2>
+          <div className="flex items-center gap-1 shrink-0">
+            <button type="button" onClick={onEdit} className="p-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors" aria-label="Upravit" title="Upravit">
+              <Edit2 size={18} className="text-blue-600" />
+            </button>
+            <button type="button" onClick={onDelete} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 transition-colors" aria-label="Smazat" title="Smazat">
+              <Trash2 size={18} />
+            </button>
+            <a href={mailtoHref} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors" aria-label="Poslat e-mailem" title="Poslat e-mailem">
+              <Mail size={18} />
+            </a>
+            <button type="button" className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" aria-label="Další" title="Další">
+              <MoreVertical size={18} />
+            </button>
+            <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors" aria-label="Zavřít">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-slate-600">{dateTimeStr}</p>
+          {event.meetingLink && (
+            <a href={event.meetingLink.startsWith("http") ? event.meetingLink : `https://${event.meetingLink}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 py-2 px-3 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors">
+              Pozvat přes odkaz
+            </a>
+          )}
+          {event.location && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Místo</p>
+              <p className="text-sm font-medium text-slate-800">{event.location}</p>
+            </div>
+          )}
+          {event.contactName && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Účastník</p>
+              <Link href={event.contactId ? `/portal/contacts/${event.contactId}` : "#"} className="text-sm font-bold text-indigo-600 hover:text-indigo-700">
+                {event.contactName}
+              </Link>
+            </div>
+          )}
+          {event.notes && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Poznámka</p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap">{event.notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ────────── Event Detail Popover ────────── */
 function EventDetailPopover({
   event,
@@ -228,6 +311,7 @@ function EventFormModal({
   initial,
   contacts,
   opportunities,
+  eventTypeColors,
   onSave,
   onDelete,
   onFollowUp,
@@ -236,6 +320,7 @@ function EventFormModal({
   initial: EventFormData & { id?: string };
   contacts: ContactRow[];
   opportunities: OpportunityOption[];
+  eventTypeColors?: Record<string, string>;
   onSave: (form: EventFormData, id?: string) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
   onFollowUp?: (id: string, type: "event" | "task") => void;
@@ -258,20 +343,24 @@ function EventFormModal({
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
         <div className="px-5 py-5 space-y-5 overflow-y-auto">
           <div className="flex flex-wrap items-center gap-2">
-            {CALENDAR_EVENT_CATEGORIES.filter((t) => ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"].includes(t.id)).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, eventType: t.id }))}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
-                  form.eventType === t.id ? "border-current text-white shadow-sm" : "text-slate-500 hover:border-slate-300 hover:bg-slate-50"
-                }`}
-                style={form.eventType === t.id ? { backgroundColor: t.color, borderColor: t.color } : { borderColor: "var(--wp-border)" }}
-              >
-                <span className="text-base">{t.icon}</span>
-                {t.label}
-              </button>
-            ))}
+            {CALENDAR_EVENT_CATEGORIES.filter((t) => ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"].includes(t.id)).map((t) => {
+              const activeColor = eventTypeColors?.[t.id] ?? t.color;
+              const isActive = form.eventType === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, eventType: t.id }))}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                    isActive ? "border-current text-white shadow-sm" : "text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                  style={isActive ? { backgroundColor: activeColor, borderColor: activeColor } : { borderColor: "var(--wp-border)" }}
+                >
+                  <span className="text-base">{t.icon}</span>
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
 
           <input
@@ -297,10 +386,13 @@ function EventFormModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Kontakt</label>
-              <select value={form.contactId} onChange={(e) => setForm((f) => ({ ...f, contactId: e.target.value, opportunityId: "" }))} className="wp-select">
-                <option value="">— žádný</option>
-                {contacts.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
-              </select>
+              <ContactSearchInput
+                value={form.contactId}
+                contacts={contacts}
+                onChange={(contactId) => setForm((f) => ({ ...f, contactId, opportunityId: "" }))}
+                placeholder="Vyhledat klienta…"
+                className="wp-input border border-[var(--wp-border)]"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Obchod</label>
@@ -620,6 +712,9 @@ export function PortalCalendarView() {
     return `${weekNum}. týden (${formatMonthYear(currentDate)})`;
   }, [mode, currentDate, rangeStart]);
 
+  const toolbarMonthYear = formatMonthYear(currentDate);
+  const toolbarWeekNum = mode !== "month" ? getWeekNumber(rangeStart) : null;
+
   return (
     <div className="flex flex-col min-h-0 h-full pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#f1f5f9]">
       <div
@@ -660,7 +755,14 @@ export function PortalCalendarView() {
                     <ChevronRight size={18} />
                   </button>
                 </div>
-                <h2 className="text-lg font-black text-slate-900">{toolbarTitle}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-black text-slate-900">{toolbarMonthYear}</h2>
+                  {toolbarWeekNum != null && (
+                    <span className="bg-slate-100 text-slate-700 rounded-md px-2 py-0.5 text-sm font-medium">
+                      {toolbarWeekNum}. týden
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="bg-slate-100 p-1 rounded-lg flex items-center">
@@ -758,7 +860,7 @@ export function PortalCalendarView() {
 
           {!contextPanelCollapsed && (
             <CalendarContextPanel
-              selectedEvent={detailEvent}
+              selectedEvent={null}
               selectedDate={selectedDate}
               dayEvents={eventsByDate.get(selectedDate) ?? []}
               dayTasks={dayTasks}
@@ -781,11 +883,27 @@ export function PortalCalendarView() {
         </div>
       </div>
 
+      {detailEvent && (
+        <EventDetailPopup
+          event={detailEvent}
+          contacts={contacts}
+          onEdit={() => openEdit(detailEvent)}
+          onDelete={async () => {
+            if (confirm("Opravdu smazat tuto událost?")) {
+              await handleDelete(detailEvent.id);
+              setDetailEvent(null);
+            }
+          }}
+          onClose={() => setDetailEvent(null)}
+        />
+      )}
+
       {modal && (
         <EventFormModal
           initial={modal}
           contacts={contacts}
           opportunities={opportunities}
+          eventTypeColors={settings.eventTypeColors}
           onSave={handleSave}
           onDelete={modal.id ? handleDelete : undefined}
           onFollowUp={modal.id ? handleFollowUp : undefined}
@@ -818,6 +936,7 @@ export function PortalCalendarView() {
               initialEnd={quickFormSlot ? `${quickFormSlot.dateStr}T${String(Math.min(quickFormSlot.hour + 1, 23)).padStart(2, "0")}:00` : quickFormEvent?.endAt ? new Date(quickFormEvent.endAt).toISOString().slice(0, 16) : undefined}
               initialValues={quickFormEvent ? { id: quickFormEvent.id, title: quickFormEvent.title, eventType: quickFormEvent.eventType ?? "schuzka", contactId: quickFormEvent.contactId ?? "", notes: quickFormEvent.notes ?? "", location: quickFormEvent.location ?? "" } : undefined}
               contacts={contacts}
+              eventTypeColors={settings.eventTypeColors}
               onSave={handleQuickSave}
               onClose={() => { setQuickFormSlot(null); setQuickFormEvent(null); }}
             />

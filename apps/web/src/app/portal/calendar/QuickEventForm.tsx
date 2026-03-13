@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Calendar as CalendarIcon, Phone, Mail, Coffee, X } from "lucide-react";
 import type { ContactRow } from "@/app/actions/contacts";
+import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 
 function CheckSquare({ size, className }: { size: number; className?: string }) {
   return (
@@ -54,6 +55,8 @@ export interface QuickEventFormProps {
   onClose: () => void;
   /** Anchor for positioning (e.g. slot element); if not provided, form is centered */
   anchorRef?: React.RefObject<HTMLElement | null>;
+  /** Custom colors per event type (from calendar settings); when set, type buttons use these when active */
+  eventTypeColors?: Record<string, string>;
 }
 
 export function QuickEventForm({
@@ -64,6 +67,7 @@ export function QuickEventForm({
   onSave,
   onClose,
   anchorRef,
+  eventTypeColors,
 }: QuickEventFormProps) {
   const [form, setForm] = useState<QuickEventFormValues>(() => ({
     ...DEFAULT_VALUES,
@@ -126,16 +130,19 @@ export function QuickEventForm({
             {ACTIVITY_TYPES.map((type) => {
               const Icon = type.icon;
               const isActive = form.eventType === type.id;
+              const customColor = eventTypeColors?.[type.id];
+              const useInlineColor = isActive && Boolean(customColor);
               return (
                 <button
                   key={type.id}
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, eventType: type.id }))}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all ${
-                    isActive ? type.color : "text-slate-600 hover:bg-slate-50 border-slate-200 shadow-sm"
+                    useInlineColor ? "text-gray-800 border-gray-300" : isActive ? type.color : "text-slate-600 hover:bg-slate-50 border-slate-200 shadow-sm"
                   }`}
+                  style={useInlineColor ? { backgroundColor: customColor, borderColor: customColor } : undefined}
                 >
-                  <Icon size={16} className={isActive && type.id !== "schuzka" ? "" : isActive ? "text-white/80" : "text-slate-400"} />
+                  <Icon size={16} className={useInlineColor ? "text-gray-800" : isActive && type.id !== "schuzka" ? "" : isActive ? "text-white/80" : "text-slate-400"} />
                   {type.label}
                 </button>
               );
@@ -172,18 +179,12 @@ export function QuickEventForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kontakt</label>
-              <select
+              <ContactSearchInput
                 value={form.contactId}
-                onChange={(e) => setForm((f) => ({ ...f, contactId: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-100"
-              >
-                <option value="">— žádný —</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.firstName} {c.lastName}
-                  </option>
-                ))}
-              </select>
+                contacts={contacts}
+                onChange={(contactId) => setForm((f) => ({ ...f, contactId }))}
+                placeholder="Vyhledat klienta…"
+              />
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Místo</label>
