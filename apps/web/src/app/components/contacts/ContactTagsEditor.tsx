@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { setContactTags } from "@/app/actions/contacts";
 import { useToast } from "@/app/components/Toast";
@@ -17,28 +18,34 @@ export function ContactTagsEditor({ contactId, initialTags }: ContactTagsEditorP
   const [tags, setTags] = useState<string[]>(initialTags);
   const [newTag, setNewTag] = useState("");
   const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const toast = useToast();
+  const router = useRouter();
 
   const persist = useCallback(
-    async (next: string[]) => {
+    async (next: string[], action: "add" | "remove") => {
       setSaving(true);
+      setErrorMessage(null);
       try {
         await setContactTags(contactId, next);
         setTags(next);
+        toast.showToast(action === "add" ? "Štítek přidán" : "Štítek odebrán", "success");
+        router.refresh();
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Štítky se nepodařilo uložit";
         toast.showToast(msg, "error");
+        setErrorMessage(msg);
       } finally {
         setSaving(false);
       }
     },
-    [contactId, toast]
+    [contactId, toast, router]
   );
 
   const handleRemove = useCallback(
     (tag: string) => {
       const next = tags.filter((t) => t !== tag);
-      persist(next);
+      persist(next, "remove");
     },
     [tags, persist]
   );
@@ -52,7 +59,7 @@ export function ContactTagsEditor({ contactId, initialTags }: ContactTagsEditorP
     }
     const next = [...tags, trimmed];
     setNewTag("");
-    persist(next);
+    persist(next, "add");
   }, [newTag, tags, persist]);
 
   const handleKeyDown = useCallback(
@@ -101,6 +108,11 @@ export function ContactTagsEditor({ contactId, initialTags }: ContactTagsEditorP
           Přidat
         </button>
       </div>
+      {errorMessage && (
+        <p className="text-red-600 text-xs font-medium mt-1 w-full" role="alert">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }

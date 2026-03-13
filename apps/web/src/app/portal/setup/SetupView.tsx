@@ -28,6 +28,7 @@ import {
   CheckCircle,
   AlertCircle,
   Settings2,
+  Loader2,
 } from "lucide-react";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
 import { seedDemoData } from "@/app/actions/seed-demo";
@@ -79,9 +80,20 @@ interface Integration {
   configFields?: { key: string; label: string; type: "text" | "password"; placeholder: string }[];
 }
 
+/** Response shape from GET /api/ai/health */
+interface AIIntegrationHealth {
+  ok: boolean;
+  provider: "openai";
+  apiKeyPresent: boolean;
+  model: string;
+  fallbackModel: string | null;
+  latencyMs?: number;
+  error?: string;
+}
+
 const INTEGRATIONS: Integration[] = [
   { id: "google-calendar", name: "Google Calendar", description: "Synchronizujte schůzky a události z Aidvisora s Google Kalendářem. Obousměrná synchronizace.", icon: "📅", status: "disconnected", category: "calendar", configFields: [{ key: "clientId", label: "Client ID", type: "text", placeholder: "Google OAuth Client ID" }, { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "Google OAuth Client Secret" }] },
-  { id: "openai-gpt", name: "OpenAI GPT Mini", description: "AI asistent pro sumarizaci schůzek, generování e-mailů a analýzu finančních dat klientů.", icon: "🤖", status: "disconnected", category: "ai", configFields: [{ key: "apiKey", label: "API Key", type: "password", placeholder: "sk-..." }, { key: "model", label: "Model", type: "text", placeholder: "gpt-4o-mini" }] },
+  { id: "openai-gpt", name: "OpenAI GPT Mini", description: "AI asistent pro sumarizaci schůzek, generování e-mailů a analýzu finančních dat klientů. API klíč se nastavuje v proměnných prostředí na serveru.", icon: "🤖", status: "disconnected", category: "ai" },
   { id: "resend", name: "Resend (E-mail)", description: "Odesílání transakčních a notifikačních e-mailů klientům.", icon: "✉️", status: "disconnected", category: "email", configFields: [{ key: "apiKey", label: "API Key", type: "password", placeholder: "re_..." }, { key: "fromEmail", label: "Odesílatel", type: "text", placeholder: "info@aidvisora.cz" }] },
   { id: "smart-emailing", name: "SmartEmailing", description: "Hromadné e-mailové kampaně a newslettery.", icon: "📧", status: "coming_soon", category: "email" },
   { id: "google-sheets", name: "Google Sheets Export", description: "Automatický export dat do Google Sheets.", icon: "📊", status: "coming_soon", category: "other" },
@@ -335,9 +347,42 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [configs, setConfigs] = useState<Record<string, Record<string, string>>>({});
   const [integrationsCategory, setIntegrationsCategory] = useState<string>("all");
+  const [aiHealth, setAiHealth] = useState<AIIntegrationHealth | null>(null);
+  const [aiHealthLoading, setAiHealthLoading] = useState(false);
+  const [aiHealthTesting, setAiHealthTesting] = useState(false);
   const handleSaveIntegration = useCallback((integrationId: string) => {
     toast.showToast("Konfigurace uložena");
   }, [toast]);
+
+  const fetchAiHealth = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai/health");
+      const data = (await res.json()) as AIIntegrationHealth;
+      setAiHealth(data);
+      return data;
+    } catch {
+      setAiHealth(null);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "integrace") {
+      setAiHealthLoading(true);
+      fetchAiHealth().finally(() => setAiHealthLoading(false));
+    }
+  }, [activeTab, fetchAiHealth]);
+
+  const handleTestAIConnection = useCallback(async () => {
+    setAiHealthTesting(true);
+    try {
+      const data = await fetchAiHealth();
+      if (data?.ok) toast.showToast("Připojení v pořádku");
+      else toast.showToast(data?.error ?? "Připojení selhalo", "error");
+    } finally {
+      setAiHealthTesting(false);
+    }
+  }, [fetchAiHealth, toast]);
 
   // --- Team
   const [teamMembers, setTeamMembers] = useState<Awaited<ReturnType<typeof listTenantMembers>>>([]);
@@ -843,7 +888,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
                 {INTEGRATIONS.filter((i) => integrationsCategory === "all" || i.category === integrationsCategory).map((integration) => {
                   const expanded = expandedId === integration.id;
-                  const badge = STATUS_BADGES[integration.status];
+                  const isOpenAI = integration.id === "openai-gpt";
+                  const openAIStatus: IntegrationStatus = aiHealthLoading ? "disconnected" : aiHealth?.ok ? "connected" : "disconnected";
+                  const badge = STATUS_BADGES[isOpenAI ? openAIStatus : integration.status];
                   const config = configs[integration.id] ?? {};
                   return (
                     <div key={integration.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
@@ -861,8 +908,31 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                       </div>
                       <div className="px-6 py-4 border-t border-slate-50">
                         <button type="button" onClick={() => setExpandedId(expanded ? null : integration.id)} className="w-full flex items-center justify-between text-sm font-bold text-indigo-600 hover:text-indigo-800 min-h-[44px]">
-                          {expanded ? "Zavřít" : "Konfigurovat"} <ChevronRight size={14} className={expanded ? "rotate-90" : ""} />
+                          {expanded ? "Zavřít" : isOpenAI ? "Stav připojení" : "Konfigurovat"} <ChevronRight size={14} className={expanded ? "rotate-90" : ""} />
                         </button>
+                        {expanded && isOpenAI && (
+                          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                            {aiHealthLoading && !aiHealth ? (
+                              <p className="text-sm text-slate-500 font-medium flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Načítám stav…</p>
+                            ) : (
+                              <>
+                                <div className="text-sm">
+                                  <p className="font-bold text-slate-700">Model: {aiHealth?.model ?? "—"}</p>
+                                  {aiHealth?.latencyMs != null && <p className="text-slate-500 mt-0.5">Latence: {aiHealth.latencyMs} ms</p>}
+                                </div>
+                                {aiHealth?.fallbackModel && (
+                                  <p className="text-sm text-amber-600 font-medium flex items-center gap-1"><AlertCircle size={14} /> Použit fallback model ({aiHealth.fallbackModel}). Primární model nemusí být na účtu dostupný.</p>
+                                )}
+                                {aiHealth?.error && !aiHealth.ok && (
+                                  <p className="text-sm text-red-600 font-medium">{aiHealth.error === "missing_api_key" ? "API klíč není nastaven (OPENAI_API_KEY v .env)." : aiHealth.error}</p>
+                                )}
+                                <button type="button" onClick={handleTestAIConnection} disabled={aiHealthTesting} className="wp-btn mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-bold hover:bg-slate-200 disabled:opacity-60 flex items-center gap-2">
+                                  {aiHealthTesting ? <Loader2 size={16} className="animate-spin" /> : null} Otestovat připojení
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                         {expanded && integration.configFields && (
                           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                             {integration.configFields.map((field) => (

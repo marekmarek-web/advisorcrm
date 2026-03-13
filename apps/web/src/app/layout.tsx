@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import { Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import "../styles/monday.css";
 import "../styles/weplan-theme.css";
@@ -7,7 +7,11 @@ import "../styles/weplan-components.css";
 import "../styles/weplan-calendar.css";
 import { TooltipBlurListener } from "./components/TooltipBlurListener";
 
-const dmSans = DM_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "700"], variable: "--font-dm-sans" });
+const sourceSans = Source_Sans_3({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-primary",
+});
 
 export const metadata: Metadata = {
   title: "Aidvisora – Portál poradce",
@@ -22,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="cs">
-      <body className={dmSans.className}>
+      <body className={sourceSans.className}>
         <TooltipBlurListener />
         {children}
       </body>

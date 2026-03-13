@@ -126,10 +126,8 @@ export default async function ContactDetailPage({
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Kontakt";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-20 font-lato">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-20">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
-        .font-lato { font-family: 'Lato', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
 

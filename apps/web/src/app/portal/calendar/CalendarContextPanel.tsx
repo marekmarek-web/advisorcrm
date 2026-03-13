@@ -210,9 +210,7 @@ export function CalendarContextPanel({
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (confirm("Opravdu smazat tuto událost?")) onDeleteEvent(selectedEvent);
-              }}
+              onClick={() => onDeleteEvent(selectedEvent)}
               className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 rounded-lg"
             >
               <Trash2 size={14} /> Smazat

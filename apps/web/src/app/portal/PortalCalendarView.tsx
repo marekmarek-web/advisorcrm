@@ -574,13 +574,58 @@ export function PortalCalendarView() {
     loadEvents();
   }, [loadEvents, toast]);
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (!confirm("Opravdu smazat?")) return;
-    await deleteEvent(id);
-    setModal(null);
-    toast.showToast("Aktivita smazána");
-    loadEvents();
-  }, [loadEvents, toast]);
+  function eventRowToCreatePayload(ev: EventRow): Parameters<typeof createEvent>[0] {
+    const start = new Date(ev.startAt);
+    const end = ev.endAt ? new Date(ev.endAt) : null;
+    return {
+      title: ev.title,
+      eventType: ev.eventType ?? "schuzka",
+      startAt: start.toISOString(),
+      endAt: end?.toISOString(),
+      allDay: ev.allDay ?? false,
+      location: ev.location ?? undefined,
+      contactId: ev.contactId ?? undefined,
+      opportunityId: ev.opportunityId ?? undefined,
+      status: ev.status ?? undefined,
+      notes: ev.notes ?? undefined,
+      meetingLink: ev.meetingLink ?? undefined,
+      reminderAt: ev.reminderAt ? new Date(ev.reminderAt).toISOString() : undefined,
+    };
+  }
+
+  const handleDeleteEvent = useCallback(
+    async (ev: EventRow) => {
+      const payload = eventRowToCreatePayload(ev);
+      await deleteEvent(ev.id);
+      setModal(null);
+      setDetailEvent(null);
+      loadEvents();
+      toast.showToast("Událost byla smazána", "success", 6000, {
+        actionLabel: "Vrátit zpět",
+        onAction: async () => {
+          await createEvent(payload);
+          loadEvents();
+        },
+      });
+    },
+    [loadEvents, toast],
+  );
+
+  const handleDeleteById = useCallback(
+    async (id: string) => {
+      const ev = events.find((e) => e.id === id);
+      if (ev) {
+        await handleDeleteEvent(ev);
+      } else {
+        await deleteEvent(id);
+        setModal(null);
+        setDetailEvent(null);
+        loadEvents();
+        toast.showToast("Událost byla smazána");
+      }
+    },
+    [events, handleDeleteEvent, loadEvents, toast],
+  );
 
   const handleFollowUp = useCallback(async (sourceId: string, type: "event" | "task") => {
     const source = events.find((e) => e.id === sourceId);
@@ -868,7 +913,7 @@ export function PortalCalendarView() {
               unreadMessagesCount={unreadMessagesCount}
               onEditEvent={(ev) => openEdit(ev)}
               onQuickEditEvent={(ev) => { setQuickFormEvent(ev); setDetailEvent(null); }}
-              onDeleteEvent={async (ev) => { await handleDelete(ev.id); setDetailEvent(null); }}
+              onDeleteEvent={handleDeleteEvent}
               onFollowUp={(eventId) => handleFollowUp(eventId, "event")}
               onOpenFullEdit={openEdit}
               onMarkDone={handleMarkEventDone}
@@ -888,12 +933,7 @@ export function PortalCalendarView() {
           event={detailEvent}
           contacts={contacts}
           onEdit={() => openEdit(detailEvent)}
-          onDelete={async () => {
-            if (confirm("Opravdu smazat tuto událost?")) {
-              await handleDelete(detailEvent.id);
-              setDetailEvent(null);
-            }
-          }}
+          onDelete={() => handleDeleteEvent(detailEvent)}
           onClose={() => setDetailEvent(null)}
         />
       )}
@@ -905,7 +945,7 @@ export function PortalCalendarView() {
           opportunities={opportunities}
           eventTypeColors={settings.eventTypeColors}
           onSave={handleSave}
-          onDelete={modal.id ? handleDelete : undefined}
+          onDelete={modal.id ? handleDeleteById : undefined}
           onFollowUp={modal.id ? handleFollowUp : undefined}
           onClose={() => setModal(null)}
         />

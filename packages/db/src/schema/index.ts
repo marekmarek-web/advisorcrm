@@ -14,6 +14,7 @@ export * from "./timeline";
 export * from "./audit-compliance";
 export * from "./subscriptions";
 export * from "./contracts";
+export * from "./contract-upload-reviews";
 export * from "./board-views";
 export * from "./notifications";
 export * from "./messages";
