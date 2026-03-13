@@ -139,10 +139,13 @@ export async function updateContractReview(
     reviewDecisionReason?: string | null;
   }
 ): Promise<void> {
+  const createNewClientConfirmed =
+    update.createNewClientConfirmed === "true" ? ("true" as const) : null;
   await db
     .update(contractUploadReviews)
     .set({
       ...update,
+      createNewClientConfirmed,
       updatedAt: new Date(),
     })
     .where(
