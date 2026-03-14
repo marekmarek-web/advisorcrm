@@ -66,6 +66,14 @@ export const WIDGET_SECTION: Record<WidgetId, DashboardSection> = {
   notes: "D",
 };
 
+/** Lehce barevné pozadí gridů podle sekce (opacity max 20 %) */
+export const WIDGET_SECTION_BG: Record<DashboardSection, string> = {
+  A: "bg-emerald-500/10",
+  B: "bg-blue-500/10",
+  C: "bg-violet-500/10",
+  D: "bg-slate-500/10",
+};
+
 export const WIDGET_HREF: Partial<Record<WidgetId, string>> = {
   aiAssistant: "/portal/contracts/review",
   summaryDay: "/portal/calendar",

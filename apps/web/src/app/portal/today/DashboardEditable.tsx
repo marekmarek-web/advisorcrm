@@ -36,7 +36,7 @@ import { MessengerPreview } from "@/app/components/dashboard/MessengerPreview";
 import { DashboardCard } from "@/app/components/dashboard/DashboardCard";
 import { DashboardMiniNotes } from "./DashboardMiniNotes";
 import { DashboardAiAssistant } from "./DashboardAiAssistant";
-import { WIDGET_IDS, WIDGET_LABELS, WIDGET_ICONS, WIDGET_HREF, type WidgetId } from "./dashboard-config";
+import { WIDGET_IDS, WIDGET_LABELS, WIDGET_ICONS, WIDGET_HREF, WIDGET_SECTION, WIDGET_SECTION_BG, type WidgetId } from "./dashboard-config";
 
 const STORAGE_KEY = "weplan_dashboard_widgets";
 
@@ -68,11 +68,11 @@ function saveConfig(config: DashboardConfig) {
   } catch {}
 }
 
-/* KPI karty s lehkým gradientem a glow (jako Kalkulačky) */
+/* KPI karty – lehký gradient, opacity cca 20 %, glow */
 const KPI_THEMES = {
   green: { bg: "bg-emerald-500/20", glow: "bg-emerald-500", ring: "group-hover:ring-emerald-100", subtitle: "text-emerald-600" },
   blue: { bg: "bg-blue-500/20", glow: "bg-blue-500", ring: "group-hover:ring-blue-100", subtitle: "text-blue-600" },
-  purple: { bg: "bg-violet-500/25", glow: "bg-violet-500", ring: "group-hover:ring-violet-100", subtitle: "text-violet-600" },
+  purple: { bg: "bg-violet-500/20", glow: "bg-violet-500", ring: "group-hover:ring-violet-100", subtitle: "text-violet-600" },
 } as const;
 const KPI_CARDS_V3: {
   key: keyof Pick<DashboardKpis, "meetingsToday" | "tasksOpen" | "opportunitiesOpen">;
@@ -464,8 +464,8 @@ export function DashboardEditable({
           </button>
         </div>
 
-        {/* KPI karty – lehký gradient, glow v pravém horním rohu */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        {/* KPI karty – zmenšené, opacity 20 %, glow v pravém horním rohu */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {KPI_CARDS_V3.map((card) => {
             const theme = KPI_THEMES[card.theme];
             const Icon = card.Icon;
@@ -473,17 +473,17 @@ export function DashboardEditable({
               <Link
                 key={card.key}
                 href={card.href}
-                className={`group relative rounded-3xl p-6 sm:p-7 border border-slate-100 shadow-md flex flex-col justify-center min-h-[100px] no-underline overflow-hidden transition-all duration-200 hover:shadow-lg ${theme.bg} ring-4 ring-transparent ${theme.ring}`}
+                className={`group relative rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-md flex flex-col justify-center min-h-[80px] no-underline overflow-hidden transition-all duration-200 hover:shadow-lg ${theme.bg} ring-4 ring-transparent ${theme.ring}`}
               >
-                <div className={`absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[60px] opacity-0 group-hover:opacity-30 transition-opacity duration-500 ${theme.glow}`} aria-hidden />
-                <div className="relative z-10 flex items-center gap-3 mb-2">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${card.theme === "green" ? "bg-emerald-500" : card.theme === "blue" ? "bg-blue-500" : "bg-violet-500"}`}>
-                    <Icon size={20} />
+                <div className={`absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[60px] opacity-0 group-hover:opacity-25 transition-opacity duration-500 ${theme.glow}`} aria-hidden />
+                <div className="relative z-10 flex items-center gap-2 mb-1">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm ${card.theme === "green" ? "bg-emerald-500" : card.theme === "blue" ? "bg-blue-500" : "bg-violet-500"}`}>
+                    <Icon size={18} />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{card.label}</span>
                 </div>
-                <div className="relative z-10 flex items-end gap-3 mb-1">
-                  <span className="text-3xl font-black tracking-tight text-slate-900 tabular-nums">{kpis[card.key]}</span>
+                <div className="relative z-10 flex items-end gap-3 mb-0.5">
+                  <span className="text-2xl font-black tracking-tight text-slate-900 tabular-nums">{kpis[card.key]}</span>
                 </div>
                 <span className={`text-xs font-bold ${theme.subtitle}`}>{card.subtitle}</span>
               </Link>
@@ -491,30 +491,30 @@ export function DashboardEditable({
           })}
         </div>
 
-        {/* Rychlé vstupy – zarovnáno na střed, ikony jako v sidebaru s animací */}
+        {/* Rychlé vstupy – animace jako v main sidebaru */}
         <div className="mb-6 rounded-3xl border border-slate-100 bg-white shadow-md p-5 sm:p-6">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Rychlé vstupy</h3>
           <div className="flex flex-wrap gap-3 justify-center">
-            <Link href="/portal/contacts?newClient=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all group-hover:translate-x-0.5">
-              <UserPlus size={18} className="transition-transform group-hover:scale-110" /> Nový klient
+            <Link href="/portal/contacts?newClient=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:scale-110">
+              <UserPlus size={18} className="transition-transform duration-200 group-hover:scale-110" /> Nový klient
             </Link>
-            <Link href="/portal/calendar?new=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all group-hover:-translate-y-0.5 group-hover:scale-105">
-              <CalendarPlus size={18} className="transition-transform group-hover:scale-110" /> Nová schůzka
+            <Link href="/portal/calendar?new=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110">
+              <CalendarPlus size={18} className="transition-transform duration-200 group-hover:scale-110" /> Nová schůzka
             </Link>
-            <Link href="/portal/tasks" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all group-hover:rotate-6 group-hover:scale-105">
-              <CheckSquare size={18} className="transition-transform group-hover:scale-110" /> Nový úkol
+            <Link href="/portal/tasks" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110">
+              <CheckSquare size={18} className="transition-transform duration-200 group-hover:scale-110" /> Nový úkol
             </Link>
-            <Link href="/portal/messages" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all group-hover:rotate-6">
-              <MessageSquare size={18} className="transition-transform group-hover:scale-110" /> Napsat zprávu
+            <Link href="/portal/messages" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:rotate-[20deg] origin-top">
+              <MessageSquare size={18} className="transition-transform duration-200 group-hover:scale-110" /> Napsat zprávu
             </Link>
-            <Link href="/portal/calculators" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all group-hover:rotate-6 group-hover:scale-105">
-              <BarChart3 size={18} className="transition-transform group-hover:scale-110" /> Kalkulačky
+            <Link href="/portal/calculators" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110">
+              <BarChart3 size={18} className="transition-transform duration-200 group-hover:scale-110" /> Kalkulačky
             </Link>
-            <Link href="/portal/analyses/financial" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all group-hover:scale-105 group-hover:rotate-3">
-              <Target size={18} className="transition-transform group-hover:scale-110" /> Finanční analýza
+            <Link href="/portal/analyses/financial" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6">
+              <Target size={18} className="transition-transform duration-200 group-hover:scale-110" /> Finanční analýza
             </Link>
-            <Link href="/portal/calendar" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all group-hover:-translate-y-0.5 group-hover:scale-105">
-              <Calendar size={18} className="transition-transform group-hover:scale-110" /> Kalendář
+            <Link href="/portal/calendar" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110">
+              <Calendar size={18} className="transition-transform duration-200 group-hover:scale-110" /> Kalendář
             </Link>
           </div>
         </div>
@@ -664,6 +664,7 @@ export function DashboardEditable({
                   icon={WidgetIconComponent}
                   footerLink={footerLink}
                   footerLabel={footerLabel}
+                  backgroundClass={WIDGET_SECTION_BG[WIDGET_SECTION[id]]}
                   rightElement={
                     <span className="p-1 text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing rounded transition-colors touch-none shrink-0" aria-label="Chytit a přesunout">
                       <GripVertical size={16} />

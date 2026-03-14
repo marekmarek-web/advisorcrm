@@ -11,6 +11,8 @@ export interface DashboardCardProps {
   footerLabel?: string;
   /** Optional right-side content in header (e.g. drag handle) */
   rightElement?: React.ReactNode;
+  /** Optional background class (e.g. light tint by section) */
+  backgroundClass?: string;
   className?: string;
 }
 
@@ -25,11 +27,12 @@ export function DashboardCard({
   footerLink,
   footerLabel = "Více",
   rightElement,
+  backgroundClass,
   className = "",
 }: DashboardCardProps) {
   return (
     <div
-      className={`flex flex-col rounded-3xl border border-slate-100 bg-white shadow-md min-h-[320px] overflow-hidden ${className}`}
+      className={`flex flex-col rounded-3xl border border-slate-100 shadow-md min-h-[320px] overflow-hidden ${backgroundClass ?? "bg-white"} ${className}`}
     >
       <div className="px-6 py-5 flex items-center justify-between border-b border-slate-100 shrink-0">
         <div className="flex items-center gap-3 min-w-0">

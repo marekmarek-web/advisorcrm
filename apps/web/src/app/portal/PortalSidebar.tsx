@@ -371,7 +371,7 @@ export function PortalSidebar({
         >
           <Link
             href="/portal"
-            className={`flex items-center gap-3 overflow-hidden ${collapsed ? "justify-center w-full" : ""}`}
+            className={`flex items-center overflow-hidden ${collapsed ? "justify-center w-full" : ""}`}
             aria-label="Aidvisora – přejít na nástěnku"
           >
             <img
@@ -379,11 +379,6 @@ export function PortalSidebar({
               alt="Aidvisora"
               className={`h-9 w-auto flex-shrink-0 ${sidebarTheme === "gradient" ? "brightness-0 invert" : ""}`}
             />
-            {!collapsed && (
-              <span className={`font-black text-[22px] tracking-tight whitespace-nowrap ${sidebarTheme === "gradient" ? "text-white" : "text-[#5b2b90]"}`}>
-                Aidvisora
-              </span>
-            )}
           </Link>
           <div className="flex items-center shrink-0">
             {onCollapsedChange && (
@@ -391,7 +386,7 @@ export function PortalSidebar({
                 type="button"
                 onClick={() => onCollapsedChange(!collapsed)}
                 className={`hidden md:flex w-7 h-7 items-center justify-center rounded-lg transition-colors
-                  ${sidebarTheme === "gradient" ? "text-white/80 hover:bg-white/10" : "text-slate-400 hover:bg-slate-100"}
+                  ${sidebarTheme === "gradient" ? "text-white hover:bg-white/10" : "text-slate-400 hover:bg-slate-100"}
                   ${collapsed ? "absolute -right-3.5 top-6 bg-white border border-slate-200 shadow-sm z-50" : ""}`}
                 aria-label={collapsed ? "Rozbalit panel" : "Sbalit panel"}
               >
@@ -400,7 +395,7 @@ export function PortalSidebar({
             )}
             <button
               onClick={() => setMobileOpen(false)}
-              className={`md:hidden p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${sidebarTheme === "gradient" ? "text-white/90 hover:bg-white/10" : "text-slate-500 hover:bg-slate-100"}`}
+              className={`md:hidden p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${sidebarTheme === "gradient" ? "text-white hover:bg-white/10" : "text-slate-500 hover:bg-slate-100"}`}
               aria-label="Zavřít menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
@@ -414,7 +409,7 @@ export function PortalSidebar({
         {!collapsed && (
           <div className="px-5 py-4 flex-shrink-0">
             <div className="relative group">
-              <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${sidebarTheme === "gradient" ? "text-white/70" : "text-slate-400"}`} />
+              <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400"}`} />
               <input
                 type="text"
                 placeholder="Hledat v menu..."
@@ -422,7 +417,7 @@ export function PortalSidebar({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-bold outline-none transition-all ${
                   sidebarTheme === "gradient"
-                    ? "bg-white/10 border border-white/20 text-white placeholder:text-white/60 focus:bg-white/20 focus:ring-2 focus:ring-white/30 focus:border-white/40"
+                    ? "bg-white/10 border border-white/20 text-white placeholder:text-white/90 focus:bg-white/20 focus:ring-2 focus:ring-white/30 focus:border-white/40"
                     : "bg-slate-50 border border-slate-100 text-slate-700 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300"
                 }`}
                 aria-label="Hledat v menu"
@@ -449,9 +444,9 @@ export function PortalSidebar({
               {!collapsed && (
                 <div className="flex items-center px-3 mb-2 pt-1">
                   <h4 className={`text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5 ${
-                    group.specialBg ? (sidebarTheme === "gradient" ? "text-amber-200" : "text-indigo-500") : sidebarTheme === "gradient" ? "text-white/70" : "text-slate-400"
+                    group.specialBg ? (sidebarTheme === "gradient" ? "text-white" : "text-indigo-500") : sidebarTheme === "gradient" ? "text-white" : "text-slate-400"
                   }`}>
-                    {group.specialBg && <Zap size={10} className={sidebarTheme === "gradient" ? "text-amber-300 shrink-0" : "text-amber-500 shrink-0"} />}
+                    {group.specialBg && <Zap size={10} className={sidebarTheme === "gradient" ? "text-white shrink-0" : "text-amber-500 shrink-0"} />}
                     {group.section}
                   </h4>
                 </div>
@@ -488,7 +483,7 @@ export function PortalSidebar({
                             ${sidebarTheme === "gradient"
                               ? isActive
                                 ? "bg-white/20 text-white shadow-lg"
-                                : "text-white/90 hover:bg-white/10 border border-transparent hover:border-white/20"
+                                : "text-white hover:bg-white/10 border border-transparent hover:border-white/20"
                               : isActive
                                 ? "bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white shadow-lg shadow-fuchsia-900/20"
                                 : "text-slate-700 hover:bg-white hover:shadow-md border border-transparent hover:border-fuchsia-100"}
@@ -498,12 +493,12 @@ export function PortalSidebar({
                           <div className="relative flex items-center justify-center shrink-0">
                             <Icon
                               size={18}
-                              className={`transition-colors ${isActive ? "text-white animate-spin-slow" : sidebarTheme === "gradient" ? "text-amber-200 animate-pulse-glow group-hover:text-amber-100" : "text-fuchsia-500 animate-pulse-glow group-hover:text-fuchsia-600"}`}
+                              className={`transition-colors ${isActive ? "text-white animate-spin-slow" : sidebarTheme === "gradient" ? "text-white animate-pulse-glow" : "text-fuchsia-500 animate-pulse-glow group-hover:text-fuchsia-600"}`}
                               strokeWidth={isActive ? 2.5 : 2}
                             />
                           </div>
                           {!collapsed && (
-                            <span className={`ml-3 flex-1 text-left text-[13px] font-black tracking-wide ${isActive ? "text-white" : sidebarTheme === "gradient" ? "text-white/90" : "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600"}`}>
+                            <span className={`ml-3 flex-1 text-left text-[13px] font-black tracking-wide ${isActive ? "text-white" : sidebarTheme === "gradient" ? "text-white" : "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600"}`}>
                               {item.label}
                             </span>
                           )}
@@ -532,7 +527,7 @@ export function PortalSidebar({
                           ${sidebarTheme === "gradient"
                             ? isActive
                               ? "bg-white/20 text-white shadow-md"
-                              : "text-white/90 hover:bg-white/10"
+                              : "text-white hover:bg-white/10"
                             : isActive
                               ? "bg-[#0f172a] text-white shadow-md"
                               : item.isHighlighted
@@ -547,13 +542,13 @@ export function PortalSidebar({
                         <div className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${!isActive && item.hoverAnim ? item.hoverAnim : ""}`}>
                           <Icon
                             size={18}
-                            className={`transition-colors ${isActive ? "text-white" : sidebarTheme === "gradient" ? "text-white/80 group-hover:text-white" : "text-slate-500 group-hover:text-indigo-600"}`}
+                            className={`transition-colors ${isActive ? "text-white" : sidebarTheme === "gradient" ? "text-white" : "text-slate-500 group-hover:text-indigo-600"}`}
                             strokeWidth={isActive || item.isHighlighted ? 2.5 : 2}
                           />
                         </div>
                         {!collapsed && (
                           <span className={`ml-3 flex-1 text-left text-[13px] whitespace-nowrap tracking-wide ${
-                            isActive ? "text-white font-bold" : sidebarTheme === "gradient" ? "text-white/90 font-semibold" : item.isHighlighted ? "font-bold text-slate-800" : "font-semibold"
+                            isActive ? "text-white font-bold" : sidebarTheme === "gradient" ? "text-white font-semibold" : item.isHighlighted ? "font-bold text-slate-800" : "font-semibold"
                           }`}>
                             {item.label}
                           </span>
@@ -596,65 +591,54 @@ export function PortalSidebar({
               {!collapsed && (
                 <div className="min-w-0">
                   <p className={`text-sm font-black truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-900"}`}>{userEmail ?? "Profil"}</p>
-                  <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${sidebarTheme === "gradient" ? "text-white/70" : "text-slate-400"}`}>AIDVISORA CRM V2.0</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400"}`}>AIDVISORA CRM V2.0</p>
                 </div>
               )}
             </div>
-            {!collapsed && <MoreVertical size={16} className={`shrink-0 ${sidebarTheme === "gradient" ? "text-white/70 group-hover:text-white" : "text-slate-400 group-hover:text-slate-700"}`} />}
+            {!collapsed && <MoreVertical size={16} className={`shrink-0 ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400 group-hover:text-slate-700"}`} />}
           </Link>
         </div>
 
-        {/* Přepínač palety – úplně dole */}
+        {/* Přepínač palety – minimalistický jako na login stránce */}
         <div
-          className={`p-3 flex-shrink-0 border-t ${sidebarTheme === "gradient" ? "border-white/10" : "border-slate-100"}`}
+          className={`p-3 flex-shrink-0 border-t flex justify-center ${sidebarTheme === "gradient" ? "border-white/10" : "border-slate-100"}`}
         >
-          {collapsed ? (
-            <div className="flex items-center justify-center gap-1">
-              <button
-                type="button"
-                onClick={() => setTheme("white")}
-                className={`p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${
-                  sidebarTheme === "white" ? "bg-slate-200 text-slate-700" : "text-white/70 hover:bg-white/10"
-                }`}
-                title="Bílá"
-                aria-label="Bílé pozadí"
-              >
-                <Palette size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme("gradient")}
-                className={`p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${
-                  sidebarTheme === "gradient" ? "bg-white/20 text-white" : "text-slate-500 hover:bg-slate-100"
-                }`}
-                title="Barevný"
-                aria-label="Barevný gradient"
-              >
-                <Zap size={18} />
-              </button>
-            </div>
-          ) : (
-            <div className={`flex rounded-xl overflow-hidden border ${sidebarTheme === "gradient" ? "border-white/20" : "border-slate-200"}`}>
-              <button
-                type="button"
-                onClick={() => setTheme("white")}
-                className={`flex-1 py-2 px-3 text-xs font-bold transition-colors min-h-[44px] ${
-                  sidebarTheme === "white" ? "bg-slate-100 text-slate-800" : sidebarTheme === "gradient" ? "text-white/80 hover:bg-white/10" : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                Bílá
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme("gradient")}
-                className={`flex-1 py-2 px-3 text-xs font-bold transition-colors min-h-[44px] ${
-                  sidebarTheme === "gradient" ? "bg-white/20 text-white" : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                Barevný
-              </button>
-            </div>
-          )}
+          <div
+            className={`inline-flex gap-0.5 rounded-full p-1.5 shadow-lg ${
+              sidebarTheme === "gradient"
+                ? "bg-black/20 backdrop-blur-md border border-white/10"
+                : "bg-slate-100 border border-slate-200"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setTheme("white")}
+              className={`p-2.5 rounded-full transition-all duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                sidebarTheme === "white"
+                  ? "bg-slate-200 text-slate-800 shadow-sm"
+                  : sidebarTheme === "gradient"
+                    ? "text-white hover:text-white hover:bg-white/10"
+                    : "text-slate-500 hover:bg-slate-200"
+              }`}
+              title="Bílá"
+              aria-label="Bílé pozadí"
+            >
+              <Palette size={20} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme("gradient")}
+              className={`p-2.5 rounded-full transition-all duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                sidebarTheme === "gradient"
+                  ? "bg-white/20 text-white shadow-sm"
+                  : "text-slate-500 hover:bg-slate-200"
+              }`}
+              title="Barevný"
+              aria-label="Barevný gradient"
+            >
+              <Zap size={20} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         {onResize && !collapsed && (

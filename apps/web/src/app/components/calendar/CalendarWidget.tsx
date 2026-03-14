@@ -107,10 +107,10 @@ export function CalendarWidget({ onNewActivity }: { onNewActivity?: () => void }
         </button>
       </div>
 
-      {/* Agenda – sidecalendar.txt: timeline s ikonami a kartami */}
+      {/* Agenda – timeline vlevo od kruhů (čára neprotíná ikony) */}
       <div>
         <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Agenda</h3>
-        <div className="space-y-4 relative before:absolute before:left-5 before:top-0 before:bottom-0 before:w-0.5 before:bg-slate-100">
+        <div className="space-y-4 relative pl-4 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-slate-100">
           {loading ? (
             <p className="text-sm text-slate-500 pl-14">Načítám…</p>
           ) : events.length === 0 ? (
@@ -125,10 +125,10 @@ export function CalendarWidget({ onNewActivity }: { onNewActivity?: () => void }
                 <Link
                   key={ev.id}
                   href="/portal/calendar"
-                  className="relative flex items-center justify-between pl-0 group"
+                  className="relative flex items-center justify-between group"
                 >
                   <div
-                    className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-sm z-10 transition-colors shrink-0"
+                    className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-sm z-10 transition-colors shrink-0 relative"
                     style={{ backgroundColor: bgRgba, color, borderColor: color }}
                   >
                     <EventIcon eventType={typeId} />
