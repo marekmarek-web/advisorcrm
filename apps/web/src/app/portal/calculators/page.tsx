@@ -4,12 +4,13 @@ import { getCalculators } from "@/lib/calculators/core/registry";
 import type { CalculatorIconId } from "@/lib/calculators/core/types";
 import { ListPageShell, ListPageEmpty } from "@/app/components/list-page";
 
-const ICON_MAP: Record<CalculatorIconId, React.ComponentType<{ className?: string; size?: number | string; strokeWidth?: number }>> = {
-  "trending-up": TrendingUp,
-  calculator: Calculator,
-  "piggy-bank": PiggyBank,
-  "heart-pulse": HeartPulse,
-  "circle-help": Calculator,
+type IconProps = { className?: string; size?: number | string; strokeWidth?: number | string };
+const ICON_MAP: Record<CalculatorIconId, React.ComponentType<IconProps>> = {
+  "trending-up": TrendingUp as React.ComponentType<IconProps>,
+  calculator: Calculator as React.ComponentType<IconProps>,
+  "piggy-bank": PiggyBank as React.ComponentType<IconProps>,
+  "heart-pulse": HeartPulse as React.ComponentType<IconProps>,
+  "circle-help": Calculator as React.ComponentType<IconProps>,
 };
 
 type ThemeId = "investment" | "mortgage" | "pension" | "life";
