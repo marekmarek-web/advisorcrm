@@ -125,7 +125,7 @@ function applyOrderToSections(
   if (!order?.length) return sections;
   const allHrefs = new Set(sections.flatMap((s) => s.items.map((i) => i.href)));
   const orderedHrefs = order.flatMap((o) => o.hrefs).filter((h) => allHrefs.has(h));
-  const hrefToItem = new Map<string | NavItemConfig>();
+  const hrefToItem = new Map<string, NavItemConfig>();
   sections.forEach((sec) => sec.items.forEach((it) => hrefToItem.set(it.href, it)));
   const sectionById = new Map(sections.map((s) => [s.id, s]));
   const result: SectionConfig[] = [];
