@@ -542,46 +542,136 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 {seedMsg && <p className="text-xs text-amber-700 mt-2 bg-amber-100 rounded-lg px-3 py-2">{seedMsg}</p>}
               </div>
 
-              {/* Rychlé tlačítko + Nový */}
-              <div id="quick-actions" className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden scroll-mt-4">
-                <div className="px-6 sm:px-8 py-5 border-b border-slate-50">
-                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Settings2 size={18} className="text-indigo-500" /> Rychlé tlačítko „+ Nový“
-                  </h2>
-                  <p className="text-sm text-slate-500 font-medium mt-1">Vyberte položky a pořadí v menu „+ Nový“ v horní liště. Skryté položky se nezobrazí.</p>
-                </div>
-                <div className="p-6 sm:p-8">
-                  {quickLoading ? (
-                    <p className="text-sm text-slate-500">Načítám…</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {quickLoadError && (
-                        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-2">
-                          Nastavení se nepodařilo načíst. Zobrazujeme výchozí položky – uložte pro uložení.
-                        </p>
-                      )}
-                      {quickOrder.map((id, index) => {
-                        const item = QUICK_ACTIONS_CATALOG.find((a) => a.id === id);
-                        if (!item) return null;
-                        const visible = quickVisible[id] !== false;
-                        return (
-                          <div key={id} className="flex items-center gap-3 py-2 min-h-[44px] rounded-xl hover:bg-slate-50 px-2 -mx-2">
-                            <div className="flex flex-col gap-0 shrink-0">
-                              <button type="button" onClick={() => { if (index > 0) { const n = [...quickOrder]; [n[index - 1], n[index]] = [n[index], n[index - 1]]; setQuickOrder(n); } }} className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30" disabled={index === 0} aria-label="Nahoru"><ChevronUp size={18} /></button>
-                              <button type="button" onClick={() => { if (index < quickOrder.length - 1) { const n = [...quickOrder]; [n[index], n[index + 1]] = [n[index + 1], n[index]]; setQuickOrder(n); } }} className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30" disabled={index === quickOrder.length - 1} aria-label="Dolů"><ChevronDown size={18} /></button>
-                            </div>
-                            <label className="flex-1 flex items-center gap-3 cursor-pointer min-w-0">
-                              <input type="checkbox" checked={visible} onChange={(e) => setQuickVisible((p) => ({ ...p, [id]: e.target.checked }))} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                              <span className="text-sm font-medium text-slate-700">{item.label}</span>
-                            </label>
-                          </div>
-                        );
-                      })}
-                      <button type="button" disabled={quickSaving} onClick={handleSaveQuickActions} className="mt-4 px-6 py-2.5 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#2a2d4a] disabled:opacity-50 min-h-[44px]">
-                        {quickSaving ? "Ukládám…" : "Uložit"}
-                      </button>
+              {/* Rychlé tlačítko + Nový – nastavení v sidebaru (Nastavení), tlačítko v headeru beze změny */}
+              <div id="quick-actions" className="scroll-mt-4 w-full max-w-[700px]">
+                <style>{`
+                  .quick-actions-custom-check {
+                    appearance: none;
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid #cbd5e1;
+                    border-radius: 6px;
+                    background-color: white;
+                    cursor: pointer;
+                    position: relative;
+                    transition: all 0.2s ease;
+                  }
+                  .quick-actions-custom-check:checked {
+                    background-color: #4f46e5;
+                    border-color: #4f46e5;
+                  }
+                  .quick-actions-custom-check:checked::after {
+                    content: '';
+                    position: absolute;
+                    left: 5px;
+                    top: 2px;
+                    width: 6px;
+                    height: 10px;
+                    border: solid white;
+                    border-width: 0 2px 2px 0;
+                    transform: rotate(45deg);
+                  }
+                `}</style>
+                <div className="bg-white rounded-[32px] shadow-2xl shadow-indigo-900/5 border border-slate-100 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 opacity-50 rounded-full blur-3xl pointer-events-none" aria-hidden />
+                  <div className="px-10 py-8 border-b border-slate-50 relative z-10">
+                    <div className="flex items-center gap-4 mb-2">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
+                        <Settings2 size={24} />
+                      </div>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">Rychlé tlačítko „+ Nový“</h2>
                     </div>
-                  )}
+                    <p className="text-sm font-medium text-slate-500 pl-16">
+                      Vyberte položky a pořadí v menu „+ Nový“ v horní liště. Skryté položky se nezobrazí.
+                    </p>
+                  </div>
+                  <div className="p-6 md:p-10 space-y-1 relative z-10 max-h-[60vh] overflow-y-auto">
+                    {quickLoading ? (
+                      <p className="text-sm text-slate-500 py-4">Načítám…</p>
+                    ) : (
+                      <>
+                        {quickLoadError && (
+                          <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-4" role="alert">
+                            Nastavení se nepodařilo načíst. Zobrazujeme výchozí položky – uložte pro uložení.
+                          </p>
+                        )}
+                        {quickOrder.map((id, index) => {
+                          const item = QUICK_ACTIONS_CATALOG.find((a) => a.id === id);
+                          if (!item) return null;
+                          const visible = quickVisible[id] !== false;
+                          return (
+                            <div
+                              key={id}
+                              className={`flex items-center gap-6 p-4 rounded-2xl transition-colors group ${
+                                visible
+                                  ? "bg-slate-50 border border-slate-100 hover:border-indigo-100"
+                                  : "bg-transparent border border-transparent opacity-60"
+                              }`}
+                            >
+                              <div className="flex flex-col items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (index > 0) {
+                                      const n = [...quickOrder];
+                                      [n[index - 1], n[index]] = [n[index], n[index - 1]];
+                                      setQuickOrder(n);
+                                    }
+                                  }}
+                                  disabled={index === 0}
+                                  className="p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                                  aria-label="Posunout nahoru"
+                                >
+                                  <ChevronUp size={18} strokeWidth={3} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (index < quickOrder.length - 1) {
+                                      const n = [...quickOrder];
+                                      [n[index], n[index + 1]] = [n[index + 1], n[index]];
+                                      setQuickOrder(n);
+                                    }
+                                  }}
+                                  disabled={index === quickOrder.length - 1}
+                                  className="p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                                  aria-label="Posunout dolů"
+                                >
+                                  <ChevronDown size={18} strokeWidth={3} />
+                                </button>
+                              </div>
+                              <label className="flex items-center gap-4 cursor-pointer flex-1 py-2">
+                                <input
+                                  type="checkbox"
+                                  checked={visible}
+                                  onChange={() => setQuickVisible((p) => ({ ...p, [id]: !p[id] }))}
+                                  className="quick-actions-custom-check shrink-0"
+                                  aria-label={item.label}
+                                />
+                                <span
+                                  className={`text-base transition-colors ${
+                                    visible ? "font-bold text-slate-800" : "font-medium text-slate-500 line-through"
+                                  }`}
+                                >
+                                  {item.label}
+                                </span>
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                  <div className="px-10 py-6 bg-slate-50/80 border-t border-slate-100 relative z-10">
+                    <button
+                      type="button"
+                      disabled={quickSaving}
+                      onClick={handleSaveQuickActions}
+                      className="flex items-center gap-2 px-10 py-3.5 bg-[#1a1c2e] text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 min-h-[44px]"
+                    >
+                      <Check size={18} /> {quickSaving ? "Ukládám…" : "Uložit"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

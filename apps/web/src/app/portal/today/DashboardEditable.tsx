@@ -25,6 +25,10 @@ import {
   BarChart3,
   FileText,
   TrendingUp,
+  LayoutDashboard,
+  ArrowUp,
+  ArrowDown,
+  Check,
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardKpis } from "@/app/actions/dashboard";
@@ -36,29 +40,33 @@ import { MessengerPreview } from "@/app/components/dashboard/MessengerPreview";
 import { DashboardCard } from "@/app/components/dashboard/DashboardCard";
 import { DashboardMiniNotes } from "./DashboardMiniNotes";
 import { DashboardAiAssistant } from "./DashboardAiAssistant";
-import { WIDGET_IDS, WIDGET_LABELS, WIDGET_ICONS, WIDGET_HREF, WIDGET_SECTION, WIDGET_SECTION_BG, type WidgetId } from "./dashboard-config";
+import { WIDGET_IDS, DEFAULT_DASHBOARD_ORDER, WIDGET_LABELS, WIDGET_ICONS, WIDGET_HREF, WIDGET_SECTION, WIDGET_SECTION_BG, WIDGET_COLOR_IDS, WIDGET_COLOR_CLASS, WIDGET_COLOR_GRADIENT, type WidgetId, type WidgetColorId } from "./dashboard-config";
 
 const STORAGE_KEY = "weplan_dashboard_widgets";
 
 interface DashboardConfig {
   order: WidgetId[];
   hidden: WidgetId[];
+  widgetColors?: Partial<Record<WidgetId, WidgetColorId>>;
 }
 
 function loadConfig(): DashboardConfig {
   if (typeof window === "undefined") {
-    return { order: [...WIDGET_IDS], hidden: [] };
+    return { order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] };
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { order: [...WIDGET_IDS], hidden: [] };
+    if (!raw) return { order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] };
     const parsed = JSON.parse(raw) as DashboardConfig;
-    const order = Array.isArray(parsed.order) ? parsed.order.filter((id) => WIDGET_IDS.includes(id)) : [...WIDGET_IDS];
+    const order = Array.isArray(parsed.order) ? parsed.order.filter((id) => WIDGET_IDS.includes(id)) : [...DEFAULT_DASHBOARD_ORDER];
     const hidden = Array.isArray(parsed.hidden) ? parsed.hidden.filter((id) => WIDGET_IDS.includes(id)) : [];
     const missingOrder = WIDGET_IDS.filter((id) => !order.includes(id));
-    return { order: [...order, ...missingOrder], hidden };
+    const widgetColors = parsed.widgetColors && typeof parsed.widgetColors === "object"
+      ? (Object.fromEntries(Object.entries(parsed.widgetColors).filter(([k, v]) => WIDGET_IDS.includes(k as WidgetId) && WIDGET_COLOR_IDS.includes(v as WidgetColorId))) as Partial<Record<WidgetId, WidgetColorId>>)
+      : undefined;
+    return { order: [...order, ...missingOrder], hidden, widgetColors };
   } catch {
-    return { order: [...WIDGET_IDS], hidden: [] };
+    return { order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] };
   }
 }
 
@@ -103,10 +111,11 @@ export function DashboardEditable({
   productionError?: string | null;
 }) {
   const router = useRouter();
-  const [config, setConfig] = useState<DashboardConfig>({ order: [...WIDGET_IDS], hidden: [] });
+  const [config, setConfig] = useState<DashboardConfig>({ order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] });
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [editOrder, setEditOrder] = useState<WidgetId[]>([]);
   const [editHidden, setEditHidden] = useState<Set<WidgetId>>(new Set());
+  const [editWidgetColors, setEditWidgetColors] = useState<Partial<Record<WidgetId, WidgetColorId>>>({});
 
   useEffect(() => {
     setConfig(loadConfig());
@@ -115,6 +124,7 @@ export function DashboardEditable({
   const openCustomize = useCallback(() => {
     setEditOrder([...config.order]);
     setEditHidden(new Set(config.hidden));
+    setEditWidgetColors(config.widgetColors ? { ...config.widgetColors } : {});
     setCustomizeOpen(true);
   }, [config]);
 
@@ -122,11 +132,12 @@ export function DashboardEditable({
     const newConfig: DashboardConfig = {
       order: editOrder,
       hidden: Array.from(editHidden),
+      widgetColors: Object.keys(editWidgetColors).length ? editWidgetColors : undefined,
     };
     setConfig(newConfig);
     saveConfig(newConfig);
     setCustomizeOpen(false);
-  }, [editOrder, editHidden]);
+  }, [editOrder, editHidden, editWidgetColors]);
 
   const moveUp = (id: WidgetId) => {
     const i = editOrder.indexOf(id);
@@ -149,6 +160,18 @@ export function DashboardEditable({
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  };
+
+  const setWidgetColor = (id: WidgetId, color: WidgetColorId | null) => {
+    setEditWidgetColors((prev) => {
+      const next = { ...prev };
+      if (color === null) {
+        delete next[id];
+      } else {
+        next[id] = color;
+      }
       return next;
     });
   };
@@ -491,30 +514,30 @@ export function DashboardEditable({
           })}
         </div>
 
-        {/* Rychlé vstupy – animace jako v main sidebaru */}
+        {/* Rychlé vstupy – animace ikon 1:1 jako v main sidebaru (hoverAnim na obalu ikony) */}
         <div className="mb-6 rounded-3xl border border-slate-100 bg-white shadow-md p-5 sm:p-6">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Rychlé vstupy</h3>
           <div className="flex flex-wrap gap-3 justify-center">
-            <Link href="/portal/contacts?newClient=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:scale-110">
-              <UserPlus size={18} className="transition-transform duration-200 group-hover:scale-110" /> Nový klient
+            <Link href="/portal/contacts?newClient=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:scale-110"><UserPlus size={18} /></span> Nový klient
             </Link>
-            <Link href="/portal/calendar?new=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110">
-              <CalendarPlus size={18} className="transition-transform duration-200 group-hover:scale-110" /> Nová schůzka
+            <Link href="/portal/calendar?new=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-110"><CalendarPlus size={18} /></span> Nová schůzka
             </Link>
-            <Link href="/portal/tasks" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110">
-              <CheckSquare size={18} className="transition-transform duration-200 group-hover:scale-110" /> Nový úkol
+            <Link href="/portal/tasks" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110"><CheckSquare size={18} /></span> Nový úkol
             </Link>
-            <Link href="/portal/messages" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:rotate-[20deg] origin-top">
-              <MessageSquare size={18} className="transition-transform duration-200 group-hover:scale-110" /> Napsat zprávu
+            <Link href="/portal/messages" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300 origin-top group-hover:rotate-[20deg]"><MessageSquare size={18} /></span> Napsat zprávu
             </Link>
-            <Link href="/portal/calculators" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110">
-              <BarChart3 size={18} className="transition-transform duration-200 group-hover:scale-110" /> Kalkulačky
+            <Link href="/portal/calculators" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110"><BarChart3 size={18} /></span> Kalkulačky
             </Link>
-            <Link href="/portal/analyses/financial" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6">
-              <Target size={18} className="transition-transform duration-200 group-hover:scale-110" /> Finanční analýza
+            <Link href="/portal/analyses/financial" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"><Target size={18} /></span> Finanční analýza
             </Link>
-            <Link href="/portal/calendar" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110">
-              <Calendar size={18} className="transition-transform duration-200 group-hover:scale-110" /> Kalendář
+            <Link href="/portal/calendar" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-110"><Calendar size={18} /></span> Kalendář
             </Link>
           </div>
         </div>
@@ -649,6 +672,8 @@ export function DashboardEditable({
             const footerLink = WIDGET_HREF[id];
             const footerLabel = id === "production" ? "Otevřít produkci" : id === "activeDeals" ? "Otevřít Board" : id === "myTasks" ? "Zobrazit všechny úkoly" : id === "clientCare" ? "Servisní přehled" : id === "financialAnalyses" ? "Všechny analýzy" : "Více";
             const body = renderWidgetContent(id);
+            const isNotesFullWidth = id === "notes";
+            const cardBg = config.widgetColors?.[id] ? WIDGET_COLOR_CLASS[config.widgetColors[id]] : WIDGET_SECTION_BG[WIDGET_SECTION[id]];
             return (
               <div
                 key={id}
@@ -657,14 +682,14 @@ export function DashboardEditable({
                 onDragEnd={handleDragEnd}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, id)}
-                className={`transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""}`}
+                className={`w-full rounded-3xl overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${cardBg} ${isNotesFullWidth ? "md:col-span-2 xl:col-span-3" : ""} ${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""}`}
               >
                 <DashboardCard
                   title={WIDGET_LABELS[id]}
                   icon={WidgetIconComponent}
                   footerLink={footerLink}
                   footerLabel={footerLabel}
-                  backgroundClass={WIDGET_SECTION_BG[WIDGET_SECTION[id]]}
+                  backgroundClass="bg-transparent"
                   rightElement={
                     <span className="p-1 text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing rounded transition-colors touch-none shrink-0" aria-label="Chytit a přesunout">
                       <GripVertical size={16} />
@@ -702,34 +727,148 @@ export function DashboardEditable({
         </div>
       </aside>
 
-      {/* Customize modal */}
+      {/* Customize modal – Upravit nástěnku (design 2026) */}
       {customizeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setCustomizeOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          onClick={() => setCustomizeOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="dashboard-customize-title"
+        >
+          <style>{`
+            .dashboard-edit-custom-check {
+              appearance: none;
+              width: 22px;
+              height: 22px;
+              border: 2px solid #cbd5e1;
+              border-radius: 6px;
+              background-color: white;
+              cursor: pointer;
+              position: relative;
+              transition: all 0.2s ease;
+              box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.02);
+            }
+            .dashboard-edit-custom-check:checked {
+              background-color: #4f46e5;
+              border-color: #4f46e5;
+              box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+            }
+            .dashboard-edit-custom-check:checked::after {
+              content: '';
+              position: absolute;
+              left: 6px;
+              top: 2px;
+              width: 6px;
+              height: 12px;
+              border: solid white;
+              border-width: 0 2.5px 2.5px 0;
+              transform: rotate(45deg);
+            }
+            .dashboard-edit-scroll::-webkit-scrollbar { display: none; }
+            .dashboard-edit-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+          `}</style>
           <div
-            className="w-full max-w-md p-6 rounded-[24px] border border-slate-100 bg-white shadow-xl"
+            className="w-full max-w-[800px] bg-white rounded-[32px] shadow-2xl shadow-indigo-900/10 border border-slate-100 overflow-hidden relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold mb-4" style={{ color: "var(--wp-text)" }}>Upravit nástěnku</h3>
-            <p className="text-xs mb-4" style={{ color: "var(--wp-text-muted)" }}>Zaškrtněte viditelné widgety a použijte šipky pro pořadí.</p>
-            <ul className="space-y-2">
-              {editOrder.map((id) => (
-                <li key={id} className="flex items-center gap-2 py-1.5 last:border-0" style={{ borderBottom: "1px solid var(--wp-border)" }}>
-                  <input
-                    type="checkbox"
-                    checked={!editHidden.has(id)}
-                    onChange={() => toggleVisible(id)}
-                    className="rounded"
-                    style={{ borderColor: "var(--wp-border)" }}
-                  />
-                  <span className="flex-1 text-sm" style={{ color: "var(--wp-text)" }}>{WIDGET_LABELS[id]}</span>
-                  <button type="button" onClick={() => moveUp(id)} className="p-1" style={{ color: "var(--wp-text-muted)" }} aria-label="Nahoru">↑</button>
-                  <button type="button" onClick={() => moveDown(id)} className="p-1" style={{ color: "var(--wp-text-muted)" }} aria-label="Dolů">↓</button>
-                </li>
-              ))}
-            </ul>
-            <div className="flex justify-end gap-2 mt-4 pt-4" style={{ borderTop: "1px solid var(--wp-border)" }}>
-              <button type="button" onClick={() => setCustomizeOpen(false)} className="wp-btn wp-btn-ghost">Zrušit</button>
-              <button type="button" onClick={saveCustomize} className="wp-btn wp-btn-primary">Uložit</button>
+            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-[80px] pointer-events-none -translate-x-1/2 -translate-y-1/2" aria-hidden />
+            <div className="px-10 py-8 border-b border-slate-50 relative z-10">
+              <div className="flex items-center gap-4 mb-2">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
+                  <LayoutDashboard size={24} />
+                </div>
+                <h2 id="dashboard-customize-title" className="text-2xl font-black text-slate-900 tracking-tight">Upravit nástěnku</h2>
+              </div>
+              <p className="text-sm font-medium text-slate-500 pl-16">
+                Zaškrtněte viditelné widgety, zvolte barvu a použijte šipky pro pořadí.
+              </p>
+            </div>
+            <div className="p-6 md:p-10 space-y-2 relative z-10 max-h-[55vh] overflow-y-auto dashboard-edit-scroll">
+              {editOrder.map((id, index) => {
+                const defaultSection = WIDGET_SECTION[id];
+                const sectionColorId: WidgetColorId = defaultSection === "A" ? "emerald" : defaultSection === "B" ? "blue" : defaultSection === "C" ? "violet" : "slate";
+                const currentColor = editWidgetColors[id] ?? sectionColorId;
+                const isVisible = !editHidden.has(id);
+                return (
+                  <div
+                    key={id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl transition-all duration-300 group ${
+                      isVisible
+                        ? "bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200"
+                        : "bg-slate-50/50 border border-slate-100 opacity-60 grayscale-[0.5]"
+                    }`}
+                  >
+                    <label className="flex items-center gap-4 cursor-pointer flex-1 sm:w-1/3 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isVisible}
+                        onChange={() => toggleVisible(id)}
+                        className="dashboard-edit-custom-check shrink-0"
+                        aria-label={WIDGET_LABELS[id]}
+                      />
+                      <span className={`text-base transition-colors ${isVisible ? "font-bold text-slate-800" : "font-medium text-slate-400 line-through"}`}>
+                        {WIDGET_LABELS[id]}
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {WIDGET_COLOR_IDS.map((c) => {
+                        const g = WIDGET_COLOR_GRADIENT[c];
+                        const isSelected = currentColor === c;
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setWidgetColor(id, c)}
+                            disabled={!isVisible}
+                            className={`w-9 h-9 rounded-full transition-all duration-300 border-[3px] shadow-sm ${g.bgClass} ${
+                              isSelected ? `ring-2 ring-offset-2 ${g.ringClass} border-white scale-110 shadow-md` : "border-white/80 hover:scale-110 hover:shadow-md"
+                            } ${!isVisible ? "cursor-not-allowed opacity-50" : ""}`}
+                            aria-label={`Barva ${c}`}
+                            aria-pressed={isSelected}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2 opacity-30 group-hover:opacity-100 transition-opacity justify-end sm:w-20">
+                      <button
+                        type="button"
+                        onClick={() => moveUp(id)}
+                        disabled={index === 0}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                        aria-label="Posunout nahoru"
+                      >
+                        <ArrowUp size={20} strokeWidth={2.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveDown(id)}
+                        disabled={index === editOrder.length - 1}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                        aria-label="Posunout dolů"
+                      >
+                        <ArrowDown size={20} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="px-10 py-6 bg-slate-50/80 border-t border-slate-100 flex items-center justify-end gap-4 relative z-10">
+              <button
+                type="button"
+                onClick={() => setCustomizeOpen(false)}
+                className="px-6 py-3 bg-transparent text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-200 transition-colors min-h-[44px]"
+              >
+                Zrušit
+              </button>
+              <button
+                type="button"
+                onClick={saveCustomize}
+                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-black tracking-wide shadow-lg shadow-indigo-900/20 hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95 min-h-[44px]"
+              >
+                <Check size={18} /> Uložit
+              </button>
             </div>
           </div>
         </div>

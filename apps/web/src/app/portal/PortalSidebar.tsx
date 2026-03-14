@@ -7,6 +7,7 @@ import {
   Home,
   LayoutGrid,
   Users,
+  UsersRound,
   Building2,
   Briefcase,
   BarChart3,
@@ -30,6 +31,7 @@ import {
   FileText,
   type LucideIcon,
 } from "lucide-react";
+import { hasPermission, type RoleName } from "@/lib/auth/get-membership";
 import { createClient } from "@/lib/supabase/client";
 import { getOpenTasksCount } from "@/app/actions/tasks";
 import { getUnreadConversationsCount } from "@/app/actions/messages";
@@ -108,6 +110,13 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
     ],
   },
   {
+    id: "sec-vedeni",
+    section: "Vedení týmu",
+    items: [
+      { href: "/portal/team-overview", label: "Týmový přehled", Icon: UsersRound, hoverAnim: "group-hover:scale-110" },
+    ],
+  },
+  {
     id: "sec-system",
     section: "Systém",
     items: [
@@ -181,6 +190,7 @@ function isItemActive(pathname: string, href: string): boolean {
 }
 
 interface PortalSidebarProps {
+  roleName?: string;
   width?: number;
   collapsed?: boolean;
   onResize?: (width: number) => void;
@@ -190,7 +200,18 @@ interface PortalSidebarProps {
   onMobileDrawerClose?: () => void;
 }
 
+function filterSectionsByRole(sections: SectionConfig[], roleName: string | undefined): SectionConfig[] {
+  if (!roleName) return sections;
+  return sections
+    .map((sec) => {
+      if (sec.id === "sec-vedeni" && !hasPermission(roleName as RoleName, "team_overview:read")) return null;
+      return sec;
+    })
+    .filter((s): s is SectionConfig => s !== null);
+}
+
 export function PortalSidebar({
+  roleName,
   width = PORTAL_SIDEBAR_WIDTH_PX,
   collapsed = false,
   onResize,
@@ -201,7 +222,8 @@ export function PortalSidebar({
 }: PortalSidebarProps = {}) {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
-  const [menuSections, setMenuSections] = useState<SectionConfig[]>(DEFAULT_SECTIONS);
+  const baseSections = useMemo(() => filterSectionsByRole(DEFAULT_SECTIONS, roleName), [roleName]);
+  const [menuSections, setMenuSections] = useState<SectionConfig[]>(baseSections);
   const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>("white");
 
   useEffect(() => {
@@ -216,8 +238,8 @@ export function PortalSidebar({
 
   useEffect(() => {
     const order = loadOrderFromStorage();
-    if (order?.length) setMenuSections((prev) => applyOrderToSections(prev, order));
-  }, []);
+    setMenuSections(order?.length ? applyOrderToSections(baseSections, order) : baseSections);
+  }, [baseSections]);
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
   const [isMobileState, setIsMobileState] = useState(false);
   const dragItemRef = useRef<{ groupIdx: number; itemIdx: number } | null>(null);
@@ -362,7 +384,7 @@ export function PortalSidebar({
           width: isMobileState ? "min(85vw, 280px)" : `${effectiveWidth}px`,
         }}
       >
-        {/* Header – logo z public + collapse */}
+        {/* Header – collapsed: jen symbol (Advisora logo A); expanded: jen velké logo (Aidvisora logo big) */}
         <div
           className={[
             "h-20 flex items-center justify-between px-5 flex-shrink-0",
@@ -371,14 +393,26 @@ export function PortalSidebar({
         >
           <Link
             href="/portal"
-            className={`flex items-center overflow-hidden ${collapsed ? "justify-center w-full" : ""}`}
+            className={`flex items-center overflow-hidden ${collapsed ? "justify-center w-full" : "min-w-0"}`}
             aria-label="Aidvisora – přejít na nástěnku"
           >
-            <img
-              src="/aidvisora-logo.png"
-              alt="Aidvisora"
-              className={`h-9 w-auto flex-shrink-0 ${sidebarTheme === "gradient" ? "brightness-0 invert" : ""}`}
-            />
+            {collapsed ? (
+              <img
+                key="logo-a"
+                src="/Aidvisora logo A.png"
+                alt="Aidvisora"
+                className="h-10 w-10 object-contain object-center flex-shrink-0"
+                style={sidebarTheme === "gradient" ? { filter: "brightness(0) invert(1)" } : undefined}
+              />
+            ) : (
+              <img
+                key="logo-big"
+                src="/Aidvisora logo.png"
+                alt="Aidvisora"
+                className="h-16 max-h-16 w-auto max-w-full object-contain object-left flex-shrink-0"
+                style={sidebarTheme === "gradient" ? { filter: "brightness(0) invert(1)" } : undefined}
+              />
+            )}
           </Link>
           <div className="flex items-center shrink-0">
             {onCollapsedChange && (
@@ -575,69 +609,70 @@ export function PortalSidebar({
           )}
         </nav>
 
-        {/* Footer – profil */}
+        {/* Spodní blok – profil + přepínač palety; konzistentní šířka a zarovnání (90°) */}
         <div
-          className={`p-4 flex-shrink-0 border-t ${sidebarTheme === "gradient" ? "border-white/10 bg-white/5" : "border-slate-100 bg-slate-50/50"}`}
+          className={`flex-shrink-0 border-t ${sidebarTheme === "gradient" ? "border-white/10 bg-white/5" : "border-slate-100 bg-slate-50/50"}`}
         >
-          <Link
-            href="/portal/setup?tab=profil"
-            className={`flex items-center group cursor-pointer p-2 -m-2 rounded-xl transition-colors ${collapsed ? "justify-center" : "justify-between"} ${sidebarTheme === "gradient" ? "hover:bg-white/10" : "hover:bg-white"}`}
-            title={collapsed ? (userEmail ?? "Profil") : undefined}
-          >
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-inner">
-                {getInitials(userEmail ?? undefined)}
-              </div>
-              {!collapsed && (
-                <div className="min-w-0">
-                  <p className={`text-sm font-black truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-900"}`}>{userEmail ?? "Profil"}</p>
-                  <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400"}`}>AIDVISORA CRM V2.0</p>
+          {/* Footer – profil */}
+          <div className="w-full px-5 py-4">
+            <Link
+              href="/portal/setup?tab=profil"
+              className={`flex items-center group cursor-pointer p-2 -m-2 rounded-xl transition-colors w-full max-w-full ${collapsed ? "justify-center" : "justify-between"} ${sidebarTheme === "gradient" ? "hover:bg-white/10" : "hover:bg-white"}`}
+              title={collapsed ? (userEmail ?? "Profil") : undefined}
+            >
+              <div className="flex items-center gap-3 overflow-hidden min-w-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-inner">
+                  {getInitials(userEmail ?? undefined)}
                 </div>
-              )}
-            </div>
-            {!collapsed && <MoreVertical size={16} className={`shrink-0 ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400 group-hover:text-slate-700"}`} />}
-          </Link>
-        </div>
+                {!collapsed && (
+                  <div className="min-w-0">
+                    <p className={`text-sm font-black truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-900"}`}>{userEmail ?? "Profil"}</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400"}`}>AIDVISORA CRM V2.0</p>
+                  </div>
+                )}
+              </div>
+              {!collapsed && <MoreVertical size={16} className={`shrink-0 ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400 group-hover:text-slate-700"}`} />}
+            </Link>
+          </div>
 
-        {/* Přepínač palety – minimalistický jako na login stránce */}
-        <div
-          className={`p-3 flex-shrink-0 border-t flex justify-center ${sidebarTheme === "gradient" ? "border-white/10" : "border-slate-100"}`}
-        >
-          <div
-            className={`inline-flex gap-0.5 rounded-full p-1.5 shadow-lg ${
-              sidebarTheme === "gradient"
-                ? "bg-black/20 backdrop-blur-md border border-white/10"
-                : "bg-slate-100 border border-slate-200"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setTheme("white")}
-              className={`p-2.5 rounded-full transition-all duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                sidebarTheme === "white"
-                  ? "bg-slate-200 text-slate-800 shadow-sm"
-                  : sidebarTheme === "gradient"
-                    ? "text-white hover:text-white hover:bg-white/10"
-                    : "text-slate-500 hover:bg-slate-200"
-              }`}
-              title="Bílá"
-              aria-label="Bílé pozadí"
-            >
-              <Palette size={20} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme("gradient")}
-              className={`p-2.5 rounded-full transition-all duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+          {/* Přepínač palety – w-full, obsah vycentrovaný, bez scale na hover */}
+          <div className="w-full px-5 pb-4 flex justify-center">
+            <div
+              className={`inline-flex gap-0.5 rounded-full p-1.5 shadow-lg ${
                 sidebarTheme === "gradient"
-                  ? "bg-white/20 text-white shadow-sm"
-                  : "text-slate-500 hover:bg-slate-200"
+                  ? "bg-black/20 backdrop-blur-md border border-white/10"
+                  : "bg-slate-100 border border-slate-200"
               }`}
-              title="Barevný"
-              aria-label="Barevný gradient"
             >
-              <Zap size={20} strokeWidth={2} />
-            </button>
+              <button
+                type="button"
+                onClick={() => setTheme("white")}
+                className={`p-2.5 rounded-full transition-colors duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                  sidebarTheme === "white"
+                    ? "bg-slate-200 text-slate-800 shadow-sm"
+                    : sidebarTheme === "gradient"
+                      ? "text-white hover:text-white hover:bg-white/10"
+                      : "text-slate-500 hover:bg-slate-200"
+                }`}
+                title="Bílá"
+                aria-label="Bílé pozadí"
+              >
+                <Palette size={20} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("gradient")}
+                className={`p-2.5 rounded-full transition-colors duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                  sidebarTheme === "gradient"
+                    ? "bg-white/20 text-white shadow-sm"
+                    : "text-slate-500 hover:bg-slate-200"
+                }`}
+                title="Barevný"
+                aria-label="Barevný gradient"
+              >
+                <Zap size={20} strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </div>
 

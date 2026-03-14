@@ -4,7 +4,7 @@ import { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Home, Plus, ChevronDown, ChevronUp, User, Baby, Filter } from "lucide-react";
-import { createHousehold, deleteHousehold } from "@/app/actions/households";
+import { deleteHousehold } from "@/app/actions/households";
 import type { HouseholdRowWithMembers, HouseholdMemberSummary } from "@/app/actions/households";
 import {
   ListPageShell,
@@ -15,6 +15,7 @@ import {
   ListPageNoResults,
 } from "@/app/components/list-page";
 import { ConfirmDeleteModal } from "@/app/components/ConfirmDeleteModal";
+import { NewHouseholdWizard } from "@/app/components/weplan/NewHouseholdWizard";
 import { useToast } from "@/app/components/Toast";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -57,8 +58,7 @@ export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] 
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
-  const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState("");
+  const [showWizard, setShowWizard] = useState(false);
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,18 +84,6 @@ export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] 
   }, [list, searchQuery, sortOrder]);
 
   const totalMembers = useMemo(() => list.reduce((acc, h) => acc + h.members.length, 0), [list]);
-
-  function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    startTransition(async () => {
-      await createHousehold(name);
-      setName("");
-      setShowForm(false);
-      toast.showToast("Domácnost vytvořena");
-      router.refresh();
-    });
-  }
 
   function handleDeleteClick(e: React.MouseEvent, id: string) {
     e.preventDefault();
@@ -128,37 +116,14 @@ export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] 
           totalCount={list.length}
           subtitle="Seskupení kontaktů a členů domácnosti."
           actions={
-            !showForm ? (
-              <button
-                type="button"
-                onClick={() => setShowForm(true)}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1a1c2e] text-white rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-md hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 shrink-0"
-              >
-                <Plus size={16} />
-                Nová domácnost
-              </button>
-            ) : (
-              <form onSubmit={handleCreate} className="flex items-center gap-2 flex-wrap">
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Název domácnosti"
-                  className="flex-1 min-w-[180px] px-4 py-2.5 border border-slate-200 rounded-[var(--wp-radius-sm)] text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-                  autoFocus
-                  required
-                />
-                <button type="submit" disabled={pending} className="px-4 py-2.5 bg-[#1a1c2e] text-white rounded-[var(--wp-radius-sm)] text-sm font-bold disabled:opacity-50">
-                  {pending ? "…" : "Vytvořit"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowForm(false); setName(""); }}
-                  className="px-4 py-2.5 border border-slate-200 text-slate-600 rounded-[var(--wp-radius-sm)] text-sm font-medium hover:bg-slate-50"
-                >
-                  Zrušit
-                </button>
-              </form>
-            )
+            <button
+              type="button"
+              onClick={() => setShowWizard(true)}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1a1c2e] text-white rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-md hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 shrink-0 min-h-[44px]"
+            >
+              <Plus size={16} />
+              Nová domácnost
+            </button>
           }
         />
 
@@ -216,7 +181,7 @@ export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] 
             title="Zatím žádné domácnosti"
             description="Vytvořte domácnost pro seskupení kontaktů."
             actionLabel="Vytvořit domácnost"
-            onAction={() => setShowForm(true)}
+            onAction={() => setShowWizard(true)}
           />
         ) : filteredList.length === 0 ? (
           <ListPageNoResults onReset={() => setSearchQuery("")} resetLabel="Zrušit vyhledávání" />
@@ -336,6 +301,11 @@ export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] 
         )}
       </ListPageShell>
 
+      <NewHouseholdWizard
+        open={showWizard}
+        onClose={() => { setShowWizard(false); router.refresh(); }}
+        onSuccess={() => { toast.showToast("Domácnost vytvořena"); router.refresh(); }}
+      />
       <ConfirmDeleteModal
         open={deleteModalId !== null}
         title="Smazat domácnost?"

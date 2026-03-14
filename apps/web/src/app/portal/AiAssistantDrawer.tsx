@@ -379,13 +379,14 @@ export function AiAssistantDrawer() {
 
   return (
     <>
+      {/* Overlay jen vlevo od panelu (na desktopu), aby klik do panelu nezavíral */}
       <div
-        className="fixed inset-0 bg-black/30 z-[var(--z-drawer-overlay,100)] md:bg-black/20"
+        className="fixed inset-0 md:right-[420px] z-[var(--z-drawer-overlay,100)] bg-transparent"
         onClick={() => setOpen(false)}
         aria-hidden
       />
       <div
-        className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 md:w-full md:max-w-[420px] z-[101] flex flex-col bg-[#f8fafc] shadow-[-4px_0_24px_rgba(0,0,0,0.12)]"
+        className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 md:w-full md:max-w-[420px] z-[101] flex flex-col bg-white shadow-[-4px_0_24px_rgba(0,0,0,0.12)]"
         role="dialog"
         aria-label="AI asistent"
       >
@@ -660,7 +661,7 @@ export function AiAssistantDrawer() {
                       : "bg-white border border-slate-100 shadow-sm"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap text-slate-800">{m.content}</p>
+                  <p className={`whitespace-pre-wrap ${m.role === "user" ? "text-white" : "text-slate-600"}`}>{m.content}</p>
                   {m.role === "assistant" && m.warnings && m.warnings.length > 0 && (
                     <div className="flex items-center gap-2 mt-2 text-amber-700 text-xs font-medium">
                       <AlertCircle size={14} />

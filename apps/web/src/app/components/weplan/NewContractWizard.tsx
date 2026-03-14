@@ -1,0 +1,371 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { FileText } from "lucide-react";
+import {
+  getContractSegments,
+  createContract,
+} from "@/app/actions/contracts";
+import { uploadDocument } from "@/app/actions/documents";
+import { ProductPicker } from "@/app/components/weplan/ProductPicker";
+import type { ProductPickerValue } from "@/app/components/weplan/ProductPicker";
+import { segmentLabel } from "@/app/lib/segment-labels";
+import {
+  WizardShell,
+  WizardHeader,
+  WizardStepper,
+  WizardBody,
+  WizardFooter,
+  WizardReview,
+  WizardSuccess,
+  wizardLabelClass,
+  wizardInputClass,
+} from "@/app/components/wizard";
+import type { WizardReviewRow } from "@/app/components/wizard";
+
+const WIZARD_STEPS = [
+  { label: "Typ smlouvy" },
+  { label: "Parametry" },
+  { label: "Dokument" },
+  { label: "Shrnutí" },
+];
+
+const initialForm = {
+  segment: "ZP",
+  partnerId: "",
+  productId: "",
+  partnerName: "",
+  productName: "",
+  premiumAmount: "",
+  premiumAnnual: "",
+  contractNumber: "",
+  startDate: "",
+  anniversaryDate: "",
+  note: "",
+};
+
+export function NewContractWizard({
+  open,
+  contactId,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  contactId: string;
+  onClose: () => void;
+  onSuccess?: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [segments, setSegments] = useState<string[]>([]);
+  const [form, setForm] = useState(initialForm);
+  const [pickerValue, setPickerValue] = useState<ProductPickerValue>({
+    partnerId: "",
+    productId: "",
+  });
+  const [contractFile, setContractFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      getContractSegments().then(setSegments).catch(() => []);
+    }
+  }, [open]);
+
+  function reset() {
+    setStep(0);
+    setError("");
+    setIsSuccess(false);
+    setForm(initialForm);
+    setPickerValue({ partnerId: "", productId: "" });
+    setContractFile(null);
+  }
+
+  function handleClose() {
+    reset();
+    onClose();
+  }
+
+  async function handleSubmit() {
+    const segment = form.segment?.trim();
+    if (!segment || !segments.includes(segment)) {
+      setError("Vyberte segment smlouvy.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        segment: form.segment,
+        partnerId: form.partnerId || undefined,
+        productId: form.productId || undefined,
+        partnerName: form.partnerName || undefined,
+        productName: form.productName || undefined,
+        premiumAmount: form.premiumAmount || undefined,
+        premiumAnnual: form.premiumAnnual || undefined,
+        contractNumber: form.contractNumber || undefined,
+        startDate: form.startDate || undefined,
+        anniversaryDate: form.anniversaryDate || undefined,
+        note: form.note || undefined,
+      };
+      const contractId = await createContract(contactId, payload);
+      if (contractId && contractFile?.size) {
+        const fd = new FormData();
+        fd.set("file", contractFile);
+        fd.set("name", contractFile.name);
+        try {
+          await uploadDocument(contactId, fd, {
+            contractId,
+            visibleToClient: false,
+          });
+        } catch (err) {
+          console.error("Upload smlouvy selhal:", err);
+        }
+      }
+      setIsSuccess(true);
+      onSuccess?.();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Smlouvu se nepodařilo uložit. Zkontrolujte údaje a zkuste to znovu."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function setFormKey<K extends keyof typeof form>(key: K) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  }
+
+  if (!open) return null;
+
+  const reviewRows: WizardReviewRow[] = [
+    { label: "Segment", value: segmentLabel(form.segment) },
+    {
+      label: "Partner / Produkt",
+      value: [form.partnerName, form.productName].filter(Boolean).join(" – ") || "—",
+    },
+    ...(form.premiumAmount
+      ? [{ label: "Pojistné (měs.)", value: `${form.premiumAmount} Kč` }]
+      : []),
+    ...(form.premiumAnnual
+      ? [{ label: "Pojistné (roční)", value: `${form.premiumAnnual} Kč` }]
+      : []),
+    ...(form.contractNumber
+      ? [{ label: "Číslo smlouvy", value: form.contractNumber }]
+      : []),
+    ...(form.startDate ? [{ label: "Od", value: form.startDate }] : []),
+    ...(form.anniversaryDate
+      ? [{ label: "Výročí", value: form.anniversaryDate }]
+      : []),
+    ...(form.note ? [{ label: "Poznámka", value: form.note }] : []),
+    {
+      label: "Soubor",
+      value: contractFile?.name || "—",
+    },
+  ];
+
+  return (
+    <WizardShell open={open} onClose={handleClose} title="Nová smlouva">
+      <WizardHeader title="Nová smlouva" onClose={handleClose} />
+      {!isSuccess && (
+        <WizardStepper steps={WIZARD_STEPS} currentStep={step + 1} />
+      )}
+      <WizardBody withSlide={!isSuccess}>
+        {isSuccess ? (
+          <WizardSuccess
+            headline="Smlouva přidána"
+            description="Smlouva byla úspěšně uložena ke kontaktu. Můžete ji najít v sekci Produkty / Smlouvy."
+            primaryLabel="Hotovo"
+            onPrimary={handleClose}
+            secondaryLabel="Zpět na přehled"
+            onSecondary={handleClose}
+          />
+        ) : (
+          <>
+            {step === 0 && (
+              <div className="space-y-6">
+                <div>
+                  <label className={wizardLabelClass}>Segment</label>
+                  <select
+                    value={form.segment}
+                    onChange={(e) => {
+                      const seg = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        segment: seg,
+                        partnerId: "",
+                        productId: "",
+                        partnerName: "",
+                        productName: "",
+                      }));
+                      setPickerValue({ partnerId: "", productId: "" });
+                    }}
+                    className={wizardInputClass}
+                  >
+                    {segments.map((s) => (
+                      <option key={s} value={s}>
+                        {segmentLabel(s)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Partner / Produkt</label>
+                  <ProductPicker
+                    segment={form.segment}
+                    value={pickerValue}
+                    onChange={(v) => {
+                      setPickerValue(v);
+                      setForm((f) => ({
+                        ...f,
+                        partnerId: v.partnerId,
+                        productId: v.productId,
+                        partnerName: v.partnerName ?? f.partnerName,
+                        productName: v.productName ?? f.productName,
+                      }));
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Partner (text)</label>
+                  <input
+                    value={form.partnerName}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, partnerName: e.target.value }))
+                    }
+                    placeholder="název partnera"
+                    className={wizardInputClass}
+                  />
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Produkt (text)</label>
+                  <input
+                    value={form.productName}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, productName: e.target.value }))
+                    }
+                    placeholder="název produktu"
+                    className={wizardInputClass}
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className={wizardLabelClass}>Pojistné (měsíční) Kč</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.premiumAmount}
+                      onChange={setFormKey("premiumAmount")}
+                      placeholder="Kč"
+                      className={wizardInputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={wizardLabelClass}>Pojistné (roční) Kč</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.premiumAnnual}
+                      onChange={setFormKey("premiumAnnual")}
+                      placeholder="Kč"
+                      className={wizardInputClass}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Číslo smlouvy</label>
+                  <input
+                    value={form.contractNumber}
+                    onChange={setFormKey("contractNumber")}
+                    placeholder="např. 12345678"
+                    className={wizardInputClass}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className={wizardLabelClass}>Od</label>
+                    <input
+                      type="date"
+                      value={form.startDate}
+                      onChange={setFormKey("startDate")}
+                      className={wizardInputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={wizardLabelClass}>Výročí</label>
+                    <input
+                      type="date"
+                      value={form.anniversaryDate}
+                      onChange={setFormKey("anniversaryDate")}
+                      className={wizardInputClass}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Poznámka</label>
+                  <input
+                    value={form.note}
+                    onChange={setFormKey("note")}
+                    className={wizardInputClass}
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <label className={wizardLabelClass}>Nahrát smlouvu (PDF)</label>
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={(e) =>
+                      setContractFile(e.target.files?.[0] ?? null)
+                    }
+                    className="w-full text-sm text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-white file:text-sm file:font-medium"
+                  />
+                  {contractFile && (
+                    <p className="text-sm text-slate-500 mt-2">{contractFile.name}</p>
+                  )}
+                  <p className="text-xs text-slate-400 mt-1">Volitelné. Smlouvu lze doplnit později.</p>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <WizardReview
+                title="Zkontrolujte údaje"
+                subtitle="Smlouva bude uložena ke kontaktu."
+                icon={FileText}
+                rows={reviewRows}
+              />
+            )}
+
+            {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
+          </>
+        )}
+      </WizardBody>
+      {!isSuccess && (
+        <WizardFooter
+          onBack={() => setStep((s) => Math.max(0, s - 1))}
+          onClose={handleClose}
+          onPrimary={step === 3 ? handleSubmit : () => setStep((s) => s + 1)}
+          primaryLabel={step === 3 ? "Vytvořit smlouvu" : "Další"}
+          primaryLoading={saving}
+          isFirstStep={step === 0}
+          isLastStep={step === 3}
+        />
+      )}
+    </WizardShell>
+  );
+}

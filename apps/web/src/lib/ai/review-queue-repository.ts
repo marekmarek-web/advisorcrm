@@ -126,6 +126,27 @@ export async function getContractReviewById(
   return (row as ContractReviewRow) ?? null;
 }
 
+/** Base columns – existují i v DB bez pipeline migrace (bez input_mode atd.) */
+const listReviewColumns = {
+  id: contractUploadReviews.id,
+  tenantId: contractUploadReviews.tenantId,
+  fileName: contractUploadReviews.fileName,
+  storagePath: contractUploadReviews.storagePath,
+  mimeType: contractUploadReviews.mimeType,
+  sizeBytes: contractUploadReviews.sizeBytes,
+  processingStatus: contractUploadReviews.processingStatus,
+  errorMessage: contractUploadReviews.errorMessage,
+  extractedPayload: contractUploadReviews.extractedPayload,
+  clientMatchCandidates: contractUploadReviews.clientMatchCandidates,
+  draftActions: contractUploadReviews.draftActions,
+  confidence: contractUploadReviews.confidence,
+  reasonsForReview: contractUploadReviews.reasonsForReview,
+  reviewStatus: contractUploadReviews.reviewStatus,
+  uploadedBy: contractUploadReviews.uploadedBy,
+  createdAt: contractUploadReviews.createdAt,
+  updatedAt: contractUploadReviews.updatedAt,
+};
+
 export async function listContractReviews(
   tenantId: string,
   options?: { limit?: number; reviewStatus?: ContractReviewStatus }
@@ -138,7 +159,7 @@ export async function listContractReviews(
         )
       : eq(contractUploadReviews.tenantId, tenantId);
   const rows = await db
-    .select()
+    .select(listReviewColumns)
     .from(contractUploadReviews)
     .where(conditions)
     .orderBy(desc(contractUploadReviews.createdAt))

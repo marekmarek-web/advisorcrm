@@ -73,6 +73,7 @@ export default function TasksPage() {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [newContactId, setNewContactId] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -151,17 +152,20 @@ export default function TasksPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    const title = newTitle.trim() || newDescription.trim() || "Úkol";
+    if (!title) return;
     setSubmitting(true);
     setCreateError(null);
     try {
       const id = await createTask({
-        title: newTitle.trim(),
+        title,
+        description: newDescription.trim() && newTitle.trim() ? newDescription.trim() : undefined,
         contactId: newContactId || undefined,
         dueDate: newDueDate || undefined,
       });
       if (id) {
         setNewTitle("");
+        setNewDescription("");
         setNewContactId("");
         setNewDueDate("");
         await reload();
@@ -176,6 +180,8 @@ export default function TasksPage() {
       setSubmitting(false);
     }
   }
+
+  const canCreateTask = Boolean(newTitle.trim() || newDescription.trim());
 
   function startEdit(task: TaskRow) {
     setEditId(task.id);
@@ -459,6 +465,19 @@ export default function TasksPage() {
                     />
                   </div>
                 </div>
+                <div className="w-full min-w-0">
+                  <label htmlFor="new-task-description" className="text-xs font-bold uppercase tracking-wider text-slate-500 md:sr-only">
+                    Popis úkolu
+                  </label>
+                  <textarea
+                    id="new-task-description"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    placeholder="Popis úkolu (volitelné)"
+                    rows={2}
+                    className="w-full min-w-0 py-3 px-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 text-base md:text-sm resize-y min-h-[60px]"
+                  />
+                </div>
                 <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 w-full min-w-0">
                   <div className="w-full min-w-0">
                     <ContactSearchInput
@@ -477,7 +496,7 @@ export default function TasksPage() {
                   />
                   <button
                     type="submit"
-                    disabled={submitting || !newTitle.trim()}
+                    disabled={submitting || !canCreateTask}
                     className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-base md:text-sm font-bold shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-400 min-h-[44px]"
                   >
                     {submitting ? "…" : "Vytvořit"}

@@ -36,11 +36,29 @@ const ICON_MAP = {
   Building,
 } as const;
 
+/** Animace ikon 1:1 jako v sidebaru – plné třídy kvůli Tailwind purge */
+const ICON_HOVER_ANIM: Partial<Record<QuickActionId, string>> = {
+  new_task: "group-hover:rotate-12 group-hover:scale-110",
+  new_meeting: "group-hover:-translate-y-1 group-hover:scale-110",
+  new_contact: "group-hover:scale-110",
+  new_deal: "group-hover:rotate-[-12deg] group-hover:scale-110",
+  calendar: "group-hover:-translate-y-1 group-hover:scale-110",
+  mindmap: "group-hover:-translate-y-1",
+  note: "group-hover:translate-x-1",
+  document: "group-hover:scale-110",
+  household: "group-hover:-translate-y-1",
+};
+
 function ItemIcon({ item }: { item: QuickActionItem }) {
   const name = item.iconName;
   if (!name || !(name in ICON_MAP)) return null;
   const Icon = ICON_MAP[name as keyof typeof ICON_MAP];
-  return <Icon className={`shrink-0 size-5 ${item.iconColor ?? "text-slate-500"}`} aria-hidden />;
+  const hoverAnim = ICON_HOVER_ANIM[item.id];
+  return (
+    <span className={`flex items-center justify-center shrink-0 transition-all duration-300 ${hoverAnim ?? ""}`}>
+      <Icon className={`size-5 ${item.iconColor ?? "text-slate-500"}`} aria-hidden />
+    </span>
+  );
 }
 
 export function QuickNewMenu() {
@@ -125,7 +143,7 @@ export function QuickNewMenu() {
                 href={item.href}
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                className="group flex items-center gap-3 px-3 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 rounded-xl"
               >
                 <ItemIcon item={item} />
                 {item.label}

@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS note_templates (
 CREATE TABLE IF NOT EXISTS meeting_notes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
-  contact_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES contacts(id) ON DELETE CASCADE,
   opportunity_id uuid REFERENCES opportunities(id) ON DELETE SET NULL,
   template_id uuid REFERENCES note_templates(id) ON DELETE SET NULL,
   meeting_at timestamptz NOT NULL,

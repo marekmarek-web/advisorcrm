@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   getContractsByContact,
   getContractSegments,
-  createContract,
   updateContract,
   deleteContract,
 } from "@/app/actions/contracts";
@@ -16,6 +15,7 @@ import { ZpRatingBadge } from "@/app/components/weplan/ZpRatingBadge";
 import { EUCS_ZP_DISCLAIMER } from "@/data/insurance-ratings";
 import { uploadDocument } from "@/app/actions/documents";
 import { ConfirmDeleteModal } from "@/app/components/ConfirmDeleteModal";
+import { NewContractWizard } from "@/app/components/weplan/NewContractWizard";
 
 export function ContractsSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<ContractRow[]>([]);
@@ -79,8 +79,9 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   }, []);
 
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmitEdit(e: React.FormEvent) {
     e.preventDefault();
+    if (!editingId) return;
     setSubmitError(null);
     const payload = {
       segment: form.segment,
@@ -96,21 +97,13 @@ export function ContractsSection({ contactId }: { contactId: string }) {
       note: form.note || undefined,
     };
     try {
-      let contractId: string | null = null;
-      if (editingId) {
-        await updateContract(editingId, payload);
-        contractId = editingId;
-        setEditingId(null);
-      } else {
-        contractId = await createContract(contactId, payload);
-        setAdding(false);
-      }
-      if (contractId && contractFile?.size) {
+      await updateContract(editingId, payload);
+      if (contractFile?.size) {
         const fd = new FormData();
         fd.set("file", contractFile);
         fd.set("name", contractFile.name);
         try {
-          await uploadDocument(contactId, fd, { contractId, visibleToClient: false });
+          await uploadDocument(contactId, fd, { contractId: editingId, visibleToClient: false });
         } catch (err) {
           console.error("Upload smlouvy selhal:", err);
         }
@@ -130,6 +123,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
         note: "",
       });
       setPickerValue({ partnerId: "", productId: "" });
+      setEditingId(null);
       load();
     } catch (err) {
       console.error("Chyba při ukládání smlouvy:", err);
@@ -226,8 +220,14 @@ export function ContractsSection({ contactId }: { contactId: string }) {
           </li>
         ))}
       </ul>
-      {(adding || editingId) ? (
-        <form onSubmit={handleSubmit} className="space-y-2 max-w-md">
+      <NewContractWizard
+        open={adding}
+        contactId={contactId}
+        onClose={() => { setAdding(false); load(); }}
+        onSuccess={() => load()}
+      />
+      {editingId ? (
+        <form onSubmit={handleSubmitEdit} className="space-y-2 max-w-md">
           <div>
             <label className="block text-xs font-medium text-slate-500">Segment</label>
             <select
@@ -352,11 +352,11 @@ export function ContractsSection({ contactId }: { contactId: string }) {
               type="submit"
               className="rounded px-3 py-1.5 text-sm font-semibold text-white bg-monday-blue"
             >
-              {editingId ? "Uložit" : "Přidat"}
+              Uložit
             </button>
             <button
               type="button"
-              onClick={() => { setAdding(false); setEditingId(null); setContractFile(null); setSubmitError(null); }}
+              onClick={() => { setEditingId(null); setContractFile(null); setSubmitError(null); }}
               className="rounded px-3 py-1.5 text-sm font-semibold border border-slate-300 text-slate-600"
             >
               Zrušit

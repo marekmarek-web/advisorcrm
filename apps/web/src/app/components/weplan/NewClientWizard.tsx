@@ -2,9 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Mail, Phone, Calendar, MapPin, Building, User } from "lucide-react";
 import { createContact, getContactsList } from "@/app/actions/contacts";
-import { BaseModal } from "@/app/components/BaseModal";
-import { StickyBottomCTA, STICKY_BOTTOM_CTA_PADDING_CLASS } from "@/app/components/StickyBottomCTA";
+import {
+  WizardShell,
+  WizardHeader,
+  WizardStepper,
+  WizardBody,
+  WizardFooter,
+  WizardReview,
+  WizardSuccess,
+  WizardTipBlock,
+  WizardInputWithIcon,
+  wizardLabelClass,
+  wizardInputClass,
+} from "@/app/components/wizard";
 
 type Step = 0 | 1 | 2;
 
@@ -14,6 +26,12 @@ const LIFECYCLE_OPTIONS = [
   { value: "prospect", label: "Prospect" },
   { value: "client", label: "Klient" },
   { value: "former_client", label: "Bývalý klient" },
+];
+
+const WIZARD_STEPS = [
+  { label: "Základní údaje" },
+  { label: "Adresa & kontakt" },
+  { label: "Dokončení" },
 ];
 
 export function NewClientWizard({
@@ -29,6 +47,8 @@ export function NewClientWizard({
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const [contacts, setContacts] = useState<{ id: string; label: string }[]>([]);
 
   const [form, setForm] = useState({
@@ -52,7 +72,9 @@ export function NewClientWizard({
     if (open) {
       getContactsList()
         .then((list) =>
-          setContacts(list.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}` })))
+          setContacts(
+            list.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}` }))
+          )
         )
         .catch(() => {});
     }
@@ -61,6 +83,8 @@ export function NewClientWizard({
   function reset() {
     setStep(0);
     setError("");
+    setIsSuccess(false);
+    setCreatedId(null);
     setForm({
       firstName: "",
       lastName: "",
@@ -113,9 +137,8 @@ export function NewClientWizard({
         priority: form.priority || undefined,
       });
       if (id) {
-        handleClose();
-        if (onCreated) onCreated(id);
-        else router.push(`/portal/contacts/${id}`);
+        setCreatedId(id);
+        setIsSuccess(true);
       } else {
         setError("Vytvoření se nepovedlo.");
       }
@@ -126,192 +149,259 @@ export function NewClientWizard({
     }
   }
 
-  const inputCls =
-    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
-
-  const steps = [
-    { label: "Základní údaje", icon: "👤" },
-    { label: "Adresa & kontakt", icon: "📍" },
-    { label: "Dokončení", icon: "✅" },
-  ];
-
   function set(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
   }
 
-  const footerButtons = (
-    <>
-      <button
-        type="button"
-        onClick={step > 0 ? () => setStep((s) => (s - 1) as Step) : handleClose}
-        className="min-h-[44px] px-4 py-2 text-sm font-medium text-slate-600 hover:bg-monday-row-hover rounded-[6px]"
-      >
-        {step > 0 ? "← Zpět" : "Zrušit"}
-      </button>
-      <div className="flex gap-2">
-        {step < 2 ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (step === 0 && (!form.firstName.trim() || !form.lastName.trim())) {
-                setError("Jméno a příjmení jsou povinné.");
-                return;
-              }
-              setError("");
-              setStep((s) => (s + 1) as Step);
-            }}
-            className="min-h-[44px] px-5 py-2 text-sm font-semibold text-white bg-monday-blue hover:opacity-90 rounded-[6px]"
-          >
-            Další →
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={saving}
-            className="min-h-[44px] px-5 py-2 text-sm font-semibold text-white bg-green-600 hover:opacity-90 rounded-[6px] disabled:opacity-50"
-          >
-            {saving ? "Ukládám…" : "Vytvořit klienta"}
-          </button>
-        )}
-      </div>
-    </>
-  );
+  function goNext() {
+    if (step === 0 && (!form.firstName.trim() || !form.lastName.trim())) {
+      setError("Jméno a příjmení jsou povinné.");
+      return;
+    }
+    setError("");
+    setStep((s) => Math.min(2, s + 1) as Step);
+  }
+
+  function openProfile() {
+    if (createdId) {
+      if (onCreated) onCreated(createdId);
+      else router.push(`/portal/contacts/${createdId}`);
+    }
+    handleClose();
+  }
+
+  if (!open) return null;
 
   return (
-    <BaseModal open={open} onClose={handleClose} title="Nový klient" maxWidth="lg" mobileVariant="fullScreen">
-      {/* Steps indicator */}
-      <div className="flex items-center gap-1 px-4 pt-2 pb-3 border-b border-slate-200">
-        {steps.map((s, i) => (
-          <div key={i} className="flex items-center gap-1 flex-1">
-            <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                i <= step ? "bg-monday-blue text-white" : "bg-slate-200 text-slate-500"
-              }`}
-            >
-              {i < step ? "✓" : i + 1}
-            </div>
-            <span className={`text-[11px] truncate ${i <= step ? "text-slate-800" : "text-slate-400"}`}>
-              {s.label}
-            </span>
-            {i < steps.length - 1 && (
-              <div className={`flex-1 h-px mx-1 ${i < step ? "bg-monday-blue/30" : "bg-slate-200"}`} />
+    <WizardShell open={open} onClose={handleClose} title="Nový klient">
+      <WizardHeader title="Nový klient" onClose={handleClose} />
+      {!isSuccess && (
+        <WizardStepper steps={WIZARD_STEPS} currentStep={step + 1} />
+      )}
+      <WizardBody withSlide={!isSuccess}>
+        {isSuccess ? (
+          <WizardSuccess
+            headline="Klient úspěšně vytvořen!"
+            description={`${form.firstName} ${form.lastName} byl přidán do vaší databáze a můžete s ním začít pracovat.`}
+            primaryLabel="Otevřít profil klienta"
+            onPrimary={openProfile}
+            secondaryLabel="Zpět na přehled"
+            onSecondary={handleClose}
+          />
+        ) : (
+          <>
+            {step === 0 && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className={wizardLabelClass}>Jméno *</label>
+                    <input
+                      value={form.firstName}
+                      onChange={set("firstName")}
+                      placeholder="Např. Jan"
+                      className={wizardInputClass}
+                      autoComplete="given-name"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className={wizardLabelClass}>Příjmení *</label>
+                    <input
+                      value={form.lastName}
+                      onChange={set("lastName")}
+                      placeholder="Např. Novák"
+                      className={wizardInputClass}
+                      autoComplete="family-name"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>E-mail</label>
+                  <WizardInputWithIcon
+                    type="email"
+                    value={form.email}
+                    onChange={set("email")}
+                    placeholder="jan.novak@email.cz"
+                    icon={Mail}
+                    autoComplete="email"
+                  />
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Telefon</label>
+                  <WizardInputWithIcon
+                    type="tel"
+                    value={form.phone}
+                    onChange={set("phone")}
+                    placeholder="+420 777 123 456"
+                    icon={Phone}
+                    autoComplete="tel"
+                  />
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Datum narození</label>
+                  <WizardInputWithIcon
+                    type="date"
+                    value={form.birthDate}
+                    onChange={set("birthDate")}
+                    icon={Calendar}
+                  />
+                </div>
+              </div>
             )}
-          </div>
-        ))}
-      </div>
 
-      {/* Content – extra padding on mobile so sticky CTA does not cover */}
-      <div className={`px-4 py-5 space-y-4 ${STICKY_BOTTOM_CTA_PADDING_CLASS}`}>
-          {step === 0 && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {step === 1 && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Jméno *</label>
-                  <input value={form.firstName} onChange={set("firstName")} className={inputCls} autoComplete="given-name" />
+                  <label className={wizardLabelClass}>Ulice a číslo popisné</label>
+                  <WizardInputWithIcon
+                    type="text"
+                    value={form.street}
+                    onChange={set("street")}
+                    placeholder="Např. Václavské náměstí 1"
+                    icon={MapPin}
+                    autoFocus
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div className="sm:col-span-2">
+                    <label className={wizardLabelClass}>Město</label>
+                    <WizardInputWithIcon
+                      type="text"
+                      value={form.city}
+                      onChange={set("city")}
+                      placeholder="Praha"
+                      icon={Building}
+                    />
+                  </div>
+                  <div>
+                    <label className={wizardLabelClass}>PSČ</label>
+                    <input
+                      type="text"
+                      value={form.zip}
+                      onChange={set("zip")}
+                      placeholder="110 00"
+                      className={wizardInputClass}
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Příjmení *</label>
-                  <input value={form.lastName} onChange={set("lastName")} className={inputCls} autoComplete="family-name" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">E-mail</label>
-                <input type="email" value={form.email} onChange={set("email")} className={inputCls} autoComplete="email" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Telefon</label>
-                <input value={form.phone} onChange={set("phone")} className={inputCls} autoComplete="tel" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Datum narození</label>
-                <input type="date" value={form.birthDate} onChange={set("birthDate")} className={inputCls} />
-              </div>
-            </>
-          )}
-          {step === 1 && (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Ulice</label>
-                <input value={form.street} onChange={set("street")} className={inputCls} autoFocus />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Město</label>
-                  <input value={form.city} onChange={set("city")} className={inputCls} />
+                  <label className={wizardLabelClass}>Rodné číslo</label>
+                  <input
+                    value={form.personalId}
+                    onChange={set("personalId")}
+                    className={wizardInputClass}
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">PSČ</label>
-                  <input value={form.zip} onChange={set("zip")} className={inputCls} />
+                  <label className={wizardLabelClass}>Doporučil / zdroj</label>
+                  <input
+                    value={form.referralSource}
+                    onChange={set("referralSource")}
+                    placeholder="web, doporučení…"
+                    className={wizardInputClass}
+                  />
                 </div>
+                <div>
+                  <label className={wizardLabelClass}>Fáze</label>
+                  <select
+                    value={form.lifecycleStage}
+                    onChange={set("lifecycleStage")}
+                    className={wizardInputClass}
+                  >
+                    {LIFECYCLE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Priorita</label>
+                  <select
+                    value={form.priority}
+                    onChange={set("priority")}
+                    className={wizardInputClass}
+                  >
+                    <option value="">—</option>
+                    <option value="low">Nízká</option>
+                    <option value="normal">Běžná</option>
+                    <option value="high">Vysoká</option>
+                    <option value="urgent">Urgentní</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Štítky (oddělené čárkou)</label>
+                  <input
+                    value={form.tags}
+                    onChange={set("tags")}
+                    placeholder="VIP, rodina…"
+                    className={wizardInputClass}
+                  />
+                </div>
+                <div>
+                  <label className={wizardLabelClass}>Doporučen od</label>
+                  <select
+                    value={form.referralContactId}
+                    onChange={set("referralContactId")}
+                    className={wizardInputClass}
+                  >
+                    <option value="">— žádný</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <WizardTipBlock>
+                  Tip: Po uložení klienta můžete pomocí AI zkontrolovat jeho AML
+                  profil a validitu údajů přímo z jeho klientské karty.
+                </WizardTipBlock>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Rodné číslo</label>
-                <input value={form.personalId} onChange={set("personalId")} className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Doporučil / zdroj</label>
-                <input value={form.referralSource} onChange={set("referralSource")} placeholder="web, doporučení…" className={inputCls} />
-              </div>
-            </>
-          )}
-          {step === 2 && (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Fáze</label>
-                <select value={form.lifecycleStage} onChange={set("lifecycleStage")} className={inputCls}>
-                  {LIFECYCLE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Priorita</label>
-                <select value={form.priority} onChange={set("priority")} className={inputCls}>
-                  <option value="">—</option>
-                  <option value="low">Nízká</option>
-                  <option value="normal">Běžná</option>
-                  <option value="high">Vysoká</option>
-                  <option value="urgent">Urgentní</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Štítky (oddělené čárkou)</label>
-                <input value={form.tags} onChange={set("tags")} placeholder="VIP, rodina…" className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Doporučen od</label>
-                <select value={form.referralContactId} onChange={set("referralContactId")} className={inputCls}>
-                  <option value="">— žádný</option>
-                  {contacts.map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
-              </div>
-              {/* Summary */}
-              <div className="rounded-lg bg-slate-50 p-3 text-sm space-y-1 border border-slate-100">
-                <p className="font-semibold text-slate-700">Shrnutí</p>
-                <p className="text-slate-600">{form.firstName} {form.lastName}</p>
-                {form.email && <p className="text-slate-500">{form.email}</p>}
-                {form.phone && <p className="text-slate-500">{form.phone}</p>}
-                {form.city && <p className="text-slate-500">{[form.street, form.city, form.zip].filter(Boolean).join(", ")}</p>}
-              </div>
-            </>
-          )}
+            )}
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
-      </div>
+            {step === 2 && (
+              <WizardReview
+                title="Zkontrolujte údaje"
+                subtitle="Vše je připraveno k založení nového klienta do databáze."
+                icon={User}
+                rows={[
+                  {
+                    label: "Jméno a příjmení",
+                    value: `${form.firstName || "—"} ${form.lastName || "—"}`.trim(),
+                  },
+                  {
+                    label: "Kontakt",
+                    value: [form.email, form.phone].filter(Boolean).join(", "),
+                  },
+                  {
+                    label: "Adresa",
+                    value: [form.street, form.city, form.zip]
+                      .filter(Boolean)
+                      .join(", "),
+                  },
+                ]}
+              />
+            )}
 
-      {/* Footer – desktop: in flow; mobile: sticky bottom via StickyBottomCTA */}
-      <div className="hidden md:flex px-4 py-3 border-t border-slate-200 items-center justify-between shrink-0">
-        {footerButtons}
-      </div>
-      <StickyBottomCTA showBelow="md">
-        <div className="flex items-center justify-between gap-3">
-          {footerButtons}
-        </div>
-      </StickyBottomCTA>
-    </BaseModal>
+            {error && (
+              <p className="mt-4 text-sm text-red-500">{error}</p>
+            )}
+          </>
+        )}
+      </WizardBody>
+      {!isSuccess && (
+        <WizardFooter
+          onBack={() => setStep((s) => Math.max(0, s - 1) as Step)}
+          onClose={handleClose}
+          onPrimary={step === 2 ? handleSubmit : goNext}
+          primaryLabel={step === 2 ? "Vytvořit klienta" : "Další"}
+          primaryLoading={saving}
+          isFirstStep={step === 0}
+          isLastStep={step === 2}
+        />
+      )}
+    </WizardShell>
   );
 }

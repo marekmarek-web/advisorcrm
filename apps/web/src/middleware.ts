@@ -36,7 +36,9 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isContractsApi = pathname.startsWith("/api/contracts");
   const isAiAssistantApi =
-    pathname.startsWith("/api/ai/assistant") || pathname === "/api/ai/dashboard-summary";
+    pathname.startsWith("/api/ai/assistant") ||
+    pathname === "/api/ai/dashboard-summary" ||
+    pathname === "/api/ai/team-summary";
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

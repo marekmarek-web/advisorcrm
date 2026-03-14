@@ -35,5 +35,5 @@ export default async function PortalLayout({
   if (auth.roleName === "Client") {
     redirect("/client");
   }
-  return <PortalShell>{children}</PortalShell>;
+  return <PortalShell roleName={auth.roleName}>{children}</PortalShell>;
 }

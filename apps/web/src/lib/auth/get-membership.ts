@@ -47,7 +47,7 @@ export async function requireMembership(userId: string) {
 
 export function hasPermission(roleName: RoleName, action: string): boolean {
   const admin = ["*"];
-  const manager = ["contacts:*", "households:*", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*", "export:*"];
+  const manager = ["contacts:*", "households:*", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*", "export:*", "team_overview:read"];
   const advisor = ["contacts:read", "contacts:write", "households:read", "households:write", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*"];
   const viewer = ["contacts:read", "households:read", "opportunities:read", "tasks:read", "events:read", "documents:read"];
   const client = ["client_zone:*"];

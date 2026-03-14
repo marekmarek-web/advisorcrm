@@ -56,7 +56,7 @@ export const products = pgTable("products", {
 export const contracts = pgTable("contracts", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull(),
-  contactId: uuid("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  contactId: uuid("client_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
   advisorId: text("advisor_id"),
   segment: text("segment").notNull(),
   partnerId: uuid("partner_id").references(() => partners.id, { onDelete: "set null" }),

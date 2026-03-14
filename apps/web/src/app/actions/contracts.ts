@@ -88,6 +88,10 @@ export async function createContract(
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
+  if (!contactId || typeof contactId !== "string" || !contactId.trim()) {
+    throw new Error("Chybí identifikátor kontaktu. Smlouvu nelze uložit bez přiřazení ke klientovi.");
+  }
+
   const segment = form.segment?.trim();
   if (!segment || !contractSegments.includes(segment as (typeof contractSegments)[number])) {
     throw new Error("Neplatný segment smlouvy. Vyberte segment z nabídky.");

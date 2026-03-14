@@ -32,7 +32,7 @@ function getStoredSidebarState() {
   }
 }
 
-export function PortalShell({ children }: { children: React.ReactNode }) {
+export function PortalShell({ children, roleName }: { children: React.ReactNode; roleName?: string }) {
   const headerSearchRef = useRef<PortalHeaderSearchHandle>(null);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -96,7 +96,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <AiAssistantDrawerProvider>
-        <PortalShellInner isDesktop={isDesktop} headerSearchRef={headerSearchRef} mainMarginPx={mainMarginPx} sidebarDrawerOpen={sidebarDrawerOpen} setSidebarDrawerOpen={setSidebarDrawerOpen} initSidebarState={initSidebarState} sidebarWidth={sidebarWidth} sidebarCollapsed={sidebarCollapsed} handleSidebarResize={handleSidebarResize} handleSidebarCollapsed={handleSidebarCollapsed}>
+        <PortalShellInner roleName={roleName} isDesktop={isDesktop} headerSearchRef={headerSearchRef} mainMarginPx={mainMarginPx} sidebarDrawerOpen={sidebarDrawerOpen} setSidebarDrawerOpen={setSidebarDrawerOpen} initSidebarState={initSidebarState} sidebarWidth={sidebarWidth} sidebarCollapsed={sidebarCollapsed} handleSidebarResize={handleSidebarResize} handleSidebarCollapsed={handleSidebarCollapsed}>
           {children}
         </PortalShellInner>
       </AiAssistantDrawerProvider>
@@ -105,6 +105,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 }
 
 function PortalShellInner({
+  roleName,
   isDesktop,
   headerSearchRef,
   mainMarginPx,
@@ -117,6 +118,7 @@ function PortalShellInner({
   handleSidebarCollapsed,
   children,
 }: {
+  roleName?: string;
   isDesktop: boolean;
   headerSearchRef: React.RefObject<PortalHeaderSearchHandle | null>;
   mainMarginPx: number;
@@ -130,7 +132,7 @@ function PortalShellInner({
   children: React.ReactNode;
 }) {
   const isMobile = !isDesktop;
-  const { setOpen: setAiDrawerOpen } = useAiAssistantDrawer();
+  const { open: aiDrawerOpen, setOpen: setAiDrawerOpen } = useAiAssistantDrawer();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
 
@@ -156,6 +158,7 @@ function PortalShellInner({
   return (
     <div className="wp-app-container monday-board-wrap flex min-h-screen">
       <PortalSidebar
+          roleName={roleName}
           width={sidebarWidth}
           collapsed={sidebarCollapsed}
           onResize={handleSidebarResize}
@@ -259,16 +262,18 @@ function PortalShellInner({
           </div>
         )}
 
-        {/* Floating AI assistant button – safe area, z-floating-ai */}
-        <button
-          type="button"
-          onClick={() => setAiDrawerOpen(true)}
-          title="AI asistent"
-          className="fixed right-4 bottom-4 md:right-6 md:bottom-6 z-floating-ai min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200 hover:shadow-indigo-300/50 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 pb-[env(safe-area-inset-bottom,0)]"
-          aria-label="AI asistent"
-        >
-          <Sparkles size={24} />
-        </button>
+        {/* Floating AI assistant button – pouze když je panel zavřený (shared state s AiAssistantDrawer) */}
+        {!aiDrawerOpen && (
+          <button
+            type="button"
+            onClick={() => setAiDrawerOpen(true)}
+            title="AI asistent"
+            className="fixed right-4 bottom-4 md:right-6 md:bottom-6 z-floating-ai min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200 hover:shadow-indigo-300/50 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 pb-[env(safe-area-inset-bottom,0)]"
+            aria-label="Otevřít AI asistenta"
+          >
+            <Sparkles size={24} />
+          </button>
+        )}
 
         <AiAssistantDrawer />
       </div>

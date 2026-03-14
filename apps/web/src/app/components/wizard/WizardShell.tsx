@@ -3,31 +3,12 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { MD_BREAKPOINT_PX } from "@/app/lib/breakpoints";
 
-export type BaseModalMobileVariant = "modal" | "sheet" | "fullScreen";
-
-export interface BaseModalProps {
+export interface WizardShellProps {
   open: boolean;
   onClose: () => void;
-  title?: string;
+  title: string;
   children: React.ReactNode;
-  /** Optional class for the inner panel (neuromorphic card). */
-  panelClassName?: string;
-  /** Max width of panel. Default max-w-lg. */
-  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
-  /**
-   * On viewports below md (768px): "modal" = same centered box; "sheet" = bottom sheet; "fullScreen" = full-screen panel.
-   * Default "fullScreen" for better mobile UX.
-   */
-  mobileVariant?: BaseModalMobileVariant;
 }
-
-const maxWidthClass = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-xl",
-  "2xl": "max-w-2xl",
-};
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -41,15 +22,12 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function BaseModal({
+export function WizardShell({
   open,
   onClose,
   title,
   children,
-  panelClassName = "",
-  maxWidth = "lg",
-  mobileVariant = "fullScreen",
-}: BaseModalProps) {
+}: WizardShellProps) {
   const ref = useRef<HTMLDivElement>(null);
   const previousActive = useRef<HTMLElement | null>(null);
   const isMobile = useIsMobile();
@@ -82,7 +60,8 @@ export function BaseModal({
       ),
     );
     const closeBtn = el.querySelector<HTMLElement>('[aria-label="Zavřít"]');
-    const firstInContent = focusables.find((node) => node !== closeBtn) ?? focusables[0];
+    const firstInContent =
+      focusables.find((node) => node !== closeBtn) ?? focusables[0];
     const first = focusables[0];
     const last = focusables[focusables.length - 1];
     if (!el.contains(document.activeElement)) {
@@ -91,7 +70,6 @@ export function BaseModal({
         firstInContent?.focus();
       });
     }
-
     function trap(e: KeyboardEvent) {
       if (e.key !== "Tab") return;
       if (e.shiftKey) {
@@ -116,74 +94,63 @@ export function BaseModal({
   }, []);
   const handleBackdropMouseUp = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget && e.currentTarget === backdropTarget) onClose();
+      if (
+        !isMobile &&
+        e.target === e.currentTarget &&
+        e.currentTarget === backdropTarget
+      )
+        onClose();
       setBackdropTarget(null);
     },
-    [onClose, backdropTarget],
+    [onClose, backdropTarget, isMobile],
   );
 
   if (!open) return null;
 
-  const useMobileLayout = isMobile && mobileVariant !== "modal";
-  const isFullScreen = useMobileLayout && mobileVariant === "fullScreen";
-  const isSheet = useMobileLayout && mobileVariant === "sheet";
-
-  const backdropClass = "fixed inset-0 z-modal flex items-center justify-center p-4 bg-black/40";
-  const mobileBackdropClass = isFullScreen
-    ? "fixed inset-0 z-modal flex flex-col p-0 bg-white"
-    : isSheet
-      ? "fixed inset-0 z-modal flex items-end justify-center p-0 bg-black/40"
-      : backdropClass;
+  const backdropClass =
+    "fixed inset-0 z-modal flex items-center justify-center p-4 bg-black/40";
+  const mobileBackdropClass =
+    "fixed inset-0 z-modal flex flex-col p-0 bg-white";
 
   const panelBase =
-    "wp-modal-panel border border-slate-200 bg-white shadow-xl w-full overflow-hidden flex flex-col";
-  const panelDesktop = `rounded-xl max-h-[90vh] ${maxWidthClass[maxWidth]}`;
-  const panelMobile =
-    isFullScreen
-      ? "rounded-none min-h-full max-h-full"
-      : isSheet
-        ? "rounded-t-2xl max-h-[90vh] border-b-0"
-        : panelDesktop;
+    "w-full max-w-[640px] bg-white rounded-[24px] shadow-2xl shadow-indigo-900/5 border border-slate-100 flex flex-col overflow-hidden relative max-h-[90vh]";
+  const panelMobile = "rounded-none min-h-full max-h-full border-0 shadow-none";
 
   return (
     <div
-      className={useMobileLayout ? mobileBackdropClass : backdropClass}
+      className={isMobile ? mobileBackdropClass : backdropClass}
       onMouseDown={handleBackdropMouseDown}
       onMouseUp={handleBackdropMouseUp}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? "base-modal-title" : undefined}
+      aria-labelledby="wizard-title"
     >
-      {isSheet && (
+      {isMobile && (
         <div
-          className="flex-1 min-h-0 overflow-hidden cursor-default"
+          className="flex-1 min-h-0 overflow-hidden flex items-center justify-center p-4"
           role="presentation"
-          onClick={() => onClose()}
-          aria-hidden
-        />
-      )}
-      <div
-        ref={ref}
-        className={`${panelBase} ${useMobileLayout ? panelMobile : panelDesktop} ${panelClassName}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {title && (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0 min-h-[44px]">
-            <h2 id="base-modal-title" className="font-semibold text-slate-800 text-sm">
-              {title}
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
-              aria-label="Zavřít"
-            >
-              ×
-            </button>
+        >
+          <div
+            ref={ref}
+            className={`${panelBase} ${isMobile ? panelMobile : ""} w-full`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Glow blob */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 opacity-50 rounded-full blur-3xl pointer-events-none" />
+            {children}
           </div>
-        )}
-        <div className="overflow-auto flex-1">{children}</div>
-      </div>
+        </div>
+      )}
+      {!isMobile && (
+        <div
+          ref={ref}
+          className={`${panelBase}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 opacity-50 rounded-full blur-3xl pointer-events-none" />
+          {children}
+        </div>
+      )}
     </div>
   );
 }

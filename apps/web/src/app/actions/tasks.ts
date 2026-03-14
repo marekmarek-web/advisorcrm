@@ -202,7 +202,9 @@ export async function createTask(data: {
 }): Promise<string | null> {
   try {
     const auth = await requireAuthInAction();
-    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    const canWrite =
+      hasPermission(auth.roleName, "contacts:write") || hasPermission(auth.roleName, "tasks:*");
+    if (!canWrite) throw new Error("Nemáte oprávnění k vytváření úkolů.");
 
     const [row] = await db
       .insert(tasks)
@@ -219,12 +221,19 @@ export async function createTask(data: {
       .returning({ id: tasks.id });
     const newId = row?.id ?? null;
     if (newId) {
-      try { await logActivity("task", newId, "create", { title: data.title, contactId: data.contactId }); } catch {}
+      try {
+        await logActivity("task", newId, "create", { title: data.title, contactId: data.contactId });
+      } catch {}
     }
     return newId;
   } catch (e) {
     console.error("[createTask]", e);
-    return null;
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("Forbidden") || msg.includes("oprávnění")) throw e;
+    if (msg.includes("foreign key") || msg.includes("violates foreign key")) {
+      throw new Error("Vybraný klient není platný nebo neexistuje. Zkuste vybrat jiného nebo nechat pole prázdné.");
+    }
+    throw new Error(msg || "Úkol se nepodařilo vytvořit. Zkuste to znovu.");
   }
 }
 

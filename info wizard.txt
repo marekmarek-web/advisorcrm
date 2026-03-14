@@ -1,0 +1,327 @@
+"use client";
+
+import React, { useState } from 'react';
+import { 
+  X, ArrowRight, ArrowLeft, Check, User, 
+  Mail, Phone, Calendar, MapPin, Building,
+  CheckCircle2, Sparkles
+} from 'lucide-react';
+
+export default function NewClientWizard() {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    birthDate: '',
+    street: '',
+    city: '',
+    zip: '',
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleNext = () => {
+    if (currentStep < 3) setCurrentStep(currentStep + 1);
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  const handleSubmit = () => {
+    setIsSubmitting(true);
+    // Simulace uložení do databáze
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setIsSuccess(true);
+    }, 1500);
+  };
+
+  // --- STYLY ---
+  const labelClass = "block text-sm font-bold text-slate-700 mb-2";
+  const inputClass = "w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-300";
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] font-lato text-slate-800 flex items-center justify-center p-4 sm:p-8">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+        .font-lato { font-family: 'Lato', sans-serif; }
+        
+        /* Animace pro wizard */
+        .slide-enter { animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideIn {
+          0% { opacity: 0; transform: translateX(20px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
+
+      {/* --- Obal modálního okna --- */}
+      <div className="w-full max-w-[640px] bg-white rounded-[24px] shadow-2xl shadow-indigo-900/5 border border-slate-100 flex flex-col overflow-hidden relative">
+        
+        {/* Dekorativní glow efekt na pozadí */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 opacity-50 rounded-full blur-3xl pointer-events-none"></div>
+
+        {/* --- HLAVIČKA --- */}
+        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Nový klient</h2>
+          <button className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* --- STEPPER (Krokování) --- */}
+        {!isSuccess && (
+          <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-50 flex items-center justify-center relative z-10">
+            <div className="flex items-center w-full max-w-[480px]">
+              
+              {/* Krok 1 */}
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-colors duration-300
+                  ${currentStep >= 1 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-200 text-slate-400'}
+                `}>
+                  {currentStep > 1 ? <Check size={14} strokeWidth={3} /> : '1'}
+                </div>
+                <span className={`text-sm transition-colors duration-300 ${currentStep >= 1 ? 'font-bold text-slate-900' : 'font-medium text-slate-400 hidden sm:block'}`}>
+                  Základní údaje
+                </span>
+              </div>
+
+              {/* Čára 1 */}
+              <div className={`flex-1 h-0.5 mx-4 rounded-full transition-colors duration-300 ${currentStep >= 2 ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
+
+              {/* Krok 2 */}
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-colors duration-300
+                  ${currentStep >= 2 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-400 border border-slate-200'}
+                `}>
+                  {currentStep > 2 ? <Check size={14} strokeWidth={3} /> : '2'}
+                </div>
+                <span className={`text-sm transition-colors duration-300 ${currentStep >= 2 ? 'font-bold text-slate-900' : 'font-medium text-slate-400 hidden sm:block'}`}>
+                  Adresa & kontakt
+                </span>
+              </div>
+
+              {/* Čára 2 */}
+              <div className={`flex-1 h-0.5 mx-4 rounded-full transition-colors duration-300 ${currentStep >= 3 ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
+
+              {/* Krok 3 */}
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-colors duration-300
+                  ${currentStep >= 3 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-400 border border-slate-200'}
+                `}>
+                  3
+                </div>
+                <span className={`text-sm transition-colors duration-300 ${currentStep >= 3 ? 'font-bold text-slate-900' : 'font-medium text-slate-400 hidden sm:block'}`}>
+                  Dokončení
+                </span>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* --- OBSAH KROKŮ --- */}
+        <div className="p-8 relative z-10 flex-1 overflow-y-auto">
+          
+          {/* KROK 1: Základní údaje */}
+          {currentStep === 1 && !isSuccess && (
+            <div className="space-y-6 slide-enter">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelClass}>Jméno *</label>
+                  <input 
+                    type="text" name="firstName" value={formData.firstName} onChange={handleChange} 
+                    placeholder="Např. Jan" className={inputClass} autoFocus
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Příjmení *</label>
+                  <input 
+                    type="text" name="lastName" value={formData.lastName} onChange={handleChange} 
+                    placeholder="Např. Novák" className={inputClass} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>E-mail</label>
+                <div className="relative">
+                  <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input 
+                    type="email" name="email" value={formData.email} onChange={handleChange} 
+                    placeholder="jan.novak@email.cz" className={`${inputClass} pl-11`} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Telefon</label>
+                <div className="relative">
+                  <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input 
+                    type="tel" name="phone" value={formData.phone} onChange={handleChange} 
+                    placeholder="+420 777 123 456" className={`${inputClass} pl-11`} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Datum narození</label>
+                <div className="relative">
+                  <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input 
+                    type="date" name="birthDate" value={formData.birthDate} onChange={handleChange} 
+                    className={`${inputClass} pl-11`} 
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* KROK 2: Adresa */}
+          {currentStep === 2 && !isSuccess && (
+            <div className="space-y-6 slide-enter">
+              <div>
+                <label className={labelClass}>Ulice a číslo popisné</label>
+                <div className="relative">
+                  <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input 
+                    type="text" name="street" value={formData.street} onChange={handleChange} 
+                    placeholder="Např. Václavské náměstí 1" className={`${inputClass} pl-11`} autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Město</label>
+                  <div className="relative">
+                    <Building size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input 
+                      type="text" name="city" value={formData.city} onChange={handleChange} 
+                      placeholder="Praha" className={`${inputClass} pl-11`} 
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>PSČ</label>
+                  <input 
+                    type="text" name="zip" value={formData.zip} onChange={handleChange} 
+                    placeholder="110 00" className={inputClass} 
+                  />
+                </div>
+              </div>
+
+              {/* AI Info tip */}
+              <div className="mt-6 bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-start gap-3">
+                <Sparkles size={18} className="text-indigo-500 mt-0.5 shrink-0" />
+                <p className="text-sm font-medium text-indigo-900/80 leading-relaxed">
+                  Tip: Po uložení klienta můžete pomocí AI zkontrolovat jeho AML profil a validitu údajů přímo z jeho klientské karty.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* KROK 3: Shrnutí */}
+          {currentStep === 3 && !isSuccess && (
+            <div className="slide-enter flex flex-col h-full">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-4">
+                  <User size={32} />
+                </div>
+                <h3 className="text-xl font-black text-slate-900">Zkontrolujte údaje</h3>
+                <p className="text-sm font-medium text-slate-500 mt-1">Vše je připraveno k založení nového klienta do databáze.</p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-200/60">
+                  <span className="text-xs font-bold text-slate-500">Jméno a příjmení</span>
+                  <span className="text-sm font-bold text-slate-900">{formData.firstName || '—'} {formData.lastName || '—'}</span>
+                </div>
+                <div className="flex justify-between items-center pb-3 border-b border-slate-200/60">
+                  <span className="text-xs font-bold text-slate-500">Kontakt</span>
+                  <span className="text-sm font-bold text-slate-900">{formData.email || formData.phone || '—'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-500">Adresa</span>
+                  <span className="text-sm font-bold text-slate-900">{formData.city || '—'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ÚSPĚŠNÉ DOKONČENÍ */}
+          {isSuccess && (
+            <div className="flex flex-col items-center justify-center py-8 text-center slide-enter">
+              <div className="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                <CheckCircle2 size={40} strokeWidth={2.5} />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 mb-2">Klient úspěšně vytvořen!</h2>
+              <p className="text-slate-500 font-medium mb-8">
+                {formData.firstName} {formData.lastName} byl přidán do vaší databáze a můžete s ním začít pracovat.
+              </p>
+              <div className="flex gap-4 w-full">
+                <button className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
+                  Zpět na přehled
+                </button>
+                <button className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-md">
+                  Otevřít profil klienta
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* --- PATIČKA S TLAČÍTKY --- */}
+        {!isSuccess && (
+          <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between relative z-10">
+            <button 
+              onClick={currentStep === 1 ? undefined : handlePrev}
+              className={`px-5 py-2.5 font-bold text-sm rounded-xl transition-all
+                ${currentStep === 1 ? 'text-slate-400 hover:bg-slate-200' : 'text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 shadow-sm flex items-center gap-2'}
+              `}
+            >
+              {currentStep > 1 && <ArrowLeft size={16} />}
+              {currentStep === 1 ? 'Zrušit' : 'Zpět'}
+            </button>
+
+            {currentStep < 3 ? (
+              <button 
+                onClick={handleNext}
+                className="flex items-center gap-2 px-8 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+              >
+                Další <ArrowRight size={16} />
+              </button>
+            ) : (
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-8 py-2.5 bg-[#1a1c2e] text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all active:scale-95 disabled:opacity-70"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Ukládám...
+                  </>
+                ) : (
+                  <>
+                    Vytvořit klienta <Check size={16} />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}

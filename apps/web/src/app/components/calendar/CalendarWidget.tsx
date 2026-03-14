@@ -81,11 +81,17 @@ export function CalendarWidget({ onNewActivity }: { onNewActivity?: () => void }
 
   return (
     <div className="space-y-8">
-      {/* Odkaz na kalendář */}
-      <div className="flex justify-end">
+      {/* Hlavička: Kalendář vlevo, odkaz na kalendář vpravo */}
+      <div className="flex justify-between items-center">
         <Link
           href="/portal/calendar"
-          className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200"
+          className="text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors"
+        >
+          Kalendář
+        </Link>
+        <Link
+          href="/portal/calendar"
+          className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200 min-w-[44px] min-h-[44px]"
           aria-label="Otevřít kalendář"
         >
           <CalendarIcon size={18} />
