@@ -16,23 +16,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Odkaz z e-mailu vypršel (otp_expired) → úvodní stránka s chybou
+  // Odkaz z e-mailu vypršel (otp_expired) → stránka přihlášení s chybou
   if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.get("error_code") === "otp_expired") {
     const url = request.nextUrl.clone();
+    url.pathname = "/prihlaseni";
     url.searchParams.set("error", "otp_expired");
     url.searchParams.delete("error_code");
     url.searchParams.delete("error_description");
     return NextResponse.redirect(url);
   }
-  // Staré URL přihlášení/registrace → vždy nová úvodní stránka
+  // Staré URL přihlášení/registrace → stránka přihlášení
   if (request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/prihlaseni";
     return NextResponse.redirect(url);
   }
   if (request.nextUrl.pathname === "/register") {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/prihlaseni";
     url.searchParams.set("register", "1");
     return NextResponse.redirect(url);
   }
@@ -131,11 +132,17 @@ export async function middleware(request: NextRequest) {
 
   if ((isDashboard || isClientZone || isBoard || isPortal) && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/prihlaseni";
     url.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
   if (request.nextUrl.pathname === "/login" && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = request.nextUrl.searchParams.get("next") || "/portal/today";
+    url.searchParams.delete("next");
+    return NextResponse.redirect(url);
+  }
+  if (request.nextUrl.pathname === "/prihlaseni" && user) {
     const url = request.nextUrl.clone();
     url.pathname = request.nextUrl.searchParams.get("next") || "/portal/today";
     url.searchParams.delete("next");
@@ -148,6 +155,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/prihlaseni",
     "/dashboard/:path*",
     "/client/:path*",
     "/board/:path*",
