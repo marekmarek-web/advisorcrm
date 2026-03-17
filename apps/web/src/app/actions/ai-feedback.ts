@@ -1,34 +1,43 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { db, aiFeedback } from "db";
 import { getGenerationById } from "@/lib/ai/ai-generations-repository";
+import { db, aiFeedback } from "db";
 
-export type FeedbackVerdict = "accepted" | "rejected" | "edited";
-export type FeedbackActionTaken = "task_created" | "meeting_created" | "deal_created" | "none";
+export type AiFeedbackVerdict = "accepted" | "rejected" | "edited";
+export type AiFeedbackActionTaken = "task_created" | "meeting_created" | "deal_created" | "none";
 
-export async function submitAiFeedback(
+export type CreateAiFeedbackResult = { ok: true; id: string } | { ok: false; error: string };
+
+/**
+ * Submit feedback for an AI generation. Verifies the generation belongs to the user's tenant.
+ */
+export async function createAiFeedback(
   generationId: string,
-  verdict: FeedbackVerdict,
-  actionTaken?: FeedbackActionTaken | null,
-  note?: string | null
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  verdict: AiFeedbackVerdict,
+  options?: { actionTaken?: AiFeedbackActionTaken | null; note?: string | null }
+): Promise<CreateAiFeedbackResult> {
   try {
     const auth = await requireAuthInAction();
     const generation = await getGenerationById(generationId, auth.tenantId);
     if (!generation) {
-      return { ok: false, error: "Generace nenalezena nebo nemáte oprávnění." };
+      return { ok: false, error: "Generování nenalezeno nebo nemáte oprávnění." };
     }
 
-    await db.insert(aiFeedback).values({
-      generationId,
-      userId: auth.userId,
-      verdict,
-      actionTaken: actionTaken ?? null,
-      note: note?.trim() || null,
-    });
-
-    return { ok: true };
+    const inserted = await db
+      .insert(aiFeedback as any)
+      .values({
+        generationId,
+        userId: auth.userId,
+        verdict,
+        actionTaken: options?.actionTaken ?? null,
+        note: options?.note?.trim() || null,
+      })
+      .returning({ id: aiFeedback.id } as any);
+    const row = inserted[0] as { id: string } | undefined;
+    const id = row?.id;
+    if (!id || typeof id !== "string") return { ok: false, error: "Nepodařilo se uložit feedback." };
+    return { ok: true, id };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message };

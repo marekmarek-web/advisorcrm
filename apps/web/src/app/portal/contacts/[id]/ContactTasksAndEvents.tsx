@@ -137,12 +137,18 @@ export function ContactTasksAndEvents({ contactId }: { contactId: string }) {
             <li className="px-4 py-6 text-sm text-slate-500">Žádné události.</li>
           )}
           {upcomingEvents.map((ev) => (
-            <li key={ev.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 min-h-[44px]">
+            <li key={ev.id} className="px-4 py-3 flex flex-wrap items-center gap-2 hover:bg-slate-50 min-h-[44px]">
               <span className="text-xs font-mono text-slate-400 w-12 shrink-0">
                 {new Date(ev.startAt).toLocaleDateString("cs-CZ", { day: "2-digit", month: "2-digit" })}{" "}
                 {new Date(ev.startAt).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
               </span>
-              <span className="flex-1 text-sm text-slate-700">{ev.title}</span>
+              <span className="flex-1 text-sm text-slate-700 min-w-0">{ev.title}</span>
+              <Link
+                href={`/portal/contacts/${contactId}?eventId=${ev.id}#briefing`}
+                className="inline-flex items-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
+              >
+                Připrav briefing
+              </Link>
               <Link href="/portal/calendar" className="text-sm text-[var(--wp-accent)] hover:underline min-h-[44px] inline-flex items-center">
                 Kalendář
               </Link>

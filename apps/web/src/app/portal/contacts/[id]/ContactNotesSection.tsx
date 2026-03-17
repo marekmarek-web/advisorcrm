@@ -70,10 +70,10 @@ export function ContactNotesSection({ contactId }: { contactId: string }) {
         ) : (
           <ul className="divide-y divide-slate-100">
             {notes.map((n) => (
-              <li key={n.id}>
+              <li key={n.id} className="flex flex-wrap items-center gap-2 px-4 py-4 hover:bg-slate-50">
                 <Link
                   href={`/portal/notes?note=${n.id}`}
-                  className="flex flex-wrap items-center gap-3 px-4 py-4 hover:bg-slate-50 transition-colors min-h-[44px]"
+                  className="flex flex-wrap items-center gap-3 min-h-[44px] flex-1 min-w-0"
                 >
                   <span className="text-sm font-medium text-slate-800">
                     {new Date(n.meetingAt).toLocaleDateString("cs-CZ", {
@@ -90,6 +90,12 @@ export function ContactNotesSection({ contactId }: { contactId: string }) {
                   <span className="text-xs text-slate-400">
                     {new Date(n.createdAt).toLocaleString("cs-CZ")}
                   </span>
+                </Link>
+                <Link
+                  href={`/portal/contacts/${contactId}?meetingNoteId=${n.id}#briefing`}
+                  className="inline-flex items-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
+                >
+                  Vygenerovat follow-up
                 </Link>
               </li>
             ))}

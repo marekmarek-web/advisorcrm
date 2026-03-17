@@ -195,3 +195,27 @@ export async function getLatestMeetingGeneration(
     return null;
   }
 }
+
+/** Latest pre-meeting briefing for a contact (optionally for a specific event). */
+export async function getLatestPreMeetingBriefing(
+  contactId: string,
+  eventId?: string | null
+): Promise<MeetingGenerationItem> {
+  try {
+    const auth = await requireAuthInAction();
+    if (auth.roleName === "Client" && auth.contactId !== contactId) return null;
+    if (auth.roleName !== "Client" && !hasPermission(auth.roleName, "contacts:read")) return null;
+    const entityType = eventId ? "event" : "contact";
+    const entityId = eventId ?? contactId;
+    const r = await getLatestGeneration(auth.tenantId, entityType, entityId, "preMeetingBriefing");
+    if (!r || r.status !== "success") return null;
+    return {
+      promptType: r.promptType,
+      outputText: r.outputText,
+      createdAt: r.createdAt,
+      id: r.id,
+    };
+  } catch {
+    return null;
+  }
+}

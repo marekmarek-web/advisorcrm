@@ -48,3 +48,16 @@ export function getPromptVersion(type: PromptType): string | null {
   const global = process.env.OPENAI_PROMPT_VERSION?.trim();
   return global || null;
 }
+
+export type PromptConfig = { id: string; version?: string };
+
+/**
+ * Returns prompt id and optional version for the given type.
+ * Returns null if prompt id is not set (service should fail safely).
+ */
+export function getPromptConfig(type: PromptType): PromptConfig | null {
+  const id = getPromptId(type);
+  if (!id) return null;
+  const version = getPromptVersion(type);
+  return version ? { id, version } : { id };
+}
