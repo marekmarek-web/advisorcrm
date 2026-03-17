@@ -355,7 +355,7 @@ const InteractiveMindmap = () => {
 // --- MOCK DATA REVIEWS (Pro nekonečný pás) ---
 const REVIEWS = [
   { id: 1, text: "Od chvíle, co používám Aidvisoru, mi AI asistent každé ráno ukáže, na koho se zaměřit. Záchrana života.", author: "Martin Dvořák", role: "Finanční poradce", initials: "MD" },
-  { id: 2, text: "Zóna pro klienty je naprostý game-changer. Sami mi tam nahrávají dokumenty k úvěrům a já nemusím lovit fotky po e-mailech.", author: "Lucie Černá", role: "Týmová manažerka", initials: "LČ" },
+  { id: 2, text: "Klientská zóna výrazně zjednodušila sběr podkladů i komunikaci s klienty.", author: "Lucie Černá", role: "Týmová manažerka", initials: "LČ" },
   { id: 3, text: "Komplexní finanční plán dělám teď za třetinu času. Generování PDF zní jako kouzlo, ale fakt to funguje na klik.", author: "Petr Nový", role: "Wealth Manager", initials: "PN" },
   { id: 4, text: "Už žádný nepořádek v Excelu. Automatické napojení na kalendář a pipeline vizualizace mi zachránila desítky hodin měsíčně.", author: "Jana Malá", role: "Nezávislá poradkyně", initials: "JM" },
   { id: 5, text: "Skvělá podpora a okamžitý přehled nad produkcí celého týmu. Pro manažery je to aktuálně nejlepší nástroj v ČR.", author: "Karel Svoboda", role: "Ředitel pobočky", initials: "KS" },
@@ -595,8 +595,11 @@ export default function PremiumLandingPage() {
             <span className="text-glow-shimmer">O zbytek se postará Aidvisora.</span>
           </h1>
 
+          <p className="hero-anim delay-200 font-inter text-xl text-slate-400 max-w-3xl mx-auto mb-4 leading-relaxed">
+            CRM a klientská zóna pro finanční poradce, která hlídá schůzky, follow-upy i dokumenty.
+          </p>
           <p className="hero-anim delay-200 font-inter text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
-            Jediná aplikace, kterou finanční poradce potřebuje. Od vizuální správy klientů přes profesionální kalendář až po klientskou zónu, která vám sama generuje byznys.
+            Aidvisora spojuje kalendář, pipeline, klientský portál a AI práci se smlouvami do jednoho systému. Méně administrativy, více obchodu, lepší servis pro klienty.
           </p>
 
           <div className="hero-anim delay-300 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -726,7 +729,7 @@ export default function PremiumLandingPage() {
                   </div>
                   <div>
                     <h3 className="font-jakarta text-2xl font-bold text-white">S Aidvisorou</h3>
-                    <p className="text-sm font-bold text-indigo-300">Plynulý ekosystém 2026</p>
+                    <p className="text-sm font-bold text-indigo-300">Všechna klientská data, dokumenty a úkoly na jednom místě.</p>
                   </div>
                 </div>
 
@@ -1185,7 +1188,7 @@ export default function PremiumLandingPage() {
                   <Bot size={16}/> Autopilot pro vaši praxi
                 </div>
                 <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                  AI, které hlídá byznys <br/><span className="text-glow-shimmer">místo vás.</span>
+                  AI, které hlídá priority, follow-upy a <span className="text-glow-shimmer">data ze smluv.</span>
                 </h2>
                 <p className="text-lg text-slate-400 mb-12 leading-relaxed">
                   Naše AI nedělá jen souhrny textů. Skutečně analyzuje klientovo portfolio. Umí vyčíst data z PDF smluv a včas pošle notifikaci na úkol, který hoří.
@@ -1521,7 +1524,7 @@ export default function PremiumLandingPage() {
       <section id="jak-zacit" className="py-24 relative overflow-hidden bg-[#060918]">
         <div className="max-w-[1200px] mx-auto px-6 border-t border-white/10 pt-24 text-center">
           <ScrollReveal>
-            <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-6">Start bez bariér.</h2>
+            <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-6">Začnete bez složité migrace.</h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-16">
               Bojíte se přechodu na nový systém? Nemusíte. Připravili jsme pro vás hladký onboarding, abyste mohli začít pracovat během několika minut.
             </p>
