@@ -548,7 +548,7 @@ export default function PremiumLandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "glass-nav py-4 shadow-2xl shadow-black/50" : "bg-transparent py-6"}`}>
         <div className="max-w-[1400px] mx-auto px-6 md:px-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-            <img src="/aidvisora-logo.png" alt="Aidvisora" className="h-10 w-auto max-w-[180px] object-contain group-hover:scale-105 transition-transform" width={180} height={40} />
+            <span className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-white/30 bg-white/10 text-xl font-bold text-white shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105" aria-hidden>A</span>
             <span className="font-jakarta font-bold text-2xl tracking-tight text-white hidden sm:inline">Aidvisora</span>
           </Link>
 
@@ -1616,7 +1616,7 @@ export default function PremiumLandingPage() {
             
             <div className="lg:col-span-2">
               <Link href="/" className="flex items-center gap-3 mb-6">
-                <img src="/aidvisora-logo.png" alt="Aidvisora" className="h-10 w-auto max-w-[180px] object-contain" width={180} height={40} />
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/30 bg-white/10 text-xl font-bold text-white" aria-hidden>A</span>
                 <span className="font-jakarta font-bold text-2xl tracking-tight text-white">Aidvisora</span>
               </Link>
               <p className="text-sm max-w-sm leading-relaxed mb-6">Prémiová webová aplikace postavená na míru moderním finančním poradcům v České republice.</p>

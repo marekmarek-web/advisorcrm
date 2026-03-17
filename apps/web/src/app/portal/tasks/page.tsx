@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -53,7 +53,7 @@ function isOverdue(dueDate: string | null, completedAt: Date | null) {
 const inputCls = "wp-input w-full";
 const selectCls = "wp-select w-full min-h-[40px]";
 
-export default function TasksPage() {
+function TasksPageContent() {
   const searchParams = useSearchParams();
   const initialFilter = (() => {
     const f = searchParams.get("filter");
@@ -742,6 +742,36 @@ export default function TasksPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<TasksLoading />}>
+      <TasksPageContent />
+    </Suspense>
+  );
+}
+
+function TasksLoading() {
+  return (
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8">
+      <div className="max-w-[1400px] mx-auto space-y-4 animate-pulse">
+        <div className="h-8 w-48 bg-slate-200 rounded" />
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-10 w-24 bg-slate-200 rounded-[var(--wp-radius-sm)]" />
+          ))}
+        </div>
+        <div className="rounded-[var(--wp-radius-sm)] border-2 border-slate-100 bg-white p-4 space-y-3">
+          <div className="h-4 w-32 bg-slate-100 rounded" />
+          <div className="h-12 bg-slate-50 rounded-xl" />
+          <div className="h-12 bg-slate-50 rounded-xl" />
+          <div className="h-10 w-24 bg-indigo-100 rounded-[var(--wp-radius-sm)]" />
+        </div>
+        <div className="h-64 bg-white rounded-[var(--wp-radius-sm)] border border-slate-200" />
+      </div>
     </div>
   );
 }
