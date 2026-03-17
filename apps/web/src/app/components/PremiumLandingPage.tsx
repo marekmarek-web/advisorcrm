@@ -556,7 +556,7 @@ export default function PremiumLandingPage() {
             <a href="#aplikace" className="hover:text-white transition-colors">Aplikace</a>
             <a href="#workflow" className="hover:text-white transition-colors">Typický den</a>
             <a href="#pro-koho" className="hover:text-white transition-colors">Pro koho to je</a>
-            <Link href="/client" className="hover:text-white transition-colors">Pro klienty</Link>
+            <Link href="/klientska-zona" className="hover:text-white transition-colors">Pro klienty</Link>
             <a href="#cenik" className="hover:text-white transition-colors">Ceník</a>
           </div>
 
@@ -1636,7 +1636,7 @@ export default function PremiumLandingPage() {
               <ul className="space-y-4 text-sm">
                 <li><a href="#aplikace" className="hover:text-white transition-colors">Vlastnosti CRM</a></li>
                 <li><a href="#klientska-zona" className="hover:text-white transition-colors">Klientská zóna</a></li>
-                <li><Link href="/client" className="hover:text-white transition-colors">Pro klienty (přihlásit)</Link></li>
+                <li><Link href="/klientska-zona" className="hover:text-white transition-colors">Pro klienty (přihlásit)</Link></li>
                 <li><a href="#ai-asistent" className="hover:text-white transition-colors">AI Asistent</a></li>
                 <li><a href="#cenik" className="hover:text-white transition-colors">Ceník a tarify</a></li>
                 <li><a href="#integrace" className="hover:text-white transition-colors">Integrace</a></li>
