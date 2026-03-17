@@ -204,9 +204,9 @@ const InteractiveMindmap = () => {
     { source: 'core', target: 'n2' }
   ]);
   const [addedCount, setAddedCount] = useState(0);
-  const [dragging, setDragging] = useState(null);
+  const [dragging, setDragging] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
 
-  const handlePointerDown = (e, id) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, id: string) => {
     // Ignorovat, pokud uživatel kliká do inputu (aby mohl přejmenovat uzly)
     if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button') {
       return;
@@ -217,7 +217,7 @@ const InteractiveMindmap = () => {
     setDragging({ id, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
   };
 
-  const handlePointerMove = (e) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragging || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left - dragging.offsetX;
@@ -230,13 +230,13 @@ const InteractiveMindmap = () => {
     setNodes(nodes.map(n => n.id === dragging.id ? { ...n, x: boundedX, y: boundedY } : n));
   };
 
-  const handlePointerUp = (e) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (dragging) e.currentTarget.releasePointerCapture(e.pointerId);
     setDragging(null);
   };
 
   // Přidání nového uzlu (limitováno na 2 navíc)
-  const handleAddNode = (e) => {
+  const handleAddNode = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (addedCount >= 2) return;
     
@@ -253,7 +253,7 @@ const InteractiveMindmap = () => {
   };
 
   // Přejmenování uzlu v reálném čase
-  const handleLabelChange = (id, newLabel) => {
+  const handleLabelChange = (id: string, newLabel: string) => {
     setNodes(nodes.map(n => n.id === id ? { ...n, label: newLabel } : n));
   };
 
