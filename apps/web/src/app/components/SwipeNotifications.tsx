@@ -52,8 +52,8 @@ export function SwipeNotificationItem({
   onDelete,
   delay = 0,
 }: SwipeNotificationItemProps) {
-  const deleteRef = useRef<ReturnType<typeof setTimeout>>();
-  const swipeAwayRef = useRef<ReturnType<typeof setTimeout>>();
+  const deleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swipeAwayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -125,8 +125,8 @@ export function SwipeNotificationItem({
 
   useEffect(() => {
     return () => {
-      clearTimeout(deleteRef.current);
-      clearTimeout(swipeAwayRef.current);
+      if (deleteRef.current != null) clearTimeout(deleteRef.current);
+      if (swipeAwayRef.current != null) clearTimeout(swipeAwayRef.current);
     };
   }, []);
 

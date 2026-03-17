@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createContact, getContactsList } from "@/app/actions/contacts";
 
 export default function NewContactPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralContactIdFromUrl = searchParams.get("referralContactId") ?? "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [contactOptions, setContactOptions] = useState<{ id: string; label: string }[]>([]);
@@ -85,7 +87,7 @@ export default function NewContactPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučen od (kontakt)</label>
-          <select name="referralContactId" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2">
+          <select name="referralContactId" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" defaultValue={referralContactIdFromUrl}>
             <option value="">— žádný</option>
             {contactOptions.map((o) => (
               <option key={o.id} value={o.id}>{o.label}</option>

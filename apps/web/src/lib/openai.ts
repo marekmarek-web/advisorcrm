@@ -164,6 +164,97 @@ export async function createResponseSafe(
   }
 }
 
+/** Extract text from Responses API response (shared by createResponse and createResponseFromPrompt). */
+function extractResponseText(response: {
+  output_text?: string;
+  output?: unknown[];
+}): string {
+  const text = response.output_text;
+  if (typeof text === "string" && text.trim()) return text.trim();
+  const output = response.output;
+  if (Array.isArray(output)) {
+    const parts: string[] = [];
+    for (const item of output) {
+      const msg = item as { content?: Array<{ type?: string; text?: string }> };
+      if (Array.isArray(msg?.content)) {
+        for (const block of msg.content) {
+          if (block?.type === "output_text" && typeof block.text === "string") {
+            parts.push(block.text);
+          }
+        }
+      }
+    }
+    if (parts.length) return parts.join("\n").trim();
+  }
+  throw new Error("Prázdná odpověď od OpenAI.");
+}
+
+/**
+ * Create a response using OpenAI Prompt Builder prompt (id + variables).
+ * Server-side only. Uses OPENAI_API_KEY and optionally OPENAI_MODEL from env.
+ */
+export async function createResponseFromPrompt(
+  params: {
+    promptId: string;
+    version?: string | null;
+    variables: Record<string, string>;
+  },
+  options?: { model?: string; store?: boolean }
+): Promise<CreateResponseResult> {
+  const client = getClient();
+  if (!client) {
+    return {
+      ok: false,
+      error: "OPENAI_API_KEY není nastaven. Nastavte ho v Nastavení nebo v .env.",
+    };
+  }
+  const trimmedId = params.promptId?.trim();
+  if (!trimmedId) {
+    return { ok: false, error: "Prompt ID chybí." };
+  }
+
+  const primaryModel =
+    options?.model ?? process.env.OPENAI_MODEL ?? defaultModel;
+  const store = options?.store ?? false;
+  const start = Date.now();
+
+  const promptPayload: { id: string; version?: string; variables: Record<string, string> } = {
+    id: trimmedId,
+    variables: params.variables,
+  };
+  if (params.version?.trim()) {
+    promptPayload.version = params.version.trim();
+  }
+
+  try {
+    const response = await client.responses.create({
+      model: primaryModel,
+      prompt: promptPayload as Parameters<OpenAI["responses"]["create"]>[0]["prompt"],
+      store,
+    });
+    const latencyMs = Date.now() - start;
+    logOpenAICall({
+      endpoint: "responses.create_prompt",
+      model: primaryModel,
+      latencyMs,
+      success: true,
+    });
+    const text = extractResponseText(response as { output_text?: string; output?: unknown[] });
+    return { ok: true, text };
+  } catch (err) {
+    const latencyMs = Date.now() - start;
+    const message = err instanceof Error ? err.message : String(err);
+    logOpenAICall({
+      endpoint: "responses.create_prompt",
+      model: primaryModel,
+      latencyMs,
+      success: false,
+      error: message,
+    });
+    return { ok: false, error: message, code: (err as { code?: string })?.code };
+  }
+}
+
 /**
  * Create a response with a file (e.g. PDF) and optional text prompt.
  * Uses input_file with file_url. Server-side only.

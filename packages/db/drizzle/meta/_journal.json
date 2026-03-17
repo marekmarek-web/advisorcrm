@@ -22,6 +22,41 @@
       "when": 1773500000000,
       "tag": "0002_advisor_report_branding",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773600000000,
+      "tag": "0003_user_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773700000000,
+      "tag": "0004_team_goals",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773800000000,
+      "tag": "0005_team_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773900000000,
+      "tag": "0006_advisor_business_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774000000000,
+      "tag": "0007_ai_generations_feedback",
+      "breakpoints": true
     }
   ]
 }

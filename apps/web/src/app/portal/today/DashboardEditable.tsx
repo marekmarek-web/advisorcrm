@@ -32,6 +32,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardKpis } from "@/app/actions/dashboard";
+import type { ServiceRecommendationWithContact } from "@/app/actions/service-engine";
+import { getServiceCtaHref } from "@/lib/service-engine/cta";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 import type { ProductionSummary } from "@/app/actions/production";
@@ -95,20 +97,30 @@ const KPI_CARDS_V3: {
   { key: "opportunitiesOpen", label: "Otevřené případy", subtitle: "Pipeline", href: "/portal/pipeline", theme: "purple", Icon: Briefcase },
 ];
 
+export type BusinessPlanWidgetData = {
+  periodLabel: string;
+  overallHealth: string;
+  metrics: { metricType: string; label: string; actual: number; target: number; health: string; unit: string }[];
+};
+
 export function DashboardEditable({
   kpis,
+  serviceRecommendations = [],
   initialNotes = [],
   advisorName = null,
   initialAnalyses = [],
   productionSummary = null,
   productionError = null,
+  businessPlanWidgetData = null,
 }: {
   kpis: DashboardKpis;
+  serviceRecommendations?: ServiceRecommendationWithContact[];
   initialNotes?: MeetingNoteForBoard[];
   advisorName?: string | null;
   initialAnalyses?: FinancialAnalysisListItem[];
   productionSummary?: ProductionSummary | null;
   productionError?: string | null;
+  businessPlanWidgetData?: BusinessPlanWidgetData | null;
 }) {
   const router = useRouter();
   const [config, setConfig] = useState<DashboardConfig>({ order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] });
@@ -384,31 +396,142 @@ export function DashboardEditable({
           </div>
         );
       }
+      case "businessPlan": {
+        const data = businessPlanWidgetData;
+        const HEALTH_LABELS: Record<string, string> = {
+          achieved: "Splněno",
+          exceeded: "Překročeno",
+          on_track: "Podle plánu",
+          slight_slip: "Mírný skluz",
+          significant_slip: "Výrazný skluz",
+          no_data: "—",
+          not_applicable: "—",
+        };
+        const formatVal = (v: number, unit: string) =>
+          unit === "czk" ? `${Math.round(v).toLocaleString("cs-CZ")} Kč` : String(Math.round(v));
+        if (!data) {
+          return (
+            <div className="flex flex-col h-full justify-center">
+              <p className="text-sm py-3 text-slate-500 mb-2">Zatím nemáš nastavený business plán.</p>
+              <Link
+                href="/portal/business-plan"
+                className="text-sm font-semibold text-indigo-600 hover:underline min-h-[44px] inline-flex items-center"
+              >
+                Nastavit plán →
+              </Link>
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col h-full justify-center">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {data.periodLabel}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                {HEALTH_LABELS[data.overallHealth] ?? data.overallHealth}
+              </span>
+            </div>
+            <div className="space-y-2 mb-4">
+              {data.metrics.map((m) => (
+                <div key={m.metricType} className="flex justify-between items-center text-sm">
+                  <span className="font-medium text-slate-700 truncate">{m.label}</span>
+                  <span className="text-slate-600 shrink-0 ml-2">
+                    {formatVal(m.actual, m.unit)} / {formatVal(m.target, m.unit)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Link
+              href="/portal/business-plan"
+              className="text-xs font-semibold text-indigo-600 hover:underline min-h-[44px] inline-flex items-center"
+            >
+              Otevřít business plán →
+            </Link>
+          </div>
+        );
+      }
       case "clientCare": {
+        const recs = serviceRecommendations.slice(0, 5);
         const service = kpis.serviceDueContacts.slice(0, 3);
         const ann = kpis.upcomingAnniversaries.slice(0, 3);
-        const hasAny = service.length > 0 || ann.length > 0;
-        return !hasAny ? (
-          <p className="text-sm py-3 text-slate-500">Žádná péče k zobrazení.</p>
-        ) : (
+        const hasRecs = recs.length > 0;
+        const hasLegacy = service.length > 0 || ann.length > 0;
+        const hasAny = hasRecs || hasLegacy;
+        if (!hasAny) {
+          return <p className="text-sm py-3 text-slate-500">Žádná péče k zobrazení.</p>;
+        }
+        if (hasRecs) {
+          return (
+            <div className="flex flex-col h-full">
+              <div className="space-y-3 flex-1">
+                {recs.map((r) => {
+                  const cta = getServiceCtaHref(r, r.contactId);
+                  const name = [r.contactFirstName, r.contactLastName].filter(Boolean).join(" ") || "Klient";
+                  const isOverdue = r.urgency === "overdue";
+                  return (
+                    <div
+                      key={r.id}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border min-h-[44px] ${
+                        isOverdue ? "bg-red-50/50 border-red-100/50" : "bg-amber-50/30 border-amber-100/50"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-slate-800">{name}</h4>
+                        <p className="text-xs font-bold text-slate-600 mt-0.5 truncate">{r.title}</p>
+                        {r.dueDate && (
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {new Date(r.dueDate).toLocaleDateString("cs-CZ")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                          href={cta.href}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-white text-slate-700 border border-slate-200 text-sm font-semibold hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                        >
+                          {cta.label}
+                        </Link>
+                        <Link
+                          href={`/portal/contacts/${r.contactId}`}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 bg-white text-slate-600 hover:text-indigo-600 border border-slate-200 rounded-lg shadow-sm transition-colors"
+                          aria-label="Otevřít klienta"
+                        >
+                          <ChevronRight size={16} />
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <Link
+                href="/portal/today"
+                className="text-xs font-semibold text-indigo-600 hover:underline mt-2 inline-block"
+              >
+                Servisní přehled
+              </Link>
+            </div>
+          );
+        }
+        return (
           <div className="flex flex-col h-full">
             <div className="space-y-3 flex-1">
               {service.map((c) => (
-                <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50/30 border border-amber-100/50">
+                <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50/30 border border-amber-100/50 min-h-[44px]">
                   <div>
                     <h4 className="font-bold text-sm text-slate-800">{c.firstName} {c.lastName}</h4>
                     <p className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-0.5"><AlertCircle size={12} /> Servis · {new Date(c.nextServiceDue).toLocaleDateString("cs-CZ")}</p>
                   </div>
-                  <Link href={`/portal/contacts/${c.id}`} className="p-2 bg-white text-slate-600 hover:text-indigo-600 border border-slate-200 rounded-lg shadow-sm transition-colors shrink-0" aria-label="Zavolat"><Phone size={14} /></Link>
+                  <Link href={`/portal/contacts/${c.id}`} className="p-2 bg-white text-slate-600 hover:text-indigo-600 border border-slate-200 rounded-lg shadow-sm transition-colors shrink-0 min-h-[44px] min-w-[44px] inline-flex items-center justify-center" aria-label="Otevřít kontakt"><Phone size={14} /></Link>
                 </div>
               ))}
               {ann.map((c) => (
-                <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50/30 border border-amber-100/50">
+                <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50/30 border border-amber-100/50 min-h-[44px]">
                   <div>
                     <h4 className="font-bold text-sm text-slate-800">{c.partnerName ?? "—"}</h4>
                     <p className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-0.5"><AlertCircle size={12} /> Výročí · {c.contactName} · {new Date(c.anniversaryDate).toLocaleDateString("cs-CZ")}</p>
                   </div>
-                  <Link href={`/portal/contacts/${c.contactId}`} className="p-2 bg-white text-slate-600 hover:text-indigo-600 border border-slate-200 rounded-lg shadow-sm transition-colors shrink-0" aria-label="Otevřít kontakt"><Phone size={14} /></Link>
+                  <Link href={`/portal/contacts/${c.contactId}`} className="p-2 bg-white text-slate-600 hover:text-indigo-600 border border-slate-200 rounded-lg shadow-sm transition-colors shrink-0 min-h-[44px] min-w-[44px] inline-flex items-center justify-center" aria-label="Otevřít kontakt"><Phone size={14} /></Link>
                 </div>
               ))}
             </div>
@@ -668,12 +791,34 @@ export function DashboardEditable({
         {/* Widget grid – premium cards, drag-and-drop */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-8">
           {visibleOrder.map((id) => {
+            const isAiAssistant = id === "aiAssistant";
             const WidgetIconComponent = WIDGET_ICONS[id];
             const footerLink = WIDGET_HREF[id];
-            const footerLabel = id === "production" ? "Otevřít produkci" : id === "activeDeals" ? "Otevřít Board" : id === "myTasks" ? "Zobrazit všechny úkoly" : id === "clientCare" ? "Servisní přehled" : id === "financialAnalyses" ? "Všechny analýzy" : "Více";
+            const footerLabel = id === "production" ? "Otevřít produkci" : id === "activeDeals" ? "Otevřít Board" : id === "myTasks" ? "Zobrazit všechny úkoly" : id === "clientCare" ? "Servisní přehled" : id === "financialAnalyses" ? "Všechny analýzy" : id === "businessPlan" ? "Otevřít business plán" : "Více";
             const body = renderWidgetContent(id);
             const isNotesFullWidth = id === "notes";
             const cardBg = config.widgetColors?.[id] ? WIDGET_COLOR_CLASS[config.widgetColors[id]] : WIDGET_SECTION_BG[WIDGET_SECTION[id]];
+            const wrapperClass = `w-full rounded-3xl overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${isAiAssistant ? "bg-transparent" : cardBg} ${isNotesFullWidth ? "md:col-span-2 xl:col-span-3" : ""} ${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""}`;
+            if (isAiAssistant) {
+              return (
+                <div
+                  key={id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, id)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, id)}
+                  className={wrapperClass}
+                >
+                  <div className="relative">
+                    <span className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 cursor-grab active:cursor-grabbing transition-colors touch-none shrink-0" aria-label="Chytit a přesunout">
+                      <GripVertical size={16} className="text-indigo-200" />
+                    </span>
+                    <DashboardAiAssistant />
+                  </div>
+                </div>
+              );
+            }
             return (
               <div
                 key={id}
@@ -682,7 +827,7 @@ export function DashboardEditable({
                 onDragEnd={handleDragEnd}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, id)}
-                className={`w-full rounded-3xl overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${cardBg} ${isNotesFullWidth ? "md:col-span-2 xl:col-span-3" : ""} ${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""}`}
+                className={wrapperClass}
               >
                 <DashboardCard
                   title={WIDGET_LABELS[id]}
@@ -710,7 +855,7 @@ export function DashboardEditable({
         <div className="flex-1 overflow-y-auto p-5 lg:p-6 space-y-6 bg-white lg:bg-white">
           <section className="space-y-4">
             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Kalendář</h3>
-            <CalendarWidget onNewActivity={() => router.push("/portal/calendar?new=1")} />
+            <CalendarWidget hideTitle onNewActivity={() => router.push("/portal/calendar?new=1")} />
           </section>
           <section className="pt-6 border-t border-slate-100">
             <MessengerPreview />

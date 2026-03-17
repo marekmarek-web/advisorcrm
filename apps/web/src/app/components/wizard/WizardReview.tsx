@@ -1,5 +1,7 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
+
 export type WizardReviewRow = { label: string; value: string };
 
 export function WizardReview({
@@ -11,7 +13,7 @@ export function WizardReview({
   title?: string;
   subtitle?: string;
   rows: WizardReviewRow[];
-  icon?: React.ComponentType<{ size?: number | string; className?: string }>;
+  icon?: LucideIcon;
 }) {
   return (
     <div className="flex flex-col">

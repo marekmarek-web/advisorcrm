@@ -128,7 +128,8 @@ export function mergeLoadedState(
   }
 
   if (Array.isArray(p.investments)) {
-    data.investments = p.investments as FinancialAnalysisData['investments'];
+    const loaded = p.investments as FinancialAnalysisData['investments'];
+    data.investments = loaded.filter((inv) => inv.productKey !== 'imperial');
   }
 
   if (p.insurance && typeof p.insurance === 'object') {
@@ -162,6 +163,9 @@ export function mergeLoadedState(
       employeeCount: Number(b.employeeCount) || 0,
       directorsAmount: Number(b.directorsAmount) || 0,
       annualCost: Number(b.annualCost) || 0,
+      statePensionTaxBenefit: Boolean(b.statePensionTaxBenefit),
+      statePensionTaxLimitAnnual: Number(b.statePensionTaxLimitAnnual) || undefined,
+      statePensionTaxRefundAnnual: Number(b.statePensionTaxRefundAnnual) || undefined,
     };
   }
   if (p.companyRisks && typeof p.companyRisks === 'object') {

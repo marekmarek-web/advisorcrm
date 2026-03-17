@@ -1,4 +1,4 @@
-import { db, memberships, roles, clientContacts } from "db";
+import { db, memberships, roles, clientContacts, contacts } from "db";
 import { eq, and } from "db";
 
 export type RoleName = "Admin" | "Manager" | "Advisor" | "Viewer" | "Client";
@@ -45,9 +45,19 @@ export async function requireMembership(userId: string) {
   return m;
 }
 
+/** V demo režimu: vrátí první kontakt tenanta (pro zobrazení klientského portálu bez přihlášení). */
+export async function getDemoClientContactId(tenantId: string): Promise<string | null> {
+  const rows = await db
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(eq(contacts.tenantId, tenantId))
+    .limit(1);
+  return rows[0]?.id ?? null;
+}
+
 export function hasPermission(roleName: RoleName, action: string): boolean {
   const admin = ["*"];
-  const manager = ["contacts:*", "households:*", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*", "export:*", "team_overview:read"];
+  const manager = ["contacts:*", "households:*", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*", "export:*", "team_overview:read", "team_calendar:write"];
   const advisor = ["contacts:read", "contacts:write", "households:read", "households:write", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*"];
   const viewer = ["contacts:read", "households:read", "opportunities:read", "tasks:read", "events:read", "documents:read"];
   const client = ["client_zone:*"];

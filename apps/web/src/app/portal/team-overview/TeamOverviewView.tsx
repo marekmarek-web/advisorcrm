@@ -17,11 +17,13 @@ import {
   X,
   Sparkles,
   RefreshCw,
+  Target,
 } from "lucide-react";
 import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint } from "@/app/actions/team-overview";
 import type { TeamOverviewPeriod } from "@/app/actions/team-overview";
 import { getTeamOverviewKpis, getTeamMemberMetrics, getTeamAlerts, getNewcomerAdaptation, getTeamPerformanceOverTime } from "@/app/actions/team-overview";
 import { SkeletonBlock } from "@/app/components/Skeleton";
+import { TeamCalendarModal, TeamCalendarButtons } from "./TeamCalendarModal";
 
 const PERIOD_OPTIONS: { value: TeamOverviewPeriod; label: string }[] = [
   { value: "week", label: "Týden" },
@@ -45,6 +47,7 @@ interface TeamOverviewViewProps {
   initialNewcomers: NewcomerAdaptation[];
   initialPerformanceOverTime: TeamPerformancePoint[];
   defaultPeriod: TeamOverviewPeriod;
+  canCreateTeamCalendar?: boolean;
 }
 
 function formatNumber(n: number): string {
@@ -67,6 +70,7 @@ export function TeamOverviewView({
   initialNewcomers,
   initialPerformanceOverTime,
   defaultPeriod,
+  canCreateTeamCalendar = false,
 }: TeamOverviewViewProps) {
   const [period, setPeriod] = useState<TeamOverviewPeriod>(defaultPeriod);
   const [kpis, setKpis] = useState<TeamOverviewKpis | null>(initialKpis);
@@ -77,6 +81,7 @@ export function TeamOverviewView({
   const [loading, setLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [teamCalendarModal, setTeamCalendarModal] = useState<"event" | "task" | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -131,6 +136,11 @@ export function TeamOverviewView({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <TeamCalendarButtons
+              canCreate={canCreateTeamCalendar}
+              onOpenEvent={() => setTeamCalendarModal("event")}
+              onOpenTask={() => setTeamCalendarModal("task")}
+            />
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as TeamOverviewPeriod)}
@@ -151,6 +161,14 @@ export function TeamOverviewView({
             </button>
           </div>
         </div>
+
+        <TeamCalendarModal
+          open={teamCalendarModal != null}
+          type={teamCalendarModal}
+          onClose={() => setTeamCalendarModal(null)}
+          members={initialMembers}
+          onSuccess={refresh}
+        />
 
         {/* KPI cards */}
         <section className="mb-8">
@@ -207,6 +225,31 @@ export function TeamOverviewView({
                 <p className="mt-2 text-2xl font-bold text-slate-900">{kpis.riskyMemberCount}</p>
                 <p className="text-xs font-medium text-slate-500">Rizikoví členové</p>
               </div>
+              {kpis.teamGoalTarget != null && kpis.teamGoalType && (
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                  <div className="inline-flex rounded-xl p-2 bg-indigo-500/20">
+                    <Target className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {kpis.teamGoalProgressPercent != null ? `${kpis.teamGoalProgressPercent} %` : "—"}
+                  </p>
+                  <p className="text-xs font-medium text-slate-500">Splnění týmového cíle</p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {kpis.teamGoalActual != null ? formatNumber(kpis.teamGoalActual) : "0"} / {formatNumber(kpis.teamGoalTarget)}
+                    {kpis.teamGoalType === "units" && " jednotek"}
+                    {kpis.teamGoalType === "production" && " produkce"}
+                    {kpis.teamGoalType === "meetings" && " schůzek"}
+                  </p>
+                  {kpis.teamGoalProgressPercent != null && (
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-indigo-500 transition-all"
+                        style={{ width: `${Math.min(kpis.teamGoalProgressPercent, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : null}
         </section>
@@ -360,7 +403,7 @@ export function TeamOverviewView({
                           <Link href={`/portal/team-overview/${m.userId}`} className="font-medium text-slate-900 hover:underline">
                             {displayName(m)}
                           </Link>
-                          <p className="text-xs text-slate-500">{m.roleName}</p>
+                          <p className="text-xs text-slate-500">{m.roleName}{m.email ? ` · ${m.email}` : ""}</p>
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-700">{met?.unitsThisPeriod ?? "—"}</td>
                         <td className="px-4 py-3 text-right text-sm text-slate-700">{met ? formatNumber(met.productionThisPeriod) : "—"}</td>
@@ -397,7 +440,7 @@ export function TeamOverviewView({
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="font-medium text-slate-900">{displayName(m)}</p>
-                        <p className="text-xs text-slate-500">{m.roleName}</p>
+                        <p className="text-xs text-slate-500">{m.roleName}{m.email ? ` · ${m.email}` : ""}</p>
                       </div>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         met?.riskLevel === "critical" ? "bg-rose-100 text-rose-700" :

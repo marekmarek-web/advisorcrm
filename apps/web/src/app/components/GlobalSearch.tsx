@@ -20,7 +20,7 @@ export const GlobalSearch = forwardRef<GlobalSearchHandle, object>(function Glob
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useImperativeHandle(ref, () => ({ open: () => setOpen(true) }), []);
 
@@ -46,7 +46,10 @@ export const GlobalSearch = forwardRef<GlobalSearchHandle, object>(function Glob
   }, [open]);
 
   const search = useCallback((q: string) => {
-    clearTimeout(timerRef.current);
+    if (timerRef.current != null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     if (!q.trim()) {
       setResults(EMPTY);
       setLoading(false);

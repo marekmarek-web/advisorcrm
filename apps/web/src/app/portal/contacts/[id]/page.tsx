@@ -26,10 +26,17 @@ import { ContactNotesSection } from "./ContactNotesSection";
 import { ContactOverviewKpi } from "./ContactOverviewKpi";
 import { ContactLastNotePreview } from "./ContactLastNotePreview";
 import { ContactProductsPreview } from "./ContactProductsPreview";
-import { ContactAiAnalysisCard } from "./ContactAiAnalysisCard";
+import { ContactAiGenerationsBlock } from "./ContactAiGenerationsBlock";
+import { getLatestClientGenerations } from "@/app/actions/ai-generations";
 import { ClientCoverageWidget } from "@/app/components/contacts/ClientCoverageWidget";
 import { ContactTagsEditor } from "@/app/components/contacts/ContactTagsEditor";
 import { ContactFinancialAnalysesSection } from "@/app/dashboard/contacts/[id]/ContactFinancialAnalysesSection";
+import { ClientFinancialSummaryBlock } from "./ClientFinancialSummaryBlock";
+import { ClientServiceBlock } from "./ClientServiceBlock";
+import { ClientReferralSection } from "./ClientReferralSection";
+import { ClientTimeline } from "./ClientTimeline";
+import { Suspense } from "react";
+import { BriefingTabContent } from "./BriefingTabContent";
 
 export default async function ContactDetailPage({
   params,
@@ -37,9 +44,10 @@ export default async function ContactDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [contact, household] = await Promise.all([
+  const [contact, household, latestGenerations] = await Promise.all([
     getContact(id),
     getHouseholdForContact(id),
+    getLatestClientGenerations(id),
   ]);
   if (!contact) notFound();
 
@@ -47,6 +55,15 @@ export default async function ContactDetailPage({
     <div className="space-y-8">
       {/* První blok: KPI úplně nahoru */}
       <ContactOverviewKpi contactId={id} />
+
+      {/* Finanční souhrn – hlavní obraz z analýzy */}
+      <ClientFinancialSummaryBlock contactId={id} />
+
+      {/* Servis a doporučení */}
+      <ClientServiceBlock contactId={id} />
+
+      {/* Referral systém – kdo doporučil, koho doporučil, hodnota, timing */}
+      <ClientReferralSection contactId={id} />
 
       {/* Pokrytí produktů na celou šířku */}
       <ClientCoverageWidget contactId={id} />
@@ -63,10 +80,10 @@ export default async function ContactDetailPage({
         </aside>
       </div>
 
-      {/* Třetí blok: Úkoly a AI analýza pod hlavním obsahem */}
+      {/* Třetí blok: Úkoly a AI analýza (shrnutí, příležitosti, next best action) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ContactOpenTasksPreview contactId={id} />
-        <ContactAiAnalysisCard />
+        <ContactAiGenerationsBlock contactId={id} initialGenerations={latestGenerations} />
       </div>
     </div>
   );
@@ -112,14 +129,42 @@ export default async function ContactDetailPage({
     </div>
   );
 
+  const timelineContent = (
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+      <div className="p-6">
+        <ClientTimeline contactId={id} />
+      </div>
+    </div>
+  );
+
   const tabs = [
     { id: "prehled" as const, label: "Přehled", content: overviewContent },
+    { id: "timeline" as const, label: "Timeline", content: timelineContent },
     { id: "smlouvy" as const, label: "Produkty", content: smlouvyContent },
     { id: "dokumenty" as const, label: "Dokumenty", content: <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden"><div className="px-6 py-5 border-b border-slate-50"><h2 className="text-lg font-black text-slate-900">Dokumenty</h2></div><div className="p-6"><DocumentsSection contactId={id} /></div></div> },
     { id: "zapisky" as const, label: "Zápisky", content: zapiskyContent },
     { id: "aktivita" as const, label: "Aktivita", content: aktivitaContent },
     { id: "ukoly" as const, label: "Úkoly a schůzky", content: <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden"><div className="px-6 py-5 border-b border-slate-50"><h2 className="text-lg font-black text-slate-900">Úkoly a schůzky</h2></div><div className="p-6"><ContactTasksAndEvents contactId={id} /></div></div> },
-    { id: "obchody" as const, label: "Obchody", content: <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden"><div className="px-6 py-5 border-b border-slate-50"><h2 className="text-lg font-black text-slate-900">Obchody</h2></div><div className="p-6"><ContactOpportunityBoardLazy contactId={id} /></div></div> },
+    { id: "obchody" as const, label: "Obchody", content: (
+      <div className="flex flex-col flex-1 min-h-0 w-full">
+        <div className="flex items-center justify-between px-4 py-4 shrink-0">
+          <div>
+            <h2 className="text-xl font-bold" style={{ color: "var(--wp-text)" }}>Obchody</h2>
+            <p className="text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
+              Případy tohoto klienta.
+            </p>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 px-4 pb-4 w-full">
+          <ContactOpportunityBoardLazy contactId={id} contactFirstName={contact.firstName ?? undefined} contactLastName={contact.lastName ?? undefined} />
+        </div>
+      </div>
+    ) },
+    { id: "briefing" as const, label: "Briefing", content: (
+      <Suspense fallback={<div className="bg-white rounded-[24px] border border-slate-100 p-6">Načítání…</div>}>
+        <BriefingTabContent contactId={id} />
+      </Suspense>
+    ) },
   ];
 
   const initials = [contact.firstName, contact.lastName].map((s) => s?.charAt(0) ?? "").join("").toUpperCase() || "?";

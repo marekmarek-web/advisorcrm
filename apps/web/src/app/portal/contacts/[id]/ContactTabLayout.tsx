@@ -2,9 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-export type ContactTabId = "prehled" | "smlouvy" | "dokumenty" | "zapisky" | "aktivita" | "ukoly" | "obchody";
+export type ContactTabId = "prehled" | "timeline" | "smlouvy" | "dokumenty" | "zapisky" | "aktivita" | "ukoly" | "obchody" | "briefing";
 
-const TAB_IDS: ContactTabId[] = ["prehled", "smlouvy", "dokumenty", "zapisky", "aktivita", "ukoly", "obchody"];
+const TAB_IDS: ContactTabId[] = ["prehled", "timeline", "smlouvy", "dokumenty", "zapisky", "aktivita", "ukoly", "obchody", "briefing"];
 
 export const ContactTabContext = createContext<ContactTabId>("prehled");
 

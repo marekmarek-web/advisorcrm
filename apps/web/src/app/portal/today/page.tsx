@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardKpis } from "@/app/actions/dashboard";
+import { getServiceRecommendationsForDashboard } from "@/app/actions/service-engine";
 import { getMeetingNotesForBoard } from "@/app/actions/meeting-notes";
 import { listFinancialAnalyses } from "@/app/actions/financial-analyses";
 import { getProductionSummary } from "@/app/actions/production";
+import { getBusinessPlanWidgetData } from "@/app/actions/business-plan";
 import { DashboardEditable } from "./DashboardEditable";
 import { LinesAndDotsLoader } from "@/app/components/LinesAndDotsLoader";
 
@@ -39,26 +41,30 @@ async function DashboardContent() {
   const advisorName = (user?.user_metadata?.full_name as string | undefined) ?? null;
 
   let productionError: string | null = null;
-  const [kpis, notes, analyses, production] = await Promise.all([
+  const [kpis, serviceRecommendations, notes, analyses, production, businessPlanWidgetData] = await Promise.all([
     getDashboardKpis().catch((e) => {
       console.error("[DashboardContent] getDashboardKpis", e);
       return FALLBACK_KPIS;
     }),
+    getServiceRecommendationsForDashboard(10).catch(() => []),
     getMeetingNotesForBoard().catch(() => []),
     listFinancialAnalyses().catch(() => []),
     getProductionSummary("month").catch((e) => {
       productionError = e instanceof Error ? e.message : "Nepodařilo se načíst produkci.";
       return null;
     }),
+    getBusinessPlanWidgetData().catch(() => null),
   ]);
   return (
     <DashboardEditable
       kpis={kpis}
+      serviceRecommendations={serviceRecommendations}
       initialNotes={notes}
       advisorName={advisorName}
       initialAnalyses={analyses}
       productionSummary={production}
       productionError={productionError}
+      businessPlanWidgetData={businessPlanWidgetData}
     />
   );
 }

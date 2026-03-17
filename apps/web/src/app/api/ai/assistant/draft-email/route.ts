@@ -39,17 +39,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: client.error }, { status: 404 });
     }
 
-    const prompt =
-      contextType === "reminder"
-        ? `Napiš krátký e-mail (2–3 věty) klientovi ${client.name} jako připomenutí. Bez oslovení na konci, jen tělo. Česky.`
-        : contextType === "missing_data"
-          ? `Napiš krátký e-mail klientovi ${client.name} s žádostí o doplnění údajů. 2–3 věty. Česky.`
-          : `Napiš krátký follow-up e-mail klientovi ${client.name}. Přátelský tón, 2–3 věty. Česky.`;
+    let prompt: string;
+    if (contextType === "post_meeting") {
+      const meetingSummary = typeof body.meetingSummary === "string" ? body.meetingSummary.slice(0, 800) : "";
+      const keyPoints = Array.isArray(body.keyPoints) ? body.keyPoints.join(", ") : (typeof body.keyPoints === "string" ? body.keyPoints : "");
+      const agreedItems = Array.isArray(body.agreedItems) ? body.agreedItems.join(", ") : (typeof body.agreedItems === "string" ? body.agreedItems : "");
+      const contextParts = [meetingSummary, keyPoints && `Klíčové body: ${keyPoints}`, agreedItems && `Domluveno: ${agreedItems}`].filter(Boolean);
+      prompt = `Napiš krátký profesionální e-mail klientovi ${client.name} po schůzce. Kontext schůzky: ${contextParts.join(". ") || "obecná schůzka"}. E-mail má obsahovat: poděkování za schůzku, krátké shrnutí toho co se řešilo, další krok (co pošle poradce, co čeká od klienta), návrh dalšího kontaktu nebo termínu. 2–4 odstavce. Bez oslovení na konci, jen tělo. Česky.`;
+    } else {
+      prompt =
+        contextType === "reminder"
+          ? `Napiš krátký e-mail (2–3 věty) klientovi ${client.name} jako připomenutí. Bez oslovení na konci, jen tělo. Česky.`
+          : contextType === "missing_data"
+            ? `Napiš krátký e-mail klientovi ${client.name} s žádostí o doplnění údajů. 2–3 věty. Česky.`
+            : `Napiš krátký follow-up e-mail klientovi ${client.name}. Přátelský tón, 2–3 věty. Česky.`;
+    }
 
     const result = await createResponseSafe(prompt);
     if (!result.ok) {
       return NextResponse.json({
-        subject: `Follow-up – ${client.name}`,
+        subject: contextType === "post_meeting" ? `Shrnutí schůzky – ${client.name}` : `Follow-up – ${client.name}`,
         body: `Dobrý den,\n\nDěkujeme za spolupráci.\n\nS pozdravem`,
       });
     }
@@ -60,7 +69,9 @@ export async function POST(request: Request) {
         ? `Připomenutí – ${client.name}`
         : contextType === "missing_data"
           ? `Doplnění údajů – ${client.name}`
-          : `Follow-up – ${client.name}`;
+          : contextType === "post_meeting"
+            ? `Shrnutí schůzky – ${client.name}`
+            : `Follow-up – ${client.name}`;
 
     return NextResponse.json({ subject, body: bodyText });
   } catch {

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { getContractsByContact } from "@/app/actions/contracts";
 import { segmentLabel } from "@/app/lib/segment-labels";
@@ -13,8 +14,17 @@ export default async function ClientContractsPage() {
       <h1 className="text-xl font-semibold text-monday-text">Moje smlouvy</h1>
 
       {contractsList.length === 0 ? (
-        <div className="rounded-[var(--wp-radius-sm)] border border-monday-border bg-monday-surface p-6 text-center">
-          <p className="text-monday-text-muted text-sm">Žádné smlouvy.</p>
+        <div className="rounded-xl border border-monday-border bg-monday-surface p-6 text-center">
+          <p className="text-monday-text-muted text-sm">
+            Zatím nemáte evidované smlouvy. Vše doplní váš poradce.
+          </p>
+          <p className="mt-2 text-sm text-monday-text-muted">
+            Máte dotaz?{" "}
+            <Link href="/client/messages" className="text-monday-blue font-medium hover:underline">
+              Napište poradci
+            </Link>
+            .
+          </p>
         </div>
       ) : (
         <div className="space-y-3">

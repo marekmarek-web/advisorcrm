@@ -1,0 +1,21 @@
+api: pmpt_69b7024981448195b620c9e51e057d8306f0b67556247f1d
+
+from openai import OpenAI
+client = OpenAI()
+
+response = client.responses.create(
+  prompt={
+    "id": "pmpt_69b7024981448195b620c9e51e057d8306f0b67556247f1d",
+    "version": "1",
+    "variables": {
+      "client_profile": "example client_profile",
+      "household_summary": "example household_summary",
+      "financial_summary": "example financial_summary",
+      "contracts_summary": "example contracts_summary",
+      "timeline_events": "example timeline_events",
+      "open_items": "example open_items",
+      "service_status": "example service_status",
+      "active_deals": "example active_deals"
+    }
+  }
+)

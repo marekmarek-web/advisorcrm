@@ -82,7 +82,7 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
   const [bulkTag, setBulkTag] = useState("");
   const [bulkPending, setBulkPending] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
-  const tableLoadingTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const tableLoadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
 
   const triggerTableLoading = useCallback(() => {
     setTableLoading(true);
-    if (tableLoadingTimerRef.current) clearTimeout(tableLoadingTimerRef.current);
+    if (tableLoadingTimerRef.current != null) { clearTimeout(tableLoadingTimerRef.current); tableLoadingTimerRef.current = null; }
     tableLoadingTimerRef.current = setTimeout(() => setTableLoading(false), 250);
   }, []);
 

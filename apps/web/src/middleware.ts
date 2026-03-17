@@ -5,8 +5,12 @@ const PRODUCTION_DOMAIN = "https://www.aidvisora.cz";
 
 export async function middleware(request: NextRequest) {
   // Přesměrovat starou Vercel URL na produkční doménu (aby Google login neposílal na advisorcrm-web.vercel.app)
+  // Výjimka: /auth/callback s parametrem code NESMÍ být přesměrován – PKCE code_verifier je v cookie na této doméně,
+  // po redirectu na jinou doménu by callback selhal s "PKCE code verifier not found in storage".
   const host = request.headers.get("host") ?? "";
-  if (host.includes("advisorcrm-web.vercel.app")) {
+  const isAuthCallbackWithCode =
+    request.nextUrl.pathname === "/auth/callback" && request.nextUrl.searchParams.has("code");
+  if (host.includes("advisorcrm-web.vercel.app") && !isAuthCallbackWithCode) {
     const path = request.nextUrl.pathname === "/" && request.nextUrl.searchParams.get("code") ? "/auth/callback" : request.nextUrl.pathname;
     const url = new URL(path + request.nextUrl.search, PRODUCTION_DOMAIN);
     return NextResponse.redirect(url);
@@ -97,7 +101,11 @@ export async function middleware(request: NextRequest) {
 
   // Dočasně: povolit dashboard bez přihlášení (nastav SKIP_AUTH=true v .env.local)
   if (process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
-    return NextResponse.next();
+    const requestHeaders = new Headers(request.headers);
+    if (pathname.startsWith("/client")) {
+      requestHeaders.set("x-demo-client-zone", "1");
+    }
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
   if (!supabaseUrl || !supabaseAnonKey) {
     return NextResponse.next();

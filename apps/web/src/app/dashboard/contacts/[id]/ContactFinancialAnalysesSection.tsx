@@ -7,14 +7,8 @@ import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses
 import { getCompaniesForContact } from "@/app/actions/company-person-links";
 import { getSharedFactsForContact } from "@/app/actions/shared-facts";
 import { getCompanyById } from "@/app/actions/companies";
+import { getAnalysisStatusLabel } from "@/lib/analyses/financial/constants";
 import { FileText, Plus, Building2, Link2 } from "lucide-react";
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Rozpracováno",
-  completed: "Dokončeno",
-  exported: "Exportováno",
-  archived: "Archivováno",
-};
 
 export function ContactFinancialAnalysesSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<FinancialAnalysisListItem[]>([]);
@@ -91,7 +85,7 @@ export function ContactFinancialAnalysesSection({ contactId }: { contactId: stri
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                     <span className="text-sm font-semibold text-slate-700">
-                      {STATUS_LABELS[a.status] ?? a.status}
+                      {getAnalysisStatusLabel(a.status)}
                     </span>
                     <span className="text-xs text-slate-400">
                       {new Date(a.updatedAt).toLocaleDateString("cs-CZ")}

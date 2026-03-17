@@ -3,7 +3,7 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { db } from "db";
-import { financialAnalyses } from "db";
+import { financialAnalyses, householdMembers } from "db";
 import { eq, and, desc } from "db";
 
 export type FinancialAnalysisStatus = "draft" | "completed" | "exported" | "archived";
@@ -47,12 +47,30 @@ export type FinancialAnalysisListItem = {
 
 export async function getFinancialAnalysis(id: string): Promise<FinancialAnalysisRow | null> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
   const [row] = await db
     .select()
     .from(financialAnalyses)
     .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, id)));
-  return row ? (row as FinancialAnalysisRow) : null;
+  if (!row) return null;
+  if (auth.roleName === "Client") {
+    if (row.contactId === auth.contactId) return row as FinancialAnalysisRow;
+    if (row.householdId && auth.contactId) {
+      const [member] = await db
+        .select({ id: householdMembers.id })
+        .from(householdMembers)
+        .where(
+          and(
+            eq(householdMembers.householdId, row.householdId),
+            eq(householdMembers.contactId, auth.contactId)
+          )
+        )
+        .limit(1);
+      if (member) return row as FinancialAnalysisRow;
+    }
+    return null;
+  }
+  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  return row as FinancialAnalysisRow;
 }
 
 export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem[]> {
@@ -107,7 +125,8 @@ export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem
 
 export async function getFinancialAnalysesForContact(contactId: string): Promise<FinancialAnalysisListItem[]> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  if (auth.roleName === "Client" && auth.contactId !== contactId) throw new Error("Forbidden");
+  if (auth.roleName !== "Client" && !hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
   const rows = await db
     .select({
       id: financialAnalyses.id,

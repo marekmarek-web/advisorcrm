@@ -2,6 +2,8 @@ import { pgTable, uuid, text, timestamp, date, time, boolean } from "drizzle-orm
 import { contacts } from "./contacts";
 import { opportunities } from "./pipeline";
 import { financialAnalyses } from "./financial-analyses";
+import { teamEvents } from "./team-events";
+import { teamTasks } from "./team-events";
 
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -15,6 +17,7 @@ export const tasks = pgTable("tasks", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   assignedTo: text("assigned_to"),
   createdBy: text("created_by"),
+  teamTaskId: uuid("team_task_id").references(() => teamTasks.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -48,6 +51,7 @@ export const events = pgTable("events", {
   notes: text("notes"),
   meetingLink: text("meeting_link"),
   taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  teamEventId: uuid("team_event_id").references(() => teamEvents.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

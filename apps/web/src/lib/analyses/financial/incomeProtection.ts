@@ -60,14 +60,15 @@ export function getDerivedIncomeProtectionPersons(
 
   const getExisting = (personKey: string) => existingPersons.find((p) => p.personKey === personKey);
 
+  const existingClient = getExisting('client');
   list.push({
     personKey: 'client',
     displayName: client?.name || 'Klient',
     role: 'Klient',
-    roleType: 'client',
-    employmentType,
-    insurancePlans: getExisting('client')?.insurancePlans ?? [],
-    funding: getExisting('client')?.funding,
+    roleType: existingClient?.roleType ?? 'client',
+    employmentType: existingClient?.employmentType ?? employmentType,
+    insurancePlans: existingClient?.insurancePlans ?? [],
+    funding: existingClient?.funding,
   });
 
   if (client?.hasPartner && partner) {
@@ -77,14 +78,15 @@ export function getDerivedIncomeProtectionPersons(
       : partnerIncomeType === 'invalidni_duchod' ? 'invalidni_duchod'
       : partnerIncomeType === 'starobni_duchod' ? 'starobni_duchod'
       : 'employee';
+    const existingPartner = getExisting('partner');
     list.push({
       personKey: 'partner',
       displayName: partner.name || 'Partner',
       role: 'Partner',
-      roleType: 'partner',
-      employmentType: partnerEmploymentType,
-      insurancePlans: getExisting('partner')?.insurancePlans ?? [],
-      funding: getExisting('partner')?.funding,
+      roleType: existingPartner?.roleType ?? 'partner',
+      employmentType: existingPartner?.employmentType ?? partnerEmploymentType,
+      insurancePlans: existingPartner?.insurancePlans ?? [],
+      funding: existingPartner?.funding,
     });
   }
 

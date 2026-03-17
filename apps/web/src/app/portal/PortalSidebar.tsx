@@ -29,6 +29,7 @@ import {
   GripVertical,
   MoreVertical,
   FileText,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -95,6 +96,7 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
       { href: "/portal/pipeline", label: "Obchody", Icon: Briefcase, hoverAnim: "group-hover:rotate-[-12deg] group-hover:scale-110" },
       { href: "/portal/board", label: "Board", Icon: LayoutGrid, hoverAnim: "group-hover:scale-110" },
       { href: "/portal/production", label: "Produkce", Icon: TrendingUp, hoverAnim: "group-hover:translate-x-1 group-hover:-translate-y-1" },
+      { href: "/portal/business-plan", label: "Business plán", Icon: Target, hoverAnim: "group-hover:scale-110" },
     ],
   },
   {

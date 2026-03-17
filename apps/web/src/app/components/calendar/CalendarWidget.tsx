@@ -48,7 +48,7 @@ function EventIcon({ eventType }: { eventType: string | null }) {
   }
 }
 
-export function CalendarWidget({ onNewActivity }: { onNewActivity?: () => void }) {
+export function CalendarWidget({ onNewActivity, hideTitle }: { onNewActivity?: () => void; hideTitle?: boolean }) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventTypeColors, setEventTypeColors] = useState<Record<string, string>>({});
@@ -81,22 +81,23 @@ export function CalendarWidget({ onNewActivity }: { onNewActivity?: () => void }
 
   return (
     <div className="space-y-8">
-      {/* Hlavička: Kalendář vlevo, odkaz na kalendář vpravo */}
-      <div className="flex justify-between items-center">
-        <Link
-          href="/portal/calendar"
-          className="text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors"
-        >
-          Kalendář
-        </Link>
-        <Link
-          href="/portal/calendar"
-          className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200 min-w-[44px] min-h-[44px]"
-          aria-label="Otevřít kalendář"
-        >
-          <CalendarIcon size={18} />
-        </Link>
-      </div>
+      {!hideTitle && (
+        <div className="flex justify-between items-center">
+          <Link
+            href="/portal/calendar"
+            className="text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors"
+          >
+            Kalendář
+          </Link>
+          <Link
+            href="/portal/calendar"
+            className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200 min-w-[44px] min-h-[44px]"
+            aria-label="Otevřít kalendář"
+          >
+            <CalendarIcon size={18} />
+          </Link>
+        </div>
+      )}
 
       {/* Karta dne – sidecalendar.txt: rounded-[28px], gradient, dekorace, tlačítko + */}
       <div className="relative rounded-[28px] bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-800 p-6 text-white shadow-xl shadow-indigo-900/20 overflow-hidden group">

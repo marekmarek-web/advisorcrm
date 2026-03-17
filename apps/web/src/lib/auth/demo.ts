@@ -8,6 +8,8 @@ export const DEMO_USER_ID =
   process.env.DEMO_USER_ID ?? "demo-user-id-supabase-auth";
 export const DEMO_ROLE_ADMIN_ID =
   process.env.DEMO_ROLE_ADMIN_ID ?? "00000000-0000-4000-8000-000000000002";
+export const DEMO_ROLE_CLIENT_ID =
+  process.env.DEMO_ROLE_CLIENT_ID ?? "00000000-0000-4000-8000-000000000006";
 
 export function isDemoMode(): boolean {
   return process.env.NEXT_PUBLIC_SKIP_AUTH === "true";

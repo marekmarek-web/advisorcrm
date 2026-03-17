@@ -45,7 +45,6 @@ function defaultRiskDetail(has = false): RiskDetail {
 }
 
 const DEFAULT_INVESTMENTS: CompanyFaInvestmentItem[] = [
-  { productKey: "imperial", type: "lump", amount: 0, years: 10, annualRate: 0.12, computed: { fv: 0 } },
   { productKey: "creif", type: "lump", amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
   { productKey: "atris", type: "lump", amount: 0, years: 10, annualRate: 0.06, computed: { fv: 0 } },
   { productKey: "penta", type: "lump", amount: 0, years: 10, annualRate: 0.09, computed: { fv: 0 } },

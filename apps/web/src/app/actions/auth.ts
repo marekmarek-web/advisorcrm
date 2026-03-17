@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { getMembership } from "@/lib/auth/get-membership";
 import { db } from "db";
-import { tenants, roles, memberships, clientContacts, clientInvitations, contacts } from "db";
+import { tenants, roles, memberships, clientContacts, clientInvitations, contacts, userProfiles } from "db";
 import { eq, and, gt } from "db";
 
 export type EnsureMembershipResult =
@@ -177,14 +177,30 @@ export async function acceptClientInvitation(token: string, gdprConsent?: boolea
   return { ok: true };
 }
 
-/** Aktualizuje jméno přihlášeného uživatele v Supabase Auth (user_metadata.full_name). */
+/** Aktualizuje jméno přihlášeného uživatele v Supabase Auth (user_metadata.full_name) a v user_profiles. */
 export async function updatePortalProfile(fullName: string): Promise<void> {
-  await requireAuthInAction();
+  const auth = await requireAuthInAction();
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({
     data: { full_name: fullName.trim() || null },
   });
   if (error) throw new Error(error.message);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const email = user?.email ?? null;
+  await db
+    .insert(userProfiles)
+    .values({
+      userId: auth.userId,
+      fullName: fullName.trim() || null,
+      email,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: userProfiles.userId,
+      set: { fullName: fullName.trim() || null, email, updatedAt: new Date() },
+    });
 }
 
 /** Změna hesla přihlášeného uživatele (Supabase Auth). */

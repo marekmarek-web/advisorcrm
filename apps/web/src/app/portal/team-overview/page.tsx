@@ -12,6 +12,7 @@ export default async function TeamOverviewPage() {
     redirect("/portal");
   }
 
+  const canCreateTeamCalendar = hasPermission(auth.roleName as RoleName, "team_calendar:write");
   const period: "week" | "month" | "quarter" = "month";
   const [kpis, members, metrics, alerts, newcomers, performanceOverTime] = await Promise.all([
     getTeamOverviewKpis(period).catch(() => null),
@@ -31,6 +32,7 @@ export default async function TeamOverviewPage() {
       initialNewcomers={newcomers}
       initialPerformanceOverTime={performanceOverTime}
       defaultPeriod={period}
+      canCreateTeamCalendar={canCreateTeamCalendar}
     />
   );
 }

@@ -17,8 +17,11 @@
     "seed": "pnpm --filter db seed",
     "test": "pnpm -r test"
   },
+  "dependencies": {
+    "postgres": "^3.4.4"
+  },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.9"
   },
   "packageManager": "pnpm@9.0.0"
 }

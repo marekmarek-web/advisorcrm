@@ -106,6 +106,33 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
   }));
 }
 
+/** Open opportunities for a contact with updatedAt (for AI opportunity engine). */
+export async function getOpenOpportunitiesByContactWithMeta(
+  contactId: string
+): Promise<Array<{ id: string; caseType: string; updatedAt: Date }>> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "opportunities:read")) throw new Error("Forbidden");
+  const rows = await db
+    .select({
+      id: opportunities.id,
+      caseType: opportunities.caseType,
+      updatedAt: opportunities.updatedAt,
+    })
+    .from(opportunities)
+    .where(
+      and(
+        eq(opportunities.tenantId, auth.tenantId),
+        eq(opportunities.contactId, contactId),
+        isNull(opportunities.closedAt)
+      )
+    );
+  return rows.map((r) => ({
+    id: r.id,
+    caseType: r.caseType ?? "",
+    updatedAt: r.updatedAt,
+  }));
+}
+
 export async function getPipelineByContact(contactId: string): Promise<StageWithOpportunities[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "opportunities:read")) throw new Error("Forbidden");

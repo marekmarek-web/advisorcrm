@@ -17,6 +17,7 @@ import {
   wizardLabelClass,
   wizardInputClass,
 } from "@/app/components/wizard";
+import { AddressAutocomplete } from "./AddressAutocomplete";
 
 type Step = 0 | 1 | 2;
 
@@ -67,6 +68,7 @@ export function NewClientWizard({
     lifecycleStage: "",
     priority: "",
   });
+  const [addressSearch, setAddressSearch] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -85,6 +87,7 @@ export function NewClientWizard({
     setError("");
     setIsSuccess(false);
     setCreatedId(null);
+    setAddressSearch("");
     setForm({
       firstName: "",
       lastName: "",
@@ -253,6 +256,24 @@ export function NewClientWizard({
             {step === 1 && (
               <div className="space-y-6">
                 <div>
+                  <label className={wizardLabelClass}>Adresa (doplňování)</label>
+                  <AddressAutocomplete
+                    value={addressSearch}
+                    onChange={setAddressSearch}
+                    onSelectAddress={(c) => {
+                      const streetPart = [c.street, c.houseNumber].filter(Boolean).join(" ");
+                      setForm((prev) => ({
+                        ...prev,
+                        street: streetPart || prev.street,
+                        city: c.city ?? prev.city,
+                        zip: c.postalCode ?? prev.zip,
+                      }));
+                      setAddressSearch("");
+                    }}
+                    placeholder="Začněte psát adresu, vyberte z návrhů…"
+                  />
+                </div>
+                <div>
                   <label className={wizardLabelClass}>Ulice a číslo popisné</label>
                   <WizardInputWithIcon
                     type="text"
@@ -260,7 +281,6 @@ export function NewClientWizard({
                     onChange={set("street")}
                     placeholder="Např. Václavské náměstí 1"
                     icon={MapPin}
-                    autoFocus
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">

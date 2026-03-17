@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   updateOpportunityStage,
@@ -119,20 +119,28 @@ function CreateForm({
   stages,
   contacts,
   onDone,
+  defaultContactId,
+  hideContactSelector,
+  onMutationComplete,
 }: {
   stageId: string;
   stages: StageWithOpportunities[];
   contacts: ContactOption[];
   onDone: () => void;
+  defaultContactId?: string;
+  hideContactSelector?: boolean;
+  onMutationComplete?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [title, setTitle] = useState("");
   const [caseType, setCaseType] = useState(CASE_TYPES[0].value);
-  const [contactId, setContactId] = useState("");
+  const [contactId, setContactId] = useState(defaultContactId ?? "");
   const [expectedValue, setExpectedValue] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [selectedStage, setSelectedStage] = useState(stageId);
+
+  const effectiveContactId = hideContactSelector ? defaultContactId ?? contactId : contactId;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -141,18 +149,23 @@ function CreateForm({
       await createOpportunity({
         title,
         caseType,
-        contactId: contactId || undefined,
+        contactId: effectiveContactId || undefined,
         stageId: selectedStage,
         expectedValue: expectedValue || undefined,
         expectedCloseDate: expectedCloseDate || undefined,
       });
       router.refresh();
+      onMutationComplete?.();
       onDone();
     });
   }
 
   const inputClass =
     "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-[var(--wp-radius-sm)] text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all";
+
+  const contactDisplayName = hideContactSelector
+    ? (contacts.length > 0 ? `${contacts[0].firstName} ${contacts[0].lastName}`.trim() || "Tento klient" : "Tento klient")
+    : null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -182,6 +195,7 @@ function CreateForm({
           </select>
         </div>
       </div>
+      {!hideContactSelector && (
       <div>
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Klient / Kontakt</label>
         <select value={contactId} onChange={(e) => setContactId(e.target.value)} className={inputClass}>
@@ -193,6 +207,15 @@ function CreateForm({
           ))}
         </select>
       </div>
+      )}
+      {hideContactSelector && contactDisplayName && (
+      <div>
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Klient</label>
+        <p className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-[var(--wp-radius-sm)] text-sm text-slate-700 font-medium">
+          {contactDisplayName}
+        </p>
+      </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Hodnota (Kč)</label>
@@ -224,11 +247,13 @@ function EditForm({
   stages,
   contacts,
   onDone,
+  onMutationComplete,
 }: {
   opp: OpportunityCard;
   stages: StageWithOpportunities[];
   contacts: ContactOption[];
   onDone: () => void;
+  onMutationComplete?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -250,6 +275,7 @@ function EditForm({
         expectedCloseDate: expectedCloseDate || null,
       });
       router.refresh();
+      onMutationComplete?.();
       onDone();
     });
   }
@@ -315,13 +341,32 @@ const DRAG_TYPE = "application/x-pipeline-opportunity";
 export function PipelineBoard({
   stages,
   contacts = [],
+  contactContext,
+  onMutationComplete,
+  initialOpenCreateStageId,
+  onOpenCreateConsumed,
 }: {
   stages: StageWithOpportunities[];
   contacts?: ContactOption[];
+  /** When set, create form locks new opportunities to this contact (client tab). */
+  contactContext?: { contactId: string };
+  /** Called after create/update/delete/move so client-scoped board can refetch. */
+  onMutationComplete?: () => void;
+  /** When set, open create modal for this stage on mount (e.g. from client empty state CTA). */
+  initialOpenCreateStageId?: string | null;
+  /** Called after opening create modal from initialOpenCreateStageId so parent can clear it. */
+  onOpenCreateConsumed?: () => void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [createStageId, setCreateStageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialOpenCreateStageId) {
+      setCreateStageId(initialOpenCreateStageId);
+      onOpenCreateConsumed?.();
+    }
+  }, [initialOpenCreateStageId, onOpenCreateConsumed]);
   const [editOpp, setEditOpp] = useState<OpportunityCard | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
@@ -336,9 +381,10 @@ export function PipelineBoard({
       startTransition(async () => {
         await updateOpportunityStage(opportunityId, stageId);
         router.refresh();
+        onMutationComplete?.();
       });
     },
-    [router, startTransition]
+    [router, startTransition, onMutationComplete]
   );
 
   async function doDelete(id: string) {
@@ -347,6 +393,7 @@ export function PipelineBoard({
       await deleteOpportunity(id);
       setDeleteConfirmId(null);
       router.refresh();
+      onMutationComplete?.();
     } finally {
       setDeletePending(false);
     }
@@ -603,11 +650,29 @@ export function PipelineBoard({
       </div>
 
       <Modal open={createStageId !== null} onClose={() => setCreateStageId(null)} title="Nová příležitost">
-        {createStageId && <CreateForm stageId={createStageId} stages={stages} contacts={contacts} onDone={() => setCreateStageId(null)} />}
+        {createStageId && (
+          <CreateForm
+            stageId={createStageId}
+            stages={stages}
+            contacts={contacts}
+            onDone={() => setCreateStageId(null)}
+            defaultContactId={contactContext?.contactId}
+            hideContactSelector={!!contactContext}
+            onMutationComplete={onMutationComplete}
+          />
+        )}
       </Modal>
 
       <Modal open={editOpp !== null} onClose={() => setEditOpp(null)} title="Upravit příležitost">
-        {editOpp && <EditForm opp={editOpp} stages={stages} contacts={contacts} onDone={() => setEditOpp(null)} />}
+        {editOpp && (
+          <EditForm
+            opp={editOpp}
+            stages={stages}
+            contacts={contacts}
+            onDone={() => setEditOpp(null)}
+            onMutationComplete={onMutationComplete}
+          />
+        )}
       </Modal>
     </>
   );

@@ -81,10 +81,6 @@ export function StepCashflow() {
     setCashflowField("incomes.main", v);
     setCashflowField("incomeGross", Math.round(v / GROSS_FROM_NET_FACTOR));
   };
-  const handleMainIncomeGross = (v: number) => {
-    setCashflowField("incomeGross", v);
-    setCashflowField("incomes.main", Math.round(v * GROSS_FROM_NET_FACTOR));
-  };
 
   return (
     <>
@@ -115,6 +111,18 @@ export function StepCashflow() {
             Příjmy (měsíčně)
           </h3>
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1" htmlFor="client-income-type">Klient – typ příjmu</label>
+              <select
+                id="client-income-type"
+                value={data.cashflow.incomeType ?? "zamestnanec"}
+                onChange={(e) => setCashflowField("incomeType", e.target.value)}
+                className="w-full min-h-[44px] px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
+              >
+                <option value="zamestnanec">Zaměstnanec</option>
+                <option value="osvc">OSVČ</option>
+              </select>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
             <div className="flex-1 min-w-0">
               <InputAmount label="Čistá mzda (hlavní příjem)" value={inc.main ?? 0} onChange={handleMainIncomeNet} id="income-main" />
@@ -122,7 +130,13 @@ export function StepCashflow() {
             <ProvenanceBadge path="cashflow.incomes.main" data={data as unknown as Record<string, unknown>} />
           </div>
             {data.cashflow.incomeType === "zamestnanec" && (
-              <InputAmount label="Hrubá mzda (pro pojištění)" value={data.cashflow.incomeGross ?? 0} onChange={handleMainIncomeGross} id="income-gross" />
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Hrubá mzda (pro pojištění)</label>
+                <div className="w-full pl-4 pr-12 py-2 min-h-[44px] border border-slate-200 rounded-xl bg-slate-50 text-slate-800 flex items-center">
+                  {formatCzk(data.cashflow.incomeGross ?? 0)}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">Vypočteno z čisté mzdy</p>
+              </div>
             )}
             {data.client?.hasPartner && (
               <>
@@ -141,15 +155,20 @@ export function StepCashflow() {
                   </select>
                 </div>
                 {data.cashflow.partnerIncomeType === "zamestnanec" ? (
-                  <InputAmount
-                    label="Hrubá mzda partnera (pro pojištění)"
-                    value={data.cashflow.partnerGross ?? 0}
-                    onChange={(v) => {
-                      setCashflowField("partnerGross", v);
-                      setCashflowField("incomes.partner", Math.round(v * GROSS_FROM_NET_FACTOR));
-                    }}
-                    id="income-partner-gross"
-                  />
+                  <>
+                    <InputAmount
+                      label="Čistá mzda partnera"
+                      value={inc.partner ?? 0}
+                      onChange={(v) => {
+                        setCashflowField("incomes.partner", v);
+                        setCashflowField("partnerGross", Math.round(v / GROSS_FROM_NET_FACTOR));
+                      }}
+                      id="income-partner-net"
+                    />
+                    <div className="text-sm text-slate-600">
+                      Hrubá mzda (pro pojištění): <strong>{formatCzk(data.cashflow.partnerGross ?? Math.round((inc.partner ?? 0) / GROSS_FROM_NET_FACTOR))}</strong>
+                    </div>
+                  </>
                 ) : (
                   <InputAmount
                     label="Příjem partnera (čistého)"

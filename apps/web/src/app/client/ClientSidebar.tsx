@@ -8,15 +8,23 @@ import { SignOutButton } from "@/app/components/SignOutButton";
 export const CLIENT_SIDEBAR_WIDTH_PX = 200;
 export const CLIENT_SIDEBAR_COLLAPSED_PX = 48;
 
-const VIEWS: { href: string; label: string }[] = [
+const VIEWS: { href: string; label: string; showBadge?: boolean }[] = [
   { href: "/client", label: "Přehled" },
   { href: "/client/contracts", label: "Smlouvy" },
+  { href: "/client/payments", label: "Platby" },
+  { href: "/client/investments", label: "Investice" },
   { href: "/client/documents", label: "Dokumenty" },
   { href: "/client/messages", label: "Zprávy" },
+  { href: "/client/requests", label: "Moje požadavky" },
+  { href: "/client/notifications", label: "Oznámení", showBadge: true },
   { href: "/client/profile", label: "Profil" },
 ];
 
-export function ClientSidebar() {
+export function ClientSidebar({
+  unreadNotificationsCount = 0,
+}: {
+  unreadNotificationsCount?: number;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -37,17 +45,23 @@ export function ClientSidebar() {
     const isActive =
       pathname === v.href ||
       (v.href !== "/client" && pathname.startsWith(v.href + "/"));
+    const showBadge = v.showBadge && unreadNotificationsCount > 0;
     return (
       <Link
         key={v.href}
         href={v.href}
-        className={`block px-3 py-2 rounded-[6px] text-[13px] hover:bg-monday-row-hover transition-colors ${
+        className={`flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-[13px] hover:bg-monday-row-hover transition-colors min-h-[44px] ${
           isActive
             ? "text-monday-blue font-medium bg-monday-row-hover"
             : "text-monday-text"
         }`}
       >
-        {v.label}
+        <span>{v.label}</span>
+        {showBadge && (
+          <span className="shrink-0 rounded-full bg-monday-blue text-white text-xs font-medium min-w-[18px] h-[18px] flex items-center justify-center px-1">
+            {unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}
+          </span>
+        )}
       </Link>
     );
   });

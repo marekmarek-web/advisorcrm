@@ -81,7 +81,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
   const [newBoardTemplateId, setNewBoardTemplateId] = useState<string>("");
   const [newBoardCreating, setNewBoardCreating] = useState(false);
 
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoad = useRef(true);
   useEffect(() => {
     if (initialLoad.current) {
@@ -92,7 +92,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
       savePortalState({ board, hiddenColumnIds: Array.from(hiddenColumnIds), activeViewId });
       return;
     }
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (saveTimerRef.current != null) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
     saveTimerRef.current = setTimeout(() => {
       const view = board.views.find((v) => v.id === activeViewId);
       if (view) {
@@ -131,7 +131,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
   const [panelContacts, setPanelContacts] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
   const [activityByItem, setActivityByItem] = useState<Record<string, ActivityEntry[]>>({});
   const [tableLoading, setTableLoading] = useState(false);
-  const tableLoadingTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const tableLoadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
   const [addGroupName, setAddGroupName] = useState("");
   const [addGroupColor, setAddGroupColor] = useState(GROUP_COLORS[0]);
@@ -235,7 +235,7 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
 
   const triggerTableLoading = useCallback(() => {
     setTableLoading(true);
-    if (tableLoadingTimerRef.current) clearTimeout(tableLoadingTimerRef.current);
+    if (tableLoadingTimerRef.current != null) { clearTimeout(tableLoadingTimerRef.current); tableLoadingTimerRef.current = null; }
     tableLoadingTimerRef.current = setTimeout(() => setTableLoading(false), 300);
   }, []);
 

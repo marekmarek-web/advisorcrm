@@ -18,7 +18,28 @@ export function formatCzk(value: number): string {
 }
 
 /**
- * Format percent (e.g. 0.07 -> "7 %" or "7,0 %").
+ * Format number as monthly amount: "3 000 Kč/měs."
+ */
+export function formatCurrencyMonthly(value: number): string {
+  return formatCurrency(value) + ' Kč/měs.';
+}
+
+/**
+ * Format number as yearly amount: "10 000 Kč/rok"
+ */
+export function formatCurrencyYearly(value: number): string {
+  return formatCurrency(value) + ' Kč/rok';
+}
+
+/**
+ * Format number as daily amount: "500 Kč/den"
+ */
+export function formatCurrencyDaily(value: number): string {
+  return formatCurrency(value) + ' Kč/den';
+}
+
+/**
+ * Format percent (e.g. 0.07 -> "7,0 %"). Single place for unit – space before %.
  */
 export function formatPercent(value: number, decimals = 1): string {
   const v = typeof value === 'number' ? value * 100 : 0;

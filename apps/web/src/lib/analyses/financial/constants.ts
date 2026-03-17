@@ -355,3 +355,16 @@ export function getStepTitles(includeCompany: boolean): readonly string[] {
     ...STEP_TITLES.slice(2),
   ];
 }
+
+/** Shared labels for financial analysis status (client card summary + analyses list). */
+export const ANALYSIS_STATUS_LABELS: Record<string, string> = {
+  draft: "Rozpracováno",
+  completed: "Dokončeno",
+  exported: "Exportováno",
+  archived: "Archivováno",
+  missing: "Chybí",
+};
+
+export function getAnalysisStatusLabel(status: string): string {
+  return ANALYSIS_STATUS_LABELS[status] ?? status;
+}

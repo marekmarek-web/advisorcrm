@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFinancialAnalysisStore } from "@/lib/analyses/financial/store";
 import { computeInsurance } from "@/lib/analyses/financial/report";
 import { formatCzk } from "@/lib/analyses/financial/formatters";
@@ -78,6 +78,39 @@ export function StepIncomeProtection() {
       provider: companies[0] ?? "",
       insuredRisks: getDefaultInsuredRisks(),
     });
+  };
+
+  /** Copy plan from another person (insuredRisks merged for target person's allowed risk types). */
+  const addPlanCopyFrom = (targetPersonKey: string, sourcePersonKey: string) => {
+    const sourcePerson = persons.find((p) => p.personKey === sourcePersonKey);
+    const sourcePlan = sourcePerson?.insurancePlans?.[0];
+    if (!sourcePlan) return;
+    const planType = sourcePlan.planType ?? "full";
+    const riskTypes = getRiskTypesForPerson(targetPersonKey, data, planType);
+    const sourceRisks = sourcePlan.insuredRisks ?? [];
+    const insuredRisks: InsuredRiskEntry[] = riskTypes.map((riskType) => {
+      const from = sourceRisks.find((r) => r.riskType === riskType);
+      if (from) return { ...from };
+      return { riskType, enabled: false };
+    });
+    addIncomeProtectionPlan(targetPersonKey, {
+      provider: sourcePlan.provider,
+      policyType: sourcePlan.policyType,
+      planType: sourcePlan.planType,
+      annualContribution: sourcePlan.annualContribution,
+      monthlyPremium: sourcePlan.monthlyPremium,
+      fundingSource: sourcePlan.fundingSource,
+      insuredRisks,
+      notes: sourcePlan.notes,
+    });
+  };
+
+  const [addBlockChoice, setAddBlockChoice] = useState<Record<string, string>>({});
+  const onAddBlockChange = (personKey: string, value: string) => {
+    if (!value) return;
+    if (value === "__empty__") addPlan(personKey);
+    else if (value.startsWith("copy:")) addPlanCopyFrom(personKey, value.slice(5));
+    setAddBlockChoice((prev) => ({ ...prev, [personKey]: "" }));
   };
 
   const planMonthly = (p: IncomeProtectionPlan) =>
@@ -346,14 +379,28 @@ export function StepIncomeProtection() {
                     />
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => addPlan(person.personKey)}
-                  className="mt-3 min-h-[44px] px-4 py-2 rounded-xl border-2 border-dashed border-slate-300 text-slate-600 font-medium flex items-center gap-2 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Přidat pojistný blok
-                </button>
+                <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                  <select
+                    value={addBlockChoice[person.personKey] ?? ""}
+                    onChange={(e) => onAddBlockChange(person.personKey, e.target.value)}
+                    className="min-h-[44px] px-4 py-2 rounded-xl border-2 border-dashed border-slate-300 text-slate-600 font-medium bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                    aria-label="Přidat pojistný blok"
+                  >
+                    <option value="">Přidat pojistný blok...</option>
+                    <option value="__empty__">Nový prázdný blok</option>
+                    {persons
+                      .filter(
+                        (p) =>
+                          p.personKey !== person.personKey &&
+                          (p.insurancePlans?.length ?? 0) > 0
+                      )
+                      .map((p) => (
+                        <option key={p.personKey} value={`copy:${p.personKey}`}>
+                          Okopírovat z: {p.displayName}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
 
               <div className="text-sm font-semibold text-slate-700 pt-2 border-t border-slate-100">

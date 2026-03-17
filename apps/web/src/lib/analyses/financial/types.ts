@@ -96,6 +96,10 @@ export interface CompanyFinance {
   loanPayment?: number;
 }
 
+/** Danové zvýhodnění od státu – limit příspěvku do DIP/DPS a daň zpět (ročně). */
+export const STATE_PENSION_TAX_LIMIT_ANNUAL = 48_000;
+export const STATE_PENSION_TAX_REFUND_ANNUAL = 7_200;
+
 /** Benefity firmy – DPS/DIP/IŽP, příspěvky, počet zaměstnanců, jednatelé. */
 export interface CompanyBenefits {
   dps?: boolean;
@@ -109,6 +113,12 @@ export interface CompanyBenefits {
   directorsAmount?: number;
   /** Roční náklad (vypočteno nebo zadané) */
   annualCost?: number;
+  /** Zahrnout danové zvýhodnění od státu: až 48 000 Kč/rok do DIP/DPS, 7 200 Kč daň zpět */
+  statePensionTaxBenefit?: boolean;
+  /** Limit příspěvku do DIP/DPS (Kč/rok) – výchozí 48 000 */
+  statePensionTaxLimitAnnual?: number;
+  /** Daň zpět od státu (Kč/rok) – výchozí 7 200 */
+  statePensionTaxRefundAnnual?: number;
 }
 
 /** Rizika pojištění firmy – zaškrtávací položky (6 kategorií). */

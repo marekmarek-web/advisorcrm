@@ -146,6 +146,18 @@ export async function sendMessage(contactId: string, body: string): Promise<stri
   if (messageId && senderType === "client") {
     notifyAdvisorNewMessage(auth.tenantId, contactId, "", trimmed.slice(0, 200)).catch(() => {});
   }
+  if (messageId && senderType === "advisor") {
+    const { createPortalNotification } = await import("./portal-notifications");
+    createPortalNotification({
+      tenantId: auth.tenantId,
+      contactId,
+      type: "new_message",
+      title: "Nová zpráva od poradce",
+      body: trimmed.slice(0, 200),
+      relatedEntityType: "message",
+      relatedEntityId: messageId,
+    }).catch(() => {});
+  }
   return messageId;
 }
 
@@ -212,6 +224,18 @@ export async function sendMessageWithAttachments(contactId: string, formData: Fo
   if (senderType === "client") {
     const contactName = ""; // resolved in notifyAdvisorNewMessage if needed
     notifyAdvisorNewMessage(auth.tenantId, contactId, contactName, body.slice(0, 200)).catch(() => {});
+  }
+  if (senderType === "advisor") {
+    const { createPortalNotification } = await import("./portal-notifications");
+    createPortalNotification({
+      tenantId: auth.tenantId,
+      contactId,
+      type: "new_message",
+      title: "Nová zpráva od poradce",
+      body: body.slice(0, 200),
+      relatedEntityType: "message",
+      relatedEntityId: messageId,
+    }).catch(() => {});
   }
   return messageId;
 }

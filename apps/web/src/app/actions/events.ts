@@ -103,6 +103,62 @@ export async function listEvents(filters?: {
   }));
 }
 
+/** Get a single event by id; enforces tenant and returns contact name. */
+export async function getEvent(id: string): Promise<EventRow | null> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  const rows = await db
+    .select({
+      id: events.id,
+      tenantId: events.tenantId,
+      contactId: events.contactId,
+      opportunityId: events.opportunityId,
+      title: events.title,
+      eventType: events.eventType,
+      startAt: events.startAt,
+      endAt: events.endAt,
+      allDay: events.allDay,
+      location: events.location,
+      reminderAt: events.reminderAt,
+      assignedTo: events.assignedTo,
+      status: events.status,
+      notes: events.notes,
+      meetingLink: events.meetingLink,
+      taskId: events.taskId,
+      createdAt: events.createdAt,
+      contactFirstName: contacts.firstName,
+      contactLastName: contacts.lastName,
+    })
+    .from(events)
+    .leftJoin(contacts, eq(events.contactId, contacts.id))
+    .where(and(eq(events.tenantId, auth.tenantId), eq(events.id, id)))
+    .limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    tenantId: r.tenantId,
+    contactId: r.contactId,
+    opportunityId: r.opportunityId,
+    title: r.title,
+    eventType: r.eventType,
+    startAt: r.startAt,
+    endAt: r.endAt,
+    allDay: r.allDay,
+    location: r.location,
+    reminderAt: r.reminderAt,
+    assignedTo: r.assignedTo,
+    status: r.status ?? null,
+    notes: r.notes ?? null,
+    meetingLink: r.meetingLink ?? null,
+    taskId: r.taskId ?? null,
+    createdAt: r.createdAt,
+    contactName: r.contactFirstName && r.contactLastName
+      ? `${r.contactFirstName} ${r.contactLastName}`
+      : null,
+  };
+}
+
 export type CallsReportRow = {
   id: string;
   startAt: Date;

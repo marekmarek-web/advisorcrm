@@ -508,3 +508,18 @@ CREATE TABLE IF NOT EXISTS mindmap_edges (
   dashed boolean DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Portal notifications (client in-app)
+CREATE TABLE IF NOT EXISTS portal_notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  contact_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  type text NOT NULL,
+  title text NOT NULL,
+  body text,
+  read_at timestamptz,
+  related_entity_type text,
+  related_entity_id text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS portal_notifications_contact_read_idx ON portal_notifications (contact_id, read_at);

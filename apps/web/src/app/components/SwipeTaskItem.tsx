@@ -19,8 +19,8 @@ interface SwipeTaskItemProps {
 const TAP_THRESHOLD_PX = 10;
 
 export function SwipeTaskItem({ id, title, subtitle, onDelete, leftSlot, onEdit }: SwipeTaskItemProps) {
-  const deleteRef = useRef<ReturnType<typeof setTimeout>>();
-  const swipeAwayRef = useRef<ReturnType<typeof setTimeout>>();
+  const deleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swipeAwayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasTapRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -104,8 +104,8 @@ export function SwipeTaskItem({ id, title, subtitle, onDelete, leftSlot, onEdit 
 
   useEffect(() => {
     return () => {
-      clearTimeout(deleteRef.current);
-      clearTimeout(swipeAwayRef.current);
+      if (deleteRef.current != null) clearTimeout(deleteRef.current);
+      if (swipeAwayRef.current != null) clearTimeout(swipeAwayRef.current);
     };
   }, []);
 

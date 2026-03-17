@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Calendar as CalendarIcon, Clock, MapPin, Video, User, X, Edit2, Trash2, Sparkles } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, MapPin, Video, User, X, Edit2, Trash2, Sparkles, ArrowRight } from "lucide-react";
 import type { EventRow } from "@/app/actions/events";
 import type { TaskRow } from "@/app/actions/tasks";
 import { getEventCategory } from "./event-categories";
+import { PreMeetingBriefPanel } from "@/app/components/meeting-briefing/PreMeetingBriefPanel";
+import { CalendarEventAiActions } from "./CalendarEventAiActions";
 
 function formatTime(d: Date): string {
   return d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
@@ -188,6 +190,23 @@ export function CalendarContextPanel({
                       <p className="text-[11px] font-medium text-slate-500">Otevřít profil klienta</p>
                     </div>
                   </div>
+                </Link>
+              </div>
+            )}
+
+            {selectedEvent.contactId && (
+              <div className="pt-4 border-t border-slate-100 space-y-3">
+                <PreMeetingBriefPanel contactId={selectedEvent.contactId} eventId={selectedEvent.id} compact />
+                <CalendarEventAiActions
+                  contactId={selectedEvent.contactId}
+                  eventId={selectedEvent.id}
+                  eventNotes={selectedEvent.notes}
+                />
+                <Link
+                  href={`/portal/contacts/${selectedEvent.contactId}?eventId=${selectedEvent.id}#briefing`}
+                  className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 min-h-[44px] items-center"
+                >
+                  Po schůzce – shrnutí a kroky <ArrowRight size={14} />
                 </Link>
               </div>
             )}

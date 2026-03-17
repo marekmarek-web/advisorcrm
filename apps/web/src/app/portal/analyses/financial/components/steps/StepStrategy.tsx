@@ -206,25 +206,26 @@ export function StepStrategy() {
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">
-                        {inv.type === "lump" ? "Částka (Kč)" : "Měsíčně (Kč)"}
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">
+                        {inv.type === "lump" ? "Částka (Kč)" : "Měsíční vklad (Kč)"}
                       </label>
                       <input
                         type="number"
                         min={0}
                         step={100}
-                        value={inv.amount != null && Number.isFinite(inv.amount) ? Math.round(roundToHundreds(inv.amount)) : ""}
-                        onChange={(e) => updateInvestment(inv.productKey, inv.type, "amount", roundToHundreds(parseFloat(e.target.value) || 0))}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                        value={inv.amount != null && Number.isFinite(inv.amount) ? Math.round(inv.amount) : ""}
+                        onChange={(e) => updateInvestment(inv.productKey, inv.type, "amount", parseFloat(e.target.value) || 0)}
+                        className="w-full min-h-[44px] px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                        placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">
                         Roky
                         {inv.type === "pension" && yearsToRetirement != null && (
-                          <span className="text-indigo-500 ml-1">(do důchodu: {pluralizeYears(yearsToRetirement)})</span>
+                          <span className="text-indigo-500 ml-1 font-normal">(do důchodu: {pluralizeYears(yearsToRetirement)})</span>
                         )}
                       </label>
                       <input
@@ -234,7 +235,7 @@ export function StepStrategy() {
                         value={inv.years || ""}
                         placeholder={inv.type === "pension" && yearsToRetirement != null ? String(yearsToRetirement) : ""}
                         onChange={(e) => updateInvestment(inv.productKey, inv.type, "years", parseInt(e.target.value, 10) || 1)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                        className="w-full min-h-[44px] px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
                       />
                     </div>
                   </div>

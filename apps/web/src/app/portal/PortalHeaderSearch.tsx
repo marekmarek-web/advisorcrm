@@ -25,7 +25,7 @@ export const PortalHeaderSearch = forwardRef<PortalHeaderSearchHandle | null, ob
   const [results, setResults] = useState<SearchResult>(EMPTY_RESULTS);
   const [loading, setLoading] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const urlQ = searchParams.get("q") ?? "";
@@ -70,7 +70,7 @@ export const PortalHeaderSearch = forwardRef<PortalHeaderSearchHandle | null, ob
         router.replace(`${pathname}${next.toString() ? `?${next.toString()}` : ""}`, { scroll: false });
         return;
       }
-      clearTimeout(timerRef.current);
+      if (timerRef.current != null) { clearTimeout(timerRef.current); timerRef.current = null; }
       if (!v.trim()) {
         setResults(EMPTY_RESULTS);
         setDropdownOpen(false);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFinancialAnalysisStore as useStore } from "@/lib/analyses/financial/store";
 import type { CompanyRisks, CompanyRiskDetails } from "@/lib/analyses/financial/types";
+import { STATE_PENSION_TAX_LIMIT_ANNUAL, STATE_PENSION_TAX_REFUND_ANNUAL } from "@/lib/analyses/financial/types";
 import { formatCzk } from "@/lib/analyses/financial/formatters";
 import {
   benefitGrossEquiv,
@@ -158,6 +159,29 @@ export function StepBenefitsRisks() {
               ))}
             </div>
 
+            {(benefits.dps || benefits.dip) && (
+              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!benefits.statePensionTaxBenefit}
+                    onChange={(e) =>
+                      setBenefits({
+                        statePensionTaxBenefit: e.target.checked,
+                        statePensionTaxLimitAnnual: e.target.checked ? STATE_PENSION_TAX_LIMIT_ANNUAL : undefined,
+                        statePensionTaxRefundAnnual: e.target.checked ? STATE_PENSION_TAX_REFUND_ANNUAL : undefined,
+                      })
+                    }
+                    className="mt-1 h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-slate-800">
+                    <strong>Danové zvýhodnění od státu:</strong> až {formatCzk(STATE_PENSION_TAX_LIMIT_ANNUAL)}/rok do DIP a DPS,{" "}
+                    <strong>{formatCzk(STATE_PENSION_TAX_REFUND_ANNUAL)}</strong> daň zpět ročně.
+                  </span>
+                </label>
+              </div>
+            )}
+
             <div className="mt-6 bg-white p-4 rounded-xl border border-slate-200">
               <h4 className="font-bold text-slate-800 mb-3">Detail příspěvků – Zaměstnanci</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -276,6 +300,14 @@ export function StepBenefitsRisks() {
                 </div>
                 <div className="text-amber-700 text-sm mt-1">Efektivní vytažení zisku (DIP/IŽP)</div>
               </div>
+              {benefits.statePensionTaxBenefit && (
+                <div className="p-4 bg-sky-50 rounded-xl text-center min-h-[44px] flex flex-col justify-center border border-sky-200">
+                  <div className="text-sky-800 font-bold text-lg">
+                    Daň zpět od státu (DIP/DPS): <span className="text-2xl">{formatCzk(benefits.statePensionTaxRefundAnnual ?? STATE_PENSION_TAX_REFUND_ANNUAL)}</span> ročně
+                  </div>
+                  <div className="text-sky-700 text-sm mt-1">Limit {formatCzk(benefits.statePensionTaxLimitAnnual ?? STATE_PENSION_TAX_LIMIT_ANNUAL)}/rok do DIP a DPS</div>
+                </div>
+              )}
             </div>
             <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200">
               <p className="font-bold text-slate-800 mb-2 text-sm">Co se stane s 1000 Kč nákladu firmy?</p>

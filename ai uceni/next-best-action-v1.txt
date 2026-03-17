@@ -1,0 +1,24 @@
+api: pmpt_69b8218f33008190a2d45aa5bb21280801df9730242920fa
+
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const response = await openai.responses.create({
+  prompt: {
+    "id": "pmpt_69b8218f33008190a2d45aa5bb21280801df9730242920fa",
+    "version": "2",
+    "variables": {
+      "client_profile": "example client_profile",
+      "household_summary": "example household_summary",
+      "financial_summary": "example financial_summary",
+      "contracts_summary": "example contracts_summary",
+      "timeline_events": "example timeline_events",
+      "open_items": "example open_items",
+      "service_status": "example service_status",
+      "active_deals": "example active_deals"
+    }
+  }
+});

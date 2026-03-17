@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContact } from "@/app/actions/contacts";
 import { getDocumentsForContact } from "@/app/actions/documents";
+import { getReferralSummaryForContact } from "@/app/actions/referral";
 import { InviteToClientZoneButton } from "./InviteToClientZoneButton";
 import { ContractsSection } from "./ContractsSection";
 import { DocumentsSection } from "./DocumentsSection";
@@ -14,7 +15,11 @@ export default async function ContactDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [contact, docList] = await Promise.all([getContact(id), getDocumentsForContact(id)]);
+  const [contact, docList, referralSummary] = await Promise.all([
+    getContact(id),
+    getDocumentsForContact(id),
+    getReferralSummaryForContact(id),
+  ]);
   if (!contact) notFound();
 
   return (
@@ -54,6 +59,19 @@ export default async function ContactDetailPage({
             {contact.referralContactId && (
               <Link href={`/dashboard/contacts/${contact.referralContactId}`} className="ml-2 text-sm" style={{ color: "var(--brand-main)" }}>
                 → kontakt
+              </Link>
+            )}
+          </p>
+        )}
+        {referralSummary && (referralSummary.givenCount > 0 || !(contact.referralSource || contact.referralContactName)) && (
+          <p>
+            <span className="text-slate-500">Doporučení od tohoto klienta:</span>{" "}
+            {referralSummary.givenCount === 0
+              ? "zatím nikoho nedoporučil"
+              : `${referralSummary.givenCount} ${referralSummary.givenCount === 1 ? "kontakt" : referralSummary.givenCount < 5 ? "kontakty" : "kontaktů"}`}
+            {referralSummary.givenCount > 0 && (
+              <Link href={`/dashboard/contacts/new?referralContactId=${id}`} className="ml-2 text-sm" style={{ color: "var(--brand-main)" }}>
+                Přidat doporučeného
               </Link>
             )}
           </p>

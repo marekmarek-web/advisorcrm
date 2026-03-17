@@ -20,16 +20,68 @@ function formatNumber(n: number): string {
   return n.toLocaleString("cs-CZ");
 }
 
+function buildCoachingSummary(detail: TeamMemberDetail): string[] {
+  const bullets: string[] = [];
+  const m = detail.metrics;
+  const critical = detail.alerts.filter((a) => a.severity === "critical");
+  const warning = detail.alerts.filter((a) => a.severity === "warning");
+  if (critical.length > 0) {
+    bullets.push(`Rizika: ${critical.map((a) => a.title).join("; ")}.`);
+  }
+  if (warning.length > 0 && critical.length === 0) {
+    bullets.push(`Pozor: ${warning.map((a) => a.title).join("; ")}.`);
+  }
+  if (m) {
+    if (m.daysWithoutActivity >= 7 && !detail.alerts.some((a) => a.type === "no_activity")) {
+      bullets.push(`${m.daysWithoutActivity} dní bez aktivity – doporučujeme pravidelný záznam v CRM.`);
+    }
+    if (m.meetingsThisPeriod === 0 && m.unitsThisPeriod === 0) {
+      bullets.push("Zatím žádné schůzky ani jednotky v tomto období – vhodné naplánovat schůzky a follow-up.");
+    }
+    if (m.tasksOpen > 10) {
+      bullets.push("Vysoký počet otevřených úkolů – doporučujeme priorizaci a uzavírání starých položek.");
+    }
+  }
+  if (detail.adaptation) {
+    if (detail.adaptation.adaptationStatus === "Rizikový") {
+      bullets.push(`Nováček v riziku (${detail.adaptation.adaptationScore} % adaptace) – doporučujeme intenzivnější podporu a check-in.`);
+    } else if (detail.adaptation.adaptationStatus === "V adaptaci" && detail.adaptation.warnings.length > 0) {
+      bullets.push(`Adaptace: ${detail.adaptation.warnings.join("; ")}.`);
+    }
+  }
+  if (bullets.length === 0 && m) {
+    bullets.push("Žádná zásadní rizika. Pokračovat v pravidelném vedení a zpětné vazbě.");
+  }
+  return bullets;
+}
+
 export function TeamMemberDetailView({ detail }: { detail: TeamMemberDetail }) {
   const name = detail.displayName || "Člen týmu";
   const m = detail.metrics;
+  const coachingBullets = buildCoachingSummary(detail);
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{name}</h1>
-        <p className="text-slate-500 mt-1">{detail.roleName} · v týmu od {new Date(detail.joinedAt).toLocaleDateString("cs-CZ")}</p>
+        <p className="text-slate-500 mt-1">
+          {detail.roleName}
+          {detail.email ? ` · ${detail.email}` : ""}
+          {" · v týmu od "}
+          {new Date(detail.joinedAt).toLocaleDateString("cs-CZ")}
+        </p>
       </div>
+
+      {coachingBullets.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">Shrnutí pro coaching</h2>
+          <ul className="rounded-2xl border border-slate-100 bg-indigo-50/30 p-5 space-y-2 list-disc list-inside text-sm text-slate-700">
+            {coachingBullets.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {detail.alerts.length > 0 && (
         <section>

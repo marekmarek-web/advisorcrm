@@ -275,7 +275,8 @@ body.b-resizing {
 .b-cell > .relative > button:hover { filter: brightness(0.95); }
 
 /* ── Item cell name styling ── */
-.b-data-row .b-cell-sticky .text-\\[14px\\] {
+.b-data-row .b-cell-sticky {
+  font-size: 14px;
   line-height: 1.2;
 }
 

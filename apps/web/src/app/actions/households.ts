@@ -73,7 +73,8 @@ export type HouseholdForContact = {
 /** Household (if any) that this contact belongs to; for profile sidebar/card. */
 export async function getHouseholdForContact(contactId: string): Promise<HouseholdForContact | null> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "households:read")) return null;
+  const isClientPortal = auth.roleName === "Client" && auth.contactId === contactId;
+  if (!isClientPortal && !hasPermission(auth.roleName, "households:read")) return null;
   const [member] = await db
     .select({
       householdId: householdMembers.householdId,
