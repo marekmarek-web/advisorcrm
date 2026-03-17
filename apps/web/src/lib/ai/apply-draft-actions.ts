@@ -49,7 +49,7 @@ export async function applyDraftActions(input: ApplyDraftActionsInput): Promise<
     await db.transaction(async (tx) => {
       for (const action of draftActions) {
         if (action.type === "create_client") {
-          const existing = await findExistingContactId(tenantId, action.payload, tx);
+          const existing = await findExistingContactId(tenantId, action.payload, tx as unknown as typeof db);
           if (existing) {
             createdContactId = existing;
             continue;
