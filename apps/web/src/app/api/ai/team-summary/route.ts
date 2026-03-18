@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMembership, hasPermission, type RoleName } from "@/lib/auth/get-membership";
 import { createResponseSafe } from "@/lib/openai";
 import { logOpenAICall } from "@/lib/openai";
+import type { TeamOverviewScope } from "@/lib/team-hierarchy";
 import {
   getTeamOverviewKpis,
   getTeamMemberMetrics,
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const period = (searchParams.get("period") as TeamOverviewPeriod) || "month";
+    const requestedScope = (searchParams.get("scope") as TeamOverviewScope | null) ?? null;
 
     let userId: string | null = request.headers.get(USER_ID_HEADER);
     if (!userId) {
@@ -35,16 +37,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const defaultScope: TeamOverviewScope =
+      membership.roleName === "Advisor" || membership.roleName === "Viewer"
+        ? "me"
+        : membership.roleName === "Director" || membership.roleName === "Admin"
+          ? "full"
+          : "my_team";
+    const scope = requestedScope ?? defaultScope;
+
     const [kpis, metrics, alerts, newcomers, members] = await Promise.all([
-      getTeamOverviewKpis(period),
-      getTeamMemberMetrics(period),
-      getTeamAlerts(period),
-      getNewcomerAdaptation(),
-      listTeamMembersWithNames(),
+      getTeamOverviewKpis(period, scope),
+      getTeamMemberMetrics(period, scope),
+      getTeamAlerts(period, scope),
+      getNewcomerAdaptation(scope),
+      listTeamMembersWithNames(scope),
     ]);
 
     const memberNames = new Map(members.map((m) => [m.userId, m.displayName || "Člen týmu"]));
-    const metricsByUser = new Map(metrics.map((m) => [m.userId, m]));
 
     const topPerformers = [...metrics].sort((a, b) => b.unitsThisPeriod - a.unitsThisPeriod).slice(0, 3);
     const risky = metrics.filter((m) => m.riskLevel !== "ok");

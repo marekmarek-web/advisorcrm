@@ -22,12 +22,14 @@ CREATE TABLE IF NOT EXISTS memberships (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   user_id text NOT NULL,
+  parent_id text,
   role_id uuid NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
   invited_by text,
   joined_at timestamptz NOT NULL DEFAULT now(),
   mfa_enabled boolean DEFAULT false,
   UNIQUE(tenant_id, user_id)
 );
+CREATE INDEX IF NOT EXISTS memberships_tenant_parent_idx ON memberships(tenant_id, parent_id);
 
 -- 2. contacts (potřeba pro client_contacts)
 CREATE TABLE IF NOT EXISTS contacts (

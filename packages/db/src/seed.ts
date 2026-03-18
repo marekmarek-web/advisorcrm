@@ -23,6 +23,7 @@ const DEMO_ROLE_ADVISOR = "00000000-0000-4000-8000-000000000003";
 const DEMO_ROLE_MANAGER = "00000000-0000-4000-8000-000000000004";
 const DEMO_ROLE_VIEWER = "00000000-0000-4000-8000-000000000005";
 const DEMO_ROLE_CLIENT = "00000000-0000-4000-8000-000000000006";
+const DEMO_ROLE_DIRECTOR = "00000000-0000-4000-8000-000000000007";
 /** Po vytvoření uživatele v Supabase Auth nastavte toto na jeho User UID a znovu spusťte seed, nebo ručně upravte memberships.user_id. */
 const DEMO_USER_ID = "demo-user-id-supabase-auth";
 
@@ -37,6 +38,7 @@ async function seed() {
     { id: DEMO_ROLE_ADMIN, tenantId: DEMO_TENANT_ID, name: "Admin" },
     { id: DEMO_ROLE_ADVISOR, tenantId: DEMO_TENANT_ID, name: "Advisor" },
     { id: DEMO_ROLE_MANAGER, tenantId: DEMO_TENANT_ID, name: "Manager" },
+    { id: DEMO_ROLE_DIRECTOR, tenantId: DEMO_TENANT_ID, name: "Director" },
     { id: DEMO_ROLE_VIEWER, tenantId: DEMO_TENANT_ID, name: "Viewer" },
     { id: DEMO_ROLE_CLIENT, tenantId: DEMO_TENANT_ID, name: "Client" },
   ]).onConflictDoNothing();

@@ -18,7 +18,7 @@ export default async function TeamMemberDetailPage({
   }
 
   const { userId } = await params;
-  const detail = await getTeamMemberDetail(userId);
+  const detail = await getTeamMemberDetail(userId).catch(() => null);
   if (!detail) notFound();
 
   return (

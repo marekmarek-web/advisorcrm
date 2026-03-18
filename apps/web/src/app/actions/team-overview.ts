@@ -1,11 +1,17 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import {
+  getTeamTree,
+  getVisibleUserIds,
+  listTenantHierarchyMembers,
+  resolveScopeForRole,
+  type TeamOverviewScope,
+  type TeamTreeNode,
+} from "@/lib/team-hierarchy";
 import { db } from "db";
 import {
-  memberships,
-  roles,
   contracts,
   events,
   tasks,
@@ -14,12 +20,15 @@ import {
   financialAnalyses,
   userProfiles,
   teamGoals,
+  memberships,
+  roles,
 } from "db";
 import { eq, and, gte, lt, isNull, isNotNull, sql, desc, asc, inArray } from "db";
 
 export type TeamOverviewPeriod = "week" | "month" | "quarter";
 
 const NEWCOMER_DAYS = 90;
+const TEAM_ROLE_NAMES = ["Admin", "Director", "Manager", "Advisor", "Viewer"] as const;
 
 export type TeamOverviewKpis = {
   memberCount: number;
@@ -38,6 +47,13 @@ export type TeamOverviewKpis = {
   teamGoalActual: number | null;
   teamGoalProgressPercent: number | null;
   teamGoalType: "units" | "production" | "meetings" | null;
+  callsThisPeriod: number;
+  newContactsThisPeriod: number;
+  followUpsThisPeriod: number;
+  closedDealsThisPeriod: number;
+  pipelineValue: number;
+  conversionRate: number;
+  scope: TeamOverviewScope;
 };
 
 function getPeriodRange(
@@ -71,12 +87,298 @@ function getPeriodRange(
   return { start, end, label: `Q${q + 1} ${y}` };
 }
 
-export async function getTeamOverviewKpis(
-  period: TeamOverviewPeriod = "month"
-): Promise<TeamOverviewKpis | null> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
+export type TeamMemberInfo = {
+  userId: string;
+  membershipId: string;
+  roleName: string;
+  joinedAt: Date;
+  displayName: string | null;
+  email: string | null;
+  parentId: string | null;
+  managerName: string | null;
+};
 
+export type TeamMemberMetrics = {
+  userId: string;
+  roleName: string;
+  parentId: string | null;
+  managerName: string | null;
+  joinedAt: Date;
+  unitsThisPeriod: number;
+  productionThisPeriod: number;
+  meetingsThisPeriod: number;
+  callsThisPeriod: number;
+  newContactsThisPeriod: number;
+  followUpsThisPeriod: number;
+  closedDealsThisPeriod: number;
+  closedOpportunitiesThisPeriod: number;
+  conversionRate: number;
+  pipelineValue: number;
+  targetProgressPercent: number | null;
+  activityCount: number;
+  tasksOpen: number;
+  tasksCompleted: number;
+  opportunitiesOpen: number;
+  lastActivityAt: Date | null;
+  daysSinceMeeting: number;
+  daysWithoutActivity: number;
+  unitsTrend: number;
+  productionTrend: number;
+  meetingsTrend: number;
+  riskLevel: "ok" | "warning" | "critical";
+};
+
+async function getScopeContext(scope?: TeamOverviewScope) {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
+  const resolvedScope = resolveScopeForRole(auth.roleName as RoleName, scope);
+  const tenantMembers = await listTenantHierarchyMembers(auth.tenantId);
+  const visibleUserIds = await getVisibleUserIds(auth.tenantId, auth.userId, auth.roleName as RoleName, resolvedScope);
+  const visibleSet = new Set(visibleUserIds);
+  const visibleMembers = tenantMembers.filter((m) => visibleSet.has(m.userId));
+  return { auth, scope: resolvedScope, tenantMembers, visibleUserIds, visibleSet, visibleMembers };
+}
+
+function toDateRangeStr(start: Date, end: Date): { startStr: string; endStr: string } {
+  return { startStr: start.toISOString().slice(0, 10), endStr: end.toISOString().slice(0, 10) };
+}
+
+type UserStats = {
+  unitsThisPeriod: number;
+  productionThisPeriod: number;
+  meetingsThisPeriod: number;
+  callsThisPeriod: number;
+  newContactsThisPeriod: number;
+  followUpsThisPeriod: number;
+  closedDealsThisPeriod: number;
+  closedOpportunitiesThisPeriod: number;
+  conversionRate: number;
+  pipelineValue: number;
+  activityCount: number;
+  tasksOpen: number;
+  tasksCompleted: number;
+  opportunitiesOpen: number;
+  lastActivityAt: Date | null;
+  daysWithoutActivity: number;
+  daysSinceMeeting: number;
+  unitsTrend: number;
+  productionTrend: number;
+  meetingsTrend: number;
+};
+
+async function collectUserStats(
+  tenantId: string,
+  userId: string,
+  period: TeamOverviewPeriod
+): Promise<UserStats> {
+  const now = new Date();
+  const current = getPeriodRange(period);
+  const previous = getPeriodRange(period, new Date(current.start.getTime() - 1));
+  const { startStr, endStr } = toDateRangeStr(current.start, current.end);
+  const { startStr: prevStartStr, endStr: prevEndStr } = toDateRangeStr(previous.start, previous.end);
+
+  const [
+    contractsCur,
+    contractsPrev,
+    eventCurRows,
+    eventPrevRows,
+    activityCurRows,
+    lastActivityRows,
+    lastMeetingRows,
+    tasksOpenRows,
+    tasksDoneTotalRows,
+    tasksDonePeriodRows,
+    oppOpenRows,
+    oppClosedRows,
+    oppWonRows,
+    pipelineRows,
+    newContactsRows,
+  ] = await Promise.all([
+    db
+      .select({
+        count: sql<number>`count(*)::int`,
+        totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
+        totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+      })
+      .from(contracts)
+      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), gte(contracts.startDate, startStr), lt(contracts.startDate, endStr))),
+    db
+      .select({
+        count: sql<number>`count(*)::int`,
+        totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
+        totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+      })
+      .from(contracts)
+      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), gte(contracts.startDate, prevStartStr), lt(contracts.startDate, prevEndStr))),
+    db
+      .select({ eventType: events.eventType })
+      .from(events)
+      .where(and(eq(events.tenantId, tenantId), eq(events.assignedTo, userId), gte(events.startAt, current.start), lt(events.startAt, current.end))),
+    db
+      .select({ eventType: events.eventType })
+      .from(events)
+      .where(and(eq(events.tenantId, tenantId), eq(events.assignedTo, userId), gte(events.startAt, previous.start), lt(events.startAt, previous.end))),
+    db
+      .select({ id: activityLog.id })
+      .from(activityLog)
+      .where(and(eq(activityLog.tenantId, tenantId), eq(activityLog.userId, userId), gte(activityLog.createdAt, current.start), lt(activityLog.createdAt, current.end))),
+    db
+      .select({ createdAt: activityLog.createdAt })
+      .from(activityLog)
+      .where(and(eq(activityLog.tenantId, tenantId), eq(activityLog.userId, userId)))
+      .orderBy(desc(activityLog.createdAt))
+      .limit(1),
+    db
+      .select({ startAt: events.startAt })
+      .from(events)
+      .where(and(eq(events.tenantId, tenantId), eq(events.assignedTo, userId), eq(events.eventType, "schuzka")))
+      .orderBy(desc(events.startAt))
+      .limit(1),
+    db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNull(tasks.completedAt))),
+    db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNotNull(tasks.completedAt))),
+    db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNotNull(tasks.completedAt), gte(tasks.completedAt, current.start), lt(tasks.completedAt, current.end))),
+    db.select({ id: opportunities.id }).from(opportunities).where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), isNull(opportunities.closedAt))),
+    db
+      .select({ id: opportunities.id })
+      .from(opportunities)
+      .where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), isNotNull(opportunities.closedAt), gte(opportunities.closedAt, current.start), lt(opportunities.closedAt, current.end))),
+    db
+      .select({ id: opportunities.id })
+      .from(opportunities)
+      .where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), eq(opportunities.closedAs, "won"), isNotNull(opportunities.closedAt), gte(opportunities.closedAt, current.start), lt(opportunities.closedAt, current.end))),
+    db
+      .select({ sumExpected: sql<number>`coalesce(sum(${opportunities.expectedValue}::numeric), 0)` })
+      .from(opportunities)
+      .where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), isNull(opportunities.closedAt))),
+    db
+      .select({ id: activityLog.id })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.tenantId, tenantId),
+          eq(activityLog.userId, userId),
+          eq(activityLog.entityType, "contact"),
+          eq(activityLog.action, "create"),
+          gte(activityLog.createdAt, current.start),
+          lt(activityLog.createdAt, current.end)
+        )
+      ),
+  ]);
+
+  const unitsThisPeriod = Number(contractsCur[0]?.count ?? 0);
+  const productionThisPeriod = Number(contractsCur[0]?.totalAnnual ?? contractsCur[0]?.totalPremium ?? 0) || Number(contractsCur[0]?.totalPremium ?? 0);
+  const prevUnits = Number(contractsPrev[0]?.count ?? 0);
+  const prevProduction = Number(contractsPrev[0]?.totalAnnual ?? contractsPrev[0]?.totalPremium ?? 0) || Number(contractsPrev[0]?.totalPremium ?? 0);
+
+  const meetingsThisPeriod = eventCurRows.filter((r) => r.eventType === "schuzka").length;
+  const meetingsPrev = eventPrevRows.filter((r) => r.eventType === "schuzka").length;
+  const callsThisPeriod = eventCurRows.filter((r) => r.eventType === "telefonat").length;
+  const lastActivityAt = lastActivityRows[0]?.createdAt ?? null;
+  const lastMeetingAt = lastMeetingRows[0]?.startAt ?? null;
+  const daysWithoutActivity = lastActivityAt ? Math.floor((now.getTime() - new Date(lastActivityAt).getTime()) / (24 * 60 * 60 * 1000)) : 999;
+  const daysSinceMeeting = lastMeetingAt ? Math.floor((now.getTime() - new Date(lastMeetingAt).getTime()) / (24 * 60 * 60 * 1000)) : 999;
+  const closedOpportunities = oppClosedRows.length;
+  const wonOpportunities = oppWonRows.length;
+  const conversionRate = closedOpportunities > 0 ? wonOpportunities / closedOpportunities : 0;
+  const closedDealsThisPeriod = unitsThisPeriod;
+  return {
+    unitsThisPeriod,
+    productionThisPeriod,
+    meetingsThisPeriod,
+    callsThisPeriod,
+    newContactsThisPeriod: newContactsRows.length,
+    followUpsThisPeriod: tasksDonePeriodRows.length,
+    closedDealsThisPeriod,
+    closedOpportunitiesThisPeriod: closedOpportunities,
+    conversionRate,
+    pipelineValue: Number(pipelineRows[0]?.sumExpected ?? 0),
+    activityCount: activityCurRows.length,
+    tasksOpen: tasksOpenRows.length,
+    tasksCompleted: tasksDoneTotalRows.length,
+    opportunitiesOpen: oppOpenRows.length,
+    lastActivityAt,
+    daysWithoutActivity: Math.min(daysWithoutActivity, 999),
+    daysSinceMeeting: Math.min(daysSinceMeeting, 999),
+    unitsTrend: unitsThisPeriod - prevUnits,
+    productionTrend: productionThisPeriod - prevProduction,
+    meetingsTrend: meetingsThisPeriod - meetingsPrev,
+  };
+}
+
+function buildAlertsFromMetric(metric: TeamMemberMetrics): TeamAlert[] {
+  const now = new Date();
+  const alerts: TeamAlert[] = [];
+  if (metric.daysWithoutActivity >= 7) {
+    alerts.push({
+      memberId: metric.userId,
+      type: "no_activity",
+      severity: metric.daysWithoutActivity >= 14 ? "critical" : "warning",
+      title: `${metric.daysWithoutActivity} dní bez aktivity`,
+      description: "Člen týmu dlouho neevidoval aktivitu v CRM.",
+      createdAt: now,
+    });
+  }
+  if (metric.meetingsTrend <= -3 || metric.daysSinceMeeting >= 14) {
+    alerts.push({
+      memberId: metric.userId,
+      type: "meeting_drop",
+      severity: metric.daysSinceMeeting >= 21 ? "critical" : "warning",
+      title: metric.daysSinceMeeting >= 14 ? `${metric.daysSinceMeeting} dní bez schůzky` : "Pokles schůzek",
+      description: "Počet schůzek se propadá oproti minulému období.",
+      createdAt: now,
+    });
+  }
+  if (metric.activityCount < 3) {
+    alerts.push({
+      memberId: metric.userId,
+      type: "low_activity",
+      severity: metric.activityCount === 0 ? "critical" : "warning",
+      title: "Nízká aktivita",
+      description: "Nízká práce v CRM v aktuálním období.",
+      createdAt: now,
+    });
+  }
+  if (metric.closedOpportunitiesThisPeriod >= 3 && metric.conversionRate < 0.2) {
+    alerts.push({
+      memberId: metric.userId,
+      type: "weak_conversion",
+      severity: metric.conversionRate < 0.1 ? "critical" : "warning",
+      title: "Slabý conversion",
+      description: "Nízká úspěšnost uzavírání obchodních příležitostí.",
+      createdAt: now,
+    });
+  }
+  if (metric.newContactsThisPeriod === 0 && metric.daysWithoutActivity >= 7) {
+    alerts.push({
+      memberId: metric.userId,
+      type: "no_new_leads",
+      severity: metric.daysWithoutActivity >= 14 ? "critical" : "warning",
+      title: "Dlouho bez nového leadu",
+      description: "V období nebyl evidován žádný nový kontakt.",
+      createdAt: now,
+    });
+  }
+  if (metric.productionTrend < 0 && Math.abs(metric.productionTrend) > Math.max(metric.productionThisPeriod, 1000) * 0.5) {
+    alerts.push({
+      memberId: metric.userId,
+      type: "production_drop",
+      severity: Math.abs(metric.productionTrend) > Math.max(metric.productionThisPeriod, 1000) ? "critical" : "warning",
+      title: "Výrazný pokles výkonu",
+      description: "Produkce je výrazně pod minulým obdobím.",
+      createdAt: now,
+    });
+  }
+  return alerts;
+}
+
+export async function getTeamOverviewKpis(
+  period: TeamOverviewPeriod = "month",
+  scope?: TeamOverviewScope
+): Promise<TeamOverviewKpis | null> {
+  const ctx = await getScopeContext(scope);
   const { start, end, label } = getPeriodRange(period);
   const prev = getPeriodRange(period, new Date(start.getTime() - 1));
   const now = new Date();
@@ -86,46 +388,54 @@ export async function getTeamOverviewKpis(
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
-  const startStr = start.toISOString().slice(0, 10);
-  const endStr = end.toISOString().slice(0, 10);
-  const prevStartStr = prev.start.toISOString().slice(0, 10);
-  const prevEndStr = prev.end.toISOString().slice(0, 10);
-
-  const alertsPromise = getTeamAlerts(period).catch(() => [] as TeamAlert[]);
-  const [memberRows, activeCountRows, contractsCurrent, contractsPrev, meetingsThisWeekRows, newcomerCountRows, alertsRows] = await Promise.all([
-    db.select({ userId: memberships.userId }).from(memberships).innerJoin(roles, eq(memberships.roleId, roles.id)).where(and(eq(memberships.tenantId, auth.tenantId), inArray(roles.name, ["Admin", "Manager", "Advisor", "Viewer"]))),
-    db.select({ userId: activityLog.userId }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), gte(activityLog.createdAt, start), lt(activityLog.createdAt, end))).groupBy(activityLog.userId),
-    db.select({ count: sql<number>`count(*)::int`, totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`, totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` }).from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), gte(contracts.startDate, startStr), lt(contracts.startDate, endStr))),
-    db.select({ count: sql<number>`count(*)::int`, totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`, totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` }).from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), gte(contracts.startDate, prevStartStr), lt(contracts.startDate, prevEndStr))),
-    db.select({ id: events.id }).from(events).where(and(eq(events.tenantId, auth.tenantId), eq(events.eventType, "schuzka"), gte(events.startAt, weekStart), lt(events.startAt, weekEnd))),
-    db.select({ userId: memberships.userId }).from(memberships).innerJoin(roles, eq(memberships.roleId, roles.id)).where(and(eq(memberships.tenantId, auth.tenantId), inArray(roles.name, ["Admin", "Manager", "Advisor", "Viewer"]), gte(memberships.joinedAt, new Date(now.getTime() - NEWCOMER_DAYS * 24 * 60 * 60 * 1000)))),
-    alertsPromise,
+  const [metrics, alerts, newcomers, activeCountRows, meetingsThisWeekRows] = await Promise.all([
+    getTeamMemberMetrics(period, ctx.scope),
+    getTeamAlerts(period, ctx.scope),
+    getNewcomerAdaptation(ctx.scope),
+    db
+      .select({ userId: activityLog.userId })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.tenantId, ctx.auth.tenantId),
+          inArray(activityLog.userId, ctx.visibleUserIds),
+          gte(activityLog.createdAt, start),
+          lt(activityLog.createdAt, end)
+        )
+      )
+      .groupBy(activityLog.userId),
+    db
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(
+          eq(events.tenantId, ctx.auth.tenantId),
+          inArray(events.assignedTo, ctx.visibleUserIds),
+          eq(events.eventType, "schuzka"),
+          gte(events.startAt, weekStart),
+          lt(events.startAt, weekEnd)
+        )
+      ),
   ]);
 
-  const memberCount = memberRows.length;
-  const activeMemberCount = new Set(activeCountRows.map((r) => r.userId)).size;
-  const unitsThisPeriod = Number(contractsCurrent[0]?.count ?? 0);
-  const productionThisPeriod = Number(contractsCurrent[0]?.totalAnnual ?? contractsCurrent[0]?.totalPremium ?? 0) || Number(contractsCurrent[0]?.totalPremium ?? 0);
-  const meetingsThisWeek = meetingsThisWeekRows.length;
-  const newcomersInAdaptation = newcomerCountRows.length;
-  const riskyMemberCount = alertsRows.length > 0 ? new Set(alertsRows.map((a) => a.memberId)).size : 0;
-
-  const prevUnits = Number(contractsPrev[0]?.count ?? 0);
-  const prevProduction = Number(contractsPrev[0]?.totalAnnual ?? contractsPrev[0]?.totalPremium ?? 0) || Number(contractsPrev[0]?.totalPremium ?? 0);
+  const unitsThisPeriod = metrics.reduce((sum, m) => sum + m.unitsThisPeriod, 0);
+  const productionThisPeriod = metrics.reduce((sum, m) => sum + m.productionThisPeriod, 0);
+  const unitsTrend = metrics.reduce((sum, m) => sum + m.unitsTrend, 0);
+  const productionTrend = metrics.reduce((sum, m) => sum + m.productionTrend, 0);
+  const callsThisPeriod = metrics.reduce((sum, m) => sum + m.callsThisPeriod, 0);
+  const newContactsThisPeriod = metrics.reduce((sum, m) => sum + m.newContactsThisPeriod, 0);
+  const followUpsThisPeriod = metrics.reduce((sum, m) => sum + m.followUpsThisPeriod, 0);
+  const closedDealsThisPeriod = metrics.reduce((sum, m) => sum + m.closedDealsThisPeriod, 0);
+  const pipelineValue = metrics.reduce((sum, m) => sum + m.pipelineValue, 0);
+  const closedOppTotal = metrics.reduce((sum, m) => sum + m.closedOpportunitiesThisPeriod, 0);
+  const conversionRate = closedOppTotal > 0 ? metrics.reduce((sum, m) => sum + m.conversionRate * m.closedOpportunitiesThisPeriod, 0) / closedOppTotal : 0;
 
   const periodYear = start.getFullYear();
   const periodMonth = period === "month" ? start.getMonth() + 1 : Math.floor(start.getMonth() / 3) + 1;
   const goalRows = await db
     .select({ goalType: teamGoals.goalType, targetValue: teamGoals.targetValue })
     .from(teamGoals)
-    .where(
-      and(
-        eq(teamGoals.tenantId, auth.tenantId),
-        eq(teamGoals.period, period),
-        eq(teamGoals.year, periodYear),
-        eq(teamGoals.month, periodMonth)
-      )
-    )
+    .where(and(eq(teamGoals.tenantId, ctx.auth.tenantId), eq(teamGoals.period, period), eq(teamGoals.year, periodYear), eq(teamGoals.month, periodMonth)))
     .limit(1);
   const goal = goalRows[0];
   let teamGoalTarget: number | null = null;
@@ -137,49 +447,53 @@ export async function getTeamOverviewKpis(
     teamGoalTarget = goal.targetValue;
     if (goal.goalType === "units") teamGoalActual = unitsThisPeriod;
     else if (goal.goalType === "production") teamGoalActual = Math.round(productionThisPeriod);
-    else if (goal.goalType === "meetings") teamGoalActual = meetingsThisWeek;
-    if (teamGoalActual != null && teamGoalTarget != null) {
+    else if (goal.goalType === "meetings") teamGoalActual = meetingsThisWeekRows.length;
+    if (teamGoalActual != null) {
       teamGoalProgressPercent = Math.round((teamGoalActual / teamGoalTarget) * 100);
     }
   }
 
   return {
-    memberCount,
-    activeMemberCount,
+    memberCount: ctx.visibleMembers.length,
+    activeMemberCount: new Set(activeCountRows.map((r) => r.userId)).size,
     unitsThisPeriod,
     productionThisPeriod,
-    meetingsThisWeek,
-    newcomersInAdaptation,
-    riskyMemberCount,
+    meetingsThisWeek: meetingsThisWeekRows.length,
+    newcomersInAdaptation: newcomers.length,
+    riskyMemberCount: new Set(alerts.map((a) => a.memberId)).size,
     periodLabel: label,
     previousPeriodLabel: prev.label,
-    unitsTrend: unitsThisPeriod - prevUnits,
-    productionTrend: productionThisPeriod - prevProduction,
-    meetingsTrend: meetingsThisWeek,
+    unitsTrend,
+    productionTrend,
+    meetingsTrend: metrics.reduce((sum, m) => sum + m.meetingsTrend, 0),
     teamGoalTarget,
     teamGoalActual,
     teamGoalProgressPercent,
     teamGoalType,
+    callsThisPeriod,
+    newContactsThisPeriod,
+    followUpsThisPeriod,
+    closedDealsThisPeriod,
+    pipelineValue,
+    conversionRate,
+    scope: ctx.scope,
   };
 }
 
-export type TeamMemberInfo = {
-  userId: string;
-  membershipId: string;
-  roleName: string;
-  joinedAt: Date;
-  displayName: string | null;
-  email: string | null;
-};
-
-export async function listTeamMembersWithNames(): Promise<TeamMemberInfo[]> {
+export async function getTeamHierarchy(scope?: TeamOverviewScope): Promise<TeamTreeNode[]> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
+  const resolvedScope = resolveScopeForRole(auth.roleName as RoleName, scope);
+  return getTeamTree(auth.tenantId, auth.userId, auth.roleName as RoleName, resolvedScope);
+}
 
+export async function listTeamMembersWithNames(scope?: TeamOverviewScope): Promise<TeamMemberInfo[]> {
+  const ctx = await getScopeContext(scope);
   const rows = await db
     .select({
       membershipId: memberships.id,
       userId: memberships.userId,
+      parentId: memberships.parentId,
       roleName: roles.name,
       joinedAt: memberships.joinedAt,
       fullName: userProfiles.fullName,
@@ -188,109 +502,74 @@ export async function listTeamMembersWithNames(): Promise<TeamMemberInfo[]> {
     .from(memberships)
     .innerJoin(roles, eq(memberships.roleId, roles.id))
     .leftJoin(userProfiles, eq(memberships.userId, userProfiles.userId))
-    .where(and(eq(memberships.tenantId, auth.tenantId), inArray(roles.name, ["Admin", "Manager", "Advisor", "Viewer"])))
+    .where(and(eq(memberships.tenantId, ctx.auth.tenantId), inArray(memberships.userId, ctx.visibleUserIds), inArray(roles.name, TEAM_ROLE_NAMES as unknown as string[])))
     .orderBy(memberships.joinedAt);
 
-  return rows.map((r) => ({
-    userId: r.userId,
-    membershipId: r.membershipId,
-    roleName: r.roleName,
-    joinedAt: r.joinedAt,
-    displayName: r.fullName?.trim() || null,
-    email: r.email?.trim() || null,
-  }));
+  const byUser = new Map(ctx.tenantMembers.map((m) => [m.userId, m]));
+  return rows.map((r) => {
+    const manager = r.parentId ? byUser.get(r.parentId) : null;
+    return {
+      userId: r.userId,
+      membershipId: r.membershipId,
+      roleName: r.roleName,
+      joinedAt: r.joinedAt,
+      displayName: r.fullName?.trim() || null,
+      email: r.email?.trim() || null,
+      parentId: r.parentId ?? null,
+      managerName: manager?.displayName || manager?.email || null,
+    };
+  });
 }
 
-export type TeamMemberMetrics = {
-  userId: string;
-  roleName: string;
-  joinedAt: Date;
-  unitsThisPeriod: number;
-  productionThisPeriod: number;
-  meetingsThisPeriod: number;
-  activityCount: number;
-  tasksOpen: number;
-  tasksCompleted: number;
-  opportunitiesOpen: number;
-  lastActivityAt: Date | null;
-  daysWithoutActivity: number;
-  unitsTrend: number;
-  productionTrend: number;
-  riskLevel: "ok" | "warning" | "critical";
-};
-
 export async function getTeamMemberMetrics(
-  period: TeamOverviewPeriod = "month"
+  period: TeamOverviewPeriod = "month",
+  scope?: TeamOverviewScope
 ): Promise<TeamMemberMetrics[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
-
-  const { start, end } = getPeriodRange(period);
-  const prev = getPeriodRange(period, new Date(start.getTime() - 1));
-  const startStr = start.toISOString().slice(0, 10);
-  const endStr = end.toISOString().slice(0, 10);
-  const prevStartStr = prev.start.toISOString().slice(0, 10);
-  const prevEndStr = prev.end.toISOString().slice(0, 10);
-
-  const memberRows = await db
-    .select({ userId: memberships.userId, roleName: roles.name, joinedAt: memberships.joinedAt })
-    .from(memberships)
-    .innerJoin(roles, eq(memberships.roleId, roles.id))
-    .where(and(eq(memberships.tenantId, auth.tenantId), inArray(roles.name, ["Admin", "Manager", "Advisor", "Viewer"])));
-
-  const alerts = await getTeamAlerts(period);
-  const alertUserIds = new Set(alerts.map((a) => a.memberId));
-  const criticalUserIds = new Set(alerts.filter((a) => a.severity === "critical").map((a) => a.memberId));
+  const ctx = await getScopeContext(scope);
+  const managerByUser = new Map(
+    ctx.tenantMembers.map((m) => [
+      m.userId,
+      m.parentId ? ctx.tenantMembers.find((candidate) => candidate.userId === m.parentId) ?? null : null,
+    ])
+  );
 
   const result: TeamMemberMetrics[] = [];
-
-  for (const mem of memberRows) {
-    const [contractsCur, contractsPrevRow, eventsCount, activityCount] = await Promise.all([
-      db.select({ count: sql<number>`count(*)::int`, totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`, totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` }).from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.advisorId, mem.userId), gte(contracts.startDate, startStr), lt(contracts.startDate, endStr))),
-      db.select({ count: sql<number>`count(*)::int`, totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`, totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)` }).from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.advisorId, mem.userId), gte(contracts.startDate, prevStartStr), lt(contracts.startDate, prevEndStr))),
-      db.select({ id: events.id }).from(events).where(and(eq(events.tenantId, auth.tenantId), eq(events.assignedTo, mem.userId), gte(events.startAt, start), lt(events.startAt, end))),
-      db.select({ id: activityLog.id }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), eq(activityLog.userId, mem.userId), gte(activityLog.createdAt, start), lt(activityLog.createdAt, end))),
-    ]);
-    const [lastActivity, tasksOpen, tasksDone, oppsOpen] = await Promise.all([
-      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), eq(activityLog.userId, mem.userId))).orderBy(desc(activityLog.createdAt)).limit(1),
-      db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.assignedTo, mem.userId), isNull(tasks.completedAt))),
-      db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.assignedTo, mem.userId), isNotNull(tasks.completedAt))),
-      db.select({ id: opportunities.id }).from(opportunities).where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.assignedTo, mem.userId), isNull(opportunities.closedAt))),
-    ]);
-
-    const unitsThisPeriod = Number(contractsCur[0]?.count ?? 0);
-    const productionThisPeriod = Number(contractsCur[0]?.totalAnnual ?? contractsCur[0]?.totalPremium ?? 0) || Number(contractsCur[0]?.totalPremium ?? 0);
-    const prevUnits = Number(contractsPrevRow[0]?.count ?? 0);
-    const prevProduction = Number(contractsPrevRow[0]?.totalAnnual ?? contractsPrevRow[0]?.totalPremium ?? 0) || Number(contractsPrevRow[0]?.totalPremium ?? 0);
-    const lastActivityAt = lastActivity[0]?.createdAt ?? null;
-    const now = new Date();
-    const daysWithoutActivity = lastActivityAt
-      ? Math.floor((now.getTime() - new Date(lastActivityAt).getTime()) / (24 * 60 * 60 * 1000))
-      : 999;
-
-    let riskLevel: "ok" | "warning" | "critical" = "ok";
-    if (criticalUserIds.has(mem.userId)) riskLevel = "critical";
-    else if (alertUserIds.has(mem.userId)) riskLevel = "warning";
-
-    result.push({
+  for (const mem of ctx.visibleMembers) {
+    const stats = await collectUserStats(ctx.auth.tenantId, mem.userId, period);
+    const metricBase: TeamMemberMetrics = {
       userId: mem.userId,
       roleName: mem.roleName,
+      parentId: mem.parentId,
+      managerName: managerByUser.get(mem.userId)?.displayName || managerByUser.get(mem.userId)?.email || null,
       joinedAt: mem.joinedAt,
-      unitsThisPeriod,
-      productionThisPeriod,
-      meetingsThisPeriod: eventsCount.length,
-      activityCount: activityCount.length,
-      tasksOpen: tasksOpen.length,
-      tasksCompleted: tasksDone.length,
-      opportunitiesOpen: oppsOpen.length,
-      lastActivityAt,
-      daysWithoutActivity: Math.min(daysWithoutActivity, 999),
-      unitsTrend: unitsThisPeriod - prevUnits,
-      productionTrend: productionThisPeriod - prevProduction,
-      riskLevel,
-    });
+      unitsThisPeriod: stats.unitsThisPeriod,
+      productionThisPeriod: stats.productionThisPeriod,
+      meetingsThisPeriod: stats.meetingsThisPeriod,
+      callsThisPeriod: stats.callsThisPeriod,
+      newContactsThisPeriod: stats.newContactsThisPeriod,
+      followUpsThisPeriod: stats.followUpsThisPeriod,
+      closedDealsThisPeriod: stats.closedDealsThisPeriod,
+      closedOpportunitiesThisPeriod: stats.closedOpportunitiesThisPeriod,
+      conversionRate: stats.conversionRate,
+      pipelineValue: stats.pipelineValue,
+      targetProgressPercent: null,
+      activityCount: stats.activityCount,
+      tasksOpen: stats.tasksOpen,
+      tasksCompleted: stats.tasksCompleted,
+      opportunitiesOpen: stats.opportunitiesOpen,
+      lastActivityAt: stats.lastActivityAt,
+      daysSinceMeeting: stats.daysSinceMeeting,
+      daysWithoutActivity: stats.daysWithoutActivity,
+      unitsTrend: stats.unitsTrend,
+      productionTrend: stats.productionTrend,
+      meetingsTrend: stats.meetingsTrend,
+      riskLevel: "ok",
+    };
+    const memberAlerts = buildAlertsFromMetric(metricBase);
+    const hasCritical = memberAlerts.some((a) => a.severity === "critical");
+    metricBase.riskLevel = hasCritical ? "critical" : memberAlerts.length > 0 ? "warning" : "ok";
+    result.push(metricBase);
   }
-
   return result;
 }
 
@@ -303,125 +582,17 @@ export type TeamAlert = {
   createdAt: Date;
 };
 
-export async function getTeamAlerts(period: TeamOverviewPeriod = "month"): Promise<TeamAlert[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
-
-  const alerts: TeamAlert[] = [];
-  const now = new Date();
-  const periodStart = getPeriodRange(period).start;
-  const periodEnd = getPeriodRange(period).end;
-  const prevRange = getPeriodRange(period, new Date(periodStart.getTime() - 1));
-  const startStr = periodStart.toISOString().slice(0, 10);
-  const endStr = periodEnd.toISOString().slice(0, 10);
-  const prevStartStr = prevRange.start.toISOString().slice(0, 10);
-  const prevEndStr = prevRange.end.toISOString().slice(0, 10);
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  const memberRows = await db
-    .select({ userId: memberships.userId })
-    .from(memberships)
-    .innerJoin(roles, eq(memberships.roleId, roles.id))
-    .where(and(eq(memberships.tenantId, auth.tenantId), inArray(roles.name, ["Admin", "Manager", "Advisor", "Viewer"])));
-
-  for (const mem of memberRows) {
-    const [lastActivity, lastMeeting, activityCount, contractsCur, contractsPrev, tasksOpen, oppsOpen] = await Promise.all([
-      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), eq(activityLog.userId, mem.userId))).orderBy(desc(activityLog.createdAt)).limit(1),
-      db.select({ startAt: events.startAt }).from(events).where(and(eq(events.tenantId, auth.tenantId), eq(events.assignedTo, mem.userId), eq(events.eventType, "schuzka"))).orderBy(desc(events.startAt)).limit(1),
-      db.select({ id: activityLog.id }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), eq(activityLog.userId, mem.userId), gte(activityLog.createdAt, thirtyDaysAgo))),
-      db.select({ totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`, totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)` }).from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.advisorId, mem.userId), gte(contracts.startDate, startStr), lt(contracts.startDate, endStr))),
-      db.select({ totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`, totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)` }).from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.advisorId, mem.userId), gte(contracts.startDate, prevStartStr), lt(contracts.startDate, prevEndStr))),
-      db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.assignedTo, mem.userId), isNull(tasks.completedAt))),
-      db.select({ id: opportunities.id }).from(opportunities).where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.assignedTo, mem.userId), isNull(opportunities.closedAt))),
-    ]);
-
-    const lastActivityAt = lastActivity[0]?.createdAt;
-    const lastMeetingAt = lastMeeting[0]?.startAt;
-    const daysSinceActivity = lastActivityAt
-      ? Math.floor((now.getTime() - new Date(lastActivityAt).getTime()) / (24 * 60 * 60 * 1000))
-      : 999;
-    const daysSinceMeeting = lastMeetingAt
-      ? Math.floor((now.getTime() - new Date(lastMeetingAt).getTime()) / (24 * 60 * 60 * 1000))
-      : 999;
-    const productionCur = Number(contractsCur[0]?.totalAnnual ?? contractsCur[0]?.totalPremium ?? 0) || Number(contractsCur[0]?.totalPremium ?? 0);
-    const productionPrev = Number(contractsPrev[0]?.totalAnnual ?? contractsPrev[0]?.totalPremium ?? 0) || Number(contractsPrev[0]?.totalPremium ?? 0);
-    const tasksOpenCount = tasksOpen.length;
-    const oppsOpenCount = oppsOpen.length;
-
-    if (daysSinceActivity >= 7) {
-      alerts.push({
-        memberId: mem.userId,
-        type: "no_activity",
-        severity: daysSinceActivity >= 14 ? "critical" : "warning",
-        title: `${daysSinceActivity} dní bez aktivity`,
-        description: "Člen týmu dlouho neevidoval aktivitu v CRM.",
-        createdAt: now,
-      });
-    }
-    if (daysSinceMeeting >= 14) {
-      alerts.push({
-        memberId: mem.userId,
-        type: "no_meeting",
-        severity: daysSinceMeeting >= 21 ? "critical" : "warning",
-        title: `${daysSinceMeeting} dní bez schůzky`,
-        description: "Žádná evidovaná schůzka.",
-        createdAt: now,
-      });
-    }
-    if (activityCount.length < 3) {
-      if (activityCount.length === 0) {
-        alerts.push({
-          memberId: mem.userId,
-          type: "low_crm_usage",
-          severity: "warning",
-          title: "Velmi nízká aktivita v CRM",
-          description: "Za posledních 30 dní téměř žádná aktivita.",
-          createdAt: now,
-        });
-      } else if (activityCount.length < 3 && daysSinceActivity >= 7) {
-        alerts.push({
-          memberId: mem.userId,
-          type: "weak_crm_discipline",
-          severity: "warning",
-          title: "Slabá CRM disciplína",
-          description: "Za 30 dní jen několik záznamů aktivity.",
-          createdAt: now,
-        });
-      }
-    }
-    if (productionPrev > 1000 && productionCur < productionPrev * 0.5) {
-      alerts.push({
-        memberId: mem.userId,
-        type: "production_drop",
-        severity: productionCur < productionPrev * 0.25 ? "critical" : "warning",
-        title: "Výrazný pokles výkonu",
-        description: `Produkce oproti předchozímu období klesla (${Math.round(productionCur)} vs ${Math.round(productionPrev)}).`,
-        createdAt: now,
-      });
-    }
-    if (oppsOpenCount > 0 && daysSinceActivity >= 7) {
-      alerts.push({
-        memberId: mem.userId,
-        type: "cases_no_action",
-        severity: daysSinceActivity >= 14 ? "critical" : "warning",
-        title: "Případy bez další akce",
-        description: "Otevřené případy a dlouho žádná aktivita.",
-        createdAt: now,
-      });
-    }
-    if (tasksOpenCount >= 10 && daysSinceMeeting >= 7) {
-      alerts.push({
-        memberId: mem.userId,
-        type: "weak_followup",
-        severity: tasksOpenCount >= 20 ? "critical" : "warning",
-        title: "Slabý follow-up",
-        description: "Mnoho otevřených úkolů a dlouho žádná schůzka.",
-        createdAt: now,
-      });
-    }
-  }
-
-  return alerts;
+export async function getTeamAlerts(
+  period: TeamOverviewPeriod = "month",
+  scope?: TeamOverviewScope
+): Promise<TeamAlert[]> {
+  const metrics = await getTeamMemberMetrics(period, scope);
+  return metrics
+    .flatMap((m) => buildAlertsFromMetric(m))
+    .sort((a, b) => {
+      if (a.severity === b.severity) return 0;
+      return a.severity === "critical" ? -1 : 1;
+    });
 }
 
 export type AdaptationStep = {
@@ -464,24 +635,14 @@ function getStepLabel(key: string): string {
   return labels[key] ?? key;
 }
 
-export async function getNewcomerAdaptation(): Promise<NewcomerAdaptation[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
-
+export async function getNewcomerAdaptation(scope?: TeamOverviewScope): Promise<NewcomerAdaptation[]> {
+  const ctx = await getScopeContext(scope);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - NEWCOMER_DAYS);
 
-  const newcomerRows = await db
-    .select({ userId: memberships.userId, joinedAt: memberships.joinedAt })
-    .from(memberships)
-    .innerJoin(roles, eq(memberships.roleId, roles.id))
-    .where(
-      and(
-        eq(memberships.tenantId, auth.tenantId),
-        inArray(roles.name, ["Advisor", "Manager"]),
-        gte(memberships.joinedAt, cutoff)
-      )
-    );
+  const newcomerRows = ctx.visibleMembers
+    .filter((m) => (m.roleName === "Advisor" || m.roleName === "Manager") && m.joinedAt >= cutoff)
+    .map((m) => ({ userId: m.userId, joinedAt: m.joinedAt }));
 
   const result: NewcomerAdaptation[] = [];
 
@@ -490,12 +651,12 @@ export async function getNewcomerAdaptation(): Promise<NewcomerAdaptation[]> {
     const daysInTeam = Math.floor((Date.now() - joinedAt.getTime()) / (24 * 60 * 60 * 1000));
 
     const [firstActivity, lastActivityRow, firstMeeting, firstAnalysis, firstContract, recentActivity] = await Promise.all([
-      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(asc(activityLog.createdAt)).limit(1),
-      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(desc(activityLog.createdAt)).limit(1),
-      db.select({ startAt: events.startAt }).from(events).where(and(eq(events.tenantId, auth.tenantId), eq(events.assignedTo, row.userId))).orderBy(asc(events.startAt)).limit(1),
-      db.select({ createdAt: financialAnalyses.createdAt }).from(financialAnalyses).where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.createdBy, row.userId))).orderBy(asc(financialAnalyses.createdAt)).limit(1),
-      db.select({ startDate: contracts.startDate }).from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.advisorId, row.userId))).orderBy(contracts.startDate).limit(1),
-      db.select({ id: activityLog.id }).from(activityLog).where(and(eq(activityLog.tenantId, auth.tenantId), eq(activityLog.userId, row.userId), gte(activityLog.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))),
+      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(asc(activityLog.createdAt)).limit(1),
+      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(desc(activityLog.createdAt)).limit(1),
+      db.select({ startAt: events.startAt }).from(events).where(and(eq(events.tenantId, ctx.auth.tenantId), eq(events.assignedTo, row.userId))).orderBy(asc(events.startAt)).limit(1),
+      db.select({ createdAt: financialAnalyses.createdAt }).from(financialAnalyses).where(and(eq(financialAnalyses.tenantId, ctx.auth.tenantId), eq(financialAnalyses.createdBy, row.userId))).orderBy(asc(financialAnalyses.createdAt)).limit(1),
+      db.select({ startDate: contracts.startDate }).from(contracts).where(and(eq(contracts.tenantId, ctx.auth.tenantId), eq(contracts.advisorId, row.userId))).orderBy(contracts.startDate).limit(1),
+      db.select({ id: activityLog.id }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId), gte(activityLog.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))),
     ]);
 
     const checklist: AdaptationStep[] = [
@@ -573,11 +734,10 @@ export type TeamPerformancePoint = {
 
 /** Last 6 periods (months or weeks) for chart. */
 export async function getTeamPerformanceOverTime(
-  period: TeamOverviewPeriod = "month"
+  period: TeamOverviewPeriod = "month",
+  scope?: TeamOverviewScope
 ): Promise<TeamPerformancePoint[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
-
+  const ctx = await getScopeContext(scope);
   const points: TeamPerformancePoint[] = [];
   const now = new Date();
 
@@ -603,7 +763,8 @@ export async function getTeamPerformanceOverTime(
       .from(contracts)
       .where(
         and(
-          eq(contracts.tenantId, auth.tenantId),
+          eq(contracts.tenantId, ctx.auth.tenantId),
+          inArray(contracts.advisorId, ctx.visibleUserIds),
           gte(contracts.startDate, startStr),
           lt(contracts.startDate, endStr)
         )
@@ -630,32 +791,19 @@ export type TeamMemberDetail = {
 
 export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDetail | null> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
 
-  const memberRows = await db
-    .select({ userId: memberships.userId, roleName: roles.name, joinedAt: memberships.joinedAt })
-    .from(memberships)
-    .innerJoin(roles, eq(memberships.roleId, roles.id))
-    .where(
-      and(
-        eq(memberships.tenantId, auth.tenantId),
-        eq(memberships.userId, userId),
-        inArray(roles.name, ["Admin", "Manager", "Advisor", "Viewer"])
-      )
-    );
-  const member = memberRows[0];
+  const visibleIds = await getVisibleUserIds(auth.tenantId, auth.userId, auth.roleName as RoleName, "full");
+  if (!visibleIds.includes(userId)) throw new Error("Forbidden");
+
+  const member = (await listTenantHierarchyMembers(auth.tenantId)).find((m) => m.userId === userId);
   if (!member) return null;
 
-  const [profileRows, metricsList, alerts, newcomers, perf] = await Promise.all([
-    db.select({ fullName: userProfiles.fullName, email: userProfiles.email }).from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1),
-    getTeamMemberMetrics("month"),
-    getTeamAlerts("month"),
-    getNewcomerAdaptation(),
-    getTeamPerformanceOverTime("month"),
+  const [metricsList, alerts, newcomers] = await Promise.all([
+    getTeamMemberMetrics("month", "full"),
+    getTeamAlerts("month", "full"),
+    getNewcomerAdaptation("full"),
   ]);
-  const profile = profileRows[0];
-  const displayName = profile?.fullName?.trim() || null;
-  const email = profile?.email?.trim() || null;
 
   const metrics = metricsList.find((m) => m.userId === userId) ?? null;
   const memberAlerts = alerts.filter((a) => a.memberId === userId);
@@ -693,8 +841,8 @@ export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDet
     userId: member.userId,
     roleName: member.roleName,
     joinedAt: member.joinedAt,
-    displayName,
-    email,
+    displayName: member.displayName,
+    email: member.email,
     metrics,
     performanceOverTime: advisorPoints,
     adaptation,

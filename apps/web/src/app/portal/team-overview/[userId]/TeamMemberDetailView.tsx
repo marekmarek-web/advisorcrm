@@ -125,6 +125,22 @@ export function TeamMemberDetailView({ detail }: { detail: TeamMemberDetail }) {
               <p className="text-2xl font-bold text-slate-900">{m.activityCount}</p>
               <p className="text-xs text-slate-500">Aktivity</p>
             </div>
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+              <p className="text-2xl font-bold text-slate-900">{m.callsThisPeriod}</p>
+              <p className="text-xs text-slate-500">Hovory</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+              <p className="text-2xl font-bold text-slate-900">{m.followUpsThisPeriod}</p>
+              <p className="text-xs text-slate-500">Follow-upy</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+              <p className="text-2xl font-bold text-slate-900">{Math.round(m.conversionRate * 100)}%</p>
+              <p className="text-xs text-slate-500">Conversion</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+              <p className="text-2xl font-bold text-slate-900">{formatNumber(m.pipelineValue)}</p>
+              <p className="text-xs text-slate-500">Pipeline</p>
+            </div>
           </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
             <p className="text-slate-600">Otevřené úkoly: <strong>{m.tasksOpen}</strong></p>

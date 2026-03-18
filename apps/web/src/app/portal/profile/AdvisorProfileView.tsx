@@ -26,6 +26,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
+import type { SupervisorOption } from "@/app/actions/auth";
 import {
   getAdvisorAvatarUrl,
   uploadAdvisorAvatar,
@@ -48,6 +49,8 @@ export type AdvisorProfileInitial = {
   phone?: string | null;
   website?: string | null;
   reportLogoUrl?: string | null;
+  currentSupervisorId?: string | null;
+  supervisorOptions?: SupervisorOption[];
 };
 
 function parseFullName(full: string | null): { firstName: string; lastName: string } {
@@ -131,6 +134,7 @@ export function AdvisorProfileView({
   const [lastName, setLastName] = useState(parsed.lastName);
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
+  const [supervisorUserId, setSupervisorUserId] = useState(initial.currentSupervisorId ?? "");
   const [ico, setIco] = useState("");
   const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
@@ -205,7 +209,7 @@ export function AdvisorProfileView({
     setSaved(false);
     setSaving(true);
     try {
-      await updatePortalProfile(fullName ?? "");
+      await updatePortalProfile(fullName ?? "", supervisorUserId || null);
       await updateAdvisorReportBranding({ phone: phone.trim() || null, website: website.trim() || null });
       setSaved(true);
     } catch (e) {
@@ -475,6 +479,25 @@ export function AdvisorProfileView({
                       />
                     </div>
                   </div>
+                  {(initial.roleName === "Advisor" || initial.roleName === "Manager" || initial.roleName === "Director") && (
+                    <div>
+                      <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">
+                        Nadřízený
+                      </label>
+                      <select
+                        value={supervisorUserId}
+                        onChange={(e) => setSupervisorUserId(e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Bez nadřízeného</option>
+                        {(initial.supervisorOptions ?? []).map((opt) => (
+                          <option key={opt.userId} value={opt.userId}>
+                            {opt.displayName} ({opt.roleName})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>

@@ -12,11 +12,8 @@ export {
   type PreMeetingContextRaw,
   type PostMeetingContextRaw,
 } from "./meeting-context";
-export {
-  buildTeamAiContextRaw,
-  renderTeamAiPromptVariables,
-  type TeamAiContextRaw,
-} from "./team-context";
+export { buildTeamAiContextRaw, type TeamAiContextRaw } from "./team-context";
+export { renderTeamAiPromptVariables } from "./team-context-render";
 export {
   computeCompleteness,
   renderCompletenessHint,

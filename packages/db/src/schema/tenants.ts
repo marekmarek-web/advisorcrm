@@ -12,7 +12,7 @@ export const tenants = pgTable("tenants", {
 export const roles = pgTable("roles", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
-  name: text("name").notNull(), // Admin | Manager | Advisor | Viewer
+  name: text("name").notNull(), // Admin | Director | Manager | Advisor | Viewer
   permissions: text("permissions").array(), // JSON or array of permission keys
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -23,6 +23,7 @@ export const memberships = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
+    parentId: text("parent_id"),
     roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
     invitedBy: text("invited_by"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),

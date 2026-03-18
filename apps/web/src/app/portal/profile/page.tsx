@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { db, tenants, advisorPreferences } from "db";
+import { db, tenants, advisorPreferences, memberships } from "db";
 import { eq, and } from "db";
 import { AdvisorProfileView } from "./AdvisorProfileView";
+import { listSupervisorOptions, type SupervisorOption } from "@/app/actions/auth";
 
 function isRedirectError(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";
@@ -16,6 +17,8 @@ const FALLBACK_INITIAL = {
   phone: "",
   website: "",
   reportLogoUrl: null as string | null,
+  currentSupervisorId: null as string | null,
+  supervisorOptions: [] as SupervisorOption[],
 };
 
 export default async function ProfilePage() {
@@ -64,6 +67,12 @@ export default async function ProfilePage() {
         )
       )
       .limit(1);
+    const [membershipRow] = await db
+      .select({ parentId: memberships.parentId })
+      .from(memberships)
+      .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)))
+      .limit(1);
+    const supervisorOptions = await listSupervisorOptions().catch(() => []);
 
     initial = {
       email,
@@ -73,6 +82,8 @@ export default async function ProfilePage() {
       phone: prefsRow?.phone ?? "",
       website: prefsRow?.website ?? "",
       reportLogoUrl: prefsRow?.reportLogoUrl ?? null,
+      currentSupervisorId: membershipRow?.parentId ?? null,
+      supervisorOptions,
     };
   } catch {
     isFallback = true;

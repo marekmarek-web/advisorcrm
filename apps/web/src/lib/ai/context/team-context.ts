@@ -10,10 +10,7 @@ import {
   listTeamMembersWithNames,
   type TeamOverviewPeriod,
 } from "@/app/actions/team-overview";
-import {
-  renderTeamAiPromptVariables as renderTeamAiPromptVariablesPure,
-  type TeamAiContextRaw,
-} from "./team-context-render";
+import type { TeamAiContextRaw } from "./team-context-render";
 
 export type { TeamAiContextRaw } from "./team-context-render";
 
@@ -50,8 +47,4 @@ export async function buildTeamAiContextRaw(
     alerts: alerts ?? [],
     newcomers: newcomers ?? [],
   };
-}
-
-export function renderTeamAiPromptVariables(raw: TeamAiContextRaw): Record<string, string> {
-  return renderTeamAiPromptVariablesPure(raw);
 }

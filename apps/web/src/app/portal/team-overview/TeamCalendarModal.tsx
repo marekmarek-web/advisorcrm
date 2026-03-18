@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { CalendarPlus, CheckSquare, X } from "lucide-react";
 import { createTeamEvent, createTeamTask } from "@/app/actions/team-events";
-import type { TeamMemberInfo } from "@/app/actions/team-overview";
+import type { TeamMemberInfo, TeamMemberMetrics, NewcomerAdaptation } from "@/app/actions/team-overview";
 
 type ModalType = "event" | "task" | null;
 
@@ -12,12 +12,16 @@ export function TeamCalendarModal({
   type,
   onClose,
   members,
+  metrics,
+  newcomers,
   onSuccess,
 }: {
   open: boolean;
   type: ModalType;
   onClose: () => void;
   members: TeamMemberInfo[];
+  metrics: TeamMemberMetrics[];
+  newcomers: NewcomerAdaptation[];
   onSuccess: () => void;
 }) {
   const [title, setTitle] = useState("");
@@ -38,6 +42,10 @@ export function TeamCalendarModal({
   if (!open || !type) return null;
 
   const allIds = members.map((m) => m.userId);
+  const riskIds = new Set(metrics.filter((m) => m.riskLevel !== "ok").map((m) => m.userId));
+  const newcomerIds = new Set(newcomers.map((n) => n.userId));
+  const managerIds = new Set(members.filter((m) => m.roleName === "Manager" || m.roleName === "Director").map((m) => m.userId));
+  const advisorIds = new Set(members.filter((m) => m.roleName === "Advisor").map((m) => m.userId));
   const toggleAll = () => {
     if (selectedIds.size === allIds.length) setSelectedIds(new Set());
     else setSelectedIds(new Set(allIds));
@@ -47,6 +55,13 @@ export function TeamCalendarModal({
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setSelectedIds(next);
+  };
+  const applyPreset = (preset: "all" | "managers" | "advisors" | "newcomers" | "risky") => {
+    if (preset === "all") return setSelectedIds(new Set(allIds));
+    if (preset === "managers") return setSelectedIds(new Set([...managerIds]));
+    if (preset === "advisors") return setSelectedIds(new Set([...advisorIds]));
+    if (preset === "newcomers") return setSelectedIds(new Set([...newcomerIds]));
+    setSelectedIds(new Set([...riskIds]));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -189,6 +204,13 @@ export function TeamCalendarModal({
           )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Příjemci</label>
+            <div className="mb-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => applyPreset("all")} className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700">Celý tým</button>
+              <button type="button" onClick={() => applyPreset("managers")} className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700">Manažeři</button>
+              <button type="button" onClick={() => applyPreset("advisors")} className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700">Poradci</button>
+              <button type="button" onClick={() => applyPreset("newcomers")} className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700">Nováčci</button>
+              <button type="button" onClick={() => applyPreset("risky")} className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700">Rizikoví</button>
+            </div>
             <div className="space-y-2 max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-3">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={selectedIds.size === allIds.length} onChange={toggleAll} className="rounded border-slate-300" />

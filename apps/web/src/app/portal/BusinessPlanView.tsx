@@ -809,7 +809,7 @@ export function BusinessPlanView() {
                     min={0}
                     step={10000}
                     value={tempParams.production}
-                    onChange={(e) => setTempParams((p) => ({ ...p, production: e.target.value }))}
+                    onChange={(e) => setTempParams((p) => ({ ...p, production: Number(e.target.value) || 0 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black outline-none focus:bg-white focus:border-indigo-400 min-h-[44px]"
                   />
                 </div>
@@ -821,7 +821,7 @@ export function BusinessPlanView() {
                       required
                       min={0}
                       value={tempParams.meetings}
-                      onChange={(e) => setTempParams((p) => ({ ...p, meetings: e.target.value }))}
+                      onChange={(e) => setTempParams((p) => ({ ...p, meetings: Number(e.target.value) || 0 }))}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black outline-none focus:bg-white focus:border-indigo-400 min-h-[44px]"
                     />
                   </div>
@@ -832,7 +832,7 @@ export function BusinessPlanView() {
                       required
                       min={0}
                       value={tempParams.newClients}
-                      onChange={(e) => setTempParams((p) => ({ ...p, newClients: e.target.value }))}
+                      onChange={(e) => setTempParams((p) => ({ ...p, newClients: Number(e.target.value) || 0 }))}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black outline-none focus:bg-white focus:border-indigo-400 min-h-[44px]"
                     />
                   </div>

@@ -61,15 +61,10 @@ function auditLog(params: {
 
 function toContextMeta(
   completeness: ContextCompleteness | null
-): {
-  completeness: "high" | "medium" | "low";
-  missingAreas: string[];
-  outdatedAreas: string[];
-  flags: string[];
-} | null {
+): Pick<ContextCompleteness, "overall" | "missingAreas" | "outdatedAreas" | "flags"> | null {
   if (!completeness) return null;
   return {
-    completeness: completeness.overall,
+    overall: completeness.overall,
     missingAreas: completeness.missingAreas,
     outdatedAreas: completeness.outdatedAreas,
     flags: completeness.flags,

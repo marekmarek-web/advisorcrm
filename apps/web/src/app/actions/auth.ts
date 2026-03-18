@@ -5,7 +5,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { getMembership } from "@/lib/auth/get-membership";
 import { db } from "db";
 import { tenants, roles, memberships, clientContacts, clientInvitations, contacts, userProfiles } from "db";
-import { eq, and, gt } from "db";
+import { eq, and, gt, inArray, sql } from "db";
 
 export type EnsureMembershipResult =
   | { ok: true; redirectTo: string }
@@ -50,6 +50,7 @@ export async function ensureMembership(): Promise<EnsureMembershipResult> {
       .returning({ id: roles.id } as any);
     await db.insert(roles as any).values({ tenantId: tenant.id, name: "Advisor" }).returning({ id: roles.id } as any);
     await db.insert(roles as any).values({ tenantId: tenant.id, name: "Manager" }).returning({ id: roles.id } as any);
+    await db.insert(roles as any).values({ tenantId: tenant.id, name: "Director" }).returning({ id: roles.id } as any);
     await db.insert(roles as any).values({ tenantId: tenant.id, name: "Viewer" }).returning({ id: roles.id } as any);
     await db.insert(roles as any).values({ tenantId: tenant.id, name: "Client" }).returning({ id: roles.id } as any);
     if (!adminRole) return { ok: false, error: "Nepodařilo se vytvořit roli." };
@@ -178,7 +179,7 @@ export async function acceptClientInvitation(token: string, gdprConsent?: boolea
 }
 
 /** Aktualizuje jméno přihlášeného uživatele v Supabase Auth (user_metadata.full_name) a v user_profiles. */
-export async function updatePortalProfile(fullName: string): Promise<void> {
+export async function updatePortalProfile(fullName: string, supervisorUserId?: string | null): Promise<void> {
   const auth = await requireAuthInAction();
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({
@@ -201,6 +202,97 @@ export async function updatePortalProfile(fullName: string): Promise<void> {
       target: userProfiles.userId as any,
       set: { fullName: fullName.trim() || null, email, updatedAt: new Date() },
     });
+
+  if (supervisorUserId !== undefined) {
+    const selfMembership = await db
+      .select({ id: memberships.id, roleName: roles.name, userId: memberships.userId })
+      .from(memberships as any)
+      .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
+      .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any)
+      .limit(1);
+    const selfRoleName = selfMembership[0]?.roleName as string | undefined;
+    if (!selfRoleName) throw new Error("Membership not found.");
+
+    let nextParent: string | null = supervisorUserId ?? null;
+    if (nextParent === auth.userId) throw new Error("Nadřízený nemůže být stejný uživatel.");
+    if (nextParent) {
+      const supervisorRows = await db
+        .select({ userId: memberships.userId, roleName: roles.name })
+        .from(memberships as any)
+        .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
+        .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, nextParent)) as any)
+        .limit(1);
+      const supervisorRole = supervisorRows[0]?.roleName as string | undefined;
+      if (!supervisorRole) throw new Error("Vybraný nadřízený není v organizaci.");
+      const isAdvisor = selfRoleName === "Advisor";
+      const isManager = selfRoleName === "Manager";
+      if (isAdvisor && !["Manager", "Director", "Admin"].includes(supervisorRole)) {
+        throw new Error("Poradce může mít nadřízeného pouze Manager/Director/Admin.");
+      }
+      if (isManager && !["Director", "Admin"].includes(supervisorRole)) {
+        throw new Error("Manažer může mít nadřízeného pouze Director/Admin.");
+      }
+      if (selfRoleName === "Director" && supervisorRole !== "Admin") {
+        throw new Error("Ředitel může mít nadřízeného pouze Admin.");
+      }
+    }
+
+    await db
+      .update(memberships as any)
+      .set({ parentId: nextParent })
+      .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any);
+  }
+}
+
+export type SupervisorOption = {
+  userId: string;
+  roleName: string;
+  displayName: string;
+};
+
+export async function listSupervisorOptions(): Promise<SupervisorOption[]> {
+  const auth = await requireAuthInAction();
+  const selfRows = await db
+    .select({ roleName: roles.name })
+    .from(memberships as any)
+    .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
+    .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any)
+    .limit(1);
+  const selfRole = (selfRows[0]?.roleName as string | undefined) ?? "Advisor";
+  const allowedRoles =
+    selfRole === "Advisor"
+      ? ["Manager", "Director", "Admin"]
+      : selfRole === "Manager"
+        ? ["Director", "Admin"]
+        : selfRole === "Director"
+          ? ["Admin"]
+          : [];
+  if (allowedRoles.length === 0) return [];
+
+  const rows = await db
+    .select({
+      userId: memberships.userId,
+      roleName: roles.name,
+      fullName: userProfiles.fullName,
+      email: userProfiles.email,
+    })
+    .from(memberships as any)
+    .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
+    .leftJoin(userProfiles as any, eq(userProfiles.userId, memberships.userId) as any)
+    .where(
+      and(
+        eq(memberships.tenantId, auth.tenantId),
+        inArray(roles.name as any, allowedRoles as any),
+        // avoid self assignment
+        sql`${memberships.userId} <> ${auth.userId}` as any
+      ) as any
+    );
+
+  return rows.map((r: any) => ({
+    userId: r.userId,
+    roleName: r.roleName,
+    displayName: r.fullName?.trim() || r.email || r.userId,
+  }));
 }
 
 /** Změna hesla přihlášeného uživatele (Supabase Auth). */

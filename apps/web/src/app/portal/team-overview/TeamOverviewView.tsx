@@ -19,9 +19,9 @@ import {
   RefreshCw,
   Target,
 } from "lucide-react";
-import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint } from "@/app/actions/team-overview";
-import type { TeamOverviewPeriod } from "@/app/actions/team-overview";
-import { getTeamOverviewKpis, getTeamMemberMetrics, getTeamAlerts, getNewcomerAdaptation, getTeamPerformanceOverTime } from "@/app/actions/team-overview";
+import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint, TeamOverviewPeriod } from "@/app/actions/team-overview";
+import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy";
+import { getTeamOverviewKpis, getTeamMemberMetrics, getTeamAlerts, getNewcomerAdaptation, getTeamPerformanceOverTime, listTeamMembersWithNames, getTeamHierarchy } from "@/app/actions/team-overview";
 import { generateTeamSummaryAction, getLatestTeamSummaryAction, submitAiFeedbackAction } from "@/app/actions/ai-generations";
 import { createTeamActionFromAi } from "@/app/actions/ai-actions";
 import type { AiFeedbackVerdict, AiFeedbackActionTaken } from "@/app/actions/ai-feedback";
@@ -198,6 +198,9 @@ const KPI_THEMES = {
 
 interface TeamOverviewViewProps {
   teamId: string;
+  currentRole: string;
+  initialScope: TeamOverviewScope;
+  initialHierarchy: TeamTreeNode[];
   initialKpis: TeamOverviewKpis | null;
   initialMembers: TeamMemberInfo[];
   initialMetrics: TeamMemberMetrics[];
@@ -222,6 +225,9 @@ function TrendIndicator({ trend }: { trend: number }) {
 
 export function TeamOverviewView({
   teamId,
+  currentRole,
+  initialScope,
+  initialHierarchy,
   initialKpis,
   initialMembers,
   initialMetrics,
@@ -232,11 +238,18 @@ export function TeamOverviewView({
   canCreateTeamCalendar = false,
 }: TeamOverviewViewProps) {
   const [period, setPeriod] = useState<TeamOverviewPeriod>(defaultPeriod);
+  const [scope, setScope] = useState<TeamOverviewScope>(initialScope);
   const [kpis, setKpis] = useState<TeamOverviewKpis | null>(initialKpis);
+  const [members, setMembers] = useState<TeamMemberInfo[]>(initialMembers);
   const [metrics, setMetrics] = useState<TeamMemberMetrics[]>(initialMetrics);
   const [alerts, setAlerts] = useState<TeamAlert[]>(initialAlerts);
   const [newcomers, setNewcomers] = useState<NewcomerAdaptation[]>(initialNewcomers);
   const [performanceOverTime, setPerformanceOverTime] = useState<TeamPerformancePoint[]>(initialPerformanceOverTime);
+  const [hierarchy, setHierarchy] = useState<TeamTreeNode[]>(initialHierarchy);
+  const [roleFilter, setRoleFilter] = useState<"all" | "Advisor" | "Manager" | "Director">("all");
+  const [riskOnly, setRiskOnly] = useState(false);
+  const [onboardingOnly, setOnboardingOnly] = useState(false);
+  const [performanceFilter, setPerformanceFilter] = useState<"all" | "top" | "bottom">("all");
   const [loading, setLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiGenerationId, setAiGenerationId] = useState<string | null>(null);
@@ -251,22 +264,26 @@ export function TeamOverviewView({
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [k, m, a, n, perf] = await Promise.all([
-        getTeamOverviewKpis(period),
-        getTeamMemberMetrics(period),
-        getTeamAlerts(period),
-        getNewcomerAdaptation(),
-        getTeamPerformanceOverTime(period),
+      const [k, teamMembers, m, a, n, perf, tree] = await Promise.all([
+        getTeamOverviewKpis(period, scope),
+        listTeamMembersWithNames(scope),
+        getTeamMemberMetrics(period, scope),
+        getTeamAlerts(period, scope),
+        getNewcomerAdaptation(scope),
+        getTeamPerformanceOverTime(period, scope),
+        getTeamHierarchy(scope),
       ]);
       setKpis(k ?? null);
+      setMembers(teamMembers);
       setMetrics(m);
       setAlerts(a);
       setNewcomers(n);
       setPerformanceOverTime(perf);
+      setHierarchy(tree);
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, scope]);
 
   const loadLatestTeamSummary = useCallback(async () => {
     setAiError(null);
@@ -360,10 +377,48 @@ export function TeamOverviewView({
   useEffect(() => {
     loadLatestTeamSummary();
   }, [loadLatestTeamSummary]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  const memberCount = initialMembers.length;
+  const memberCount = members.length;
   const metricsByUser = new Map(metrics.map((m) => [m.userId, m]));
   const displayName = (m: TeamMemberInfo) => m.displayName || "Člen týmu";
+  const newcomerSet = new Set(newcomers.map((n) => n.userId));
+
+  const scopeOptions: { value: TeamOverviewScope; label: string }[] =
+    currentRole === "Advisor" || currentRole === "Viewer"
+      ? [{ value: "me", label: "Já" }]
+      : currentRole === "Manager"
+        ? [
+            { value: "me", label: "Já" },
+            { value: "my_team", label: "Můj tým" },
+          ]
+        : [
+            { value: "me", label: "Já" },
+            { value: "my_team", label: "Můj tým" },
+            { value: "full", label: "Celá struktura" },
+          ];
+
+  const sortedMembers = [...members].sort((a, b) => {
+    const ma = metricsByUser.get(a.userId);
+    const mb = metricsByUser.get(b.userId);
+    const byPerf = (mb?.productionThisPeriod ?? 0) - (ma?.productionThisPeriod ?? 0);
+    if (performanceFilter === "top") return byPerf;
+    if (performanceFilter === "bottom") return -byPerf;
+    return (a.displayName || "").localeCompare(b.displayName || "", "cs-CZ");
+  });
+  const visibleMembers = sortedMembers.filter((m) => {
+    const mm = metricsByUser.get(m.userId);
+    if (!mm) return true;
+    if (roleFilter !== "all" && m.roleName !== roleFilter) return false;
+    if (riskOnly && mm.riskLevel === "ok") return false;
+    if (onboardingOnly && !newcomerSet.has(m.userId)) return false;
+    return true;
+  });
+  const rankedMetrics = [...metrics].sort((a, b) => b.productionThisPeriod - a.productionThisPeriod);
+  const topMetric = rankedMetrics[0] ?? null;
+  const bottomMetric = rankedMetrics.length > 0 ? rankedMetrics[rankedMetrics.length - 1] : null;
 
   return (
     <div className="min-h-screen bg-[var(--wp-bg)]">
@@ -387,6 +442,15 @@ export function TeamOverviewView({
               onOpenTask={() => setTeamCalendarModal("task")}
             />
             <select
+              value={scope}
+              onChange={(e) => setScope(e.target.value as TeamOverviewScope)}
+              className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {scopeOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as TeamOverviewPeriod)}
               className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -406,12 +470,56 @@ export function TeamOverviewView({
             </button>
           </div>
         </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as "all" | "Advisor" | "Manager" | "Director")}
+            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <option value="all">Všechny role</option>
+            <option value="Director">Ředitelé</option>
+            <option value="Manager">Manažeři</option>
+            <option value="Advisor">Poradci</option>
+          </select>
+          <select
+            value={performanceFilter}
+            onChange={(e) => setPerformanceFilter(e.target.value as "all" | "top" | "bottom")}
+            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <option value="all">Všichni výkon</option>
+            <option value="top">Top výkon</option>
+            <option value="bottom">Bottom výkon</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setRiskOnly((v) => !v)}
+            className={`min-h-[44px] rounded-xl border px-3 py-2 text-sm ${riskOnly ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-700"}`}
+          >
+            Jen rizikoví
+          </button>
+          <button
+            type="button"
+            onClick={() => setOnboardingOnly((v) => !v)}
+            className={`min-h-[44px] rounded-xl border px-3 py-2 text-sm ${onboardingOnly ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700"}`}
+          >
+            Jen nováčci
+          </button>
+        </div>
+        {hierarchy.length > 0 && (
+          <div className="mb-6 rounded-xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-600">
+            Hierarchie:
+            {" "}
+            {hierarchy.slice(0, 5).map((node) => node.displayName || node.email || node.userId).join(" > ")}
+          </div>
+        )}
 
         <TeamCalendarModal
           open={teamCalendarModal != null}
           type={teamCalendarModal}
           onClose={() => setTeamCalendarModal(null)}
-          members={initialMembers}
+          members={members}
+          metrics={metrics}
+          newcomers={newcomers}
           onSuccess={refresh}
         />
 
@@ -469,6 +577,25 @@ export function TeamOverviewView({
                 </div>
                 <p className="mt-2 text-2xl font-bold text-slate-900">{kpis.riskyMemberCount}</p>
                 <p className="text-xs font-medium text-slate-500">Rizikoví členové</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                <p className="text-xs font-medium text-slate-500">Pipeline value</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(Math.round(kpis.pipelineValue))}</p>
+                <p className="text-xs font-medium text-slate-500">Konverze: {Math.round(kpis.conversionRate * 100)} %</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                <p className="text-xs font-medium text-slate-500">Top performer</p>
+                <p className="mt-2 text-base font-bold text-slate-900">
+                  {topMetric ? (members.find((m) => m.userId === topMetric.userId)?.displayName || "Člen týmu") : "—"}
+                </p>
+                <p className="text-xs font-medium text-slate-500">{topMetric ? formatNumber(topMetric.productionThisPeriod) : "—"}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                <p className="text-xs font-medium text-slate-500">Potřebuje pozornost</p>
+                <p className="mt-2 text-base font-bold text-slate-900">
+                  {bottomMetric ? (members.find((m) => m.userId === bottomMetric.userId)?.displayName || "Člen týmu") : "—"}
+                </p>
+                <p className="text-xs font-medium text-slate-500">{bottomMetric ? formatNumber(bottomMetric.productionThisPeriod) : "—"}</p>
               </div>
               {kpis.teamGoalTarget != null && kpis.teamGoalType && (
                 <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -573,7 +700,7 @@ export function TeamOverviewView({
                 )}
                 {aiGenerationId && (
                   <TeamSummaryFollowUp
-                    members={initialMembers}
+                    members={members}
                     onCreate={createTeamFollowUp}
                     saving={teamActionSaving}
                     error={teamActionError}
@@ -624,7 +751,7 @@ export function TeamOverviewView({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {newcomers.map((n) => {
-                const member = initialMembers.find((m) => m.userId === n.userId);
+                const member = members.find((m) => m.userId === n.userId);
                 const name = member ? displayName(member) : "Člen týmu";
                 return (
                   <Link
@@ -669,13 +796,17 @@ export function TeamOverviewView({
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Jednotky</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Produkce</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Schůzky</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Konverze</th>
+                    {scope === "full" && (
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Nadřízený</th>
+                    )}
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Aktivita</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Stav</th>
                     <th className="w-10" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {initialMembers.map((m) => {
+                  {visibleMembers.map((m) => {
                     const met = metricsByUser.get(m.userId);
                     return (
                       <tr key={m.userId} className="hover:bg-slate-50/50">
@@ -688,6 +819,10 @@ export function TeamOverviewView({
                         <td className="px-4 py-3 text-right text-sm text-slate-700">{met?.unitsThisPeriod ?? "—"}</td>
                         <td className="px-4 py-3 text-right text-sm text-slate-700">{met ? formatNumber(met.productionThisPeriod) : "—"}</td>
                         <td className="px-4 py-3 text-right text-sm text-slate-700">{met?.meetingsThisPeriod ?? "—"}</td>
+                        <td className="px-4 py-3 text-right text-sm text-slate-700">{met ? `${Math.round(met.conversionRate * 100)}%` : "—"}</td>
+                        {scope === "full" && (
+                          <td className="px-4 py-3 text-right text-sm text-slate-700">{m.managerName ?? "—"}</td>
+                        )}
                         <td className="px-4 py-3 text-right text-sm text-slate-700">{met?.activityCount ?? "—"}</td>
                         <td className="px-4 py-3 text-right">
                           {met && (
@@ -713,7 +848,7 @@ export function TeamOverviewView({
             </div>
             {/* Mobile cards */}
             <div className="md:hidden divide-y divide-slate-100">
-              {initialMembers.map((m) => {
+              {visibleMembers.map((m) => {
                 const met = metricsByUser.get(m.userId);
                 return (
                   <Link key={m.userId} href={`/portal/team-overview/${m.userId}`} className="relative block p-4 hover:bg-slate-50/50 active:bg-slate-100">
@@ -734,6 +869,10 @@ export function TeamOverviewView({
                       <span>Jednotky: {met?.unitsThisPeriod ?? "—"}</span>
                       <span>Produkce: {met ? formatNumber(met.productionThisPeriod) : "—"}</span>
                       <span>Schůzky: {met?.meetingsThisPeriod ?? "—"}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      Konverze: {met ? `${Math.round(met.conversionRate * 100)} %` : "—"}
+                      {m.managerName ? ` · Nadřízený: ${m.managerName}` : ""}
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2" />
                   </Link>

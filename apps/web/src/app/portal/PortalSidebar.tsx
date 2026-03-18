@@ -122,7 +122,6 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
     section: "Systém",
     items: [
       { href: "/portal/notifications", label: "Notifikace", Icon: Bell },
-      { href: "/portal/ui-demo", label: "UI komponenty", Icon: Palette },
       { href: "/portal/setup", label: "Nastavení", Icon: Settings, hoverAnim: "group-hover:rotate-90 duration-500" },
     ],
   },
