@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useFinancialAnalysisStore as useStore } from "@/lib/analyses/financial/store";
 import { selectNetWorth, selectTotalTargetCapital, selectPortfolioFv } from "@/lib/analyses/financial/selectors";
 import { buildReportHTML } from "@/lib/analyses/financial/report";
@@ -8,14 +8,14 @@ import { formatCzk, safeNameForFile } from "@/lib/analyses/financial/formatters"
 import { uploadDocument } from "@/app/actions/documents";
 import { setFinancialAnalysisLastExportedAt } from "@/app/actions/financial-analyses";
 import { getAdvisorReportBranding } from "@/app/actions/preferences";
-import { FileText, Printer, CloudUpload, StickyNote } from "lucide-react";
+import { FileText, Printer, CloudUpload, StickyNote, Monitor } from "lucide-react";
 
 type ReportTheme = "elegant" | "modern";
 
 function ThemeSelector({ value, onChange }: { value: ReportTheme; onChange: (t: ReportTheme) => void }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Šablona:</span>
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Styl:</span>
       <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
         <button
           type="button"
@@ -42,7 +42,8 @@ export function StepSummary() {
   const [printPayload, setPrintPayload] = useState<{ html: string } | null>(null);
   const [savingToDocs, setSavingToDocs] = useState(false);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
-  const [printError, setPrintError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<ReportTheme>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("aidvisora_report_theme") as ReportTheme) || "elegant";
@@ -67,15 +68,43 @@ export function StepSummary() {
     ? { provenance: (data as unknown as Record<string, unknown>)._provenance as Record<string, "linked" | "overridden">, linkedCompanyName: undefined as unknown as string | null }
     : undefined;
 
+  const generateHTML = useCallback(async () => {
+    const branding = await getAdvisorReportBranding();
+    return buildReportHTML(data, { ...reportOptions, branding, theme: selectedTheme });
+  }, [data, reportOptions, selectedTheme]);
+
+  const handleDownloadHTML = async () => {
+    setExportError(null);
+    setIsDownloading(true);
+    try {
+      const html = await generateHTML();
+      const safe = safeNameForFile(clientName);
+      const date = new Date().toISOString().split("T")[0];
+      const filename = `financni-report-${safe}-${date}.html`;
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Nepodařilo se stáhnout report. Zkuste to znovu.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handlePrintReport = async () => {
-    setPrintError(null);
+    setExportError(null);
     setIsPreparingPrint(true);
     try {
-      const branding = await getAdvisorReportBranding();
-      const html = buildReportHTML(data, { ...reportOptions, branding, theme: selectedTheme });
+      const html = await generateHTML();
       setPrintPayload({ html });
     } catch {
-      setPrintError("Nepodařilo se připravit report k tisku. Zkuste to znovu.");
+      setExportError("Nepodařilo se připravit report k tisku. Zkuste to znovu.");
       setIsPreparingPrint(false);
     }
   };
@@ -84,8 +113,7 @@ export function StepSummary() {
     if (!canSaveToDocuments) return;
     setSavingToDocs(true);
     try {
-      const branding = await getAdvisorReportBranding();
-      const html = buildReportHTML(data, { ...reportOptions, branding, theme: selectedTheme });
+      const html = await generateHTML();
       const safe = safeNameForFile(clientName);
       const date = new Date().toISOString().split("T")[0];
       const filename = `financni-report-${safe}-${date}.html`;
@@ -143,13 +171,13 @@ export function StepSummary() {
     <>
       <div className="mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Shrnutí</h2>
-        <p className="text-slate-500 mt-1">Přehled a export / tisk reportu.</p>
+        <p className="text-slate-500 mt-1">Přehled a export reportu.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Klient</span>
-          <div className="text-lg font-bold text-slate-900 mt-1">{clientName || "—"}</div>
+          <div className="text-lg font-bold text-slate-900 mt-1">{clientName || "\u2014"}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block">Čisté jmění</span>
@@ -179,35 +207,53 @@ export function StepSummary() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h3 className="text-slate-800 font-bold flex items-center gap-2">
             <FileText className="w-5 h-5 text-indigo-600" />
-            Export / tisk reportu
+            Export reportu
           </h3>
           <ThemeSelector value={selectedTheme} onChange={handleThemeChange} />
         </div>
-        <p className="text-slate-600 text-sm mb-4">
-          Vygeneruje kompletní report včetně grafů a otevře dialog pro tisk. Pro uložení do PDF zvolte v dialogu tisku „Uložit jako PDF“.
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <button
+            type="button"
+            onClick={handleDownloadHTML}
+            disabled={isDownloading}
+            aria-busy={isDownloading}
+            className="min-h-[56px] flex items-center gap-3 px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-60 transition-colors"
+          >
+            <Monitor className="w-5 h-5 flex-shrink-0" />
+            <div className="text-left">
+              <div className="text-sm font-bold">{isDownloading ? "Stahuji\u2026" : "Prezentace (HTML)"}</div>
+              <div className="text-xs font-normal opacity-75">Stáhne HTML soubor k otevření v prohlížeči</div>
+            </div>
+          </button>
           <button
             type="button"
             onClick={handlePrintReport}
             disabled={isPreparingPrint}
             aria-busy={isPreparingPrint}
-            className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-60"
+            className="min-h-[56px] flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700 disabled:opacity-60 transition-colors"
           >
-            <Printer className="w-5 h-5" /> {isPreparingPrint ? "Připravuji tisk…" : "Export / tisk reportu"}
+            <Printer className="w-5 h-5 flex-shrink-0" />
+            <div className="text-left">
+              <div className="text-sm font-bold">{isPreparingPrint ? "Připravuji\u2026" : "PDF (Tisk)"}</div>
+              <div className="text-xs font-normal opacity-75">Otevře tiskový dialog pro uložení do PDF</div>
+            </div>
           </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
           {canSaveToDocuments && (
             <button
               type="button"
               onClick={handleSaveReportToDocuments}
               disabled={savingToDocs}
-              className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-700 text-white font-bold hover:bg-slate-800 disabled:opacity-50"
+              className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
-              <CloudUpload className="w-5 h-5" /> {savingToDocs ? "Ukládám…" : "Uložit report do dokumentů"}
+              <CloudUpload className="w-4 h-4" /> {savingToDocs ? "Ukládám\u2026" : "Uložit do dokumentů"}
             </button>
           )}
         </div>
-        {printError && <p className="text-sm text-red-600 mt-2" role="alert">{printError}</p>}
+        {exportError && <p className="text-sm text-red-600 mt-2" role="alert">{exportError}</p>}
         {!canSaveToDocuments && (data.householdId || data.clientId === undefined) && (
           <p className="text-xs text-slate-500 mt-2">Pro uložení reportu do dokumentů otevřete analýzu z profilu klienta (s clientId).</p>
         )}

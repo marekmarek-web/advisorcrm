@@ -1,4 +1,4 @@
-import { formatCzk, formatCurrencyMonthly, formatCurrencyDaily, formatPercent } from '../formatters';
+import { formatCzk, formatCurrencyMonthly, formatCurrencyDaily } from '../formatters';
 import type { InvestmentEntry } from '../types';
 import { FUND_DETAILS } from '../constants';
 
@@ -9,7 +9,11 @@ export function esc(s: string | null | undefined): string {
 export function fmtCzk(n: number): string { return formatCzk(n); }
 export function fmtMonthly(n: number): string { return formatCurrencyMonthly(n); }
 export function fmtDaily(n: number): string { return formatCurrencyDaily(n); }
-export function fmtPct(n: number, d = 1): string { return formatPercent(n, d); }
+
+/** Format a value that is already in percent form (e.g. 69 -> "69 %"). */
+export function fmtPct(n: number, d = 1): string {
+  return n.toFixed(d).replace('.', ',') + ' %';
+}
 
 export function fmtNum(n: number): string {
   return Math.round(n).toLocaleString('cs-CZ');

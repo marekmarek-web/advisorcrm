@@ -1,12 +1,12 @@
 import type { SectionCtx } from '../types';
-import { nextSection, fmtCzk, fmtMonthly, fmtBigCzk, esc, investmentLabel, colorForIndex, fmtPct, renderDonutSVG } from '../helpers';
+import { nextSection, fmtCzk, fmtMonthly, esc, investmentLabel, colorForIndex, fmtPct, renderDonutSVG } from '../helpers';
 import { FUND_DETAILS } from '../../constants';
 
 export function renderCompanyPortfolio(ctx: SectionCtx): string {
   const { data, theme } = ctx;
   const num = nextSection(ctx.sectionCounter);
 
-  const companyInvestments = (data.investments ?? []).filter(
+  const companyInvestments = ((data as unknown as Record<string, unknown>).companyInvestments as typeof data.investments | undefined ?? []).filter(
     (inv) => inv.amount > 0 && inv.productKey !== 'algoimperial',
   );
 

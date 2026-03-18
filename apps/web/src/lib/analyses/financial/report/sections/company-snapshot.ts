@@ -47,7 +47,7 @@ export function renderCompanySnapshot(ctx: SectionCtx): string {
     <div class="callout success" style="margin-top:var(--s4,16px)">
       <span class="callout-icon">⚡</span>
       <div><strong>Quick Win — Benefity</strong>
-      Převedením části hrubé mzdy na zaměstnanecké benefity ušetří firma na odvodech i zaměstnanec na dani. Odhadovaná úspora: ${fmtMonthly(Math.round(benefitTotal * 0.21))}/měsíc při stávajícím objemu benefitů.</div>
+      Převedením části hrubé mzdy na zaměstnanecké benefity ušetří firma na odvodech i zaměstnanec na dani. Odhadovaná úspora: ${fmtMonthly(Math.round(benefitTotal * 0.21))} při stávajícím objemu benefitů.</div>
     </div>
   </div>
 </section>`;

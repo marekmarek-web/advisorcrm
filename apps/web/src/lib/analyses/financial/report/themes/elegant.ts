@@ -292,10 +292,12 @@ table.dt td.num{font-family:var(--ff-serif);font-size:15px;font-variant-numeric:
 @media print{
   .sidebar{display:none!important}
   .main{margin-left:0!important}
-  .page{min-height:auto;page-break-after:always;page-break-inside:avoid}
-  .page:last-child{page-break-after:auto}
+  .page{min-height:auto;page-break-inside:auto;page-break-after:auto}
+  .page.hero,.page.company-hero{page-break-after:always}
+  .sec-header{page-break-after:avoid}
+  .tbl-wrap,.product-card,.chart-wrap,.callout,.kpi-row{page-break-inside:avoid}
   .page-inner>*{animation:none!important}
   body{background:white}
-  @page{margin:10mm}
+  @page{size:A4;margin:12mm 10mm}
 }
 `;

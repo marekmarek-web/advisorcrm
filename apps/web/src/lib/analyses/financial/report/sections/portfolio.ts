@@ -1,6 +1,7 @@
 import type { SectionCtx } from '../types';
 import { nextSection, fmtCzk, fmtMonthly, fmtPct, colorForIndex, renderDonutSVG, investmentLabel, esc } from '../helpers';
 import { FUND_DETAILS } from '../../constants';
+import { getStrategyProfileLabel } from '../../formatters';
 import type { InvestmentEntry } from '../../types';
 
 export function renderPortfolio(ctx: SectionCtx): string {
@@ -42,7 +43,7 @@ export function renderPortfolio(ctx: SectionCtx): string {
     </div>
   `).join('');
 
-  const profile = data.strategy?.profile ?? 'Vyvážený';
+  const profile = getStrategyProfileLabel(data.strategy?.profile ?? 'balanced');
 
   return `<section class="page" id="portfolio">
   <div class="page-bar"></div>
