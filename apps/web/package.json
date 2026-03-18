@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:clean": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && next dev",
-    "dev:demo": "cross-env NEXT_PUBLIC_SKIP_AUTH=true next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
+    "dev:clean": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && next dev --webpack",
+    "dev:demo": "cross-env NEXT_PUBLIC_SKIP_AUTH=true next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",

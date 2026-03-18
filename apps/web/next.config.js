@@ -1,9 +1,8 @@
 const path = require("path");
 
-const appRoot = path.resolve(__dirname);
-// In pnpm monorepo, Turbopack may infer workspace root from pnpm-lock.yaml (repo root).
-// Set root to app directory so Next.js package is resolvable; use absolute path.
-const turbopackRoot = path.resolve(appRoot);
+// In pnpm monorepos Turbopack infers workspace root from lockfile but then resolves from wrong dir (e.g. src/app).
+// Set root to the app dir (apps/web) so next/package.json is found in apps/web/node_modules.
+const turbopackRoot = path.resolve(__dirname);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -47,7 +46,6 @@ module.exports = (phase, _context) => {
       base.compress = false;
       c.optimization = c.optimization ?? {};
       c.optimization.minimize = false;
-      // Snižuje výskyt "__webpack_modules__[moduleId] is not a function" při zaručeném načtení modulů
       c.cache = false;
     }
     return c;
