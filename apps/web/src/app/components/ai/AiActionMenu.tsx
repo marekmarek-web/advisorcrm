@@ -29,7 +29,7 @@ const ACTION_ICONS = {
   meeting: Calendar,
   deal: Briefcase,
   service_action: Wrench,
-} satisfies Record<AiActionType, ComponentType<{ size?: number; className?: string }>>;
+} as Record<AiActionType, ComponentType<{ size?: number; className?: string }>>;
 
 function deriveDefaultTitle(outputText: string, actionType: AiActionType): string {
   const firstLine = outputText
