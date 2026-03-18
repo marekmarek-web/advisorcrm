@@ -52,6 +52,8 @@ export const events = pgTable("events", {
   meetingLink: text("meeting_link"),
   taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
   teamEventId: uuid("team_event_id").references(() => teamEvents.id, { onDelete: "set null" }),
+  googleEventId: text("google_event_id"),
+  googleCalendarId: text("google_calendar_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -105,11 +105,11 @@ export interface CompanyBenefits {
   dps?: boolean;
   dip?: boolean;
   izp?: boolean;
-  /** Příspěvek na osobu (Kč/měsíc) */
+  /** Příspěvek na osobu (Kč/měs.) */
   amountPerPerson?: number;
   /** Počet zaměstnanců */
   employeeCount?: number;
-  /** Příspěvky jednatelům (Kč/měsíc celkem) */
+  /** Příspěvky jednatelům (Kč/měs. celkem) */
   directorsAmount?: number;
   /** Roční náklad (vypočteno nebo zadané) */
   annualCost?: number;

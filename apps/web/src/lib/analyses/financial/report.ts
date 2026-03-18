@@ -22,6 +22,7 @@ import {
   formatCurrencyDaily,
   formatCurrencyMonthly,
   formatCurrencyYearly,
+  formatInteger,
   formatPercent,
   getProductName,
   getStrategyDesc,
@@ -58,6 +59,8 @@ export const PDF_STYLES = `
   padding-bottom: 22mm;
   box-sizing: border-box;
   min-height: 0;
+  max-height: calc(297mm - 15mm - 15mm - 22mm);
+  overflow: visible;
 }
 .pdf-section {
   margin-bottom: 20px;
@@ -124,7 +127,7 @@ export const PDF_STYLES = `
 }
 .table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; page-break-inside: avoid; table-layout: fixed; }
 .table th { text-align: left; font-size: 9pt; color: #4a4a4a; border-bottom: 2px solid #e9ebf0; padding: 2.5mm 2mm; font-weight: 700; }
-.table td { font-size: 10pt; border-bottom: 1px solid #e9ebf0; padding: 2.5mm 2mm; color: #1f1c2e; vertical-align: middle; }
+.table td { font-size: 10pt; border-bottom: 1px solid #e9ebf0; padding: 2.5mm 2mm; color: #1f1c2e; vertical-align: middle; font-variant-numeric: tabular-nums; }
 .table th:nth-child(2), .table th:nth-child(4), .table td:nth-child(2), .table td:nth-child(4) { text-align: center; }
 .table tr { page-break-inside: avoid; }
 .table tr:last-child td { border-bottom: none; }
@@ -139,6 +142,8 @@ export const PDF_STYLES = `
   font-weight: 700;
   line-height: 1.15;
   color: #1f1c2e;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .total-summary-bar {
   display: flex;
@@ -194,13 +199,17 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/** Logo img with onerror fallback to text so PDF never shows broken image. */
-function renderLogoOrFallback(logoUrl: string | undefined, fallbackLabel: string, sizeStyle = 'width: 24px; height: 24px; object-fit: contain; vertical-align: middle; margin-right: 2mm;'): string {
+/**
+ * Logo for PDF: always render text fallback (no <img>) so PDF/print never shows broken image.
+ * When logoUrl is missing or empty, or for safe PDF export, only the fallback label is shown.
+ */
+function renderLogoOrFallback(logoUrl: string | undefined, fallbackLabel: string, _sizeStyle = 'width: 24px; height: 24px; object-fit: contain; vertical-align: middle; margin-right: 2mm;'): string {
   const label = escapeHtml(fallbackLabel || '');
-  if (!logoUrl) {
+  const url = (logoUrl || '').trim();
+  if (!url) {
     return `<span class="pdf-logo-fallback">${label}</span>`;
   }
-  return `<span style="display: inline-flex; align-items: center;"><img src="${escapeHtml(logoUrl)}" alt="" style="${sizeStyle}" onerror="this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='inline-flex';" /><span class="pdf-logo-fallback" style="display: none;">${label}</span></span>`;
+  return `<span class="pdf-logo-fallback">${label}</span>`;
 }
 
 const PDF_REPORT_AUTHOR_FALLBACK = 'Marek Marek';
@@ -650,7 +659,7 @@ function renderHoldingsBlock(detail: FundDetail): string {
   if ((detail.topHoldings?.length ?? 0) > 0) {
     html += '<div style="margin-bottom: 4mm;"><div style="font-size: 10pt; font-weight: 700; color: #1f1c2e; margin-bottom: 2mm;">Top 10 Holdings</div>';
     if (detail.top10WeightPercent != null && detail.totalHoldingsCount != null) {
-      html += `<p style="font-size: 9pt; color: #4a4a4a; margin: 0 0 2mm 0;">Váha top 10: <strong>${formatPercent((detail.top10WeightPercent ?? 0) / 100, 2)}</strong> z ${formatCurrency(detail.totalHoldingsCount ?? 0)} holdingu.</p>`;
+      html += `<p style="font-size: 9pt; color: #4a4a4a; margin: 0 0 2mm 0;">Váha top 10: <strong>${formatPercent((detail.top10WeightPercent ?? 0) / 100, 2)}</strong> z ${formatInteger(detail.totalHoldingsCount ?? 0)} holdingu.</p>`;
     }
     html += '<div style="display: flex; flex-direction: column; gap: 1.5mm;">';
     detail.topHoldings!.forEach((h) => {
@@ -906,7 +915,6 @@ function renderInsurancePage(
     return `<section class="pdf-page">${renderPdfHeader('ZAJIŠTĚNÍ PŘÍJMŮ', clientName, today, authorName)}<div class="pdf-page-content"><div class="pdf-section"><div class="h2">Životní pojištění</div><div class="interpretation"><p><strong>Upozornění:</strong> Pro výpočet doporučeného pojištění je nutné zadat měsíční příjem v sekci Cashflow.</p></div></div></div>${renderPdfFooter(footerLine)}</section>`;
   }
   const gridsHtml = renderInsuranceGrids(ins);
-  let pages = `<section class="pdf-page">${renderPdfHeader('ZAJIŠTĚNÍ PŘÍJMŮ', clientName, today, authorName)}<div class="pdf-page-content"><div class="pdf-section"><div class="h2">Životní pojištění – ${escapeHtml(clientName)}</div><p style="font-size: 10pt; color: #4a4a4a; margin-bottom: 3mm;">Doporučené částky vycházejí z příjmu, výdajů a závazků.</p><p style="font-size: 10pt; color: #4a4a4a; margin-bottom: 4mm;">Příjem: <strong>${formatCzk(ins.netIncome)}</strong> čistého měsíčně ${ins.isOSVC ? '<span style="background: #fef3c7; color: #92400e; padding: 1mm 2mm; border-radius: 2mm; font-size: 8pt;">OSVČ</span>' : ''}</p><table class="table" style="margin-bottom: 6mm;"><thead><tr><th style="width: 50%;">Rizika</th><th style="width: 50%; text-align: right;">Pojistná částka</th></tr></thead><tbody><tr><td>Invalidita 2.–3. stupeň</td><td style="text-align: right; font-weight: bold;">${formatCzk(ins.invalidity.capital)}</td></tr><tr><td>Trvalé následky</td><td style="text-align: right; font-weight: bold;">${formatCzk(ins.tn.base)} (progrese ${ins.tn.progress}×)</td></tr><tr><td>Pracovní neschopnost</td><td style="text-align: right; font-weight: bold;">${formatCurrencyDaily(ins.sickness.dailyBenefit)}</td></tr><tr><td>Smrt</td><td style="text-align: right; font-weight: bold;">${ins.death.individual ? 'INDIVIDUÁLNĚ' : formatCzk(ins.death.coverage)}</td></tr></tbody></table>${gridsHtml}</div></div>${renderPdfFooter(footerLine)}</section>`;
   const partnerBlock = ins.partnerInsurance
     ? (() => {
         const p = ins.partnerInsurance;
@@ -917,9 +925,8 @@ function renderInsurancePage(
     ins.childInsurance.length > 0
       ? `<div class="pdf-section"><div class="h2">Doporučení pro děti</div><p style="font-size: 10pt;">Invalidita 3–5 mil. Kč, Trvalé následky max 2 mil. Kč.</p></div>`
       : '';
-  if (partnerBlock || childrenBlock) {
-    pages += `<section class="pdf-page">${renderPdfHeader('ZAJIŠTĚNÍ PŘÍJMŮ', clientName, today, authorName)}<div class="pdf-page-content">${partnerBlock}${childrenBlock}</div>${renderPdfFooter(footerLine)}</section>`;
-  }
+  const mainContent = `<div class="pdf-section"><div class="h2">Životní pojištění – ${escapeHtml(clientName)}</div><p style="font-size: 10pt; color: #4a4a4a; margin-bottom: 3mm;">Doporučené částky vycházejí z příjmu, výdajů a závazků.</p><p style="font-size: 10pt; color: #4a4a4a; margin-bottom: 4mm;">Příjem: <strong>${formatCzk(ins.netIncome)}</strong> čistého měsíčně ${ins.isOSVC ? '<span style="background: #fef3c7; color: #92400e; padding: 1mm 2mm; border-radius: 2mm; font-size: 8pt;">OSVČ</span>' : ''}</p><table class="table" style="margin-bottom: 6mm;"><thead><tr><th style="width: 50%;">Rizika</th><th style="width: 50%; text-align: right;">Pojistná částka</th></tr></thead><tbody><tr><td>Invalidita 2.–3. stupeň</td><td style="text-align: right; font-weight: bold;">${formatCzk(ins.invalidity.capital)}</td></tr><tr><td>Trvalé následky</td><td style="text-align: right; font-weight: bold;">${formatCzk(ins.tn.base)} (progrese ${ins.tn.progress}×)</td></tr><tr><td>Pracovní neschopnost</td><td style="text-align: right; font-weight: bold;">${formatCurrencyDaily(ins.sickness.dailyBenefit)}</td></tr><tr><td>Smrt</td><td style="text-align: right; font-weight: bold;">${ins.death.individual ? 'INDIVIDUÁLNĚ' : formatCzk(ins.death.coverage)}</td></tr></tbody></table>${gridsHtml}</div>`;
+  const pages = `<section class="pdf-page">${renderPdfHeader('ZAJIŠTĚNÍ PŘÍJMŮ', clientName, today, authorName)}<div class="pdf-page-content">${mainContent}${partnerBlock}${childrenBlock}</div>${renderPdfFooter(footerLine)}</section>`;
   return pages;
 }
 
@@ -967,8 +974,8 @@ function renderIncomeProtectionProposed(
       const price = formatCurrencyMonthly(monthly);
       const funding = plan.fundingSource ? fundingLabels[plan.fundingSource] ?? plan.fundingSource : '–';
       const insurerLogoPath = plan.provider ? INSURANCE_LOGOS[plan.provider] : undefined;
-      const insurerLogoHtml = renderLogoOrFallback(insurerLogoPath, plan.provider ?? '', 'width: 20px; height: 20px; object-fit: contain; vertical-align: middle; margin-right: 1.5mm;');
-      html += `<tr><td>${escapeHtml(person.displayName ?? '')}</td><td>${escapeHtml(roleLabel(person.roleType))}</td><td>${insurerLogoHtml}${insurerLogoPath ? ' ' + escapeHtml(plan.provider ?? '') : ''}</td><td>${escapeHtml(risks)}</td><td style="text-align:right">${price}</td><td>${escapeHtml(funding)}</td><td>${escapeHtml(plan.notes ?? '')}</td></tr>`;
+      const insurerLogoHtml = renderLogoOrFallback(insurerLogoPath, plan.provider ?? 'Pojišťovna', 'width: 20px; height: 20px; object-fit: contain; vertical-align: middle; margin-right: 1.5mm;');
+      html += `<tr><td>${escapeHtml(person.displayName ?? '')}</td><td>${escapeHtml(roleLabel(person.roleType))}</td><td>${insurerLogoHtml}</td><td>${escapeHtml(risks)}</td><td style="text-align:right">${price}</td><td>${escapeHtml(funding)}</td><td>${escapeHtml(plan.notes ?? '')}</td></tr>`;
     });
   });
   html += '</tbody></table>';

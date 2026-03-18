@@ -10,6 +10,14 @@ import {
   directorInsuranceRec,
   recalcStrategy,
 } from "@/lib/analyses/company-fa/calculations";
+import {
+  formatCzk,
+  formatCurrencyDaily,
+  formatCurrencyMonthly,
+  formatCurrencyYearly,
+  formatInteger,
+  formatPercent,
+} from "@/lib/analyses/financial/formatters";
 import { PDF_STYLES } from "@/lib/analyses/financial/report";
 
 function escapeHtml(s: string): string {
@@ -18,10 +26,6 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function fmt(n: number): string {
-  return n.toLocaleString("cs-CZ");
 }
 
 export function buildCompanyReportHTML(data: CompanyFaPayload): string {
@@ -73,15 +77,15 @@ export function buildCompanyReportHTML(data: CompanyFaPayload): string {
   <div class="pdf-section">
     <div class="h2">Přehled situace</div>
     <div class="kpi">
-      <div class="box"><span class="lbl">Zaměstnanci</span><div class="val">${company.employees ?? 0}</div></div>
-      <div class="box"><span class="lbl">Mzdový fond (měs.)</span><div class="val">${fmt(kpi1.wageFund)} Kč</div></div>
-      <div class="box"><span class="lbl">Tržby (rok)</span><div class="val">${fmt(finance.revenue ?? 0)} Kč</div></div>
-      <div class="box"><span class="lbl">Zisk / EBITDA</span><div class="val">${fmt(finance.profit ?? 0)} Kč</div></div>
-      <div class="box"><span class="lbl">Rezerva</span><div class="val">${fmt(finance.reserve ?? 0)} Kč</div></div>
+      <div class="box"><span class="lbl">Zaměstnanci</span><div class="val">${formatInteger(company.employees ?? 0)}</div></div>
+      <div class="box"><span class="lbl">Mzdový fond (měs.)</span><div class="val">${formatCurrencyMonthly(kpi1.wageFund)}</div></div>
+      <div class="box"><span class="lbl">Tržby (rok)</span><div class="val">${formatCurrencyYearly(finance.revenue ?? 0)}</div></div>
+      <div class="box"><span class="lbl">Zisk / EBITDA</span><div class="val">${formatCzk(finance.profit ?? 0)}</div></div>
+      <div class="box"><span class="lbl">Rezerva</span><div class="val">${formatCzk(finance.reserve ?? 0)}</div></div>
       <div class="box"><span class="lbl">Runway</span><div class="val">${kpi2.runway} měs.</div></div>
-      <div class="box"><span class="lbl">Splátky úvěrů (měs.)</span><div class="val">${fmt(finance.loanPayment ?? 0)} Kč</div></div>
-      <div class="box"><span class="lbl">3. kategorie</span><div class="val">${company.cat3 ?? 0}</div></div>
-      <div class="box"><span class="lbl">TOP klient (%)</span><div class="val">${company.topClient ?? 0} %</div></div>
+      <div class="box"><span class="lbl">Splátky úvěrů (měs.)</span><div class="val">${formatCurrencyMonthly(finance.loanPayment ?? 0)}</div></div>
+      <div class="box"><span class="lbl">3. kategorie</span><div class="val">${formatInteger(company.cat3 ?? 0)}</div></div>
+      <div class="box"><span class="lbl">TOP klient (%)</span><div class="val">${formatPercent((company.topClient ?? 0) / 100, 0)}</div></div>
     </div>
   </div>
 </section>
@@ -119,9 +123,9 @@ export function buildCompanyReportHTML(data: CompanyFaPayload): string {
               `<tr>
                 <td>${escapeHtml(inv.productKey)}</td>
                 <td>${inv.type}</td>
-                <td>${fmt(inv.amount ?? 0)}</td>
-                <td>${((inv.annualRate ?? 0) * 100).toFixed(1)} %</td>
-                <td>${fmt(inv.computed?.fv ?? 0)}</td>
+                <td style="text-align:right; font-variant-numeric: tabular-nums;">${formatCzk(inv.amount ?? 0)}</td>
+                <td style="text-align:center;">${formatPercent(inv.annualRate ?? 0, 1)}</td>
+                <td style="text-align:right; font-variant-numeric: tabular-nums;">${formatCzk(inv.computed?.fv ?? 0)}</td>
               </tr>`
           )
           .join("")}
@@ -133,9 +137,9 @@ export function buildCompanyReportHTML(data: CompanyFaPayload): string {
 <section class="pdf-page">
   <div class="pdf-section">
     <div class="h2">Zajištění příjmů – jednatel</div>
-    <p>Smrt: ${fmt(data.directorIns?.death ?? 0)} Kč, Invalidita: ${fmt(data.directorIns?.invalidity ?? 0)} Kč, PN/den: ${fmt(data.directorIns?.sick ?? 0)} Kč.</p>
-    <p style="font-size: 10pt; color: #475569;">Doporučené: smrt ${fmt(Math.round(insRec.recDeath))} Kč, invalidita ${fmt(Math.round(insRec.recInv))} Kč, PN ${insRec.recSickPerDay} Kč/den.</p>
-    ${insRec.invGap.gap > 0 ? `<p style="font-size: 10pt; color: #b45309;">Gap invalidita: ${fmt(Math.round(insRec.invGap.gap))} Kč</p>` : ""}
+    <p>Smrt: ${formatCzk(data.directorIns?.death ?? 0)}, Invalidita: ${formatCzk(data.directorIns?.invalidity ?? 0)}, PN/den: ${formatCurrencyDaily(data.directorIns?.sick ?? 0)}.</p>
+    <p style="font-size: 10pt; color: #475569;">Doporučené: smrt ${formatCzk(Math.round(insRec.recDeath))}, invalidita ${formatCzk(Math.round(insRec.recInv))}, PN ${formatCurrencyDaily(insRec.recSickPerDay)}.</p>
+    ${insRec.invGap.gap > 0 ? `<p style="font-size: 10pt; color: #b45309;">Gap invalidita: ${formatCzk(Math.round(insRec.invGap.gap))}</p>` : ""}
     ${insRec.isOsvc ? `<p style="font-size: 10pt; color: #b45309;">OSVČ: zvažte nemocenské pojištění.</p>` : ""}
   </div>
 </section>

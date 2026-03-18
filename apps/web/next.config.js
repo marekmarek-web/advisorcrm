@@ -1,13 +1,18 @@
 const path = require("path");
 
 const appRoot = path.resolve(__dirname);
+// In pnpm monorepo, Turbopack may infer workspace root from pnpm-lock.yaml (repo root).
+// Set root to app directory so Next.js package is resolvable; use absolute path.
+const turbopackRoot = path.resolve(appRoot);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["db"],
   serverExternalPackages: ["postgres"],
-  turbopack: { root: appRoot },
+  turbopack: {
+    root: turbopackRoot,
+  },
   webpack: (config, { isServer }) => {
     config.resolve = config.resolve ?? {};
     config.resolve.alias = {

@@ -354,11 +354,11 @@ const InteractiveMindmap = () => {
 
 // --- MOCK DATA REVIEWS (Pro nekonečný pás) ---
 const REVIEWS = [
-  { id: 1, text: "Od chvíle, co používám Aidvisoru, mi AI asistent každé ráno ukáže, na koho se zaměřit. Záchrana života.", author: "Martin Dvořák", role: "Finanční poradce", initials: "MD" },
+  { id: 1, text: "Od chvíle, co používám Aidvisoru, mi každé ráno vidím priority a na koho se zaměřit. Konečně přehled.", author: "Martin Dvořák", role: "Finanční poradce", initials: "MD" },
   { id: 2, text: "Klientská zóna výrazně zjednodušila sběr podkladů i komunikaci s klienty.", author: "Lucie Černá", role: "Týmová manažerka", initials: "LČ" },
-  { id: 3, text: "Komplexní finanční plán dělám teď za třetinu času. Generování PDF zní jako kouzlo, ale fakt to funguje na klik.", author: "Petr Nový", role: "Wealth Manager", initials: "PN" },
+  { id: 3, text: "Komplexní finanční plán dělám teď za zlomek času. Generování PDF reportu mám na jedno kliknutí.", author: "Petr Nový", role: "Wealth Manager", initials: "PN" },
   { id: 4, text: "Už žádný nepořádek v Excelu. Automatické napojení na kalendář a pipeline vizualizace mi zachránila desítky hodin měsíčně.", author: "Jana Malá", role: "Nezávislá poradkyně", initials: "JM" },
-  { id: 5, text: "Skvělá podpora a okamžitý přehled nad produkcí celého týmu. Pro manažery je to aktuálně nejlepší nástroj v ČR.", author: "Karel Svoboda", role: "Ředitel pobočky", initials: "KS" },
+  { id: 5, text: "Skvělá podpora a okamžitý přehled nad produkcí týmu. Pro manažery je to silný nástroj.", author: "Karel Svoboda", role: "Ředitel pobočky", initials: "KS" },
 ];
 
 const FAQS = [
@@ -596,19 +596,19 @@ export default function PremiumLandingPage() {
         <div className="max-w-[1200px] mx-auto text-center relative z-10 w-full">
           <div className="hero-anim inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8">
             <Command size={14} className="text-slate-400" />
-            <span className="text-xs font-bold text-slate-300">Komplexní webová aplikace. Ne jen webové stránky.</span>
+            <span className="text-xs font-bold text-slate-300">Pracovní systém pro finanční poradce a týmy.</span>
           </div>
 
           <h1 className="hero-anim delay-100 font-jakarta text-6xl md:text-8xl font-extrabold tracking-tight text-white leading-[1.05] mb-8">
             Povyšte své poradenství.<br />
-            <span className="text-glow-shimmer">O zbytek se postará Aidvisora.</span>
+            <span className="text-glow-shimmer">Přehled klientů, schůzek a dokumentů na jednom místě.</span>
           </h1>
 
           <p className="hero-anim delay-200 font-inter text-xl text-slate-400 max-w-3xl mx-auto mb-4 leading-relaxed">
             CRM a klientská zóna pro finanční poradce, která hlídá schůzky, follow-upy i dokumenty.
           </p>
           <p className="hero-anim delay-200 font-inter text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
-            Aidvisora spojuje kalendář, pipeline, klientský portál a AI práci se smlouvami do jednoho systému. Méně administrativy, více obchodu, lepší servis pro klienty.
+            Aidvisora spojuje kalendář, pipeline, klientský portál a práci s dokumenty v jednom systému. Méně administrativy, více obchodu, lepší servis pro klienty.
           </p>
 
           <div className="hero-anim delay-300 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -621,11 +621,11 @@ export default function PremiumLandingPage() {
           </div>
 
           <div className="hero-anim delay-400 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 pt-10 border-t border-white/10 max-w-3xl mx-auto">
-            <div><div className="text-3xl font-jakarta font-bold text-white mb-1">24/7</div><div className="text-xs font-bold uppercase tracking-widest text-slate-500">Klientský servis</div></div>
+            <div><div className="text-3xl font-jakarta font-bold text-white mb-1">24/7</div><div className="text-xs font-bold uppercase tracking-widest text-slate-500">Klientský portál 24/7</div></div>
             <div className="hidden md:block w-px h-10 bg-white/10"></div>
-            <div><div className="text-3xl font-jakarta font-bold text-white mb-1">100%</div><div className="text-xs font-bold uppercase tracking-widest text-slate-500">Digitální workflow</div></div>
+            <div><div className="text-3xl font-jakarta font-bold text-white mb-1">—</div><div className="text-xs font-bold uppercase tracking-widest text-slate-500">Digitální workflow</div></div>
             <div className="hidden md:block w-px h-10 bg-white/10"></div>
-            <div><div className="text-3xl font-jakarta font-bold text-white mb-1">15 hod.</div><div className="text-xs font-bold uppercase tracking-widest text-emerald-400">Týdně ušetřeno s AI</div></div>
+            <div><div className="text-3xl font-jakarta font-bold text-white mb-1">15 hod.</div><div className="text-xs font-bold uppercase tracking-widest text-emerald-400">Odhad úspor času s AI</div></div>
           </div>
         </div>
       </section>
@@ -670,13 +670,13 @@ export default function PremiumLandingPage() {
           <ScrollReveal>
             <div className="text-center mb-20">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-black uppercase tracking-widest mb-6">
-                <ArrowRight size={14} className="text-indigo-400"/> Změna paradigmatu
+                <ArrowRight size={14} className="text-indigo-400"/> Jak to vypadá v praxi
               </div>
               <h2 className="font-jakarta text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
-                Rozdíl, který pocítíte <span className="text-glow-shimmer">okamžitě.</span>
+                Rozdíl v <span className="text-glow-shimmer">každodenní práci.</span>
               </h2>
               <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-                Zastaralé metody vás stojí desítky hodin měsíčně. Podívejte se, jak vypadá moderní práce finančního profesionála.
+                Starý způsob: data v Excelu a e-mailech. S Aidvisorou: přehled klientů, úkolů a dokumentů na jednom místě.
               </p>
             </div>
           </ScrollReveal>
@@ -746,8 +746,8 @@ export default function PremiumLandingPage() {
                   {[
                     { icon: Database, text: 'Všechna klientská data na jednom místě', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
                     { icon: ShieldCheck, text: 'Šifrovaný portál pro sdílení dokumentů', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-                    { icon: Bot, text: 'AI samočinně analyzuje nahrané PDF', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-                    { icon: Bell, text: 'Systém automaticky hlídá příležitosti', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+                    { icon: Bot, text: 'AI pomáhá vyčíst údaje z nahraných PDF a navrhuje další krok.', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+                    { icon: Bell, text: 'Systém vás upozorní na blokátory, termíny a follow-upy.', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
                   ].map((item, i) => {
                     const Icon = item.icon;
                     return (
@@ -771,8 +771,8 @@ export default function PremiumLandingPage() {
           
           <ScrollReveal>
             <div className="text-center mb-20">
-              <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6">Jedna aplikace. Všechny nástroje.</h2>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto">Zahoďte desítky různých programů. Aidvisora je plnohodnotná webová aplikace, kde se vaše data prolínají napříč všemi moduly.</p>
+              <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6">Jedna platforma pro každodenní práci.</h2>
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto">Aidvisora je webová aplikace, kde se prolínají klienti, schůzky, obchody a dokumenty. Bez roztříštěných tabulek a e-mailů.</p>
             </div>
           </ScrollReveal>
 
@@ -780,9 +780,9 @@ export default function PremiumLandingPage() {
           <div className="flex flex-col lg:flex-row items-center gap-16">
             <ScrollReveal className="lg:w-1/2 space-y-6" direction="right">
               <div className="w-14 h-14 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 border border-indigo-500/30"><CalendarDays size={28}/></div>
-              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Mějte svůj čas pod absolutní kontrolou</h3>
+              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Kalendář a úkoly na jednom místě.</h3>
               <p className="text-lg text-slate-400 leading-relaxed">
-                Náš moderní kalendář není jen doplněk. Je to plnohodnotný nástroj s Drag & Drop plánováním, týdenní mřížkou a bočním panelem agendy, kam vám AI chystá úkoly na daný den.
+                Náš moderní kalendář není jen doplněk. Je to plnohodnotný nástroj s přetahováním, týdenní mřížkou a bočním panelem agendy, kam vám AI chystá úkoly na daný den.
               </p>
               <ul className="space-y-3 pt-4">
                 <li className="flex items-center gap-3 text-slate-300"><CheckCircle2 size={18} className="text-indigo-500"/> Obousměrná synchronizace (Google, MS)</li>
@@ -858,7 +858,7 @@ export default function PremiumLandingPage() {
 
             <ScrollReveal className="lg:w-1/2 space-y-6 order-1 lg:order-2" direction="left">
               <div className="w-14 h-14 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30"><KanbanSquare size={28}/></div>
-              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Vizualizujte svůj byznys v Pipeline</h3>
+              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Přehled obchodů a příležitostí v pipeline.</h3>
               <p className="text-lg text-slate-400 leading-relaxed">
                 Nenechte žádný obchod vychladnout. Přesouvejte klienty z Přípravy rovnou k Podpisu. Systém vás sám upozorní na blokátory nebo úkoly po termínu.
               </p>
@@ -869,9 +869,9 @@ export default function PremiumLandingPage() {
           <div className="flex flex-col lg:flex-row items-center gap-16">
             <ScrollReveal className="lg:w-1/2 space-y-6" direction="right">
               <div className="w-14 h-14 bg-orange-500/20 text-orange-400 rounded-2xl flex items-center justify-center mb-6 border border-orange-500/30"><Network size={28}/></div>
-              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Rodokmen financí na nekonečném plátně</h3>
+              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Struktura portfolia rodiny na jednom plátně.</h3>
               <p className="text-lg text-slate-400 leading-relaxed">
-                Interaktivní Mindmapa vám umožní vizualizovat strukturu portfolia rodiny. Zkuste si v ukázce vedle přidat nové uzly a libovolně je přesouvat či přejmenovat!
+                Interaktivní mindmapa umožňuje vizualizovat vztahy a portfolio rodiny. Uzly lze přidávat a přesouvat.
               </p>
             </ScrollReveal>
 
@@ -920,9 +920,9 @@ export default function PremiumLandingPage() {
 
             <ScrollReveal className="lg:w-1/2 space-y-6 order-1 lg:order-2" direction="left">
               <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/30"><Calculator size={28}/></div>
-              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Od dat k dokonalému finančnímu plánu</h3>
+              <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Od dat k finančnímu plánu a PDF reportu.</h3>
               <p className="text-lg text-slate-400 leading-relaxed">
-                Zkuste si zahýbat posuvníky vedle! Naše integrované investiční a hypoteční kalkulačky tvoří základ analýzy. Systém vás provede sběrem dat a vygeneruje oslnivý PDF report.
+                Zkuste si zahýbat posuvníky vedle! Naše integrované investiční a hypoteční kalkulačky tvoří základ analýzy. Systém vás provede sběrem dat a vygeneruje přehledný PDF report.
               </p>
             </ScrollReveal>
           </div>
@@ -971,7 +971,7 @@ export default function PremiumLandingPage() {
           <ScrollReveal>
             <div className="text-center mb-24">
               <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-4">Váš nový pracovní den.</h2>
-              <p className="text-xl text-slate-400">Jak Aidvisora mění chaos v dokonalý systém.</p>
+              <p className="text-xl text-slate-400">Jak může vypadat váš pracovní den s Aidvisorou.</p>
             </div>
           </ScrollReveal>
 
@@ -1043,7 +1043,7 @@ export default function PremiumLandingPage() {
               </div>
               <div className="hidden md:block md:w-5/12 text-left pl-12 order-3">
                  <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Čistý stůl</h3>
-                 <p className="text-slate-400">Přesouváte obchody v Kanbanu, delegujete úkoly na asistentku a odcházíte s čistou hlavou, protože CRM vše pohlídá za vás.</p>
+                 <p className="text-slate-400">Přesouváte obchody v Kanbanu, delegujete úkoly na asistentku a odcházíte s čistou hlavou. Přehled úkolů a obchodů máte v jednom místě, nic nepřeskočí.</p>
               </div>
             </ScrollReveal>
 
@@ -1057,7 +1057,7 @@ export default function PremiumLandingPage() {
           <ScrollReveal>
             <div className="text-center mb-16">
               <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-4">Aplikace, která se vám přizpůsobí.</h2>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto">Nezáleží, jestli jste vlk samotář, nebo řídíte celou firmu. Aidvisora má modul pro každého.</p>
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto">Ať jste samostatný poradce, nebo řídíte tým. Aidvisora má nástroje pro různé role.</p>
             </div>
           </ScrollReveal>
 
@@ -1191,13 +1191,13 @@ export default function PremiumLandingPage() {
               
               <div className="lg:w-1/2">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-8">
-                  <Bot size={16}/> Autopilot pro vaši praxi
+                  <Bot size={16}/> AI jako pomocník v praxi.
                 </div>
                 <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
                   AI, které hlídá priority, follow-upy a <span className="text-glow-shimmer">data ze smluv.</span>
                 </h2>
                 <p className="text-lg text-slate-400 mb-12 leading-relaxed">
-                  Naše AI nedělá jen souhrny textů. Skutečně analyzuje klientovo portfolio. Umí vyčíst data z PDF smluv a včas pošle notifikaci na úkol, který hoří.
+                  Naše AI nedělá jen souhrny textů. Pomáhá analyzovat klientovo portfolio. Umí vyčíst data z PDF smluv a včas pošle notifikaci na úkol, který hoří.
                 </p>
 
                 <div className="space-y-4">
@@ -1231,7 +1231,7 @@ export default function PremiumLandingPage() {
           <ScrollReveal delay={200}>
             <div className="max-w-4xl mx-auto text-center border border-white/10 bg-white/5 rounded-3xl p-10">
                <h3 className="font-jakarta text-2xl font-bold text-white mb-3">AI navrhuje, <span className="text-purple-400">poradce rozhoduje.</span></h3>
-               <p className="text-slate-400 mb-8 max-w-xl mx-auto">Věříme, že umělá inteligence je fantastický pomocník, ale u peněz má poslední slovo vždy člověk. Proto jsme nastavili jasná pravidla hry.</p>
+               <p className="text-slate-400 mb-8 max-w-xl mx-auto">Věříme, že umělá inteligence je užitečný pomocník, ale u peněz má poslední slovo vždy člověk. Proto jsme nastavili jasná pravidla.</p>
                
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                   <div className="flex flex-col gap-2">
@@ -1262,7 +1262,7 @@ export default function PremiumLandingPage() {
             <div className="text-center mb-24">
               <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6">Moderní a bezpečná infrastruktura.</h2>
               <p className="text-xl text-slate-400 max-w-3xl mx-auto">
-                Aplikace je postavená na nejnovějších cloudových technologiích. Vaše data jsou chráněna, izolována a připravena pro audity.
+                Data v bezpečném prostředí v EU. Aplikace běží v cloudu, máte k ní přístup odkudkoli a připravenost pro audity.
               </p>
             </div>
           </ScrollReveal>
@@ -1348,7 +1348,7 @@ export default function PremiumLandingPage() {
           <ScrollReveal>
             <div className="text-center mb-16">
               <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-6">Kolik vám Aidvisora vrátí?</h2>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto">Vyplňte základní parametry své praxe a podívejte se, kolik peněz a času vám dokážeme každý měsíc zachránit.</p>
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto">Vyplňte parametry praxe a podívejte se na odhad úspor času a příležitostí.</p>
             </div>
           </ScrollReveal>
 
@@ -1633,7 +1633,7 @@ export default function PremiumLandingPage() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/30 bg-white/10 text-xl font-bold text-white shrink-0" aria-hidden>A</span>
                 <span className="font-jakarta font-bold text-2xl tracking-tight text-white">Aidvisora</span>
               </Link>
-              <p className="text-sm max-w-sm leading-relaxed mb-6">Prémiová webová aplikace postavená na míru moderním finančním poradcům v České republice.</p>
+              <p className="text-sm max-w-sm leading-relaxed mb-6">Pracovní systém pro finanční poradce a týmy. CRM, klientská zóna a workflow na jednom místě.</p>
               <p className="text-xs">
                 <a href="mailto:podpora@aidvisora.cz" className="hover:text-white transition-colors">podpora@aidvisora.cz</a>
               </p>

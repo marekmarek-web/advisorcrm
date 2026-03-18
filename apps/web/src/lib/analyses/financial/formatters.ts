@@ -47,6 +47,15 @@ export function formatPercent(value: number, decimals = 1): string {
 }
 
 /**
+ * Format integer count (e.g. holdings, employees). No currency unit.
+ * Use for counts only; never append " Kč" to this output.
+ */
+export function formatInteger(value: number): string {
+  const n = Math.round(Number(value)) || 0;
+  return n.toLocaleString('cs-CZ');
+}
+
+/**
  * Format date in Czech locale.
  */
 export function formatDateCs(date: Date): string {

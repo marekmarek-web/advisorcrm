@@ -347,7 +347,7 @@ export function computeBenefitVsSalaryComparison(
 
   const explanation =
     estimatedSavingsMonthly > 0
-      ? `Při firemním příspěvku ${companyContributionMonthly.toLocaleString('cs-CZ')} Kč/měsíc firma ušetří oproti navýšení mzdy cca ${estimatedSavingsAnnual.toLocaleString('cs-CZ')} Kč ročně. Celá částka jde do pojištění.`
+      ? `Při firemním příspěvku ${companyContributionMonthly.toLocaleString('cs-CZ')} Kč/měs. firma ušetří oproti navýšení mzdy cca ${estimatedSavingsAnnual.toLocaleString('cs-CZ')} Kč ročně. Celá částka jde do pojištění.`
       : undefined;
 
   return {

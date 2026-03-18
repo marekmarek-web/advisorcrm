@@ -8,6 +8,7 @@ import { ContractsSection } from "./ContractsSection";
 import { DocumentsSection } from "./DocumentsSection";
 import { SendPaymentPdfButton } from "./SendPaymentPdfButton";
 import { ContactActivityTimeline } from "./ContactActivityTimeline";
+import { ContactEventsSection } from "./ContactEventsSection";
 
 export default async function ContactDetailPage({
   params,
@@ -88,6 +89,7 @@ export default async function ContactDetailPage({
         <SendPaymentPdfButton contactId={id} />
       </div>
       <DocumentsSection contactId={id} />
+      <ContactEventsSection contactId={id} />
       <ContactActivityTimeline contactId={id} />
       <Link href="/dashboard/contacts" className="text-sm font-medium" style={{ color: "var(--brand-main)" }}>
         ← Zpět na kontakty

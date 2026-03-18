@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <title>Aidvisor</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #0a0f29;
+        --surface: #121a3b;
+        --text: #f3f7ff;
+        --muted: #a7b3d6;
+        --accent: #ffcc00;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        font-family:
+          Inter,
+          "Source Sans 3",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+      }
+      .wrap {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding:
+          max(24px, env(safe-area-inset-top))
+          24px
+          max(24px, env(safe-area-inset-bottom));
+      }
+      .card {
+        width: min(420px, 100%);
+        padding: 28px 24px;
+        border-radius: 20px;
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        text-align: center;
+      }
+      .logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        margin: 0 auto 14px;
+        background: radial-gradient(circle at 30% 30%, #ffd84f 0%, var(--accent) 55%, #c79b00 100%);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        color: var(--text);
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .dots {
+        margin: 18px auto 0;
+        width: 52px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        animation: pulse 1.2s infinite ease-in-out;
+      }
+      .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.35;
+        }
+        50% {
+          transform: translateY(-4px);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>Aidvisor</h1>
+        <p>Načítám aplikaci… Pokud připojení trvá déle, zkontrolujte internet.</p>
+        <div class="dots" aria-hidden="true">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

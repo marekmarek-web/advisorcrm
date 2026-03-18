@@ -33,6 +33,8 @@ import {
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
 import { seedDemoData } from "@/app/actions/seed-demo";
 import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding } from "@/app/actions/preferences";
+import { GoogleCalendarUpcomingEvents } from "@/app/portal/setup/GoogleCalendarUpcomingEvents";
+import { GoogleCalendarAvailability } from "@/app/portal/setup/GoogleCalendarAvailability";
 import { listTenantMembers } from "@/app/actions/team";
 import {
   QUICK_ACTIONS_CATALOG,
@@ -92,7 +94,7 @@ interface AIIntegrationHealth {
 }
 
 const INTEGRATIONS: Integration[] = [
-  { id: "google-calendar", name: "Google Calendar", description: "Synchronizujte schůzky a události z Aidvisora s Google Kalendářem. Obousměrná synchronizace.", icon: "📅", status: "disconnected", category: "calendar", configFields: [{ key: "clientId", label: "Client ID", type: "text", placeholder: "Google OAuth Client ID" }, { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "Google OAuth Client Secret" }] },
+  { id: "google-calendar", name: "Google Calendar", description: "Synchronizujte schůzky a události z Aidvisora s Google Kalendářem. Propojte svůj Google účet – přihlášení proběhne v novém okně.", icon: "📅", status: "disconnected", category: "calendar" },
   { id: "openai-gpt", name: "OpenAI GPT Mini", description: "AI asistent pro sumarizaci schůzek, generování e-mailů a analýzu finančních dat klientů. API klíč se nastavuje v proměnných prostředí na serveru.", icon: "🤖", status: "disconnected", category: "ai" },
   { id: "resend", name: "Resend (E-mail)", description: "Odesílání transakčních a notifikačních e-mailů klientům.", icon: "✉️", status: "disconnected", category: "email", configFields: [{ key: "apiKey", label: "API Key", type: "password", placeholder: "re_..." }, { key: "fromEmail", label: "Odesílatel", type: "text", placeholder: "info@aidvisora.cz" }] },
   { id: "smart-emailing", name: "SmartEmailing", description: "Hromadné e-mailové kampaně a newslettery.", icon: "📧", status: "coming_soon", category: "email" },
@@ -357,9 +359,60 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [aiHealth, setAiHealth] = useState<AIIntegrationHealth | null>(null);
   const [aiHealthLoading, setAiHealthLoading] = useState(false);
   const [aiHealthTesting, setAiHealthTesting] = useState(false);
+  const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
+  const [calendarStatusLoading, setCalendarStatusLoading] = useState(false);
+  const [calendarStatusError, setCalendarStatusError] = useState<string | null>(null);
+  const [calendarDisconnecting, setCalendarDisconnecting] = useState(false);
   const handleSaveIntegration = useCallback((integrationId: string) => {
     toast.showToast("Konfigurace uložena");
   }, [toast]);
+
+  const fetchCalendarStatus = useCallback(async () => {
+    setCalendarStatusLoading(true);
+    setCalendarStatusError(null);
+    try {
+      const res = await fetch("/api/calendar/status");
+      if (!res.ok) {
+        setCalendarStatusError("Stav se nepodařilo načíst.");
+        setCalendarStatus(null);
+        return null;
+      }
+      const data = (await res.json()) as { connected: boolean; email?: string };
+      setCalendarStatus(data);
+      setCalendarStatusError(null);
+      return data;
+    } catch {
+      setCalendarStatusError("Stav se nepodařilo načíst.");
+      setCalendarStatus(null);
+      return null;
+    } finally {
+      setCalendarStatusLoading(false);
+    }
+  }, []);
+
+  const handleCalendarConnect = useCallback(() => {
+    window.location.href = "/api/integrations/google-calendar/connect";
+  }, []);
+
+  const handleCalendarDisconnect = useCallback(async () => {
+    if (!window.confirm("Opravdu chcete odpojit Google Kalendář? Události v aplikaci se již nebudou zobrazovat.")) return;
+    setCalendarDisconnecting(true);
+    setCalendarStatusError(null);
+    try {
+      const res = await fetch("/api/calendar/disconnect", { method: "POST" });
+      if (res.ok) {
+        await fetchCalendarStatus();
+        toast.showToast("Google Kalendář byl odpojen.", "success");
+      } else {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.showToast(data.error ?? "Odpojení se nepovedlo.", "error");
+      }
+    } catch {
+      toast.showToast("Odpojení se nepovedlo.", "error");
+    } finally {
+      setCalendarDisconnecting(false);
+    }
+  }, [fetchCalendarStatus, toast]);
 
   const fetchAiHealth = useCallback(async () => {
     try {
@@ -377,8 +430,16 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     if (activeTab === "integrace") {
       setAiHealthLoading(true);
       fetchAiHealth().finally(() => setAiHealthLoading(false));
+      fetchCalendarStatus();
     }
-  }, [activeTab, fetchAiHealth]);
+  }, [activeTab, fetchAiHealth, fetchCalendarStatus]);
+
+  useEffect(() => {
+    const calendar = searchParams.get("calendar");
+    const calendarError = searchParams.get("calendar_error");
+    if (calendar === "connected") toast.showToast("Google Kalendář byl úspěšně propojen.", "success");
+    if (calendarError) toast.showToast(calendarError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení se nepovedlo.", "error");
+  }, [searchParams, toast]);
 
   const handleTestAIConnection = useCallback(async () => {
     setAiHealthTesting(true);
@@ -1031,8 +1092,10 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 {INTEGRATIONS.filter((i) => integrationsCategory === "all" || i.category === integrationsCategory).map((integration) => {
                   const expanded = expandedId === integration.id;
                   const isOpenAI = integration.id === "openai-gpt";
+                  const isGoogleCalendar = integration.id === "google-calendar";
                   const openAIStatus: IntegrationStatus = aiHealthLoading ? "disconnected" : aiHealth?.ok ? "connected" : "disconnected";
-                  const badge = STATUS_BADGES[isOpenAI ? openAIStatus : integration.status];
+                  const googleCalendarStatus: IntegrationStatus = calendarStatusLoading ? "disconnected" : calendarStatus?.connected ? "connected" : "disconnected";
+                  const badge = STATUS_BADGES[isOpenAI ? openAIStatus : isGoogleCalendar ? googleCalendarStatus : integration.status];
                   const config = configs[integration.id] ?? {};
                   return (
                     <div key={integration.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
@@ -1050,8 +1113,44 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                       </div>
                       <div className="px-6 py-4 border-t border-slate-50">
                         <button type="button" onClick={() => setExpandedId(expanded ? null : integration.id)} className="w-full flex items-center justify-between text-sm font-bold text-indigo-600 hover:text-indigo-800 min-h-[44px]">
-                          {expanded ? "Zavřít" : isOpenAI ? "Stav připojení" : "Konfigurovat"} <ChevronRight size={14} className={expanded ? "rotate-90" : ""} />
+                          {expanded ? "Zavřít" : isOpenAI ? "Stav připojení" : isGoogleCalendar ? "Propojit kalendář" : "Konfigurovat"} <ChevronRight size={14} className={expanded ? "rotate-90" : ""} />
                         </button>
+                        {expanded && isGoogleCalendar && (
+                          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                            {calendarStatusLoading && calendarStatus === null && !calendarStatusError ? (
+                              <p className="text-sm text-slate-500 font-medium flex items-center gap-2" role="status">
+                                <Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> Načítám stav…
+                              </p>
+                            ) : calendarStatusError ? (
+                              <div className="space-y-2">
+                                <p className="text-sm text-amber-700 font-medium flex items-center gap-2">
+                                  <AlertCircle size={16} className="shrink-0" aria-hidden /> {calendarStatusError}
+                                </p>
+                                <button type="button" onClick={() => fetchCalendarStatus()} className="wp-btn min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-bold hover:bg-slate-200 flex items-center gap-2">
+                                  Zkusit znovu
+                                </button>
+                              </div>
+                            ) : calendarStatus?.connected ? (
+                              <>
+                                {calendarStatus.email && (
+                                  <p className="text-sm text-slate-700 font-medium flex items-center gap-2">
+                                    <Mail size={14} className="shrink-0 text-slate-500" aria-hidden /> {calendarStatus.email}
+                                  </p>
+                                )}
+                                <button type="button" onClick={handleCalendarDisconnect} disabled={calendarDisconnecting} className="wp-btn mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-bold hover:bg-slate-200 disabled:opacity-60 flex items-center gap-2" aria-busy={calendarDisconnecting}>
+                                  {calendarDisconnecting ? <Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> : null}
+                                  {calendarDisconnecting ? "Odpojuji…" : "Odpojit Google Kalendář"}
+                                </button>
+                                <GoogleCalendarUpcomingEvents />
+                                <GoogleCalendarAvailability />
+                              </>
+                            ) : (
+                              <button type="button" onClick={handleCalendarConnect} className="wp-btn wp-btn-primary mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700">
+                                Připojit Google účet
+                              </button>
+                            )}
+                          </div>
+                        )}
                         {expanded && isOpenAI && (
                           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                             {aiHealthLoading && !aiHealth ? (
@@ -1075,7 +1174,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                             )}
                           </div>
                         )}
-                        {expanded && integration.configFields && (
+                        {expanded && integration.configFields && !isGoogleCalendar && (
                           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                             {integration.configFields.map((field) => (
                               <div key={field.key}>

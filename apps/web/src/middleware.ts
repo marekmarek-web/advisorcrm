@@ -10,7 +10,9 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const isAuthCallbackWithCode =
     request.nextUrl.pathname === "/auth/callback" && request.nextUrl.searchParams.has("code");
-  if (host.includes("advisorcrm-web.vercel.app") && !isAuthCallbackWithCode) {
+  const isGoogleCalendarCallbackWithCode =
+    request.nextUrl.pathname === "/api/integrations/google-calendar/callback" && request.nextUrl.searchParams.has("code");
+  if (host.includes("advisorcrm-web.vercel.app") && !isAuthCallbackWithCode && !isGoogleCalendarCallbackWithCode) {
     const path = request.nextUrl.pathname === "/" && request.nextUrl.searchParams.get("code") ? "/auth/callback" : request.nextUrl.pathname;
     const url = new URL(path + request.nextUrl.search, PRODUCTION_DOMAIN);
     return NextResponse.redirect(url);
@@ -44,11 +46,13 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/ai/assistant") ||
     pathname === "/api/ai/dashboard-summary" ||
     pathname === "/api/ai/team-summary";
+  const isCalendarApi = pathname.startsWith("/api/calendar");
+  const isIntegrationsApi = pathname.startsWith("/api/integrations");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // /api/contracts/* a /api/ai/assistant/* (+ dashboard-summary): auth + dev bypass. Před skip auth.
-  if ((isContractsApi || isAiAssistantApi) && supabaseUrl && supabaseAnonKey) {
+  // /api/contracts/*, /api/ai/*, /api/calendar/*, /api/integrations/*: auth + dev bypass. Před skip auth.
+  if ((isContractsApi || isAiAssistantApi || isCalendarApi || isIntegrationsApi) && supabaseUrl && supabaseAnonKey) {
     const method = request.method;
     const response = NextResponse.next({ request });
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -167,6 +171,8 @@ export const config = {
     "/api/contracts/:path*",
     "/api/ai/assistant/:path*",
     "/api/ai/dashboard-summary",
+    "/api/calendar/:path*",
+    "/api/integrations/:path*",
     "/login",
     "/register",
   ],

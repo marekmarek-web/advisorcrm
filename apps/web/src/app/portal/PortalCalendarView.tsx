@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, MoreVertical, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, MoreVertical, X, RefreshCw } from "lucide-react";
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
@@ -550,6 +550,7 @@ export function PortalCalendarView() {
   }, [mode, currentDate, rangeStart, selectedDate]);
 
   const [calendarLoadError, setCalendarLoadError] = useState(false);
+  const [calendarSyncLoading, setCalendarSyncLoading] = useState(false);
   const loadEvents = useCallback(() => {
     setLoading(true);
     setCalendarLoadError(false);
@@ -561,6 +562,35 @@ export function PortalCalendarView() {
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
   useEffect(() => { getContactsList().then(setContacts).catch(() => setContacts([])); }, []);
+
+  const handleCalendarSync = useCallback(async () => {
+    setCalendarSyncLoading(true);
+    try {
+      const res = await fetch("/api/calendar/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          timeMin: rangeStart.toISOString(),
+          timeMax: rangeEnd.toISOString(),
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; created?: number; updated?: number };
+      if (data.ok) {
+        loadEvents();
+        toast.showToast(
+          data.created !== undefined || data.updated !== undefined
+            ? `Synchronizováno: ${data.created ?? 0} nových, ${data.updated ?? 0} upraveno.`
+            : "Kalendář byl synchronizován s Google."
+        );
+      } else {
+        toast.showToast(data.error ?? "Synchronizace se nepovedla.", "error");
+      }
+    } catch {
+      toast.showToast("Synchronizace se nepovedla.", "error");
+    } finally {
+      setCalendarSyncLoading(false);
+    }
+  }, [rangeStart, rangeEnd, loadEvents, toast]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   useEffect(() => { getOpenOpportunitiesList().then(setOpportunities).catch(() => setOpportunities([])); }, []);
 
@@ -829,6 +859,9 @@ export function PortalCalendarView() {
                 <div className="w-px h-5 bg-slate-200 hidden sm:block" />
                 <button type="button" onClick={() => setContextPanelCollapsed((c) => !c)} className={`p-1.5 rounded-lg transition-colors hidden sm:flex ${!contextPanelCollapsed ? "text-indigo-600 bg-indigo-50" : "text-slate-400 hover:bg-slate-100"}`} title="Přepnout postranní panel">
                   {!contextPanelCollapsed ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+                </button>
+                <button type="button" onClick={handleCalendarSync} disabled={calendarSyncLoading} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-95 min-h-[44px] sm:min-h-0 disabled:opacity-60" title="Synchronizovat s Google Kalendářem">
+                  <RefreshCw size={16} className={calendarSyncLoading ? "animate-spin" : ""} /> {calendarSyncLoading ? "Sync…" : "Sync s Google"}
                 </button>
                 <button type="button" onClick={() => openNew(todayStr)} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs sm:text-sm font-bold hover:bg-indigo-700 shadow-sm transition-all active:scale-95 min-h-[44px] sm:min-h-0">
                   <Plus size={16} /> Vytvořit

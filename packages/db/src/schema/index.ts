@@ -24,6 +24,7 @@ export * from "./portal-notifications";
 export * from "./mindmap";
 export * from "./advisor-preferences";
 export * from "./user-profiles";
+export * from "./user-google-calendar-integrations";
 export * from "./team-goals";
 export * from "./team-events";
 export * from "./advisor-business-plan";
