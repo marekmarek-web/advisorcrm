@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { getContractReviewById } from "./review-queue-repository";
 import { listContractReviews } from "./review-queue-repository";
 import { getTasksDueAndOverdue } from "./dashboard-priority";
+import { getClientAiContext } from "@/lib/client-ai-context";
 
 export type OpenReviewResult =
   | { ok: true; href: string }
@@ -105,20 +106,43 @@ export type DraftEmailResult =
 
 /**
  * Generate draft email content. Does not send or persist. Caller may copy to clipboard or open mailto.
+ * Uses AI-ready client_ai_context view for controlled context (no raw payloads).
  */
 export async function draftClientEmail(
   _clientId: string,
   _tenantId: string,
   _payload: { subject?: string; context?: string }
 ): Promise<DraftEmailResult> {
-  const client = await getClientDetails(_clientId, _tenantId);
-  if (!client.ok) return { ok: false, error: client.error };
+  let ctx: Awaited<ReturnType<typeof getClientAiContext>> = null;
+  try {
+    ctx = await getClientAiContext(_clientId, _tenantId);
+  } catch {
+    // View may not exist yet (migration not applied); fall back to getClientDetails
+  }
+  if (!ctx) {
+    const fallback = await getClientDetails(_clientId, _tenantId);
+    if (!fallback.ok) return { ok: false, error: fallback.error };
+    const name = fallback.name;
+    const bodyText = _payload.context
+      ? `Dobrý den,\n\n${_payload.context}\n\nS pozdravem`
+      : `Dobrý den, pane/paní ${name},\n\n\n\nS pozdravem`;
+    return {
+      ok: true,
+      subject: _payload.subject ?? `Follow-up – ${name}`,
+      body: bodyText,
+    };
+  }
+  const name = ctx.display_name || "Klient";
+  const serviceNote =
+    ctx.next_service_due
+      ? `\n\nPozn.: Servisní termín ${ctx.next_service_due}.`
+      : "";
   const bodyText = _payload.context
-    ? `Dobrý den,\n\n${_payload.context}\n\nS pozdravem`
-    : `Dobrý den, pane/paní ${client.name},\n\n\n\nS pozdravem`;
+    ? `Dobrý den,\n\n${_payload.context}${serviceNote}\n\nS pozdravem`
+    : `Dobrý den, pane/paní ${name},\n\n\n\n${serviceNote}\n\nS pozdravem`;
   return {
     ok: true,
-    subject: _payload.subject ?? `Follow-up – ${client.name}`,
+    subject: _payload.subject ?? `Follow-up – ${name}`,
     body: bodyText,
   };
 }

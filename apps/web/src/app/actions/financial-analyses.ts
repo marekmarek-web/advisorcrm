@@ -3,7 +3,7 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { db } from "db";
-import { financialAnalyses, householdMembers } from "db";
+import { financialAnalyses, householdMembers, contacts, households } from "db";
 import { eq, and, desc } from "db";
 
 export type FinancialAnalysisStatus = "draft" | "completed" | "exported" | "archived";
@@ -183,6 +183,24 @@ export async function saveFinancialAnalysisDraft(params: {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
   const { id, contactId, householdId, payload } = params;
+
+  if (contactId) {
+    const [c] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!c) throw new Error("Kontakt nenalezen.");
+  }
+  if (householdId) {
+    const [h] = await db
+      .select({ id: households.id })
+      .from(households)
+      .where(and(eq(households.id, householdId), eq(households.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!h) throw new Error("Domácnost nenalezena.");
+  }
+
   const now = new Date();
   if (id) {
     await db

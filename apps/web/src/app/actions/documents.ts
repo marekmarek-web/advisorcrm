@@ -3,10 +3,11 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { db } from "db";
-import { documents, auditLog } from "db";
+import { documents } from "db";
 import { eq, and } from "db";
 import { createAdminClient } from "@/lib/supabase/server";
 import { logActivity } from "./activity";
+import { logAudit } from "@/lib/audit";
 
 export type DocumentRow = {
   id: string;
@@ -118,6 +119,16 @@ export async function uploadDocument(
   const newId = row?.id ?? null;
   if (newId) {
     try { await logActivity("document", newId, "upload", { contactId, opportunityId: options.opportunityId, name }); } catch {}
+    try {
+      await logAudit({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        action: "upload",
+        entityType: "document",
+        entityId: newId,
+        meta: { contactId: contactId ?? undefined, opportunityId: options.opportunityId, name },
+      });
+    } catch {}
   }
   return newId;
 }
@@ -138,6 +149,15 @@ export async function deleteDocument(id: string) {
     .delete(documents)
     .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.id, id)));
   try { await logActivity("document", id, "delete"); } catch {}
+  try {
+    await logAudit({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: "delete",
+      entityType: "document",
+      entityId: id,
+    });
+  } catch {}
 }
 
 export async function updateDocument(
@@ -161,7 +181,7 @@ export async function updateDocument(
 
 export async function logDocumentDownload(documentId: string) {
   const auth = await requireAuthInAction();
-  await db.insert(auditLog).values({
+  await logAudit({
     tenantId: auth.tenantId,
     userId: auth.userId,
     action: "download",

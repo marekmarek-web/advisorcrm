@@ -1,5 +1,7 @@
-"use server";
-
+/**
+ * Central AI service layer – server-only. Called from server actions (e.g. ai-generations.ts).
+ * Do not call from client components.
+ */
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { getPromptId, getPromptVersion, type PromptType } from "@/lib/ai/prompt-registry";
@@ -18,6 +20,10 @@ import {
 
 const SAFE_ERROR = "Generování se nepovedlo. Zkuste to později.";
 const NOT_CONFIGURED = "Tato funkce není nakonfigurována (chybí prompt ID v nastavení).";
+
+export type GenerationSuccess = { ok: true; text: string; generationId: string };
+export type GenerationFailure = { ok: false; error: string; generationId?: string };
+export type GenerationResult = GenerationSuccess | GenerationFailure;
 
 function ensureClientAccess(clientId: string): Promise<{ tenantId: string; userId: string }> {
   return (async () => {
@@ -53,7 +59,7 @@ function auditLog(params: {
 export async function generateClientSummary(
   clientId: string,
   userId: string
-): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+): Promise<GenerationResult> {
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "clientSummary";
@@ -78,7 +84,7 @@ export async function generateClientSummary(
         success: false,
         error: result.error,
       });
-      await saveGeneration({
+      const failureId = await saveGeneration({
         tenantId: auth.tenantId,
         entityType: "contact",
         entityId: clientId,
@@ -88,11 +94,11 @@ export async function generateClientSummary(
         generatedByUserId: userId,
         outputText: "",
         status: "failure",
-      }).catch(() => {});
-      return { ok: false, error: SAFE_ERROR };
+      }).catch(() => "");
+      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
     }
 
-    await saveGeneration({
+    const generationId = await saveGeneration({
       tenantId: auth.tenantId,
       entityType: "contact",
       entityId: clientId,
@@ -110,7 +116,7 @@ export async function generateClientSummary(
       promptType,
       success: true,
     });
-    return { ok: true, text: result.text };
+    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden" || message.includes("Kontakt nenalezen")) {
@@ -124,7 +130,7 @@ export async function generateClientSummary(
 export async function generateClientOpportunities(
   clientId: string,
   userId: string
-): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+): Promise<GenerationResult> {
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "clientOpportunities";
@@ -149,7 +155,7 @@ export async function generateClientOpportunities(
         success: false,
         error: result.error,
       });
-      await saveGeneration({
+      const failureId = await saveGeneration({
         tenantId: auth.tenantId,
         entityType: "contact",
         entityId: clientId,
@@ -159,11 +165,11 @@ export async function generateClientOpportunities(
         generatedByUserId: userId,
         outputText: "",
         status: "failure",
-      }).catch(() => {});
-      return { ok: false, error: SAFE_ERROR };
+      }).catch(() => "");
+      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
     }
 
-    await saveGeneration({
+    const generationId = await saveGeneration({
       tenantId: auth.tenantId,
       entityType: "contact",
       entityId: clientId,
@@ -181,7 +187,7 @@ export async function generateClientOpportunities(
       promptType,
       success: true,
     });
-    return { ok: true, text: result.text };
+    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden" || message.includes("Kontakt nenalezen")) {
@@ -195,7 +201,7 @@ export async function generateClientOpportunities(
 export async function generateNextBestAction(
   clientId: string,
   userId: string
-): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+): Promise<GenerationResult> {
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "nextBestAction";
@@ -220,7 +226,7 @@ export async function generateNextBestAction(
         success: false,
         error: result.error,
       });
-      await saveGeneration({
+      const failureId = await saveGeneration({
         tenantId: auth.tenantId,
         entityType: "contact",
         entityId: clientId,
@@ -230,11 +236,11 @@ export async function generateNextBestAction(
         generatedByUserId: userId,
         outputText: "",
         status: "failure",
-      }).catch(() => {});
-      return { ok: false, error: SAFE_ERROR };
+      }).catch(() => "");
+      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
     }
 
-    await saveGeneration({
+    const generationId = await saveGeneration({
       tenantId: auth.tenantId,
       entityType: "contact",
       entityId: clientId,
@@ -252,7 +258,7 @@ export async function generateNextBestAction(
       promptType,
       success: true,
     });
-    return { ok: true, text: result.text };
+    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden" || message.includes("Kontakt nenalezen")) {
@@ -267,7 +273,7 @@ export async function generatePreMeetingBriefing(
   clientId: string,
   userId: string,
   eventId?: string | null
-): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+): Promise<GenerationResult> {
   try {
     const auth = await ensureClientAccess(clientId);
     if (eventId) {
@@ -301,7 +307,7 @@ export async function generatePreMeetingBriefing(
         success: false,
         error: result.error,
       });
-      await saveGeneration({
+      const failureId = await saveGeneration({
         tenantId: auth.tenantId,
         entityType,
         entityId,
@@ -311,11 +317,11 @@ export async function generatePreMeetingBriefing(
         generatedByUserId: userId,
         outputText: "",
         status: "failure",
-      }).catch(() => {});
-      return { ok: false, error: SAFE_ERROR };
+      }).catch(() => "");
+      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
     }
 
-    await saveGeneration({
+    const generationId = await saveGeneration({
       tenantId: auth.tenantId,
       entityType,
       entityId,
@@ -333,7 +339,7 @@ export async function generatePreMeetingBriefing(
       promptType,
       success: true,
     });
-    return { ok: true, text: result.text };
+    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden") return { ok: false, error: message };
@@ -347,7 +353,7 @@ export async function generatePostMeetingFollowup(
   userId: string,
   meetingNotes: string,
   meetingId?: string | null
-): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+): Promise<GenerationResult> {
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "postMeetingFollowup";
@@ -375,7 +381,7 @@ export async function generatePostMeetingFollowup(
         success: false,
         error: result.error,
       });
-      await saveGeneration({
+      const failureId = await saveGeneration({
         tenantId: auth.tenantId,
         entityType,
         entityId,
@@ -385,11 +391,11 @@ export async function generatePostMeetingFollowup(
         generatedByUserId: userId,
         outputText: "",
         status: "failure",
-      }).catch(() => {});
-      return { ok: false, error: SAFE_ERROR };
+      }).catch(() => "");
+      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
     }
 
-    await saveGeneration({
+    const generationId = await saveGeneration({
       tenantId: auth.tenantId,
       entityType,
       entityId,
@@ -407,7 +413,7 @@ export async function generatePostMeetingFollowup(
       promptType,
       success: true,
     });
-    return { ok: true, text: result.text };
+    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden") return { ok: false, error: message };
@@ -423,7 +429,7 @@ export async function generateTeamSummary(
   teamId: string,
   userId: string,
   period: string
-): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+): Promise<GenerationResult> {
   try {
     const auth = await requireAuthInAction();
     if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
@@ -440,9 +446,22 @@ export async function generateTeamSummary(
       { store: false }
     );
 
-    if (!result.ok) return { ok: false, error: SAFE_ERROR };
+    if (!result.ok) {
+      const failureId = await saveGeneration({
+        tenantId: auth.tenantId,
+        entityType: "team",
+        entityId: teamId,
+        promptType,
+        promptId,
+        promptVersion: version ?? undefined,
+        generatedByUserId: userId,
+        outputText: "",
+        status: "failure",
+      }).catch(() => "");
+      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
+    }
 
-    await saveGeneration({
+    const generationId = await saveGeneration({
       tenantId: auth.tenantId,
       entityType: "team",
       entityId: teamId,
@@ -453,7 +472,7 @@ export async function generateTeamSummary(
       outputText: result.text,
       status: "success",
     });
-    return { ok: true, text: result.text };
+    return { ok: true, text: result.text, generationId };
   } catch (err) {
     console.error("[AI] generateTeamSummary", teamId, err);
     return { ok: false, error: SAFE_ERROR };

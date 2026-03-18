@@ -6,6 +6,7 @@ import { runContractUnderstandingPipeline } from "@/lib/ai/contract-understandin
 import { findClientCandidates, buildAllDraftActions } from "@/lib/ai/draft-actions";
 import { isMatchingAmbiguous } from "@/lib/ai/client-matching";
 import { logOpenAICall } from "@/lib/openai";
+import { logAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,13 @@ export async function POST(request: Request) {
     await updateContractReview(reviewId, tenantId, {
       processingStatus: "processing",
     });
+    await logAudit({
+      tenantId,
+      userId,
+      action: "extraction_started",
+      entityType: "contract_review",
+      entityId: reviewId,
+    }).catch(() => {});
 
     const { data: signed } = await admin.storage
       .from("documents")
@@ -122,6 +130,14 @@ export async function POST(request: Request) {
         processingStatus: "failed",
         errorMessage: "Nepodařilo se vytvořit odkaz na soubor.",
       });
+      await logAudit({
+        tenantId,
+        userId,
+        action: "extraction_failed",
+        entityType: "contract_review",
+        entityId: reviewId,
+        meta: { reason: "no_signed_url" },
+      }).catch(() => {});
       return NextResponse.json(
         { error: "Zpracování selhalo." },
         { status: 500 }
@@ -154,6 +170,14 @@ export async function POST(request: Request) {
         errorMessage: pipelineResult.errorMessage + errDetail,
         extractionTrace: pipelineResult.extractionTrace ?? undefined,
       });
+      await logAudit({
+        tenantId,
+        userId,
+        action: "extraction_failed",
+        entityType: "contract_review",
+        entityId: reviewId,
+        meta: { step: pipelineResult.extractionTrace?.failedStep },
+      }).catch(() => {});
       logOpenAICall({
         endpoint: "contracts/upload_pipeline",
         model: "—",
@@ -190,6 +214,14 @@ export async function POST(request: Request) {
       fieldConfidenceMap: pipelineResult.fieldConfidenceMap ?? undefined,
       classificationReasons: pipelineResult.classificationReasons.length ? pipelineResult.classificationReasons : null,
     });
+    await logAudit({
+      tenantId,
+      userId,
+      action: "extraction_completed",
+      entityType: "contract_review",
+      entityId: reviewId,
+      meta: { processingStatus: pipelineResult.processingStatus },
+    }).catch(() => {});
 
     logOpenAICall({
       endpoint: "contracts/upload_pipeline",

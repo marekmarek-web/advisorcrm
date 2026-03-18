@@ -4,6 +4,9 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { getContractReviewById, updateContractReview } from "@/lib/ai/review-queue-repository";
 import { applyContractReview } from "@/lib/ai/apply-contract-review";
+import { db } from "db";
+import { contacts } from "db";
+import { eq, and } from "db";
 
 export type ContractReviewActionResult =
   | { ok: true; payload?: import("@/lib/ai/review-queue-repository").ApplyResultPayload }
@@ -86,6 +89,14 @@ export async function selectMatchedClient(
   if (!row) return { ok: false, error: "Položka nenalezena." };
   if (row.reviewStatus !== "pending" && row.reviewStatus !== null) {
     return { ok: false, error: "Položka již byla zpracována." };
+  }
+  const [contact] = await db
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(and(eq(contacts.id, clientId), eq(contacts.tenantId, auth.tenantId)))
+    .limit(1);
+  if (!contact) {
+    return { ok: false, error: "Klient nenalezen." };
   }
   await updateContractReview(reviewId, auth.tenantId, {
     matchedClientId: clientId,

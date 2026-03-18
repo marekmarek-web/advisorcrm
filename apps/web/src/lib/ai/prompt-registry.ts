@@ -49,15 +49,80 @@ export function getPromptVersion(type: PromptType): string | null {
   return global || null;
 }
 
-export type PromptConfig = { id: string; version?: string };
+/** Variables required by each prompt type (for validation / safe fallback). */
+export const REQUIRED_VARIABLES: Record<PromptType, string[]> = {
+  clientSummary: [
+    "client_profile",
+    "household_summary",
+    "financial_summary",
+    "contracts_summary",
+    "timeline_events",
+    "open_items",
+    "service_status",
+    "active_deals",
+  ],
+  clientOpportunities: [
+    "client_profile",
+    "household_summary",
+    "financial_summary",
+    "contracts_summary",
+    "timeline_events",
+    "open_items",
+    "service_status",
+    "active_deals",
+  ],
+  nextBestAction: [
+    "client_profile",
+    "household_summary",
+    "financial_summary",
+    "contracts_summary",
+    "timeline_events",
+    "open_items",
+    "service_status",
+    "active_deals",
+  ],
+  preMeetingBriefing: [
+    "client_profile",
+    "household_summary",
+    "financial_summary",
+    "contracts_summary",
+    "timeline_events",
+    "open_items",
+    "service_status",
+    "active_deals",
+    "meeting_context",
+  ],
+  postMeetingFollowup: [
+    "client_profile",
+    "household_summary",
+    "financial_summary",
+    "contracts_summary",
+    "timeline_events",
+    "open_items",
+    "service_status",
+    "active_deals",
+    "meeting_notes",
+  ],
+  teamSummary: ["team_id", "period", "events_summary", "tasks_summary"],
+};
+
+export type PromptConfig = {
+  id: string;
+  version?: string;
+  requiredVariables: string[];
+};
 
 /**
- * Returns prompt id and optional version for the given type.
+ * Returns prompt id, optional version, and required variables for the given type.
  * Returns null if prompt id is not set (service should fail safely).
  */
 export function getPromptConfig(type: PromptType): PromptConfig | null {
   const id = getPromptId(type);
   if (!id) return null;
   const version = getPromptVersion(type);
-  return version ? { id, version } : { id };
+  return {
+    id,
+    ...(version ? { version } : {}),
+    requiredVariables: REQUIRED_VARIABLES[type] ?? [],
+  };
 }

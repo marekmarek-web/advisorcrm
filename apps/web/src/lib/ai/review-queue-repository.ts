@@ -2,6 +2,7 @@ import { db } from "db";
 import { contractUploadReviews } from "db";
 import { eq, and, desc } from "drizzle-orm";
 import type { ContractProcessingStatus, ContractReviewStatus } from "db";
+import { logAudit } from "@/lib/audit";
 
 export type ApplyResultPayload = {
   createdClientId?: string;
@@ -244,4 +245,12 @@ export async function saveContractCorrection(
     correctedBy: params.correctedBy ?? null,
     correctedAt: new Date(),
   });
+  await logAudit({
+    tenantId,
+    userId: params.correctedBy ?? null,
+    action: "extraction_reviewed",
+    entityType: "contract_review",
+    entityId: id,
+    meta: { correctedFields: params.correctedFields },
+  }).catch(() => {});
 }

@@ -12,10 +12,27 @@ import {
   generatePostMeetingFollowup,
 } from "@/lib/ai/ai-service";
 import { getLatestGeneration } from "@/lib/ai/ai-generations-repository";
+import {
+  createAiFeedback,
+  type AiFeedbackVerdict,
+  type AiFeedbackActionTaken,
+  type CreateAiFeedbackResult,
+} from "@/app/actions/ai-feedback";
 
-type ResultOk = { ok: true; text: string };
-type ResultErr = { ok: false; error: string };
-type GenResult = ResultOk | ResultErr;
+export type ResultOk = { ok: true; text: string; generationId?: string };
+export type ResultErr = { ok: false; error: string; generationId?: string };
+export type GenResult = ResultOk | ResultErr;
+
+/** Submit feedback for an AI generation (alias for createAiFeedback). */
+export async function submitAiFeedbackAction(
+  generationId: string,
+  verdict: AiFeedbackVerdict,
+  options?: { actionTaken?: AiFeedbackActionTaken | null; note?: string | null }
+): Promise<CreateAiFeedbackResult> {
+  return createAiFeedback(generationId, verdict, options);
+}
+
+export type { AiFeedbackVerdict, AiFeedbackActionTaken, CreateAiFeedbackResult };
 
 function ensureContactAccess(contactId: string): Promise<void> {
   return (async () => {
@@ -182,6 +199,29 @@ export async function getLatestMeetingGeneration(
 ): Promise<MeetingGenerationItem> {
   try {
     const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:read")) return null;
+    const r = await getLatestGeneration(auth.tenantId, entityType, entityId, promptType);
+    if (!r || r.status !== "success") return null;
+    return {
+      promptType: r.promptType,
+      outputText: r.outputText,
+      createdAt: r.createdAt,
+      id: r.id,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Get latest AI generation for any entity and prompt type. Auth + tenant scoped. */
+export async function getLatestGenerationAction(
+  entityType: string,
+  entityId: string,
+  promptType: string
+): Promise<ClientGenerationItem | null> {
+  try {
+    const auth = await requireAuthInAction();
+    if (auth.roleName === "Client") return null;
     if (!hasPermission(auth.roleName, "contacts:read")) return null;
     const r = await getLatestGeneration(auth.tenantId, entityType, entityId, promptType);
     if (!r || r.status !== "success") return null;
