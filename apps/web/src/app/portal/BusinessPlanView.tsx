@@ -1,66 +1,105 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Target,
-  Calendar,
-  TrendingUp,
-  AlertCircle,
   Plus,
-  Pencil,
+  Sparkles,
+  TrendingUp,
+  Users,
+  Calendar,
   ChevronRight,
+  BarChart3,
+  Trophy,
+  Phone,
+  Edit2,
+  Compass,
+  PieChart,
+  Flag,
+  FileSignature,
+  ArrowRight,
+  X,
+  Save,
+  Check,
+  UsersRound,
 } from "lucide-react";
 import type { PeriodType } from "@/lib/business-plan/types";
 import {
-  METRIC_TYPE_LABELS,
-  HEALTH_STATUS_LABELS,
-  BUSINESS_PLAN_METRIC_TYPES,
   getPlanPeriod,
   getCurrentPeriodNumbers,
+  computeReverseMath,
+  HEALTH_STATUS_LABELS,
 } from "@/lib/business-plan/types";
-import type { PlanProgress, PlanHealthStatus, MetricProgress } from "@/lib/business-plan/types";
-import type { SlippageRecommendation } from "@/lib/business-plan/types";
 import {
   getActivePlan,
   getPlanProgress,
   createBusinessPlan,
   setPlanTargets,
+  getVisionGoals,
+  upsertVisionGoals,
+  getTeamBusinessPlanSummary,
   type PlanWithTargetsRow,
   type PlanProgressResult,
+  type TeamBusinessPlanMemberSummary,
 } from "@/app/actions/business-plan";
-import { BaseModal } from "@/app/components/BaseModal";
 import { SkeletonBlock } from "@/app/components/Skeleton";
 
-const PERIOD_OPTIONS: { value: PeriodType; label: string }[] = [
-  { value: "month", label: "Měsíc" },
-  { value: "quarter", label: "Kvartál" },
-  { value: "year", label: "Rok" },
+const PERIOD_OPTIONS: { id: PeriodType; label: string }[] = [
+  { id: "month", label: "Měsíc" },
+  { id: "quarter", label: "Kvartál" },
+  { id: "year", label: "Rok" },
 ];
 
-function formatValue(value: number, unit: string): string {
-  if (unit === "czk") return `${Math.round(value).toLocaleString("cs-CZ")} Kč`;
-  return String(Math.round(value));
+const VISION_COLORS = [
+  { colorClass: "bg-emerald-400", textClass: "text-emerald-400" },
+  { colorClass: "bg-amber-400", textClass: "text-amber-400" },
+  { colorClass: "bg-blue-400", textClass: "text-blue-400" },
+] as const;
+function visionRowToGoal(row: { id: string; title: string; progressPct: number }, index: number): VisionGoal {
+  const c = VISION_COLORS[index % VISION_COLORS.length];
+  return {
+    id: row.id,
+    title: row.title,
+    progress: row.progressPct,
+    colorClass: c.colorClass,
+    textClass: c.textClass,
+  };
 }
 
-const HEALTH_BADGE_CLASS: Record<PlanHealthStatus, string> = {
-  achieved: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  exceeded: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  on_track: "bg-blue-100 text-blue-800 border-blue-200",
-  slight_slip: "bg-amber-100 text-amber-800 border-amber-200",
-  significant_slip: "bg-red-100 text-red-800 border-red-200",
-  no_data: "bg-slate-100 text-slate-600 border-slate-200",
-  not_applicable: "bg-slate-100 text-slate-500 border-slate-200",
-};
+const MIX_COLORS = [
+  { label: "Investice", color: "#10b981" },
+  { label: "Životní poj.", color: "#f43f5e" },
+  { label: "Hypotéky", color: "#3b82f6" },
+];
+const DEFAULT_MIX_PCT = [50, 30, 20];
+
+type VisionGoal = { id: string; title: string; progress: number; colorClass: string; textClass: string };
+
+function getMetric(progress: PlanProgressResult["progress"], metricType: string): { actual: number; target: number; unit: string } {
+  const m = progress.metrics.find((x) => x.metricType === metricType);
+  return {
+    actual: m?.actual ?? 0,
+    target: m?.target ?? 0,
+    unit: m?.unit === "czk" ? "Kč" : "",
+  };
+}
 
 export function BusinessPlanView() {
   const [periodType, setPeriodType] = useState<PeriodType>("month");
   const [plan, setPlan] = useState<PlanWithTargetsRow | null>(null);
   const [progressResult, setProgressResult] = useState<PlanProgressResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [visionGoals, setVisionGoals] = useState<VisionGoal[]>([]);
+  const [isVisionModalOpen, setIsVisionModalOpen] = useState(false);
+  const [isParamsModalOpen, setIsParamsModalOpen] = useState(false);
+  const [tempVision, setTempVision] = useState<VisionGoal[]>([]);
+  const [tempParams, setTempParams] = useState({ production: 0, meetings: 0, newClients: 0 });
   const [saving, setSaving] = useState(false);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiInsightLoading, setAiInsightLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<"my" | "team">("my");
+  const [teamSummary, setTeamSummary] = useState<TeamBusinessPlanMemberSummary[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,402 +120,136 @@ export function BusinessPlanView() {
     }
   }, [periodType]);
 
+  const loadVision = useCallback(async () => {
+    try {
+      const rows = await getVisionGoals();
+      if (rows.length > 0) {
+        setVisionGoals(rows.map((r, i) => visionRowToGoal(r, i)));
+      } else {
+        setVisionGoals([
+          visionRowToGoal({ id: "1", title: "Vlastní kancelář (Kauce)", progressPct: 85 }, 0),
+          visionRowToGoal({ id: "2", title: "Pasivní příjem 50k / měs", progressPct: 40 }, 1),
+        ]);
+      }
+    } catch {
+      setVisionGoals([
+        visionRowToGoal({ id: "1", title: "Vlastní kancelář (Kauce)", progressPct: 85 }, 0),
+        visionRowToGoal({ id: "2", title: "Pasivní příjem 50k / měs", progressPct: 40 }, 1),
+      ]);
+    }
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    loadVision();
+  }, [loadVision]);
+
+  const loadTeamSummary = useCallback(async () => {
+    setTeamLoading(true);
+    try {
+      const data = await getTeamBusinessPlanSummary(periodType);
+      setTeamSummary(data);
+    } catch {
+      setTeamSummary([]);
+    } finally {
+      setTeamLoading(false);
+    }
+  }, [periodType]);
+
+  useEffect(() => {
+    if (viewMode === "team") loadTeamSummary();
+  }, [viewMode, loadTeamSummary]);
+
   const hasTargets = plan && plan.targets.length > 0;
+  const isConfigured = plan && hasTargets;
   const showEmptyState = !loading && !plan;
   const showNoTargetsState = !loading && plan && !hasTargets;
 
-  return (
-    <div
-      className="flex flex-col flex-1 min-h-0 w-full"
-      style={{ animation: "wp-fade-in 0.3s ease" }}
-    >
-      <div className="wp-projects-section flex-1 min-w-0 pb-8">
-        <div
-          className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6"
-          style={{ marginBottom: "var(--wp-space-6)" }}
-        >
-          <div>
-            <h1
-              className="text-xl md:text-3xl font-bold tracking-tight mb-1 md:mb-2"
-              style={{ color: "var(--wp-text)" }}
-            >
-              Můj business plán
-            </h1>
-            <p
-              className="text-sm font-medium flex items-center gap-2"
-              style={{ color: "var(--wp-text-muted)" }}
-            >
-              <Target size={16} style={{ color: "var(--wp-accent, #4f46e5)" }} />
-              <span style={{ color: "var(--wp-text)" }}>
-                {plan ? plan.periodLabel : loading ? "Načítám…" : "—"}
-              </span>
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            <div
-              className="flex items-center rounded-[var(--wp-radius-sm)] p-1 border"
-              style={{
-                background: "var(--wp-bg)",
-                borderColor: "var(--wp-border)",
-              }}
-            >
-              {PERIOD_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setPeriodType(opt.value)}
-                  className={`px-3 md:px-4 py-2 rounded-[var(--wp-radius-xs)] text-xs font-semibold uppercase tracking-wide transition-all min-h-[44px] md:min-h-0 ${
-                    periodType === opt.value ? "shadow-sm border" : "opacity-80 hover:opacity-100"
-                  }`}
-                  style={
-                    periodType === opt.value
-                      ? {
-                          background: "var(--wp-bg-card, #fff)",
-                          borderColor: "var(--wp-border)",
-                          color: "var(--wp-accent, #4f46e5)",
-                        }
-                      : { color: "var(--wp-text-muted)" }
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {plan && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingPlanId(plan.planId);
-                  setFormOpen(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--wp-radius-sm)] text-xs font-semibold uppercase tracking-wide border transition-all min-h-[44px]"
-                style={{
-                  background: "var(--wp-bg-card, #fff)",
-                  borderColor: "var(--wp-border)",
-                  color: "var(--wp-text)",
-                }}
-              >
-                <Pencil size={16} /> Upravit plán
-              </button>
-            )}
-          </div>
-        </div>
+  const productionTarget = plan?.targets.find((t) => t.metricType === "production")?.targetValue ?? 0;
+  const meetingsTarget = plan?.targets.find((t) => t.metricType === "meetings")?.targetValue ?? 0;
+  const newClientsTarget = plan?.targets.find((t) => t.metricType === "new_clients")?.targetValue ?? 0;
 
-        {loading ? (
-          <div className="space-y-6">
-            <SkeletonBlock className="h-32 rounded-[var(--wp-radius-sm)]" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <SkeletonBlock key={i} className="h-28 rounded-[var(--wp-radius-sm)]" />
-              ))}
-            </div>
-          </div>
-        ) : showEmptyState ? (
-          <EmptyState onSetup={() => setFormOpen(true)} />
-        ) : showNoTargetsState ? (
-          <NoTargetsState
-            periodLabel={plan!.periodLabel}
-            onAddTargets={() => {
-              setEditingPlanId(plan!.planId);
-              setFormOpen(true);
-            }}
-          />
-        ) : plan && progressResult ? (
-          <>
-            <ProgressCards progress={progressResult.progress} />
-            {progressResult.recommendations.length > 0 && (
-              <RecommendationsSection recommendations={progressResult.recommendations} />
-            )}
-            <p className="mt-4 text-xs" style={{ color: "var(--wp-text-muted)" }}>
-              Doplněním poradce u smluv se naplní osobní produkce a objemy.
-            </p>
-          </>
-        ) : null}
-      </div>
+  const periodLabel =
+    plan?.periodLabel ??
+    (periodType === "month"
+      ? new Date().toLocaleString("cs-CZ", { month: "long", year: "numeric" })
+      : periodType === "quarter"
+        ? `Q${Math.floor(new Date().getMonth() / 3) + 1} ${new Date().getFullYear()}`
+        : String(new Date().getFullYear()));
 
-      {formOpen && (
-        <PlanFormModal
-          periodType={periodType}
-          existingPlanId={editingPlanId}
-          existingTargets={plan?.targets}
-          onClose={() => {
-            setFormOpen(false);
-            setEditingPlanId(null);
-          }}
-          onSaved={() => {
-            setFormOpen(false);
-            setEditingPlanId(null);
-            load();
-          }}
-          saving={saving}
-          setSaving={setSaving}
-        />
-      )}
+  const production = progressResult ? getMetric(progressResult.progress, "production") : { actual: 0, target: productionTarget, unit: "Kč" };
+  const meetings = progressResult ? getMetric(progressResult.progress, "meetings") : { actual: 0, target: meetingsTarget, unit: "" };
+  const newClients = progressResult ? getMetric(progressResult.progress, "new_clients") : { actual: 0, target: newClientsTarget, unit: "" };
+  const dealsClosed = progressResult ? getMetric(progressResult.progress, "deals_closed") : { actual: 0, target: 0, unit: "" };
 
-      {showEmptyState && !formOpen && (
-        <button
-          type="button"
-          onClick={() => setFormOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 rounded-[var(--wp-radius-sm)] font-medium min-h-[44px] mt-4"
-          style={{
-            background: "var(--wp-accent, #4f46e5)",
-            color: "#fff",
-          }}
-        >
-          <Plus size={20} /> Nastavit business plán
-        </button>
-      )}
-    </div>
-  );
-}
+  const reverseMath = computeReverseMath(productionTarget, meetingsTarget);
+  const contractsTarget = reverseMath.contracts;
 
-function EmptyState({ onSetup }: { onSetup: () => void }) {
-  return (
-    <div
-      className="p-6 md:p-10 rounded-[var(--wp-radius-sm)] border text-center"
-      style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
-    >
-      <Target className="mx-auto mb-4 opacity-60" size={48} style={{ color: "var(--wp-text-muted)" }} />
-      <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--wp-text)" }}>
-        Zatím nemáš nastavený business plán
-      </h2>
-      <p className="text-sm mb-6 max-w-md mx-auto" style={{ color: "var(--wp-text-muted)" }}>
-        Nastav cíle pro aktuální období a sleduj plnění podle schůzek, obchodů, produkce a dalších metrik z CRM.
-      </p>
-      <button
-        type="button"
-        onClick={onSetup}
-        className="inline-flex items-center gap-2 px-5 py-3 rounded-[var(--wp-radius-sm)] font-medium min-h-[44px]"
-        style={{ background: "var(--wp-accent, #4f46e5)", color: "#fff" }}
-      >
-        <Plus size={20} /> Nastavit business plán
-      </button>
-    </div>
-  );
-}
+  const calculateProgress = (current: number, target: number) =>
+    target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
 
-function NoTargetsState({
-  periodLabel,
-  onAddTargets,
-}: {
-  periodLabel: string;
-  onAddTargets: () => void;
-}) {
-  return (
-    <div
-      className="p-6 md:p-10 rounded-[var(--wp-radius-sm)] border text-center"
-      style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
-    >
-      <AlertCircle className="mx-auto mb-4 opacity-60" size={48} style={{ color: "var(--wp-text-muted)" }} />
-      <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--wp-text)" }}>
-        Plán pro {periodLabel} existuje, ale nejsou vyplněné cíle
-      </h2>
-      <p className="text-sm mb-6" style={{ color: "var(--wp-text-muted)" }}>
-        Doplněním cílů uvidíš plnění a doporučené akce.
-      </p>
-      <button
-        type="button"
-        onClick={onAddTargets}
-        className="inline-flex items-center gap-2 px-5 py-3 rounded-[var(--wp-radius-sm)] font-medium min-h-[44px]"
-        style={{ background: "var(--wp-accent, #4f46e5)", color: "#fff" }}
-      >
-        Doplnit cíle
-      </button>
-    </div>
-  );
-}
+  const openVisionModal = () => {
+    setTempVision(JSON.parse(JSON.stringify(visionGoals)));
+    setIsVisionModalOpen(true);
+  };
 
-function ProgressCards({ progress }: { progress: PlanProgress }) {
-  return (
-    <div className="space-y-6">
-      <div
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-[var(--wp-radius-xs)] text-sm font-medium border ${HEALTH_BADGE_CLASS[progress.overallHealth] ?? "bg-slate-100 text-slate-700 border-slate-200"}`}
-      >
-        Celkový stav: {HEALTH_STATUS_LABELS[progress.overallHealth]}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {progress.metrics.map((m) => (
-          <MetricCard key={m.metricType} metric={m} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({ metric }: { metric: MetricProgress }) {
-  const label = METRIC_TYPE_LABELS[metric.metricType];
-  const actualStr = metric.health === "no_data" || metric.health === "not_applicable"
-    ? "—"
-    : formatValue(metric.actual, metric.unit);
-  const targetStr = metric.target > 0 ? formatValue(metric.target, metric.unit) : "—";
-  const pct = metric.target > 0 ? Math.min(100, Math.round((metric.actual / metric.target) * 100)) : 0;
-
-  return (
-    <div
-      className="p-4 rounded-[var(--wp-radius-sm)] border flex flex-col gap-3"
-      style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
-    >
-      <div className="flex justify-between items-start gap-2">
-        <span className="text-sm font-medium" style={{ color: "var(--wp-text)" }}>
-          {label}
-        </span>
-        <span
-          className={`text-xs font-medium px-2 py-0.5 rounded border shrink-0 ${HEALTH_BADGE_CLASS[metric.health]}`}
-        >
-          {HEALTH_STATUS_LABELS[metric.health]}
-        </span>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-xl font-bold" style={{ color: "var(--wp-text)" }}>
-          {actualStr}
-        </span>
-        <span className="text-sm" style={{ color: "var(--wp-text-muted)" }}>
-          / {targetStr}
-        </span>
-      </div>
-      {metric.target > 0 && (
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--wp-bg)" }}>
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${pct}%`,
-              background:
-                metric.health === "achieved" || metric.health === "exceeded"
-                  ? "var(--wp-success, #10b981)"
-                  : metric.health === "significant_slip"
-                    ? "var(--wp-danger, #ef4444)"
-                    : "var(--wp-accent, #4f46e5)",
-            }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RecommendationsSection({ recommendations }: { recommendations: SlippageRecommendation[] }) {
-  return (
-    <div className="mt-8">
-      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--wp-text)" }}>
-        <AlertCircle size={20} style={{ color: "var(--wp-warning)" }} />
-        Doporučené akce
-      </h2>
-      <ul className="space-y-3">
-        {recommendations.map((rec) => (
-          <li
-            key={`${rec.metricType}-${rec.actionType}`}
-            className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-[var(--wp-radius-sm)] border"
-            style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
-          >
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm" style={{ color: "var(--wp-text)" }}>
-                {rec.title}
-              </p>
-              <p className="text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
-                {rec.description}
-              </p>
-            </div>
-            <Link
-              href={rec.href}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--wp-radius-sm)] text-sm font-medium min-h-[44px] shrink-0"
-              style={{
-                background: "var(--wp-accent, #4f46e5)",
-                color: "#fff",
-              }}
-            >
-              {rec.actionType === "schedule_meeting" && "Kalendář"}
-              {rec.actionType === "open_pipeline" && "Obchody"}
-              {rec.actionType === "open_tasks" && "Úkoly"}
-              {rec.actionType === "open_service" && "Nástěnka"}
-              {rec.actionType === "new_client" && "Nový klient"}
-              {rec.actionType === "open_production" && "Produkce"}
-              <ChevronRight size={16} />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-type PlanFormModalProps = {
-  periodType: PeriodType;
-  existingPlanId: string | null;
-  existingTargets?: { metricType: string; targetValue: number; unit: string }[];
-  onClose: () => void;
-  onSaved: () => void;
-  saving: boolean;
-  setSaving: (v: boolean) => void;
-};
-
-function PlanFormModal({
-  periodType,
-  existingPlanId,
-  existingTargets = [],
-  onClose,
-  onSaved,
-  saving,
-  setSaving,
-}: PlanFormModalProps) {
-  const { year, month, quarter } = getCurrentPeriodNumbers();
-  const [yearVal, setYearVal] = useState(year);
-  const [periodNum, setPeriodNum] = useState(
-    periodType === "month" ? month : periodType === "quarter" ? quarter : 1
-  );
-  const [targetValues, setTargetValues] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    for (const t of existingTargets) {
-      init[t.metricType] = String(t.targetValue);
+  const saveVision = async () => {
+    try {
+      const saved = await upsertVisionGoals(
+        tempVision.map((g, i) => ({ title: g.title, progressPct: g.progress, sortOrder: i }))
+      );
+      setVisionGoals(saved.map((r, i) => visionRowToGoal(r, i)));
+      setIsVisionModalOpen(false);
+    } catch (err) {
+      console.error(err);
     }
-    return init;
-  });
+  };
 
-  const isNew = !existingPlanId;
-  const periodLabel = (() => {
-    if (periodType === "month") {
-      const d = new Date(yearVal, periodNum - 1, 1);
-      return d.toLocaleString("cs-CZ", { month: "long", year: "numeric" });
-    }
-    if (periodType === "quarter") return `Q${periodNum} ${yearVal}`;
-    return String(yearVal);
-  })();
+  const openParamsModal = () => {
+    setTempParams({
+      production: productionTarget || 300000,
+      meetings: meetingsTarget || 25,
+      newClients: newClientsTarget || 6,
+    });
+    setIsParamsModalOpen(true);
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const saveParams = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      if (isNew) {
+      const { year, month, quarter } = getCurrentPeriodNumbers();
+      const periodNumber = periodType === "month" ? month : periodType === "quarter" ? quarter : 0;
+      const label = periodType === "month"
+        ? new Date(year, month - 1, 1).toLocaleString("cs-CZ", { month: "long", year: "numeric" })
+        : periodType === "quarter"
+          ? `Q${periodNumber} ${year}`
+          : String(year);
+
+      if (!plan?.planId) {
         const planId = await createBusinessPlan({
           periodType,
-          year: yearVal,
-          periodNumber: periodType === "year" ? 0 : periodNum,
-          title: periodLabel,
+          year,
+          periodNumber,
+          title: label,
         });
-        const targets = BUSINESS_PLAN_METRIC_TYPES.filter((k) => {
-          const v = targetValues[k]?.trim();
-          return v && !Number.isNaN(Number(v)) && Number(v) > 0;
-        }).map((metricType) => ({
-          metricType,
-          targetValue: Number(targetValues[metricType]),
-          unit: (metricType.includes("volume") || metricType === "production" ? "czk" : "count") as "count" | "czk" | "pct",
-        }));
-        await setPlanTargets(planId, targets);
+        await setPlanTargets(planId, [
+          { metricType: "production", targetValue: Number(tempParams.production), unit: "czk" },
+          { metricType: "meetings", targetValue: Number(tempParams.meetings), unit: "count" },
+          { metricType: "new_clients", targetValue: Number(tempParams.newClients), unit: "count" },
+        ]);
       } else {
-        const targets = BUSINESS_PLAN_METRIC_TYPES.filter((k) => {
-          const v = targetValues[k]?.trim();
-          return v && !Number.isNaN(Number(v)) && Number(v) > 0;
-        }).map((metricType) => ({
-          metricType,
-          targetValue: Number(targetValues[metricType]),
-          unit: (metricType.includes("volume") || metricType === "production" ? "czk" : "count") as "count" | "czk" | "pct",
-        }));
-        await setPlanTargets(existingPlanId!, targets);
+        await setPlanTargets(plan.planId, [
+          { metricType: "production", targetValue: Number(tempParams.production), unit: "czk" },
+          { metricType: "meetings", targetValue: Number(tempParams.meetings), unit: "count" },
+          { metricType: "new_clients", targetValue: Number(tempParams.newClients), unit: "count" },
+        ]);
       }
-      onSaved();
+      setIsParamsModalOpen(false);
+      await load();
     } catch (err) {
       console.error(err);
     } finally {
@@ -484,125 +257,602 @@ function PlanFormModal({
     }
   };
 
-  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
-  const quarterOptions = [1, 2, 3, 4];
+  const handleGenerateAiStrategy = useCallback(async () => {
+    if (!plan?.planId || !progressResult) return;
+    setAiInsightLoading(true);
+    try {
+      const res = await fetch("/api/ai/business-plan-insight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          periodLabel,
+          targets: { production: productionTarget, meetings: meetingsTarget, newClients: newClientsTarget },
+          actuals: { production: production.actual, meetings: meetings.actual, newClients: newClients.actual },
+          recommendations: progressResult.recommendations.slice(0, 3).map((r) => ({ title: r.title, description: r.description })),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiInsight(data.insight ?? null);
+      }
+    } catch {
+      setAiInsight(null);
+    } finally {
+      setAiInsightLoading(false);
+    }
+  }, [plan?.planId, progressResult, periodLabel, productionTarget, meetingsTarget, newClientsTarget, production.actual, meetings.actual, newClients.actual]);
+
+
+  const callsActual = progressResult?.funnelActuals?.calls ?? 0;
+  const activities = [
+    { id: "calls", label: "Telefonáty (Dovolání)", current: callsActual, target: reverseMath.calls, color: "bg-blue-500" },
+    { id: "first_meetings", label: "První schůzky", current: meetings.actual, target: reverseMath.meetings, color: "bg-indigo-500" },
+    { id: "closing", label: "Uzavírací schůzky", current: dealsClosed.actual, target: contractsTarget, color: "bg-emerald-500" },
+  ];
+
+  const rawMix = progressResult?.productionMix;
+  const totalMix = rawMix ? rawMix.investments + rawMix.life + rawMix.hypo : 0;
+  const mix =
+    totalMix > 0 && rawMix
+      ? [
+          { label: MIX_COLORS[0].label, pct: Math.round((rawMix.investments / totalMix) * 100), color: MIX_COLORS[0].color },
+          { label: MIX_COLORS[1].label, pct: Math.round((rawMix.life / totalMix) * 100), color: MIX_COLORS[1].color },
+          { label: MIX_COLORS[2].label, pct: Math.round((rawMix.hypo / totalMix) * 100), color: MIX_COLORS[2].color },
+        ]
+      : MIX_COLORS.map((m, i) => ({ ...m, pct: DEFAULT_MIX_PCT[i]! }));
+
+  const renderSVGDonut = (mixData: { pct: number; color: string }[]) => {
+    let currentOffset = 0;
+    return (
+      <svg viewBox="0 0 36 36" className="w-32 h-32 transform -rotate-90">
+        <circle cx="18" cy="18" r="15.9155" fill="transparent" stroke="#f1f5f9" strokeWidth="4" />
+        {mixData.map((item, i) => {
+          const dashArray = `${item.pct} ${100 - item.pct}`;
+          const offset = currentOffset;
+          currentOffset += item.pct;
+          return (
+            <circle
+              key={i}
+              cx="18"
+              cy="18"
+              r="15.9155"
+              fill="transparent"
+              stroke={item.color}
+              strokeWidth="4"
+              strokeDasharray={dashArray}
+              strokeDashoffset={100 - offset}
+              className="transition-all duration-1000 ease-out"
+            />
+          );
+        })}
+      </svg>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-transparent flex flex-col p-6 md:p-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div>
+            <SkeletonBlock className="h-9 w-64 mb-2" />
+            <SkeletonBlock className="h-4 w-48" />
+          </div>
+        </div>
+        <div className="space-y-6">
+          <SkeletonBlock className="h-48 rounded-[32px]" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <SkeletonBlock key={i} className="h-36 rounded-[24px]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <BaseModal
-      open
-      onClose={onClose}
-      title={isNew ? "Nastavit business plán" : "Upravit cíle"}
-      maxWidth="xl"
-      mobileVariant="sheet"
-    >
-      <form onSubmit={handleSubmit} className="p-4 space-y-6">
-        {isNew && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--wp-text)" }}>
-                Rok
-              </label>
-              <input
-                type="number"
-                min={year - 1}
-                max={year + 1}
-                value={yearVal}
-                onChange={(e) => setYearVal(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded border min-h-[44px]"
-                style={{ borderColor: "var(--wp-border)" }}
-              />
-            </div>
-            {periodType === "month" && (
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "var(--wp-text)" }}>
-                  Měsíc
-                </label>
-                <select
-                  value={periodNum}
-                  onChange={(e) => setPeriodNum(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded border min-h-[44px]"
-                  style={{ borderColor: "var(--wp-border)" }}
-                >
-                  {monthOptions.map((n) => (
-                    <option key={n} value={n}>
-                      {new Date(yearVal, n - 1, 1).toLocaleString("cs-CZ", { month: "long" })}
-                    </option>
-                  ))}
-                </select>
+    <div className="w-full h-full min-h-screen bg-transparent font-sans text-slate-800 flex flex-col relative pb-24 md:pb-28">
+      <style>{`
+        .font-display { font-family: var(--font-primary, inherit), sans-serif; }
+        @keyframes fillProgress { from { width: 0; } }
+        .animate-progress { animation: fillProgress 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #4f46e5; border: 3px solid #fff; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e2e8f0; border-radius: 2px; }
+      `}</style>
+
+      <main className="flex-1 w-full max-w-[1400px] mx-auto p-6 md:p-8 flex flex-col relative z-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-black text-slate-900 tracking-tight flex items-center gap-3">
+              Můj business plán
+            </h1>
+            <p className="text-sm font-medium text-slate-500 mt-1">
+              Vaše osobní vize, cíle a přesná cesta k jejich dosažení.
+            </p>
+          </div>
+          {isConfigured && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="bg-slate-100/80 p-1 rounded-xl flex items-center border border-slate-200/60 shadow-inner w-fit">
+                {[
+                  { id: "my" as const, label: "Můj plán", Icon: Target },
+                  { id: "team" as const, label: "Tým", Icon: UsersRound },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setViewMode(tab.id)}
+                    className={`flex items-center gap-1.5 px-3 md:px-4 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all min-h-[44px] md:min-h-0 ${
+                      viewMode === tab.id
+                        ? "bg-white text-indigo-700 shadow-sm border border-slate-200/50"
+                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-50/50"
+                    }`}
+                  >
+                    <tab.Icon size={14} /> {tab.label}
+                  </button>
+                ))}
               </div>
-            )}
-            {periodType === "quarter" && (
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "var(--wp-text)" }}>
-                  Kvartál
-                </label>
-                <select
-                  value={periodNum}
-                  onChange={(e) => setPeriodNum(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded border min-h-[44px]"
-                  style={{ borderColor: "var(--wp-border)" }}
-                >
-                  {quarterOptions.map((n) => (
-                    <option key={n} value={n}>
-                      Q{n}
-                    </option>
-                  ))}
-                </select>
+              <div className="bg-slate-100/80 p-1 rounded-xl flex items-center border border-slate-200/60 shadow-inner w-fit">
+                {PERIOD_OPTIONS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setPeriodType(t.id)}
+                    className={`px-4 md:px-5 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all min-h-[44px] md:min-h-0 ${
+                      periodType === t.id
+                        ? "bg-white text-indigo-700 shadow-sm border border-slate-200/50 scale-105"
+                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-50/50"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {showEmptyState && (
+          <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] bg-white rounded-[32px] border border-slate-100 shadow-sm">
+            <div className="w-24 h-24 bg-slate-50 border-2 border-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-6 relative">
+              <Target size={40} strokeWidth={1.5} className="text-slate-400" />
+            </div>
+            <h2 className="text-xl md:text-2xl font-display font-bold text-slate-800 mb-3 text-center tracking-tight">
+              Zatím nemáš nastavený business plán
+            </h2>
+            <p className="text-slate-500 font-medium text-center max-w-md leading-relaxed mb-8">
+              Nastav svou osobní vizi, definuj cíle produkce a AI ti automaticky vypočítá potřebné aktivity a schůzky na každý den.
+            </p>
+            <button
+              type="button"
+              onClick={openParamsModal}
+              className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 min-h-[44px]"
+            >
+              <Plus size={18} strokeWidth={2.5} /> Nastavit můj business plán
+            </button>
+          </div>
+        )}
+
+        {showNoTargetsState && plan && (
+          <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] bg-white rounded-[32px] border border-slate-100 shadow-sm">
+            <h2 className="text-xl font-display font-bold text-slate-800 mb-3 text-center">
+              Plán pro {plan.periodLabel} existuje, ale nejsou vyplněné cíle
+            </h2>
+            <p className="text-slate-500 font-medium text-center max-w-md mb-8">
+              Doplněním cílů uvidíš plnění a doporučené akce.
+            </p>
+            <button
+              type="button"
+              onClick={openParamsModal}
+              className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold min-h-[44px]"
+            >
+              <Plus size={18} /> Doplnit cíle
+            </button>
+          </div>
+        )}
+
+        {isConfigured && viewMode === "team" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+              <UsersRound size={24} className="text-indigo-500" /> Týmový business plán – {periodLabel || periodType}
+            </h2>
+            {teamLoading ? (
+              <div className="grid grid-cols-1 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <SkeletonBlock key={i} className="h-24 rounded-[24px]" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {teamSummary.map((m) => (
+                  <div
+                    key={m.userId}
+                    className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap"
+                  >
+                    <div className="font-display font-bold text-slate-900 min-w-[140px]">
+                      {m.displayName || m.userId.slice(0, 8)}
+                    </div>
+                    {m.periodLabel ? (
+                      <>
+                        <div className="flex items-center gap-4 flex-wrap text-sm">
+                          <span className="text-slate-600">
+                            Produkce: <strong className="text-slate-900">{(m.productionActual / 1000).toFixed(0)}k</strong> / {(m.productionTarget / 1000).toFixed(0)}k Kč
+                          </span>
+                          <span className="text-slate-600">
+                            Schůzky: <strong className="text-slate-900">{m.meetingsActual}</strong> / {m.meetingsTarget}
+                          </span>
+                          <span className="text-slate-600">
+                            Klienti: <strong className="text-slate-900">{m.newClientsActual}</strong> / {m.newClientsTarget}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border shrink-0 ${
+                          m.overallHealth === "achieved" || m.overallHealth === "exceeded"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            : m.overallHealth === "significant_slip"
+                              ? "bg-red-50 text-red-700 border-red-100"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                        }`}>
+                          {m.overallHealth === "no_data" ? "Bez plánu" : (HEALTH_STATUS_LABELS as Record<string, string>)[m.overallHealth] ?? m.overallHealth}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-slate-500">Nemá nastaven plán pro toto období.</span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
 
-        <div>
-          <p className="text-sm font-medium mb-3" style={{ color: "var(--wp-text)" }}>
-            Cílové hodnoty (nepovinné – vyplň jen metriky, které chceš sledovat)
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {BUSINESS_PLAN_METRIC_TYPES.map((metricType) => {
-              const unit = metricType.includes("volume") || metricType === "production" ? "czk" : "count";
-              const placeholder = unit === "czk" ? "např. 500000" : "např. 10";
-              return (
-                <div key={metricType}>
-                  <label className="block text-sm font-medium mb-1" style={{ color: "var(--wp-text-muted)" }}>
-                    {METRIC_TYPE_LABELS[metricType]}
-                  </label>
+        {isConfigured && viewMode === "my" && plan && progressResult && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500" key={periodType}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1 bg-gradient-to-br from-[#1a1c2e] to-indigo-950 rounded-[32px] p-6 md:p-8 text-white relative overflow-hidden shadow-xl shadow-indigo-900/10">
+                <Compass className="absolute -top-6 -right-6 w-32 h-32 text-white/5 pointer-events-none" />
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300 mb-6 flex items-center gap-2 relative z-10">
+                  <Flag size={14} /> Osobní vize a milníky
+                </h3>
+                <div className="space-y-6 relative z-10">
+                  {visionGoals.map((goal) => (
+                    <div key={goal.id}>
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="font-bold text-sm truncate pr-2">{goal.title}</span>
+                        <span className={`text-xs font-medium shrink-0 ${goal.textClass}`}>{goal.progress}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div className={`h-full ${goal.colorClass} rounded-full animate-progress`} style={{ width: `${goal.progress}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={openVisionModal}
+                  className="mt-8 text-xs font-bold text-indigo-300 hover:text-white transition-colors flex items-center gap-1 relative z-10 p-1 -ml-1 rounded hover:bg-white/5 min-h-[44px]"
+                >
+                  <Edit2 size={12} /> Upravit vizi <ChevronRight size={14} />
+                </button>
+              </div>
+
+              <div className="lg:col-span-2 bg-white rounded-[32px] p-6 md:p-8 border border-slate-100 shadow-sm relative overflow-hidden">
+                <h2 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+                  <Target className="text-rose-500" size={24} /> Matematika úspěchu
+                </h2>
+                <p className="text-sm font-medium text-slate-500 mt-1">
+                  Co přesně musím udělat pro dosažení cíle za období: <strong>{periodLabel}</strong>
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 flex-wrap">
+                  <div className="flex flex-col items-center text-center group flex-1 min-w-[80px]">
+                    <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-3 border border-blue-100 shadow-sm">
+                      <Phone size={20} />
+                    </div>
+                    <span className="text-2xl font-display font-black text-slate-900">{reverseMath.calls}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Dovolání</span>
+                  </div>
+                  <ArrowRight className="text-slate-300 hidden sm:block shrink-0" size={24} />
+                  <div className="flex flex-col items-center text-center group flex-1 min-w-[80px]">
+                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-3 border border-indigo-100 shadow-sm">
+                      <Calendar size={20} />
+                    </div>
+                    <span className="text-2xl font-display font-black text-slate-900">{reverseMath.meetings}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Schůzek</span>
+                  </div>
+                  <ArrowRight className="text-slate-300 hidden sm:block shrink-0" size={24} />
+                  <div className="flex flex-col items-center text-center group flex-1 min-w-[80px]">
+                    <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-3 border border-emerald-100 shadow-sm">
+                      <FileSignature size={20} />
+                    </div>
+                    <span className="text-2xl font-display font-black text-slate-900">{reverseMath.contracts}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Smluv</span>
+                  </div>
+                  <ArrowRight className="text-slate-300 hidden sm:block shrink-0" size={24} />
+                  <div className="flex flex-col items-center text-center group flex-1 min-w-[80px]">
+                    <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-400 text-white rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
+                      <Trophy size={24} />
+                    </div>
+                    <span className="text-2xl font-display font-black text-slate-900">{reverseMath.productionK}k</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Produkce (Kč)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100">
+                    <TrendingUp size={24} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+                    {calculateProgress(production.actual, production.target)}% Splněno
+                  </span>
+                </div>
+                <div className="relative z-10">
+                  <span className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Cílová produkce ({periodLabel})</span>
+                  <div className="flex items-baseline gap-2 mb-4 flex-wrap">
+                    <span className="text-3xl font-display font-black text-slate-900 tracking-tight">
+                      {(production.actual / 1000).toFixed(0)}k
+                    </span>
+                    <span className="text-sm font-semibold text-slate-400">
+                      / {(production.target / 1000).toFixed(0)}k Kč
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full animate-progress" style={{ width: `${calculateProgress(production.actual, production.target)}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-50 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border border-indigo-100">
+                    <Calendar size={24} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                    {calculateProgress(meetings.actual, meetings.target)}% Splněno
+                  </span>
+                </div>
+                <div className="relative z-10">
+                  <span className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Počet schůzek ({periodLabel})</span>
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-3xl font-display font-black text-slate-900 tracking-tight">{meetings.actual}</span>
+                    <span className="text-sm font-semibold text-slate-400">/ {meetings.target} schůzek</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 rounded-full animate-progress" style={{ width: `${calculateProgress(meetings.actual, meetings.target)}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                  <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100">
+                    <Users size={24} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100">
+                    {calculateProgress(newClients.actual, newClients.target)}% Splněno
+                  </span>
+                </div>
+                <div className="relative z-10">
+                  <span className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Noví klienti ({periodLabel})</span>
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-3xl font-display font-black text-slate-900 tracking-tight">{newClients.actual}</span>
+                    <span className="text-sm font-semibold text-slate-400">/ {newClients.target} klientů</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full animate-progress" style={{ width: `${calculateProgress(newClients.actual, newClients.target)}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+              <div className="lg:col-span-2 bg-white rounded-[32px] p-6 md:p-8 border border-slate-100 shadow-sm">
+                <h2 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+                  <BarChart3 className="text-indigo-500" size={24} /> Trychtýř aktivit
+                </h2>
+                <p className="text-sm font-medium text-slate-500 mt-1">Sledujte svou konverzi od prvního zavolání po uzavření obchodu.</p>
+                <div className="space-y-6 mt-6">
+                  {activities.map((act) => {
+                    const pct = calculateProgress(act.current, act.target);
+                    return (
+                      <div key={act.id}>
+                        <div className="flex justify-between items-end mb-2">
+                          <span className="font-semibold text-slate-700 text-sm">{act.label}</span>
+                          <span className="text-sm font-black text-slate-900">{act.current} <span className="text-slate-400 font-medium">/ {act.target}</span></span>
+                        </div>
+                        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${act.color} rounded-full animate-progress relative`} style={{ width: `${pct}%` }}>
+                            <div className="absolute top-0 left-0 w-full h-1/2 bg-white/20 rounded-full" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-10 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl flex items-start gap-4">
+                  <div className="p-2 bg-white rounded-xl shadow-sm text-amber-500 shrink-0">
+                    <Sparkles size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-amber-800 mb-1">AI Business Coach</h4>
+                    <p className="text-sm font-medium text-amber-900/80 leading-relaxed">
+                      {aiInsightLoading ? "Generuji doporučení…" : aiInsight || progressResult.recommendations[0]?.description || "Nastav cíle a načti data z CRM. AI ti pak připraví osobní doporučení."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-1 bg-white rounded-[32px] p-6 md:p-8 border border-slate-100 shadow-sm flex flex-col hover:shadow-md transition-shadow">
+                <h2 className="text-lg font-display font-bold text-slate-900 flex items-center gap-2 mb-2">
+                  <PieChart className="text-emerald-500" size={20} /> Plánovaný mix
+                </h2>
+                <p className="text-xs font-medium text-slate-500 mb-8">Z čeho by se měla skládat vaše produkce.</p>
+                <div className="flex justify-center mb-8 relative">
+                  {renderSVGDonut(mix)}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-black text-slate-900">100%</span>
+                  </div>
+                </div>
+                <div className="space-y-3 mt-auto">
+                  {mix.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-sm font-bold text-slate-700">{item.label}</span>
+                      </div>
+                      <span className="text-sm font-black text-slate-900">{item.pct} %</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200/50 bg-white/80 backdrop-blur-md px-4 md:px-6 py-4 flex flex-wrap items-center justify-between gap-3 z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <button
+          type="button"
+          onClick={openParamsModal}
+          className="flex items-center gap-2 px-4 md:px-5 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl font-bold text-sm transition-colors min-h-[44px]"
+        >
+          <Edit2 size={16} /> {isConfigured ? "Upravit parametry plánu" : "Začít s plánováním"}
+        </button>
+        <button
+          type="button"
+          onClick={handleGenerateAiStrategy}
+          disabled={!isConfigured || aiInsightLoading}
+          className="flex items-center gap-2 px-4 md:px-6 py-2.5 bg-gradient-to-r from-[#1a1c2e] to-indigo-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-900/20 hover:scale-105 transition-transform disabled:opacity-70 min-h-[44px]"
+        >
+          <Sparkles size={16} className="text-amber-400" /> Generovat AI Strategii
+        </button>
+      </div>
+
+      {isVisionModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[500px] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Flag size={18} className="text-indigo-500" /> Osobní vize
+              </h2>
+              <button type="button" onClick={() => setIsVisionModalOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-200 min-h-[44px] min-w-[44px] flex items-center justify-center">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {tempVision.map((goal, idx) => (
+                <div key={goal.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Cíl {idx + 1}</label>
                   <input
-                    type={unit === "czk" ? "number" : "number"}
+                    type="text"
+                    value={goal.title}
+                    onChange={(e) => {
+                      const newGoals = [...tempVision];
+                      newGoals[idx] = { ...newGoals[idx], title: e.target.value };
+                      setTempVision(newGoals);
+                    }}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-400 mb-4"
+                  />
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-bold text-slate-500">Progres plnění</label>
+                    <span className="text-sm font-black text-indigo-600">{goal.progress}%</span>
+                  </div>
+                  <input
+                    type="range"
                     min={0}
-                    step={unit === "czk" ? 1000 : 1}
-                    placeholder={placeholder}
-                    value={targetValues[metricType] ?? ""}
-                    onChange={(e) =>
-                      setTargetValues((prev) => ({ ...prev, [metricType]: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 rounded border min-h-[44px]"
-                    style={{ borderColor: "var(--wp-border)" }}
+                    max={100}
+                    value={goal.progress}
+                    onChange={(e) => {
+                      const newGoals = [...tempVision];
+                      newGoals[idx] = { ...newGoals[idx], progress: Number(e.target.value) };
+                      setTempVision(newGoals);
+                    }}
                   />
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+              <button type="button" onClick={() => setIsVisionModalOpen(false)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 min-h-[44px]">
+                Zrušit
+              </button>
+              <button type="button" onClick={saveVision} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md min-h-[44px]">
+                <Save size={16} /> Uložit vizi
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="flex flex-wrap gap-3 pt-4 border-t" style={{ borderColor: "var(--wp-border)" }}>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--wp-radius-sm)] font-medium min-h-[44px] disabled:opacity-50"
-            style={{ background: "var(--wp-accent, #4f46e5)", color: "#fff" }}
-          >
-            {saving ? "Ukládám…" : isNew ? "Vytvořit plán" : "Uložit cíle"}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--wp-radius-sm)] font-medium min-h-[44px] border"
-            style={{ borderColor: "var(--wp-border)", color: "var(--wp-text)" }}
-          >
-            Zrušit
-          </button>
+      {isParamsModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[500px] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Target size={18} className="text-rose-500" /> Cíle pro {periodLabel}
+              </h2>
+              <button type="button" onClick={() => setIsParamsModalOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-200 min-h-[44px] min-w-[44px] flex items-center justify-center">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={saveParams} className="flex flex-col">
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Cílová produkce (Kč)</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step={10000}
+                    value={tempParams.production}
+                    onChange={(e) => setTempParams((p) => ({ ...p, production: e.target.value }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black outline-none focus:bg-white focus:border-indigo-400 min-h-[44px]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Počet schůzek</label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={tempParams.meetings}
+                      onChange={(e) => setTempParams((p) => ({ ...p, meetings: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black outline-none focus:bg-white focus:border-indigo-400 min-h-[44px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Noví klienti</label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={tempParams.newClients}
+                      onChange={(e) => setTempParams((p) => ({ ...p, newClients: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black outline-none focus:bg-white focus:border-indigo-400 min-h-[44px]"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl text-sm font-medium text-indigo-900/80 leading-relaxed">
+                  Změnou těchto hodnot dojde k automatickému přepočítání „Matematiky úspěchu“ a trychtýře aktivit.
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+                <button type="button" onClick={() => setIsParamsModalOpen(false)} className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 shadow-sm min-h-[44px]">
+                  Zrušit
+                </button>
+                <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md disabled:opacity-50 min-h-[44px]">
+                  <Check size={16} strokeWidth={3} /> {isConfigured ? "Uložit změny" : "Aktivovat plán"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </BaseModal>
+      )}
+    </div>
   );
 }

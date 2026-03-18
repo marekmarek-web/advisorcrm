@@ -6,10 +6,11 @@ import {
   getContractSegments,
   createContract,
 } from "@/app/actions/contracts";
-import { uploadDocument } from "@/app/actions/documents";
+import { updateDocument } from "@/app/actions/documents";
 import { ProductPicker } from "@/app/components/weplan/ProductPicker";
 import type { ProductPickerValue } from "@/app/components/weplan/ProductPicker";
 import { segmentLabel } from "@/app/lib/segment-labels";
+import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 import {
   WizardShell,
   WizardHeader,
@@ -65,7 +66,8 @@ export function NewContractWizard({
     partnerId: "",
     productId: "",
   });
-  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
+  const [uploadedDocumentName, setUploadedDocumentName] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -79,7 +81,8 @@ export function NewContractWizard({
     setIsSuccess(false);
     setForm(initialForm);
     setPickerValue({ partnerId: "", productId: "" });
-    setContractFile(null);
+    setUploadedDocumentId(null);
+    setUploadedDocumentName(null);
   }
 
   function handleClose() {
@@ -110,18 +113,8 @@ export function NewContractWizard({
         note: form.note || undefined,
       };
       const contractId = await createContract(contactId, payload);
-      if (contractId && contractFile?.size) {
-        const fd = new FormData();
-        fd.set("file", contractFile);
-        fd.set("name", contractFile.name);
-        try {
-          await uploadDocument(contactId, fd, {
-            contractId,
-            visibleToClient: false,
-          });
-        } catch (err) {
-          console.error("Upload smlouvy selhal:", err);
-        }
+      if (contractId && uploadedDocumentId) {
+        await updateDocument(uploadedDocumentId, { contractId, visibleToClient: false }).catch(() => {});
       }
       setIsSuccess(true);
       onSuccess?.();
@@ -165,7 +158,7 @@ export function NewContractWizard({
     ...(form.note ? [{ label: "Poznámka", value: form.note }] : []),
     {
       label: "Soubor",
-      value: contractFile?.name || "—",
+      value: uploadedDocumentName || "—",
     },
   ];
 
@@ -326,16 +319,17 @@ export function NewContractWizard({
               <div className="space-y-6">
                 <div>
                   <label className={wizardLabelClass}>Nahrát smlouvu (PDF)</label>
-                  <input
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    onChange={(e) =>
-                      setContractFile(e.target.files?.[0] ?? null)
-                    }
-                    className="w-full text-sm text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-white file:text-sm file:font-medium"
+                  <DocumentUploadZone
+                    contactId={contactId}
+                    submitButtonLabel="Nahrát dokument"
+                    chooseButtonLabel="Vybrat smlouvu (PDF / foto)"
+                    onUploaded={(doc) => {
+                      setUploadedDocumentId(doc.id);
+                      setUploadedDocumentName(doc.name);
+                    }}
                   />
-                  {contractFile && (
-                    <p className="text-sm text-slate-500 mt-2">{contractFile.name}</p>
+                  {uploadedDocumentName && (
+                    <p className="text-sm text-slate-500 mt-2">Nahráno: {uploadedDocumentName}</p>
                   )}
                   <p className="text-xs text-slate-400 mt-1">Volitelné. Smlouvu lze doplnit později.</p>
                 </div>

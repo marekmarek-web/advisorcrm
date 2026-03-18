@@ -111,7 +111,11 @@ export function CalendarContextPanel({
     const hasVideoLink = selectedEvent.meetingLink && (selectedEvent.eventType === "telefonat" || selectedEvent.meetingLink.includes("meet") || selectedEvent.meetingLink.includes("zoom"));
 
     return (
-      <aside className="w-80 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden z-30 transition-all flex-shrink-0">
+      <aside
+        className={`wp-cal-context-panel bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden z-30 transition-all flex-shrink-0 ${
+          isMobile ? "wp-cal-context-panel--mobile rounded-xl" : ""
+        }`}
+      >
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
             <div>
@@ -124,7 +128,7 @@ export function CalendarContextPanel({
               <button
                 type="button"
                 onClick={onToggleCollapsed}
-                className="p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 rounded-md transition-colors shadow-sm shrink-0"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-800 rounded-md transition-colors shadow-sm shrink-0"
                 aria-label="Zavřít panel"
               >
                 <X size={14} />
@@ -241,7 +245,11 @@ export function CalendarContextPanel({
   }
 
   return (
-    <aside className="w-80 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden z-30 transition-all flex-shrink-0">
+    <aside
+      className={`wp-cal-context-panel bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden z-30 transition-all flex-shrink-0 ${
+        isMobile ? "wp-cal-context-panel--mobile rounded-xl" : ""
+      }`}
+    >
       <div className="p-6 border-b border-slate-100 bg-white flex items-center justify-between">
         <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">
           Agenda • {formatMonthYear(selectedDate)}
@@ -250,7 +258,7 @@ export function CalendarContextPanel({
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className="text-slate-400 hover:text-indigo-600 p-1 rounded-md hover:bg-slate-100"
+            className="text-slate-400 hover:text-indigo-600 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md hover:bg-slate-100"
             aria-label="Zavřít panel"
           >
             <X size={16} />

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { revokeStoredPushToken } from "@/lib/push/usePushNotifications";
 
 function getInitials(email: string | undefined): string {
   if (!email) return "?";
@@ -47,6 +48,7 @@ export function UserMenu() {
 
   async function signOut() {
     const supabase = createClient();
+    await revokeStoredPushToken();
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();

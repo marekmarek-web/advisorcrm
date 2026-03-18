@@ -75,7 +75,7 @@ export function ClientSidebar({
         </div>
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-1.5 rounded-md text-monday-text-muted hover:bg-monday-row-hover"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-monday-text-muted hover:bg-monday-row-hover"
           aria-label="Otevřít menu"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" viewBox="0 0 24 24">
@@ -112,7 +112,7 @@ export function ClientSidebar({
             </Link>
             <button
               onClick={() => setMobileOpen(false)}
-              className="md:hidden p-1 rounded-md text-monday-text-muted hover:bg-monday-row-hover"
+              className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-monday-text-muted hover:bg-monday-row-hover"
               aria-label="Zavřít menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">

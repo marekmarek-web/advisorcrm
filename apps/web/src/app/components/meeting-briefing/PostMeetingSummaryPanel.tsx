@@ -19,12 +19,14 @@ import { createEvent } from "@/app/actions/events";
 import { createOpportunity } from "@/app/actions/pipeline";
 import { getOpportunityStages } from "@/app/actions/pipeline";
 import { getTasksByContactId } from "@/app/actions/tasks";
+import { submitAiFeedbackWithAction } from "@/app/actions/ai-actions";
 import type { PostMeetingSummary as PostMeetingSummaryType } from "@/lib/meeting-briefing/types";
 
 type Props = {
   contactId: string;
   meetingNoteId?: string | null;
   eventId?: string | null;
+  generationId?: string | null;
   /** When set, show form to generate from raw notes. */
   showRawNotesInput?: boolean;
 };
@@ -39,6 +41,7 @@ export function PostMeetingSummaryPanel({
   contactId,
   meetingNoteId,
   eventId,
+  generationId,
   showRawNotesInput = true,
 }: Props) {
   const [summary, setSummary] = useState<PostMeetingSummaryType | null>(null);
@@ -84,6 +87,13 @@ export function PostMeetingSummaryPanel({
       if (id) {
         setCreatedTaskIds((prev) => new Set(prev).add(id));
         setOpenTasks((prev) => [...prev, { id, title, dueDate: dueDate ?? null }]);
+        if (generationId) {
+          await submitAiFeedbackWithAction(generationId, "accepted", {
+            actionTaken: "task_created",
+            createdEntityType: "task",
+            createdEntityId: id,
+          });
+        }
       }
     } catch (e) {
       console.error(e);
@@ -102,7 +112,16 @@ export function PostMeetingSummaryPanel({
         startAt: start.toISOString(),
         endAt: end.toISOString(),
       });
-      if (id) setCreatedEventId(id);
+      if (id) {
+        setCreatedEventId(id);
+        if (generationId) {
+          await submitAiFeedbackWithAction(generationId, "accepted", {
+            actionTaken: "meeting_created",
+            createdEntityType: "event",
+            createdEntityId: id,
+          });
+        }
+      }
     } catch (e) {
       console.error(e);
     }
@@ -119,7 +138,16 @@ export function PostMeetingSummaryPanel({
         caseType: "jiné",
         stageId: first.id,
       });
-      if (id) setCreatedOppId(id);
+      if (id) {
+        setCreatedOppId(id);
+        if (generationId) {
+          await submitAiFeedbackWithAction(generationId, "accepted", {
+            actionTaken: "deal_created",
+            createdEntityType: "opportunity",
+            createdEntityId: id,
+          });
+        }
+      }
     } catch (e) {
       console.error(e);
     }

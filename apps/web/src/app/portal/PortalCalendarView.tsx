@@ -24,6 +24,7 @@ import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel
 import { CalendarLeftPanel } from "@/app/portal/calendar/CalendarLeftPanel";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
 import { ContactSearchInput } from "@/app/components/ContactSearchInput";
+import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
 
 type ViewMode = "day" | "month" | "week" | "workweek";
 
@@ -192,19 +193,19 @@ function EventDetailPopup({
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 bg-slate-50/50">
           <h2 className="text-lg font-black text-slate-900 leading-tight truncate flex-1">{event.title}</h2>
           <div className="flex items-center gap-1 shrink-0">
-            <button type="button" onClick={onEdit} className="p-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors" aria-label="Upravit" title="Upravit">
+            <button type="button" onClick={onEdit} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors" aria-label="Upravit" title="Upravit">
               <Edit2 size={18} className="text-blue-600" />
             </button>
-            <button type="button" onClick={onDelete} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 transition-colors" aria-label="Smazat" title="Smazat">
+            <button type="button" onClick={onDelete} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 transition-colors" aria-label="Smazat" title="Smazat">
               <Trash2 size={18} />
             </button>
-            <a href={mailtoHref} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors" aria-label="Poslat e-mailem" title="Poslat e-mailem">
+            <a href={mailtoHref} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors" aria-label="Poslat e-mailem" title="Poslat e-mailem">
               <Mail size={18} />
             </a>
-            <button type="button" className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" aria-label="Další" title="Další">
+            <button type="button" className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" aria-label="Další" title="Další">
               <MoreVertical size={18} />
             </button>
-            <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors" aria-label="Zavřít">
+            <button type="button" onClick={onClose} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors" aria-label="Zavřít">
               <X size={18} />
             </button>
           </div>
@@ -328,6 +329,7 @@ function EventFormModal({
 }) {
   const [form, setForm] = useState<EventFormData>(initial);
   const [saving, setSaving] = useState(false);
+  const { keyboardInset } = useKeyboardAware();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -340,8 +342,8 @@ function EventFormModal({
 
   return (
     <BaseModal open={true} onClose={onClose} title={initial.id ? "Upravit aktivitu" : "Nová aktivita"} maxWidth="2xl">
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-        <div className="px-5 py-5 space-y-5 overflow-y-auto">
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0" style={{ paddingBottom: keyboardInset }}>
+        <div className="px-5 py-5 space-y-5 overflow-y-auto" style={{ paddingBottom: `max(1.25rem, ${keyboardInset}px)` }}>
           <div className="flex flex-wrap items-center gap-2">
             {CALENDAR_EVENT_CATEGORIES.filter((t) => ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"].includes(t.id)).map((t) => {
               const activeColor = eventTypeColors?.[t.id] ?? t.color;
@@ -799,7 +801,7 @@ export function PortalCalendarView() {
         className={`wp-cal-container wp-cal-container--today-${settings.todayStyle} wp-cal-container--font-${settings.fontSize} flex flex-col flex-1 min-h-0`}
         style={cssVarsFromSettings(settings)}
       >
-        <div className="flex-1 flex overflow-hidden p-2 sm:p-4 gap-2 sm:gap-4 min-h-0">
+        <div className={`flex-1 flex overflow-hidden p-2 sm:p-4 gap-2 sm:gap-4 min-h-0 ${isMobile ? "flex-col" : ""}`}>
           <CalendarLeftPanel
             baseDate={currentDate}
             selectedDate={selectedDate}
@@ -841,6 +843,18 @@ export function PortalCalendarView() {
                     </span>
                   )}
                 </div>
+                {isMobile && (
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setCurrentDate(new Date(`${e.target.value}T12:00:00`));
+                    }}
+                    className="min-h-[44px] rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 bg-white"
+                    aria-label="Vybrat datum"
+                  />
+                )}
               </div>
               <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                 <div className="bg-slate-100 p-0.5 sm:p-1 rounded-lg flex items-center">
@@ -857,7 +871,7 @@ export function PortalCalendarView() {
                       ))}
                 </div>
                 <div className="w-px h-5 bg-slate-200 hidden sm:block" />
-                <button type="button" onClick={() => setContextPanelCollapsed((c) => !c)} className={`p-1.5 rounded-lg transition-colors hidden sm:flex ${!contextPanelCollapsed ? "text-indigo-600 bg-indigo-50" : "text-slate-400 hover:bg-slate-100"}`} title="Přepnout postranní panel">
+                <button type="button" onClick={() => setContextPanelCollapsed((c) => !c)} className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-1.5 rounded-lg transition-colors ${!contextPanelCollapsed ? "text-indigo-600 bg-indigo-50" : "text-slate-400 hover:bg-slate-100"}`} title="Přepnout postranní panel">
                   {!contextPanelCollapsed ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
                 </button>
                 <button type="button" onClick={handleCalendarSync} disabled={calendarSyncLoading} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-95 min-h-[44px] sm:min-h-0 disabled:opacity-60" title="Synchronizovat s Google Kalendářem">

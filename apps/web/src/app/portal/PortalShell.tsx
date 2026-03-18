@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef, Suspense } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Sparkles, Search, MoreVertical } from "lucide-react";
 import { PortalSidebar, PORTAL_SIDEBAR_COLLAPSED_PX } from "./PortalSidebar";
 import { PortalHeaderSearch, type PortalHeaderSearchHandle } from "./PortalHeaderSearch";
@@ -10,6 +11,9 @@ import { UserMenu } from "@/app/components/UserMenu";
 import { ToastProvider } from "@/app/components/Toast";
 import { AiAssistantDrawerProvider, useAiAssistantDrawer } from "./AiAssistantDrawerContext";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
+import { useShareIntent } from "@/lib/share/useShareIntent";
+import { usePushNotifications } from "@/lib/push/usePushNotifications";
+import { mapPushNotificationToRoute } from "@/lib/push/routing";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -132,6 +136,17 @@ function PortalShellInner({
   children: React.ReactNode;
 }) {
   const isMobile = !isDesktop;
+  const router = useRouter();
+  const pathname = usePathname();
+  const { hasSharedFiles } = useShareIntent();
+  const { shouldShowSoftPrompt, requestSystemPermission, markSoftPromptSeen } = usePushNotifications({
+    onPushNotificationActionPerformed: (action) => {
+      const nextRoute = mapPushNotificationToRoute(action.notification);
+      if (pathname !== nextRoute) {
+        router.push(nextRoute);
+      }
+    },
+  });
   const { open: aiDrawerOpen, setOpen: setAiDrawerOpen } = useAiAssistantDrawer();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -155,6 +170,12 @@ function PortalShellInner({
     }
   }, [isMobile, mobileSearchOpen]);
 
+  useEffect(() => {
+    if (!hasSharedFiles) return;
+    if (pathname === "/portal/share/import") return;
+    router.push("/portal/share/import");
+  }, [hasSharedFiles, pathname, router]);
+
   return (
     <div className="wp-app-container monday-board-wrap flex min-h-screen">
       <PortalSidebar
@@ -168,7 +189,7 @@ function PortalShellInner({
           onMobileDrawerClose={() => setSidebarDrawerOpen(false)}
         />
         <div className="flex flex-col flex-1 min-w-0" style={{ marginLeft: mainMarginPx, transition: "margin-left 200ms ease-in-out" }}>
-          <header className="wp-app-header shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6 bg-white/80 backdrop-blur-md border-b border-slate-100 shadow-sm sticky top-0 z-sticky-header px-3 sm:px-6 md:px-8 py-2 md:py-4">
+          <header className="wp-app-header shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6 bg-white/80 backdrop-blur-md border-b border-slate-100 shadow-sm sticky top-0 z-sticky-header px-3 sm:px-6 md:px-8 pb-2 md:pb-4 pt-[calc(var(--safe-area-top)+0.5rem)] md:pt-[calc(var(--safe-area-top)+1rem)]">
             <button
               type="button"
               onClick={() => setSidebarDrawerOpen(true)}
@@ -234,7 +255,7 @@ function PortalShellInner({
               )}
             </div>
           </header>
-          <div className="flex-1 flex min-h-0 wp-app-content">
+          <div className="flex-1 flex min-h-0 wp-app-content pb-[var(--safe-area-bottom)]">
             <div className="wp-app-content-inner">
               {children}
             </div>
@@ -276,6 +297,33 @@ function PortalShellInner({
         )}
 
         <AiAssistantDrawer />
+
+        {shouldShowSoftPrompt ? (
+          <div className="fixed inset-x-3 bottom-[calc(var(--safe-area-bottom)+0.75rem)] z-modal sm:inset-x-auto sm:right-4 sm:w-[360px] rounded-2xl border border-slate-200 bg-white shadow-xl p-4">
+            <p className="text-sm font-semibold text-slate-900">Povolit push notifikace?</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Dostanete upozornění na nové zprávy, dokumenty a důležité změny.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void requestSystemPermission();
+                }}
+                className="min-h-[44px] rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                Povolit
+              </button>
+              <button
+                type="button"
+                onClick={markSoftPromptSeen}
+                className="min-h-[44px] rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Teď ne
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
   );
 }

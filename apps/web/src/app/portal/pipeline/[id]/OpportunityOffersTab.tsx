@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import {
   getDocumentsForOpportunity,
-  uploadDocument,
   deleteDocument,
 } from "@/app/actions/documents";
 import type { DocumentRow } from "@/app/actions/documents";
+import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 
 export function OpportunityOffersTab({
   opportunityId,
@@ -17,7 +17,6 @@ export function OpportunityOffersTab({
 }) {
   const [list, setList] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
 
   function load() {
     setLoading(true);
@@ -29,25 +28,6 @@ export function OpportunityOffersTab({
 
   useEffect(() => load(), [opportunityId]);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const fd = new FormData(form);
-    setUploading(true);
-    try {
-      await uploadDocument(contactId || "", fd, {
-        opportunityId,
-        visibleToClient: false,
-      });
-      form.reset();
-      load();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Nahrání se nezdařilo.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function onDelete(id: string) {
     if (!confirm("Opravdu smazat tento dokument?")) return;
     await deleteDocument(id);
@@ -56,17 +36,12 @@ export function OpportunityOffersTab({
 
   return (
     <div className="space-y-4">
-      <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2 p-4 rounded-xl border border-slate-200 bg-slate-50">
-        <input type="file" name="file" className="text-sm" required />
-        <input type="text" name="name" placeholder="Název (volitelně)" className="rounded border border-slate-300 px-2 py-1 text-sm" />
-        <button
-          type="submit"
-          disabled={uploading}
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {uploading ? "Nahrávám…" : "Nahrát přílohu"}
-        </button>
-      </form>
+      <DocumentUploadZone
+        contactId={contactId ?? undefined}
+        opportunityId={opportunityId}
+        submitButtonLabel="Nahrát přílohu"
+        onUploaded={() => load()}
+      />
       {loading && <p className="text-sm text-slate-500">Načítání…</p>}
       {!loading && list.length === 0 && (
         <p className="text-sm text-slate-500">Žádné přílohy. Nahrajte nabídku nebo objednávku výše.</p>

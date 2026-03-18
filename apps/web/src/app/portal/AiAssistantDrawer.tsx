@@ -25,6 +25,7 @@ import {
   type CsvPreview,
   type ColumnMapping,
 } from "@/app/actions/csv-import";
+import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 
 type DraftAction = { type: string; label: string; payload: Record<string, unknown> };
 type ClientCandidate = { clientId: string; displayName?: string };
@@ -84,6 +85,7 @@ function formatUploadSuccessMessage(detail: {
 
 export function AiAssistantDrawer() {
   const { open, setOpen } = useAiAssistantDrawer();
+  const { isNative } = useNativePlatform();
   const router = useRouter();
   const toast = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -486,8 +488,8 @@ export function AiAssistantDrawer() {
                 <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 mx-auto mb-3">
                   <UploadCloud size={28} strokeWidth={1.5} />
                 </div>
-                <p className="text-sm font-black text-slate-800 mb-1">Přetáhněte smlouvu sem</p>
-                <p className="text-xs text-slate-500 font-medium">nebo klikněte pro výběr (PDF)</p>
+                <p className="text-sm font-black text-slate-800 mb-1">{isNative ? "Nahrajte smlouvu" : "Přetáhněte smlouvu sem"}</p>
+                <p className="text-xs text-slate-500 font-medium">{isNative ? "klepněte pro výběr souboru (PDF)" : "nebo klikněte pro výběr (PDF)"}</p>
               </>
             )}
             {uploadPhase === "uploading" && (

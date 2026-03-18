@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -22,6 +22,10 @@ import {
 import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint } from "@/app/actions/team-overview";
 import type { TeamOverviewPeriod } from "@/app/actions/team-overview";
 import { getTeamOverviewKpis, getTeamMemberMetrics, getTeamAlerts, getNewcomerAdaptation, getTeamPerformanceOverTime } from "@/app/actions/team-overview";
+import { generateTeamSummaryAction, getLatestTeamSummaryAction, submitAiFeedbackAction } from "@/app/actions/ai-generations";
+import { createTeamActionFromAi } from "@/app/actions/ai-actions";
+import type { AiFeedbackVerdict, AiFeedbackActionTaken } from "@/app/actions/ai-feedback";
+import type { AiActionType } from "@/lib/ai/actions/action-suggestions";
 import { SkeletonBlock } from "@/app/components/Skeleton";
 import { TeamCalendarModal, TeamCalendarButtons } from "./TeamCalendarModal";
 
@@ -30,6 +34,159 @@ const PERIOD_OPTIONS: { value: TeamOverviewPeriod; label: string }[] = [
   { value: "month", label: "Měsíc" },
   { value: "quarter", label: "Kvartál" },
 ];
+
+const FEEDBACK_VERDICTS: { value: AiFeedbackVerdict; label: string }[] = [
+  { value: "accepted", label: "Přijato" },
+  { value: "rejected", label: "Zamítnuto" },
+  { value: "edited", label: "Upraveno" },
+];
+
+const FEEDBACK_ACTION_TAKEN: { value: AiFeedbackActionTaken; label: string }[] = [
+  { value: "none", label: "Žádná akce" },
+  { value: "task_created", label: "Vytvořena úloha" },
+  { value: "meeting_created", label: "Vytvořena schůzka" },
+  { value: "service_action_created", label: "Servisní akce" },
+];
+
+function TeamSummaryFeedback({
+  onSubmit,
+  saving,
+  disabled,
+}: {
+  onSubmit: (verdict: AiFeedbackVerdict, actionTaken: AiFeedbackActionTaken) => void;
+  saving: boolean;
+  disabled: boolean;
+}) {
+  const [verdict, setVerdict] = useState<AiFeedbackVerdict>("accepted");
+  const [actionTaken, setActionTaken] = useState<AiFeedbackActionTaken>("none");
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-100">
+      <p className="text-sm font-medium text-slate-700 mb-2">Zpětná vazba k shrnutí</p>
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        {FEEDBACK_VERDICTS.map((v) => (
+          <button
+            key={v.value}
+            type="button"
+            onClick={() => setVerdict(v.value)}
+            disabled={disabled}
+            className={`min-h-[44px] rounded-xl border px-3 py-2 text-sm font-medium disabled:opacity-60 ${
+              verdict === v.value
+                ? "border-violet-500 bg-violet-50 text-violet-700"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-sm text-slate-600">Co jste udělali:</label>
+        <select
+          value={actionTaken}
+          onChange={(e) => setActionTaken(e.target.value as AiFeedbackActionTaken)}
+          disabled={disabled}
+          className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
+        >
+          {FEEDBACK_ACTION_TAKEN.map((a) => (
+            <option key={a.value} value={a.value}>{a.label}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => onSubmit(verdict, actionTaken)}
+          disabled={disabled}
+          className="min-h-[44px] rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+        >
+          {saving ? "Odesílám…" : "Odeslat zpětnou vazbu"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const TEAM_ACTION_TYPES: { value: AiActionType; label: string }[] = [
+  { value: "task", label: "Úkol" },
+  { value: "meeting", label: "Schůzka" },
+  { value: "service_action", label: "Servisní akce" },
+];
+
+function TeamSummaryFollowUp({
+  members,
+  onCreate,
+  saving,
+  error,
+}: {
+  members: TeamMemberInfo[];
+  onCreate: (actionType: AiActionType, title: string, memberId: string | null, dueAt?: string) => void;
+  saving: boolean;
+  error: string | null;
+}) {
+  const [actionType, setActionType] = useState<AiActionType>("task");
+  const [title, setTitle] = useState("");
+  const [memberId, setMemberId] = useState<string>("");
+  const [dueAt, setDueAt] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onCreate(actionType, title.trim(), memberId || null, dueAt || undefined);
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-100">
+      <p className="text-sm font-medium text-slate-700 mb-2">Vytvořit follow-up z shrnutí</p>
+      {error && <p className="mb-2 text-sm text-rose-600" role="alert">{error}</p>}
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
+        <select
+          value={actionType}
+          onChange={(e) => setActionType(e.target.value as AiActionType)}
+          disabled={saving}
+          className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
+        >
+          {TEAM_ACTION_TYPES.map((a) => (
+            <option key={a.value} value={a.value}>{a.label}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Název úkolu nebo schůzky"
+          disabled={saving}
+          className="min-h-[44px] flex-1 min-w-[160px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 disabled:opacity-60"
+        />
+        <select
+          value={memberId}
+          onChange={(e) => setMemberId(e.target.value)}
+          disabled={saving}
+          className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
+          title="Přiřadit členovi"
+        >
+          <option value="">— Přiřadit mně —</option>
+          {members.map((m) => (
+            <option key={m.userId} value={m.userId}>{m.displayName || m.email || m.userId}</option>
+          ))}
+        </select>
+        <input
+          type="date"
+          value={dueAt}
+          onChange={(e) => setDueAt(e.target.value)}
+          disabled={saving}
+          className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
+          title="Termín"
+        />
+        <button
+          type="submit"
+          disabled={saving || !title.trim()}
+          className="min-h-[44px] rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+        >
+          {saving ? "Vytvářím…" : "Vytvořit"}
+        </button>
+      </form>
+    </div>
+  );
+}
 
 const KPI_THEMES = {
   green: { bg: "bg-emerald-500/20", glow: "bg-emerald-500", subtitle: "text-emerald-600" },
@@ -40,6 +197,7 @@ const KPI_THEMES = {
 } as const;
 
 interface TeamOverviewViewProps {
+  teamId: string;
   initialKpis: TeamOverviewKpis | null;
   initialMembers: TeamMemberInfo[];
   initialMetrics: TeamMemberMetrics[];
@@ -63,6 +221,7 @@ function TrendIndicator({ trend }: { trend: number }) {
 }
 
 export function TeamOverviewView({
+  teamId,
   initialKpis,
   initialMembers,
   initialMetrics,
@@ -80,7 +239,13 @@ export function TeamOverviewView({
   const [performanceOverTime, setPerformanceOverTime] = useState<TeamPerformancePoint[]>(initialPerformanceOverTime);
   const [loading, setLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiGenerationId, setAiGenerationId] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiFeedbackSubmitted, setAiFeedbackSubmitted] = useState(false);
+  const [aiFeedbackSaving, setAiFeedbackSaving] = useState(false);
+  const [teamActionSaving, setTeamActionSaving] = useState(false);
+  const [teamActionError, setTeamActionError] = useState<string | null>(null);
   const [teamCalendarModal, setTeamCalendarModal] = useState<"event" | "task" | null>(null);
 
   const refresh = useCallback(async () => {
@@ -103,18 +268,98 @@ export function TeamOverviewView({
     }
   }, [period]);
 
-  const loadAiSummary = useCallback(async () => {
+  const loadLatestTeamSummary = useCallback(async () => {
+    setAiError(null);
     setAiLoading(true);
     try {
-      const res = await fetch(`/api/ai/team-summary?period=${period}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAiSummary(data.summary ?? null);
+      const item = await getLatestTeamSummaryAction();
+      if (item) {
+        setAiSummary(item.outputText);
+        setAiGenerationId(item.id);
+      } else {
+        setAiSummary(null);
+        setAiGenerationId(null);
       }
+    } catch {
+      setAiError("Načtení shrnutí se nepovedlo.");
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
+  const generateTeamSummary = useCallback(async () => {
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      const result = await generateTeamSummaryAction(period);
+      if (result.ok) {
+        setAiSummary(result.text);
+        if (result.generationId) setAiGenerationId(result.generationId);
+        setAiFeedbackSubmitted(false);
+      } else {
+        setAiError(result.error ?? "Generování se nepovedlo.");
+      }
+    } catch {
+      setAiError("Generování se nepovedlo. Zkuste to později.");
     } finally {
       setAiLoading(false);
     }
   }, [period]);
+
+  const submitTeamSummaryFeedback = useCallback(
+    async (verdict: AiFeedbackVerdict, actionTaken: AiFeedbackActionTaken) => {
+      if (!aiGenerationId) return;
+      setAiFeedbackSaving(true);
+      setAiError(null);
+      try {
+        const result = await submitAiFeedbackAction(aiGenerationId, verdict, { actionTaken });
+        if (result.ok) setAiFeedbackSubmitted(true);
+        else setAiError(result.error ?? "Odeslání zpětné vazby se nepovedlo.");
+      } catch {
+        setAiError("Odeslání zpětné vazby se nepovedlo.");
+      } finally {
+        setAiFeedbackSaving(false);
+      }
+    },
+    [aiGenerationId]
+  );
+
+  const createTeamFollowUp = useCallback(
+    async (actionType: AiActionType, title: string, memberId: string | null, dueAt?: string) => {
+      if (!aiGenerationId || actionType === "deal") return;
+      setTeamActionSaving(true);
+      setTeamActionError(null);
+      try {
+        const result = await createTeamActionFromAi(
+          {
+            sourceGenerationId: aiGenerationId,
+            sourcePromptType: "teamSummary",
+            actionType,
+            title: title.trim(),
+            dueAt: dueAt || undefined,
+          },
+          teamId,
+          memberId
+        );
+        if (result.ok) {
+          setTeamActionError(null);
+          if (result.entityType === "event") window.location.href = "/portal/calendar";
+          else window.location.href = "/portal/tasks";
+        } else {
+          setTeamActionError(result.error ?? "Vytvoření akce se nepovedlo.");
+        }
+      } catch {
+        setTeamActionError("Vytvoření akce se nepovedlo.");
+      } finally {
+        setTeamActionSaving(false);
+      }
+    },
+    [aiGenerationId, teamId]
+  );
+
+  useEffect(() => {
+    loadLatestTeamSummary();
+  }, [loadLatestTeamSummary]);
 
   const memberCount = initialMembers.length;
   const metricsByUser = new Map(metrics.map((m) => [m.userId, m]));
@@ -289,20 +534,55 @@ export function TeamOverviewView({
                 <Sparkles className="w-5 h-5 text-violet-500" />
                 AI shrnutí týmu
               </h2>
-              <button
-                type="button"
-                onClick={loadAiSummary}
-                disabled={aiLoading}
-                className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
-              >
-                {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Generovat shrnutí"}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadLatestTeamSummary}
+                  disabled={aiLoading}
+                  className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                  Načíst uložené
+                </button>
+                <button
+                  type="button"
+                  onClick={generateTeamSummary}
+                  disabled={aiLoading}
+                  className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+                >
+                  {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                  {aiSummary ? "Regenerovat" : "Generovat shrnutí"}
+                </button>
+              </div>
             </div>
-            {aiSummary ? (
-              <p className="text-slate-700 whitespace-pre-wrap">{aiSummary}</p>
-            ) : (
-              <p className="text-slate-500 text-sm">Klikněte na „Generovat shrnutí“, aby AI na základě metrik a upozornění vytvořilo manažerské shrnutí.</p>
+            {aiError && (
+              <p className="mb-3 text-sm text-rose-600" role="alert">{aiError}</p>
             )}
+            {aiSummary ? (
+              <>
+                <p className="text-slate-700 whitespace-pre-wrap">{aiSummary}</p>
+                {aiGenerationId && !aiFeedbackSubmitted && (
+                  <TeamSummaryFeedback
+                    onSubmit={submitTeamSummaryFeedback}
+                    saving={aiFeedbackSaving}
+                    disabled={aiFeedbackSaving}
+                  />
+                )}
+                {aiFeedbackSubmitted && (
+                  <p className="mt-3 text-sm text-emerald-600">Zpětná vazba byla odeslána.</p>
+                )}
+                {aiGenerationId && (
+                  <TeamSummaryFollowUp
+                    members={initialMembers}
+                    onCreate={createTeamFollowUp}
+                    saving={teamActionSaving}
+                    error={teamActionError}
+                  />
+                )}
+              </>
+            ) : !aiLoading ? (
+              <p className="text-slate-500 text-sm">Načtěte uložené shrnutí nebo klikněte na „Generovat shrnutí“, aby AI na základě metrik a upozornění vytvořilo manažerské shrnutí.</p>
+            ) : null}
           </div>
         </section>
 

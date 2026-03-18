@@ -1,16 +1,19 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { hasPermission } from "@/lib/auth/get-membership";
 import { db } from "db";
 import {
   advisorBusinessPlans,
   advisorBusinessPlanTargets,
+  advisorVisionGoals,
 } from "db";
-import { eq, and, asc } from "db";
+import { eq, and, asc, inArray } from "db";
 import type { PeriodType, BusinessPlanMetricType, MetricUnit } from "@/lib/business-plan/types";
 import { getPlanPeriod } from "@/lib/business-plan/types";
-import { computeAllMetrics } from "@/lib/business-plan/metrics";
+import { computeAllMetrics, getCallsCount, getProductionMix } from "@/lib/business-plan/metrics";
 import { computeProgress, type PlanWithTargets } from "@/lib/business-plan/progress";
+import { listTeamMembersWithNames } from "@/app/actions/team-overview";
 import { getSlippageRecommendations } from "@/lib/business-plan/recommendations";
 import type { PlanProgress, SlippageRecommendation } from "@/lib/business-plan/types";
 
@@ -41,7 +44,13 @@ export type PlanWithTargetsRow = {
 export type PlanProgressResult = {
   progress: PlanProgress;
   recommendations: SlippageRecommendation[];
+  /** Funnel actuals for UI (calls = telefonat events). */
+  funnelActuals?: { calls: number };
+  /** Production by segment (Kč) for mix donut. */
+  productionMix?: { investments: number; life: number; hypo: number };
 };
+
+export type VisionGoalRow = { id: string; title: string; progressPct: number; sortOrder: number };
 
 /** Minimal data for dashboard widget: current month plan progress (top 3 metrics). */
 export async function getBusinessPlanWidgetData(): Promise<{
@@ -224,7 +233,7 @@ export async function getPlanWithTargets(
   };
 }
 
-/** Compute progress and recommendations for a plan. */
+/** Compute progress and recommendations for a plan. Runs metrics/calls/mix sequentially to avoid exhausting DB connection pool. */
 export async function getPlanProgress(
   planId: string
 ): Promise<PlanProgressResult | null> {
@@ -237,6 +246,8 @@ export async function getPlanProgress(
     plan.periodStart,
     plan.periodEnd
   );
+  const calls = await getCallsCount(plan.tenantId, plan.userId, plan.periodStart, plan.periodEnd);
+  const productionMix = await getProductionMix(plan.tenantId, plan.userId, plan.periodStart, plan.periodEnd);
   const planForProgress: PlanWithTargets = {
     planId: plan.planId,
     tenantId: plan.tenantId,
@@ -251,7 +262,12 @@ export async function getPlanProgress(
   };
   const progress = await computeProgress(planForProgress, actuals);
   const recommendations = getSlippageRecommendations(progress);
-  return { progress, recommendations };
+  return {
+    progress,
+    recommendations,
+    funnelActuals: { calls },
+    productionMix,
+  };
 }
 
 /** Create a plan for the given period. Returns plan id. */
@@ -340,4 +356,213 @@ export async function setPlanTargets(
       unit: t.unit,
     }))
   );
+}
+
+/** Get current user's vision goals for business plan. */
+export async function getVisionGoals(): Promise<VisionGoalRow[]> {
+  const auth = await requireAuthInAction();
+  const rows = await db
+    .select({
+      id: advisorVisionGoals.id,
+      title: advisorVisionGoals.title,
+      progressPct: advisorVisionGoals.progressPct,
+      sortOrder: advisorVisionGoals.sortOrder,
+    })
+    .from(advisorVisionGoals)
+    .where(
+      and(
+        eq(advisorVisionGoals.tenantId, auth.tenantId),
+        eq(advisorVisionGoals.userId, auth.userId)
+      )
+    )
+    .orderBy(asc(advisorVisionGoals.sortOrder), asc(advisorVisionGoals.createdAt));
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    progressPct: r.progressPct,
+    sortOrder: r.sortOrder,
+  }));
+}
+
+export type TeamBusinessPlanMemberSummary = {
+  userId: string;
+  displayName: string | null;
+  periodLabel: string | null;
+  productionActual: number;
+  productionTarget: number;
+  meetingsActual: number;
+  meetingsTarget: number;
+  newClientsActual: number;
+  newClientsTarget: number;
+  overallHealth: string;
+};
+
+/** Team business plan: list members with their plan progress for the given period. Requires team_overview:read. Batches plan/target queries to avoid exhausting DB pool. */
+export async function getTeamBusinessPlanSummary(
+  periodType: PeriodType
+): Promise<TeamBusinessPlanMemberSummary[]> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "team_overview:read")) return [];
+
+  const members = await listTeamMembersWithNames();
+  if (members.length === 0) return [];
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const periodNumber =
+    periodType === "month"
+      ? now.getMonth() + 1
+      : periodType === "quarter"
+        ? Math.floor(now.getMonth() / 3) + 1
+        : 0;
+
+  const memberIds = members.map((m) => m.userId);
+
+  const planRows = await db
+    .select()
+    .from(advisorBusinessPlans)
+    .where(
+      and(
+        eq(advisorBusinessPlans.tenantId, auth.tenantId),
+        eq(advisorBusinessPlans.periodType, periodType),
+        eq(advisorBusinessPlans.year, y),
+        eq(advisorBusinessPlans.periodNumber, periodNumber),
+        eq(advisorBusinessPlans.status, "active"),
+        inArray(advisorBusinessPlans.userId, memberIds)
+      )
+    );
+
+  const planIds = planRows.map((p) => p.id);
+  const targetsByPlanId = new Map<string, { metricType: BusinessPlanMetricType; targetValue: number; unit: MetricUnit }[]>();
+
+  if (planIds.length > 0) {
+    const targetRows = await db
+      .select({
+        planId: advisorBusinessPlanTargets.planId,
+        metricType: advisorBusinessPlanTargets.metricType,
+        targetValue: advisorBusinessPlanTargets.targetValue,
+        unit: advisorBusinessPlanTargets.unit,
+      })
+      .from(advisorBusinessPlanTargets)
+      .where(inArray(advisorBusinessPlanTargets.planId, planIds));
+
+    for (const t of targetRows) {
+      const list = targetsByPlanId.get(t.planId) ?? [];
+      list.push({
+        metricType: t.metricType as BusinessPlanMetricType,
+        targetValue: Number(t.targetValue),
+        unit: (t.unit ?? "count") as MetricUnit,
+      });
+      targetsByPlanId.set(t.planId, list);
+    }
+  }
+
+  const plansByUserId = new Map(planRows.map((p) => [p.userId, p]));
+
+  const result: TeamBusinessPlanMemberSummary[] = [];
+
+  for (const mem of members) {
+    const planRow = plansByUserId.get(mem.userId);
+
+    if (!planRow?.id) {
+      result.push({
+        userId: mem.userId,
+        displayName: mem.displayName,
+        periodLabel: null,
+        productionActual: 0,
+        productionTarget: 0,
+        meetingsActual: 0,
+        meetingsTarget: 0,
+        newClientsActual: 0,
+        newClientsTarget: 0,
+        overallHealth: "no_data",
+      });
+      continue;
+    }
+
+    const period = getPlanPeriod(
+      planRow.periodType as PeriodType,
+      planRow.year,
+      planRow.periodNumber
+    );
+    const targets = targetsByPlanId.get(planRow.id) ?? [];
+
+    const actuals = await computeAllMetrics(
+      auth.tenantId,
+      mem.userId,
+      period.start,
+      period.end
+    );
+    const planForProgress: PlanWithTargets = {
+      planId: planRow.id,
+      tenantId: planRow.tenantId,
+      userId: planRow.userId,
+      periodType: planRow.periodType,
+      year: planRow.year,
+      periodNumber: planRow.periodNumber,
+      periodStart: period.start,
+      periodEnd: period.end,
+      periodLabel: period.label,
+      targets,
+    };
+    const progress = await computeProgress(planForProgress, actuals);
+
+    const production = progress.metrics.find((m) => m.metricType === "production");
+    const meetings = progress.metrics.find((m) => m.metricType === "meetings");
+    const newClients = progress.metrics.find((m) => m.metricType === "new_clients");
+
+    result.push({
+      userId: mem.userId,
+      displayName: mem.displayName,
+      periodLabel: period.label,
+      productionActual: production?.actual ?? 0,
+      productionTarget: production?.target ?? 0,
+      meetingsActual: meetings?.actual ?? 0,
+      meetingsTarget: meetings?.target ?? 0,
+      newClientsActual: newClients?.actual ?? 0,
+      newClientsTarget: newClients?.target ?? 0,
+      overallHealth: progress.overallHealth,
+    });
+  }
+
+  return result;
+}
+
+/** Replace vision goals with the given list (by id or new). */
+export async function upsertVisionGoals(
+  goals: { id?: string; title: string; progressPct: number; sortOrder: number }[]
+): Promise<VisionGoalRow[]> {
+  const auth = await requireAuthInAction();
+  await db
+    .delete(advisorVisionGoals)
+    .where(
+      and(
+        eq(advisorVisionGoals.tenantId, auth.tenantId),
+        eq(advisorVisionGoals.userId, auth.userId)
+      )
+    );
+  if (goals.length === 0) return [];
+  const inserted = await db
+    .insert(advisorVisionGoals)
+    .values(
+      goals.map((g, i) => ({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        title: g.title,
+        progressPct: g.progressPct,
+        sortOrder: g.sortOrder ?? i,
+      }))
+    )
+    .returning({
+      id: advisorVisionGoals.id,
+      title: advisorVisionGoals.title,
+      progressPct: advisorVisionGoals.progressPct,
+      sortOrder: advisorVisionGoals.sortOrder,
+    });
+  return inserted.map((r) => ({
+    id: r.id,
+    title: r.title,
+    progressPct: r.progressPct,
+    sortOrder: r.sortOrder,
+  }));
 }

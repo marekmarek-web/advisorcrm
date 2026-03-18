@@ -358,7 +358,7 @@ export function ContractReviewDetailView(props: Props) {
                     type="button"
                     onClick={() => onSelectClient(c.clientId)}
                     disabled={!!actionLoading || detail.matchedClientId === c.clientId}
-                    className="text-sm px-3 py-1.5 rounded-lg border flex items-center gap-1"
+                  className="text-sm px-3 min-h-[44px] rounded-lg border flex items-center gap-1"
                     style={{
                       borderColor: "var(--wp-border)",
                       color: detail.matchedClientId === c.clientId ? "var(--wp-accent)" : "var(--wp-text)",
@@ -378,7 +378,7 @@ export function ContractReviewDetailView(props: Props) {
               type="button"
               onClick={onConfirmCreateNew}
               disabled={!!actionLoading || detail.createNewClientConfirmed === "true"}
-              className="text-sm px-3 py-2 rounded-lg border flex items-center gap-2"
+              className="text-sm px-3 min-h-[44px] rounded-lg border flex items-center gap-2"
               style={{
                 borderColor: "var(--wp-border)",
                 color: detail.createNewClientConfirmed === "true" ? "var(--wp-accent)" : "var(--wp-text)",
@@ -434,7 +434,7 @@ export function ContractReviewDetailView(props: Props) {
                 type="button"
                 onClick={onApprove}
                 disabled={!!actionLoading}
-                className="px-4 py-2 rounded-lg font-medium flex items-center gap-2 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                className="px-4 min-h-[44px] rounded-lg font-medium flex items-center gap-2 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
                 <Check size={18} /> Schválit
               </button>
@@ -442,7 +442,7 @@ export function ContractReviewDetailView(props: Props) {
                 type="button"
                 onClick={() => setShowRejectModal(true)}
                 disabled={!!actionLoading}
-                className="px-4 py-2 rounded-lg font-medium flex items-center gap-2 border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  className="px-4 min-h-[44px] rounded-lg font-medium flex items-center gap-2 border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
               >
                 <X size={18} /> Zamítnout
               </button>
@@ -453,7 +453,7 @@ export function ContractReviewDetailView(props: Props) {
               type="button"
               onClick={() => setShowApplyConfirm(true)}
               disabled={!!actionLoading}
-              className="px-4 py-2 rounded-lg font-medium flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 min-h-[44px] rounded-lg font-medium flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               <Send size={18} /> Aplikovat do CRM
             </button>
@@ -518,7 +518,7 @@ export function ContractReviewDetailView(props: Props) {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               rows={3}
-              className="w-full mt-1 rounded-lg border p-2 text-sm"
+              className="w-full mt-1 rounded-lg border p-2 text-sm min-h-[88px]"
               style={{ borderColor: "var(--wp-border)", color: "var(--wp-text)" }}
               placeholder="Např. špatná smlouva, duplicita…"
             />
@@ -526,7 +526,7 @@ export function ContractReviewDetailView(props: Props) {
               <button
                 type="button"
                 onClick={() => setShowRejectModal(false)}
-                className="px-3 py-2 rounded-lg border text-sm"
+                className="px-3 min-h-[44px] rounded-lg border text-sm"
                 style={{ borderColor: "var(--wp-border)", color: "var(--wp-text)" }}
               >
                 Zrušit
@@ -535,7 +535,7 @@ export function ContractReviewDetailView(props: Props) {
                 type="button"
                 onClick={onReject}
                 disabled={!!actionLoading}
-                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50"
+                className="px-3 min-h-[44px] rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50"
               >
                 {actionLoading === "reject" ? "Zamítám…" : "Zamítnout"}
               </button>
@@ -559,7 +559,7 @@ export function ContractReviewDetailView(props: Props) {
               <button
                 type="button"
                 onClick={() => setShowApplyConfirm(false)}
-                className="px-3 py-2 rounded-lg border text-sm"
+                className="px-3 min-h-[44px] rounded-lg border text-sm"
                 style={{ borderColor: "var(--wp-border)", color: "var(--wp-text)" }}
               >
                 Zrušit
@@ -568,7 +568,7 @@ export function ContractReviewDetailView(props: Props) {
                 type="button"
                 onClick={onApply}
                 disabled={!!actionLoading}
-                className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 disabled:opacity-50"
+                className="px-3 min-h-[44px] rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 disabled:opacity-50"
               >
                 {actionLoading === "apply" ? "Aplikuji…" : "Aplikovat"}
               </button>

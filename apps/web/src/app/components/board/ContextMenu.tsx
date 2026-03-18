@@ -51,13 +51,20 @@ export function ContextMenu({ items, anchorRect, anchorEl, anchorGap = 4, onClos
         onClose();
       }
     };
+    const handleTouchStart = (e: TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("touchstart", handleTouchStart);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("touchstart", handleTouchStart);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [onClose]);
@@ -69,7 +76,7 @@ export function ContextMenu({ items, anchorRect, anchorEl, anchorGap = 4, onClos
         position: "fixed",
         top: position.top,
         left: position.left,
-        zIndex: 9999,
+        zIndex: "var(--z-modal)",
       }}
       ref={menuRef}
     >
@@ -81,7 +88,6 @@ export function ContextMenu({ items, anchorRect, anchorEl, anchorGap = 4, onClos
               <button
                 type="button"
                 className="b-menu-item"
-                onMouseEnter={() => setOpenSubmenuIdx(i)}
                 onClick={() => setOpenSubmenuIdx(openSubmenuIdx === i ? null : i)}
               >
                 {item.icon && <span className="w-4 h-4 flex items-center justify-center">{item.icon}</span>}

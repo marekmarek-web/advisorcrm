@@ -15,6 +15,7 @@ export const documents = pgTable("documents", {
   sizeBytes: bigint("size_bytes", { mode: "number" }),
   tags: text("tags").array(),
   visibleToClient: boolean("visible_to_client").default(false),
+  uploadSource: text("upload_source").default("web"),
   /** Phase 0: mark sensitive documents; access can be restricted and logged (e.g. sensitive_document_view). */
   sensitive: boolean("sensitive").default(false),
   uploadedBy: text("uploaded_by").notNull(),

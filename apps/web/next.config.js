@@ -1,17 +1,21 @@
 const path = require("path");
-
-// In pnpm monorepos Turbopack infers workspace root from lockfile but then resolves from wrong dir (e.g. src/app).
-// Set root to the app dir (apps/web) so next/package.json is found in apps/web/node_modules.
-const turbopackRoot = path.resolve(__dirname);
+const nextVersion = require("next/package.json").version;
+const nextMajor = Number.parseInt(nextVersion.split(".")[0] || "0", 10);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["db"],
-  serverExternalPackages: ["postgres"],
-  turbopack: {
-    root: turbopackRoot,
-  },
+  // Keep postgres external across Next 14+.
+  ...(nextMajor >= 15
+    ? { serverExternalPackages: ["postgres"] }
+    : {
+        experimental: {
+          serverComponentsExternalPackages: ["postgres"],
+        },
+      }),
+  // Required in Next 16 when custom webpack config is present.
+  ...(nextMajor >= 16 ? { turbopack: {} } : {}),
   webpack: (config, { isServer }) => {
     config.resolve = config.resolve ?? {};
     config.resolve.alias = {

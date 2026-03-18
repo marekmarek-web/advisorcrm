@@ -14,6 +14,7 @@ import {
   FileText,
   Building,
   Settings2,
+  ScanLine,
 } from "lucide-react";
 import { getQuickActionsConfig } from "@/app/actions/preferences";
 import {
@@ -23,6 +24,7 @@ import {
   type QuickActionId,
   type QuickActionItem,
 } from "@/lib/quick-actions";
+import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 
 const ICON_MAP = {
   UserPlus,
@@ -62,6 +64,7 @@ function ItemIcon({ item }: { item: QuickActionItem }) {
 }
 
 export function QuickNewMenu() {
+  const { isNative } = useNativePlatform();
   const [open, setOpen] = useState(false);
   const [order, setOrder] = useState<QuickActionId[]>(DEFAULT_QUICK_ACTIONS_ORDER);
   const [visible, setVisible] = useState<Record<string, boolean>>(() => {
@@ -156,6 +159,19 @@ export function QuickNewMenu() {
               <div className="h-5 w-3/4 bg-slate-100 rounded animate-pulse" />
             </div>
           )}
+          {isNative ? (
+            <Link
+              href="/portal/scan"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="group flex items-center gap-3 px-3 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 rounded-xl"
+            >
+              <span className="flex items-center justify-center shrink-0 transition-all duration-300">
+                <ScanLine className="size-5 text-slate-500" aria-hidden />
+              </span>
+              Skenovat dokument
+            </Link>
+          ) : null}
           <div className="h-px bg-slate-100 my-2" />
           <Link
             href="/portal/setup#quick-actions"

@@ -11,3 +11,7 @@ dist
 *.rar
 crm.rar
 api.txt
+
+# Capacitor temporary/build artifacts
+apps/web/.capacitor
+apps/web/capacitor-app/.capacitor

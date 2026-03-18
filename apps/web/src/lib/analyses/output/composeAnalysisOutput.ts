@@ -24,11 +24,10 @@ export interface ComposeAnalysisOutputOptions {
   generatedBy?: string;
   title?: string;
   linksDescription?: string;
-  /** Phase 7: provenance and linked company for report labels */
   provenance?: ReportProvenance;
   linkedCompanyName?: string | null;
-  /** PDF header/footer and cover logo from advisor profile (server: pass getAdvisorReportBranding()) */
   branding?: PdfReportBranding;
+  theme?: 'elegant' | 'modern';
 }
 
 /**
@@ -58,6 +57,7 @@ export function composeAnalysisOutput(
       provenance: options?.provenance,
       linkedCompanyName: options?.linkedCompanyName,
       branding: options?.branding,
+      theme: options?.theme,
     });
   }
 
@@ -83,8 +83,9 @@ export function composeAnalysisOutput(
       provenance: options?.provenance,
       linkedCompanyName: options?.linkedCompanyName,
       branding: options?.branding,
+      theme: options?.theme,
     });
   }
 
-  return buildPersonalReportPayload(personalData ?? ({} as FinancialAnalysisData), { ...options, branding: options?.branding });
+  return buildPersonalReportPayload(personalData ?? ({} as FinancialAnalysisData), { ...options, branding: options?.branding, theme: options?.theme });
 }

@@ -13,9 +13,9 @@ import type { ProductPickerValue } from "@/app/components/weplan/ProductPicker";
 import { segmentLabel } from "@/app/lib/segment-labels";
 import { ZpRatingBadge } from "@/app/components/weplan/ZpRatingBadge";
 import { EUCS_ZP_DISCLAIMER } from "@/data/insurance-ratings";
-import { uploadDocument } from "@/app/actions/documents";
 import { ConfirmDeleteModal } from "@/app/components/ConfirmDeleteModal";
 import { NewContractWizard } from "@/app/components/weplan/NewContractWizard";
+import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 
 export function ContractsSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<ContractRow[]>([]);
@@ -41,7 +41,6 @@ export function ContractsSection({ contactId }: { contactId: string }) {
     note: "",
   });
   const [pickerValue, setPickerValue] = useState<ProductPickerValue>({ partnerId: "", productId: "" });
-  const [contractFile, setContractFile] = useState<File | null>(null);
 
   function load() {
     setLoading(true);
@@ -98,17 +97,6 @@ export function ContractsSection({ contactId }: { contactId: string }) {
     };
     try {
       await updateContract(editingId, payload);
-      if (contractFile?.size) {
-        const fd = new FormData();
-        fd.set("file", contractFile);
-        fd.set("name", contractFile.name);
-        try {
-          await uploadDocument(contactId, fd, { contractId: editingId, visibleToClient: false });
-        } catch (err) {
-          console.error("Upload smlouvy selhal:", err);
-        }
-        setContractFile(null);
-      }
       setForm({
         segment: "ZP",
         partnerId: "",
@@ -310,13 +298,14 @@ export function ContractsSection({ contactId }: { contactId: string }) {
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Nahrát smlouvu (PDF)</label>
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
-              className="w-full text-sm text-slate-600 file:mr-2 file:rounded file:border-0 file:bg-monday-blue file:px-3 file:py-1 file:text-white file:text-sm"
+            <DocumentUploadZone
+              contactId={contactId}
+              initialContractId={editingId}
+              submitButtonLabel="Nahrát smlouvu"
+              chooseButtonLabel="Vybrat smlouvu (PDF / foto)"
+              onUploaded={() => load()}
+              className="p-0 border-0 bg-transparent"
             />
-            {contractFile && <span className="text-xs text-slate-500 mt-1 block">{contractFile.name}</span>}
           </div>
           <div className="flex gap-2">
             <div>
@@ -356,7 +345,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
             </button>
             <button
               type="button"
-              onClick={() => { setEditingId(null); setContractFile(null); setSubmitError(null); }}
+              onClick={() => { setEditingId(null); setSubmitError(null); }}
               className="rounded px-3 py-1.5 text-sm font-semibold border border-slate-300 text-slate-600"
             >
               Zrušit

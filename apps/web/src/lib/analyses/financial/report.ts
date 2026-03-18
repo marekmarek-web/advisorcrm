@@ -6,6 +6,7 @@
 import type { FinancialAnalysisData, CompanyRisks, FundDetail, IncomeProtectionPlan } from './types';
 import { STATE_PENSION_TAX_LIMIT_ANNUAL, STATE_PENSION_TAX_REFUND_ANNUAL } from './types';
 import { CREDIT_WISH_BANKS, FUND_DETAILS, FUND_LOGOS, INSURANCE_LOGOS } from './constants';
+import { buildPremiumReportHTML } from './report/index';
 import {
   totalIncome,
   totalExpense,
@@ -1042,6 +1043,7 @@ export interface BuildReportHTMLOptions {
   provenance?: Record<string, "linked" | "overridden">;
   linkedCompanyName?: string | null;
   branding?: PdfReportBranding;
+  theme?: 'elegant' | 'modern';
 }
 
 function provenanceSuffix(path: string, opts?: BuildReportHTMLOptions): string {
@@ -1146,9 +1148,22 @@ function renderCompanyPDFSection(
 }
 
 /**
- * Build full report HTML string (for #report-root). Same structure as original buildReportHTML + buildPages34 + renderInsurancePage.
+ * Build full report HTML string. Delegates to the premium report engine.
  */
 export function buildReportHTML(data: FinancialAnalysisData, options?: BuildReportHTMLOptions): string {
+  return buildPremiumReportHTML(data, {
+    theme: (options as BuildReportHTMLOptions & { theme?: 'elegant' | 'modern' })?.theme ?? 'elegant',
+    branding: options?.branding ? {
+      advisorName: options.branding.authorName,
+      advisorRole: options.branding.footerLine,
+      logoUrl: options.branding.logoUrl ?? undefined,
+    } : undefined,
+    includeCompany: data.includeCompany,
+  });
+}
+
+/** @deprecated Legacy builder kept for reference. Use buildReportHTML which delegates to premium engine. */
+function _legacyBuildReportHTML(data: FinancialAnalysisData, options?: BuildReportHTMLOptions): string {
   const today = new Date().toLocaleDateString('cs-CZ');
   const clientName = data.client?.name || 'Klient';
   const authorName = options?.branding?.authorName ?? PDF_REPORT_AUTHOR_FALLBACK;

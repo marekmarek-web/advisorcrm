@@ -10,6 +10,7 @@ import {
   getLatestClientGenerations,
   type ClientGenerationItem,
 } from "@/app/actions/ai-generations";
+import { AiActionMenu } from "@/app/components/ai/AiActionMenu";
 
 type InitialData = {
   clientSummary: ClientGenerationItem | null;
@@ -109,6 +110,14 @@ function AiSection({
       {output?.outputText ? (
         <div className="text-sm text-slate-700 whitespace-pre-wrap border-t border-slate-200 pt-2 mt-2">
           {output.outputText}
+          {(promptKey === "clientOpportunities" || promptKey === "nextBestAction") && output.id && (
+            <AiActionMenu
+              generationId={output.id}
+              promptType={output.promptType}
+              contactId={contactId}
+              outputText={output.outputText}
+            />
+          )}
         </div>
       ) : !loading && (
         <p className="text-xs text-slate-500 italic">

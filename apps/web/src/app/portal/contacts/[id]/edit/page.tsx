@@ -6,9 +6,11 @@ import Link from "next/link";
 import { getContact, getContactsList, updateContact, uploadContactAvatar, deleteContact } from "@/app/actions/contacts";
 import { getHouseholdForContact, getHouseholdsList, setContactHousehold } from "@/app/actions/households";
 import { ArrowLeft } from "lucide-react";
+import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
 
 export default function EditContactPage() {
   const router = useRouter();
+  const { keyboardInset } = useKeyboardAware();
   const params = useParams();
   const id = params.id as string;
   const [loading, setLoading] = useState(false);
@@ -211,7 +213,7 @@ export default function EditContactPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8" style={{ paddingBottom: `calc(var(--safe-area-bottom) + ${keyboardInset}px)` }}>
         <form id="edit-contact-form" onSubmit={onSubmit} className="max-w-2xl mx-auto space-y-8">
           {submitErr && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3" role="alert">

@@ -83,7 +83,13 @@ export async function getDocumentsForClient(contactId: string): Promise<Document
 export async function uploadDocument(
   contactId: string,
   formData: FormData,
-  options: { contractId?: string; visibleToClient?: boolean; tags?: string[]; opportunityId?: string }
+  options: {
+    contractId?: string;
+    visibleToClient?: boolean;
+    tags?: string[];
+    opportunityId?: string;
+    uploadSource?: "web" | "mobile_camera" | "mobile_gallery" | "mobile_file";
+  }
 ) {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:write")) throw new Error("Forbidden");
@@ -113,6 +119,7 @@ export async function uploadDocument(
       mimeType: file.type || null,
       sizeBytes: file.size,
       visibleToClient: options.visibleToClient ?? false,
+      uploadSource: options.uploadSource ?? "web",
       uploadedBy: auth.userId,
     })
     .returning({ id: documents.id });

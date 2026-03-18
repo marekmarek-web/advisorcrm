@@ -22,11 +22,10 @@ export interface BuildPersonalReportPayloadOptions {
   analysisId?: string | null;
   generatedBy?: string;
   title?: string;
-  /** Phase 7: provenance for report labels (e.g. "sdílený údaj") */
   provenance?: ReportProvenance;
   linkedCompanyName?: string | null;
-  /** PDF header/footer and cover logo from advisor profile */
   branding?: PdfReportBranding;
+  theme?: 'elegant' | 'modern';
 }
 
 export function buildPersonalReportPayload(
@@ -44,6 +43,7 @@ export function buildPersonalReportPayload(
     provenance: options?.provenance,
     linkedCompanyName: options?.linkedCompanyName,
     branding: options?.branding,
+    theme: options?.theme,
   });
 
   const meta = normalizeReportMeta({

@@ -5,7 +5,12 @@ import { getGenerationById } from "@/lib/ai/ai-generations-repository";
 import { db, aiFeedback } from "db";
 
 export type AiFeedbackVerdict = "accepted" | "rejected" | "edited";
-export type AiFeedbackActionTaken = "task_created" | "meeting_created" | "deal_created" | "none";
+export type AiFeedbackActionTaken =
+  | "task_created"
+  | "meeting_created"
+  | "deal_created"
+  | "service_action_created"
+  | "none";
 
 export type CreateAiFeedbackResult = { ok: true; id: string } | { ok: false; error: string };
 
@@ -15,7 +20,12 @@ export type CreateAiFeedbackResult = { ok: true; id: string } | { ok: false; err
 export async function createAiFeedback(
   generationId: string,
   verdict: AiFeedbackVerdict,
-  options?: { actionTaken?: AiFeedbackActionTaken | null; note?: string | null }
+  options?: {
+    actionTaken?: AiFeedbackActionTaken | null;
+    note?: string | null;
+    createdEntityType?: string | null;
+    createdEntityId?: string | null;
+  }
 ): Promise<CreateAiFeedbackResult> {
   try {
     const auth = await requireAuthInAction();
@@ -31,6 +41,8 @@ export async function createAiFeedback(
         userId: auth.userId,
         verdict,
         actionTaken: options?.actionTaken ?? null,
+        createdEntityType: options?.createdEntityType ?? null,
+        createdEntityId: options?.createdEntityId ?? null,
         note: options?.note?.trim() || null,
       })
       .returning({ id: aiFeedback.id } as any);

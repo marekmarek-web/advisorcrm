@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission, getMembership } from "@/lib/auth/get-membership";
 import { db } from "db";
 import { events, contacts, tasks } from "db";
 import { eq, and, gte, lt, asc, desc, sql } from "db";
@@ -216,9 +216,18 @@ export async function createEvent(form: {
   notes?: string;
   meetingLink?: string;
   taskId?: string;
+  /** For team/1:1 follow-ups: assign to this user (must be in same tenant; requires team_overview:read). */
+  assignedTo?: string;
 }): Promise<string | null> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  let assignee = auth.userId;
+  if (form.assignedTo) {
+    if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
+    const member = await getMembership(form.assignedTo);
+    if (!member || member.tenantId !== auth.tenantId) throw new Error("Forbidden");
+    assignee = form.assignedTo;
+  }
   const [row] = await db
     .insert(events)
     .values({
@@ -236,7 +245,7 @@ export async function createEvent(form: {
       notes: form.notes?.trim() || null,
       meetingLink: form.meetingLink?.trim() || null,
       taskId: form.taskId || null,
-      assignedTo: auth.userId,
+      assignedTo: assignee,
     })
     .returning({ id: events.id });
   const newId = row?.id ?? null;

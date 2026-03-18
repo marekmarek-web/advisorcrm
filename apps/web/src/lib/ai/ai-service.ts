@@ -7,8 +7,10 @@ import { hasPermission } from "@/lib/auth/get-membership";
 import { getPromptId, getPromptVersion, type PromptType } from "@/lib/ai/prompt-registry";
 import { createResponseFromPrompt } from "@/lib/openai";
 import { saveGeneration } from "@/lib/ai/ai-generations-repository";
+import { applyOutputGuardrails } from "@/lib/ai/guardrails";
 import {
   buildClientAiContextRaw,
+  type ClientAiContextRaw,
   renderClientAiPromptVariables,
   buildPreMeetingContextRaw,
   renderPreMeetingPromptVariables,
@@ -17,6 +19,7 @@ import {
   buildTeamAiContextRaw,
   renderTeamAiPromptVariables,
 } from "@/lib/ai/context";
+import { computeCompleteness, type ContextCompleteness } from "@/lib/ai/context/completeness";
 
 const SAFE_ERROR = "Generování se nepovedlo. Zkuste to později.";
 const NOT_CONFIGURED = "Tato funkce není nakonfigurována (chybí prompt ID v nastavení).";
@@ -56,6 +59,106 @@ function auditLog(params: {
   });
 }
 
+function toContextMeta(
+  completeness: ContextCompleteness | null
+): {
+  completeness: "high" | "medium" | "low";
+  missingAreas: string[];
+  outdatedAreas: string[];
+  flags: string[];
+} | null {
+  if (!completeness) return null;
+  return {
+    completeness: completeness.overall,
+    missingAreas: completeness.missingAreas,
+    outdatedAreas: completeness.outdatedAreas,
+    flags: completeness.flags,
+  };
+}
+
+function getClientCompleteness(raw: ClientAiContextRaw): ContextCompleteness {
+  return computeCompleteness(raw);
+}
+
+async function runPromptGeneration(params: {
+  tenantId: string;
+  userId: string;
+  generatedByUserId: string;
+  promptType: PromptType;
+  entityType: string;
+  entityId: string;
+  variables: Record<string, string>;
+  completeness?: ContextCompleteness | null;
+  activeDealTitles?: string[];
+}): Promise<GenerationResult> {
+  const promptId = getPromptId(params.promptType);
+  if (!promptId) return { ok: false, error: NOT_CONFIGURED };
+  const version = getPromptVersion(params.promptType);
+  const contextMeta = toContextMeta(params.completeness ?? null);
+
+  const result = await createResponseFromPrompt(
+    { promptId, version, variables: params.variables },
+    { store: false }
+  );
+
+  if (!result.ok) {
+    auditLog({
+      userId: params.userId,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      promptType: params.promptType,
+      success: false,
+      error: result.error,
+    });
+
+    const failureId = await saveGeneration({
+      tenantId: params.tenantId,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      promptType: params.promptType,
+      promptId,
+      promptVersion: version ?? undefined,
+      generatedByUserId: params.generatedByUserId,
+      outputText: "",
+      status: "failure",
+      contextMeta,
+    }).catch(() => "");
+
+    return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
+  }
+
+  const guardedText = applyOutputGuardrails({
+    promptType: params.promptType,
+    outputText: result.text,
+    variables: params.variables,
+    completeness: params.completeness ?? null,
+    activeDealTitles: params.activeDealTitles ?? [],
+  });
+
+  const generationId = await saveGeneration({
+    tenantId: params.tenantId,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    promptType: params.promptType,
+    promptId,
+    promptVersion: version ?? undefined,
+    generatedByUserId: params.generatedByUserId,
+    outputText: guardedText,
+    status: "success",
+    contextMeta,
+  });
+
+  auditLog({
+    userId: params.userId,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    promptType: params.promptType,
+    success: true,
+  });
+
+  return { ok: true, text: guardedText, generationId };
+}
+
 export async function generateClientSummary(
   clientId: string,
   userId: string
@@ -63,60 +166,21 @@ export async function generateClientSummary(
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "clientSummary";
-    const promptId = getPromptId(promptType);
-    if (!promptId) return { ok: false, error: NOT_CONFIGURED };
 
     const raw = await buildClientAiContextRaw(clientId);
     const variables = await renderClientAiPromptVariables(raw);
-    const version = getPromptVersion(promptType);
-
-    const result = await createResponseFromPrompt(
-      { promptId, version, variables },
-      { store: false }
-    );
-
-    if (!result.ok) {
-      auditLog({
-        userId: auth.userId,
-        entityType: "contact",
-        entityId: clientId,
-        promptType,
-        success: false,
-        error: result.error,
-      });
-      const failureId = await saveGeneration({
-        tenantId: auth.tenantId,
-        entityType: "contact",
-        entityId: clientId,
-        promptType,
-        promptId,
-        promptVersion: version ?? undefined,
-        generatedByUserId: userId,
-        outputText: "",
-        status: "failure",
-      }).catch(() => "");
-      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
-    }
-
-    const generationId = await saveGeneration({
+    const completeness = getClientCompleteness(raw);
+    return await runPromptGeneration({
       tenantId: auth.tenantId,
-      entityType: "contact",
-      entityId: clientId,
-      promptType,
-      promptId,
-      promptVersion: version ?? undefined,
-      generatedByUserId: userId,
-      outputText: result.text,
-      status: "success",
-    });
-    auditLog({
       userId: auth.userId,
+      generatedByUserId: userId,
+      promptType,
       entityType: "contact",
       entityId: clientId,
-      promptType,
-      success: true,
+      variables,
+      completeness,
+      activeDealTitles: raw.activeDeals.map((d) => d.title),
     });
-    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden" || message.includes("Kontakt nenalezen")) {
@@ -134,60 +198,21 @@ export async function generateClientOpportunities(
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "clientOpportunities";
-    const promptId = getPromptId(promptType);
-    if (!promptId) return { ok: false, error: NOT_CONFIGURED };
 
     const raw = await buildClientAiContextRaw(clientId);
     const variables = await renderClientAiPromptVariables(raw);
-    const version = getPromptVersion(promptType);
-
-    const result = await createResponseFromPrompt(
-      { promptId, version, variables },
-      { store: false }
-    );
-
-    if (!result.ok) {
-      auditLog({
-        userId: auth.userId,
-        entityType: "contact",
-        entityId: clientId,
-        promptType,
-        success: false,
-        error: result.error,
-      });
-      const failureId = await saveGeneration({
-        tenantId: auth.tenantId,
-        entityType: "contact",
-        entityId: clientId,
-        promptType,
-        promptId,
-        promptVersion: version ?? undefined,
-        generatedByUserId: userId,
-        outputText: "",
-        status: "failure",
-      }).catch(() => "");
-      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
-    }
-
-    const generationId = await saveGeneration({
+    const completeness = getClientCompleteness(raw);
+    return await runPromptGeneration({
       tenantId: auth.tenantId,
-      entityType: "contact",
-      entityId: clientId,
-      promptType,
-      promptId,
-      promptVersion: version ?? undefined,
-      generatedByUserId: userId,
-      outputText: result.text,
-      status: "success",
-    });
-    auditLog({
       userId: auth.userId,
+      generatedByUserId: userId,
+      promptType,
       entityType: "contact",
       entityId: clientId,
-      promptType,
-      success: true,
+      variables,
+      completeness,
+      activeDealTitles: raw.activeDeals.map((d) => d.title),
     });
-    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden" || message.includes("Kontakt nenalezen")) {
@@ -205,60 +230,21 @@ export async function generateNextBestAction(
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "nextBestAction";
-    const promptId = getPromptId(promptType);
-    if (!promptId) return { ok: false, error: NOT_CONFIGURED };
 
     const raw = await buildClientAiContextRaw(clientId);
     const variables = await renderClientAiPromptVariables(raw);
-    const version = getPromptVersion(promptType);
-
-    const result = await createResponseFromPrompt(
-      { promptId, version, variables },
-      { store: false }
-    );
-
-    if (!result.ok) {
-      auditLog({
-        userId: auth.userId,
-        entityType: "contact",
-        entityId: clientId,
-        promptType,
-        success: false,
-        error: result.error,
-      });
-      const failureId = await saveGeneration({
-        tenantId: auth.tenantId,
-        entityType: "contact",
-        entityId: clientId,
-        promptType,
-        promptId,
-        promptVersion: version ?? undefined,
-        generatedByUserId: userId,
-        outputText: "",
-        status: "failure",
-      }).catch(() => "");
-      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
-    }
-
-    const generationId = await saveGeneration({
+    const completeness = getClientCompleteness(raw);
+    return await runPromptGeneration({
       tenantId: auth.tenantId,
-      entityType: "contact",
-      entityId: clientId,
-      promptType,
-      promptId,
-      promptVersion: version ?? undefined,
-      generatedByUserId: userId,
-      outputText: result.text,
-      status: "success",
-    });
-    auditLog({
       userId: auth.userId,
+      generatedByUserId: userId,
+      promptType,
       entityType: "contact",
       entityId: clientId,
-      promptType,
-      success: true,
+      variables,
+      completeness,
+      activeDealTitles: raw.activeDeals.map((d) => d.title),
     });
-    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden" || message.includes("Kontakt nenalezen")) {
@@ -283,63 +269,24 @@ export async function generatePreMeetingBriefing(
     }
 
     const promptType: PromptType = "preMeetingBriefing";
-    const promptId = getPromptId(promptType);
-    if (!promptId) return { ok: false, error: NOT_CONFIGURED };
 
     const raw = await buildPreMeetingContextRaw(clientId, userId, eventId);
     const variables = await renderPreMeetingPromptVariables(raw);
-    const version = getPromptVersion(promptType);
-
-    const result = await createResponseFromPrompt(
-      { promptId, version, variables },
-      { store: false }
-    );
 
     const entityType = eventId ? "event" : "contact";
     const entityId = eventId ?? clientId;
-
-    if (!result.ok) {
-      auditLog({
-        userId: auth.userId,
-        entityType,
-        entityId,
-        promptType,
-        success: false,
-        error: result.error,
-      });
-      const failureId = await saveGeneration({
-        tenantId: auth.tenantId,
-        entityType,
-        entityId,
-        promptType,
-        promptId,
-        promptVersion: version ?? undefined,
-        generatedByUserId: userId,
-        outputText: "",
-        status: "failure",
-      }).catch(() => "");
-      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
-    }
-
-    const generationId = await saveGeneration({
+    const completeness = getClientCompleteness(raw.clientContext);
+    return await runPromptGeneration({
       tenantId: auth.tenantId,
-      entityType,
-      entityId,
-      promptType,
-      promptId,
-      promptVersion: version ?? undefined,
-      generatedByUserId: userId,
-      outputText: result.text,
-      status: "success",
-    });
-    auditLog({
       userId: auth.userId,
+      generatedByUserId: userId,
+      promptType,
       entityType,
       entityId,
-      promptType,
-      success: true,
+      variables,
+      completeness,
+      activeDealTitles: raw.clientContext.activeDeals.map((d) => d.title),
     });
-    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden") return { ok: false, error: message };
@@ -357,63 +304,24 @@ export async function generatePostMeetingFollowup(
   try {
     const auth = await ensureClientAccess(clientId);
     const promptType: PromptType = "postMeetingFollowup";
-    const promptId = getPromptId(promptType);
-    if (!promptId) return { ok: false, error: NOT_CONFIGURED };
 
     const raw = await buildPostMeetingContextRaw(clientId, userId, meetingNotes, meetingId);
     const variables = await renderPostMeetingPromptVariables(raw);
-    const version = getPromptVersion(promptType);
-
-    const result = await createResponseFromPrompt(
-      { promptId, version, variables },
-      { store: false }
-    );
 
     const entityType = meetingId ? "meeting_note" : "contact";
     const entityId = meetingId ?? clientId;
-
-    if (!result.ok) {
-      auditLog({
-        userId: auth.userId,
-        entityType,
-        entityId,
-        promptType,
-        success: false,
-        error: result.error,
-      });
-      const failureId = await saveGeneration({
-        tenantId: auth.tenantId,
-        entityType,
-        entityId,
-        promptType,
-        promptId,
-        promptVersion: version ?? undefined,
-        generatedByUserId: userId,
-        outputText: "",
-        status: "failure",
-      }).catch(() => "");
-      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
-    }
-
-    const generationId = await saveGeneration({
+    const completeness = getClientCompleteness(raw.clientContext);
+    return await runPromptGeneration({
       tenantId: auth.tenantId,
-      entityType,
-      entityId,
-      promptType,
-      promptId,
-      promptVersion: version ?? undefined,
-      generatedByUserId: userId,
-      outputText: result.text,
-      status: "success",
-    });
-    auditLog({
       userId: auth.userId,
+      generatedByUserId: userId,
+      promptType,
       entityType,
       entityId,
-      promptType,
-      success: true,
+      variables,
+      completeness,
+      activeDealTitles: raw.clientContext.activeDeals.map((d) => d.title),
     });
-    return { ok: true, text: result.text, generationId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Forbidden") return { ok: false, error: message };
@@ -423,7 +331,8 @@ export async function generatePostMeetingFollowup(
 }
 
 /**
- * Stub for future team summary. Not wired to UI in this phase.
+ * Team summary: manager/team leader/admin only. Uses central runPromptGeneration.
+ * teamId must equal tenantId (single team per tenant).
  */
 export async function generateTeamSummary(
   teamId: string,
@@ -432,48 +341,27 @@ export async function generateTeamSummary(
 ): Promise<GenerationResult> {
   try {
     const auth = await requireAuthInAction();
-    if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
-    const promptType: PromptType = "teamSummary";
-    const promptId = getPromptId(promptType);
-    if (!promptId) return { ok: false, error: NOT_CONFIGURED };
+    if (!hasPermission(auth.roleName, "team_overview:read")) return { ok: false, error: "Forbidden" };
+    if (teamId !== auth.tenantId) return { ok: false, error: "Forbidden" };
 
+    const promptType: PromptType = "teamSummary";
     const raw = await buildTeamAiContextRaw(teamId, userId, period);
     const variables = await renderTeamAiPromptVariables(raw);
-    const version = getPromptVersion(promptType);
 
-    const result = await createResponseFromPrompt(
-      { promptId, version, variables },
-      { store: false }
-    );
-
-    if (!result.ok) {
-      const failureId = await saveGeneration({
-        tenantId: auth.tenantId,
-        entityType: "team",
-        entityId: teamId,
-        promptType,
-        promptId,
-        promptVersion: version ?? undefined,
-        generatedByUserId: userId,
-        outputText: "",
-        status: "failure",
-      }).catch(() => "");
-      return { ok: false, error: SAFE_ERROR, ...(failureId ? { generationId: failureId } : {}) };
-    }
-
-    const generationId = await saveGeneration({
+    return await runPromptGeneration({
       tenantId: auth.tenantId,
+      userId: auth.userId,
+      generatedByUserId: userId,
+      promptType,
       entityType: "team",
       entityId: teamId,
-      promptType,
-      promptId,
-      promptVersion: version ?? undefined,
-      generatedByUserId: userId,
-      outputText: result.text,
-      status: "success",
+      variables,
+      completeness: null,
+      activeDealTitles: [],
     });
-    return { ok: true, text: result.text, generationId };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === "Forbidden") return { ok: false, error: message };
     console.error("[AI] generateTeamSummary", teamId, err);
     return { ok: false, error: SAFE_ERROR };
   }

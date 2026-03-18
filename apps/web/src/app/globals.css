@@ -28,11 +28,21 @@
     --input: 214 32% 91%;
     --ring: 217 84% 26%;
     --radius: 0.75rem;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
   }
 }
 
 @layer base {
   * { @apply border-border; }
+  html,
+  body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply text-foreground antialiased;
     background-color: var(--wp-bg);

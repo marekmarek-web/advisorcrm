@@ -19,6 +19,9 @@ export type OpportunityCard = {
   contactName: string;
   expectedValue: string | null;
   expectedCloseDate: string | null;
+  assignedTo?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type OpportunityStageInfo = {
@@ -76,6 +79,9 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
       contactId: opportunities.contactId,
       expectedValue: opportunities.expectedValue,
       expectedCloseDate: opportunities.expectedCloseDate,
+      assignedTo: opportunities.assignedTo,
+      createdAt: opportunities.createdAt,
+      updatedAt: opportunities.updatedAt,
       firstName: contacts.firstName,
       lastName: contacts.lastName,
     })
@@ -102,6 +108,9 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
         contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
         expectedValue: o.expectedValue ?? null,
         expectedCloseDate: o.expectedCloseDate ?? null,
+        assignedTo: o.assignedTo ?? null,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
       })),
   }));
 }
@@ -152,6 +161,9 @@ export async function getPipelineByContact(contactId: string): Promise<StageWith
       contactId: opportunities.contactId,
       expectedValue: opportunities.expectedValue,
       expectedCloseDate: opportunities.expectedCloseDate,
+      assignedTo: opportunities.assignedTo,
+      createdAt: opportunities.createdAt,
+      updatedAt: opportunities.updatedAt,
       firstName: contacts.firstName,
       lastName: contacts.lastName,
     })
@@ -179,6 +191,9 @@ export async function getPipelineByContact(contactId: string): Promise<StageWith
         contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
         expectedValue: o.expectedValue ?? null,
         expectedCloseDate: o.expectedCloseDate ?? null,
+        assignedTo: o.assignedTo ?? null,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
       })),
   }));
 }

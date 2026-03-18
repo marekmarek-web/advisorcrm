@@ -27,9 +27,40 @@ export function Popover({
       setPosition(null);
       return;
     }
-    const rect = anchor.getBoundingClientRect();
-    setPosition({ top: rect.bottom + 4, left: rect.left });
-  }, [open, anchor]);
+    const calculatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+      const menuWidth = ref.current?.offsetWidth ?? 240;
+      const menuHeight = ref.current?.offsetHeight ?? 240;
+      const spacing = 8;
+      const alignedLeft =
+        align === "right"
+          ? rect.right - menuWidth
+          : align === "center"
+            ? rect.left + rect.width / 2 - menuWidth / 2
+            : rect.left;
+
+      let nextLeft = Math.max(spacing, Math.min(alignedLeft, window.innerWidth - menuWidth - spacing));
+      let nextTop = rect.bottom + 4;
+
+      if (nextTop + menuHeight > window.innerHeight - spacing) {
+        nextTop = rect.top - menuHeight - 4;
+      }
+      if (nextTop < spacing) {
+        nextTop = Math.max(spacing, window.innerHeight - menuHeight - spacing);
+      }
+      setPosition({ top: nextTop, left: nextLeft });
+    };
+
+    calculatePosition();
+    const raf = requestAnimationFrame(calculatePosition);
+    window.addEventListener("resize", calculatePosition);
+    window.addEventListener("scroll", calculatePosition, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", calculatePosition);
+      window.removeEventListener("scroll", calculatePosition, true);
+    };
+  }, [open, anchor, align]);
 
   useEffect(() => {
     if (!open) return;
@@ -42,7 +73,7 @@ export function Popover({
 
   return (
     <>
-      <div className="fixed inset-0 z-40" aria-hidden onMouseDown={onClose} />
+      <div className="fixed inset-0 z-40" aria-hidden onMouseDown={onClose} onTouchStart={onClose} />
       <div
         ref={ref}
         className={`fixed z-50 min-w-[160px] py-1 bg-monday-surface border border-monday-border rounded-[var(--monday-radius)] shadow-[var(--monday-shadow)] ${className}`}

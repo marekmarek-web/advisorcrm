@@ -20,14 +20,11 @@ export interface BuildCombinedReportPayloadOptions {
   companyAnalysisId?: string | null;
   generatedBy?: string;
   title?: string;
-  /** Optional description of link (e.g. "Klient X, jednatel ve firmě Y") */
   linksDescription?: string;
-  /** Phase 7: which personal paths are linked/overridden (for report labels). */
   provenance?: ReportProvenance;
-  /** Phase 7: name of linked company (for "Příjem z firmy X (sdílený údaj)"). */
   linkedCompanyName?: string | null;
-  /** PDF header/footer and cover logo from advisor profile */
   branding?: PdfReportBranding;
+  theme?: 'elegant' | 'modern';
 }
 
 export function buildCombinedReportPayload(
@@ -44,6 +41,7 @@ export function buildCombinedReportPayload(
         provenance: options?.provenance,
         linkedCompanyName: options?.linkedCompanyName,
         branding: options?.branding,
+        theme: options?.theme,
       })
     : null;
   const businessPayload = companyData

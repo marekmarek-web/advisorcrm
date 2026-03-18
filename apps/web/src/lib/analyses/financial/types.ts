@@ -397,23 +397,31 @@ export interface FundDetail {
   liquidity: string;
   suitable: string;
   why: string;
-  /** Výchozí roční zhodnocení (např. 0.06 = 6 %); pro dropdown průměr ±1 % */
   defaultRate?: number;
-  /** Investiční strategie (dlouhý popis) */
   strategy?: string;
-  /** Klíčové výhody (odrážky) */
   benefits?: string[];
-  /** Základní parametry (měna, min. investice, …) */
   parameters?: Record<string, string>;
-  /** Top 10 držených titulů (váha v %) */
   topHoldings?: HoldingWeight[];
-  /** Celková váha top 10 v %; počet všech holdingu */
   top10WeightPercent?: number;
   totalHoldingsCount?: number;
-  /** Země (váha v %) */
   countries?: HoldingWeight[];
-  /** Sektory (váha v %) */
   sectors?: HoldingWeight[];
+  /** Full description for product detail page */
+  description?: string;
+  /** SRI risk rating, e.g. "5/7" */
+  riskSRI?: string;
+  /** Investment horizon label, e.g. "10+ let" */
+  horizon?: string;
+  /** Fund currency, e.g. "USD" */
+  currency?: string;
+  /** Morningstar rating 1-5 */
+  morningstarRating?: number;
+  /** Awards or recognition */
+  awards?: string;
+  /** Minimum investment label */
+  minInvestment?: string;
+  /** Category for product pill */
+  category?: string;
 }
 
 /** Liability provider group */

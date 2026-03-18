@@ -156,6 +156,8 @@ export function GoogleCalendarUpcomingEvents() {
       end: endLocal,
       description: "",
       location: ev.location ?? "",
+      contactId: ev.contactId ?? "",
+      opportunityId: ev.opportunityId ?? "",
     });
     setEditOpen(true);
     setEditLoading(true);

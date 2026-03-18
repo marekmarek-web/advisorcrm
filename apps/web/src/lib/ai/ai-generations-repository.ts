@@ -2,6 +2,7 @@
 
 import { db, aiGenerations } from "db";
 import { eq, and, desc } from "db";
+import type { ContextCompleteness } from "@/lib/ai/context/completeness";
 
 export type AiGenerationRow = {
   id: string;
@@ -29,7 +30,13 @@ export async function saveGeneration(params: {
   outputText: string;
   status: "success" | "failure";
   contextHash?: string | null;
+  contextMeta?: Pick<
+    ContextCompleteness,
+    "overall" | "missingAreas" | "outdatedAreas" | "flags"
+  > | null;
 }): Promise<string> {
+  const serializedContextMeta =
+    params.contextMeta != null ? JSON.stringify(params.contextMeta) : null;
   const [row] = await db
     .insert(aiGenerations)
     .values({
@@ -42,7 +49,7 @@ export async function saveGeneration(params: {
       generatedByUserId: params.generatedByUserId,
       outputText: params.outputText,
       status: params.status,
-      contextHash: params.contextHash ?? null,
+      contextHash: params.contextHash ?? serializedContextMeta ?? null,
     })
     .returning({ id: aiGenerations.id });
   if (!row?.id) throw new Error("Failed to save AI generation");

@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission, getMembership } from "@/lib/auth/get-membership";
 import { db, tasks, contacts, eq, and, asc, desc, isNull, isNotNull, gte, lt, lte, sql } from "db";
 import { logActivity } from "./activity";
 
@@ -199,12 +199,22 @@ export async function createTask(data: {
   contactId?: string;
   dueDate?: string;
   analysisId?: string;
+  /** For team/manager follow-ups: assign to this user (must be in same tenant; requires team_overview:read). */
+  assignedTo?: string;
 }): Promise<string | null> {
   try {
     const auth = await requireAuthInAction();
     const canWrite =
       hasPermission(auth.roleName, "contacts:write") || hasPermission(auth.roleName, "tasks:*");
     if (!canWrite) throw new Error("Nemáte oprávnění k vytváření úkolů.");
+
+    let assignee = auth.userId;
+    if (data.assignedTo) {
+      if (!hasPermission(auth.roleName, "team_overview:read")) throw new Error("Forbidden");
+      const member = await getMembership(data.assignedTo);
+      if (!member || member.tenantId !== auth.tenantId) throw new Error("Forbidden");
+      assignee = data.assignedTo;
+    }
 
     const [row] = await db
       .insert(tasks)
@@ -215,7 +225,7 @@ export async function createTask(data: {
         contactId: data.contactId || null,
         dueDate: data.dueDate || null,
         analysisId: data.analysisId || null,
-        assignedTo: auth.userId,
+        assignedTo: assignee,
         createdBy: auth.userId,
       })
       .returning({ id: tasks.id });

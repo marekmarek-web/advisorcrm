@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { listEvents, type EventRow } from "@/app/actions/events";
 import { Calendar, Loader2 } from "lucide-react";
-import { EVENT_TYPE_LABELS } from "db";
+import { EVENT_TYPE_LABELS } from "@/lib/db-constants";
 
 function formatEventDate(d: Date | string): string {
   return new Date(d).toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" });

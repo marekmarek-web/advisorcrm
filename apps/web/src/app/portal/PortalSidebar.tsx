@@ -445,7 +445,7 @@ export function PortalSidebar({
                 placeholder="Hledat v menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-bold outline-none transition-all ${
+                className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-bold outline-none transition-all min-h-[44px] ${
                   sidebarTheme === "gradient"
                     ? "bg-white/10 border border-white/20 text-white placeholder:text-white/90 focus:bg-white/20 focus:ring-2 focus:ring-white/30 focus:border-white/40"
                     : "bg-slate-50 border border-slate-100 text-slate-700 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300"
@@ -499,7 +499,7 @@ export function PortalSidebar({
                     return (
                       <li
                         key={item.href}
-                        draggable={!collapsed}
+                        draggable={!collapsed && !isMobileState}
                         onDragStart={(e) => handleDragStart(e, groupIdx, itemIdx)}
                         onDragEnter={() => { dragOverRef.current = { groupIdx, itemIdx }; }}
                         onDragEnd={handleDragEnd}
@@ -509,7 +509,7 @@ export function PortalSidebar({
                         <Link
                           href={item.href}
                           className={`w-full flex items-center relative transition-all duration-300
-                            ${collapsed ? "justify-center p-3 rounded-2xl" : "px-3 py-2.5 rounded-xl"}
+                            ${collapsed ? "justify-center p-3 rounded-2xl min-h-[44px]" : "px-3 py-2.5 rounded-xl min-h-[44px]"}
                             ${sidebarTheme === "gradient"
                               ? isActive
                                 ? "bg-white/20 text-white shadow-lg"
@@ -533,7 +533,7 @@ export function PortalSidebar({
                             </span>
                           )}
                           {!collapsed && (
-                            <GripVertical size={14} className={`${sidebarTheme === "gradient" ? "text-white/30" : "text-fuchsia-200"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0`} />
+                            <GripVertical size={14} className={`hidden md:block ${sidebarTheme === "gradient" ? "text-white/30" : "text-fuchsia-200"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0`} />
                           )}
                         </Link>
                       </li>
@@ -543,7 +543,7 @@ export function PortalSidebar({
                   return (
                     <li
                       key={item.href}
-                      draggable={!collapsed}
+                      draggable={!collapsed && !isMobileState}
                       onDragStart={(e) => handleDragStart(e, groupIdx, itemIdx)}
                       onDragEnter={() => { dragOverRef.current = { groupIdx, itemIdx }; }}
                       onDragEnd={handleDragEnd}
@@ -553,7 +553,7 @@ export function PortalSidebar({
                       <Link
                         href={item.href}
                         className={`w-full flex items-center relative transition-all duration-200
-                          ${collapsed ? "justify-center p-3 rounded-2xl" : "px-3 py-2.5 rounded-xl"}
+                          ${collapsed ? "justify-center p-3 rounded-2xl min-h-[44px]" : "px-3 py-2.5 rounded-xl min-h-[44px]"}
                           ${sidebarTheme === "gradient"
                             ? isActive
                               ? "bg-white/20 text-white shadow-md"
@@ -591,7 +591,7 @@ export function PortalSidebar({
                           </span>
                         )}
                         {!collapsed && (
-                          <GripVertical size={14} className={`${sidebarTheme === "gradient" ? "text-white/30" : "text-slate-300"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 ${badge == null ? "ml-auto" : ""}`} />
+                          <GripVertical size={14} className={`hidden md:block ${sidebarTheme === "gradient" ? "text-white/30" : "text-slate-300"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 ${badge == null ? "ml-auto" : ""}`} />
                         )}
                       </Link>
                     </li>

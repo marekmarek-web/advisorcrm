@@ -143,3 +143,20 @@ export function getCurrentPeriodNumbers(): {
     quarter: Math.floor(now.getMonth() / 3) + 1,
   };
 }
+
+/** Reverse math: from production/meetings targets compute suggested calls, meetings, contracts, production (k). */
+export function computeReverseMath(
+  productionTargetCzk: number,
+  meetingsTarget: number
+): { calls: number; meetings: number; contracts: number; productionK: number } {
+  const avgPerContract = 37500; // Kč per contract (reference: 300k / 8)
+  const contracts = productionTargetCzk > 0 ? Math.round(productionTargetCzk / avgPerContract) : 0;
+  const callsPerMeeting = 5; // reference: 120/25
+  const calls = Math.round(meetingsTarget * callsPerMeeting);
+  return {
+    calls,
+    meetings: meetingsTarget,
+    contracts,
+    productionK: Math.round(productionTargetCzk / 1000),
+  };
+}

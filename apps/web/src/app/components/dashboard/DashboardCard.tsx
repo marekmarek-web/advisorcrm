@@ -32,16 +32,16 @@ export function DashboardCard({
 }: DashboardCardProps) {
   return (
     <div
-      className={`flex flex-col rounded-3xl border border-slate-100 shadow-md min-h-[320px] overflow-hidden ${backgroundClass ?? "bg-white"} ${className}`}
+      className={`flex flex-col rounded-3xl border border-slate-100 shadow-md min-h-[240px] md:min-h-[320px] overflow-hidden ${backgroundClass ?? "bg-white"} ${className}`}
     >
-      <div className="px-6 py-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between border-b border-slate-100 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <Icon size={18} className="text-slate-400 shrink-0" />
           <h2 className="font-bold text-slate-900 text-sm truncate">{title}</h2>
         </div>
         {rightElement != null ? rightElement : null}
       </div>
-      <div className="p-6 flex-1 overflow-y-auto min-h-0 flex flex-col">
+      <div className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0 flex flex-col">
         {children}
         {footerLink && (
           <Link

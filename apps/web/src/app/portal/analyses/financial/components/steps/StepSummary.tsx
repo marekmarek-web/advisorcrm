@@ -1,18 +1,40 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useFinancialAnalysisStore as useStore } from "@/lib/analyses/financial/store";
 import { selectNetWorth, selectTotalTargetCapital, selectPortfolioFv } from "@/lib/analyses/financial/selectors";
 import { buildReportHTML } from "@/lib/analyses/financial/report";
-import { getGrowthChartData, getAllocationChartData } from "@/lib/analyses/financial/charts";
 import { formatCzk, safeNameForFile } from "@/lib/analyses/financial/formatters";
 import { uploadDocument } from "@/app/actions/documents";
 import { setFinancialAnalysisLastExportedAt } from "@/app/actions/financial-analyses";
 import { getAdvisorReportBranding } from "@/app/actions/preferences";
 import { FileText, Printer, CloudUpload, StickyNote } from "lucide-react";
-import { Chart, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler } from "chart.js";
 
-Chart.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler);
+type ReportTheme = "elegant" | "modern";
+
+function ThemeSelector({ value, onChange }: { value: ReportTheme; onChange: (t: ReportTheme) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Šablona:</span>
+      <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => onChange("elegant")}
+          className={`min-h-[44px] px-4 py-2 text-sm font-semibold transition-colors ${value === "elegant" ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+        >
+          Elegant
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("modern")}
+          className={`min-h-[44px] px-4 py-2 text-sm font-semibold transition-colors ${value === "modern" ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+        >
+          Modern
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function StepSummary() {
   const data = useStore((s) => s.data);
@@ -21,8 +43,20 @@ export function StepSummary() {
   const [savingToDocs, setSavingToDocs] = useState(false);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
-  const chartRefs = useRef<{ growth: Chart | null; allocation: Chart | null }>({ growth: null, allocation: null });
+  const [selectedTheme, setSelectedTheme] = useState<ReportTheme>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("aidvisora_report_theme") as ReportTheme) || "elegant";
+    }
+    return "elegant";
+  });
   const canSaveToDocuments = Boolean(data.clientId);
+
+  const handleThemeChange = (t: ReportTheme) => {
+    setSelectedTheme(t);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aidvisora_report_theme", t);
+    }
+  };
 
   const netWorth = selectNetWorth(data);
   const totalGoals = selectTotalTargetCapital(data);
@@ -35,12 +69,10 @@ export function StepSummary() {
 
   const handlePrintReport = async () => {
     setPrintError(null);
-    chartRefs.current.growth = null;
-    chartRefs.current.allocation = null;
     setIsPreparingPrint(true);
     try {
       const branding = await getAdvisorReportBranding();
-      const html = buildReportHTML(data, { ...reportOptions, branding });
+      const html = buildReportHTML(data, { ...reportOptions, branding, theme: selectedTheme });
       setPrintPayload({ html });
     } catch {
       setPrintError("Nepodařilo se připravit report k tisku. Zkuste to znovu.");
@@ -53,7 +85,7 @@ export function StepSummary() {
     setSavingToDocs(true);
     try {
       const branding = await getAdvisorReportBranding();
-      const html = buildReportHTML(data, { ...reportOptions, branding });
+      const html = buildReportHTML(data, { ...reportOptions, branding, theme: selectedTheme });
       const safe = safeNameForFile(clientName);
       const date = new Date().toISOString().split("T")[0];
       const filename = `financni-report-${safe}-${date}.html`;
@@ -76,78 +108,30 @@ export function StepSummary() {
     if (!printPayload?.html) return;
 
     let cancelled = false;
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-    const runPrint = () => {
+    const timeout = setTimeout(() => {
       if (cancelled) return;
-      const growthCanvas = document.getElementById("pdf-chart-growth") as HTMLCanvasElement | null;
-      const allocationCanvas = document.getElementById("pdf-chart-allocation") as HTMLCanvasElement | null;
-
-      try {
-        if (growthCanvas) {
-          const { labels, values } = getGrowthChartData(data);
-          chartRefs.current.growth = new Chart(growthCanvas, {
-            type: "line",
-            data: {
-              labels: labels.map(String),
-              datasets: [{ label: "Hodnota portfolia (Kč)", data: values, borderColor: "rgb(15, 23, 42)", backgroundColor: "rgba(15, 23, 42, 0.1)", fill: true }],
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: {
-                x: { title: { display: true, text: "Rok" } },
-                y: { beginAtZero: true },
-              },
-            },
-          });
+      const frame = document.getElementById("report-print-frame") as HTMLIFrameElement | null;
+      setIsPreparingPrint(false);
+      if (frame?.contentWindow) {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } else {
+        const win = window.open("", "_blank");
+        if (win) {
+          win.document.write(printPayload.html);
+          win.document.close();
+          win.focus();
+          win.print();
         }
-        if (allocationCanvas) {
-          const { labels, values } = getAllocationChartData(data);
-          const ALLOCATION_PALETTE = ["#1e40af", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2", "#64748b"];
-          chartRefs.current.allocation = new Chart(allocationCanvas, {
-            type: "doughnut",
-            data: {
-              labels,
-              datasets: [{ data: values, backgroundColor: labels.map((_, i) => ALLOCATION_PALETTE[i % ALLOCATION_PALETTE.length]) }],
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: "bottom" } },
-            },
-          });
-        }
-      } catch {
-        // grafy nepovinné, pokračujeme na tisk
       }
-
-      timeouts.push(
-        setTimeout(() => {
-          if (cancelled) return;
-          setIsPreparingPrint(false);
-          window.print();
-        }, 400)
-      );
-    };
-
-    // Po vykreslení print rootu počkáme na DOM a pak vykreslíme grafy a spustíme tisk
-    timeouts.push(setTimeout(runPrint, 200));
+    }, 600);
 
     return () => {
       cancelled = true;
-      timeouts.forEach((t) => clearTimeout(t));
-      if (chartRefs.current.growth) {
-        chartRefs.current.growth.destroy();
-        chartRefs.current.growth = null;
-      }
-      if (chartRefs.current.allocation) {
-        chartRefs.current.allocation.destroy();
-        chartRefs.current.allocation = null;
-      }
+      clearTimeout(timeout);
       setIsPreparingPrint(false);
     };
-  }, [printPayload, data]);
+  }, [printPayload]);
 
   useEffect(() => {
     const afterPrint = () => setPrintPayload(null);
@@ -192,10 +176,13 @@ export function StepSummary() {
       )}
 
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-        <h3 className="text-slate-800 font-bold mb-2 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-indigo-600" />
-          Export / tisk reportu
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h3 className="text-slate-800 font-bold flex items-center gap-2">
+            <FileText className="w-5 h-5 text-indigo-600" />
+            Export / tisk reportu
+          </h3>
+          <ThemeSelector value={selectedTheme} onChange={handleThemeChange} />
+        </div>
         <p className="text-slate-600 text-sm mb-4">
           Vygeneruje kompletní report včetně grafů a otevře dialog pro tisk. Pro uložení do PDF zvolte v dialogu tisku „Uložit jako PDF“.
         </p>
@@ -227,56 +214,13 @@ export function StepSummary() {
       </div>
 
       {printPayload?.html && (
-        <div
-          id="report-print-root"
-          style={{ position: "fixed", left: "-9999px", top: 0, width: "210mm", zIndex: 9999 }}
-        >
-          <div dangerouslySetInnerHTML={{ __html: printPayload.html }} />
-        </div>
+        <iframe
+          id="report-print-frame"
+          srcDoc={printPayload.html}
+          style={{ position: "fixed", left: "-9999px", top: 0, width: "210mm", height: "297mm", border: "none" }}
+          title="Finanční report — tisk"
+        />
       )}
-
-      <style jsx global>{`
-        @media print {
-          @page { size: A4 portrait; margin: 0; }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          body * { visibility: hidden; }
-          #report-print-root,
-          #report-print-root * { visibility: visible; }
-          #report-print-root {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            overflow: visible !important;
-          }
-          .pdf-page {
-            width: 210mm !important;
-            height: 297mm !important;
-            min-height: 297mm !important;
-            max-height: 297mm !important;
-            margin: 0 !important;
-            padding: 15mm !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            page-break-after: always !important;
-            background: white !important;
-            box-sizing: border-box !important;
-          }
-          .pdf-page:last-child { page-break-after: auto !important; }
-          .avoid-break {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-          }
-        }
-      `}</style>
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
   getLatestPreMeetingBriefing,
   getLatestMeetingGeneration,
 } from "@/app/actions/ai-generations";
+import { AiActionMenu } from "@/app/components/ai/AiActionMenu";
 
 type Props = { contactId: string };
 
@@ -33,6 +34,7 @@ export function BriefingTabContent({ contactId }: Props) {
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
   const [followUpText, setFollowUpText] = useState<string | null>(null);
+  const [followUpGenerationId, setFollowUpGenerationId] = useState<string | null>(null);
   const [followUpNotes, setFollowUpNotes] = useState("");
 
   const loadLatestBriefing = useCallback(async () => {
@@ -44,6 +46,7 @@ export function BriefingTabContent({ contactId }: Props) {
     if (!meetingNoteId) return;
     const r = await getLatestMeetingGeneration("meeting_note", meetingNoteId, "postMeetingFollowup");
     setFollowUpText(r?.outputText ?? null);
+    setFollowUpGenerationId(r?.id ?? null);
   }, [meetingNoteId]);
 
   useEffect(() => {
@@ -77,6 +80,7 @@ export function BriefingTabContent({ contactId }: Props) {
       const result = await generatePostMeetingFollowupAction(contactId, notes, meetingId);
       if (result.ok) {
         setFollowUpText(result.text);
+        setFollowUpGenerationId(result.generationId ?? null);
         if (meetingNoteId) loadLatestFollowUp();
       } else {
         setFollowUpError(result.error);
@@ -158,6 +162,7 @@ export function BriefingTabContent({ contactId }: Props) {
             followUpText={followUpText}
             followUpError={followUpError}
             followUpLoading={followUpLoading}
+            followUpGenerationId={followUpGenerationId}
             onGenerate={handleGenerateFollowUp}
             onNotesFromNote={extractTextFromContent}
           />
@@ -174,6 +179,7 @@ export function BriefingTabContent({ contactId }: Props) {
             contactId={contactId}
             meetingNoteId={meetingNoteId}
             eventId={eventId}
+            generationId={followUpGenerationId}
             showRawNotesInput
           />
         </div>
@@ -190,6 +196,7 @@ type AiFollowUpFormProps = {
   followUpText: string | null;
   followUpError: string | null;
   followUpLoading: boolean;
+  followUpGenerationId: string | null;
   onGenerate: (notes: string, meetingId?: string | null) => Promise<void>;
   onNotesFromNote: (content: unknown) => string;
 };
@@ -202,6 +209,7 @@ function AiFollowUpForm({
   followUpText,
   followUpError,
   followUpLoading,
+  followUpGenerationId,
   onGenerate,
   onNotesFromNote,
 }: AiFollowUpFormProps) {
@@ -264,9 +272,19 @@ function AiFollowUpForm({
         </p>
       )}
       {followUpText && (
-        <div className="text-sm text-slate-700 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 border border-slate-100 mt-2">
-          {followUpText}
-        </div>
+        <>
+          <div className="text-sm text-slate-700 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 border border-slate-100 mt-2">
+            {followUpText}
+          </div>
+          {followUpGenerationId && (
+            <AiActionMenu
+              generationId={followUpGenerationId}
+              promptType="postMeetingFollowup"
+              contactId={contactId}
+              outputText={followUpText}
+            />
+          )}
+        </>
       )}
     </>
   );

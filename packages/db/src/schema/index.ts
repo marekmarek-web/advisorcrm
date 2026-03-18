@@ -28,6 +28,8 @@ export * from "./user-google-calendar-integrations";
 export * from "./team-goals";
 export * from "./team-events";
 export * from "./advisor-business-plan";
+export * from "./advisor-vision-goals";
 export * from "./coverage";
 export * from "./ai-generations";
 export * from "./ai-feedback";
+export * from "./user-devices";

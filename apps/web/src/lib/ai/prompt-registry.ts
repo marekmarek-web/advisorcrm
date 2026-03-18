@@ -103,7 +103,14 @@ export const REQUIRED_VARIABLES: Record<PromptType, string[]> = {
     "active_deals",
     "meeting_notes",
   ],
-  teamSummary: ["team_id", "period", "events_summary", "tasks_summary"],
+  teamSummary: [
+    "team_overview",
+    "team_kpis",
+    "team_members",
+    "team_alerts",
+    "newcomer_adaptation",
+    "period_label",
+  ],
 };
 
 export type PromptConfig = {

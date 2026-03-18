@@ -10,6 +10,7 @@ import {
   generateNextBestAction,
   generatePreMeetingBriefing,
   generatePostMeetingFollowup,
+  generateTeamSummary,
 } from "@/lib/ai/ai-service";
 import { getLatestGeneration } from "@/lib/ai/ai-generations-repository";
 import {
@@ -18,6 +19,7 @@ import {
   type AiFeedbackActionTaken,
   type CreateAiFeedbackResult,
 } from "@/app/actions/ai-feedback";
+import { buildDebugContext, type AiContextDebugOutput } from "@/lib/ai/context/debug-context";
 
 export type ResultOk = { ok: true; text: string; generationId?: string };
 export type ResultErr = { ok: false; error: string; generationId?: string };
@@ -27,12 +29,15 @@ export type GenResult = ResultOk | ResultErr;
 export async function submitAiFeedbackAction(
   generationId: string,
   verdict: AiFeedbackVerdict,
-  options?: { actionTaken?: AiFeedbackActionTaken | null; note?: string | null }
+  options?: {
+    actionTaken?: AiFeedbackActionTaken | null;
+    note?: string | null;
+    createdEntityType?: string | null;
+    createdEntityId?: string | null;
+  }
 ): Promise<CreateAiFeedbackResult> {
   return createAiFeedback(generationId, verdict, options);
 }
-
-export type { AiFeedbackVerdict, AiFeedbackActionTaken, CreateAiFeedbackResult };
 
 function ensureContactAccess(contactId: string): Promise<void> {
   return (async () => {
@@ -236,6 +241,37 @@ export async function getLatestGenerationAction(
   }
 }
 
+/** Generate team summary for the current tenant. Manager/team leader/admin only. */
+export async function generateTeamSummaryAction(period: string): Promise<GenResult> {
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "team_overview:read")) return { ok: false, error: "Forbidden" };
+    return await generateTeamSummary(auth.tenantId, auth.userId, period);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === "Forbidden") return { ok: false, error: message };
+    return { ok: false, error: "Generování se nepovedlo. Zkuste to později." };
+  }
+}
+
+/** Get latest stored team summary for the current tenant. */
+export async function getLatestTeamSummaryAction(): Promise<ClientGenerationItem | null> {
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "team_overview:read")) return null;
+    const r = await getLatestGeneration(auth.tenantId, "team", auth.tenantId, "teamSummary");
+    if (!r || r.status !== "success") return null;
+    return {
+      promptType: r.promptType,
+      outputText: r.outputText,
+      createdAt: r.createdAt,
+      id: r.id,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Latest pre-meeting briefing for a contact (optionally for a specific event). */
 export async function getLatestPreMeetingBriefing(
   contactId: string,
@@ -255,6 +291,20 @@ export async function getLatestPreMeetingBriefing(
       createdAt: r.createdAt,
       id: r.id,
     };
+  } catch {
+    return null;
+  }
+}
+
+/** Dev-only AI context debugger for deterministic context inspection. */
+export async function getAiContextDebug(contactId: string): Promise<AiContextDebugOutput | null> {
+  if (process.env.NODE_ENV !== "development") return null;
+  try {
+    const auth = await requireAuthInAction();
+    if (auth.roleName === "Client") return null;
+    if (!hasPermission(auth.roleName, "contacts:read")) return null;
+    await ensureContactAccess(contactId);
+    return await buildDebugContext(contactId);
   } catch {
     return null;
   }

@@ -4,19 +4,18 @@ import { useState, useEffect, useMemo } from "react";
 import {
   getDocumentsForContact,
   updateDocumentVisibleToClient,
-  uploadDocument,
   deleteDocument,
 } from "@/app/actions/documents";
 import { getContractsByContact } from "@/app/actions/contracts";
 import type { DocumentRow } from "@/app/actions/documents";
 import type { ContractRow } from "@/app/actions/contracts";
+import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 
 export function DocumentsSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<DocumentRow[]>([]);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [visibleToClient, setVisibleToClient] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -59,29 +58,6 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
     if (!window.confirm("Opravdu chcete smazat tento dokument?")) return;
     await deleteDocument(docId);
     load();
-  }
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const fd = new FormData(form);
-    const tagsRaw = (fd.get("tags") as string) || "";
-    const tags = tagsRaw
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-    setUploading(true);
-    try {
-      await uploadDocument(contactId, fd, {
-        contractId: (fd.get("contractId") as string) || undefined,
-        visibleToClient: fd.get("visibleToClient") === "on",
-        tags,
-      });
-      form.reset();
-      load();
-    } finally {
-      setUploading(false);
-    }
   }
 
   if (loading) return <p className="text-slate-500 text-sm">Načítám dokumenty…</p>;
@@ -166,45 +142,19 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
         ))}
       </ul>
 
-      <form onSubmit={onSubmit} className="space-y-3 max-w-md rounded-[var(--wp-radius-lg)] border border-slate-200 bg-slate-50/50 p-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-500">Název (volitelně)</label>
-          <input name="name" className="w-full rounded border border-monday-border px-2 py-1.5 text-sm" placeholder="název dokumentu" />
-        </div>
-        <div>
-          <input name="file" type="file" required accept=".pdf,image/*" className="text-sm" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500">Tagy (oddělené čárkou)</label>
-          <input
-            name="tags"
-            className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
-            placeholder="např. smlouva, příloha"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500">Smlouva</label>
-          <select name="contractId" className="w-full rounded border border-monday-border px-2 py-1.5 text-sm">
-            <option value="">— žádná —</option>
-            {contracts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.segment} – {c.partnerName ?? "—"} ({c.contractNumber ?? c.id.slice(0, 8)})
-              </option>
-            ))}
-          </select>
-        </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input name="visibleToClient" type="checkbox" />
-          Viditelné klientovi
-        </label>
-        <button
-          type="submit"
-          disabled={uploading}
-          className="rounded-[var(--wp-radius)] px-4 py-2.5 text-sm font-semibold text-white bg-[var(--wp-accent)] hover:opacity-90 disabled:opacity-50 min-h-[44px]"
-        >
-          {uploading ? "Nahrávám…" : "Nahrát dokument"}
-        </button>
-      </form>
+      <DocumentUploadZone
+        contactId={contactId}
+        showNameInput
+        showTagsInput
+        showContractSelect
+        showVisibleToClient
+        contracts={contracts.map((c) => ({
+          id: c.id,
+          label: `${c.segment} – ${c.partnerName ?? "—"} (${c.contractNumber ?? c.id.slice(0, 8)})`,
+        }))}
+        onUploaded={() => load()}
+        className="max-w-md"
+      />
     </div>
   );
 }

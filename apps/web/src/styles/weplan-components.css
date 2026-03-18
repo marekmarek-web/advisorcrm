@@ -440,6 +440,17 @@
   margin: 0 auto;
 }
 
+@media (max-width: 767px) {
+  .wp-input,
+  .wp-select {
+    min-height: 44px;
+  }
+
+  .wp-page {
+    padding: var(--wp-space-4) var(--wp-space-4) 0;
+  }
+}
+
 /* ── DASHBOARD.txt search wrapper ── */
 .wp-search-wrapper {
   border-radius: var(--wp-radius-sm);

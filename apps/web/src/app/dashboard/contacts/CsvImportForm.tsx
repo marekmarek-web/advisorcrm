@@ -83,7 +83,10 @@ export function CsvImportForm() {
       {step === "upload" && (
         <div>
           <p className="text-sm text-slate-500 mb-3">Nahrajte soubor CSV nebo Excel (.xlsx). První řádek se bere jako hlavička. Následně namapujete sloupce na pole.</p>
-          <input type="file" accept=".csv,.txt,.xlsx" className="text-sm" onChange={onFileChange} disabled={loading} />
+          <label className={`inline-flex items-center min-h-[44px] px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-slate-50"}`}>
+            Vybrat CSV/XLSX
+            <input type="file" accept=".csv,.txt,.xlsx" className="hidden" onChange={onFileChange} disabled={loading} />
+          </label>
         </div>
       )}
       {step === "mapping" && preview && (

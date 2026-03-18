@@ -4,6 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { db } from "db";
 import { portalNotifications } from "db";
 import { eq, and, desc, isNull } from "db";
+import { sendPushForPortalNotification } from "@/lib/push/send";
 
 export type PortalNotificationRow = {
   id: string;
@@ -102,5 +103,14 @@ export async function createPortalNotification(params: {
     body: params.body ?? null,
     relatedEntityType: params.relatedEntityType ?? null,
     relatedEntityId: params.relatedEntityId ?? null,
+  });
+
+  await sendPushForPortalNotification({
+    tenantId: params.tenantId,
+    contactId: params.contactId,
+    type: params.type,
+    title: params.title,
+    body: params.body,
+    relatedEntityId: params.relatedEntityId,
   });
 }

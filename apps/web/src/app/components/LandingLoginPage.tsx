@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { acceptClientInvitation } from "@/app/actions/auth";
+import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5">
@@ -32,6 +33,7 @@ type Role = "advisor" | "client";
 
 export function LandingLoginPage() {
   const searchParams = useSearchParams();
+  const { keyboardInset, keyboardOpen } = useKeyboardAware();
   const next = searchParams.get("next") || "/portal/today";
   const token = searchParams.get("token");
   const registerParam = searchParams.get("register");
@@ -135,7 +137,10 @@ export function LandingLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f29] font-inter text-slate-300 flex flex-col justify-center items-center relative overflow-hidden selection:bg-indigo-500 selection:text-white">
+    <div
+      className={`min-h-screen bg-[#0a0f29] font-inter text-slate-300 flex flex-col items-center relative overflow-hidden selection:bg-indigo-500 selection:text-white ${keyboardOpen ? "justify-start pt-4" : "justify-center"}`}
+      style={{ paddingBottom: `calc(var(--safe-area-bottom) + ${keyboardInset}px)` }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap');
         .font-inter { font-family: 'Inter', sans-serif; }
@@ -237,7 +242,7 @@ export function LandingLoginPage() {
       </svg>
 
       {/* Top header */}
-      <div className="absolute top-6 left-0 right-0 px-8 flex justify-between items-center z-20">
+      <div className="absolute top-6 left-0 right-0 px-4 sm:px-8 flex justify-between items-center z-20">
         <Link href="/" className="flex items-center gap-3">
           <div
             className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-lg border border-white/10 transition-colors duration-500 ${
@@ -258,12 +263,12 @@ export function LandingLoginPage() {
                 setRole(role === "advisor" ? "client" : "advisor");
                 setMessage("");
               }}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-slate-400 hover:text-white transition-colors min-h-[44px] px-2"
             >
               {role === "advisor" ? "Jsem klient" : "Jsem poradce"}
             </button>
           )}
-          <Link href="/" className="text-slate-400 hover:text-white transition-colors">
+          <Link href="/" className="text-slate-400 hover:text-white transition-colors min-h-[44px] px-2 inline-flex items-center">
             Zjistit více
           </Link>
         </div>
@@ -363,6 +368,8 @@ export function LandingLoginPage() {
                       placeholder="Např. Martin Novák"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      autoComplete="name"
+                      enterKeyHint="next"
                       className="glass-input w-full pl-4 pr-4 py-3.5 rounded-xl text-sm font-bold"
                     />
                   </div>
@@ -387,6 +394,9 @@ export function LandingLoginPage() {
                     placeholder="jmeno@email.cz"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    inputMode="email"
+                    autoComplete="email"
+                    enterKeyHint="next"
                     className={`glass-input w-full pl-11 pr-4 py-3.5 rounded-xl text-sm font-bold ${role === "client" ? "client-focus" : ""}`}
                   />
                 </div>
@@ -420,12 +430,14 @@ export function LandingLoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={isLogin ? "current-password" : "new-password"}
+                    enterKeyHint="go"
                     className={`glass-input w-full pl-11 pr-12 py-3.5 rounded-xl text-sm font-bold ${role === "client" ? "client-focus" : ""}`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-2 pl-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-slate-300 transition-colors"
                     aria-label={showPassword ? "Skrýt heslo" : "Zobrazit heslo"}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -523,13 +535,13 @@ export function LandingLoginPage() {
       )}
 
       {/* Footer */}
-      <div className="absolute bottom-6 w-full px-8 flex justify-center sm:justify-between items-center z-20 text-[11px] font-black uppercase tracking-widest text-slate-500">
+      <div className="relative mt-8 w-full px-4 sm:px-8 pb-[calc(var(--safe-area-bottom)+1rem)] flex justify-center sm:justify-between items-center z-20 text-[11px] font-black uppercase tracking-widest text-slate-500">
         <div className="hidden sm:block">© 2026 Aidvisora s.r.o.</div>
         <div className="flex gap-6 hover:[&>a]:text-white">
-          <Link href="/gdpr" className="transition-colors flex items-center gap-1.5">
+          <Link href="/gdpr" className="transition-colors flex items-center gap-1.5 min-h-[44px] px-1">
             <ShieldCheck size={14} /> GDPR
           </Link>
-          <Link href="/" className="transition-colors">
+          <Link href="/" className="transition-colors min-h-[44px] px-1 inline-flex items-center">
             Zpět na úvod
           </Link>
         </div>

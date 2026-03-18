@@ -2,6 +2,7 @@ export {
   buildClientAiContextRaw,
   renderClientAiPromptVariables,
   type ClientAiContextRaw,
+  type ActiveDealSummary,
 } from "./client-context";
 export {
   buildPreMeetingContextRaw,
@@ -16,3 +17,10 @@ export {
   renderTeamAiPromptVariables,
   type TeamAiContextRaw,
 } from "./team-context";
+export {
+  computeCompleteness,
+  renderCompletenessHint,
+  type ContextCompleteness,
+} from "./completeness";
+export { FRESHNESS_THRESHOLDS } from "./freshness-rules";
+export { buildDebugContext, type AiContextDebugOutput } from "./debug-context";

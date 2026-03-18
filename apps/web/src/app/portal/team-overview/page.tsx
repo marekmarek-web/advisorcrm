@@ -25,6 +25,7 @@ export default async function TeamOverviewPage() {
 
   return (
     <TeamOverviewView
+      teamId={auth.tenantId}
       initialKpis={kpis}
       initialMembers={members}
       initialMetrics={metrics}

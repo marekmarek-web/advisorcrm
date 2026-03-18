@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -811,7 +811,7 @@ export function DashboardEditable({
                   className={wrapperClass}
                 >
                   <div className="relative">
-                    <span className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 cursor-grab active:cursor-grabbing transition-colors touch-none shrink-0" aria-label="Chytit a přesunout">
+                    <span className="absolute top-3 right-3 z-10 p-2 min-h-[44px] min-w-[44px] rounded-lg bg-white/10 hover:bg-white/20 cursor-grab active:cursor-grabbing transition-colors shrink-0 inline-flex items-center justify-center" aria-label="Chytit a přesunout">
                       <GripVertical size={16} className="text-indigo-200" />
                     </span>
                     <DashboardAiAssistant />
@@ -836,7 +836,7 @@ export function DashboardEditable({
                   footerLabel={footerLabel}
                   backgroundClass="bg-transparent"
                   rightElement={
-                    <span className="p-1 text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing rounded transition-colors touch-none shrink-0" aria-label="Chytit a přesunout">
+                    <span className="p-2 min-h-[44px] min-w-[44px] text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing rounded transition-colors shrink-0 inline-flex items-center justify-center" aria-label="Chytit a přesunout">
                       <GripVertical size={16} />
                     </span>
                   }
@@ -851,7 +851,10 @@ export function DashboardEditable({
       </div>
 
       {/* Right panel: side calendar – vizuálně oddělená plocha */}
-      <aside className="w-full lg:w-[380px] mt-10 lg:mt-0 flex-shrink-0 flex flex-col border-t border-slate-200 lg:border lg:border-slate-100 lg:rounded-[24px] lg:shadow-sm bg-slate-50/50 lg:bg-white sticky top-[73px] h-[calc(100vh-73px)] overflow-hidden lg:ml-2">
+      <aside
+        className="w-full lg:w-[380px] mt-10 lg:mt-0 flex-shrink-0 flex flex-col border-t border-slate-200 lg:border lg:border-slate-100 lg:rounded-[24px] lg:shadow-sm bg-slate-50/50 lg:bg-white sticky top-[var(--dashboard-sticky-offset)] h-[calc(100vh-var(--dashboard-sticky-offset))] overflow-hidden lg:ml-2"
+        style={{ "--dashboard-sticky-offset": "calc(var(--safe-area-top) + 73px)" } as CSSProperties}
+      >
         <div className="flex-1 overflow-y-auto p-5 lg:p-6 space-y-6 bg-white lg:bg-white">
           <section className="space-y-4">
             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Kalendář</h3>
@@ -966,7 +969,7 @@ export function DashboardEditable({
                             type="button"
                             onClick={() => setWidgetColor(id, c)}
                             disabled={!isVisible}
-                            className={`w-9 h-9 rounded-full transition-all duration-300 border-[3px] shadow-sm ${g.bgClass} ${
+                            className={`w-11 h-11 min-h-[44px] min-w-[44px] rounded-full transition-all duration-300 border-[3px] shadow-sm ${g.bgClass} ${
                               isSelected ? `ring-2 ring-offset-2 ${g.ringClass} border-white scale-110 shadow-md` : "border-white/80 hover:scale-110 hover:shadow-md"
                             } ${!isVisible ? "cursor-not-allowed opacity-50" : ""}`}
                             aria-label={`Barva ${c}`}
@@ -980,7 +983,7 @@ export function DashboardEditable({
                         type="button"
                         onClick={() => moveUp(id)}
                         disabled={index === 0}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                         aria-label="Posunout nahoru"
                       >
                         <ArrowUp size={20} strokeWidth={2.5} />
@@ -989,7 +992,7 @@ export function DashboardEditable({
                         type="button"
                         onClick={() => moveDown(id)}
                         disabled={index === editOrder.length - 1}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                         aria-label="Posunout dolů"
                       >
                         <ArrowDown size={20} strokeWidth={2.5} />
