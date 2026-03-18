@@ -280,9 +280,26 @@ export function LandingLoginPage() {
             </div>
 
             {message && (
-              <p className={`text-sm rounded-lg px-3 py-2 ${activeTheme === "darkElegance" ? "bg-red-500/20 text-red-200 border border-red-400/30" : "text-red-600 bg-red-50 border border-red-200"}`}>
-                {message}
-              </p>
+              <>
+                <p className={`text-sm rounded-lg px-3 py-2 ${activeTheme === "darkElegance" ? "bg-red-500/20 text-red-200 border border-red-400/30" : "text-red-600 bg-red-50 border border-red-200"}`}>
+                  {message}
+                </p>
+                {(errorParam === "auth_error" || errorParam === "database_error") && (
+                  <p className="mt-2 text-sm opacity-90">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const supabase = createClient();
+                        await supabase.auth.signOut();
+                        window.location.href = "/prihlaseni";
+                      }}
+                      className="font-medium underline hover:no-underline"
+                    >
+                      Odhlásit se a zkusit znovu
+                    </button>
+                  </p>
+                )}
+              </>
             )}
 
             <button

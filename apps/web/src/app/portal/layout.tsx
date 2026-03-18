@@ -30,7 +30,7 @@ export default async function PortalLayout({
       msg.includes("max clients") ||
       msg.toLowerCase().includes("pool");
     const safe = isDbError ? "database_error" : "auth_error";
-    redirect(`/?error=${encodeURIComponent(safe)}`);
+    redirect(`/prihlaseni?error=${encodeURIComponent(safe)}`);
   }
   if (auth.roleName === "Client") {
     redirect("/client");

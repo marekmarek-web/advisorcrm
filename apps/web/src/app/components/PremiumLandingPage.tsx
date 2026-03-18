@@ -377,6 +377,15 @@ export default function PremiumLandingPage() {
   const [isAnnualPricing, setIsAnnualPricing] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error");
+    if (err === "auth_error" || err === "database_error") {
+      window.location.replace(`/prihlaseni?error=${encodeURIComponent(err)}`);
+    }
+  }, []);
+
   // --- STAV PRO MINI KALKULAČKU ---
   const [miniCalcInvest, setMiniCalcInvest] = useState(5000);
   const [miniCalcYears, setMiniCalcYears] = useState(15);

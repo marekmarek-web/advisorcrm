@@ -143,6 +143,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   if (request.nextUrl.pathname === "/prihlaseni" && user) {
+    const errorParam = request.nextUrl.searchParams.get("error");
+    if (errorParam === "auth_error" || errorParam === "database_error") {
+      return NextResponse.next({ request });
+    }
     const url = request.nextUrl.clone();
     url.pathname = request.nextUrl.searchParams.get("next") || "/portal/today";
     url.searchParams.delete("next");
