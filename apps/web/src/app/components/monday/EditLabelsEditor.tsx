@@ -89,27 +89,25 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
 
   return (
     <BaseModal open={open} onClose={onClose} title="Upravit štítky" maxWidth="lg">
-      <div className="min-h-[50vh] bg-slate-100/70 p-3 rounded-xl">
-        <div className="w-full bg-white rounded-[28px] shadow-2xl overflow-hidden border border-slate-100">
-          <div className="p-6 pb-4 flex items-start justify-between">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                <Tag className="text-white w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">Upravit štítky</h2>
-                <p className="text-slate-400 text-sm mt-1">Nastavte barvy, názvy a pořadí štítků.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 hover:bg-slate-50 rounded-full transition-colors text-slate-300 hover:text-slate-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
-              aria-label="Zavřít"
-            >
-              <X size={22} />
-            </button>
+      <div className="p-6 pb-4 flex items-start justify-between">
+        <div className="flex gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+            <Tag className="text-white w-6 h-6" />
           </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">Upravit štítky</h2>
+            <p className="text-slate-400 text-sm mt-1">Nastavte barvy, názvy a pořadí štítků.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 hover:bg-slate-50 rounded-full transition-colors text-slate-300 hover:text-slate-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          aria-label="Zavřít"
+        >
+          <X size={22} />
+        </button>
+      </div>
 
           <div className="px-6 max-h-[55vh] overflow-y-auto space-y-3">
           {labels.map((l, i) => (
@@ -196,24 +194,22 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
           </button>
           </div>
 
-          <div className="p-6 pt-5 flex items-center justify-between border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-3 text-slate-400 font-semibold hover:text-slate-600 transition-colors min-h-[44px]"
-            >
-              Zrušit
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:shadow-indigo-200 hover:-translate-y-0.5 active:translate-y-0 transition-all min-h-[44px]"
-            >
-              <Check size={20} strokeWidth={3} />
-              Uložit změny
-            </button>
-          </div>
-        </div>
+      <div className="p-6 pt-5 flex items-center justify-between border-t border-slate-100">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-6 py-3 text-slate-400 font-semibold hover:text-slate-600 transition-colors min-h-[44px]"
+        >
+          Zrušit
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:shadow-indigo-200 hover:-translate-y-0.5 active:translate-y-0 transition-all min-h-[44px]"
+        >
+          <Check size={20} strokeWidth={3} />
+          Uložit změny
+        </button>
       </div>
     </BaseModal>
   );
