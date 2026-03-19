@@ -21,6 +21,7 @@ import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 import { SkeletonLine } from "@/app/components/Skeleton";
 import { SwipeTaskItem } from "@/app/components/SwipeTaskItem";
 import { CustomDropdown as CustomDropdownUI } from "@/app/components/ui/CustomDropdown";
+import type { LucideIcon } from "lucide-react";
 import {
   CheckCircle2,
   Circle,
@@ -121,7 +122,7 @@ function CustomDropdown({
   onChange: (id: string) => void;
   options: DropdownOption[];
   placeholder?: string;
-  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  icon?: LucideIcon;
   direction?: "up" | "down";
   variant?: "input" | "compact";
 }) {
