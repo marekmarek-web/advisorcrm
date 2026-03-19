@@ -3,13 +3,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, MoreVertical, X, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, MoreVertical, X, RefreshCw, Clock, MapPin, Link2, AlignLeft, User, Briefcase, Bell, Check, Sparkles, Flag, CheckSquare } from "lucide-react";
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
 import { getTasksForDate, completeTask, reopenTask, createTask, type TaskRow } from "@/app/actions/tasks";
 import { getUnreadConversationsCount } from "@/app/actions/messages";
-import { BaseModal } from "@/app/components/BaseModal";
+// BaseModal no longer used — EventFormModal & NewTaskModal use custom overlays
 import { useToast } from "@/app/components/Toast";
 import { CalendarSettingsModal } from "@/app/components/calendar/CalendarSettingsModal";
 import {
@@ -94,7 +94,9 @@ type OpportunityOption = { id: string; title: string; contactId: string | null }
 
 const DAY_NAMES_FULL = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"];
 
-/* ────────── New Task Modal ────────── */
+/* ────────── New Task Modal (3-step wizard) ────────── */
+const TASK_STEPS = ["Základ", "Kontext", "Detaily"] as const;
+
 function NewTaskModal({
   dueDate: initialDueDate,
   onSave,
@@ -104,16 +106,21 @@ function NewTaskModal({
   onSave: (title: string, dueDate: string) => Promise<void>;
   onClose: () => void;
 }) {
+  const [step, setStep] = useState(0);
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState(initialDueDate);
+  const [reminder, setReminder] = useState(30);
+  const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
+  const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDueDate(initialDueDate);
   }, [initialDueDate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const canNext = step === 0 ? title.trim().length > 0 : true;
+
+  const handleSubmit = async () => {
     const t = title.trim();
     if (!t) return;
     setSaving(true);
@@ -125,40 +132,174 @@ function NewTaskModal({
     }
   };
 
+  const tLabelClass = "block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1";
+  const tInputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 transition-all text-slate-800 placeholder:text-slate-400";
+
   return (
-    <BaseModal open onClose={onClose} title="Nový úkol" maxWidth="sm">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Název</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Název úkolu"
-            className="wp-input w-full"
-            autoFocus
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Datum splnění</label>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="wp-input w-full"
-          />
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="wp-btn" style={{ background: "var(--wp-bg)", color: "var(--wp-text)" }}>
-            Zrušit
-          </button>
-          <button type="submit" className="wp-btn wp-btn-primary" disabled={saving || !title.trim()}>
-            {saving ? "Vytvářím…" : "Vytvořit"}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6" onClick={onClose}>
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-[500px] min-h-[500px] flex flex-col overflow-hidden border border-slate-100 max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <CheckSquare size={18} className="text-emerald-600" />
+            </div>
+            <h2 className="text-lg font-black text-slate-900">Nový úkol</h2>
+          </div>
+          <button type="button" onClick={onClose} className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+            <X size={16} className="text-slate-500" />
           </button>
         </div>
-      </form>
-    </BaseModal>
+
+        {/* Stepper */}
+        <div className="px-8 pt-5 pb-2">
+          <div className="flex items-center gap-0">
+            {TASK_STEPS.map((s, i) => (
+              <div key={s} className="flex items-center flex-1">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all ${i <= step ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-400"}`}>
+                    {i < step ? <Check size={14} /> : i + 1}
+                  </div>
+                  <span className={`text-xs font-bold whitespace-nowrap transition-colors ${i <= step ? "text-slate-800" : "text-slate-400"}`}>{s}</span>
+                </div>
+                {i < TASK_STEPS.length - 1 && (
+                  <div className={`h-0.5 flex-1 mx-3 rounded-full transition-colors ${i < step ? "bg-emerald-500" : "bg-slate-200"}`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step content */}
+        <div className="flex-1 overflow-y-auto px-8 py-5 space-y-5">
+          {step === 0 && (
+            <>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Název úkolu…"
+                className="w-full text-2xl font-black text-slate-900 placeholder:text-slate-300 border-0 border-b-2 border-slate-200 focus:border-emerald-500 bg-transparent outline-none py-3 transition-colors"
+                autoFocus
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={tLabelClass}>Datum splnění</label>
+                  <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={tInputClass} />
+                </div>
+                <div>
+                  <label className={tLabelClass}>Připomenutí</label>
+                  <select value={reminder} onChange={(e) => setReminder(Number(e.target.value))} className={tInputClass}>
+                    {REMINDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={tLabelClass}>Priorita</label>
+                <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                  {([["low", "Nízká"], ["normal", "Běžná"], ["urgent", "Urgentní"]] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setPriority(val)}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                        priority === val
+                          ? val === "urgent"
+                            ? "bg-rose-500 text-white shadow-md"
+                            : val === "low"
+                              ? "bg-slate-600 text-white shadow-md"
+                              : "bg-white text-slate-800 shadow-md"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      {val === "urgent" && <Flag size={12} className="inline mr-1" />}
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                <Sparkles size={16} className="text-blue-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-blue-700 font-medium">Přiřaďte úkol ke klientovi nebo obchodu pro lepší sledování.</p>
+              </div>
+              <div>
+                <label className={tLabelClass}><User size={12} className="inline mr-1" />Klient</label>
+                <input type="text" placeholder="Vyhledat klienta…" className={tInputClass} />
+              </div>
+              <div>
+                <label className={tLabelClass}><Briefcase size={12} className="inline mr-1" />Obchod</label>
+                <select className={tInputClass}>
+                  <option value="">— žádný</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div>
+                <label className={tLabelClass}><AlignLeft size={12} className="inline mr-1" />Popis</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Popište úkol podrobněji…"
+                  className={`${tInputClass} min-h-[120px] resize-none`}
+                  rows={5}
+                />
+              </div>
+              <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
+                <label className={tLabelClass}>Přiřazení</label>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <User size={16} className="text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">Já (aktuální uživatel)</p>
+                    <p className="text-xs text-slate-400">Výchozí přiřazení</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={step === 0 ? onClose : () => setStep((s) => s - 1)}
+            className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            {step === 0 ? "Zrušit" : "Zpět"}
+          </button>
+          {step < 2 ? (
+            <button
+              type="button"
+              onClick={() => setStep((s) => s + 1)}
+              disabled={!canNext}
+              className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-lg"
+            >
+              Další krok
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={saving || !title.trim()}
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#1a1c2e] text-white text-sm font-bold rounded-xl hover:bg-[#2a2c3e] disabled:opacity-50 transition-all shadow-lg"
+            >
+              <Check size={16} />
+              {saving ? "Vytvářím…" : "Vytvořit úkol"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -307,7 +448,16 @@ function EventDetailPopover({
   );
 }
 
-/* ────────── Event Form Modal ────────── */
+/* ────────── Event Form Modal (premium design) ────────── */
+const EVENT_PILL_STYLES: Record<string, { active: string; inactive: string }> = {
+  schuzka:   { active: "bg-indigo-600 text-white shadow-lg shadow-indigo-200",  inactive: "bg-indigo-50 text-indigo-600 hover:bg-indigo-100" },
+  telefonat: { active: "bg-rose-500 text-white shadow-lg shadow-rose-200",      inactive: "bg-rose-50 text-rose-500 hover:bg-rose-100" },
+  kafe:      { active: "bg-amber-500 text-white shadow-lg shadow-amber-200",    inactive: "bg-amber-50 text-amber-600 hover:bg-amber-100" },
+  mail:      { active: "bg-purple-600 text-white shadow-lg shadow-purple-200",  inactive: "bg-purple-50 text-purple-600 hover:bg-purple-100" },
+  ukol:      { active: "bg-emerald-600 text-white shadow-lg shadow-emerald-200", inactive: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" },
+  priorita:  { active: "bg-red-600 text-white shadow-lg shadow-red-200",        inactive: "bg-red-50 text-red-600 hover:bg-red-100" },
+};
+
 function EventFormModal({
   initial,
   contacts,
@@ -365,139 +515,211 @@ function EventFormModal({
     }
   }
 
+  const eLabelClass = "block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1";
+  const eInputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all text-slate-800 placeholder:text-slate-400";
+
   return (
-    <BaseModal open={true} onClose={onClose} title={initial.id ? "Upravit aktivitu" : "Nová aktivita"} maxWidth="2xl">
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0" style={{ paddingBottom: keyboardInset }}>
-        <div className="px-5 py-5 space-y-5 overflow-y-auto" style={{ paddingBottom: `max(1.25rem, ${keyboardInset}px)` }}>
-          <div className="flex flex-wrap items-center gap-2">
-            {CALENDAR_EVENT_CATEGORIES.filter((t) => ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"].includes(t.id)).map((t) => {
-              const activeColor = eventTypeColors?.[t.id] ?? t.color;
-              const isActive = form.eventType === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, eventType: t.id, reminderMinutes: (t.id === "ukol" || t.id === "priorita") ? 15 : 30 }))}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
-                    isActive ? "border-current text-white shadow-sm" : "text-slate-500 hover:border-slate-300 hover:bg-slate-50"
-                  }`}
-                  style={isActive ? { backgroundColor: activeColor, borderColor: activeColor } : { borderColor: "var(--wp-border)" }}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6" onClick={onClose}>
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-[640px] flex flex-col overflow-hidden border border-slate-100 max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          {/* Header */}
+          <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+            <h2 className="text-lg font-black text-slate-900">
+              {initial.id ? "Upravit aktivitu" : "Nová aktivita v kalendáři"}
+            </h2>
+            <button type="button" onClick={onClose} className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+              <X size={16} className="text-slate-500" />
+            </button>
+          </div>
+
+          {/* Scrollable body */}
+          <div
+            className="flex-1 overflow-y-auto px-8 py-6 space-y-6"
+            style={keyboardInset ? { paddingBottom: `${keyboardInset}px` } : undefined}
+          >
+            {/* Activity type pills */}
+            <div className="flex flex-wrap gap-2">
+              {CALENDAR_EVENT_CATEGORIES.filter((t) => ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"].includes(t.id)).map((t) => {
+                const isActive = form.eventType === t.id;
+                const ps = EVENT_PILL_STYLES[t.id] ?? { active: "bg-slate-700 text-white shadow-lg", inactive: "bg-slate-100 text-slate-600 hover:bg-slate-200" };
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, eventType: t.id, reminderMinutes: (t.id === "ukol" || t.id === "priorita") ? 15 : 30 }))}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all ${isActive ? ps.active : ps.inactive}`}
+                  >
+                    <span className="text-base">{t.icon}</span>
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Title */}
+            <input
+              value={form.title}
+              onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); if (validationErrors.title) setValidationErrors((v) => ({ ...v, title: false })); }}
+              placeholder="Název aktivity…"
+              className={`w-full text-2xl sm:text-3xl font-black text-slate-900 placeholder:text-slate-300 border-0 border-b-2 ${validationErrors.title ? "border-red-400" : "border-slate-200 focus:border-indigo-500"} bg-transparent outline-none py-3 transition-colors`}
+              autoFocus
+            />
+
+            {/* Date section */}
+            <div className="bg-slate-50 p-5 rounded-[24px] border border-slate-100 space-y-4">
+              <div className="flex items-center gap-2">
+                <Clock size={16} className="text-slate-400" />
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Kdy se to koná?</span>
+              </div>
+
+              <label className="flex items-center gap-2.5 text-sm font-bold text-slate-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.allDay}
+                  onChange={(e) => setForm((f) => ({ ...f, allDay: e.target.checked }))}
+                  className="rounded w-4 h-4 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Celý den
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={eLabelClass}>Začátek</label>
+                  <input
+                    type="datetime-local"
+                    step={300}
+                    value={form.startAt}
+                    onChange={(e) => { setForm((f) => ({ ...f, startAt: e.target.value })); if (validationErrors.startAt) setValidationErrors((v) => ({ ...v, startAt: false })); }}
+                    className={`${eInputClass} ${validationErrors.startAt ? "!border-red-400 !ring-red-100" : ""}`}
+                  />
+                </div>
+                <div>
+                  <label className={eLabelClass}>Konec</label>
+                  <input
+                    type="datetime-local"
+                    step={300}
+                    value={form.endAt}
+                    onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))}
+                    className={eInputClass}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Context: Klient + Obchod */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={eLabelClass}><User size={12} className="inline mr-1" />Klient</label>
+                <ContactSearchInput
+                  value={form.contactId}
+                  contacts={contacts}
+                  onChange={(contactId) => setForm((f) => ({ ...f, contactId, opportunityId: "" }))}
+                  placeholder="Vyhledat klienta…"
+                  className={eInputClass}
+                />
+              </div>
+              <div>
+                <label className={eLabelClass}><Briefcase size={12} className="inline mr-1" />Obchod</label>
+                <select
+                  value={form.opportunityId}
+                  onChange={(e) => setForm((f) => ({ ...f, opportunityId: e.target.value }))}
+                  className={eInputClass}
                 >
-                  <span className="text-base">{t.icon}</span>
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <input
-            value={form.title}
-            onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); if (validationErrors.title) setValidationErrors((v) => ({ ...v, title: false })); }}
-            placeholder="Název aktivity…"
-            className="wp-search-input"
-            style={{ borderBottom: `2px solid ${validationErrors.title ? "#ef4444" : "var(--wp-border)"}`, padding: "8px 0", fontSize: 18, fontWeight: 500, width: "100%", background: "transparent" }}
-            autoFocus
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Datum a čas</label>
-              <input type="datetime-local" step={300} value={form.startAt} onChange={(e) => { setForm((f) => ({ ...f, startAt: e.target.value })); if (validationErrors.startAt) setValidationErrors((v) => ({ ...v, startAt: false })); }} className="wp-input" style={validationErrors.startAt ? { borderColor: "#ef4444" } : undefined} />
+                  <option value="">— žádný</option>
+                  {opportunities.filter((o) => !form.contactId || o.contactId === form.contactId).map((o) => (
+                    <option key={o.id} value={o.id}>{o.title}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Konec</label>
-              <input type="datetime-local" step={300} value={form.endAt} onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))} className="wp-input" />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
+            {/* Details: Místo + Online odkaz */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={eLabelClass}><MapPin size={12} className="inline mr-1" />Místo</label>
+                <input
+                  value={form.location}
+                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                  placeholder="Adresa / místo"
+                  className={eInputClass}
+                />
+              </div>
+              <div>
+                <label className={eLabelClass}><Link2 size={12} className="inline mr-1" />Online odkaz</label>
+                <input
+                  value={form.meetingLink}
+                  onChange={(e) => setForm((f) => ({ ...f, meetingLink: e.target.value }))}
+                  placeholder="https://…"
+                  className={eInputClass}
+                  type="url"
+                />
+              </div>
+            </div>
+
+            {/* Poznámka */}
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Kontakt</label>
-              <ContactSearchInput
-                value={form.contactId}
-                contacts={contacts}
-                onChange={(contactId) => setForm((f) => ({ ...f, contactId, opportunityId: "" }))}
-                placeholder="Vyhledat klienta…"
-                className="wp-input border border-[var(--wp-border)]"
+              <label className={eLabelClass}><AlignLeft size={12} className="inline mr-1" />Poznámka</label>
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Poznámky k události…"
+                className={`${eInputClass} min-h-[80px] resize-none`}
+                rows={3}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Obchod</label>
-              <select value={form.opportunityId} onChange={(e) => setForm((f) => ({ ...f, opportunityId: e.target.value }))} className="wp-select">
-                <option value="">— žádný</option>
-                {opportunities.filter((o) => !form.contactId || o.contactId === form.contactId).map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
-              </select>
-            </div>
+
+            {form.contactId && (
+              <p className="text-sm">
+                <a href="/portal/messages" className="text-indigo-600 hover:text-indigo-700 underline font-bold">Otevřít zprávy</a>
+              </p>
+            )}
+
+            {saveError && <p className="text-sm text-red-600 font-medium bg-red-50 px-4 py-2 rounded-xl">{saveError}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Místo</label>
-              <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="Adresa / odkaz" className="wp-input" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Odkaz na schůzku</label>
-              <input value={form.meetingLink} onChange={(e) => setForm((f) => ({ ...f, meetingLink: e.target.value }))} placeholder="https://…" className="wp-input" type="url" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Stav</label>
-              <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="wp-select">
-                <option value="">—</option>
-                <option value="scheduled">Naplánováno</option>
-                <option value="confirmed">Potvrzeno</option>
-                <option value="done">Hotovo</option>
-                <option value="cancelled">Zrušeno</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Připomenutí</label>
-              <select value={form.reminderMinutes} onChange={(e) => setForm((f) => ({ ...f, reminderMinutes: Number(e.target.value) }))} className="wp-select">
+          {/* Footer */}
+          <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Bell size={14} className="text-slate-400" />
+              <select
+                value={form.reminderMinutes}
+                onChange={(e) => setForm((f) => ({ ...f, reminderMinutes: Number(e.target.value) }))}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all text-slate-600"
+              >
                 {REMINDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
+            <div className="flex-1" />
+            {initial.id && onDelete && (
+              <button type="button" onClick={() => onDelete(initial.id!)} className="px-4 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
+                Smazat
+              </button>
+            )}
+            {initial.id && onFollowUp && (
+              <>
+                <button type="button" onClick={() => onFollowUp(initial.id!, "event")} className="px-3 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors hidden sm:block">
+                  + Follow-up
+                </button>
+                <button type="button" onClick={() => onFollowUp(initial.id!, "task")} className="px-3 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors hidden sm:block">
+                  + Úkol
+                </button>
+              </>
+            )}
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+              Zrušit
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !form.title.trim() || !form.startAt}
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#1a1c2e] text-white text-sm font-bold rounded-xl hover:bg-[#2a2c3e] disabled:opacity-50 transition-all shadow-lg"
+            >
+              <Check size={16} />
+              {saving ? "Ukládám…" : initial.id ? "Uložit" : "Vytvořit"}
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Poznámka</label>
-            <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Poznámky k události…" className="wp-input w-full min-h-[80px]" rows={3} />
-          </div>
-
-          <label className="flex items-center gap-2.5 text-sm" style={{ color: "var(--wp-text-muted)" }}>
-            <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((f) => ({ ...f, allDay: e.target.checked }))} className="rounded w-4 h-4" style={{ borderColor: "var(--wp-border)" }} />
-            Celý den
-          </label>
-
-          {form.contactId && (
-            <p className="text-sm">
-              <a href="/portal/messages" className="text-[var(--wp-cal-accent)] underline">Otevřít zprávy</a>
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2 px-5 py-3 shrink-0" style={{ borderTop: "1px solid var(--wp-border)", background: "var(--wp-bg)" }}>
-          {saveError && <p className="text-sm text-red-600 font-medium">{saveError}</p>}
-          <div className="flex items-center gap-3">
-          <button type="submit" disabled={saving || !form.title.trim() || !form.startAt} className="wp-btn wp-btn-primary" style={{ background: "var(--wp-cal-accent)", borderColor: "var(--wp-cal-accent)" }}>
-            {saving ? "Ukládám…" : initial.id ? "Uložit" : "Vytvořit"}
-          </button>
-          {initial.id && onDelete && (
-            <button type="button" onClick={() => onDelete(initial.id!)} className="wp-btn" style={{ color: "var(--wp-danger)", borderColor: "var(--wp-danger)" }}>Smazat</button>
-          )}
-          {initial.id && onFollowUp && (
-            <>
-              <button type="button" onClick={() => onFollowUp(initial.id!, "event")} className="wp-btn wp-btn-ghost">+ Follow-up událost</button>
-              <button type="button" onClick={() => onFollowUp(initial.id!, "task")} className="wp-btn wp-btn-ghost">Založit návazný úkol</button>
-            </>
-          )}
-          <div className="flex-1" />
-          <button type="button" onClick={onClose} className="wp-btn wp-btn-ghost">Zavřít</button>
-          </div>
-        </div>
-      </form>
-    </BaseModal>
+        </form>
+      </div>
+    </div>
   );
 }
 
