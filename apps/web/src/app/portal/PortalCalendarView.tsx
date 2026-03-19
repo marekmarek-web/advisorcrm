@@ -327,14 +327,33 @@ function EventFormModal({
   onFollowUp?: (id: string, type: "event" | "task") => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<EventFormData>(initial);
+  const [form, setForm] = useState<EventFormData>(() => {
+    if (!initial.startAt) {
+      const now = new Date();
+      now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+      const end = new Date(now.getTime() + 60 * 60 * 1000);
+      const fmt = (d: Date) => d.toISOString().slice(0, 16);
+      return { ...initial, startAt: fmt(now), endAt: fmt(end) };
+    }
+    return initial;
+  });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{ title?: boolean; startAt?: boolean }>({});
   const { keyboardInset } = useKeyboardAware();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.startAt) return;
+    const errors: { title?: boolean; startAt?: boolean } = {};
+    if (!form.title.trim()) errors.title = true;
+    if (!form.startAt) errors.startAt = true;
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setSaveError("Vyplňte název a datum aktivity.");
+      return;
+    }
+    setValidationErrors({});
+    setSaveError(null);
     setSaving(true);
     try {
       await onSave(form, initial.id);
@@ -373,17 +392,17 @@ function EventFormModal({
 
           <input
             value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value })); if (validationErrors.title) setValidationErrors((v) => ({ ...v, title: false })); }}
             placeholder="Název aktivity…"
             className="wp-search-input"
-            style={{ borderBottom: "1px solid var(--wp-border)", padding: "8px 0", fontSize: 18, fontWeight: 500, width: "100%", background: "transparent" }}
+            style={{ borderBottom: `2px solid ${validationErrors.title ? "#ef4444" : "var(--wp-border)"}`, padding: "8px 0", fontSize: 18, fontWeight: 500, width: "100%", background: "transparent" }}
             autoFocus
           />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Datum a čas</label>
-              <input type="datetime-local" step={300} value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))} className="wp-input" />
+              <input type="datetime-local" step={300} value={form.startAt} onChange={(e) => { setForm((f) => ({ ...f, startAt: e.target.value })); if (validationErrors.startAt) setValidationErrors((v) => ({ ...v, startAt: false })); }} className="wp-input" style={validationErrors.startAt ? { borderColor: "#ef4444" } : undefined} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--wp-text-muted)" }}>Konec</label>
