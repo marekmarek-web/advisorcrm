@@ -161,43 +161,53 @@ export async function updateContract(
     note?: string;
   }
 ) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  let partnerName: string | null | undefined = form.partnerName != null ? (form.partnerName?.trim() || null) : undefined;
-  let productName: string | null | undefined = form.productName != null ? (form.productName?.trim() || null) : undefined;
-  if (form.partnerId != null && (partnerName === undefined || partnerName === null || partnerName === "")) {
-    const [p] = await db.select({ name: partners.name }).from(partners).where(eq(partners.id, form.partnerId)).limit(1);
-    if (p) partnerName = p.name;
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    let partnerName: string | null | undefined = form.partnerName != null ? (form.partnerName?.trim() || null) : undefined;
+    let productName: string | null | undefined = form.productName != null ? (form.productName?.trim() || null) : undefined;
+    if (form.partnerId != null && (partnerName === undefined || partnerName === null || partnerName === "")) {
+      const [p] = await db.select({ name: partners.name }).from(partners).where(eq(partners.id, form.partnerId)).limit(1);
+      if (p) partnerName = p.name;
+    }
+    if (form.productId != null && (productName === undefined || productName === null || productName === "")) {
+      const [pr] = await db.select({ name: products.name }).from(products).where(eq(products.id, form.productId)).limit(1);
+      if (pr) productName = pr.name;
+    }
+    await db
+      .update(contracts)
+      .set({
+        ...(form.segment != null && { segment: form.segment }),
+        ...(form.partnerId != null && { partnerId: form.partnerId || null }),
+        ...(form.productId != null && { productId: form.productId || null }),
+        ...(partnerName !== undefined && { partnerName }),
+        ...(productName !== undefined && { productName }),
+        ...(form.premiumAmount != null && { premiumAmount: form.premiumAmount || null }),
+        ...(form.premiumAnnual != null && { premiumAnnual: form.premiumAnnual || null }),
+        ...(form.contractNumber != null && { contractNumber: form.contractNumber?.trim() || null }),
+        ...(form.startDate != null && { startDate: form.startDate || null }),
+        ...(form.anniversaryDate != null && { anniversaryDate: form.anniversaryDate || null }),
+        ...(form.note != null && { note: form.note?.trim() || null }),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, id)));
+    try { await logActivity("contract", id, "update", { fields: Object.keys(form) }); } catch {}
+  } catch (e) {
+    console.error("[updateContract]", e);
+    throw new Error(e instanceof Error ? e.message : "Smlouvu se nepodařilo upravit.");
   }
-  if (form.productId != null && (productName === undefined || productName === null || productName === "")) {
-    const [pr] = await db.select({ name: products.name }).from(products).where(eq(products.id, form.productId)).limit(1);
-    if (pr) productName = pr.name;
-  }
-  await db
-    .update(contracts)
-    .set({
-      ...(form.segment != null && { segment: form.segment }),
-      ...(form.partnerId != null && { partnerId: form.partnerId || null }),
-      ...(form.productId != null && { productId: form.productId || null }),
-      ...(partnerName !== undefined && { partnerName }),
-      ...(productName !== undefined && { productName }),
-      ...(form.premiumAmount != null && { premiumAmount: form.premiumAmount || null }),
-      ...(form.premiumAnnual != null && { premiumAnnual: form.premiumAnnual || null }),
-      ...(form.contractNumber != null && { contractNumber: form.contractNumber?.trim() || null }),
-      ...(form.startDate != null && { startDate: form.startDate || null }),
-      ...(form.anniversaryDate != null && { anniversaryDate: form.anniversaryDate || null }),
-      ...(form.note != null && { note: form.note?.trim() || null }),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, id)));
-  try { await logActivity("contract", id, "update", { fields: Object.keys(form) }); } catch {}
 }
 
 export async function deleteContract(id: string) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  await db
-    .delete(contracts)
-    .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, id)));
-  try { await logActivity("contract", id, "delete"); } catch {}
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    await db
+      .delete(contracts)
+      .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, id)));
+    try { await logActivity("contract", id, "delete"); } catch {}
+  } catch (e) {
+    console.error("[deleteContract]", e);
+    throw new Error(e instanceof Error ? e.message : "Smlouvu se nepodařilo smazat.");
+  }
 }

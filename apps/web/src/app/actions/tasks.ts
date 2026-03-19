@@ -256,48 +256,68 @@ export async function updateTask(
     dueDate?: string;
   }
 ): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
-  await db
-    .update(tasks)
-    .set({
-      ...(data.title != null && { title: data.title.trim() }),
-      ...(data.description != null && { description: data.description.trim() || null }),
-      ...(data.contactId != null && { contactId: data.contactId || null }),
-      ...(data.dueDate != null && { dueDate: data.dueDate || null }),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
+    await db
+      .update(tasks)
+      .set({
+        ...(data.title != null && { title: data.title.trim() }),
+        ...(data.description != null && { description: data.description.trim() || null }),
+        ...(data.contactId != null && { contactId: data.contactId || null }),
+        ...(data.dueDate != null && { dueDate: data.dueDate || null }),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
+  } catch (e) {
+    console.error("[updateTask]", e);
+    throw new Error(e instanceof Error ? e.message : "Úkol se nepodařilo upravit.");
+  }
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
-  await db
-    .delete(tasks)
-    .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
-  try { await logActivity("task", id, "delete"); } catch {}
+    await db
+      .delete(tasks)
+      .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
+    try { await logActivity("task", id, "delete"); } catch {}
+  } catch (e) {
+    console.error("[deleteTask]", e);
+    throw new Error(e instanceof Error ? e.message : "Úkol se nepodařilo smazat.");
+  }
 }
 
 export async function completeTask(id: string): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
-  await db
-    .update(tasks)
-    .set({ completedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
-  try { await logActivity("task", id, "complete"); } catch {}
+    await db
+      .update(tasks)
+      .set({ completedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
+    try { await logActivity("task", id, "complete"); } catch {}
+  } catch (e) {
+    console.error("[completeTask]", e);
+    throw new Error(e instanceof Error ? e.message : "Úkol se nepodařilo dokončit.");
+  }
 }
 
 export async function reopenTask(id: string): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
-  await db
-    .update(tasks)
-    .set({ completedAt: null, updatedAt: new Date() })
-    .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
+    await db
+      .update(tasks)
+      .set({ completedAt: null, updatedAt: new Date() })
+      .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));
+  } catch (e) {
+    console.error("[reopenTask]", e);
+    throw new Error(e instanceof Error ? e.message : "Úkol se nepodařilo znovu otevřít.");
+  }
 }

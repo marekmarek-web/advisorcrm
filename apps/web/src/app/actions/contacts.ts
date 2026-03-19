@@ -163,32 +163,37 @@ export async function createContact(form: {
   leadSourceUrl?: string;
   priority?: string;
 }) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  const [row] = await db
-    .insert(contacts)
-    .values({
-      tenantId: auth.tenantId,
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email?.trim() || null,
-      phone: form.phone?.trim() || null,
-      title: form.title?.trim() || null,
-      referralSource: form.referralSource?.trim() || null,
-      referralContactId: form.referralContactId || null,
-      birthDate: form.birthDate || null,
-      personalId: form.personalId?.trim() || null,
-      street: form.street?.trim() || null,
-      city: form.city?.trim() || null,
-      zip: form.zip?.trim() || null,
-      tags: form.tags?.length ? form.tags : null,
-      lifecycleStage: form.lifecycleStage || null,
-      leadSource: form.leadSource?.trim() || null,
-      leadSourceUrl: form.leadSourceUrl?.trim() || null,
-      priority: form.priority?.trim() || null,
-    })
-    .returning({ id: contacts.id });
-  return row?.id ?? null;
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    const [row] = await db
+      .insert(contacts)
+      .values({
+        tenantId: auth.tenantId,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email?.trim() || null,
+        phone: form.phone?.trim() || null,
+        title: form.title?.trim() || null,
+        referralSource: form.referralSource?.trim() || null,
+        referralContactId: form.referralContactId || null,
+        birthDate: form.birthDate || null,
+        personalId: form.personalId?.trim() || null,
+        street: form.street?.trim() || null,
+        city: form.city?.trim() || null,
+        zip: form.zip?.trim() || null,
+        tags: form.tags?.length ? form.tags : null,
+        lifecycleStage: form.lifecycleStage || null,
+        leadSource: form.leadSource?.trim() || null,
+        leadSourceUrl: form.leadSourceUrl?.trim() || null,
+        priority: form.priority?.trim() || null,
+      })
+      .returning({ id: contacts.id });
+    return row?.id ?? null;
+  } catch (e) {
+    console.error("[createContact]", e);
+    throw new Error(e instanceof Error ? e.message : "Kontakt se nepodařilo vytvořit.");
+  }
 }
 
 /** Client-only self-update: limited to phone, email, street, city, zip. */
@@ -238,33 +243,38 @@ export async function updateContact(
     avatarUrl?: string | null;
   }
 ) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  await db
-    .update(contacts)
-    .set({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email?.trim() || null,
-      phone: form.phone?.trim() || null,
-      title: form.title?.trim() || null,
-      referralSource: form.referralSource?.trim() || null,
-      referralContactId: form.referralContactId || null,
-      birthDate: form.birthDate || null,
-      personalId: form.personalId?.trim() || null,
-      street: form.street?.trim() || null,
-      city: form.city?.trim() || null,
-      zip: form.zip?.trim() || null,
-      tags: form.tags?.length ? form.tags : null,
-      lifecycleStage: form.lifecycleStage || null,
-      ...(form.priority !== undefined && { priority: form.priority?.trim() || null }),
-      ...(form.serviceCycleMonths != null && { serviceCycleMonths: form.serviceCycleMonths || null }),
-      ...(form.lastServiceDate != null && { lastServiceDate: form.lastServiceDate || null }),
-      ...(form.nextServiceDue != null && { nextServiceDue: form.nextServiceDue || null }),
-      ...(form.avatarUrl !== undefined && { avatarUrl: form.avatarUrl || null }),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, id)));
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    await db
+      .update(contacts)
+      .set({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email?.trim() || null,
+        phone: form.phone?.trim() || null,
+        title: form.title?.trim() || null,
+        referralSource: form.referralSource?.trim() || null,
+        referralContactId: form.referralContactId || null,
+        birthDate: form.birthDate || null,
+        personalId: form.personalId?.trim() || null,
+        street: form.street?.trim() || null,
+        city: form.city?.trim() || null,
+        zip: form.zip?.trim() || null,
+        tags: form.tags?.length ? form.tags : null,
+        lifecycleStage: form.lifecycleStage || null,
+        ...(form.priority !== undefined && { priority: form.priority?.trim() || null }),
+        ...(form.serviceCycleMonths != null && { serviceCycleMonths: form.serviceCycleMonths || null }),
+        ...(form.lastServiceDate != null && { lastServiceDate: form.lastServiceDate || null }),
+        ...(form.nextServiceDue != null && { nextServiceDue: form.nextServiceDue || null }),
+        ...(form.avatarUrl !== undefined && { avatarUrl: form.avatarUrl || null }),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, id)));
+  } catch (e) {
+    console.error("[updateContact]", e);
+    throw new Error(e instanceof Error ? e.message : "Kontakt se nepodařilo upravit.");
+  }
 }
 
 const AVATAR_MAX_SIZE = 3 * 1024 * 1024; // 3 MB
@@ -309,11 +319,16 @@ export async function uploadContactAvatar(contactId: string, formData: FormData)
 
 /** Smaže kontakt. Závislosti (household_members, dokumenty, atd.) řeší DB CASCADE / SET NULL. */
 export async function deleteContact(id: string): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  await db
-    .delete(contacts)
-    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, id)));
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    await db
+      .delete(contacts)
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, id)));
+  } catch (e) {
+    console.error("[deleteContact]", e);
+    throw new Error(e instanceof Error ? e.message : "Kontakt se nepodařilo smazat.");
+  }
 }
 
 export async function updateContactsLifecycle(ids: string[], lifecycleStage: string): Promise<void> {
