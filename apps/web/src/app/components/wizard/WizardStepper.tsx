@@ -12,7 +12,7 @@ export function WizardStepper({
   currentStep: number;
 }) {
   return (
-    <div className="px-6 sm:px-8 py-5 sm:py-6 bg-slate-50/50 border-b border-slate-50 flex items-center justify-center relative z-10 shrink-0">
+    <div className="px-6 sm:px-10 py-6 sm:py-8 bg-slate-50/50 border-b border-slate-50 flex items-center justify-center relative z-10 shrink-0">
       <div className="flex items-center w-full max-w-[560px]">
         {steps.map((step, i) => {
           const index = i + 1;
@@ -44,7 +44,7 @@ export function WizardStepper({
               </div>
               {i < steps.length - 1 && (
                 <div
-                  className={`flex-1 h-0.5 mx-3 sm:mx-6 rounded-full transition-colors duration-300 min-w-[12px] ${
+                  className={`flex-1 h-0.5 mx-4 sm:mx-8 rounded-full transition-colors duration-300 min-w-[16px] ${
                     currentStep > index ? "bg-indigo-600" : "bg-slate-200"
                   }`}
                 />

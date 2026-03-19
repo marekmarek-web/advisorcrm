@@ -321,3 +321,49 @@ export async function uploadReportLogo(formData: FormData): Promise<string | nul
   }
   return url;
 }
+
+export type NotificationPrefs = Record<string, boolean>;
+
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const prefs = user?.user_metadata?.notification_prefs;
+    if (prefs && typeof prefs === "object") return prefs as NotificationPrefs;
+    return { daily: true, message: true, tasks: true, contracts: true };
+  } catch {
+    return { daily: true, message: true, tasks: true, contracts: true };
+  }
+}
+
+export async function setNotificationPrefs(prefs: NotificationPrefs): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    data: { notification_prefs: prefs },
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function sendNotificationEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[sendNotificationEmail] RESEND_API_KEY not set, skipping email");
+    return false;
+  }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM_EMAIL || "Aidvisora <noreply@aidvisora.cz>",
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("[sendNotificationEmail]", e);
+    return false;
+  }
+}

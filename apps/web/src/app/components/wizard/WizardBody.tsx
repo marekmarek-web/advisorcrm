@@ -26,7 +26,7 @@ export function WizardBody({
   }, [children]);
 
   return (
-    <div ref={containerRef} className="p-8 relative z-10 flex-1 overflow-y-auto min-h-0">
+    <div ref={containerRef} className="p-8 sm:p-10 relative z-10 flex-1 overflow-y-auto min-h-0">
       <style>{WIZARD_SLIDE_CSS}</style>
       {withSlide ? (
         <div className="wizard-slide-enter">{children}</div>

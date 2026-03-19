@@ -31,7 +31,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
-import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding } from "@/app/actions/preferences";
+import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding, getNotificationPrefs, setNotificationPrefs } from "@/app/actions/preferences";
 import { GoogleCalendarUpcomingEvents } from "@/app/portal/setup/GoogleCalendarUpcomingEvents";
 import { GoogleCalendarAvailability } from "@/app/portal/setup/GoogleCalendarAvailability";
 import { listTenantMembers } from "@/app/actions/team";
@@ -49,7 +49,6 @@ const TABS = [
   { id: "fakturace", label: "Fakturace a Tarif", keywords: ["fakturace", "tarif", "platba", "faktura"] },
   { id: "notifikace", label: "Notifikace", keywords: ["notifikace", "email", "push"] },
   { id: "integrace", label: "Integrace", keywords: ["integrace", "google", "api", "kalendář"] },
-  { id: "api", label: "API", keywords: ["api", "klíč", "webhook", "dokumentace"] },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -353,10 +352,20 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
 
   // --- Notifications
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({ daily: true, message: true, tasks: true, contracts: true });
+  const [notifLoaded, setNotifLoaded] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "notifikace" && !notifLoaded) {
+      getNotificationPrefs().then((p) => { setNotifPrefs(p); setNotifLoaded(true); });
+    }
+  }, [activeTab, notifLoaded]);
+
   const handleNotifToggle = useCallback((id: string) => {
     setNotifPrefs((prev) => {
       const next = { ...prev, [id]: !prev[id] };
-      toast.showToast("Nastavení notifikací uloženo");
+      setNotificationPrefs(next)
+        .then(() => toast.showToast("Nastavení notifikací uloženo"))
+        .catch(() => toast.showToast("Uložení se nezdařilo", "error"));
       return next;
     });
   }, [toast]);
@@ -1278,28 +1287,6 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
           </div>
         )}
 
-        {/* Tab: API */}
-        {activeTab === "api" && (
-          <div className="max-w-3xl space-y-6 animate-in fade-in duration-300">
-            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-6 sm:px-8 py-6 border-b border-slate-50 flex items-center justify-between flex-wrap gap-4">
-                <h2 className="text-lg font-black text-slate-900 flex items-center gap-3">
-                  <Server size={20} className="text-blue-500" /> Aidvisora API
-                </h2>
-                <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg">Připravujeme</span>
-              </div>
-              <div className="p-6 sm:p-8 flex flex-col items-center text-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-                  <Server size={32} className="text-slate-300" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-800">API přístup bude brzy k dispozici</h3>
-                <p className="text-sm text-slate-500 max-w-md leading-relaxed">
-                  Pracujeme na REST API pro integraci s vašimi systémy. Budete moci automatizovat správu kontaktů, smluv a dalších dat.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );
