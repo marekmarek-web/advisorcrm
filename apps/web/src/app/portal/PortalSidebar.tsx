@@ -374,7 +374,7 @@ export function PortalSidebar({
         className={[
           "fixed left-0 top-0 bottom-0 flex flex-col shrink-0 transition-[width,transform] duration-300 ease-in-out",
           "md:z-20 md:translate-x-0",
-          mobileOpen ? "translate-x-0 z-drawer-panel" : "-translate-x-full z-drawer-panel",
+          mobileOpen ? "translate-x-0 z-drawer-panel pointer-events-auto" : "-translate-x-full z-drawer-panel pointer-events-none md:pointer-events-auto",
           sidebarTheme === "gradient"
             ? "bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-800 border-r border-white/10 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.2)]"
             : "bg-white border-r border-slate-100 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
