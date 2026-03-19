@@ -18,6 +18,10 @@ import {
   Sparkles,
   RefreshCw,
   Target,
+  ClipboardList,
+  User,
+  Filter,
+  BarChart3,
 } from "lucide-react";
 import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint, TeamOverviewPeriod } from "@/app/actions/team-overview";
 import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy";
@@ -29,7 +33,6 @@ import type { AiActionType } from "@/lib/ai/actions/action-suggestions";
 import { SkeletonBlock } from "@/app/components/Skeleton";
 import { TeamCalendarModal, TeamCalendarButtons } from "./TeamCalendarModal";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
-import { ClipboardList, User, Calendar, Filter, BarChart3 } from "lucide-react";
 
 const PERIOD_OPTIONS: { value: TeamOverviewPeriod; label: string }[] = [
   { value: "week", label: "Týden" },
