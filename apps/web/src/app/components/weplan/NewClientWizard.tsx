@@ -327,7 +327,7 @@ export function NewClientWizard({
                   <label className={wizardLabelClass}>Fáze</label>
                   <CustomDropdown
                     value={form.lifecycleStage}
-                    onChange={set("lifecycleStage")}
+                    onChange={(id) => setForm((prev) => ({ ...prev, lifecycleStage: id }))}
                     options={LIFECYCLE_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
                     placeholder="—"
                     icon={User}
@@ -337,7 +337,7 @@ export function NewClientWizard({
                   <label className={wizardLabelClass}>Priorita</label>
                   <CustomDropdown
                     value={form.priority}
-                    onChange={set("priority")}
+                    onChange={(id) => setForm((prev) => ({ ...prev, priority: id }))}
                     options={[
                       { id: "", label: "—" },
                       { id: "low", label: "Nízká" },
@@ -362,7 +362,7 @@ export function NewClientWizard({
                   <label className={wizardLabelClass}>Doporučen od</label>
                   <CustomDropdown
                     value={form.referralContactId}
-                    onChange={set("referralContactId")}
+                    onChange={(id) => setForm((prev) => ({ ...prev, referralContactId: id }))}
                     options={[{ id: "", label: "— žádný" }, ...contacts.map((c) => ({ id: c.id, label: c.label }))]}
                     placeholder="— žádný"
                     icon={User}
