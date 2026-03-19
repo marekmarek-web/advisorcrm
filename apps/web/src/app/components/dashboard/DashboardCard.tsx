@@ -15,6 +15,8 @@ export interface DashboardCardProps {
   className?: string;
   /** Optional icon color class for the header icon */
   iconColorClass?: string;
+  /** Optional top-edge "envelope" bar (e.g. border-t-4 border-t-indigo-500) */
+  topBorderClass?: string;
 }
 
 export function DashboardCard({
@@ -27,10 +29,11 @@ export function DashboardCard({
   backgroundClass,
   className = "",
   iconColorClass,
+  topBorderClass,
 }: DashboardCardProps) {
   return (
     <div
-      className={`flex flex-col rounded-[32px] border border-slate-100 shadow-sm min-h-[240px] max-h-[500px] overflow-hidden ${backgroundClass ?? "bg-white"} ${className}`}
+      className={`flex flex-col rounded-[32px] border border-slate-100 min-h-[240px] overflow-hidden ${backgroundClass ?? "bg-white"} ${topBorderClass ?? ""} ${className}`}
     >
       <div className="px-6 sm:px-8 py-5 sm:py-6 flex items-center justify-between shrink-0">
         <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
@@ -44,7 +47,7 @@ export function DashboardCard({
         {footerLink && (
           <Link
             href={footerLink}
-            className="mt-auto pt-4 text-xs font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 shrink-0"
+            className="mt-auto pt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-xs uppercase tracking-widest hover:bg-indigo-100 hover:border-indigo-300 transition-colors min-h-[44px] w-fit shrink-0"
           >
             {footerLabel} <ChevronRight size={14} />
           </Link>

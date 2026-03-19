@@ -7,6 +7,7 @@ import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 import { useDocumentCapture } from "@/lib/upload/useDocumentCapture";
 import { type UploadSource, useFileUpload } from "@/lib/upload/useFileUpload";
 import { UploadSourceSheet, type UploadSourceOption } from "./UploadSourceSheet";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 type ContractOption = {
   id: string;
@@ -266,18 +267,13 @@ export function DocumentUploadZone({
           {showContractSelect && (
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Smlouva</label>
-              <select
+              <CustomDropdown
                 value={contractId}
-                onChange={(event) => setContractId(event.target.value)}
-                className="w-full rounded border border-slate-300 px-3 min-h-[44px] text-sm"
-              >
-                <option value="">— žádná —</option>
-                {contracts.map((contract) => (
-                  <option key={contract.id} value={contract.id}>
-                    {contract.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setContractId}
+                options={[{ id: "", label: "— žádná —" }, ...contracts.map((c) => ({ id: c.id, label: c.label }))]}
+                placeholder="— žádná —"
+                icon={FileText}
+              />
             </div>
           )}
 

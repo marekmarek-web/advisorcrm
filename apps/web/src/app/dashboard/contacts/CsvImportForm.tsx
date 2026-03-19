@@ -9,6 +9,8 @@ import {
   importContactsFromSpreadsheet,
 } from "@/app/actions/csv-import";
 import type { CsvPreview, ColumnMapping } from "@/app/actions/csv-import";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { User, Mail, Phone } from "lucide-react";
 
 const WIZARD_STEPS = ["upload", "mapping", "preview", "done"] as const;
 type WizardStep = (typeof WIZARD_STEPS)[number];
@@ -94,45 +96,37 @@ export function CsvImportForm() {
           <p className="text-sm text-slate-500 mb-3">Namapujte sloupce na pole (číslo sloupce odpovídá pořadí v souboru):</p>
           <div className="grid grid-cols-2 gap-2 mb-4 max-w-md">
             <label className="text-sm font-medium">Jméno</label>
-            <select
-              value={mapping.firstName}
-              onChange={(e) => setMapping((m) => ({ ...m, firstName: Number(e.target.value) }))}
-              className="rounded border border-monday-border px-2 py-1 text-sm"
-            >
-              {colOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <CustomDropdown
+              value={String(mapping.firstName)}
+              onChange={(id) => setMapping((m) => ({ ...m, firstName: Number(id) }))}
+              options={colOptions.map((o) => ({ id: String(o.value), label: o.label }))}
+              placeholder="Sloupec"
+              icon={User}
+            />
             <label className="text-sm font-medium">Příjmení</label>
-            <select
-              value={mapping.lastName}
-              onChange={(e) => setMapping((m) => ({ ...m, lastName: Number(e.target.value) }))}
-              className="rounded border border-monday-border px-2 py-1 text-sm"
-            >
-              {colOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <CustomDropdown
+              value={String(mapping.lastName)}
+              onChange={(id) => setMapping((m) => ({ ...m, lastName: Number(id) }))}
+              options={colOptions.map((o) => ({ id: String(o.value), label: o.label }))}
+              placeholder="Sloupec"
+              icon={User}
+            />
             <label className="text-sm font-medium">E-mail</label>
-            <select
-              value={mapping.email}
-              onChange={(e) => setMapping((m) => ({ ...m, email: Number(e.target.value) }))}
-              className="rounded border border-monday-border px-2 py-1 text-sm"
-            >
-              {colOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <CustomDropdown
+              value={String(mapping.email)}
+              onChange={(id) => setMapping((m) => ({ ...m, email: Number(id) }))}
+              options={colOptions.map((o) => ({ id: String(o.value), label: o.label }))}
+              placeholder="Sloupec"
+              icon={Mail}
+            />
             <label className="text-sm font-medium">Telefon</label>
-            <select
-              value={mapping.phone}
-              onChange={(e) => setMapping((m) => ({ ...m, phone: Number(e.target.value) }))}
-              className="rounded border border-monday-border px-2 py-1 text-sm"
-            >
-              {colOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <CustomDropdown
+              value={String(mapping.phone)}
+              onChange={(id) => setMapping((m) => ({ ...m, phone: Number(id) }))}
+              options={colOptions.map((o) => ({ id: String(o.value), label: o.label }))}
+              placeholder="Sloupec"
+              icon={Phone}
+            />
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={() => setStep("upload")} className="rounded-lg px-4 py-2 text-sm font-semibold border border-slate-300 text-slate-600">

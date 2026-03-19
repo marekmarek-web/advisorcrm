@@ -3,7 +3,8 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Download, Upload, Phone, Mail, CheckSquare, ArrowRight, MessageSquare } from "lucide-react";
+import { Plus, Download, Upload, Phone, Mail, CheckSquare, ArrowRight, MessageSquare, Tags, UserCog } from "lucide-react";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { NewClientWizard } from "@/app/components/weplan/NewClientWizard";
 import { useToast } from "@/app/components/Toast";
 import {
@@ -270,16 +271,13 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
                 value={searchQuery}
                 onChange={(v) => { setSearchQuery(v); triggerTableLoading(); }}
               />
-              <select
+              <CustomDropdown
                 value={tagFilter}
-                onChange={(e) => { setTagFilter(e.target.value); triggerTableLoading(); }}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-[var(--wp-radius-sm)] text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/20"
-              >
-                <option value="">Všechny štítky</option>
-                {uniqueTags.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
+                onChange={(id) => { setTagFilter(id); triggerTableLoading(); }}
+                options={[{ id: "", label: "Všechny štítky" }, ...uniqueTags.map((t) => ({ id: t, label: t }))]}
+                placeholder="Všechny štítky"
+                icon={Tags}
+              />
             </ListPageToolbar>
 
             {/* --- Bulk action bar --- */}
@@ -292,16 +290,13 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
                   <span className="text-sm font-bold text-indigo-800">vybraných kontaktů</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
+                  <CustomDropdown
                     value={bulkLifecycle}
-                    onChange={(e) => setBulkLifecycle(e.target.value)}
-                    className="px-3 py-1.5 rounded-[var(--wp-radius-xs)] border border-indigo-200 text-indigo-800 text-xs font-bold bg-white"
-                  >
-                    <option value="">— změnit fázi —</option>
-                    {LIFECYCLE_OPTIONS.filter((o) => o.value).map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
+                    onChange={setBulkLifecycle}
+                    options={[{ id: "", label: "— změnit fázi —" }, ...LIFECYCLE_OPTIONS.filter((o) => o.value).map((o) => ({ id: o.value, label: o.label }))]}
+                    placeholder="— změnit fázi —"
+                    icon={UserCog}
+                  />
                   <button
                     type="button"
                     onClick={handleBulkLifecycle}

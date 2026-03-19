@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createContact, getContactsList } from "@/app/actions/contacts";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { Flag, User } from "lucide-react";
 
 export default function NewContactPage() {
   const router = useRouter();
@@ -12,6 +14,8 @@ export default function NewContactPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [contactOptions, setContactOptions] = useState<{ id: string; label: string }[]>([]);
+  const [priority, setPriority] = useState("");
+  const [referralContactId, setReferralContactId] = useState(referralContactIdFromUrl);
 
   useEffect(() => {
     getContactsList()
@@ -33,8 +37,8 @@ export default function NewContactPage() {
         phone: (fd.get("phone") as string) || undefined,
         title: (fd.get("title") as string) || undefined,
         referralSource: (fd.get("referralSource") as string) || undefined,
-        referralContactId: (fd.get("referralContactId") as string) || undefined,
-        priority: (fd.get("priority") as string) || undefined,
+        referralContactId: referralContactId || undefined,
+        priority: priority || undefined,
       });
       if (id) router.push(`/dashboard/contacts/${id}`);
       else setError("Vytvoření se nepovedlo.");
@@ -77,22 +81,29 @@ export default function NewContactPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Priorita</label>
-          <select name="priority" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2">
-            <option value="">—</option>
-            <option value="low">Nízká</option>
-            <option value="normal">Běžná</option>
-            <option value="high">Vysoká</option>
-            <option value="urgent">Urgentní</option>
-          </select>
+          <CustomDropdown
+            value={priority}
+            onChange={setPriority}
+            options={[
+              { id: "", label: "—" },
+              { id: "low", label: "Nízká" },
+              { id: "normal", label: "Běžná" },
+              { id: "high", label: "Vysoká" },
+              { id: "urgent", label: "Urgentní" },
+            ]}
+            placeholder="—"
+            icon={Flag}
+          />
         </div>
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučen od (kontakt)</label>
-          <select name="referralContactId" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" defaultValue={referralContactIdFromUrl}>
-            <option value="">— žádný</option>
-            {contactOptions.map((o) => (
-              <option key={o.id} value={o.id}>{o.label}</option>
-            ))}
-          </select>
+          <CustomDropdown
+            value={referralContactId}
+            onChange={setReferralContactId}
+            options={[{ id: "", label: "— žádný" }, ...contactOptions]}
+            placeholder="— žádný"
+            icon={User}
+          />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-3">

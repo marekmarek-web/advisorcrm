@@ -30,6 +30,7 @@ import {
   MoreVertical,
   FileText,
   Target,
+  User,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -262,6 +263,10 @@ export function PortalSidebar({
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [isLocalhost, setIsLocalhost] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hostname === "localhost") setIsLocalhost(true);
+  }, []);
 
   useEffect(() => { onMount?.(); }, [onMount]);
   useEffect(() => {
@@ -603,6 +608,22 @@ export function PortalSidebar({
               </ul>
             </div>
           ))}
+          {isLocalhost && (
+            <div className={`px-3 mt-4 pt-4 border-t ${sidebarTheme === "gradient" ? "border-white/10" : "border-slate-100"}`}>
+              <Link
+                href="/klientska-zona"
+                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl min-h-[44px] transition-colors ${
+                  sidebarTheme === "gradient"
+                    ? "text-white/90 hover:bg-white/10"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+                title="Přihlásit se jako klient (localhost)"
+              >
+                <User size={18} className="shrink-0" />
+                {!collapsed && <span className="text-sm font-semibold">Klientská zóna</span>}
+              </Link>
+            </div>
+          )}
           {filteredSections.length === 0 && (
             <p className="px-3 py-4 text-sm text-slate-500">Žádné položky nevyhovují hledání.</p>
           )}

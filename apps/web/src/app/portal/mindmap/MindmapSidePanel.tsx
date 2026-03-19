@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { FileText, User, Briefcase, CheckSquare, Trash2 } from "lucide-react";
+import { FileText, User, Briefcase, CheckSquare, Trash2, Tag } from "lucide-react";
 import type { MindmapNode } from "./types";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 const NODE_TYPES: { value: MindmapNode["type"]; label: string }[] = [
   { value: "category", label: "Kategorie" },
@@ -108,15 +109,13 @@ export function MindmapSidePanel({
         <div>
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Typ</label>
           {canEdit && !isCore ? (
-            <select
+            <CustomDropdown
               value={node.type}
-              onChange={(e) => onUpdateNode?.(node.id, { type: e.target.value as MindmapNode["type"] })}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white"
-            >
-              {NODE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+              onChange={(id) => onUpdateNode?.(node.id, { type: id as MindmapNode["type"] })}
+              options={NODE_TYPES.map((t) => ({ id: t.value, label: t.label }))}
+              placeholder="Typ"
+              icon={Tag}
+            />
           ) : (
             <p className="text-lg font-bold text-slate-900 mt-1">{node.type}</p>
           )}

@@ -14,6 +14,8 @@ import type {
   ConsentRow,
   PurposeRow,
 } from "@/app/actions/compliance";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { Shield, FileCheck } from "lucide-react";
 
 const RISK_BADGE: Record<string, string> = {
   low: "bg-green-100 text-green-800",
@@ -185,15 +187,17 @@ export function ComplianceSection({ contactId }: { contactId: string }) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500">Úroveň rizika</label>
-                <select
+                <CustomDropdown
                   value={amlForm.riskLevel}
-                  onChange={(e) => setAmlForm((f) => ({ ...f, riskLevel: e.target.value }))}
-                  className="w-full rounded-[var(--wp-radius)] border border-slate-200 px-2 py-2 text-sm min-h-[44px]"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
+                  onChange={(id) => setAmlForm((f) => ({ ...f, riskLevel: id }))}
+                  options={[
+                    { id: "low", label: "Low" },
+                    { id: "medium", label: "Medium" },
+                    { id: "high", label: "High" },
+                  ]}
+                  placeholder="Úroveň"
+                  icon={Shield}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500">Poznámky</label>
@@ -296,24 +300,18 @@ export function ComplianceSection({ contactId }: { contactId: string }) {
                 <label className="block text-xs font-medium text-slate-500">
                   Účel zpracování
                 </label>
-                <select
+                <CustomDropdown
                   value={consentForm.purposeId}
-                  onChange={(e) =>
+                  onChange={(id) =>
                     setConsentForm((f) => ({
                       ...f,
-                      purposeId: e.target.value,
+                      purposeId: id,
                     }))
                   }
-                  required
-                  className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
-                >
-                  <option value="">— vyberte —</option>
-                  {purposes.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  options={[{ id: "", label: "— vyberte —" }, ...purposes.map((p) => ({ id: p.id, label: p.name }))]}
+                  placeholder="— vyberte —"
+                  icon={FileCheck}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500">

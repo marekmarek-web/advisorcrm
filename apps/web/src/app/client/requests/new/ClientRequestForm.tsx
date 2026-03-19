@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClientPortalRequest } from "@/app/actions/client-portal-requests";
 import { CLIENT_REQUEST_TYPES } from "@/app/lib/client-portal/request-types";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { HelpCircle } from "lucide-react";
 
 export function ClientRequestForm() {
   const router = useRouter();
@@ -36,19 +38,13 @@ export function ClientRequestForm() {
         <label htmlFor="caseType" className="block text-sm font-medium text-monday-text mb-1">
           O co jde?
         </label>
-        <select
-          id="caseType"
+        <CustomDropdown
           value={caseType}
-          onChange={(e) => setCaseType(e.target.value)}
-          className="w-full rounded-[var(--wp-radius-sm)] border border-monday-border bg-monday-surface px-3 py-2.5 text-monday-text text-sm min-h-[44px]"
-          required
-        >
-          {CLIENT_REQUEST_TYPES.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          onChange={setCaseType}
+          options={CLIENT_REQUEST_TYPES.map((opt) => ({ id: opt.value, label: opt.label }))}
+          placeholder="O co jde?"
+          icon={HelpCircle}
+        />
       </div>
 
       <div>

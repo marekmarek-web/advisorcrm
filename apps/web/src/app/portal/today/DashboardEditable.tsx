@@ -1,34 +1,32 @@
 "use client";
 
-import { useState, useEffect, useCallback, type CSSProperties } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
-  CalendarPlus,
   CheckSquare,
   Briefcase,
   Users,
   UserPlus,
-  Wrench,
   AlertCircle,
-  Star,
-  Target,
   Phone,
   ChevronRight,
-  ArrowRight,
   Clock,
   Plus,
   GripVertical,
-  Sparkles,
-  MessageSquare,
-  BarChart3,
+  Mail,
+  Calculator,
   FileText,
-  TrendingUp,
   LayoutDashboard,
   ArrowUp,
   ArrowDown,
   Check,
+  CheckCircle2,
+  PieChart,
+  Settings2,
+  X,
+  ChevronLeft,
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardKpis } from "@/app/actions/dashboard";
@@ -42,7 +40,21 @@ import { MessengerPreview } from "@/app/components/dashboard/MessengerPreview";
 import { DashboardCard } from "@/app/components/dashboard/DashboardCard";
 import { DashboardMiniNotes } from "./DashboardMiniNotes";
 import { DashboardAiAssistant } from "./DashboardAiAssistant";
-import { WIDGET_IDS, DEFAULT_DASHBOARD_ORDER, WIDGET_LABELS, WIDGET_ICONS, WIDGET_HREF, WIDGET_SECTION, WIDGET_SECTION_BG, WIDGET_COLOR_IDS, WIDGET_COLOR_CLASS, WIDGET_COLOR_GRADIENT, type WidgetId, type WidgetColorId } from "./dashboard-config";
+import {
+  WIDGET_IDS,
+  DEFAULT_DASHBOARD_ORDER,
+  WIDGET_LABELS,
+  WIDGET_ICONS,
+  WIDGET_HREF,
+  WIDGET_SECTION,
+  WIDGET_COLOR_IDS,
+  WIDGET_COLOR_GRADIENT,
+  WIDGET_COL_SPAN,
+  WIDGET_TOP_BORDER_BY_SECTION,
+  WIDGET_TOP_BORDER_BY_COLOR,
+  type WidgetId,
+  type WidgetColorId,
+} from "./dashboard-config";
 
 const STORAGE_KEY = "weplan_dashboard_widgets";
 
@@ -75,27 +87,57 @@ function loadConfig(): DashboardConfig {
 function saveConfig(config: DashboardConfig) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {}
+  } catch { /* noop */ }
 }
 
-/* KPI karty – lehký gradient, opacity cca 20 %, glow */
-const KPI_THEMES = {
-  green: { bg: "bg-emerald-500/20", glow: "bg-emerald-500", ring: "group-hover:ring-emerald-100", subtitle: "text-emerald-600" },
-  blue: { bg: "bg-blue-500/20", glow: "bg-blue-500", ring: "group-hover:ring-blue-100", subtitle: "text-blue-600" },
-  purple: { bg: "bg-violet-500/20", glow: "bg-violet-500", ring: "group-hover:ring-violet-100", subtitle: "text-violet-600" },
+const KPI_COLORS = {
+  emerald: {
+    text: "text-emerald-600",
+    hoverText: "group-hover:text-emerald-600",
+    hoverBorder: "hover:border-emerald-200",
+    iconBg: "bg-emerald-50",
+    iconBorder: "border-emerald-100",
+    iconText: "text-emerald-500",
+  },
+  blue: {
+    text: "text-blue-600",
+    hoverText: "group-hover:text-blue-600",
+    hoverBorder: "hover:border-blue-200",
+    iconBg: "bg-blue-50",
+    iconBorder: "border-blue-100",
+    iconText: "text-blue-500",
+  },
+  purple: {
+    text: "text-purple-600",
+    hoverText: "group-hover:text-purple-600",
+    hoverBorder: "hover:border-purple-200",
+    iconBg: "bg-purple-50",
+    iconBorder: "border-purple-100",
+    iconText: "text-purple-500",
+  },
 } as const;
-const KPI_CARDS_V3: {
+
+const KPI_CARDS_V4: {
   key: keyof Pick<DashboardKpis, "meetingsToday" | "tasksOpen" | "opportunitiesOpen">;
   label: string;
-  subtitle: string;
   href: string;
-  theme: keyof typeof KPI_THEMES;
+  color: keyof typeof KPI_COLORS;
   Icon: LucideIcon;
 }[] = [
-  { key: "meetingsToday", label: "Schůzky dnes", subtitle: "Kalendář", href: "/portal/calendar", theme: "green", Icon: Calendar },
-  { key: "tasksOpen", label: "Úkoly ke splnění", subtitle: "Úkoly", href: "/portal/tasks", theme: "blue", Icon: CheckSquare },
-  { key: "opportunitiesOpen", label: "Otevřené případy", subtitle: "Pipeline", href: "/portal/pipeline", theme: "purple", Icon: Briefcase },
+  { key: "meetingsToday", label: "Schůzky dnes", href: "/portal/calendar", color: "emerald", Icon: Calendar },
+  { key: "tasksOpen", label: "Úkoly ke splnění", href: "/portal/tasks", color: "blue", Icon: CheckSquare },
+  { key: "opportunitiesOpen", label: "Otevřené případy", href: "/portal/pipeline", color: "purple", Icon: Briefcase },
 ];
+
+const WIDGET_ICON_COLORS: Partial<Record<WidgetId, string>> = {
+  myTasks: "text-amber-500",
+  messages: "text-emerald-500",
+  activeDeals: "text-purple-500",
+  production: "text-indigo-400",
+  businessPlan: "text-blue-500",
+  clientCare: "text-violet-500",
+  financialAnalyses: "text-blue-600",
+};
 
 export type BusinessPlanWidgetData = {
   periodLabel: string;
@@ -125,7 +167,7 @@ export function DashboardEditable({
   const router = useRouter();
   const [config, setConfig] = useState<DashboardConfig>({ order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] });
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [calendarAsideOpen, setCalendarAsideOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editOrder, setEditOrder] = useState<WidgetId[]>([]);
   const [editHidden, setEditHidden] = useState<Set<WidgetId>>(new Set());
   const [editWidgetColors, setEditWidgetColors] = useState<Partial<Record<WidgetId, WidgetColorId>>>({});
@@ -225,50 +267,17 @@ export function DashboardEditable({
       setConfig(newConfig);
       saveConfig(newConfig);
     },
-    [config]
+    [config],
   );
 
   const renderWidgetContent = (id: WidgetId) => {
     switch (id) {
       case "aiAssistant":
         return <DashboardAiAssistant />;
-      case "summaryDay": {
-        const overdue = kpis.overdueTasks.length;
-        const dueToday = kpis.tasksDueToday?.length ?? 0;
-        const risk = kpis.pipelineAtRisk.length;
-        const events = kpis.todayEvents.length;
-        const parts: string[] = [];
-        if (overdue > 0) parts.push(`${overdue} urgentní ${overdue === 1 ? "úkol" : overdue < 5 ? "úkoly" : "úkolů"}`);
-        if (dueToday > 0 && overdue === 0) parts.push(`${dueToday} úkolů na dnes`);
-        if (risk > 0) parts.push(`${risk} obchodů v ohrožení`);
-        if (events > 0) parts.push(`${events} schůzek dnes`);
-        const summary = parts.length > 0
-          ? `Dnes máte ${parts.join(", ")}. Doporučuji nejdříve vyřešit ${overdue > 0 ? "zpožděné úkoly" : risk > 0 ? "obchody v ohrožení" : "dnešní agendu"}.`
-          : "Dnes nemáte urgentní položky. Prohlédněte si kalendář nebo úkoly.";
-        return (
-          <div className="bg-gradient-to-br from-[#1a1c2e] to-indigo-950 p-6 rounded-3xl text-white shadow-xl shadow-indigo-900/10 relative overflow-hidden h-full flex flex-col justify-center min-h-[240px]">
-            <Sparkles className="absolute -top-6 -right-6 w-32 h-32 text-indigo-500/20" aria-hidden />
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 bg-indigo-500/30 rounded-lg text-indigo-300"><Sparkles size={16} /></div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-indigo-200">AI Asistent</h3>
-              </div>
-              <p className="text-sm font-medium leading-relaxed text-indigo-50 mb-5">{summary}</p>
-              <Link
-                href="/portal/calendar"
-                className="flex items-center justify-between w-full px-4 py-3 bg-white/10 hover:bg-white/20 transition-colors rounded-xl text-sm font-bold backdrop-blur-sm border border-white/10 text-white no-underline"
-              >
-                Přejít na dnešní agendu <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-        );
-      }
       case "myTasks": {
         const all = [...kpis.overdueTasks, ...(kpis.tasksDueToday ?? [])].slice(0, 7);
         const todayStr = new Date().toISOString().slice(0, 10);
         const isOverdue = (d: string) => d < todayStr;
-        const isToday = (d: string) => d === todayStr;
         const timeLabel = (due: string) => {
           if (due < todayStr) return "Po termínu";
           if (due === todayStr) return "Dnes";
@@ -278,20 +287,26 @@ export function DashboardEditable({
           return new Date(due).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" });
         };
         return all.length === 0 ? (
-          <p className="text-sm py-3 text-emerald-600 font-medium">Vše splněno!</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-amber-100 mb-4 text-emerald-500">
+              <CheckCircle2 size={32} />
+            </div>
+            <p className="font-bold text-emerald-600 mb-1">Vše splněno!</p>
+            <p className="text-sm font-medium text-amber-800/60 mb-6">Máte čistý stůl. Užijte si kávu nebo přidejte nový úkol.</p>
+          </div>
         ) : (
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col flex-1">
             <div className="space-y-3 flex-1">
               {all.map((t) => (
                 <Link
                   key={t.id}
                   href={`/portal/tasks${isOverdue(t.dueDate) ? "?filter=overdue" : "?filter=today"}`}
-                  className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group no-underline text-inherit"
+                  className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/60 transition-colors border border-transparent hover:border-amber-200 group no-underline text-inherit"
                 >
-                  <span className="mt-0.5 w-5 h-5 rounded-md border-2 border-slate-300 shrink-0" aria-hidden />
+                  <span className="mt-0.5 w-5 h-5 rounded-md border-2 border-amber-300 shrink-0" aria-hidden />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-800 leading-tight mb-1 group-hover:text-indigo-600 transition-colors truncate">{t.title}</p>
-                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${isOverdue(t.dueDate) ? "text-rose-500" : "text-slate-400"}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${isOverdue(t.dueDate) ? "text-rose-500" : "text-amber-500"}`}>
                       <Clock size={10} /> {timeLabel(t.dueDate)}
                       {t.contactName && <span className="normal-case font-semibold text-slate-500 truncate"> · {t.contactName}</span>}
                     </span>
@@ -309,7 +324,12 @@ export function DashboardEditable({
         const step34 = (kpis.opportunitiesInStep3And4 ?? []).slice(0, 4);
         const show = atRisk.length > 0 || step34.length > 0;
         return !show ? (
-          <p className="text-sm py-3 text-slate-500">Žádné aktivní obchody.</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 mb-3 border border-slate-100">
+              <Clock size={24} />
+            </div>
+            <p className="text-sm font-medium text-slate-500 mb-4">Žádné aktivní obchody.</p>
+          </div>
         ) : (
           <div className="flex flex-col h-full">
             <div className="space-y-3 flex-1">
@@ -340,11 +360,11 @@ export function DashboardEditable({
         const totalAnnual = productionSummary?.totalAnnual ?? 0;
         const totalCount = productionSummary?.totalCount ?? 0;
         const periodLabel = productionSummary?.periodLabel ?? "";
-        const target: number | null = null; // cíl zatím "—"
+        const target: number | null = null;
         const pct = target && target > 0 ? Math.round((totalPremium / target) * 100) : 0;
         if (productionError) {
           return (
-            <div className="flex flex-col h-full justify-center">
+            <div className="flex flex-col h-full justify-center items-center text-center">
               <p className="text-sm text-rose-600 mb-2">{productionError}</p>
               <Link href="/portal/production" className="text-xs font-bold text-indigo-600 hover:underline">
                 Otevřít produkci →
@@ -365,8 +385,11 @@ export function DashboardEditable({
         }
         if (totalCount === 0) {
           return (
-            <div className="flex flex-col h-full justify-center">
-              <p className="text-sm py-3 text-slate-500">Žádná produkce za tento měsíc.</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 mb-3 border border-slate-100">
+                <PieChart size={24} />
+              </div>
+              <p className="text-sm font-medium text-slate-500 mb-4">Žádná produkce za tento měsíc.</p>
             </div>
           );
         }
@@ -469,12 +492,12 @@ export function DashboardEditable({
                 {recs.map((r) => {
                   const cta = getServiceCtaHref(r, r.contactId);
                   const name = [r.contactFirstName, r.contactLastName].filter(Boolean).join(" ") || "Klient";
-                  const isOverdue = r.urgency === "overdue";
+                  const isRecOverdue = r.urgency === "overdue";
                   return (
                     <div
                       key={r.id}
                       className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border min-h-[44px] ${
-                        isOverdue ? "bg-red-50/50 border-red-100/50" : "bg-amber-50/30 border-amber-100/50"
+                        isRecOverdue ? "bg-red-50/50 border-red-100/50" : "bg-amber-50/30 border-amber-100/50"
                       }`}
                     >
                       <div className="min-w-0">
@@ -583,236 +606,125 @@ export function DashboardEditable({
   const dateLabel = new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full gap-0 lg:gap-12 animate-[wp-fade-in_0.3s_ease] bg-[#f8fafc] relative">
+    <div className="flex-1 min-h-0 bg-[#f8fafc] text-slate-800 relative overflow-y-auto animate-[wp-fade-in_0.3s_ease]">
       <style>{`
-        .dashboard-hub-bg {
-          background-image:
-            linear-gradient(to right, rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
-          background-size: 40px 40px;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap');
+        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .bg-dot-grid {
+          background-image: radial-gradient(#cbd5e1 1px, transparent 0);
+          background-size: 32px 32px;
         }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-right { animation: slideInRight 0.25s ease-out; }
       `}</style>
-      {/* Left panel: main content */}
-      <div className="wp-projects-section dashboard-hub-bg flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 lg:pr-4">
-        {/* V3: Úvod – pozdrav a datum */}
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 m-0 tracking-tight">
+
+      <main className="max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 bg-dot-grid min-h-[calc(100vh-73px)]">
+
+        {/* 1. GREETING + TOP CONTROLS */}
+        <div className="mb-10">
+          <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight font-display">
               Dobrý den, {greetingName} 👋
             </h1>
-            <p className="text-sm font-bold text-slate-500 mt-1 m-0">Dnes je {dateLabel}. Zde je váš přehled.</p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen((v) => !v)}
+                className="text-sm font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm min-h-[44px]"
+              >
+                <Calendar size={16} /> {drawerOpen ? "Skrýt kalendář" : "Kalendář"}
+              </button>
+              <button
+                type="button"
+                onClick={openCustomize}
+                className="text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-xl transition-colors flex items-center gap-2 min-h-[44px]"
+              >
+                <Settings2 size={16} /> Upravit nástěnku
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={openCustomize}
-            className="min-h-[44px] flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-800 hover:underline px-2 -mx-2 rounded-lg"
-          >
-            Upravit nástěnku <ChevronRight size={16} />
-          </button>
+          <p className="text-sm font-medium text-slate-500 mb-8">Dnes je {dateLabel}. Zde je váš přehled.</p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {([
+              { icon: UserPlus, label: "Nový klient", href: "/portal/contacts?newClient=1" },
+              { icon: Calendar, label: "Nová schůzka", href: "/portal/calendar?new=1" },
+              { icon: CheckSquare, label: "Nový úkol", href: "/portal/tasks" },
+              { icon: Mail, label: "Napsat zprávu", href: "/portal/messages" },
+              { icon: Calculator, label: "Kalkulačky", href: "/portal/calculators" },
+              { icon: PieChart, label: "Finanční analýza", href: "/portal/analyses/financial" },
+              { icon: Calendar, label: "Kalendář", href: "/portal/calendar" },
+            ] as { icon: LucideIcon; label: string; href: string }[]).map((btn, i) => (
+              <Link
+                key={i}
+                href={btn.href}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm min-h-[44px]"
+              >
+                <btn.icon size={16} className="opacity-70" />
+                {btn.label}
+              </Link>
+            ))}
+          </div>
         </div>
 
-        {/* KPI karty – zmenšené, opacity 20 %, glow v pravém horním rohu */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {KPI_CARDS_V3.map((card) => {
-            const theme = KPI_THEMES[card.theme];
+        {/* 2. KPI CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {KPI_CARDS_V4.map((card) => {
+            const c = KPI_COLORS[card.color];
             const Icon = card.Icon;
             return (
               <Link
                 key={card.key}
                 href={card.href}
-                className={`group relative rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-md flex flex-col justify-center min-h-[80px] no-underline overflow-hidden transition-all duration-200 hover:shadow-lg ${theme.bg} ring-4 ring-transparent ${theme.ring}`}
+                className={`bg-white rounded-[24px] p-6 border border-slate-100 flex items-center justify-between group ${c.hoverBorder} hover:-translate-y-0.5 transition-all cursor-pointer no-underline`}
               >
-                <div className={`absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[60px] opacity-0 group-hover:opacity-25 transition-opacity duration-500 ${theme.glow}`} aria-hidden />
-                <div className="relative z-10 flex items-center gap-2 mb-1">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm ${card.theme === "green" ? "bg-emerald-500" : card.theme === "blue" ? "bg-blue-500" : "bg-violet-500"}`}>
-                    <Icon size={18} />
+                <div>
+                  <div className={`flex items-center gap-2 mb-2 ${c.text}`}>
+                    <Icon size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{card.label}</span>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{card.label}</span>
+                  <div className={`text-4xl font-display font-black text-slate-900 leading-none ${c.hoverText} transition-colors tabular-nums`}>
+                    {kpis[card.key]}
+                  </div>
                 </div>
-                <div className="relative z-10 flex items-end gap-3 mb-0.5">
-                  <span className="text-2xl font-black tracking-tight text-slate-900 tabular-nums">{kpis[card.key]}</span>
+                <div className={`w-12 h-12 rounded-2xl ${c.iconBg} border ${c.iconBorder} flex items-center justify-center ${c.iconText}`}>
+                  <Icon size={24} />
                 </div>
-                <span className={`text-xs font-bold ${theme.subtitle}`}>{card.subtitle}</span>
               </Link>
             );
           })}
         </div>
 
-        {/* Rychlé vstupy – animace ikon 1:1 jako v main sidebaru (hoverAnim na obalu ikony) */}
-        <div className="mb-6 rounded-3xl border border-slate-100 bg-white shadow-md p-5 sm:p-6">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Rychlé vstupy</h3>
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link href="/portal/contacts?newClient=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
-              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:scale-110"><UserPlus size={18} /></span> Nový klient
-            </Link>
-            <Link href="/portal/calendar?new=1" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
-              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-110"><CalendarPlus size={18} /></span> Nová schůzka
-            </Link>
-            <Link href="/portal/tasks" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
-              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110"><CheckSquare size={18} /></span> Nový úkol
-            </Link>
-            <Link href="/portal/messages" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
-              <span className="flex items-center justify-center shrink-0 transition-all duration-300 origin-top group-hover:rotate-[20deg]"><MessageSquare size={18} /></span> Napsat zprávu
-            </Link>
-            <Link href="/portal/calculators" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
-              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110"><BarChart3 size={18} /></span> Kalkulačky
-            </Link>
-            <Link href="/portal/analyses/financial" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
-              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"><Target size={18} /></span> Finanční analýza
-            </Link>
-            <Link href="/portal/calendar" className="group min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 hover:border-indigo-200">
-              <span className="flex items-center justify-center shrink-0 transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-110"><Calendar size={18} /></span> Kalendář
-            </Link>
-          </div>
-        </div>
-
-        {/* Focus Alerts – pouze z kpis */}
-        {(() => {
-          const todayStr = new Date().toISOString().slice(0, 10);
-          const anniversariesToday = kpis.upcomingAnniversaries.filter((a) => a.anniversaryDate.slice(0, 10) === todayStr);
-          const alerts: { id: string; title: string; desc: string; href: string; className: string; Icon: LucideIcon }[] = [];
-          if (kpis.overdueTasks.length > 0) {
-            alerts.push({
-              id: "overdue",
-              title: "Úkoly po termínu",
-              desc: `Máte ${kpis.overdueTasks.length} zpožděných úkolů`,
-              href: "/portal/tasks",
-              className: "text-rose-600 bg-rose-50 border-rose-100",
-              Icon: AlertCircle,
-            });
-          }
-          if (anniversariesToday.length > 0) {
-            const first = anniversariesToday[0];
-            alerts.push({
-              id: "anniversary",
-              title: "Dnes má výročí smlouvy",
-              desc: `${first.partnerName ?? "Smlouva"} (${first.contactName})`,
-              href: `/portal/contacts/${first.contactId}`,
-              className: "text-amber-600 bg-amber-50 border-amber-100",
-              Icon: Star,
-            });
-          }
-          if (kpis.pipelineAtRisk.length > 0) {
-            alerts.push({
-              id: "pipeline",
-              title: "Pipeline v ohrožení",
-              desc: `${kpis.pipelineAtRisk.length} obchodů po plánovaném termínu uzavření`,
-              href: "/portal/pipeline",
-              className: "text-orange-600 bg-orange-50 border-orange-100",
-              Icon: AlertCircle,
-            });
-          }
-          if (alerts.length === 0) return null;
-          return (
-            <div className="mb-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Vyžaduje pozornost</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {alerts.map((a) => {
-                  const Icon = a.Icon;
-                  return (
-                    <Link
-                      key={a.id}
-                      href={a.href}
-                      className={`flex items-center gap-4 p-4 rounded-3xl border border-slate-100 shadow-md transition-all hover:shadow-lg min-h-[72px] ${a.className}`}
-                    >
-                      <div className="bg-white/70 p-2.5 rounded-xl shadow-sm shrink-0">
-                        <Icon size={20} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-sm leading-tight mb-0.5">{a.title}</h4>
-                        <p className="text-xs font-semibold opacity-80 truncate">{a.desc}</p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Dnešní priority – úkoly (overdue + due today) + obchody krok 3 a 4 */}
-        {(() => {
-          const priorityTasks = [...kpis.overdueTasks, ...(kpis.tasksDueToday ?? [])].slice(0, 7);
-          const priorityOpps = kpis.opportunitiesInStep3And4 ?? [];
-          if (priorityTasks.length === 0 && priorityOpps.length === 0) return null;
-          return (
-            <div className="mb-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Dnešní priority</h3>
-              <div className="rounded-3xl border border-slate-100 bg-white shadow-md overflow-hidden">
-                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-                  {priorityTasks.length > 0 && (
-                    <div className="p-4">
-                      <h4 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 text-slate-500">
-                        <Target size={14} className="text-indigo-600" /> To-Do List · Úkoly
-                      </h4>
-                      <ul className="space-y-2">
-                        {priorityTasks.map((t) => (
-                          <li key={t.id}>
-                            <Link
-                              href="/portal/tasks"
-                              className="flex items-center gap-2 text-sm group p-2 rounded-xl hover:bg-slate-50 transition-colors"
-                            >
-                              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ background: kpis.overdueTasks.some((o) => o.id === t.id) ? "rgba(229,83,75,0.1)" : "var(--wp-bg)", color: kpis.overdueTasks.some((o) => o.id === t.id) ? "var(--wp-danger)" : "var(--wp-text-muted)" }}>
-                                {new Date(t.dueDate).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" })}
-                              </span>
-                              <span className="font-medium truncate group-hover:underline text-slate-800">{t.title}</span>
-                              {t.contactName && <span className="text-xs truncate ml-auto text-slate-500">({t.contactName})</span>}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                      <Link href="/portal/tasks" className="text-xs font-semibold mt-2 inline-block text-indigo-600 hover:underline">Všechny úkoly →</Link>
-                    </div>
-                  )}
-                  {priorityOpps.length > 0 && (
-                    <div className="p-4">
-                      <h4 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 text-slate-500">
-                        <Briefcase size={14} className="text-indigo-600" /> Před uzavřením / Realizace
-                      </h4>
-                      <ul className="space-y-2">
-                        {priorityOpps.slice(0, 5).map((o) => (
-                          <li key={o.id}>
-                            <Link href={`/portal/pipeline/${o.id}`} className="flex items-center gap-2 text-sm group p-2 rounded-xl hover:bg-slate-50 transition-colors">
-                              <span className="font-medium truncate group-hover:underline text-slate-800">{o.title}</span>
-                              <span className="text-[10px] shrink-0 px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{o.stageName}</span>
-                              {o.contactName && <span className="text-xs truncate ml-auto text-slate-500">({o.contactName})</span>}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                      <Link href="/portal/pipeline" className="text-xs font-semibold mt-2 inline-block text-indigo-600 hover:underline">Všechny obchody →</Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Widget grid – premium cards, drag-and-drop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-8">
+        {/* 3. BENTO WIDGET GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 pb-8">
           {visibleOrder.map((id) => {
             const isAiAssistant = id === "aiAssistant";
-            const WidgetIconComponent = WIDGET_ICONS[id];
-            const footerLink = WIDGET_HREF[id];
-            const footerLabel = id === "production" ? "Otevřít produkci" : id === "activeDeals" ? "Otevřít Board" : id === "myTasks" ? "Zobrazit všechny úkoly" : id === "clientCare" ? "Servisní přehled" : id === "financialAnalyses" ? "Všechny analýzy" : id === "businessPlan" ? "Otevřít business plán" : "Více";
-            const body = renderWidgetContent(id);
-            const isNotesFullWidth = id === "notes";
-            const cardBg = config.widgetColors?.[id] ? WIDGET_COLOR_CLASS[config.widgetColors[id]] : WIDGET_SECTION_BG[WIDGET_SECTION[id]];
-            const wrapperClass = `w-full rounded-3xl overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${isAiAssistant ? "bg-transparent" : cardBg} ${isNotesFullWidth ? "md:col-span-2 xl:col-span-3" : ""} ${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""}`;
+            const isMyTasks = id === "myTasks";
+            const isNotes = id === "notes";
+            const colSpan = `${WIDGET_COL_SPAN[id]}${isAiAssistant || isNotes ? " md:col-span-2" : ""}`;
+            const dragClass = `${draggedWidgetId === id ? "opacity-60 scale-[0.98]" : ""} ${draggedWidgetId && draggedWidgetId !== id ? "border-dashed border-indigo-200" : ""}`;
+
             if (isAiAssistant) {
               return (
                 <div
                   key={id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, id)}
-                  onDragEnd={handleDragEnd}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, id)}
-                  className={wrapperClass}
+                  className={`${colSpan} ${dragClass} transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01]`}
                 >
                   <div className="relative">
-                    <span className="absolute top-3 right-3 z-10 p-2 min-h-[44px] min-w-[44px] rounded-lg bg-white/10 hover:bg-white/20 cursor-grab active:cursor-grabbing transition-colors shrink-0 inline-flex items-center justify-center" aria-label="Chytit a přesunout">
+                    <span
+                      draggable
+                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, id); }}
+                      onDragEnd={handleDragEnd}
+                      className="absolute top-4 right-4 z-10 p-2 min-h-[44px] min-w-[44px] rounded-lg bg-white/10 hover:bg-white/20 cursor-grab active:cursor-grabbing transition-colors shrink-0 inline-flex items-center justify-center"
+                      aria-label="Chytit a přesunout widget"
+                    >
                       <GripVertical size={16} className="text-indigo-200" />
                     </span>
                     <DashboardAiAssistant />
@@ -820,24 +732,79 @@ export function DashboardEditable({
                 </div>
               );
             }
+
+            if (isMyTasks) {
+              const body = renderWidgetContent(id);
+              return (
+                <div
+                  key={id}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, id)}
+                  className={`${colSpan} ${dragClass} transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01]`}
+                >
+                  <div className="bg-white rounded-[32px] border border-slate-100 border-t-4 border-t-amber-500 p-6 sm:p-8 relative flex flex-col min-h-[280px]">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="font-bold text-amber-900 flex items-center gap-2">
+                        <CheckSquare size={18} className="text-amber-500" /> Moje úkoly
+                      </h3>
+                      <div className="flex items-center gap-1">
+                        <Link href="/portal/tasks" className="p-2 text-amber-400 hover:text-amber-600 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center">
+                          <Plus size={20} />
+                        </Link>
+                        <span
+                          draggable
+                          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, id); }}
+                          onDragEnd={handleDragEnd}
+                          className="p-2 min-h-[44px] min-w-[44px] text-amber-300 hover:text-amber-500 cursor-grab active:cursor-grabbing rounded transition-colors inline-flex items-center justify-center"
+                          aria-label="Chytit a přesunout widget"
+                        >
+                          <GripVertical size={16} />
+                        </span>
+                      </div>
+                    </div>
+                    {body}
+                    <Link
+                      href="/portal/tasks"
+                      className="mt-auto pt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs uppercase tracking-widest hover:bg-amber-100 hover:border-amber-300 transition-colors min-h-[44px] w-fit"
+                    >
+                      Zobrazit všechny úkoly <ChevronRight size={14} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            }
+
+            const body = renderWidgetContent(id);
+            const WidgetIconComponent = WIDGET_ICONS[id];
+            const footerLink = WIDGET_HREF[id];
+            const footerLabel = id === "production" ? "Otevřít produkci" : id === "activeDeals" ? "Otevřít Board" : id === "clientCare" ? "Servisní přehled" : id === "financialAnalyses" ? "Všechny analýzy" : id === "businessPlan" ? "Otevřít business plán" : "Více";
+            const topBorderClass = config.widgetColors?.[id]
+              ? WIDGET_TOP_BORDER_BY_COLOR[config.widgetColors[id]!]
+              : WIDGET_TOP_BORDER_BY_SECTION[WIDGET_SECTION[id]];
+
             return (
               <div
                 key={id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, id)}
-                onDragEnd={handleDragEnd}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, id)}
-                className={wrapperClass}
+                className={`${colSpan} ${dragClass} transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01]`}
               >
                 <DashboardCard
                   title={WIDGET_LABELS[id]}
                   icon={WidgetIconComponent}
                   footerLink={footerLink}
                   footerLabel={footerLabel}
-                  backgroundClass="bg-transparent"
+                  backgroundClass="bg-white"
+                  topBorderClass={topBorderClass}
+                  iconColorClass={WIDGET_ICON_COLORS[id]}
                   rightElement={
-                    <span className="p-2 min-h-[44px] min-w-[44px] text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing rounded transition-colors shrink-0 inline-flex items-center justify-center" aria-label="Chytit a přesunout">
+                    <span
+                      draggable
+                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, id); }}
+                      onDragEnd={handleDragEnd}
+                      className="p-2 min-h-[44px] min-w-[44px] text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing rounded transition-colors shrink-0 inline-flex items-center justify-center"
+                      aria-label="Chytit a přesunout widget"
+                    >
                       <GripVertical size={16} />
                     </span>
                   }
@@ -849,43 +816,47 @@ export function DashboardEditable({
           })}
         </div>
 
-      </div>
+      </main>
 
-      {/* Mobile: toggle for calendar aside */}
-      <button
-        type="button"
-        onClick={() => setCalendarAsideOpen((v) => !v)}
-        className="lg:hidden w-full flex items-center justify-center gap-2 py-3 bg-white border-t border-slate-200 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors mt-4"
-      >
-        <Calendar size={16} /> {calendarAsideOpen ? "Skrýt kalendář" : "Zobrazit kalendář"}
-      </button>
-
-      {/* Right panel: side calendar */}
+      {/* Right-side panel: narrow strip (icon + arrow) when closed, expands to calendar + messages when open. No overlay, no blur. */}
       <aside
-        className={`w-full lg:w-[380px] mt-2 lg:mt-0 flex-shrink-0 flex flex-col border-t border-slate-200 lg:border lg:border-slate-100 lg:rounded-[24px] lg:shadow-sm bg-slate-50/50 lg:bg-white sticky top-[var(--dashboard-sticky-offset)] h-[calc(100vh-var(--dashboard-sticky-offset))] overflow-hidden lg:ml-2 ${calendarAsideOpen ? "block" : "hidden lg:flex"}`}
-        style={{ "--dashboard-sticky-offset": "calc(var(--safe-area-top) + 73px)" } as CSSProperties}
+        className="fixed right-0 top-[73px] bottom-0 z-20 flex flex-col bg-white border-l border-slate-200 transition-[width] duration-200 ease-out overflow-hidden"
+        style={{ width: drawerOpen ? 380 : 56 }}
       >
-        <div className="flex-1 overflow-y-auto p-5 lg:p-6 space-y-6 bg-white lg:bg-white">
-          <section className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Kalendář</h3>
-            <CalendarWidget hideTitle onNewActivity={() => router.push("/portal/calendar?new=1")} />
-          </section>
-          <section className="pt-6 border-t border-slate-100">
-            <MessengerPreview />
-          </section>
-        </div>
-        <div className="border-t border-slate-200 bg-white p-5 lg:p-6 flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => router.push("/portal/calendar?new=1")}
-            className="w-full min-h-[52px] py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20 hover:shadow-xl transition-all active:scale-[0.98]"
-          >
-            <Plus size={20} /> Nová aktivita
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setDrawerOpen((v) => !v)}
+          className="flex items-center justify-center gap-1 w-14 h-14 shrink-0 border-b border-slate-100 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors min-h-[56px]"
+          aria-label={drawerOpen ? "Skrýt kalendář" : "Zobrazit kalendář"}
+        >
+          <Calendar size={20} />
+          {drawerOpen ? <ChevronLeft size={18} className="ml-0.5" /> : <ChevronRight size={18} className="ml-0.5" />}
+        </button>
+        {drawerOpen && (
+          <>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 hide-scrollbar">
+              <section className="space-y-3">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kalendář</h3>
+                <CalendarWidget hideTitle onNewActivity={() => router.push("/portal/calendar?new=1")} />
+              </section>
+              <section className="pt-4 border-t border-slate-100">
+                <MessengerPreview />
+              </section>
+            </div>
+            <div className="border-t border-slate-200 p-4 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => router.push("/portal/calendar?new=1")}
+                className="w-full min-h-[48px] py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+              >
+                <Plus size={18} /> Nová aktivita
+              </button>
+            </div>
+          </>
+        )}
       </aside>
 
-      {/* Customize modal – Upravit nástěnku (design 2026) */}
+      {/* Customize modal */}
       {customizeOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"

@@ -2,7 +2,7 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission, getMembership } from "@/lib/auth/get-membership";
-import { db, tasks, contacts, eq, and, asc, desc, isNull, isNotNull, gte, lt, lte, sql } from "db";
+import { db, tasks, contacts, opportunities, eq, and, asc, desc, isNull, isNotNull, gte, lt, lte, sql } from "db";
 import { logActivity } from "./activity";
 
 export type TaskRow = {
@@ -11,9 +11,21 @@ export type TaskRow = {
   description: string | null;
   contactId: string | null;
   contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  opportunityId: string | null;
+  opportunityTitle: string | null;
   dueDate: string | null;
   completedAt: Date | null;
   createdAt: Date;
+};
+
+export type TaskCounts = {
+  all: number;
+  today: number;
+  week: number;
+  overdue: number;
+  completed: number;
 };
 
 export async function getTasksList(
@@ -56,14 +68,19 @@ export async function getTasksList(
       title: tasks.title,
       description: tasks.description,
       contactId: tasks.contactId,
+      opportunityId: tasks.opportunityId,
       dueDate: tasks.dueDate,
       completedAt: tasks.completedAt,
       createdAt: tasks.createdAt,
       contactFirstName: contacts.firstName,
       contactLastName: contacts.lastName,
+      contactPhone: contacts.phone,
+      contactEmail: contacts.email,
+      opportunityTitle: opportunities.title,
     })
     .from(tasks)
     .leftJoin(contacts, eq(tasks.contactId, contacts.id))
+    .leftJoin(opportunities, eq(tasks.opportunityId, opportunities.id))
     .where(and(...conditions))
     .orderBy(
       filter === "completed" ? desc(tasks.completedAt) : asc(tasks.dueDate),
@@ -78,7 +95,11 @@ export async function getTasksList(
     contactName:
       r.contactFirstName && r.contactLastName
         ? `${r.contactFirstName} ${r.contactLastName}`
-        : null,
+        : r.contactFirstName || r.contactLastName || null,
+    contactPhone: r.contactPhone ?? null,
+    contactEmail: r.contactEmail ?? null,
+    opportunityId: r.opportunityId ?? null,
+    opportunityTitle: r.opportunityTitle ?? null,
     dueDate: r.dueDate,
     completedAt: r.completedAt,
     createdAt: r.createdAt,
@@ -96,6 +117,36 @@ export async function getOpenTasksCount(): Promise<number> {
   return Number(rows[0]?.count ?? 0);
 }
 
+export async function getTasksCounts(): Promise<TaskCounts> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:read")) return { all: 0, today: 0, week: 0, overdue: 0, completed: 0 };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const weekEnd = new Date();
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+
+  const rows = await db
+    .select({
+      all: sql<number>`count(*) filter (where ${tasks.completedAt} is null)::int`,
+      today: sql<number>`count(*) filter (where ${tasks.completedAt} is null and ${tasks.dueDate} = ${today})::int`,
+      week: sql<number>`count(*) filter (where ${tasks.completedAt} is null and ${tasks.dueDate} >= ${today} and ${tasks.dueDate} <= ${weekEndStr})::int`,
+      overdue: sql<number>`count(*) filter (where ${tasks.completedAt} is null and ${tasks.dueDate} < ${today})::int`,
+      completed: sql<number>`count(*) filter (where ${tasks.completedAt} is not null)::int`,
+    })
+    .from(tasks)
+    .where(eq(tasks.tenantId, auth.tenantId));
+
+  const r = rows[0];
+  return {
+    all: Number(r?.all ?? 0),
+    today: Number(r?.today ?? 0),
+    week: Number(r?.week ?? 0),
+    overdue: Number(r?.overdue ?? 0),
+    completed: Number(r?.completed ?? 0),
+  };
+}
+
 export async function getTasksForDate(dateStr: string): Promise<TaskRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
@@ -109,14 +160,19 @@ export async function getTasksForDate(dateStr: string): Promise<TaskRow[]> {
       title: tasks.title,
       description: tasks.description,
       contactId: tasks.contactId,
+      opportunityId: tasks.opportunityId,
       dueDate: tasks.dueDate,
       completedAt: tasks.completedAt,
       createdAt: tasks.createdAt,
       contactFirstName: contacts.firstName,
       contactLastName: contacts.lastName,
+      contactPhone: contacts.phone,
+      contactEmail: contacts.email,
+      opportunityTitle: opportunities.title,
     })
     .from(tasks)
     .leftJoin(contacts, eq(tasks.contactId, contacts.id))
+    .leftJoin(opportunities, eq(tasks.opportunityId, opportunities.id))
     .where(and(...conditions))
     .orderBy(asc(tasks.createdAt));
   return rows.map((r) => ({
@@ -124,7 +180,11 @@ export async function getTasksForDate(dateStr: string): Promise<TaskRow[]> {
     title: r.title,
     description: r.description,
     contactId: r.contactId,
-    contactName: r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}` : null,
+    contactName: r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}` : r.contactFirstName || r.contactLastName || null,
+    contactPhone: r.contactPhone ?? null,
+    contactEmail: r.contactEmail ?? null,
+    opportunityId: r.opportunityId ?? null,
+    opportunityTitle: r.opportunityTitle ?? null,
     dueDate: r.dueDate,
     completedAt: r.completedAt,
     createdAt: r.createdAt,
@@ -140,14 +200,19 @@ export async function getTasksByContactId(contactId: string): Promise<TaskRow[]>
       title: tasks.title,
       description: tasks.description,
       contactId: tasks.contactId,
+      opportunityId: tasks.opportunityId,
       dueDate: tasks.dueDate,
       completedAt: tasks.completedAt,
       createdAt: tasks.createdAt,
       contactFirstName: contacts.firstName,
       contactLastName: contacts.lastName,
+      contactPhone: contacts.phone,
+      contactEmail: contacts.email,
+      opportunityTitle: opportunities.title,
     })
     .from(tasks)
     .leftJoin(contacts, eq(tasks.contactId, contacts.id))
+    .leftJoin(opportunities, eq(tasks.opportunityId, opportunities.id))
     .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.contactId, contactId)))
     .orderBy(asc(tasks.dueDate), asc(tasks.createdAt));
   return rows.map((r) => ({
@@ -155,14 +220,18 @@ export async function getTasksByContactId(contactId: string): Promise<TaskRow[]>
     title: r.title,
     description: r.description,
     contactId: r.contactId,
-    contactName: r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}` : null,
+    contactName: r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}` : r.contactFirstName || r.contactLastName || null,
+    contactPhone: r.contactPhone ?? null,
+    contactEmail: r.contactEmail ?? null,
+    opportunityId: r.opportunityId ?? null,
+    opportunityTitle: r.opportunityTitle ?? null,
     dueDate: r.dueDate,
     completedAt: r.completedAt,
     createdAt: r.createdAt,
   }));
 }
 
-export async function getTasksByOpportunityId(opportunityId: string): Promise<TaskRow[]> {
+export async function getTasksByOpportunityId(oppId: string): Promise<TaskRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
   const rows = await db
@@ -171,22 +240,31 @@ export async function getTasksByOpportunityId(opportunityId: string): Promise<Ta
       title: tasks.title,
       description: tasks.description,
       contactId: tasks.contactId,
+      opportunityId: tasks.opportunityId,
       dueDate: tasks.dueDate,
       completedAt: tasks.completedAt,
       createdAt: tasks.createdAt,
       contactFirstName: contacts.firstName,
       contactLastName: contacts.lastName,
+      contactPhone: contacts.phone,
+      contactEmail: contacts.email,
+      opportunityTitle: opportunities.title,
     })
     .from(tasks)
     .leftJoin(contacts, eq(tasks.contactId, contacts.id))
-    .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.opportunityId, opportunityId)))
+    .leftJoin(opportunities, eq(tasks.opportunityId, opportunities.id))
+    .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.opportunityId, oppId)))
     .orderBy(asc(tasks.dueDate), asc(tasks.createdAt));
   return rows.map((r) => ({
     id: r.id,
     title: r.title,
     description: r.description,
     contactId: r.contactId,
-    contactName: r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}` : null,
+    contactName: r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}` : r.contactFirstName || r.contactLastName || null,
+    contactPhone: r.contactPhone ?? null,
+    contactEmail: r.contactEmail ?? null,
+    opportunityId: r.opportunityId ?? null,
+    opportunityTitle: r.opportunityTitle ?? null,
     dueDate: r.dueDate,
     completedAt: r.completedAt,
     createdAt: r.createdAt,
@@ -199,6 +277,7 @@ export async function createTask(data: {
   contactId?: string;
   dueDate?: string;
   analysisId?: string;
+  opportunityId?: string;
   /** For team/manager follow-ups: assign to this user (must be in same tenant; requires team_overview:read). */
   assignedTo?: string;
 }): Promise<string | null> {
@@ -225,6 +304,7 @@ export async function createTask(data: {
         contactId: data.contactId || null,
         dueDate: data.dueDate || null,
         analysisId: data.analysisId || null,
+        opportunityId: data.opportunityId || null,
         assignedTo: assignee,
         createdBy: auth.userId,
       })
@@ -254,6 +334,7 @@ export async function updateTask(
     description?: string;
     contactId?: string;
     dueDate?: string;
+    opportunityId?: string;
   }
 ): Promise<void> {
   try {
@@ -267,6 +348,7 @@ export async function updateTask(
         ...(data.description != null && { description: data.description.trim() || null }),
         ...(data.contactId != null && { contactId: data.contactId || null }),
         ...(data.dueDate != null && { dueDate: data.dueDate || null }),
+        ...(data.opportunityId != null && { opportunityId: data.opportunityId || null }),
         updatedAt: new Date(),
       })
       .where(and(eq(tasks.tenantId, auth.tenantId), eq(tasks.id, id)));

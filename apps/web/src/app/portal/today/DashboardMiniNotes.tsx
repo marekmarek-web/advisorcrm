@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { Pin, GripVertical, Plus, FileText } from "lucide-react";
+import { Pin, GripVertical, Plus, FileText, ChevronRight } from "lucide-react";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 
 const STORAGE_POSITIONS_KEY = "weplan_dashboard_mini_notes_positions";
@@ -86,7 +86,7 @@ export function DashboardMiniNotes({ initialNotes }: { initialNotes: MeetingNote
         </h3>
         <p className="text-xs font-bold text-slate-500 mb-4">Rychlé poznámky a nápady</p>
         <p className="text-sm text-slate-500 mb-4">Zatím žádné zápisky.</p>
-        <Link href="/portal/notes" className="inline-flex items-center gap-2 min-h-[44px] text-sm font-semibold text-indigo-600 hover:underline">
+        <Link href="/portal/notes" className="inline-flex items-center gap-2 min-h-[44px] py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-sm hover:bg-indigo-100 hover:border-indigo-300 transition-colors w-fit">
           <Plus size={16} /> Přidat
         </Link>
       </div>
@@ -171,8 +171,10 @@ export function DashboardMiniNotes({ initialNotes }: { initialNotes: MeetingNote
           <p className="text-xs font-bold text-slate-500 mt-0.5">Rychlé poznámky a nápady. Chytněte kartu a přetáhněte.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/portal/notes" className="text-xs font-semibold text-indigo-600 hover:underline min-h-[44px] inline-flex items-center">Všechny zápisky</Link>
-          <Link href="/portal/notes" className="text-xs font-semibold text-indigo-600 min-h-[44px] py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 inline-flex items-center gap-1 transition-colors">
+          <Link href="/portal/notes" className="min-h-[44px] py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-xs uppercase tracking-widest hover:bg-indigo-100 hover:border-indigo-300 transition-colors inline-flex items-center gap-2">
+            Všechny zápisky <ChevronRight size={14} />
+          </Link>
+          <Link href="/portal/notes" className="min-h-[44px] py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-xs inline-flex items-center gap-1.5 hover:bg-indigo-100 hover:border-indigo-300 transition-colors">
             <Plus size={14} /> Přidat
           </Link>
         </div>

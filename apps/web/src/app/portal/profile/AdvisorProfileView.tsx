@@ -24,7 +24,9 @@ import {
   Bell,
   FileText,
   BarChart3,
+  User,
 } from "lucide-react";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
 import type { SupervisorOption } from "@/app/actions/auth";
 import {
@@ -210,7 +212,7 @@ export function AdvisorProfileView({
     setSaved(false);
     setSaving(true);
     try {
-      await updatePortalProfile(fullName ?? "", supervisorUserId || null);
+      await updatePortalProfile(fullName ?? "", undefined, supervisorUserId || null);
       await updateAdvisorReportBranding({ phone: phone.trim() || null, website: website.trim() || null });
       setSaved(true);
     } catch (e) {
@@ -485,18 +487,19 @@ export function AdvisorProfileView({
                       <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">
                         Nadřízený
                       </label>
-                      <select
+                      <CustomDropdown
                         value={supervisorUserId}
-                        onChange={(e) => setSupervisorUserId(e.target.value)}
-                        className={inputClass}
-                      >
-                        <option value="">Bez nadřízeného</option>
-                        {(initial.supervisorOptions ?? []).map((opt) => (
-                          <option key={opt.userId} value={opt.userId}>
-                            {opt.displayName} ({opt.roleName})
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setSupervisorUserId}
+                        options={[
+                          { id: "", label: "Bez nadřízeného" },
+                          ...(initial.supervisorOptions ?? []).map((opt) => ({
+                            id: opt.userId,
+                            label: `${opt.displayName} (${opt.roleName})`,
+                          })),
+                        ]}
+                        placeholder="Bez nadřízeného"
+                        icon={User}
+                      />
                     </div>
                   )}
                 </div>

@@ -16,6 +16,8 @@ import { EUCS_ZP_DISCLAIMER } from "@/data/insurance-ratings";
 import { ConfirmDeleteModal } from "@/app/components/ConfirmDeleteModal";
 import { NewContractWizard } from "@/app/components/weplan/NewContractWizard";
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { FileText } from "lucide-react";
 
 export function ContractsSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<ContractRow[]>([]);
@@ -218,19 +220,16 @@ export function ContractsSection({ contactId }: { contactId: string }) {
         <form onSubmit={handleSubmitEdit} className="space-y-2 max-w-md">
           <div>
             <label className="block text-xs font-medium text-slate-500">Segment</label>
-            <select
+            <CustomDropdown
               value={form.segment}
-              onChange={(e) => {
-                const seg = e.target.value;
+              onChange={(seg) => {
                 setForm((f) => ({ ...f, segment: seg, partnerId: "", productId: "", partnerName: "", productName: "" }));
                 setPickerValue({ partnerId: "", productId: "" });
               }}
-              className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
-            >
-              {segments.map((s) => (
-                <option key={s} value={s}>{segmentLabel(s)}</option>
-              ))}
-            </select>
+              options={segments.map((s) => ({ id: s, label: segmentLabel(s) }))}
+              placeholder="Segment"
+              icon={FileText}
+            />
           </div>
           <div>
             <ProductPicker

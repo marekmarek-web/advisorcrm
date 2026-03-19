@@ -57,11 +57,11 @@ export function LandingHeader({ activeTheme }: LandingHeaderProps) {
           <a href="#login" className={`${linkBase} ${style}`}>
             Přihlásit se
           </a>
-          <Link href="/" className={`${linkBase} ${style}`}>
-            Pro klienty
+          <Link href="/klientska-zona" className={`${linkBase} ${style}`}>
+            Klientská zóna
           </Link>
           <Link href="/portal" className={`${linkBase} ${style}`}>
-            Otevřít portál
+            Portál poradce
           </Link>
         </nav>
 
@@ -93,18 +93,18 @@ export function LandingHeader({ activeTheme }: LandingHeaderProps) {
             Přihlásit se
           </a>
           <Link
-            href="/"
+            href="/klientska-zona"
             onClick={closeMobile}
             className={`${linkBase} justify-start rounded-xl ${style}`}
           >
-            Pro klienty
+            Klientská zóna
           </Link>
           <Link
             href="/portal"
             onClick={closeMobile}
             className={`${linkBase} justify-start rounded-xl ${style}`}
           >
-            Otevřít portál
+            Portál poradce
           </Link>
         </nav>
       </div>

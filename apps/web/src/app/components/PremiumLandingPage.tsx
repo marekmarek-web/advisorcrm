@@ -12,8 +12,9 @@ import {
   PieChart, Play, Quote, Search, Server, Share2, Shield, ShieldCheck, 
   Smartphone, Sparkles, Star, Sun, Sunrise, Sunset, Tags, UploadCloud, 
   User, Users, Zap, Link as LinkIcon, ChevronDown, HelpCircle, Mail,
-  Globe, XCircle, CheckCircle, Headset, Timer, LineChart, BookOpen, Database, Plus, X
+  Globe, XCircle, CheckCircle, Headset, Timer, LineChart, BookOpen, Database, Plus, X, Home
 } from 'lucide-react';
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 // --- CUSTOM HOOK & KOMPONENTA PRO SCROLL ANIMACE (REVEAL) ---
 interface ScrollRevealProps {
@@ -1209,7 +1210,7 @@ export default function PremiumLandingPage() {
                   <div className="p-6 flex-1 flex flex-col items-center justify-center relative bg-slate-50">
                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm">
                           <h4 className="font-bold text-slate-800 mb-2">Chci vyřešit novou službu</h4>
-                          <select className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-sm mb-4"><option>Nová hypotéka</option></select>
+                          <div className="mb-4"><CustomDropdown value="hypo" onChange={() => {}} options={[{ id: "hypo", label: "Nová hypotéka" }]} placeholder="Služba" icon={Home} /></div>
                           <button className="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold text-sm">Odeslat požadavek poradci</button>
                        </div>
                        

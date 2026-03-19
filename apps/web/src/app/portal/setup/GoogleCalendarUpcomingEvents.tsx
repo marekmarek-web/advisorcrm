@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Loader2, AlertCircle, Calendar, MapPin, Plus, Pencil, Trash2, User } from "lucide-react";
+import { Loader2, AlertCircle, Calendar, MapPin, Plus, Pencil, Trash2, User, Briefcase } from "lucide-react";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { BaseModal } from "@/app/components/BaseModal";
 import { useToast } from "@/app/components/Toast";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
@@ -369,17 +370,13 @@ export function GoogleCalendarUpcomingEvents() {
             {syncing ? "Synchronizuji…" : "Synchronizovat"}
           </button>
           <label htmlFor="gcal-filter-contact" className="sr-only">Filtrovat podle klienta</label>
-          <select
-            id="gcal-filter-contact"
+          <CustomDropdown
             value={filterContactId}
-            onChange={(e) => setFilterContactId(e.target.value)}
-            className="min-h-[40px] px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
-          >
-            <option value="">Všichni klienti</option>
-            {contactsList.map((c) => (
-              <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
-            ))}
-          </select>
+            onChange={setFilterContactId}
+            options={[{ id: "", label: "Všichni klienti" }, ...contactsList.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
+            placeholder="Všichni klienti"
+            icon={User}
+          />
           <button
           type="button"
           onClick={() => {
@@ -506,33 +503,31 @@ export function GoogleCalendarUpcomingEvents() {
             </div>
             <div>
               <label htmlFor="gcal-event-contact" className={labelClass}>Klient / Lead</label>
-              <select
-                id="gcal-event-contact"
+              <CustomDropdown
                 value={createForm.contactId}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, contactId: e.target.value, opportunityId: "" }))}
-                className={inputClass}
-              >
-                <option value="">— Nepřiřazeno —</option>
-                {contactsList.map((c) => (
-                  <option key={c.id} value={c.id}>{c.firstName} {c.lastName}{c.email ? ` (${c.email})` : ""}</option>
-                ))}
-              </select>
+                onChange={(id) => setCreateForm((prev) => ({ ...prev, contactId: id, opportunityId: "" }))}
+                options={[{ id: "", label: "— Nepřiřazeno —" }, ...contactsList.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}${c.email ? ` (${c.email})` : ""}`.trim() }))]}
+                placeholder="— Nepřiřazeno —"
+                icon={User}
+              />
             </div>
             <div>
               <label htmlFor="gcal-event-opportunity" className={labelClass}>Obchod / příležitost</label>
-              <select
-                id="gcal-event-opportunity"
+              <CustomDropdown
                 value={createForm.opportunityId}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, opportunityId: e.target.value }))}
-                className={inputClass}
-              >
-                <option value="">— Nepřiřazeno —</option>
-                {opportunitiesList
-                  .filter((o) => !createForm.contactId || o.contactId === createForm.contactId)
-                  .map((o) => (
-                    <option key={o.id} value={o.id}>{o.title}{o.contactId ? ` · ${contactsList.find((c) => c.id === o.contactId)?.firstName ?? ""} ${contactsList.find((c) => c.id === o.contactId)?.lastName ?? ""}` : ""}</option>
-                  ))}
-              </select>
+                onChange={(id) => setCreateForm((prev) => ({ ...prev, opportunityId: id }))}
+                options={[
+                  { id: "", label: "— Nepřiřazeno —" },
+                  ...opportunitiesList
+                    .filter((o) => !createForm.contactId || o.contactId === createForm.contactId)
+                    .map((o) => ({
+                      id: o.id,
+                      label: `${o.title}${o.contactId ? ` · ${contactsList.find((c) => c.id === o.contactId)?.firstName ?? ""} ${contactsList.find((c) => c.id === o.contactId)?.lastName ?? ""}` : ""}`.trim(),
+                    })),
+                ]}
+                placeholder="— Nepřiřazeno —"
+                icon={Briefcase}
+              />
             </div>
             <div>
               <label htmlFor="gcal-event-description" className={labelClass}>Poznámka</label>

@@ -26,6 +26,7 @@ import {
   type ColumnMapping,
 } from "@/app/actions/csv-import";
 import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 type DraftAction = { type: string; label: string; payload: Record<string, unknown> };
 type ClientCandidate = { clientId: string; displayName?: string };
@@ -547,15 +548,12 @@ export function AiAssistantDrawer() {
                         <label className="text-xs font-medium text-slate-600">
                           {field === "firstName" ? "Jméno" : field === "lastName" ? "Příjmení" : field === "email" ? "E-mail" : "Telefon"}
                         </label>
-                        <select
-                          value={importContactsMapping[field]}
-                          onChange={(e) => setImportContactsMapping((m) => ({ ...m, [field]: Number(e.target.value) }))}
-                          className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
-                        >
-                          {importContactsPreview.headers.map((h, i) => (
-                            <option key={i} value={i}>{i}: {h || "(prázdný)"}</option>
-                          ))}
-                        </select>
+                        <CustomDropdown
+                          value={String(importContactsMapping[field])}
+                          onChange={(id) => setImportContactsMapping((m) => ({ ...m, [field]: Number(id) }))}
+                          options={importContactsPreview.headers.map((h, i) => ({ id: String(i), label: `${i}: ${h || "(prázdný)"}` }))}
+                          placeholder="Sloupec"
+                        />
                       </div>
                     ))}
                   </div>

@@ -68,7 +68,20 @@ export function LandingLoginPage() {
     const supabase = createClient();
 
     if (token) {
-      const { error } = await supabase.auth.signUp({ email, password });
+      // Nejprve zkusit přihlášení (existující účet); jinak registrace (nový klient)
+      let { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const isInvalidCredentials = error.message.toLowerCase().includes("invalid") || error.message.toLowerCase().includes("credentials");
+        if (isInvalidCredentials) {
+          const signUpRes = await supabase.auth.signUp({ email, password });
+          error = signUpRes.error;
+          if (error?.message?.toLowerCase().includes("already registered") || error?.message?.toLowerCase().includes("already exists")) {
+            setMessage("Tento e-mail již má účet. Zadejte své heslo a odešlete znovu (přihlášení).");
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
       if (error) {
         setIsLoading(false);
         setMessage(error.message);

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { getPartnersForTenant, getProductsForPartner } from "@/app/actions/contracts";
 import type { ProductOption } from "@/app/actions/contracts";
 import { segmentLabel } from "@/app/lib/segment-labels";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { Building, Package } from "lucide-react";
 
 export type ProductPickerValue = {
   partnerId: string;
@@ -99,19 +101,19 @@ export function ProductPicker({
       )}
       <div>
         <label className="block text-monday-text-muted text-[11px] font-medium mb-1">Partner</label>
-        <select
+        <CustomDropdown
           value={value.partnerId}
-          onChange={(e) => handlePartnerChange(e.target.value)}
-          disabled={loadingPartners}
-          className="w-full rounded-[6px] border border-monday-border px-2 py-1.5 text-monday-text bg-monday-surface focus:outline-none focus:ring-1 focus:ring-monday-blue"
-        >
-          <option value="">— vyberte</option>
-          {partnerOptions.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} {p.segment ? `(${segmentLabel(p.segment)})` : ""}
-            </option>
-          ))}
-        </select>
+          onChange={handlePartnerChange}
+          options={[
+            { id: "", label: "— vyberte" },
+            ...partnerOptions.map((p) => ({
+              id: p.id,
+              label: `${p.name}${p.segment ? ` (${segmentLabel(p.segment)})` : ""}`.trim(),
+            })),
+          ]}
+          placeholder="— vyberte"
+          icon={Building}
+        />
         {!loadingPartners && segment && partnerOptions.length === 0 && (
           <p className="text-[11px] text-slate-500 mt-1">Pro tento segment zatím nejsou partneři v katalogu. Můžete vyplnit název partnera a produktu ručně níže.</p>
         )}
@@ -119,31 +121,23 @@ export function ProductPicker({
       {value.partnerId && (
         <div>
           <label className="block text-monday-text-muted text-[11px] font-medium mb-1">Produkt</label>
-          <select
+          <CustomDropdown
             value={value.productId}
-            onChange={(e) => handleProductChange(e.target.value)}
-            disabled={loadingProducts}
-            className="w-full rounded-[6px] border border-monday-border px-2 py-1.5 text-monday-text bg-monday-surface focus:outline-none focus:ring-1 focus:ring-monday-blue"
-          >
-            <option value="">— vyberte</option>
-            {categories.length > 0
-              ? categories.map((cat) => (
-                  <optgroup key={cat || "_"} label={cat || "—"}>
-                    {byCategory[cat].map((p) => (
-                      <option key={p.id} value={p.id} title={p.isTbd ? "Doplnit údaje" : undefined}>
-                        {p.name}
-                        {p.isTbd ? " • doplnit" : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))
-              : products.map((p) => (
-                  <option key={p.id} value={p.id} title={p.isTbd ? "Doplnit údaje" : undefined}>
-                    {p.name}
-                    {p.isTbd ? " • doplnit" : ""}
-                  </option>
-                ))}
-          </select>
+            onChange={handleProductChange}
+            options={[
+              { id: "", label: "— vyberte" },
+              ...(categories.length > 0
+                ? categories.flatMap((cat) =>
+                    byCategory[cat].map((p) => ({
+                      id: p.id,
+                      label: (categories.length > 1 ? `${cat || "—"}: ` : "") + p.name + (p.isTbd ? " • doplnit" : ""),
+                    }))
+                  )
+                : products.map((p) => ({ id: p.id, label: p.name + (p.isTbd ? " • doplnit" : "") }))),
+            ]}
+            placeholder={loadingProducts ? "Načítám…" : "— vyberte"}
+            icon={Package}
+          />
           {products.some((p) => p.id === value.productId && p.isTbd) && (
             <span
               className="inline-block mt-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-800"

@@ -549,3 +549,14 @@ export async function deleteOpportunity(id: string) {
     );
   try { await logActivity("opportunity", id, "delete"); } catch {}
 }
+
+export async function getOpenOpportunitiesForSelect(): Promise<Array<{ id: string; title: string }>> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "opportunities:read")) return [];
+  const rows = await db
+    .select({ id: opportunities.id, title: opportunities.title })
+    .from(opportunities)
+    .where(and(eq(opportunities.tenantId, auth.tenantId), isNull(opportunities.closedAt)))
+    .orderBy(asc(opportunities.title));
+  return rows.map((r) => ({ id: r.id, title: r.title }));
+}

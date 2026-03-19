@@ -24,6 +24,7 @@ import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel
 import { CalendarLeftPanel } from "@/app/portal/calendar/CalendarLeftPanel";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
 import { ContactSearchInput } from "@/app/components/ContactSearchInput";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
 
 type ViewMode = "day" | "month" | "week" | "workweek";
@@ -99,11 +100,15 @@ const TASK_STEPS = ["Základ", "Kontext", "Detaily"] as const;
 
 function NewTaskModal({
   dueDate: initialDueDate,
+  contacts = [],
+  opportunities = [],
   onSave,
   onClose,
 }: {
   dueDate: string;
-  onSave: (title: string, dueDate: string) => Promise<void>;
+  contacts?: ContactRow[];
+  opportunities?: OpportunityOption[];
+  onSave: (title: string, dueDate: string, contactId?: string, opportunityId?: string) => Promise<void>;
   onClose: () => void;
 }) {
   const [step, setStep] = useState(0);
@@ -111,6 +116,8 @@ function NewTaskModal({
   const [dueDate, setDueDate] = useState(initialDueDate);
   const [reminder, setReminder] = useState(30);
   const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
+  const [contactId, setContactId] = useState("");
+  const [opportunityId, setOpportunityId] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -125,12 +132,23 @@ function NewTaskModal({
     if (!t) return;
     setSaving(true);
     try {
-      await onSave(t, dueDate);
+      await onSave(t, dueDate, contactId || undefined, opportunityId || undefined);
       onClose();
     } finally {
       setSaving(false);
     }
   };
+
+  const contactOptions = [
+    { id: "", label: "— Bez klienta —" },
+    ...contacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() || c.id })),
+  ];
+  const opportunityOptionsForContact = [
+    { id: "", label: "— žádný —" },
+    ...opportunities
+      .filter((o) => !contactId || o.contactId === contactId)
+      .map((o) => ({ id: o.id, label: o.title })),
+  ];
 
   const tLabelClass = "block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1";
   const tInputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 transition-all text-slate-800 placeholder:text-slate-400";
@@ -188,9 +206,13 @@ function NewTaskModal({
                 </div>
                 <div>
                   <label className={tLabelClass}>Připomenutí</label>
-                  <select value={reminder} onChange={(e) => setReminder(Number(e.target.value))} className={tInputClass}>
-                    {REMINDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <CustomDropdown
+                    value={String(reminder)}
+                    onChange={(id) => setReminder(Number(id))}
+                    options={REMINDER_OPTIONS.map((o) => ({ id: String(o.value), label: o.label }))}
+                    placeholder="Připomenutí"
+                    icon={Bell}
+                  />
                 </div>
               </div>
               <div>
@@ -227,14 +249,25 @@ function NewTaskModal({
                 <p className="text-sm text-blue-700 font-medium">Přiřaďte úkol ke klientovi nebo obchodu pro lepší sledování.</p>
               </div>
               <div>
-                <label className={tLabelClass}><User size={12} className="inline mr-1" />Klient</label>
-                <input type="text" placeholder="Vyhledat klienta…" className={tInputClass} />
+                <label className={tLabelClass}><User size={12} className="inline mr-1" />Propojit s klientem (Volitelné)</label>
+                <CustomDropdown
+                  value={contactId}
+                  onChange={(id) => { setContactId(id); setOpportunityId(""); }}
+                  options={contactOptions}
+                  placeholder="— Bez klienta —"
+                  icon={User}
+                />
               </div>
               <div>
-                <label className={tLabelClass}><Briefcase size={12} className="inline mr-1" />Obchod</label>
-                <select className={tInputClass}>
-                  <option value="">— žádný</option>
-                </select>
+                <label className={tLabelClass}><Briefcase size={12} className="inline mr-1" />Propojit s obchodem (Volitelné)</label>
+                <CustomDropdown
+                  value={opportunityId}
+                  onChange={setOpportunityId}
+                  options={opportunityOptionsForContact}
+                  placeholder="— Žádný obchod —"
+                  icon={Briefcase}
+                  direction="up"
+                />
               </div>
             </>
           )}
@@ -620,16 +653,18 @@ function EventFormModal({
               </div>
               <div>
                 <label className={eLabelClass}><Briefcase size={12} className="inline mr-1" />Obchod</label>
-                <select
+                <CustomDropdown
                   value={form.opportunityId}
-                  onChange={(e) => setForm((f) => ({ ...f, opportunityId: e.target.value }))}
-                  className={eInputClass}
-                >
-                  <option value="">— žádný</option>
-                  {opportunities.filter((o) => !form.contactId || o.contactId === form.contactId).map((o) => (
-                    <option key={o.id} value={o.id}>{o.title}</option>
-                  ))}
-                </select>
+                  onChange={(id) => setForm((f) => ({ ...f, opportunityId: id }))}
+                  options={[
+                    { id: "", label: "— žádný —" },
+                    ...opportunities
+                      .filter((o) => !form.contactId || o.contactId === form.contactId)
+                      .map((o) => ({ id: o.id, label: o.title })),
+                  ]}
+                  placeholder="— žádný —"
+                  icon={Briefcase}
+                />
               </div>
             </div>
 
@@ -680,14 +715,16 @@ function EventFormModal({
           {/* Footer */}
           <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <Bell size={14} className="text-slate-400" />
-              <select
-                value={form.reminderMinutes}
-                onChange={(e) => setForm((f) => ({ ...f, reminderMinutes: Number(e.target.value) }))}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all text-slate-600"
-              >
-                {REMINDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Připomenutí</label>
+              <CustomDropdown
+                value={String(form.reminderMinutes)}
+                onChange={(id) => setForm((f) => ({ ...f, reminderMinutes: Number(id) }))}
+                options={REMINDER_OPTIONS.map((o) => ({ id: String(o.value), label: o.label }))}
+                placeholder="Připomenutí"
+                icon={Bell}
+                variant="button"
+                direction="up"
+              />
             </div>
             <div className="flex-1" />
             {initial.id && onDelete && (
@@ -1274,9 +1311,11 @@ export function PortalCalendarView() {
       {newTaskModal && (
         <NewTaskModal
           dueDate={newTaskModal.dueDate}
-          onSave={async (title, dueDate) => {
+          contacts={contacts}
+          opportunities={opportunities}
+          onSave={async (title, dueDate, contactId, opportunityId) => {
             try {
-              const id = await createTask({ title, dueDate });
+              const id = await createTask({ title, dueDate, contactId, opportunityId });
               if (id != null) {
                 loadDayTasks(selectedDate);
                 setNewTaskModal(null);

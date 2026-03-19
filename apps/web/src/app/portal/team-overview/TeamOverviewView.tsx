@@ -28,6 +28,8 @@ import type { AiFeedbackVerdict, AiFeedbackActionTaken } from "@/app/actions/ai-
 import type { AiActionType } from "@/lib/ai/actions/action-suggestions";
 import { SkeletonBlock } from "@/app/components/Skeleton";
 import { TeamCalendarModal, TeamCalendarButtons } from "./TeamCalendarModal";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { ClipboardList, User, Calendar, Filter, BarChart3 } from "lucide-react";
 
 const PERIOD_OPTIONS: { value: TeamOverviewPeriod; label: string }[] = [
   { value: "week", label: "Týden" },
@@ -82,16 +84,13 @@ function TeamSummaryFeedback({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-sm text-slate-600">Co jste udělali:</label>
-        <select
+        <CustomDropdown
           value={actionTaken}
-          onChange={(e) => setActionTaken(e.target.value as AiFeedbackActionTaken)}
-          disabled={disabled}
-          className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
-        >
-          {FEEDBACK_ACTION_TAKEN.map((a) => (
-            <option key={a.value} value={a.value}>{a.label}</option>
-          ))}
-        </select>
+          onChange={(id) => setActionTaken(id as AiFeedbackActionTaken)}
+          options={FEEDBACK_ACTION_TAKEN.map((a) => ({ id: a.value, label: a.label }))}
+          placeholder="Akce"
+          icon={ClipboardList}
+        />
         <button
           type="button"
           onClick={() => onSubmit(verdict, actionTaken)}
@@ -138,16 +137,13 @@ function TeamSummaryFollowUp({
       <p className="text-sm font-medium text-slate-700 mb-2">Vytvořit follow-up z shrnutí</p>
       {error && <p className="mb-2 text-sm text-rose-600" role="alert">{error}</p>}
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-        <select
+        <CustomDropdown
           value={actionType}
-          onChange={(e) => setActionType(e.target.value as AiActionType)}
-          disabled={saving}
-          className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
-        >
-          {TEAM_ACTION_TYPES.map((a) => (
-            <option key={a.value} value={a.value}>{a.label}</option>
-          ))}
-        </select>
+          onChange={(id) => setActionType(id as AiActionType)}
+          options={TEAM_ACTION_TYPES.map((a) => ({ id: a.value, label: a.label }))}
+          placeholder="Typ"
+          icon={ClipboardList}
+        />
         <input
           type="text"
           value={title}
@@ -156,18 +152,13 @@ function TeamSummaryFollowUp({
           disabled={saving}
           className="min-h-[44px] flex-1 min-w-[160px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 disabled:opacity-60"
         />
-        <select
+        <CustomDropdown
           value={memberId}
-          onChange={(e) => setMemberId(e.target.value)}
-          disabled={saving}
-          className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
-          title="Přiřadit členovi"
-        >
-          <option value="">— Přiřadit mně —</option>
-          {members.map((m) => (
-            <option key={m.userId} value={m.userId}>{m.displayName || m.email || m.userId}</option>
-          ))}
-        </select>
+          onChange={setMemberId}
+          options={[{ id: "", label: "— Přiřadit mně —" }, ...members.map((m) => ({ id: m.userId, label: m.displayName || m.email || m.userId }))]}
+          placeholder="— Přiřadit mně —"
+          icon={User}
+        />
         <input
           type="date"
           value={dueAt}
@@ -441,24 +432,20 @@ export function TeamOverviewView({
               onOpenEvent={() => setTeamCalendarModal("event")}
               onOpenTask={() => setTeamCalendarModal("task")}
             />
-            <select
+            <CustomDropdown
               value={scope}
-              onChange={(e) => setScope(e.target.value as TeamOverviewScope)}
-              className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {scopeOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-            <select
+              onChange={(id) => setScope(id as TeamOverviewScope)}
+              options={scopeOptions.map((o) => ({ id: o.value, label: o.label }))}
+              placeholder="Rozsah"
+              icon={Users}
+            />
+            <CustomDropdown
               value={period}
-              onChange={(e) => setPeriod(e.target.value as TeamOverviewPeriod)}
-              className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {PERIOD_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+              onChange={(id) => setPeriod(id as TeamOverviewPeriod)}
+              options={PERIOD_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
+              placeholder="Období"
+              icon={Calendar}
+            />
             <button
               type="button"
               onClick={refresh}
@@ -471,25 +458,29 @@ export function TeamOverviewView({
           </div>
         </div>
         <div className="mb-4 flex flex-wrap gap-2">
-          <select
+          <CustomDropdown
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as "all" | "Advisor" | "Manager" | "Director")}
-            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-          >
-            <option value="all">Všechny role</option>
-            <option value="Director">Ředitelé</option>
-            <option value="Manager">Manažeři</option>
-            <option value="Advisor">Poradci</option>
-          </select>
-          <select
+            onChange={(id) => setRoleFilter(id as "all" | "Advisor" | "Manager" | "Director")}
+            options={[
+              { id: "all", label: "Všechny role" },
+              { id: "Director", label: "Ředitelé" },
+              { id: "Manager", label: "Manažeři" },
+              { id: "Advisor", label: "Poradci" },
+            ]}
+            placeholder="Role"
+            icon={Filter}
+          />
+          <CustomDropdown
             value={performanceFilter}
-            onChange={(e) => setPerformanceFilter(e.target.value as "all" | "top" | "bottom")}
-            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-          >
-            <option value="all">Všichni výkon</option>
-            <option value="top">Top výkon</option>
-            <option value="bottom">Bottom výkon</option>
-          </select>
+            onChange={(id) => setPerformanceFilter(id as "all" | "top" | "bottom")}
+            options={[
+              { id: "all", label: "Všichni výkon" },
+              { id: "top", label: "Top výkon" },
+              { id: "bottom", label: "Bottom výkon" },
+            ]}
+            placeholder="Výkon"
+            icon={BarChart3}
+          />
           <button
             type="button"
             onClick={() => setRiskOnly((v) => !v)}

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { createMeetingNote, updateMeetingNote } from "@/app/actions/meeting-notes";
 import type { TemplateRow, MeetingNoteDetail } from "@/app/actions/meeting-notes";
 import type { ContactRow } from "@/app/actions/contacts";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { User, FileText, FolderOpen } from "lucide-react";
 
 export function MeetingNotesForm({
   templates,
@@ -116,31 +118,24 @@ export function MeetingNotesForm({
       </h3>
       <div>
         <label className="block text-sm font-semibold text-slate-600 mb-1">Kontakt (volitelný)</label>
-        <select
+        <CustomDropdown
           value={contactId}
-          onChange={(e) => setContactId(e.target.value)}
-          disabled={!!editingNote}
-          className="w-full rounded-lg border border-monday-border px-3 py-2 disabled:opacity-60"
-        >
-          <option value="">— bez klienta (obecný zápisek) —</option>
-          {contacts.map((c) => (
-            <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
-          ))}
-        </select>
+          onChange={setContactId}
+          options={[{ id: "", label: "— bez klienta (obecný zápisek) —" }, ...contacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
+          placeholder="— bez klienta —"
+          icon={User}
+        />
       </div>
       {!editingNote && (
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Šablona</label>
-          <select
+          <CustomDropdown
             value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
-            className="w-full rounded-lg border border-monday-border px-3 py-2"
-          >
-            <option value="">— žádná —</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name} ({t.domain})</option>
-            ))}
-          </select>
+            onChange={setTemplateId}
+            options={[{ id: "", label: "— žádná —" }, ...templates.map((t) => ({ id: t.id, label: `${t.name} (${t.domain})` }))]}
+            placeholder="— žádná —"
+            icon={FileText}
+          />
         </div>
       )}
       <div>
@@ -155,15 +150,17 @@ export function MeetingNotesForm({
       </div>
       <div>
         <label className="block text-sm font-semibold text-slate-600 mb-1">Doména</label>
-        <select
+        <CustomDropdown
           value={domain}
-          onChange={(e) => setDomain(e.target.value)}
-          className="w-full rounded-lg border border-monday-border px-3 py-2"
-        >
-          <option value="hypo">hypo</option>
-          <option value="invest">invest</option>
-          <option value="pojist">pojist</option>
-        </select>
+          onChange={setDomain}
+          options={[
+            { id: "hypo", label: "hypo" },
+            { id: "invest", label: "invest" },
+            { id: "pojist", label: "pojist" },
+          ]}
+          placeholder="Doména"
+          icon={FolderOpen}
+        />
       </div>
       <div>
         <label className="block text-sm font-semibold text-slate-600 mb-1">Čas</label>

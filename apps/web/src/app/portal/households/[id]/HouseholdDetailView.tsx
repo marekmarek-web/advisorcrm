@@ -16,6 +16,8 @@ import { createContact } from "@/app/actions/contacts";
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 import { ConfirmDeleteModal } from "@/app/components/ConfirmDeleteModal";
 import { HouseholdIconDisplay, HouseholdIconPicker } from "./HouseholdIconPicker";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { User, UserCog } from "lucide-react";
 
 type ContactOption = { id: string; firstName: string; lastName: string };
 
@@ -312,17 +314,13 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {addMode === "select" ? (
-                        <select
+                        <CustomDropdown
                           value={memberContactId}
-                          onChange={(e) => setMemberContactId(e.target.value)}
-                          className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm flex-1 min-w-[160px] min-h-[44px]"
-                          required
-                        >
-                          <option value="">Vyberte kontakt…</option>
-                          {availableContacts.map((c) => (
-                            <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
-                          ))}
-                        </select>
+                          onChange={setMemberContactId}
+                          options={[{ id: "", label: "Vyberte kontakt…" }, ...availableContacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
+                          placeholder="Vyberte kontakt…"
+                          icon={User}
+                        />
                       ) : (
                         <>
                           <input
@@ -343,15 +341,13 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                           />
                         </>
                       )}
-                      <select
+                      <CustomDropdown
                         value={memberRole}
-                        onChange={(e) => setMemberRole(e.target.value)}
-                        className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm w-auto min-h-[44px]"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
-                      </select>
+                        onChange={setMemberRole}
+                        options={ROLES.map((r) => ({ id: r.value, label: r.label }))}
+                        placeholder="Role"
+                        icon={UserCog}
+                      />
                       <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 text-white px-4 py-2.5 text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 min-h-[44px]">
                         {pending ? "…" : "Přidat"}
                       </button>

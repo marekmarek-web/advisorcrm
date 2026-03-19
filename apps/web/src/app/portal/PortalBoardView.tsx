@@ -26,7 +26,9 @@ import {
 } from "@/app/actions/board";
 import { getContactsList } from "@/app/actions/contacts";
 import { BaseModal } from "@/app/components/BaseModal";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { PRODUCT_COLUMNS } from "@/app/board/seed-data";
+import { Filter, ArrowUpDown } from "lucide-react";
 
 const GROUP_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#a25ddc", "#ff642e", "#ffcb00", "#037f4c", "#333333"];
 
@@ -660,29 +662,29 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
                     <div className="absolute right-0 top-full mt-1 py-2 min-w-[200px] bg-white border border-slate-200 rounded-[var(--wp-radius-sm)] shadow-lg z-40">
                       <div className="px-3 py-2 border-b border-slate-100">
                         <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1.5">STAV</p>
-                        <select
+                        <CustomDropdown
                           value={filterStatus ?? ""}
-                          onChange={(e) => { setFilterStatus(e.target.value || null); triggerTableLoading(); }}
-                          className="w-full min-h-[44px] px-2 text-sm border border-slate-200 rounded-[var(--wp-radius-sm)]"
-                        >
-                          <option value="">Všechny</option>
-                          {["hotovo", "rozděláno", "k-podpisu", "zatím-ne", "domluvit"].map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
+                          onChange={(id) => { setFilterStatus(id || null); triggerTableLoading(); }}
+                          options={[
+                            { id: "", label: "Všechny" },
+                            ...["hotovo", "rozděláno", "k-podpisu", "zatím-ne", "domluvit"].map((s) => ({ id: s, label: s })),
+                          ]}
+                          placeholder="Všechny"
+                          icon={Filter}
+                        />
                       </div>
                       <div className="px-3 py-2">
                         <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1.5">Seřadit</p>
-                        <select
+                        <CustomDropdown
                           value={sortColumnId ?? "item"}
-                          onChange={(e) => { setSortColumnId(e.target.value || null); triggerTableLoading(); }}
-                          className="w-full min-h-[44px] px-2 text-sm border border-slate-200 rounded-[var(--wp-radius-sm)] mb-2"
-                        >
-                          <option value="item">Jméno klienta</option>
-                          {visibleColumns.filter((c) => c.id !== "item").map((c) => (
-                            <option key={c.id} value={c.id}>{c.title}</option>
-                          ))}
-                        </select>
+                          onChange={(id) => { setSortColumnId(id || null); triggerTableLoading(); }}
+                          options={[
+                            { id: "item", label: "Jméno klienta" },
+                            ...visibleColumns.filter((c) => c.id !== "item").map((c) => ({ id: c.id, label: c.title })),
+                          ]}
+                          placeholder="Jméno klienta"
+                          icon={ArrowUpDown}
+                        />
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -833,16 +835,12 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Z šablony</label>
-                <select
+                <CustomDropdown
                   value={newBoardTemplateId}
-                  onChange={(e) => setNewBoardTemplateId(e.target.value)}
-                  className="w-full border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-monday-blue/20 rounded-[var(--wp-radius-sm)] min-h-[44px]"
-                >
-                  <option value="">Prázdný</option>
-                  {viewsList.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
+                  onChange={setNewBoardTemplateId}
+                  options={[{ id: "", label: "Prázdný" }, ...viewsList.map((v) => ({ id: v.id, label: v.name }))]}
+                  placeholder="Prázdný"
+                />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setNewBoardModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-[var(--wp-radius-sm)]">

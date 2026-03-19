@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Phone, Calendar, MapPin, Building, User } from "lucide-react";
+import { Mail, Phone, Calendar, MapPin, Building, User, Flag } from "lucide-react";
 import { createContact, getContactsList } from "@/app/actions/contacts";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import {
   WizardShell,
   WizardHeader,
@@ -324,31 +325,29 @@ export function NewClientWizard({
                 </div>
                 <div>
                   <label className={wizardLabelClass}>Fáze</label>
-                  <select
+                  <CustomDropdown
                     value={form.lifecycleStage}
                     onChange={set("lifecycleStage")}
-                    className={wizardInputClass}
-                  >
-                    {LIFECYCLE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={LIFECYCLE_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
+                    placeholder="—"
+                    icon={User}
+                  />
                 </div>
                 <div>
                   <label className={wizardLabelClass}>Priorita</label>
-                  <select
+                  <CustomDropdown
                     value={form.priority}
                     onChange={set("priority")}
-                    className={wizardInputClass}
-                  >
-                    <option value="">—</option>
-                    <option value="low">Nízká</option>
-                    <option value="normal">Běžná</option>
-                    <option value="high">Vysoká</option>
-                    <option value="urgent">Urgentní</option>
-                  </select>
+                    options={[
+                      { id: "", label: "—" },
+                      { id: "low", label: "Nízká" },
+                      { id: "normal", label: "Běžná" },
+                      { id: "high", label: "Vysoká" },
+                      { id: "urgent", label: "Urgentní" },
+                    ]}
+                    placeholder="—"
+                    icon={Flag}
+                  />
                 </div>
                 <div>
                   <label className={wizardLabelClass}>Štítky (oddělené čárkou)</label>
@@ -361,18 +360,13 @@ export function NewClientWizard({
                 </div>
                 <div>
                   <label className={wizardLabelClass}>Doporučen od</label>
-                  <select
+                  <CustomDropdown
                     value={form.referralContactId}
                     onChange={set("referralContactId")}
-                    className={wizardInputClass}
-                  >
-                    <option value="">— žádný</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={[{ id: "", label: "— žádný" }, ...contacts.map((c) => ({ id: c.id, label: c.label }))]}
+                    placeholder="— žádný"
+                    icon={User}
+                  />
                 </div>
                 <WizardTipBlock>
                   Tip: Po uložení klienta můžete pomocí AI zkontrolovat jeho AML

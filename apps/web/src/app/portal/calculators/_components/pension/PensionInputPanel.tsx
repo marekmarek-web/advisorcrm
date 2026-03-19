@@ -4,6 +4,7 @@ import { LIMITS, DEFAULT_STATE, SCENARIO_OPTIONS } from "@/lib/calculators/pensi
 import { formatCurrency, parseCurrency } from "@/lib/calculators/pension/formatters";
 import type { PensionState } from "@/lib/calculators/pension/pension.types";
 import { PiggyBank, Info } from "lucide-react";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -193,19 +194,15 @@ export function PensionInputPanel({
           <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">
             Scénář odhadu státního důchodu
           </label>
-          <select
+          <CustomDropdown
             value={state.scenario}
-            onChange={(e) =>
-              update({ scenario: e.target.value as PensionState["scenario"] })
+            onChange={(id) =>
+              update({ scenario: id as PensionState["scenario"] })
             }
-            className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[48px]"
-          >
-            {SCENARIO_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={SCENARIO_OPTIONS.map((opt) => ({ id: opt.value, label: opt.label }))}
+            placeholder="Scénář"
+            icon={PiggyBank}
+          />
         </div>
 
         <div>

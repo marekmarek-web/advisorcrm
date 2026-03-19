@@ -11,6 +11,7 @@ import { ProductPicker } from "@/app/components/weplan/ProductPicker";
 import type { ProductPickerValue } from "@/app/components/weplan/ProductPicker";
 import { segmentLabel } from "@/app/lib/segment-labels";
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import {
   WizardShell,
   WizardHeader,
@@ -184,10 +185,9 @@ export function NewContractWizard({
               <div className="space-y-6">
                 <div>
                   <label className={wizardLabelClass}>Segment</label>
-                  <select
+                  <CustomDropdown
                     value={form.segment}
-                    onChange={(e) => {
-                      const seg = e.target.value;
+                    onChange={(seg) => {
                       setForm((f) => ({
                         ...f,
                         segment: seg,
@@ -198,14 +198,10 @@ export function NewContractWizard({
                       }));
                       setPickerValue({ partnerId: "", productId: "" });
                     }}
-                    className={wizardInputClass}
-                  >
-                    {segments.map((s) => (
-                      <option key={s} value={s}>
-                        {segmentLabel(s)}
-                      </option>
-                    ))}
-                  </select>
+                    options={segments.map((s) => ({ id: s, label: segmentLabel(s) }))}
+                    placeholder="Segment"
+                    icon={FileText}
+                  />
                 </div>
                 <div>
                   <label className={wizardLabelClass}>Partner / Produkt</label>

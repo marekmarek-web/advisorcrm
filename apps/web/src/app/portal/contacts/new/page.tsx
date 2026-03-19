@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createContact, getContactsList } from "@/app/actions/contacts";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { User, Flag } from "lucide-react";
 
 export default function NewContactPage() {
   const router = useRouter();
@@ -12,6 +14,9 @@ export default function NewContactPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [contactOptions, setContactOptions] = useState<{ id: string; label: string }[]>([]);
+  const [lifecycleStage, setLifecycleStage] = useState("");
+  const [priority, setPriority] = useState("");
+  const [referralContactId, setReferralContactId] = useState(referralContactIdFromUrl);
 
   useEffect(() => {
     getContactsList()
@@ -34,15 +39,15 @@ export default function NewContactPage() {
         phone: (fd.get("phone") as string) || undefined,
         title: (fd.get("title") as string) || undefined,
         referralSource: (fd.get("referralSource") as string) || undefined,
-        referralContactId: (fd.get("referralContactId") as string) || undefined,
         birthDate: (fd.get("birthDate") as string) || undefined,
         personalId: (fd.get("personalId") as string) || undefined,
         street: (fd.get("street") as string) || undefined,
         city: (fd.get("city") as string) || undefined,
         zip: (fd.get("zip") as string) || undefined,
         tags: parsedTags.length ? parsedTags : undefined,
-        lifecycleStage: (fd.get("lifecycleStage") as string) || undefined,
-        priority: (fd.get("priority") as string) || undefined,
+        lifecycleStage: lifecycleStage || undefined,
+        priority: priority || undefined,
+        referralContactId: referralContactId || undefined,
       });
       if (id) router.push(`/portal/contacts/${id}`);
       else setError("Vytvoření se nepovedlo.");
@@ -111,32 +116,45 @@ export default function NewContactPage() {
         </div>
         <div>
           <label className="block text-[13px] font-semibold text-monday-text-muted mb-1">Fáze životního cyklu</label>
-          <select name="lifecycleStage" className={inputCls}>
-            <option value="">—</option>
-            <option value="lead">Lead</option>
-            <option value="prospect">Prospect</option>
-            <option value="client">Klient</option>
-            <option value="former_client">Bývalý klient</option>
-          </select>
+          <CustomDropdown
+            value={lifecycleStage}
+            onChange={setLifecycleStage}
+            options={[
+              { id: "", label: "—" },
+              { id: "lead", label: "Lead" },
+              { id: "prospect", label: "Prospect" },
+              { id: "client", label: "Klient" },
+              { id: "former_client", label: "Bývalý klient" },
+            ]}
+            placeholder="—"
+            icon={User}
+          />
         </div>
         <div>
           <label className="block text-[13px] font-semibold text-monday-text-muted mb-1">Priorita</label>
-          <select name="priority" className={inputCls}>
-            <option value="">—</option>
-            <option value="low">Nízká</option>
-            <option value="normal">Běžná</option>
-            <option value="high">Vysoká</option>
-            <option value="urgent">Urgentní</option>
-          </select>
+          <CustomDropdown
+            value={priority}
+            onChange={setPriority}
+            options={[
+              { id: "", label: "—" },
+              { id: "low", label: "Nízká" },
+              { id: "normal", label: "Běžná" },
+              { id: "high", label: "Vysoká" },
+              { id: "urgent", label: "Urgentní" },
+            ]}
+            placeholder="—"
+            icon={Flag}
+          />
         </div>
         <div>
           <label className="block text-xs font-semibold text-monday-text-muted mb-1">Doporučen od (kontakt)</label>
-          <select name="referralContactId" className={inputCls} defaultValue={referralContactIdFromUrl}>
-            <option value="">— žádný</option>
-            {contactOptions.map((o) => (
-              <option key={o.id} value={o.id}>{o.label}</option>
-            ))}
-          </select>
+          <CustomDropdown
+            value={referralContactId}
+            onChange={setReferralContactId}
+            options={[{ id: "", label: "— žádný" }, ...contactOptions]}
+            placeholder="— žádný"
+            icon={User}
+          />
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <div className="flex gap-3">

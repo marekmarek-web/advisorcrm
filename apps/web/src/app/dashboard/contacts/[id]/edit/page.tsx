@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { getContact, getContactsList, updateContact } from "@/app/actions/contacts";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { Flag, RefreshCw, User } from "lucide-react";
 
 export default function EditContactPage() {
   const router = useRouter();
@@ -161,32 +163,34 @@ export default function EditContactPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Priorita</label>
-          <select
+          <CustomDropdown
             value={form.priority}
-            onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-            name="priority"
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
-          >
-            <option value="">—</option>
-            <option value="low">Nízká</option>
-            <option value="normal">Běžná</option>
-            <option value="high">Vysoká</option>
-            <option value="urgent">Urgentní</option>
-          </select>
+            onChange={(id) => setForm((f) => ({ ...f, priority: id }))}
+            options={[
+              { id: "", label: "—" },
+              { id: "low", label: "Nízká" },
+              { id: "normal", label: "Běžná" },
+              { id: "high", label: "Vysoká" },
+              { id: "urgent", label: "Urgentní" },
+            ]}
+            placeholder="—"
+            icon={Flag}
+          />
         </div>
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Servisní cyklus (měsíce)</label>
-          <select
+          <CustomDropdown
             value={form.serviceCycleMonths}
-            onChange={(e) => setForm((f) => ({ ...f, serviceCycleMonths: e.target.value }))}
-            name="serviceCycleMonths"
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
-          >
-            <option value="">—</option>
-            <option value="3">3</option>
-            <option value="6">6</option>
-            <option value="12">12</option>
-          </select>
+            onChange={(id) => setForm((f) => ({ ...f, serviceCycleMonths: id }))}
+            options={[
+              { id: "", label: "—" },
+              { id: "3", label: "3" },
+              { id: "6", label: "6" },
+              { id: "12", label: "12" },
+            ]}
+            placeholder="—"
+            icon={RefreshCw}
+          />
         </div>
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Poslední servis (datum)</label>
@@ -208,19 +212,13 @@ export default function EditContactPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučen od (kontakt)</label>
-          <select
+          <CustomDropdown
             value={form.referralContactId}
-            onChange={(e) => setForm((f) => ({ ...f, referralContactId: e.target.value }))}
-            name="referralContactId"
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
-          >
-            <option value="">— žádný</option>
-            {contactOptions.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            onChange={(id) => setForm((f) => ({ ...f, referralContactId: id }))}
+            options={[{ id: "", label: "— žádný" }, ...contactOptions]}
+            placeholder="— žádný"
+            icon={User}
+          />
         </div>
         {submitErr && <p className="text-sm text-red-600">{submitErr}</p>}
         <div className="flex gap-3">

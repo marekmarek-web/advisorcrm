@@ -85,7 +85,7 @@ export function DashboardAiAssistant() {
 
   if (loading && !summary) {
     return (
-      <div className="bg-gradient-to-br from-[#1a1c2e] to-indigo-950 p-6 rounded-[24px] text-white min-h-[240px] flex items-center justify-center">
+      <div className="bg-gradient-to-br from-[#0a0f29] to-indigo-950 p-8 rounded-[32px] text-white min-h-[280px] flex items-center justify-center border border-slate-800">
         <div className="animate-pulse flex flex-col items-center gap-2">
           <Sparkles size={28} className="text-indigo-300" />
           <span className="text-sm text-indigo-200">Načítám…</span>
@@ -96,12 +96,12 @@ export function DashboardAiAssistant() {
 
   if (error) {
     return (
-      <div className="bg-white rounded-[24px] border border-slate-200 p-6">
-        <p className="text-sm text-rose-600 mb-2">{error}</p>
+      <div className="bg-gradient-to-br from-[#0a0f29] to-indigo-950 rounded-[32px] border border-slate-800 p-8 text-white min-h-[280px] flex flex-col justify-center">
+        <p className="text-sm text-rose-300 mb-2">{error}</p>
         <button
           type="button"
           onClick={loadSummary}
-          className="text-sm font-medium text-indigo-600 hover:underline"
+          className="text-sm font-medium text-indigo-300 hover:text-indigo-100 hover:underline"
         >
           Zkusit znovu
         </button>
@@ -113,24 +113,24 @@ export function DashboardAiAssistant() {
   const suggestedActions = summary?.suggestedActions ?? [];
 
   return (
-    <div className="bg-gradient-to-br from-[#1a1c2e] to-indigo-950 p-6 rounded-[24px] text-white shadow-xl shadow-indigo-900/10 relative overflow-hidden min-h-[280px] flex flex-col">
-      <Sparkles className="absolute -top-6 -right-6 w-32 h-32 text-indigo-500/20" aria-hidden />
+    <div className="bg-gradient-to-br from-[#0a0f29] to-indigo-950 rounded-[32px] p-8 text-white shadow-xl shadow-indigo-900/10 relative overflow-hidden flex flex-col justify-center min-h-[280px] group cursor-pointer border border-slate-800 hover:border-indigo-500/50 transition-colors">
+      <Sparkles className="absolute -top-6 -right-6 w-40 h-40 text-indigo-500/20 group-hover:rotate-12 transition-transform duration-700 pointer-events-none" aria-hidden />
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
+
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-2 bg-indigo-500/30 rounded-lg text-indigo-300">
-            <Sparkles size={16} />
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-indigo-300 backdrop-blur-sm border border-white/10">
+            <Sparkles size={20} />
           </div>
-          <h3 className="text-xs font-black uppercase tracking-widest text-indigo-200">
-            AI asistent
-          </h3>
+          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-200">AI Asistent</h2>
         </div>
 
-        <p className="text-sm font-medium leading-relaxed text-indigo-50 mb-4 line-clamp-3">
+        <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 leading-tight max-w-lg" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {summary?.assistantSummaryText ?? "Načítám…"}
-        </p>
+        </h3>
 
         {topUrgent.length > 0 && (
-          <div className="mb-4 space-y-2">
+          <div className="mb-5 space-y-2">
             {topUrgent.map((u: UrgentItem) => (
               <Link
                 key={`${u.type}-${u.entityId}`}
@@ -143,7 +143,7 @@ export function DashboardAiAssistant() {
                         ? `/portal/contacts/${u.entityId}`
                         : "#"
                 }
-                className="flex items-center justify-between w-full px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-left text-sm border border-white/10"
+                className="flex items-center justify-between w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-left text-sm border border-white/10 transition-colors"
               >
                 <span className="truncate flex-1">{u.title}</span>
                 <ArrowRight size={14} className="shrink-0 ml-2 text-indigo-300" />
@@ -153,13 +153,13 @@ export function DashboardAiAssistant() {
         )}
 
         {suggestedActions.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-5">
             {suggestedActions.slice(0, 4).map((a, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => handleAction(a)}
-                className="text-xs px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-indigo-100"
+                className="text-xs px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-indigo-100 transition-colors"
               >
                 {a.label.length > 28 ? a.label.slice(0, 26) + "…" : a.label}
               </button>
@@ -167,14 +167,13 @@ export function DashboardAiAssistant() {
           </div>
         )}
 
-        <div className="mt-auto pt-3 border-t border-white/10">
+        <div className="mt-auto">
           <button
             type="button"
             onClick={() => setAiDrawerOpen(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm transition-colors min-h-[44px]"
+            className="flex items-center justify-between w-full sm:w-auto sm:inline-flex px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 transition-colors rounded-xl text-sm font-bold tracking-wide border border-indigo-500 shadow-lg shadow-indigo-500/30 gap-3 min-h-[44px]"
           >
-            <Sparkles size={18} />
-            Otevřít asistenta
+            <Sparkles size={16} /> Otevřít asistenta <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </div>

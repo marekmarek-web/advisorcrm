@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Column } from "./types";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { Filter } from "lucide-react";
 
 interface ToolbarProps {
   searchQuery: string;
@@ -106,12 +108,13 @@ export function Toolbar(props: ToolbarProps) {
             <div className="fixed inset-0 z-30" onClick={() => onFilterOpenChange(false)} />
             <div className="absolute left-0 top-full mt-1 p-3 min-w-[200px] bg-monday-surface border border-monday-border rounded-[var(--monday-radius)] shadow-[var(--monday-shadow)] z-40">
               <p className="text-[11px] font-semibold text-monday-text-muted uppercase mb-2">STAV</p>
-              <select value={filterStatus ?? ""} onChange={(e) => onFilterStatusChange(e.target.value || null)} className="w-full h-7 px-2 text-[13px] border border-monday-border rounded-[6px] mb-2">
-                <option value="">Všechny</option>
-                {STATUS_FILTER_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              <CustomDropdown
+                value={filterStatus ?? ""}
+                onChange={(id) => onFilterStatusChange(id || null)}
+                options={[{ id: "", label: "Všechny" }, ...STATUS_FILTER_OPTIONS.map((s) => ({ id: s, label: s }))]}
+                placeholder="Všechny"
+                icon={Filter}
+              />
             </div>
           </>
         )}

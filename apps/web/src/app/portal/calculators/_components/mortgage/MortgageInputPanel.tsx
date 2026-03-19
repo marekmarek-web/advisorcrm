@@ -16,6 +16,8 @@ import {
 } from "@/lib/calculators/mortgage/mortgage.engine";
 import type { MortgageState } from "@/lib/calculators/mortgage/mortgage.types";
 import type { MortgageSubType, LoanSubType } from "@/lib/calculators/mortgage/mortgage.types";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { Calendar } from "lucide-react";
 
 export interface MortgageInputPanelProps {
   state: MortgageState;
@@ -301,17 +303,13 @@ export function MortgageInputPanel({
           <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">
             Fixace úrokové sazby
           </label>
-          <select
-            value={state.fix}
-            onChange={(e) => handleFixChange(parseInt(e.target.value, 10))}
-            className="w-full border border-slate-300 rounded-xl px-4 py-3 font-medium text-slate-900 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none bg-slate-50 focus:bg-white min-h-[48px]"
-          >
-            {FIX_OPTIONS.map((years) => (
-              <option key={years} value={years}>
-                {years} let
-              </option>
-            ))}
-          </select>
+          <CustomDropdown
+            value={String(state.fix)}
+            onChange={(id) => handleFixChange(parseInt(id, 10))}
+            options={FIX_OPTIONS.map((years) => ({ id: String(years), label: `${years} let` }))}
+            placeholder="Fixace"
+            icon={Calendar}
+          />
         </div>
       )}
 

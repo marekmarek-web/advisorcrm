@@ -22,16 +22,19 @@ import {
   AlertCircle,
   Edit2,
   Trash2,
-  ChevronDown,
-  ChevronRight,
   GripVertical,
   Phone,
   Mail,
   MoreHorizontal,
   Search,
   Sparkles,
-  SlidersHorizontal,
+  Filter,
+  User,
+  Clock,
+  Briefcase,
+  Layers,
 } from "lucide-react";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { useToast } from "@/app/components/Toast";
 
 type ContactOption = { id: string; firstName: string; lastName: string };
@@ -44,13 +47,14 @@ const CASE_TYPES = [
   { value: "jiné", label: "Jiné" },
 ];
 
+// v2-style: color, textColor, borderColor, solidBg (for number badge), accent (card border)
 const COLUMN_THEMES = [
-  { color: "bg-emerald-50", textColor: "text-emerald-700", borderColor: "border-emerald-200", accent: "border-b-emerald-400" },
-  { color: "bg-blue-50", textColor: "text-blue-700", borderColor: "border-blue-200", accent: "border-b-blue-400" },
-  { color: "bg-indigo-50", textColor: "text-indigo-700", borderColor: "border-indigo-200", accent: "border-b-indigo-400" },
-  { color: "bg-amber-50", textColor: "text-amber-700", borderColor: "border-amber-200", accent: "border-b-amber-400" },
-  { color: "bg-rose-50", textColor: "text-rose-700", borderColor: "border-rose-200", accent: "border-b-rose-400" },
-  { color: "bg-purple-50", textColor: "text-purple-700", borderColor: "border-purple-200", accent: "border-b-purple-400" },
+  { color: "bg-emerald-50/80", textColor: "text-emerald-700", borderColor: "border-emerald-100", solidBg: "bg-emerald-500", accent: "border-b-emerald-400" },
+  { color: "bg-blue-50/80", textColor: "text-blue-700", borderColor: "border-blue-100", solidBg: "bg-blue-500", accent: "border-b-blue-400" },
+  { color: "bg-indigo-50/80", textColor: "text-indigo-700", borderColor: "border-indigo-100", solidBg: "bg-indigo-500", accent: "border-b-indigo-400" },
+  { color: "bg-amber-50/80", textColor: "text-amber-700", borderColor: "border-amber-100", solidBg: "bg-amber-500", accent: "border-b-amber-400" },
+  { color: "bg-rose-50/80", textColor: "text-rose-700", borderColor: "border-rose-100", solidBg: "bg-rose-500", accent: "border-b-rose-400" },
+  { color: "bg-purple-50/80", textColor: "text-purple-700", borderColor: "border-purple-100", solidBg: "bg-purple-500", accent: "border-b-purple-400" },
 ];
 
 const STAGE_SUBTITLES: Record<number, string> = {
@@ -64,11 +68,11 @@ const STAGE_SUBTITLES: Record<number, string> = {
 
 function getProductDesign(type: string) {
   const t = type?.toLowerCase() || "";
-  if (t.includes("hypo")) return { icon: <Home size={14} />, color: "text-blue-600 bg-blue-50", label: "Hypotéka" };
-  if (t.includes("invest")) return { icon: <TrendingUp size={14} />, color: "text-emerald-600 bg-emerald-50", label: "Investice" };
-  if (t.includes("pojis")) return { icon: <Shield size={14} />, color: "text-rose-600 bg-rose-50", label: "Pojištění" };
-  if (t.includes("úvěr")) return { icon: <PiggyBank size={14} />, color: "text-purple-600 bg-purple-50", label: "Úvěr" };
-  return { icon: <CheckCircle2 size={14} />, color: "text-slate-600 bg-slate-100", label: type || "Jiné" };
+  if (t.includes("hypo")) return { icon: <Home size={12} />, color: "text-blue-700 bg-blue-50 border-blue-200", label: "Hypotéka" };
+  if (t.includes("invest")) return { icon: <TrendingUp size={12} />, color: "text-emerald-700 bg-emerald-50 border-emerald-200", label: "Investice" };
+  if (t.includes("pojis")) return { icon: <Shield size={12} />, color: "text-rose-700 bg-rose-50 border-rose-200", label: "Pojištění" };
+  if (t.includes("úvěr")) return { icon: <PiggyBank size={12} />, color: "text-purple-700 bg-purple-50 border-purple-200", label: "Úvěr" };
+  return { icon: <CheckCircle2 size={12} />, color: "text-slate-600 bg-slate-50 border-slate-200", label: type || "Jiné" };
 }
 
 function getUrgencyProps(dateString?: string | null) {
@@ -85,6 +89,28 @@ function getUrgencyProps(dateString?: string | null) {
 function formatDate(dateString?: string | null) {
   if (!dateString) return "Neurčeno";
   return new Date(dateString).toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function formatDateShort(dateString?: string | null) {
+  if (!dateString) return "Neurčeno";
+  const date = new Date(dateString);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const diff = Math.round((d.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  if (diff === 0) return "Dnes";
+  if (diff === 1) return "Zítra";
+  if (diff === -1) return "Včera";
+  return formatDate(dateString);
+}
+
+function formatValue(val: string | number | null | undefined, valueType?: string) {
+  if (val == null || val === "") return "—";
+  const n = Number(val);
+  if (Number.isNaN(n)) return "—";
+  const formatted = n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : `${(n / 1_000).toFixed(0)}k`;
+  return valueType === "měs" ? `${formatted} / měs` : `${formatted} Kč`;
 }
 
 function Modal({
@@ -186,36 +212,35 @@ function CreateForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Typ případu</label>
-          <select value={caseType} onChange={(e) => setCaseType(e.target.value)} className={inputClass}>
-            {CASE_TYPES.map((ct) => (
-              <option key={ct.value} value={ct.value}>
-                {ct.label}
-              </option>
-            ))}
-          </select>
+          <CustomDropdown
+            value={caseType}
+            onChange={setCaseType}
+            options={CASE_TYPES.map((ct) => ({ id: ct.value, label: ct.label }))}
+            placeholder="Typ případu"
+            icon={Briefcase}
+          />
         </div>
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Stupeň</label>
-          <select value={selectedStage} onChange={(e) => setSelectedStage(e.target.value)} className={inputClass}>
-            {stages.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <CustomDropdown
+            value={selectedStage}
+            onChange={setSelectedStage}
+            options={stages.map((s) => ({ id: s.id, label: s.name }))}
+            placeholder="Stupeň"
+            icon={Layers}
+          />
         </div>
       </div>
       {!hideContactSelector && (
       <div>
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Klient / Kontakt</label>
-        <select value={contactId} onChange={(e) => setContactId(e.target.value)} className={inputClass}>
-          <option value="">— Bez přiřazení —</option>
-          {contacts.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.firstName} {c.lastName}
-            </option>
-          ))}
-        </select>
+        <CustomDropdown
+          value={contactId}
+          onChange={setContactId}
+          options={[{ id: "", label: "— Bez přiřazení —" }, ...contacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
+          placeholder="— Bez přiřazení —"
+          icon={User}
+        />
       </div>
       )}
       {hideContactSelector && contactDisplayName && (
@@ -312,24 +337,23 @@ function EditForm({
       </div>
       <div>
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Typ případu</label>
-        <select value={caseType} onChange={(e) => setCaseType(e.target.value)} className={inputClass}>
-          {CASE_TYPES.map((ct) => (
-            <option key={ct.value} value={ct.value}>
-              {ct.label}
-            </option>
-          ))}
-        </select>
+        <CustomDropdown
+          value={caseType}
+          onChange={setCaseType}
+          options={CASE_TYPES.map((ct) => ({ id: ct.value, label: ct.label }))}
+          placeholder="Typ případu"
+          icon={Briefcase}
+        />
       </div>
       <div>
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Klient / Kontakt</label>
-        <select value={contactId} onChange={(e) => setContactId(e.target.value)} className={inputClass}>
-          <option value="">— Bez přiřazení —</option>
-          {contacts.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.firstName} {c.lastName}
-            </option>
-          ))}
-        </select>
+        <CustomDropdown
+          value={contactId}
+          onChange={setContactId}
+          options={[{ id: "", label: "— Bez přiřazení —" }, ...contacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
+          placeholder="— Bez přiřazení —"
+          icon={User}
+        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -371,6 +395,7 @@ export function PipelineBoard({
   onMutationComplete,
   initialOpenCreateStageId,
   onOpenCreateConsumed,
+  totalPotential: totalPotentialProp,
 }: {
   stages: StageWithOpportunities[];
   contacts?: ContactOption[];
@@ -382,6 +407,8 @@ export function PipelineBoard({
   initialOpenCreateStageId?: string | null;
   /** Called after opening create modal from initialOpenCreateStageId so parent can clear it. */
   onOpenCreateConsumed?: () => void;
+  /** Total pipeline potential (from server); when set, shows v2 local header. */
+  totalPotential?: number;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -401,10 +428,10 @@ export function PipelineBoard({
   }, [initialOpenCreateStageId, onOpenCreateConsumed]);
   const [pipelineSearch, setPipelineSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [editOpp, setEditOpp] = useState<OpportunityCard | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
-  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
   const [draggedOppId, setDraggedOppId] = useState<string | null>(null);
   const [dragSourceStageId, setDragSourceStageId] = useState<string | null>(null);
   const [dropTargetStageId, setDropTargetStageId] = useState<string | null>(null);
@@ -461,15 +488,6 @@ export function PipelineBoard({
     }
   }
 
-  function toggleStageCollapsed(stageId: string) {
-    setCollapsedStages((prev) => {
-      const next = new Set(prev);
-      if (next.has(stageId)) next.delete(stageId);
-      else next.add(stageId);
-      return next;
-    });
-  }
-
   function handleCardDragStart(e: React.DragEvent, oppId: string, stageId: string) {
     setDraggedOppId(oppId);
     setDragSourceStageId(stageId);
@@ -520,16 +538,20 @@ export function PipelineBoard({
     return { ...stage, opportunities: opps };
   });
 
+  const totalPotential =
+    totalPotentialProp ?? filteredStages.reduce((sum, s) => sum + s.opportunities.reduce((a, o) => a + Number(o.expectedValue || 0), 0), 0);
+  const showLocalHeader = totalPotentialProp !== undefined;
+
   return (
     <>
       <style>{`
-        .pipeline-board-grid { display: grid; grid-template-columns: repeat(3, minmax(340px, 1fr)); gap: 1.25rem; width: 100%; max-width: 100%; }
-        @media (min-width: 1400px) { .pipeline-board-grid { grid-template-columns: repeat(3, minmax(380px, 1fr)); gap: 1.5rem; } }
-        @media (max-width: 1024px) { .pipeline-board-grid { grid-template-columns: repeat(2, minmax(300px, 1fr)); } }
-        @media (max-width: 640px)  { .pipeline-board-grid { grid-template-columns: 1fr; } }
-        .pipeline-segment-body::-webkit-scrollbar { width: 8px; }
-        .pipeline-segment-body::-webkit-scrollbar-track { background: transparent; }
-        .pipeline-segment-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+        .font-pipeline-sans { font-family: 'Inter', sans-serif; }
+        .font-pipeline-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { width: 4px; }
+        .hide-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .hide-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
       `}</style>
 
       <ConfirmDeleteModal
@@ -540,229 +562,239 @@ export function PipelineBoard({
         loading={deletePending}
       />
 
-      {/* Pipeline Header: search, filters, stats, AI */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 pt-1">
-        <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto">
-          <div className="relative flex-1 max-w-xs">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Hledat obchod…"
-              value={pipelineSearch}
-              onChange={(e) => setPipelineSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 min-h-[44px]"
-            />
-          </div>
-          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
-            {[{ v: "all", l: "Vše" }, ...CASE_TYPES.map((t) => ({ v: t.value, l: t.label }))].map((f) => (
-              <button
-                key={f.v}
-                type="button"
-                onClick={() => setFilterType(f.v)}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all min-h-[36px] ${filterType === f.v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-              >
-                {f.l}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-right mr-2 hidden md:block">
-            <p className="text-xs text-slate-500 font-medium">Potenciál</p>
-            <p className="text-sm font-bold text-slate-900">{new Intl.NumberFormat("cs-CZ", { style: "currency", currency: "CZK", maximumFractionDigits: 0 }).format(filteredStages.reduce((sum, s) => sum + s.opportunities.reduce((a, o) => a + Number(o.expectedValue || 0), 0), 0))}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => toast.showToast("AI analýza pipeline bude brzy k dispozici.")}
-            className="flex items-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-[#1a1c2e] to-indigo-900 text-white rounded-xl text-xs font-bold shadow-sm hover:scale-105 transition-transform min-h-[44px]"
-          >
-            <Sparkles size={14} className="text-amber-400" /> AI Analýza
-          </button>
-          <button type="button" onClick={() => setCreateStageId(localStages[0]?.id ?? null)} className="flex items-center gap-1.5 px-3 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-sm min-h-[44px]">
-            <Plus size={16} /> Nový obchod
-          </button>
-        </div>
-      </div>
-
-      <div className="pipeline-board-grid pb-8 pt-2">
-        {filteredStages.map((stage, stageIdx) => {
-          const theme = COLUMN_THEMES[stageIdx % COLUMN_THEMES.length];
-          const isCollapsed = collapsedStages.has(stage.id);
-          const isDropTarget = dropTargetStageId === stage.id;
-
-          const subtitle = STAGE_SUBTITLES[stageIdx];
-
-          return (
-            <div
-              key={stage.id}
-              className="flex flex-col min-h-0 rounded-[var(--wp-radius-sm)] border bg-slate-50/50 overflow-hidden"
-              style={{ minHeight: 360 }}
-              onDragOver={(e) => handleColumnDragOver(e, stage.id)}
-              onDragLeave={handleColumnDragLeave}
-              onDrop={(e) => handleColumnDrop(e, stage.id)}
-            >
+      <div className="font-pipeline-sans text-slate-800 flex flex-col flex-1 min-h-0">
+        {/* Local header (v2): Obchodní Pipeline, metadata, Všechny filtry */}
+        {showLocalHeader && (
+          <div className="px-0 py-6 flex flex-wrap justify-between items-end gap-4 border-b border-slate-100 flex-shrink-0 z-10 bg-white rounded-t-xl">
+            <div>
+              <h1 className="font-pipeline-display text-2xl font-black text-slate-900 leading-tight mb-1">Obchodní Pipeline</h1>
+              <div className="flex items-center gap-3 text-sm font-medium text-slate-500 mt-1 flex-wrap">
+                <span>Potenciál: <strong className="text-slate-800 font-bold">{new Intl.NumberFormat("cs-CZ", { style: "currency", currency: "CZK", maximumFractionDigits: 0 }).format(totalPotential)}</strong></span>
+                <span className="text-slate-300 hidden sm:inline">|</span>
+                <span className="text-rose-500 flex items-center gap-1 font-bold"><AlertCircle size={14} /> 2 úkoly k řešení</span>
+              </div>
+            </div>
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => toggleStageCollapsed(stage.id)}
-                className={`sticky top-0 z-10 flex items-center justify-between w-full px-5 py-4 border-b text-left transition-colors ${theme.color} ${theme.borderColor} ${isDropTarget ? "ring-2 ring-indigo-400 ring-offset-2 ring-4 ring-indigo-50" : ""}`}
+                onClick={() => setFilterPopoverOpen((o) => !o)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-all min-h-[44px]"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-[10px] flex items-center justify-center text-[13px] font-black text-white shadow-sm ${theme.color.replace("/50", "").replace("bg-", "bg-")} ${theme.textColor.replace("text-", "bg-").replace("-700", "-500")}`}>
-                    {stageIdx + 1}
-                  </div>
-                  <div className="flex flex-col">
-                    <h3 className={`font-bold text-[14px] uppercase tracking-wide ${theme.textColor}`}>
-                      {stage.name}
-                    </h3>
-                    {subtitle && !isCollapsed && (
-                      <p className={`text-[10px] font-bold uppercase tracking-widest opacity-80 mt-0.5`}>
-                        {subtitle}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className={`px-3 py-1 rounded-lg bg-white/80 text-[13px] font-black shadow-sm border border-white ${theme.textColor}`}>
-                  {stage.opportunities.length}
-                </div>
+                <Filter size={16} /> Všechny filtry
               </button>
-
-              {!isCollapsed && (
-                <div className="pipeline-segment-body flex flex-col gap-4 p-4 overflow-y-auto flex-1 min-h-0" style={{ maxHeight: 560 }}>
-                  {stage.opportunities.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-[var(--wp-radius-sm)] bg-white/50 p-6 min-h-[140px]">
-                      <CheckCircle2 size={36} className="text-slate-300 mb-2" />
-                      <p className="text-sm font-medium text-center">Vše hotovo</p>
-                      <p className="text-xs text-center mt-0.5">Přetáhněte sem nebo přidejte</p>
-                    </div>
-                  ) : (
-                    stage.opportunities.map((opp) => {
-                      const product = getProductDesign(opp.caseType);
-                      const urgency = getUrgencyProps(opp.expectedCloseDate);
-                      const isDragging = draggedOppId === opp.id;
-                      const isMenuOpen = openMenuOppId === opp.id;
-
-                      return (
-                        <div
-                          key={opp.id}
-                          draggable
-                          onDragStart={(e) => handleCardDragStart(e, opp.id, stage.id)}
-                          onDragEnd={handleCardDragEnd}
-                          onClick={() => { if (!isMenuOpen) router.push(`/portal/pipeline/${opp.id}`); }}
-                          className={`bg-white p-5 rounded-[var(--wp-radius-sm)] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-slate-100 ${theme.accent} border-b-[3px] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-grab active:cursor-grabbing group flex flex-col shrink-0 ${isDragging ? "opacity-50 scale-95" : ""}`}
-                        >
-                          <div className="flex items-start gap-2 mb-3">
-                            <span className="shrink-0 mt-0.5 text-slate-300 group-hover:text-slate-500" aria-hidden>
-                              <GripVertical size={16} />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex justify-between items-start gap-2 mb-2">
-                                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--wp-radius-sm)] text-[11px] font-bold uppercase ${product.color}`}>
-                                  {product.icon}
-                                  {product.label}
-                                </div>
-                                {opp.expectedValue && (
-                                  <span className="text-[13px] font-bold text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-[var(--wp-radius-xs)] shrink-0">
-                                    {Number(opp.expectedValue).toLocaleString("cs-CZ")} Kč
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex justify-between items-center gap-2">
-                                <h3 className="font-bold text-slate-800 text-[17px] leading-tight group-hover:text-blue-600 transition-colors truncate">
-                                  {opp.title}
-                                </h3>
-                                <div className="flex gap-1.5 shrink-0 opacity-100 md:opacity-70 md:group-hover:opacity-100 transition-opacity">
-                                  {opp.contactId && (
-                                    <>
-                                      <Link
-                                        href={`/portal/contacts/${opp.contactId}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors"
-                                        title="Kontakt"
-                                      >
-                                        <Phone size={14} />
-                                      </Link>
-                                      <Link
-                                        href={`/portal/contacts/${opp.contactId}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                                        title="Kontakt"
-                                      >
-                                        <Mail size={14} />
-                                      </Link>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-sm font-medium text-slate-500 mt-0.5 truncate">{opp.contactName || "Bez kontaktu"}</p>
-                            </div>
-                          </div>
-
-                          {urgency.alert && (
-                            <div className="mb-3 px-3 py-2 rounded-[var(--wp-radius-sm)] text-xs font-bold flex items-center gap-2 bg-red-50 text-red-700 border border-red-100">
-                              <AlertCircle size={14} className="shrink-0" />
-                              {urgency.alert}
-                            </div>
-                          )}
-
-                          <div className="bg-slate-50 rounded-[var(--wp-radius-sm)] p-3 border border-slate-100 flex flex-col gap-2 mt-auto">
-                            <div className="flex items-start gap-2">
-                              <CheckCircle2 size={16} className="text-slate-400 shrink-0 mt-0.5" />
-                              <span className="text-sm font-semibold text-slate-700 leading-snug">
-                                {opp.title}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
-                              <span className={`flex items-center gap-1.5 px-2 py-1 rounded-[var(--wp-radius-xs)] text-[11px] font-bold uppercase tracking-wide border ${urgency.class}`}>
-                                <CalendarClock size={12} />
-                                {formatDate(opp.expectedCloseDate)}
-                              </span>
-                              <div className="relative flex gap-1">
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(isMenuOpen ? null : opp.id); }}
-                                  className="w-7 h-7 flex items-center justify-center rounded-[var(--wp-radius-sm)] text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
-                                  title="Možnosti"
-                                >
-                                  <MoreHorizontal size={16} />
-                                </button>
-                                {isMenuOpen && (
-                                  <>
-                                    <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); }} aria-hidden />
-                                    <div className="absolute right-0 top-full mt-1 z-20 py-1 rounded-[var(--wp-radius-sm)] bg-white border border-slate-200 shadow-lg min-w-[140px]">
-                                      <button type="button" onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); setEditOpp(opp); }} className="w-full px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                        <Edit2 size={14} /> Upravit
-                                      </button>
-                                      {opp.contactId && (
-                                        <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); }} className="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                          <Phone size={14} /> Otevřít kontakt
-                                        </Link>
-                                      )}
-                                      <button type="button" onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); setDeleteConfirmId(opp.id); }} className="w-full px-3 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2">
-                                        <Trash2 size={14} /> Smazat
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setCreateStageId(stage.id)}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 mt-1 rounded-[var(--wp-radius-sm)] text-slate-400 text-sm font-bold hover:bg-white hover:text-slate-600 border-2 border-dashed border-slate-200 hover:border-slate-300 transition-colors shrink-0"
-                  >
-                    <Plus size={18} /> Přidat
-                  </button>
-                </div>
+              {filterPopoverOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setFilterPopoverOpen(false)} aria-hidden />
+                  <div className="absolute right-0 top-full mt-2 z-20 py-2 px-3 bg-white border border-slate-200 rounded-xl shadow-lg min-w-[180px]">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Typ případu</p>
+                    {[{ v: "all", l: "Vše" }, ...CASE_TYPES.map((t) => ({ v: t.value, l: t.label }))].map((f) => (
+                      <button
+                        key={f.v}
+                        type="button"
+                        onClick={() => { setFilterType(f.v); setFilterPopoverOpen(false); }}
+                        className={`block w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${filterType === f.v ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"}`}
+                      >
+                        {f.l}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
-          );
-        })}
+          </div>
+        )}
+
+        {/* Toolbar: search, AI, Nový obchod (v2 style) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 py-4 flex-shrink-0">
+          <div className="relative group max-w-md w-full">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search size={16} className="text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            </div>
+            <input
+              type="text"
+              placeholder="Rychlé hledání obchodu (jméno, telefon)..."
+              value={pipelineSearch}
+              onChange={(e) => setPipelineSearch(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700 placeholder:text-slate-400 placeholder:font-medium min-h-[44px]"
+            />
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => toast.showToast("AI analýza pipeline bude brzy k dispozici.")}
+              className="flex items-center gap-2 px-3 py-2 text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-xl text-xs font-bold transition-colors min-h-[44px]"
+            >
+              <Sparkles size={14} className="text-amber-500" /> AI Analýza pipeline
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateStageId(localStages[0]?.id ?? null)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"
+            >
+              <Plus size={14} /> Nový obchod
+            </button>
+          </div>
+        </div>
+
+        {/* Grid 3x2 (v2) */}
+        <main className="flex-1 overflow-y-auto hide-scrollbar min-h-0">
+          <div className="max-w-[1600px] mx-auto h-full pb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+              {filteredStages.map((stage, stageIdx) => {
+                const theme = COLUMN_THEMES[stageIdx % COLUMN_THEMES.length];
+                const isDropTarget = dropTargetStageId === stage.id;
+                const subtitle = STAGE_SUBTITLES[stageIdx];
+                const stageNameWithoutNumber = stage.name.includes(". ") ? stage.name.split(". ")[1] : stage.name;
+
+                return (
+                  <div
+                    key={stage.id}
+                    className={`flex flex-col h-[480px] bg-slate-50/60 rounded-[24px] border transition-all duration-300 overflow-hidden ${isDropTarget ? "border-indigo-400 shadow-md ring-4 ring-indigo-50" : "border-slate-200/70 shadow-sm hover:border-slate-300"}`}
+                    onDragOver={(e) => handleColumnDragOver(e, stage.id)}
+                    onDragLeave={handleColumnDragLeave}
+                    onDrop={(e) => handleColumnDrop(e, stage.id)}
+                  >
+                    <div className={`px-5 py-4 flex items-center justify-between border-b ${theme.borderColor} ${theme.color}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-[10px] flex items-center justify-center text-[13px] font-black text-white shadow-sm ${theme.solidBg}`}>
+                          {stageIdx + 1}
+                        </div>
+                        <div className="flex flex-col">
+                          <h3 className={`font-bold text-[14px] uppercase tracking-wide ${theme.textColor}`}>
+                            {stageNameWithoutNumber}
+                          </h3>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mt-0.5 text-slate-600">
+                            {subtitle ?? ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-lg bg-white/80 text-[13px] font-black shadow-sm border border-white ${theme.textColor}`}>
+                        {stage.opportunities.length}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto hide-scrollbar p-4 flex flex-col gap-4">
+                      {stage.opportunities.length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-[16px] bg-white/50 p-6 m-2 opacity-60 min-h-[120px]">
+                          <CheckCircle2 size={32} className="text-slate-300 mb-2" />
+                          <p className="text-xs font-bold text-center uppercase tracking-widest">Žádné obchody</p>
+                        </div>
+                      ) : (
+                        stage.opportunities.map((opp) => {
+                          const product = getProductDesign(opp.caseType);
+                          const urgency = getUrgencyProps(opp.expectedCloseDate);
+                          const isDragging = draggedOppId === opp.id;
+                          const isMenuOpen = openMenuOppId === opp.id;
+                          const dateShort = formatDateShort(opp.expectedCloseDate);
+                          const isTodayOrYesterday = dateShort === "Dnes" || dateShort === "Včera";
+
+                          return (
+                            <div
+                              key={opp.id}
+                              draggable
+                              onDragStart={(e) => handleCardDragStart(e, opp.id, stage.id)}
+                              onDragEnd={handleCardDragEnd}
+                              onClick={() => { if (!isMenuOpen) router.push(`/portal/pipeline/${opp.id}`); }}
+                              className={`bg-white rounded-[20px] p-4 border border-slate-200 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-lg hover:border-indigo-300 hover:-translate-y-0.5 transition-all duration-200 cursor-grab active:cursor-grabbing group flex flex-col relative shrink-0 ${theme.accent} border-b-[3px] ${isDragging ? "opacity-40 scale-95" : ""}`}
+                            >
+                              <div className="absolute left-1 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <GripVertical size={14} />
+                              </div>
+
+                              <div className="flex justify-between items-start mb-3 pl-2">
+                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-black tracking-wide uppercase border ${product.color}`}>
+                                  {product.icon} {product.label}
+                                </div>
+                                <div className="font-bold text-sm text-slate-800 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                  {formatValue(opp.expectedValue, undefined)}
+                                </div>
+                              </div>
+
+                              <div className="mb-3 pl-2">
+                                <h4 className="font-pipeline-display font-bold text-slate-900 leading-snug mb-1 group-hover:text-indigo-600 transition-colors text-[15px]">
+                                  {opp.title}
+                                </h4>
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                                  <User size={12} className="text-slate-400" /> {opp.contactName || "Bez kontaktu"}
+                                </div>
+                              </div>
+
+                              {urgency.alert && (
+                                <div className="mb-3 px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-start gap-1.5 border ml-2 bg-rose-50 text-rose-700 border-rose-200">
+                                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                                  <span className="leading-snug">{urgency.alert}</span>
+                                </div>
+                              )}
+
+                              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex flex-col gap-2 mt-auto ml-2">
+                                <div className="flex items-start gap-2">
+                                  <CheckCircle2 size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                                  <span className="text-[12px] font-semibold text-slate-700 leading-snug">
+                                    Otevřít detail
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-200/60">
+                                  <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${urgency.class}`}>
+                                    {isTodayOrYesterday ? <Clock size={10} /> : <CalendarClock size={10} />}
+                                    {dateShort}
+                                  </div>
+                                  <div className="flex gap-1">
+                                    {opp.contactId && (
+                                      <>
+                                        <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => e.stopPropagation()} className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-200 transition-colors" title="Zavolat"><Phone size={12} /></Link>
+                                        <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => e.stopPropagation()} className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition-colors" title="Napsat e-mail"><Mail size={12} /></Link>
+                                      </>
+                                    )}
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditOpp(opp); }} className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 transition-colors" title="Upravit"><Edit2 size={12} /></button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(isMenuOpen ? null : opp.id); }}
+                                      className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 transition-colors"
+                                      title="Možnosti"
+                                    >
+                                      <MoreHorizontal size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {isMenuOpen && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); }} aria-hidden />
+                                  <div className="absolute right-2 bottom-14 z-20 py-1 rounded-lg bg-white border border-slate-200 shadow-lg min-w-[140px]">
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); setEditOpp(opp); }} className="w-full px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                      <Edit2 size={14} /> Upravit
+                                    </button>
+                                    {opp.contactId && (
+                                      <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); }} className="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                        <Phone size={14} /> Otevřít kontakt
+                                      </Link>
+                                    )}
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(null); setDeleteConfirmId(opp.id); }} className="w-full px-3 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                      <Trash2 size={14} /> Smazat
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setCreateStageId(stage.id)}
+                        className="flex items-center justify-center gap-2 w-full py-3 mt-1 rounded-[16px] text-slate-500 text-[11px] font-black uppercase tracking-widest bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 hover:text-indigo-600 transition-all active:scale-[0.98] min-h-[44px]"
+                      >
+                        <Plus size={16} strokeWidth={2.5} /> Přidat
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </main>
       </div>
 
       <Modal open={createStageId !== null} onClose={() => setCreateStageId(null)} title="Nová příležitost">

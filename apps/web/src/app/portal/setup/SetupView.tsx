@@ -29,6 +29,7 @@ import {
   AlertCircle,
   Settings2,
   Loader2,
+  UserCog,
 } from "lucide-react";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
 import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding, getNotificationPrefs, setNotificationPrefs } from "@/app/actions/preferences";
@@ -41,6 +42,7 @@ import {
   type QuickActionId,
 } from "@/lib/quick-actions";
 import { useToast } from "@/app/components/Toast";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 const TABS = [
   { id: "osobni", label: "Osobní údaje", keywords: ["osobní", "údaje", "fakturace", "heslo", "zabezpečení", "2fa", "rychlé", "demo"] },
@@ -975,15 +977,17 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   className="flex-1 min-w-[200px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 min-h-[44px]"
                   required
                 />
-                <select
+                <CustomDropdown
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                  className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium min-h-[44px]"
-                >
-                  <option value="Advisor">Poradce</option>
-                  <option value="Assistant">Asistent</option>
-                  <option value="Admin">Admin</option>
-                </select>
+                  onChange={setInviteRole}
+                  options={[
+                    { id: "Advisor", label: "Poradce" },
+                    { id: "Assistant", label: "Asistent" },
+                    { id: "Admin", label: "Admin" },
+                  ]}
+                  placeholder="Role"
+                  icon={UserCog}
+                />
                 <button
                   type="submit"
                   disabled={inviteSending || !inviteEmail.trim()}

@@ -37,6 +37,7 @@ import { ClientReferralSection } from "./ClientReferralSection";
 import { ClientTimeline } from "./ClientTimeline";
 import { Suspense } from "react";
 import { BriefingTabContent } from "./BriefingTabContent";
+import { InviteToClientZoneButton } from "@/app/dashboard/contacts/[id]/InviteToClientZoneButton";
 
 export default async function ContactDetailPage({
   params,
@@ -242,7 +243,7 @@ export default async function ContactDetailPage({
                 </div>
               </div>
             </div>
-            <div className="flex sm:flex-row xl:flex-col gap-2 justify-center xl:justify-start shrink-0">
+            <div className="flex flex-col sm:flex-row xl:flex-col gap-2 justify-center xl:justify-start shrink-0">
               {contact.phone && (
                 <a
                   href={`tel:${contact.phone.replace(/\s/g, "")}`}
@@ -257,6 +258,11 @@ export default async function ContactDetailPage({
               >
                 <MessageSquare size={16} /> Zpráva
               </Link>
+              {contact.email && (
+                <div className="w-full sm:w-auto min-h-[44px] flex items-center">
+                  <InviteToClientZoneButton contactId={id} />
+                </div>
+              )}
             </div>
           </div>
         </div>

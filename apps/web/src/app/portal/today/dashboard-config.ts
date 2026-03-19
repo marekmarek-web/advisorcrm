@@ -138,3 +138,22 @@ export const WIDGET_COL_SPAN: Record<WidgetId, string> = {
   financialAnalyses: "lg:col-span-4",
   notes: "lg:col-span-12",
 };
+
+/** Top-edge "envelope" border color per section (4px bar) */
+export const WIDGET_TOP_BORDER_BY_SECTION: Record<DashboardSection, string> = {
+  A: "border-t-4 border-t-emerald-500",
+  B: "border-t-4 border-t-blue-500",
+  C: "border-t-4 border-t-violet-500",
+  D: "border-t-4 border-t-slate-400",
+};
+
+/** Top border by widget color (for customize modal override) */
+export const WIDGET_TOP_BORDER_BY_COLOR: Record<WidgetColorId, string> = {
+  white: "border-t-4 border-t-slate-200",
+  emerald: "border-t-4 border-t-emerald-500",
+  blue: "border-t-4 border-t-blue-500",
+  violet: "border-t-4 border-t-violet-500",
+  rose: "border-t-4 border-t-rose-500",
+  amber: "border-t-4 border-t-amber-500",
+  slate: "border-t-4 border-t-slate-500",
+};

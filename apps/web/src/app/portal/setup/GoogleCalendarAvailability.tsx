@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Loader2, AlertCircle, Calendar, CalendarClock } from "lucide-react";
+import { Loader2, AlertCircle, Calendar, CalendarClock, Clock } from "lucide-react";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 const DURATION_OPTIONS = [
   { value: 15, label: "15 min" },
@@ -115,16 +116,13 @@ export function GoogleCalendarAvailability() {
         </div>
         <div>
           <label htmlFor="avail-duration" className={labelClass}>Délka schůzky</label>
-          <select
-            id="avail-duration"
-            value={durationMinutes}
-            onChange={(e) => setDurationMinutes(Number(e.target.value))}
-            className={inputClass}
-          >
-            {DURATION_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <CustomDropdown
+            value={String(durationMinutes)}
+            onChange={(id) => setDurationMinutes(Number(id))}
+            options={DURATION_OPTIONS.map((o) => ({ id: String(o.value), label: o.label }))}
+            placeholder="Délka"
+            icon={Clock}
+          />
         </div>
         <div className="flex items-end">
           <button

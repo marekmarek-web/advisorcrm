@@ -5,7 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { getContact, getContactsList, updateContact, uploadContactAvatar, deleteContact } from "@/app/actions/contacts";
 import { getHouseholdForContact, getHouseholdsList, setContactHousehold } from "@/app/actions/households";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Flag, User, Home, RefreshCw } from "lucide-react";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
 
 export default function EditContactPage() {
@@ -334,23 +335,35 @@ export default function EditContactPage() {
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Fáze životního cyklu</label>
-                <select value={form.lifecycleStage} onChange={(e) => setForm((f) => ({ ...f, lifecycleStage: e.target.value }))} className={inputCls}>
-                  <option value="">—</option>
-                  <option value="lead">Lead</option>
-                  <option value="prospect">Prospect</option>
-                  <option value="client">Klient</option>
-                  <option value="former_client">Bývalý klient</option>
-                </select>
+                <CustomDropdown
+                  value={form.lifecycleStage}
+                  onChange={(id) => setForm((f) => ({ ...f, lifecycleStage: id }))}
+                  options={[
+                    { id: "", label: "—" },
+                    { id: "lead", label: "Lead" },
+                    { id: "prospect", label: "Prospect" },
+                    { id: "client", label: "Klient" },
+                    { id: "former_client", label: "Bývalý klient" },
+                  ]}
+                  placeholder="—"
+                  icon={User}
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Priorita</label>
-                <select value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))} className={inputCls}>
-                  <option value="">—</option>
-                  <option value="low">Nízká</option>
-                  <option value="normal">Běžná</option>
-                  <option value="high">Vysoká</option>
-                  <option value="urgent">Urgentní</option>
-                </select>
+                <CustomDropdown
+                  value={form.priority}
+                  onChange={(id) => setForm((f) => ({ ...f, priority: id }))}
+                  options={[
+                    { id: "", label: "—" },
+                    { id: "low", label: "Nízká" },
+                    { id: "normal", label: "Běžná" },
+                    { id: "high", label: "Vysoká" },
+                    { id: "urgent", label: "Urgentní" },
+                  ]}
+                  placeholder="—"
+                  icon={Flag}
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Doporučil / zdroj</label>
@@ -358,30 +371,38 @@ export default function EditContactPage() {
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Doporučen od (kontakt)</label>
-                <select value={form.referralContactId} onChange={(e) => setForm((f) => ({ ...f, referralContactId: e.target.value }))} className={inputCls}>
-                  <option value="">— žádný</option>
-                  {contactOptions.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
+                <CustomDropdown
+                  value={form.referralContactId}
+                  onChange={(id) => setForm((f) => ({ ...f, referralContactId: id }))}
+                  options={[{ id: "", label: "— žádný" }, ...contactOptions]}
+                  placeholder="— žádný"
+                  icon={User}
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Domácnost</label>
-                <select value={form.householdId} onChange={(e) => setForm((f) => ({ ...f, householdId: e.target.value }))} className={inputCls}>
-                  <option value="">— žádná</option>
-                  {householdOptions.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
-                  ))}
-                </select>
+                <CustomDropdown
+                  value={form.householdId}
+                  onChange={(id) => setForm((f) => ({ ...f, householdId: id }))}
+                  options={[{ id: "", label: "— žádná" }, ...householdOptions.map((h) => ({ id: h.id, label: h.name }))]}
+                  placeholder="— žádná"
+                  icon={Home}
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Servisní cyklus (měsíce)</label>
-                <select value={form.serviceCycleMonths} onChange={(e) => setForm((f) => ({ ...f, serviceCycleMonths: e.target.value }))} className={inputCls}>
-                  <option value="">—</option>
-                  <option value="3">3</option>
-                  <option value="6">6</option>
-                  <option value="12">12</option>
-                </select>
+                <CustomDropdown
+                  value={form.serviceCycleMonths}
+                  onChange={(id) => setForm((f) => ({ ...f, serviceCycleMonths: id }))}
+                  options={[
+                    { id: "", label: "—" },
+                    { id: "3", label: "3" },
+                    { id: "6", label: "6" },
+                    { id: "12", label: "12" },
+                  ]}
+                  placeholder="—"
+                  icon={RefreshCw}
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>

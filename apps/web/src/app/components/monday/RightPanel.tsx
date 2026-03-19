@@ -6,6 +6,8 @@ import type { ProductPickerValue } from "@/app/components/weplan/ProductPicker";
 import { getContractsByContact } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
 import { segmentLabel } from "@/app/lib/segment-labels";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { User } from "lucide-react";
 
 export type ActivityEntry = {
   id: string;
@@ -114,23 +116,17 @@ export function RightPanel({ itemId, itemName, onClose, getActivity, appendActiv
               </button>
             </div>
           ) : (
-            <select
+            <CustomDropdown
               value=""
-              onChange={(e) => {
-                const id = e.target.value;
+              onChange={(id) => {
                 if (!id) return;
                 const c = contacts.find((x) => x.id === id);
                 onContactChange(id, c ? `${c.firstName} ${c.lastName}`.trim() : null);
               }}
-              className="w-full text-[13px] border border-monday-border rounded-[6px] px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-monday-blue"
-            >
-              <option value="">— Vybrat kontakt</option>
-              {contacts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.firstName} {c.lastName}
-                </option>
-              ))}
-            </select>
+              options={[{ id: "", label: "— Vybrat kontakt" }, ...contacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
+              placeholder="— Vybrat kontakt"
+              icon={User}
+            />
           )}
         </div>
       )}

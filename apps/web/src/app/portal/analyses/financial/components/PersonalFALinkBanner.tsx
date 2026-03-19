@@ -9,6 +9,7 @@ import { useFinancialAnalysisStore } from "@/lib/analyses/financial/store";
 import { sharedFactsToProposedPersonalPatch } from "@/lib/analyses/shared-facts/sharedFactsMapper";
 import { diffSnapshotAgainstShared } from "@/lib/analyses/shared-facts/diffSnapshotAgainstShared";
 import type { FinancialAnalysisData } from "@/lib/analyses/financial/types";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 type CompanyWithLink = Awaited<ReturnType<typeof getCompaniesForContact>>[number];
 
@@ -116,18 +117,13 @@ export function PersonalFALinkBanner() {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {companies.length > 1 && !linkedCompanyId && (
-            <select
+            <CustomDropdown
               value={selectedCompanyId}
-              onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="min-h-[44px] rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">Vyberte firmu</option>
-              {companies.map((c) => (
-                <option key={c.companyId} value={c.companyId}>
-                  {c.companyName ?? c.companyId}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedCompanyId}
+              options={[{ id: "", label: "Vyberte firmu" }, ...companies.map((c) => ({ id: c.companyId, label: c.companyName ?? c.companyId }))]}
+              placeholder="Vyberte firmu"
+              icon={Building2}
+            />
           )}
           <button
             type="button"

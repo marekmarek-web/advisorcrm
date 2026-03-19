@@ -17,6 +17,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAiAssistantDrawer } from "@/app/portal/AiAssistantDrawerContext";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 type ProcessingStatus = "uploaded" | "processing" | "extracted" | "review_required" | "failed";
 type ReviewStatus = "pending" | "approved" | "rejected" | "applied";
@@ -288,31 +289,32 @@ export default function ContractReviewListPage() {
             />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative">
-              <select
-                value={reviewFilter}
-                onChange={(e) => setReviewFilter((e.target.value || "") as ReviewStatus | "")}
-                className="pl-10 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none appearance-none cursor-pointer hover:bg-slate-50"
-              >
-                <option value="">Všechny stavy review</option>
-                {(["pending", "approved", "rejected", "applied"] as const).map((s) => (
-                  <option key={s} value={s}>
-                    {s === "pending" ? "K revizi" : s === "applied" ? "Dokončeno" : REVIEW_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-              <Filter size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
-            <select
+            <CustomDropdown
+              value={reviewFilter}
+              onChange={(id) => setReviewFilter(id as ReviewStatus | "")}
+              options={[
+                { id: "", label: "Všechny stavy review" },
+                ...(["pending", "approved", "rejected", "applied"] as const).map((s) => ({
+                  id: s,
+                  label: s === "pending" ? "K revizi" : s === "applied" ? "Dokončeno" : REVIEW_LABELS[s],
+                })),
+              ]}
+              placeholder="Všechny stavy review"
+              icon={Filter}
+            />
+            <CustomDropdown
               value={processingFilter}
-              onChange={(e) => setProcessingFilter((e.target.value || "") as ProcessingStatus | "")}
-              className="pl-4 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50"
-            >
-              <option value="">Všechny stavy zpracování</option>
-              {(["uploaded", "processing", "extracted", "review_required", "failed"] as const).map((s) => (
-                <option key={s} value={s}>{PROCESSING_LABELS[s]}</option>
-              ))}
-            </select>
+              onChange={(id) => setProcessingFilter(id as ProcessingStatus | "")}
+              options={[
+                { id: "", label: "Všechny stavy zpracování" },
+                ...(["uploaded", "processing", "extracted", "review_required", "failed"] as const).map((s) => ({
+                  id: s,
+                  label: PROCESSING_LABELS[s],
+                })),
+              ]}
+              placeholder="Všechny stavy zpracování"
+              icon={Filter}
+            />
             <button
               type="button"
               onClick={() => load()}

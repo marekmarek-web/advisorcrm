@@ -28,6 +28,7 @@ import {
 } from "@/app/actions/meeting-notes";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { ContactRow } from "@/app/actions/contacts";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 const BOARD_POSITIONS_KEY = "portal-notes-board-positions";
 
@@ -354,7 +355,9 @@ export function NotesVisionBoard({
 
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/80 shrink-0 gap-2">
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
-          <div className="w-9 h-9 bg-[#1a1c2e] rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0">W</div>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-slate-100 text-indigo-600">
+            <FileText size={20} />
+          </div>
           <div className="min-w-0">
             <h1 className="font-bold text-base md:text-lg text-slate-900 tracking-tight leading-none truncate" style={{ color: "var(--wp-text)" }}>Zápisky</h1>
             <p className="text-[11px] font-bold tracking-wider uppercase leading-none mt-0.5 hidden md:block" style={{ color: "var(--wp-text-muted)" }}>Nástěnka zápisků</p>
@@ -655,15 +658,13 @@ export function NotesVisionBoard({
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Kontakt / Klient (nepovinné)</label>
-                  <select
+                  <CustomDropdown
                     value={formData.client}
-                    onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
-                  >
-                    {contactOptions.map((c) => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
+                    onChange={(id) => setFormData({ ...formData, client: id })}
+                    options={contactOptions.map((c) => ({ id: c.value, label: c.label }))}
+                    placeholder="Vybrat klienta"
+                    icon={User}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
