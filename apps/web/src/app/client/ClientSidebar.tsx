@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
   Briefcase,
   Calculator,
@@ -25,7 +25,7 @@ export const CLIENT_SIDEBAR_COLLAPSED_PX = 48;
 type NavItem = {
   href: string;
   label: string;
-  icon: ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   match?: string[];
   showBadge?: boolean;
 };
@@ -77,7 +77,10 @@ export function ClientSidebar({
 
   const navLinks = VIEWS.map((v) => {
     const isMatchAlias = v.match?.some((prefix) => pathname.startsWith(prefix));
-    const isActive = pathname === v.href || pathname.startsWith(v.href + "/") || isMatchAlias;
+    const isActive =
+      v.href === "/client"
+        ? pathname === "/client"
+        : pathname === v.href || pathname.startsWith(v.href + "/") || isMatchAlias;
     const showBadge = v.showBadge && unreadNotificationsCount > 0;
     const Icon = v.icon;
 
