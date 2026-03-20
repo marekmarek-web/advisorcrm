@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { mergeLoadedState } from "../saveLoad";
 import { getDefaultState } from "../defaultState";
+import { TOTAL_STEPS } from "../constants";
 
 describe("saveLoad", () => {
   describe("mergeLoadedState", () => {
@@ -25,10 +26,11 @@ describe("saveLoad", () => {
       expect(result.data.client?.name).toBe("Jan Novák");
     });
 
-    it("clamps currentStep to 1..7", () => {
+    it("clamps currentStep to valid range", () => {
       const defaultData = getDefaultState();
+      const maxStep = defaultData.includeCompany ? TOTAL_STEPS + 1 : TOTAL_STEPS;
       expect(mergeLoadedState(defaultData, { currentStep: 0 }).currentStep).toBe(1);
-      expect(mergeLoadedState(defaultData, { currentStep: 10 }).currentStep).toBe(7);
+      expect(mergeLoadedState(defaultData, { currentStep: 10 }).currentStep).toBe(maxStep);
       expect(mergeLoadedState(defaultData, { currentStep: 4 }).currentStep).toBe(4);
     });
 

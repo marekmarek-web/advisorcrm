@@ -1,6 +1,25 @@
 import { describe, it, expect, vi } from "vitest";
 import { openReviewItem, createTaskDraft } from "../assistant-actions";
 
+vi.mock("db", () => ({
+  db: {},
+  tasks: {},
+  contacts: {},
+  contracts: {},
+  opportunities: {},
+  opportunityStages: {},
+  contractUploadReviews: {},
+  companies: {},
+  companyPersonLinks: {},
+  eq: () => ({}),
+  and: () => ({}),
+  or: () => ({}),
+  isNull: () => ({}),
+  sql: () => ({}),
+  asc: () => ({}),
+  desc: () => ({}),
+}));
+
 vi.mock("../review-queue-repository", () => ({
   getContractReviewById: vi.fn(),
 }));

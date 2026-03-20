@@ -1,4 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("db", () => ({
+  db: {},
+  tasks: {},
+  contacts: {},
+  contracts: {},
+  opportunities: {},
+  opportunityStages: {},
+  contractUploadReviews: {},
+  companies: {},
+  companyPersonLinks: {},
+  eq: () => ({}),
+  and: () => ({}),
+  or: () => ({}),
+  isNull: () => ({}),
+  sql: () => ({}),
+  asc: () => ({}),
+  desc: () => ({}),
+}));
 import { buildSuggestedActionsFromUrgent } from "../dashboard-priority";
 import type { UrgentItem } from "../dashboard-types";
 

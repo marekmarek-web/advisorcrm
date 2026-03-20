@@ -4,7 +4,7 @@ import { eq, and } from "db";
 import { getContractReviewById } from "./review-queue-repository";
 import { listContractReviews } from "./review-queue-repository";
 import { getTasksDueAndOverdue } from "./dashboard-priority";
-import { getClientAiContext } from "@/lib/client-ai-context";
+import { getClientAiContext } from "../client-ai-context";
 
 export type OpenReviewResult =
   | { ok: true; href: string }
