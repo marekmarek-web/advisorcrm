@@ -157,7 +157,23 @@ export async function getFinancialAnalysesForContact(contactId: string): Promise
 
 export async function getFinancialAnalysesForHousehold(householdId: string): Promise<FinancialAnalysisListItem[]> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "households:read")) throw new Error("Forbidden");
+  if (auth.roleName === "Client" && auth.contactId) {
+    const [member] = await db
+      .select({ id: householdMembers.id })
+      .from(householdMembers)
+      .innerJoin(households, eq(householdMembers.householdId, households.id))
+      .where(
+        and(
+          eq(householdMembers.householdId, householdId),
+          eq(householdMembers.contactId, auth.contactId),
+          eq(households.tenantId, auth.tenantId)
+        )
+      )
+      .limit(1);
+    if (!member) throw new Error("Forbidden");
+  } else if (!hasPermission(auth.roleName, "households:read")) {
+    throw new Error("Forbidden");
+  }
   const rows = await db
     .select({
       id: financialAnalyses.id,

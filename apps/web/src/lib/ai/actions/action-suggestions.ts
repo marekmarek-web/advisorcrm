@@ -32,4 +32,13 @@ export type AiActionExecutionResult =
       duplicateWarning?: string;
       warnings?: string[];
     }
-  | { ok: false; error: string; warnings?: string[] };
+  | {
+      ok: false;
+      error: string;
+      warnings?: string[];
+      code?: "DUPLICATE_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "FORBIDDEN";
+      conflict?: {
+        duplicateRisk: "none" | "possible" | "likely";
+        existingItems: Array<{ type: "task" | "event" | "opportunity"; id: string; title: string }>;
+      };
+    };

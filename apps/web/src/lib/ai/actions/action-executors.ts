@@ -11,6 +11,24 @@ import { logActivity } from "@/app/actions/activity";
 import { validateActionSuggestion } from "./action-guardrails";
 import { checkForDuplicates, checkTeamActionDuplicates } from "./duplicate-check";
 import type { AiActionExecutionResult, AiActionSuggestion } from "./action-suggestions";
+import { logAiAutomationEvent } from "@/lib/ai/automation-telemetry";
+
+const idempotencyCache = new Map<string, number>();
+const IDEMPOTENCY_WINDOW_MS = 45_000;
+
+function markIdempotency(key: string) {
+  idempotencyCache.set(key, Date.now() + IDEMPOTENCY_WINDOW_MS);
+}
+
+function hasRecentIdempotency(key: string) {
+  const exp = idempotencyCache.get(key);
+  if (!exp) return false;
+  if (exp <= Date.now()) {
+    idempotencyCache.delete(key);
+    return false;
+  }
+  return true;
+}
 
 function feedbackActionTaken(actionType: AiActionSuggestion["actionType"]) {
   if (actionType === "task") return "task_created" as const;
@@ -25,9 +43,17 @@ function buildDuplicateWarning(count: number): string | undefined {
   return `Nalezeno ${count} podobných otevřených položek.`;
 }
 
+function toExecutionConflictItems(items: Array<{ type: string; id: string; title: string }>) {
+  return items.filter(
+    (item): item is { type: "task" | "event" | "opportunity"; id: string; title: string } =>
+      item.type === "task" || item.type === "event" || item.type === "opportunity"
+  );
+}
+
 export async function executeAiAction(
   suggestion: AiActionSuggestion,
-  contactId: string
+  contactId: string,
+  options?: { allowLikelyDuplicates?: boolean; idempotencyKey?: string; sourceSurface?: string }
 ): Promise<AiActionExecutionResult> {
   try {
     const auth = await requireAuthInAction();
@@ -35,11 +61,11 @@ export async function executeAiAction(
       hasPermission(auth.roleName, "contacts:write") ||
       hasPermission(auth.roleName, "tasks:*") ||
       hasPermission(auth.roleName, "opportunities:write");
-    if (!canWrite) return { ok: false, error: "Forbidden" };
+    if (!canWrite) return { ok: false, error: "Forbidden", code: "FORBIDDEN" };
 
     if (auth.roleName === "Client") {
       if (!auth.contactId || auth.contactId !== contactId) {
-        return { ok: false, error: "Forbidden" };
+        return { ok: false, error: "Forbidden", code: "FORBIDDEN" };
       }
     }
 
@@ -52,8 +78,38 @@ export async function executeAiAction(
     }
 
     const safeSuggestion = validation.sanitized;
+    const idempotencyKey =
+      options?.idempotencyKey ??
+      `${auth.tenantId}:${contactId}:${safeSuggestion.actionType}:${safeSuggestion.title.toLowerCase()}`;
+    if (hasRecentIdempotency(idempotencyKey)) {
+      return {
+        ok: false,
+        error: "Stejná AI akce už byla před chvílí odeslána.",
+        code: "IDEMPOTENCY_CONFLICT",
+      };
+    }
+
     const duplicate = await checkForDuplicates(contactId, safeSuggestion.actionType, safeSuggestion.title);
     const duplicateWarning = buildDuplicateWarning(duplicate.existingItems.length);
+    if (duplicate.risk === "likely" && !options?.allowLikelyDuplicates) {
+      await logAiAutomationEvent({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        event: "conflict",
+        surface: options?.sourceSurface ?? "portal_contact",
+        generationId: safeSuggestion.sourceGenerationId,
+        meta: { reason: "duplicate_likely", count: duplicate.existingItems.length },
+      });
+      return {
+        ok: false,
+        error: "Byla nalezena pravděpodobná duplicita. Potvrďte vytvoření znovu.",
+        code: "DUPLICATE_CONFLICT",
+        conflict: {
+          duplicateRisk: duplicate.risk,
+          existingItems: toExecutionConflictItems(duplicate.existingItems),
+        },
+      };
+    }
 
     let entityId: string | null = null;
     let entityType: "task" | "event" | "opportunity" | null = null;
@@ -98,6 +154,7 @@ export async function executeAiAction(
       return { ok: false, error: "Nepodařilo se vytvořit CRM akci." };
     }
 
+    markIdempotency(idempotencyKey);
     await createAiFeedback(safeSuggestion.sourceGenerationId, "accepted", {
       actionTaken: feedbackActionTaken(safeSuggestion.actionType),
       createdEntityType: entityType,
@@ -130,6 +187,19 @@ export async function executeAiAction(
         createdEntityType: entityType,
         createdEntityId: entityId,
       }),
+      logAiAutomationEvent({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        event: "execute",
+        surface: options?.sourceSurface ?? "portal_contact",
+        generationId: safeSuggestion.sourceGenerationId,
+        entityType,
+        entityId,
+        meta: {
+          actionType: safeSuggestion.actionType,
+          duplicateRisk: duplicate.risk,
+        },
+      }),
     ]);
 
     return {
@@ -149,12 +219,15 @@ export async function executeAiAction(
 export async function executeTeamAiAction(
   suggestion: AiActionSuggestion,
   teamId: string,
-  memberId?: string | null
+  memberId?: string | null,
+  options?: { allowLikelyDuplicates?: boolean; idempotencyKey?: string; sourceSurface?: string }
 ): Promise<AiActionExecutionResult> {
   try {
     const auth = await requireAuthInAction();
-    if (!hasPermission(auth.roleName, "team_overview:read")) return { ok: false, error: "Forbidden" };
-    if (teamId !== auth.tenantId) return { ok: false, error: "Forbidden" };
+    if (!hasPermission(auth.roleName, "team_overview:read")) {
+      return { ok: false, error: "Forbidden", code: "FORBIDDEN" };
+    }
+    if (teamId !== auth.tenantId) return { ok: false, error: "Forbidden", code: "FORBIDDEN" };
 
     const validation = validateActionSuggestion(suggestion);
     if (!validation.valid) {
@@ -168,6 +241,17 @@ export async function executeTeamAiAction(
     }
 
     const assignee = memberId ?? auth.userId;
+    const idempotencyKey =
+      options?.idempotencyKey ??
+      `${auth.tenantId}:${assignee}:${actionType}:${safeSuggestion.title.toLowerCase()}`;
+    if (hasRecentIdempotency(idempotencyKey)) {
+      return {
+        ok: false,
+        error: "Stejná AI akce už byla před chvílí odeslána.",
+        code: "IDEMPOTENCY_CONFLICT",
+      };
+    }
+
     const duplicate = await checkTeamActionDuplicates(
       auth.tenantId,
       assignee,
@@ -175,6 +259,25 @@ export async function executeTeamAiAction(
       safeSuggestion.title
     );
     const duplicateWarning = buildDuplicateWarning(duplicate.existingItems.length);
+    if (duplicate.risk === "likely" && !options?.allowLikelyDuplicates) {
+      await logAiAutomationEvent({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        event: "conflict",
+        surface: options?.sourceSurface ?? "portal_team",
+        generationId: safeSuggestion.sourceGenerationId,
+        meta: { reason: "duplicate_likely", count: duplicate.existingItems.length },
+      });
+      return {
+        ok: false,
+        error: "Byla nalezena pravděpodobná duplicita. Potvrďte vytvoření znovu.",
+        code: "DUPLICATE_CONFLICT",
+        conflict: {
+          duplicateRisk: duplicate.risk,
+          existingItems: toExecutionConflictItems(duplicate.existingItems),
+        },
+      };
+    }
 
     let entityId: string | null = null;
     let entityType: "task" | "event" | "opportunity" | null = null;
@@ -205,6 +308,7 @@ export async function executeTeamAiAction(
       return { ok: false, error: "Nepodařilo se vytvořit akci." };
     }
 
+    markIdempotency(idempotencyKey);
     await createAiFeedback(safeSuggestion.sourceGenerationId, "accepted", {
       actionTaken: feedbackActionTaken(safeSuggestion.actionType),
       createdEntityType: entityType,
@@ -225,7 +329,19 @@ export async function executeTeamAiAction(
       duplicateItems: duplicate.existingItems.map((item) => ({ type: item.type, id: item.id })),
     };
 
-    await logActivity(entityType, entityId, "ai_created", aiMeta);
+    await Promise.allSettled([
+      logActivity(entityType, entityId, "ai_created", aiMeta),
+      logAiAutomationEvent({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        event: "execute",
+        surface: options?.sourceSurface ?? "portal_team",
+        generationId: safeSuggestion.sourceGenerationId,
+        entityType,
+        entityId,
+        meta: { actionType },
+      }),
+    ]);
 
     return {
       ok: true,

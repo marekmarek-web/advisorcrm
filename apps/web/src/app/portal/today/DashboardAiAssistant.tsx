@@ -166,6 +166,20 @@ export function DashboardAiAssistant() {
             ))}
           </div>
         )}
+        <div className="flex flex-wrap gap-2 mb-5">
+          <Link
+            href="/portal/team-overview"
+            className="text-xs px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-indigo-100 transition-colors min-h-[44px] inline-flex items-center"
+          >
+            AI playbook týmu
+          </Link>
+          <Link
+            href="/portal/business-plan"
+            className="text-xs px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-indigo-100 transition-colors min-h-[44px] inline-flex items-center"
+          >
+            AI guidance plánu
+          </Link>
+        </div>
 
         <div className="mt-auto">
           <button

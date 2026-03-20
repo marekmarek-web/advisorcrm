@@ -202,6 +202,20 @@ export async function clientUploadDocument(formData: FormData) {
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || !auth.contactId) throw new Error("Forbidden");
 
+  const file = formData.get("file") as File | null;
+  if (!file?.size) throw new Error("Vyberte soubor.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Soubor je příliš velký (max 10 MB).");
+
+  const allowedTypes = new Set([
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]);
+  if (!allowedTypes.has(file.type)) {
+    throw new Error("Podporujeme PDF, JPG, PNG a WEBP.");
+  }
+
   const name = (formData.get("name") as string | null)?.trim() || null;
   const tagsRaw = (formData.get("tags") as string | null)?.trim() || null;
   const tags = tagsRaw
@@ -211,13 +225,52 @@ export async function clientUploadDocument(formData: FormData) {
         .filter(Boolean)
     : [];
 
-  const documentId = await uploadDocument(auth.contactId, formData, {
-    visibleToClient: true,
-    tags,
-    uploadSource: "web",
-  });
+  const uploadSourceRaw = (formData.get("uploadSource") as string | null)?.trim() || "web";
+  const uploadSource =
+    uploadSourceRaw === "mobile_camera" ||
+    uploadSourceRaw === "mobile_gallery" ||
+    uploadSourceRaw === "mobile_file" ||
+    uploadSourceRaw === "web"
+      ? uploadSourceRaw
+      : "web";
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${auth.tenantId}/${auth.contactId}/${Date.now()}-${safeName}`;
+  const admin = createAdminClient();
+  const { error: uploadError } = await admin.storage
+    .from("documents")
+    .upload(storagePath, file, { upsert: false });
+  if (uploadError) {
+    throw new Error(uploadError.message || "Nahrání souboru se nezdařilo.");
+  }
+
+  const [row] = await db
+    .insert(documents)
+    .values({
+      tenantId: auth.tenantId,
+      contactId: auth.contactId,
+      contractId: null,
+      opportunityId: null,
+      name: name || file.name,
+      storagePath,
+      tags: tags.length ? tags : null,
+      mimeType: file.type || null,
+      sizeBytes: file.size,
+      visibleToClient: true,
+      uploadSource,
+      uploadedBy: auth.userId,
+    })
+    .returning({ id: documents.id });
+
+  const documentId = row?.id ?? null;
 
   if (documentId) {
+    await logActivity("document", documentId, "upload", {
+      contactId: auth.contactId,
+      source: "client_portal",
+      uploadSource,
+    }).catch(() => {});
+
     await createPortalNotification({
       tenantId: auth.tenantId,
       contactId: auth.contactId,

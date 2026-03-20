@@ -34,6 +34,12 @@ type ReviewDetail = {
     linkedClientId?: string;
     createdContractId?: string;
     createdTaskId?: string;
+    bridgeSuggestions?: Array<{
+      id: string;
+      label: string;
+      href: string;
+      type: "analysis" | "service_action";
+    }>;
   };
   extractedPayload?: Record<string, unknown>;
   detectedDocumentType?: string | null;
@@ -423,6 +429,19 @@ export function ContractReviewDetailView(props: Props) {
               <li>Vytvořen úkol: {detail.applyResultPayload.createdTaskId}</li>
             )}
           </ul>
+          {detail.applyResultPayload.bridgeSuggestions?.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {detail.applyResultPayload.bridgeSuggestions.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </section>
       )}
 

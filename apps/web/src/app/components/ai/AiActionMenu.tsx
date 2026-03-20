@@ -60,6 +60,8 @@ export function AiActionMenu({ generationId, promptType, contactId, outputText }
   const [feedbackSaving, setFeedbackSaving] = useState<"accepted" | "rejected" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [duplicateConflict, setDuplicateConflict] = useState<string | null>(null);
+  const [forceCreate, setForceCreate] = useState(false);
   const [created, setCreated] = useState<{ entityType: "task" | "event" | "opportunity"; entityId: string } | null>(null);
 
   const canSubmit = Boolean(selectedType && title.trim() && !saving);
@@ -78,6 +80,8 @@ export function AiActionMenu({ generationId, promptType, contactId, outputText }
     setSelectedType(type);
     setTitle(suggestedTitle);
     setError(null);
+    setForceCreate(false);
+    setDuplicateConflict(null);
     setCreated(null);
     setDescription("");
     setDueAt("");
@@ -112,16 +116,33 @@ export function AiActionMenu({ generationId, promptType, contactId, outputText }
           sourceGenerationId: generationId,
           sourcePromptType: promptType,
         },
-        contactId
+        contactId,
+        {
+          allowLikelyDuplicates: forceCreate,
+          sourceSurface: "portal_contact",
+          idempotencyKey: `${generationId}:${selectedType}:${title.trim().toLowerCase()}`,
+        }
       );
 
       if (!result.ok) {
+        if (result.code === "DUPLICATE_CONFLICT") {
+          const conflictText = result.conflict?.existingItems
+            ?.slice(0, 2)
+            .map((i) => i.title)
+            .join(", ");
+          setDuplicateConflict(
+            conflictText
+              ? `Pravděpodobná duplicita: ${conflictText}`
+              : "Pravděpodobná duplicita již existující akce."
+          );
+        }
         setError(result.error);
         return;
       }
 
       setCreated({ entityType: result.entityType, entityId: result.entityId });
       setDuplicateWarning(result.duplicateWarning ?? null);
+      setDuplicateConflict(null);
     } finally {
       setSaving(false);
     }
@@ -215,6 +236,20 @@ export function AiActionMenu({ generationId, promptType, contactId, outputText }
             <p className="text-xs text-amber-700 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1">
               {duplicateWarning}
             </p>
+          )}
+          {duplicateConflict && (
+            <p className="text-xs text-rose-700 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1">
+              {duplicateConflict}
+            </p>
+          )}
+          {duplicateConflict && !forceCreate && (
+            <button
+              type="button"
+              onClick={() => setForceCreate(true)}
+              className="inline-flex items-center justify-center min-h-[44px] rounded-lg border border-rose-300 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+            >
+              Vytvořit i tak
+            </button>
           )}
           <button
             type="button"

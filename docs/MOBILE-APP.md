@@ -96,7 +96,7 @@ pnpm --filter web cap:open:android
 
 V Phase 1 app shell cte URL z `CAPACITOR_SERVER_URL`.
 
-- Pokud promenna neni nastavena, default je `https://www.aidvisora.cz`.
+- Pokud promenna neni nastavena, default je `https://www.aidvisora.cz/prihlaseni` (vstup primo na login vyber Klient / Poradce).
 - Pro produkcni sync lze pouzit:
 
 ```bash
@@ -104,6 +104,11 @@ pnpm --filter web cap:sync
 ```
 
 Pri zmene `capacitor.config.ts`, pluginu nebo web fallback assets vzdy znovu spustte `cap:sync`.
+
+## Ocekavane chovani po spuštění v Android Studio
+
+- **Neprihlaseny uzivatel (fresh launch):** app se otevre primo na `/prihlaseni` a zobrazi login s volbou **Klient / Poradce**.
+- **Jiz prihlaseny uzivatel:** middleware presmeruje z `/prihlaseni` na cilovou app cast (`next` nebo `/portal/today`), tedy bez nutnosti manualniho reloginu.
 
 ## Auth a session v mobile shellu
 

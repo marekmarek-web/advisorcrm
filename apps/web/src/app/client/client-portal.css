@@ -1,12 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap");
+/* Aidvisora brand fonts: Source Sans 3 (from root layout) + Plus Jakarta Sans for display */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap");
 
 .font-display {
   font-family: "Plus Jakarta Sans", sans-serif;
 }
 
 .client-portal-root {
-  font-family: "Lato", sans-serif;
+  font-family: var(--font-primary), "Source Sans 3", system-ui, sans-serif;
 }
 
 .client-dot-grid {

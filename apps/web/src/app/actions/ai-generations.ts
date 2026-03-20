@@ -20,10 +20,12 @@ import {
   type CreateAiFeedbackResult,
 } from "@/app/actions/ai-feedback";
 import { buildDebugContext, type AiContextDebugOutput } from "@/lib/ai/context/debug-context";
+import { buildOrchestratedOutput, collectGenerationErrors, type AiOrchestratedOutput } from "@/lib/ai/orchestration";
 
 export type ResultOk = { ok: true; text: string; generationId?: string };
 export type ResultErr = { ok: false; error: string; generationId?: string };
 export type GenResult = ResultOk | ResultErr;
+export type AutomationBundleResult = { ok: true; output: AiOrchestratedOutput } | ResultErr;
 
 /** Submit feedback for an AI generation (alias for createAiFeedback). */
 export async function submitAiFeedbackAction(
@@ -307,5 +309,47 @@ export async function getAiContextDebug(contactId: string): Promise<AiContextDeb
     return await buildDebugContext(contactId);
   } catch {
     return null;
+  }
+}
+
+/** Unified automation bundle for contact-level advisor workflows. */
+export async function generateClientAutomationBundleAction(
+  contactId: string
+): Promise<AutomationBundleResult> {
+  try {
+    const auth = await requireAuthInAction();
+    await ensureContactAccess(contactId);
+
+    const [summary, opportunities, nextBest] = await Promise.all([
+      generateClientSummary(contactId, auth.userId),
+      generateClientOpportunities(contactId, auth.userId),
+      generateNextBestAction(contactId, auth.userId),
+    ]);
+
+    const warnings = collectGenerationErrors([summary, opportunities, nextBest]);
+    const summaryText = summary.ok ? summary.text : "AI shrnutí není aktuálně dostupné.";
+    const opportunitiesText = opportunities.ok ? opportunities.text : "";
+    const nextBestText = nextBest.ok ? nextBest.text : "";
+
+    const output = buildOrchestratedOutput({
+      surface: "portal_contact",
+      summaryText,
+      recommendationText: opportunitiesText,
+      actionText: nextBestText,
+      warnings,
+      sources: ["clientSummary", "clientOpportunities", "nextBestAction"],
+      suggestions: [
+        { id: "openTasks", label: "Otevřít úkoly", type: "open", href: "/portal/tasks" },
+        { id: "openPipeline", label: "Otevřít pipeline", type: "open", href: "/portal/pipeline" },
+      ],
+    });
+
+    return { ok: true, output };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === "Forbidden" || message === "Kontakt nenalezen") {
+      return { ok: false, error: message };
+    }
+    return { ok: false, error: "Automatizační bundle se nepodařilo vygenerovat." };
   }
 }

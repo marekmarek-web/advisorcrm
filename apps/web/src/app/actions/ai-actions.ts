@@ -34,7 +34,8 @@ async function ensureContactAccess(contactId: string): Promise<void> {
 
 export async function createCrmActionFromAi(
   suggestion: AiActionSuggestion,
-  contactId: string
+  contactId: string,
+  options?: { allowLikelyDuplicates?: boolean; idempotencyKey?: string; sourceSurface?: string }
 ): Promise<AiActionExecutionResult> {
   try {
     const auth = await requireAuthInAction();
@@ -50,7 +51,7 @@ export async function createCrmActionFromAi(
       return { ok: false, error: "AI generování nenalezeno nebo k němu nemáte přístup." };
     }
 
-    return executeAiAction(suggestion, contactId);
+    return executeAiAction(suggestion, contactId, options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message || "Nepodařilo se vytvořit akci." };
@@ -74,7 +75,8 @@ export async function checkAiActionDuplicates(
 export async function createTeamActionFromAi(
   suggestion: AiActionSuggestion,
   teamId: string,
-  memberId?: string | null
+  memberId?: string | null,
+  options?: { allowLikelyDuplicates?: boolean; idempotencyKey?: string; sourceSurface?: string }
 ): Promise<AiActionExecutionResult> {
   try {
     const auth = await requireAuthInAction();
@@ -92,7 +94,7 @@ export async function createTeamActionFromAi(
       return { ok: false, error: "Akce musí vycházet z týmového AI shrnutí." };
     }
 
-    return await executeTeamAiAction(suggestion, teamId, memberId ?? undefined);
+    return await executeTeamAiAction(suggestion, teamId, memberId ?? undefined, options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message || "Nepodařilo se vytvořit akci." };

@@ -12,6 +12,12 @@ export type ApplyResultPayload = {
   createdTaskId?: string;
   createdNoteId?: string;
   createdEmailDraftId?: string;
+  bridgeSuggestions?: Array<{
+    id: string;
+    label: string;
+    href: string;
+    type: "analysis" | "service_action";
+  }>;
 };
 
 /** Extraction trace stored in DB (no document content). */

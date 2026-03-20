@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { PortalShell } from "./PortalShell";
+import { MobilePortalApp } from "./mobile/MobilePortalApp";
+import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
 import "@/styles/weplan-monday.css";
 import "@/styles/board.css";
 
@@ -36,5 +39,14 @@ export default async function PortalLayout({
     redirect("/client");
   }
   const showTeamOverview = auth.roleName === "Admin" || auth.roleName === "Director" || auth.roleName === "Manager" || auth.roleName === "Advisor";
+  const headerList = await headers();
+  const cookieStore = await cookies();
+  const mobileUiEnabled = isMobileUiV1EnabledForRequest({
+    userAgent: headerList.get("user-agent"),
+    cookieStore,
+  });
+  if (mobileUiEnabled) {
+    return <MobilePortalApp />;
+  }
   return <PortalShell showTeamOverview={showTeamOverview}>{children}</PortalShell>;
 }

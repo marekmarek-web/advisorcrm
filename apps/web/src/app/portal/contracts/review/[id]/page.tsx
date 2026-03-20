@@ -47,6 +47,12 @@ type ReviewDetail = {
     linkedClientId?: string;
     createdContractId?: string;
     createdTaskId?: string;
+    bridgeSuggestions?: Array<{
+      id: string;
+      label: string;
+      href: string;
+      type: "analysis" | "service_action";
+    }>;
   };
   detectedDocumentType?: string | null;
   inputMode?: string | null;

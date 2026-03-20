@@ -350,7 +350,11 @@ export function TeamOverviewView({
             dueAt: dueAt || undefined,
           },
           teamId,
-          memberId
+          memberId,
+          {
+            sourceSurface: "portal_team",
+            idempotencyKey: `${aiGenerationId}:${actionType}:${title.trim().toLowerCase()}:${memberId ?? "self"}`,
+          }
         );
         if (result.ok) {
           setTeamActionError(null);

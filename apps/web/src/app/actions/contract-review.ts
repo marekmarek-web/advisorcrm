@@ -4,6 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { getContractReviewById, updateContractReview } from "@/lib/ai/review-queue-repository";
 import { applyContractReview } from "@/lib/ai/apply-contract-review";
+import { mapContractReviewToBridgePayload } from "@/lib/ai/contracts-analyses-bridge";
 import { db } from "db";
 import { contacts } from "db";
 import { eq, and } from "db";
@@ -158,11 +159,16 @@ export async function applyContractReviewDrafts(id: string): Promise<ContractRev
     return { ok: false, error: result.error };
   }
 
+  const bridgedPayload = mapContractReviewToBridgePayload({
+    review: row,
+    payload: result.payload,
+  });
+
   await updateContractReview(id, auth.tenantId, {
     reviewStatus: "applied",
     appliedBy: auth.userId,
     appliedAt: new Date(),
-    applyResultPayload: result.payload,
+    applyResultPayload: bridgedPayload,
   });
-  return { ok: true, payload: result.payload };
+  return { ok: true, payload: bridgedPayload };
 }

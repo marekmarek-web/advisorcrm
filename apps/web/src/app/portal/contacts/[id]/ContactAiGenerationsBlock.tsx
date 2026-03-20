@@ -7,9 +7,11 @@ import {
   generateClientSummaryAction,
   generateClientOpportunitiesAction,
   generateNextBestActionAction,
+  generateClientAutomationBundleAction,
   getLatestClientGenerations,
   type ClientGenerationItem,
 } from "@/app/actions/ai-generations";
+import type { AiOrchestratedOutput } from "@/lib/ai/orchestration";
 import { AiActionMenu } from "@/app/components/ai/AiActionMenu";
 
 type InitialData = {
@@ -130,10 +132,27 @@ function AiSection({
 
 export function ContactAiGenerationsBlock({ contactId, initialGenerations }: Props) {
   const [generations, setGenerations] = useState<InitialData>(initialGenerations);
+  const [automation, setAutomation] = useState<AiOrchestratedOutput | null>(null);
+  const [automationLoading, setAutomationLoading] = useState(false);
+  const [automationError, setAutomationError] = useState<string | null>(null);
 
   const handleUpdate = (key: keyof InitialData, item: ClientGenerationItem | null) => {
     setGenerations((prev) => ({ ...prev, [key]: item }));
   };
+
+  async function handleGenerateAutomationBundle() {
+    setAutomationLoading(true);
+    setAutomationError(null);
+    const result = await generateClientAutomationBundleAction(contactId);
+    if (!result.ok) {
+      setAutomationError(result.error);
+      setAutomation(null);
+      setAutomationLoading(false);
+      return;
+    }
+    setAutomation(result.output);
+    setAutomationLoading(false);
+  }
 
   return (
     <div
@@ -149,6 +168,34 @@ export function ContactAiGenerationsBlock({ contactId, initialGenerations }: Pro
       <p className="text-sm text-slate-600 mb-4">
         Shrnutí klienta, příležitosti a doporučený další krok na základě dat v CRM.
       </p>
+      <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-indigo-700">AI orchestration bundle</p>
+          <button
+            type="button"
+            onClick={handleGenerateAutomationBundle}
+            disabled={automationLoading}
+            className="min-h-[44px] rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {automationLoading ? "Generuji…" : "Spustit bundle"}
+          </button>
+        </div>
+        {automationError ? <p className="mt-2 text-xs text-rose-700">{automationError}</p> : null}
+        {automation ? (
+          <div className="mt-2 space-y-2">
+            <p className="text-sm text-slate-700">{automation.summary}</p>
+            {automation.recommendations.length > 0 ? (
+              <ul className="space-y-1">
+                {automation.recommendations.map((item, idx) => (
+                  <li key={`${item}-${idx}`} className="text-xs text-slate-600">
+                    - {item}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       <div className="space-y-4">
         <AiSection
           contactId={contactId}

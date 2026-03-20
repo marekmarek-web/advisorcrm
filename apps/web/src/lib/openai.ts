@@ -10,20 +10,6 @@ function getClient(): OpenAI | null {
   if (clientInstance) return clientInstance;
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    // #region agent log
-    fetch("http://127.0.0.1:7387/ingest/30869546-c4c0-4805-9fd6-2bc75f3b0175", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6af004" },
-      body: JSON.stringify({
-        sessionId: "6af004",
-        hypothesisId: "H1",
-        location: "lib/openai.ts:getClient",
-        message: "OPENAI_API_KEY missing or empty",
-        data: { hasEnvKey: !!process.env.OPENAI_API_KEY },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     return null;
   }
   clientInstance = new OpenAI({ apiKey });

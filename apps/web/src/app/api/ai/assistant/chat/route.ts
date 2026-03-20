@@ -8,6 +8,7 @@ import {
   computePriorityItems,
   buildSuggestedActionsFromUrgent,
 } from "@/lib/ai/dashboard-priority";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,16 @@ export async function POST(request: Request) {
     const membership = await getMembership(userId);
     if (!membership || !hasPermission(membership.roleName as RoleName, "documents:read")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const rate = checkRateLimit(request, "ai-assistant-chat", userId, {
+      windowMs: 60_000,
+      maxRequests: 20,
+    });
+    if (!rate.ok) {
+      return NextResponse.json(
+        { error: "Příliš mnoho požadavků. Zkuste to znovu později." },
+        { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+      );
     }
 
     const body = await request.json().catch(() => ({}));

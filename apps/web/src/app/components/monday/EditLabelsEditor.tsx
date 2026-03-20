@@ -11,9 +11,9 @@ import {
   Tag,
   GripVertical,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import type { StatusLabel } from "@/app/lib/status-labels";
 import { getStatusLabels, setStatusLabels } from "@/app/lib/status-labels";
-import { BaseModal } from "@/app/components/BaseModal";
 
 interface EditLabelsEditorProps {
   open: boolean;
@@ -87,8 +87,20 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
     onClose();
   };
 
-  return (
-    <BaseModal open={open} onClose={onClose} title="Upravit štítky" maxWidth="lg">
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Upravit štítky"
+    >
+      <div
+        className="w-full max-w-lg max-h-[90vh] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
       <div className="p-6 pb-4 flex items-start justify-between">
         <div className="flex gap-4">
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
@@ -109,90 +121,90 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
         </button>
       </div>
 
-          <div className="px-6 max-h-[55vh] overflow-y-auto space-y-3">
-          {labels.map((l, i) => (
-            <div
-              key={l.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, i)}
-              onDragEnter={(e) => handleDragEnter(e, i)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => e.preventDefault()}
-              className={`group flex items-center gap-4 p-4 bg-white border rounded-2xl transition-all duration-200 ${
-                draggedItemIndex === i
-                  ? "border-indigo-400 shadow-md scale-[1.01] opacity-80 z-10 relative bg-indigo-50/50"
-                  : "border-slate-100 hover:border-purple-200 hover:shadow-md"
-              }`}
-            >
-              <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 shrink-0">
-                <GripVertical size={20} />
-              </div>
-
-              <div className="flex gap-2 shrink-0 bg-slate-50/50 p-1.5 rounded-xl border border-slate-50">
-                {colors.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => updateLabel(i, { color: c })}
-                    className={`w-5 h-5 rounded-full transition-all transform hover:scale-125 ${
-                      l.color === c ? "ring-2 ring-offset-2 ring-slate-400 scale-110 shadow-sm" : "opacity-80"
-                    }`}
-                    style={{ backgroundColor: c }}
-                    aria-label={`Barva ${c}`}
-                  />
-                ))}
-              </div>
-
-              <input
-                type="text"
-                value={l.label}
-                onChange={(e) => updateLabel(i, { label: e.target.value })}
-                placeholder="Název štítku..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-slate-700 font-medium placeholder:text-slate-300 placeholder:font-normal min-h-[44px]"
-              />
-
-              <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={() => moveLabel(i, "up")}
-                  disabled={i === 0}
-                  className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 disabled:opacity-20 min-h-[44px] min-w-[44px]"
-                  aria-label="Nahoru"
-                >
-                  <ChevronUp size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveLabel(i, "down")}
-                  disabled={i === labels.length - 1}
-                  className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 disabled:opacity-20 min-h-[44px] min-w-[44px]"
-                  aria-label="Dolů"
-                >
-                  <ChevronDown size={18} />
-                </button>
-                <div className="w-px h-4 bg-slate-100 mx-1" />
-                <button
-                  type="button"
-                  onClick={() => removeLabel(i)}
-                  disabled={labels.length <= 1}
-                  className="p-2 hover:bg-red-50 hover:text-red-500 rounded-lg text-slate-400 transition-colors disabled:opacity-20 min-h-[44px] min-w-[44px]"
-                  aria-label="Smazat"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={addLabel}
-            className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-400 hover:border-indigo-200 hover:text-indigo-500 hover:bg-indigo-50/30 transition-all group"
+      <div className="px-6 max-h-[55vh] overflow-y-auto space-y-3">
+        {labels.map((l, i) => (
+          <div
+            key={l.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, i)}
+            onDragEnter={(e) => handleDragEnter(e, i)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => e.preventDefault()}
+            className={`group flex items-center gap-4 p-4 bg-white border rounded-2xl transition-all duration-200 ${
+              draggedItemIndex === i
+                ? "border-indigo-400 shadow-md scale-[1.01] opacity-80 z-10 relative bg-indigo-50/50"
+                : "border-slate-100 hover:border-purple-200 hover:shadow-md"
+            }`}
           >
-            <Plus size={20} className="group-hover:rotate-90 transition-transform" />
-            <span className="font-medium">Přidat nový label</span>
-          </button>
+            <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 shrink-0">
+              <GripVertical size={20} />
+            </div>
+
+            <div className="flex gap-2 shrink-0 bg-slate-50/50 p-1.5 rounded-xl border border-slate-50">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => updateLabel(i, { color: c })}
+                  className={`w-5 h-5 rounded-full transition-all transform hover:scale-125 ${
+                    l.color === c ? "ring-2 ring-offset-2 ring-slate-400 scale-110 shadow-sm" : "opacity-80"
+                  }`}
+                  style={{ backgroundColor: c }}
+                  aria-label={`Barva ${c}`}
+                />
+              ))}
+            </div>
+
+            <input
+              type="text"
+              value={l.label}
+              onChange={(e) => updateLabel(i, { label: e.target.value })}
+              placeholder="Název štítku..."
+              className="flex-1 bg-transparent border-none focus:ring-0 text-slate-700 font-medium placeholder:text-slate-300 placeholder:font-normal min-h-[44px]"
+            />
+
+            <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={() => moveLabel(i, "up")}
+                disabled={i === 0}
+                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 disabled:opacity-20 min-h-[44px] min-w-[44px]"
+                aria-label="Nahoru"
+              >
+                <ChevronUp size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveLabel(i, "down")}
+                disabled={i === labels.length - 1}
+                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 disabled:opacity-20 min-h-[44px] min-w-[44px]"
+                aria-label="Dolů"
+              >
+                <ChevronDown size={18} />
+              </button>
+              <div className="w-px h-4 bg-slate-100 mx-1" />
+              <button
+                type="button"
+                onClick={() => removeLabel(i)}
+                disabled={labels.length <= 1}
+                className="p-2 hover:bg-red-50 hover:text-red-500 rounded-lg text-slate-400 transition-colors disabled:opacity-20 min-h-[44px] min-w-[44px]"
+                aria-label="Smazat"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
           </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={addLabel}
+          className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-400 hover:border-indigo-200 hover:text-indigo-500 hover:bg-indigo-50/30 transition-all group"
+        >
+          <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+          <span className="font-medium">Přidat nový label</span>
+        </button>
+      </div>
 
       <div className="p-6 pt-5 flex items-center justify-between border-t border-slate-100">
         <button
@@ -211,6 +223,8 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
           Uložit změny
         </button>
       </div>
-    </BaseModal>
-  );
+    </div>
+  </div>,
+  document.body
+);
 }

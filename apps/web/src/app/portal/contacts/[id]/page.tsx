@@ -45,11 +45,22 @@ export default async function ContactDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [contact, household, latestGenerations] = await Promise.all([
-    getContact(id),
-    getHouseholdForContact(id),
-    getLatestClientGenerations(id),
-  ]);
+  let contact: Awaited<ReturnType<typeof getContact>> = null;
+  let household: Awaited<ReturnType<typeof getHouseholdForContact>> = null;
+  let latestGenerations: Awaited<ReturnType<typeof getLatestClientGenerations>> = {
+    clientSummary: null,
+    clientOpportunities: null,
+    nextBestAction: null,
+  };
+  try {
+    [contact, household, latestGenerations] = await Promise.all([
+      getContact(id),
+      getHouseholdForContact(id),
+      getLatestClientGenerations(id),
+    ]);
+  } catch {
+    notFound();
+  }
   if (!contact) notFound();
 
   const overviewContent = (

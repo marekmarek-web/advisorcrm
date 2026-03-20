@@ -56,6 +56,24 @@ export async function getUnreadConversationsCount(): Promise<number> {
   return row?.cnt ?? 0;
 }
 
+/** Client-only badge: unread advisor messages in own thread. */
+export async function getUnreadAdvisorMessagesForClientCount(): Promise<number> {
+  const auth = await requireAuthInAction();
+  if (auth.roleName !== "Client" || !auth.contactId) return 0;
+
+  const result = await db.execute(sql`
+    SELECT COUNT(*)::int AS cnt
+    FROM messages m
+    WHERE m.tenant_id = ${auth.tenantId}
+      AND m.contact_id = ${auth.contactId}
+      AND m.sender_type = 'advisor'
+      AND m.read_at IS NULL
+  `);
+  const rows = Array.isArray(result) ? result : (result as { rows?: { cnt: number }[] }).rows ?? [];
+  const row = rows[0] as { cnt: number } | undefined;
+  return row?.cnt ?? 0;
+}
+
 export type ConversationListItem = {
   contactId: string;
   contactName: string;
