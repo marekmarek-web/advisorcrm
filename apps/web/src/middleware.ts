@@ -11,9 +11,11 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const isAuthCallbackWithCode =
     request.nextUrl.pathname === "/auth/callback" && request.nextUrl.searchParams.has("code");
-  const isGoogleCalendarCallbackWithCode =
-    request.nextUrl.pathname === "/api/integrations/google-calendar/callback" && request.nextUrl.searchParams.has("code");
-  if (host.includes("advisorcrm-web.vercel.app") && !isAuthCallbackWithCode && !isGoogleCalendarCallbackWithCode) {
+  const isGoogleOAuthCallbackWithCode =
+    request.nextUrl.pathname.startsWith("/api/integrations/") &&
+    request.nextUrl.pathname.endsWith("/callback") &&
+    request.nextUrl.searchParams.has("code");
+  if (host.includes("advisorcrm-web.vercel.app") && !isAuthCallbackWithCode && !isGoogleOAuthCallbackWithCode) {
     const path = request.nextUrl.pathname === "/" && request.nextUrl.searchParams.get("code") ? "/auth/callback" : request.nextUrl.pathname;
     const url = new URL(path + request.nextUrl.search, PRODUCTION_DOMAIN);
     return NextResponse.redirect(url);
@@ -48,12 +50,14 @@ export async function middleware(request: NextRequest) {
     pathname === "/api/ai/dashboard-summary" ||
     pathname === "/api/ai/team-summary";
   const isCalendarApi = pathname.startsWith("/api/calendar");
+  const isDriveApi = pathname.startsWith("/api/drive");
+  const isGmailApi = pathname.startsWith("/api/gmail");
   const isIntegrationsApi = pathname.startsWith("/api/integrations");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // /api/contracts/*, /api/ai/*, /api/calendar/*, /api/integrations/*: auth + dev bypass. Před skip auth.
-  if ((isContractsApi || isAiAssistantApi || isCalendarApi || isIntegrationsApi) && supabaseUrl && supabaseAnonKey) {
+  if ((isContractsApi || isAiAssistantApi || isCalendarApi || isDriveApi || isGmailApi || isIntegrationsApi) && supabaseUrl && supabaseAnonKey) {
     const response = NextResponse.next({ request });
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
@@ -78,8 +82,9 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const isDev = process.env.NODE_ENV === "development";
       const devUserId = process.env.NEXT_PUBLIC_DEV_CONTRACTS_USER_ID ?? process.env.DEV_CONTRACTS_USER_ID;
-      if (!isProduction && isDev && devUserId?.trim()) {
-        requestHeaders.set("x-user-id", devUserId.trim());
+      const allowDevBypass = !isProduction && isDev && process.env.VERCEL_ENV !== "production" && devUserId?.trim();
+      if (allowDevBypass) {
+        requestHeaders.set("x-user-id", devUserId!.trim());
         return NextResponse.next({ request: { headers: requestHeaders } });
       }
       return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
@@ -90,8 +95,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // Dočasně: povolit dashboard bez přihlášení (nastav SKIP_AUTH=true v .env.local)
-  if (!isProduction && process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
+  // Lokální demo: povolit dashboard bez přihlášení (SKIP_AUTH=true). Na Vercelu produkce nikdy.
+  if (!isProduction && process.env.VERCEL_ENV !== "production" && process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
     const requestHeaders = new Headers(request.headers);
     if (pathname.startsWith("/client")) {
       requestHeaders.set("x-demo-client-zone", "1");
@@ -158,6 +163,8 @@ export const config = {
     "/api/ai/assistant/:path*",
     "/api/ai/dashboard-summary",
     "/api/calendar/:path*",
+    "/api/drive/:path*",
+    "/api/gmail/:path*",
     "/api/integrations/:path*",
     "/login",
     "/register",

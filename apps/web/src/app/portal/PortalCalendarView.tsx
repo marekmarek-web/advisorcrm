@@ -840,6 +840,7 @@ export function PortalCalendarView() {
 
   const [calendarLoadError, setCalendarLoadError] = useState(false);
   const [calendarSyncLoading, setCalendarSyncLoading] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
   const loadEvents = useCallback(() => {
     setLoading(true);
     setCalendarLoadError(false);
@@ -851,6 +852,16 @@ export function PortalCalendarView() {
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
   useEffect(() => { getContactsList().then(setContacts).catch(() => setContacts([])); }, []);
+  useEffect(() => {
+    fetch("/api/calendar/status")
+      .then(async (res) => {
+        const data = (await res.json().catch(() => ({}))) as { connected?: boolean };
+        setCalendarConnected(Boolean(data.connected));
+      })
+      .catch(() => {
+        setCalendarConnected(null);
+      });
+  }, []);
 
   const handleCalendarSync = useCallback(async () => {
     setCalendarSyncLoading(true);
@@ -1172,6 +1183,19 @@ export function PortalCalendarView() {
                 </button>
               </div>
             </div>
+            {calendarConnected === false && (
+              <div className="mx-3 sm:mx-6 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-amber-900">
+                  Pro synchronizaci s Google Kalendářem propojte svůj účet.
+                </p>
+                <Link
+                  href="/portal/setup?tab=integrace"
+                  className="min-h-[44px] inline-flex items-center rounded-lg px-3 py-2 text-sm font-bold text-amber-900 bg-amber-100 hover:bg-amber-200"
+                >
+                  Přejít do Nastavení
+                </Link>
+              </div>
+            )}
 
             {loading ? (
               <div className="flex-1 flex items-center justify-center">

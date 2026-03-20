@@ -55,9 +55,13 @@ export async function requireAuth(): Promise<AuthContext> {
     }
     const devUserId =
       process.env.NEXT_PUBLIC_DEV_CONTRACTS_USER_ID ?? process.env.DEV_CONTRACTS_USER_ID;
-    if (process.env.NODE_ENV === "development" && devUserId?.trim()) {
+    const allowDevBypass =
+      process.env.NODE_ENV === "development" &&
+      process.env.VERCEL_ENV !== "production" &&
+      devUserId?.trim();
+    if (allowDevBypass) {
       try {
-        const uid = devUserId.trim();
+        const uid = devUserId!.trim();
         const m = await getMembership(uid);
         if (m) {
           return {
@@ -121,9 +125,13 @@ export async function requireAuthInAction(): Promise<AuthContext> {
     }
     const devUserId =
       process.env.NEXT_PUBLIC_DEV_CONTRACTS_USER_ID ?? process.env.DEV_CONTRACTS_USER_ID;
-    if (process.env.NODE_ENV === "development" && devUserId?.trim()) {
+    const allowDevBypass =
+      process.env.NODE_ENV === "development" &&
+      process.env.VERCEL_ENV !== "production" &&
+      devUserId?.trim();
+    if (allowDevBypass) {
       try {
-        const uid = devUserId.trim();
+        const uid = devUserId!.trim();
         const m = await getMembership(uid);
         if (m) {
           return {

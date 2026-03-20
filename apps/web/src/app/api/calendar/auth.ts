@@ -45,13 +45,25 @@ export async function getCalendarAuth(
 export function calendarTokenErrorResponse(e: unknown): NextResponse | null {
   const code = (e as Error & { code?: string }).code;
   if (code === "not_connected") {
-    return NextResponse.json({ error: "Google Calendar není připojen" }, { status: 400 });
+    return NextResponse.json(
+      {
+        error:
+          "Google Kalendář není propojen. Přejděte do Nastavení -> Integrace a u položky Google Calendar klikněte na 'Připojit Google účet'.",
+      },
+      { status: 400 }
+    );
   }
   if (code === "refresh_failed") {
     return NextResponse.json({ error: "Obnovení tokenu selhalo" }, { status: 502 });
   }
   if (code === "decrypt_failed") {
     return NextResponse.json({ error: "Chyba tokenu" }, { status: 500 });
+  }
+  if (code === "encryption_failed") {
+    return NextResponse.json(
+      { error: "Chyba konfigurace serveru (šifrování). Kontaktujte správce." },
+      { status: 500 }
+    );
   }
   return null;
 }

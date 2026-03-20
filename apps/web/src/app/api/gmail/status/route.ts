@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { db, userGoogleCalendarIntegrations } from "db";
+import { db, userGoogleGmailIntegrations } from "db";
 import { eq, and } from "db";
-import { getCalendarAuth } from "../auth";
+import { getCalendarAuth } from "../../calendar/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const authResult = await getCalendarAuth(request, { requireWrite: false });
-  // Při 401/403 vrátit 200 s connected: false, aby UI zobrazilo „Odpojeno“ a tlačítko Připojit (ne „Stav se nepodařilo načíst“)
   if (!authResult.ok) {
     return NextResponse.json({ connected: false });
   }
@@ -16,16 +15,14 @@ export async function GET(request: Request) {
   try {
     const rows = await db
       .select({
-        googleEmail: userGoogleCalendarIntegrations.googleEmail,
-        isActive: userGoogleCalendarIntegrations.isActive,
+        googleEmail: userGoogleGmailIntegrations.googleEmail,
+        isActive: userGoogleGmailIntegrations.isActive,
       })
-      .from(userGoogleCalendarIntegrations)
-      .where(
-        and(
-          eq(userGoogleCalendarIntegrations.tenantId, tenantId),
-          eq(userGoogleCalendarIntegrations.userId, userId)
-        )
-      )
+      .from(userGoogleGmailIntegrations)
+      .where(and(
+        eq(userGoogleGmailIntegrations.tenantId, tenantId),
+        eq(userGoogleGmailIntegrations.userId, userId)
+      ))
       .limit(1);
 
     const row = rows[0];

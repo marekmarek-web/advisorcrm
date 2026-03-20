@@ -25,6 +25,8 @@ export * from "./mindmap";
 export * from "./advisor-preferences";
 export * from "./user-profiles";
 export * from "./user-google-calendar-integrations";
+export * from "./user-google-drive-integrations";
+export * from "./user-google-gmail-integrations";
 export * from "./team-goals";
 export * from "./team-events";
 export * from "./advisor-business-plan";

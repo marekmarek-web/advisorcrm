@@ -12,5 +12,6 @@ export const DEMO_ROLE_CLIENT_ID =
   process.env.DEMO_ROLE_CLIENT_ID ?? "00000000-0000-4000-8000-000000000006";
 
 export function isDemoMode(): boolean {
+  if (process.env.VERCEL_ENV === "production") return false;
   return process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
 }

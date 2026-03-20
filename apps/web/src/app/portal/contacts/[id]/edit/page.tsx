@@ -8,6 +8,7 @@ import { getHouseholdForContact, getHouseholdsList, setContactHousehold } from "
 import { ArrowLeft, Flag, User, Home, RefreshCw } from "lucide-react";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
+import { AddressAutocomplete, type AddressComponents } from "@/app/components/weplan/AddressAutocomplete";
 
 export default function EditContactPage() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function EditContactPage() {
   });
   const [contactOptions, setContactOptions] = useState<{ id: string; label: string }[]>([]);
   const [householdOptions, setHouseholdOptions] = useState<{ id: string; name: string }[]>([]);
+  const [addressSearch, setAddressSearch] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -307,6 +309,25 @@ export default function EditContactPage() {
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Telefon</label>
                 <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Vyhledat adresu</label>
+                <AddressAutocomplete
+                  value={addressSearch}
+                  onChange={setAddressSearch}
+                  onSelectAddress={(c: AddressComponents) => {
+                    const streetPart = [c.street, c.houseNumber].filter(Boolean).join(" ");
+                    setForm((prev) => ({
+                      ...prev,
+                      street: streetPart || prev.street,
+                      city: c.city ?? prev.city,
+                      zip: c.postalCode ?? prev.zip,
+                    }));
+                    setAddressSearch("");
+                  }}
+                  placeholder="Začněte psát adresu…"
+                  className={inputCls}
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Ulice</label>

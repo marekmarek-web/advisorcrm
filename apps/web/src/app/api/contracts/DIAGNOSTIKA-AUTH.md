@@ -1,6 +1,6 @@
 # Diagnostika auth pro /api/contracts/*
 
-**Pozn.:** V middleware je DEV BYPASS pro localhost (bez přihlášení) – hledej „DEV BYPASS“ / `DEV_CONTRACTS_USER_ID`. **Před nasazením do produkce odstranit** (a nemít v produkci env `DEV_CONTRACTS_USER_ID`).
+**Pozn.:** DEV BYPASS (`DEV_CONTRACTS_USER_ID`, `NEXT_PUBLIC_SKIP_AUTH`) funguje jen při `NODE_ENV=development` a když `VERCEL_ENV !== "production"`. Na Vercelu produkce se nikdy nepoužije; v produkci nemít tyto env vyplněné.
 
 ## Co bylo implementováno
 

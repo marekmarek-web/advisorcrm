@@ -95,6 +95,9 @@ interface AIIntegrationHealth {
 
 const INTEGRATIONS: Integration[] = [
   { id: "google-calendar", name: "Google Calendar", description: "Synchronizujte schůzky a události z Aidvisora s Google Kalendářem. Propojte svůj Google účet – přihlášení proběhne v novém okně.", icon: "📅", status: "disconnected", category: "calendar" },
+  { id: "google-drive", name: "Google Drive", description: "Ukládejte a spravujte dokumenty klientů přímo na Google Drive. Propojte svůj účet pro nahrávání, procházení a sdílení souborů.", icon: "📁", status: "disconnected", category: "other" },
+  { id: "gmail", name: "Gmail", description: "Odesílejte a čtěte e-maily přímo z CRM přes váš Gmail účet. Propojte účet pro plnou e-mailovou komunikaci s klienty.", icon: "📧", status: "disconnected", category: "email" },
+  { id: "google-maps", name: "Google Maps", description: "Automatické doplňování adres při zadávání kontaktů. Využívá Google Places API pro přesné a rychlé vyhledávání.", icon: "📍", status: "disconnected", category: "other" },
   { id: "openai-gpt", name: "OpenAI GPT Mini", description: "AI asistent pro sumarizaci schůzek, generování e-mailů a analýzu finančních dat klientů. API klíč se nastavuje v proměnných prostředí na serveru.", icon: "🤖", status: "disconnected", category: "ai" },
   { id: "resend", name: "Resend (E-mail)", description: "Odesílání transakčních a notifikačních e-mailů klientům.", icon: "✉️", status: "disconnected", category: "email", configFields: [{ key: "apiKey", label: "API Key", type: "password", placeholder: "re_..." }, { key: "fromEmail", label: "Odesílatel", type: "text", placeholder: "info@aidvisora.cz" }] },
   { id: "smart-emailing", name: "SmartEmailing", description: "Hromadné e-mailové kampaně a newslettery.", icon: "📧", status: "coming_soon", category: "email" },
@@ -385,6 +388,18 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [calendarStatusError, setCalendarStatusError] = useState<string | null>(null);
   const [calendarDisconnecting, setCalendarDisconnecting] = useState(false);
   const [calendarSyncing, setCalendarSyncing] = useState(false);
+  // Google Drive
+  const [driveStatus, setDriveStatus] = useState<{ connected: boolean; email?: string } | null>(null);
+  const [driveStatusLoading, setDriveStatusLoading] = useState(false);
+  const [driveStatusError, setDriveStatusError] = useState<string | null>(null);
+  const [driveDisconnecting, setDriveDisconnecting] = useState(false);
+  // Gmail
+  const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; email?: string } | null>(null);
+  const [gmailStatusLoading, setGmailStatusLoading] = useState(false);
+  const [gmailStatusError, setGmailStatusError] = useState<string | null>(null);
+  const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
+  // Google Maps
+  const mapsApiKeyPresent = typeof process !== "undefined" && !!process.env?.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
   const handleSaveIntegration = useCallback((integrationId: string) => {
     toast.showToast("Konfigurace uložena");
   }, [toast]);
@@ -463,6 +478,54 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     }
   }, [toast]);
 
+  // --- Google Drive handlers
+  const fetchDriveStatus = useCallback(async () => {
+    setDriveStatusLoading(true);
+    setDriveStatusError(null);
+    try {
+      const res = await fetch("/api/drive/status");
+      const data = (await res.json().catch(() => ({}))) as { connected?: boolean; email?: string; error?: string };
+      if (!res.ok) { setDriveStatusError(data.error || "Stav se nepodařilo načíst."); setDriveStatus(null); return; }
+      setDriveStatus({ connected: !!data.connected, email: data.email });
+    } catch { setDriveStatusError("Stav se nepodařilo načíst."); setDriveStatus(null); }
+    finally { setDriveStatusLoading(false); }
+  }, []);
+  const handleDriveConnect = useCallback(() => { window.location.href = "/api/integrations/google-drive/connect"; }, []);
+  const handleDriveDisconnect = useCallback(async () => {
+    if (!window.confirm("Opravdu chcete odpojit Google Drive?")) return;
+    setDriveDisconnecting(true);
+    try {
+      const res = await fetch("/api/drive/disconnect", { method: "POST" });
+      if (res.ok) { await fetchDriveStatus(); toast.showToast("Google Drive byl odpojen.", "success"); }
+      else { const d = (await res.json().catch(() => ({}))) as { error?: string }; toast.showToast(d.error ?? "Odpojení se nepovedlo.", "error"); }
+    } catch { toast.showToast("Odpojení se nepovedlo.", "error"); }
+    finally { setDriveDisconnecting(false); }
+  }, [fetchDriveStatus, toast]);
+
+  // --- Gmail handlers
+  const fetchGmailStatus = useCallback(async () => {
+    setGmailStatusLoading(true);
+    setGmailStatusError(null);
+    try {
+      const res = await fetch("/api/gmail/status");
+      const data = (await res.json().catch(() => ({}))) as { connected?: boolean; email?: string; error?: string };
+      if (!res.ok) { setGmailStatusError(data.error || "Stav se nepodařilo načíst."); setGmailStatus(null); return; }
+      setGmailStatus({ connected: !!data.connected, email: data.email });
+    } catch { setGmailStatusError("Stav se nepodařilo načíst."); setGmailStatus(null); }
+    finally { setGmailStatusLoading(false); }
+  }, []);
+  const handleGmailConnect = useCallback(() => { window.location.href = "/api/integrations/gmail/connect"; }, []);
+  const handleGmailDisconnect = useCallback(async () => {
+    if (!window.confirm("Opravdu chcete odpojit Gmail?")) return;
+    setGmailDisconnecting(true);
+    try {
+      const res = await fetch("/api/gmail/disconnect", { method: "POST" });
+      if (res.ok) { await fetchGmailStatus(); toast.showToast("Gmail byl odpojen.", "success"); }
+      else { const d = (await res.json().catch(() => ({}))) as { error?: string }; toast.showToast(d.error ?? "Odpojení se nepovedlo.", "error"); }
+    } catch { toast.showToast("Odpojení se nepovedlo.", "error"); }
+    finally { setGmailDisconnecting(false); }
+  }, [fetchGmailStatus, toast]);
+
   const fetchAiHealth = useCallback(async () => {
     try {
       const res = await fetch("/api/ai/health");
@@ -480,14 +543,24 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
       setAiHealthLoading(true);
       fetchAiHealth().finally(() => setAiHealthLoading(false));
       fetchCalendarStatus();
+      fetchDriveStatus();
+      fetchGmailStatus();
     }
-  }, [activeTab, fetchAiHealth, fetchCalendarStatus]);
+  }, [activeTab, fetchAiHealth, fetchCalendarStatus, fetchDriveStatus, fetchGmailStatus]);
 
   useEffect(() => {
     const calendar = searchParams.get("calendar");
     const calendarError = searchParams.get("calendar_error");
     if (calendar === "connected") toast.showToast("Google Kalendář byl úspěšně propojen.", "success");
     if (calendarError) toast.showToast(calendarError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení se nepovedlo.", "error");
+    const drive = searchParams.get("drive");
+    const driveError = searchParams.get("drive_error");
+    if (drive === "connected") toast.showToast("Google Drive byl úspěšně propojen.", "success");
+    if (driveError) toast.showToast(driveError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení Drive se nepovedlo.", "error");
+    const gmail = searchParams.get("gmail");
+    const gmailError = searchParams.get("gmail_error");
+    if (gmail === "connected") toast.showToast("Gmail byl úspěšně propojen.", "success");
+    if (gmailError) toast.showToast(gmailError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení Gmailu se nepovedlo.", "error");
   }, [searchParams, toast]);
 
   const handleTestAIConnection = useCallback(async () => {
@@ -1177,10 +1250,29 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   const expanded = expandedId === integration.id;
                   const isOpenAI = integration.id === "openai-gpt";
                   const isGoogleCalendar = integration.id === "google-calendar";
+                  const isGoogleDrive = integration.id === "google-drive";
+                  const isGmail = integration.id === "gmail";
+                  const isGoogleMaps = integration.id === "google-maps";
                   const openAIStatus: IntegrationStatus = aiHealthLoading ? "disconnected" : aiHealth?.ok ? "connected" : "disconnected";
                   const googleCalendarStatus: IntegrationStatus = calendarStatusLoading ? "disconnected" : calendarStatus?.connected ? "connected" : "disconnected";
-                  const badge = STATUS_BADGES[isOpenAI ? openAIStatus : isGoogleCalendar ? googleCalendarStatus : integration.status];
+                  const googleDriveStatus: IntegrationStatus = driveStatusLoading ? "disconnected" : driveStatus?.connected ? "connected" : "disconnected";
+                  const gmailIntStatus: IntegrationStatus = gmailStatusLoading ? "disconnected" : gmailStatus?.connected ? "connected" : "disconnected";
+                  const googleMapsStatus: IntegrationStatus = mapsApiKeyPresent ? "connected" : "disconnected";
+                  const resolvedStatus =
+                    isOpenAI ? openAIStatus
+                    : isGoogleCalendar ? googleCalendarStatus
+                    : isGoogleDrive ? googleDriveStatus
+                    : isGmail ? gmailIntStatus
+                    : isGoogleMaps ? googleMapsStatus
+                    : integration.status;
+                  const badge = STATUS_BADGES[resolvedStatus];
                   const config = configs[integration.id] ?? {};
+                  const isGoogleOAuth = isGoogleCalendar || isGoogleDrive || isGmail;
+                  const expandLabel = expanded ? "Zavřít"
+                    : isOpenAI ? "Stav připojení"
+                    : isGoogleMaps ? "Stav"
+                    : isGoogleOAuth ? "Propojit účet"
+                    : "Konfigurovat";
                   return (
                     <div key={integration.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
                       <div className="p-6 flex items-start justify-between">
@@ -1197,8 +1289,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                       </div>
                       <div className="px-6 py-4 border-t border-slate-50">
                         <button type="button" onClick={() => setExpandedId(expanded ? null : integration.id)} className="w-full flex items-center justify-between text-sm font-bold text-indigo-600 hover:text-indigo-800 min-h-[44px]">
-                          {expanded ? "Zavřít" : isOpenAI ? "Stav připojení" : isGoogleCalendar ? "Propojit kalendář" : "Konfigurovat"} <ChevronRight size={14} className={expanded ? "rotate-90" : ""} />
+                          {expandLabel} <ChevronRight size={14} className={expanded ? "rotate-90" : ""} />
                         </button>
+                        {/* Google Calendar */}
                         {expanded && isGoogleCalendar && (
                           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                             {calendarStatusLoading && calendarStatus === null && !calendarStatusError ? (
@@ -1221,13 +1314,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                                     <Mail size={14} className="shrink-0 text-slate-500" aria-hidden /> {calendarStatus.email}
                                   </p>
                                 )}
-                                <button
-                                  type="button"
-                                  onClick={handleCalendarSync}
-                                  disabled={calendarSyncing}
-                                  className="wp-btn mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-bold hover:bg-indigo-100 disabled:opacity-60 flex items-center gap-2"
-                                  aria-busy={calendarSyncing}
-                                >
+                                <button type="button" onClick={handleCalendarSync} disabled={calendarSyncing} className="wp-btn mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-bold hover:bg-indigo-100 disabled:opacity-60 flex items-center gap-2" aria-busy={calendarSyncing}>
                                   {calendarSyncing ? <Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> : null}
                                   {calendarSyncing ? "Synchronizuji…" : "Synchronizovat teď"}
                                 </button>
@@ -1245,6 +1332,71 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                             )}
                           </div>
                         )}
+                        {/* Google Drive */}
+                        {expanded && isGoogleDrive && (
+                          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                            {driveStatusLoading && driveStatus === null && !driveStatusError ? (
+                              <p className="text-sm text-slate-500 font-medium flex items-center gap-2" role="status"><Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> Načítám stav…</p>
+                            ) : driveStatusError ? (
+                              <div className="space-y-2">
+                                <p className="text-sm text-amber-700 font-medium flex items-center gap-2"><AlertCircle size={16} className="shrink-0" aria-hidden /> {driveStatusError}</p>
+                                <button type="button" onClick={() => fetchDriveStatus()} className="wp-btn min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-bold hover:bg-slate-200 flex items-center gap-2">Zkusit znovu</button>
+                              </div>
+                            ) : driveStatus?.connected ? (
+                              <>
+                                {driveStatus.email && (
+                                  <p className="text-sm text-slate-700 font-medium flex items-center gap-2"><Mail size={14} className="shrink-0 text-slate-500" aria-hidden /> {driveStatus.email}</p>
+                                )}
+                                <button type="button" onClick={handleDriveDisconnect} disabled={driveDisconnecting} className="wp-btn mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-bold hover:bg-slate-200 disabled:opacity-60 flex items-center gap-2" aria-busy={driveDisconnecting}>
+                                  {driveDisconnecting ? <Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> : null}
+                                  {driveDisconnecting ? "Odpojuji…" : "Odpojit Google Drive"}
+                                </button>
+                              </>
+                            ) : (
+                              <button type="button" onClick={handleDriveConnect} className="wp-btn wp-btn-primary mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700">
+                                Připojit Google Drive
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {/* Gmail */}
+                        {expanded && isGmail && (
+                          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                            {gmailStatusLoading && gmailStatus === null && !gmailStatusError ? (
+                              <p className="text-sm text-slate-500 font-medium flex items-center gap-2" role="status"><Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> Načítám stav…</p>
+                            ) : gmailStatusError ? (
+                              <div className="space-y-2">
+                                <p className="text-sm text-amber-700 font-medium flex items-center gap-2"><AlertCircle size={16} className="shrink-0" aria-hidden /> {gmailStatusError}</p>
+                                <button type="button" onClick={() => fetchGmailStatus()} className="wp-btn min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-bold hover:bg-slate-200 flex items-center gap-2">Zkusit znovu</button>
+                              </div>
+                            ) : gmailStatus?.connected ? (
+                              <>
+                                {gmailStatus.email && (
+                                  <p className="text-sm text-slate-700 font-medium flex items-center gap-2"><Mail size={14} className="shrink-0 text-slate-500" aria-hidden /> {gmailStatus.email}</p>
+                                )}
+                                <button type="button" onClick={handleGmailDisconnect} disabled={gmailDisconnecting} className="wp-btn mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-bold hover:bg-slate-200 disabled:opacity-60 flex items-center gap-2" aria-busy={gmailDisconnecting}>
+                                  {gmailDisconnecting ? <Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> : null}
+                                  {gmailDisconnecting ? "Odpojuji…" : "Odpojit Gmail"}
+                                </button>
+                              </>
+                            ) : (
+                              <button type="button" onClick={handleGmailConnect} className="wp-btn wp-btn-primary mt-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700">
+                                Připojit Gmail
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {/* Google Maps */}
+                        {expanded && isGoogleMaps && (
+                          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                            {mapsApiKeyPresent ? (
+                              <p className="text-sm text-green-700 font-medium flex items-center gap-2">API klíč je nastaven. Automatické doplňování adres funguje ve formulářích kontaktů.</p>
+                            ) : (
+                              <p className="text-sm text-amber-700 font-medium flex items-center gap-2"><AlertCircle size={16} className="shrink-0" aria-hidden /> API klíč není nastaven. Nastavte NEXT_PUBLIC_GOOGLE_MAPS_API_KEY v proměnných prostředí.</p>
+                            )}
+                          </div>
+                        )}
+                        {/* OpenAI */}
                         {expanded && isOpenAI && (
                           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                             {aiHealthLoading && !aiHealth ? (
@@ -1268,7 +1420,8 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                             )}
                           </div>
                         )}
-                        {expanded && integration.configFields && !isGoogleCalendar && (
+                        {/* Config fields */}
+                        {expanded && integration.configFields && !isGoogleOAuth && (
                           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                             {integration.configFields.map((field) => (
                               <div key={field.key}>

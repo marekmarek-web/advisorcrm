@@ -197,7 +197,9 @@ export async function getValidAccessToken(
       encryptedAccess = encrypt(tokens.access_token);
     } catch (e) {
       logError("Encrypt new access token failed", e);
-      throw new Error("Token encryption failed");
+      const err = new Error("Token encryption failed") as Error & { code?: string };
+      err.code = "encryption_failed";
+      throw err;
     }
     await db
       .update(userGoogleCalendarIntegrations)
