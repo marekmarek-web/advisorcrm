@@ -6,6 +6,7 @@ import "../styles/weplan-theme.css";
 import "../styles/weplan-components.css";
 import "../styles/weplan-calendar.css";
 import { TooltipBlurListener } from "./components/TooltipBlurListener";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const sourceSans = Source_Sans_3({
   subsets: ["latin", "latin-ext"],
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className={sourceSans.className}>
         <TooltipBlurListener />
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );

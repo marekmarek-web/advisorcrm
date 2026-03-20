@@ -36,6 +36,7 @@
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
     "@supernotes/capacitor-send-intent": "^7.0.0",
+    "@vercel/speed-insights": "^2.0.0",
     "apexcharts": "^5.10.3",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.0",
