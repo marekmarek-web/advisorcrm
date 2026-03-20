@@ -27,7 +27,11 @@ export interface BankEntry {
   name: string;
   baseRate: number;
   loanRate: number;
+  apr?: number;
   logoUrl: string;
+  source?: string;
+  sourceUrl?: string;
+  fetchedAt?: string;
 }
 
 export interface ProductSubType {
@@ -52,5 +56,6 @@ export interface MortgageResult {
 export interface BankOffer {
   bank: BankEntry;
   rate: number;
+  apr?: number;
   monthlyPayment: number;
 }

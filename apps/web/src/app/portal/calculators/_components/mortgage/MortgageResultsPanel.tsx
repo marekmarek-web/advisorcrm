@@ -31,7 +31,7 @@ export function MortgageResultsPanel({ result, onCtaClick }: MortgageResultsPane
       value={formatCurrency(result.monthlyPayment)}
       unit="Kč"
       rows={rows}
-      footnote="Výpočet je orientační. Skutečná sazba a splátka závisí na bance a vaší bonitě."
+      footnote="Sazby a splátky jsou orientační. Finální nabídka závisí na bonitě klienta, účelu úvěru a podmínkách konkrétní banky. Výsledky slouží pro rychlou orientaci poradce na trhu."
       cta={
         onCtaClick != null ? (
           <>

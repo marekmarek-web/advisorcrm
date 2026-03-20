@@ -1,13 +1,19 @@
 "use client";
 
 import type { TabType } from "@/lib/calculators/mortgage";
+import type { ProductType } from "@/lib/calculators/mortgage";
 
 export interface MortgageTabSwitcherProps {
+  product: ProductType;
   type: TabType;
   onTypeChange: (type: TabType) => void;
 }
 
-export function MortgageTabSwitcher({ type, onTypeChange }: MortgageTabSwitcherProps) {
+export function MortgageTabSwitcher({
+  product,
+  type,
+  onTypeChange,
+}: MortgageTabSwitcherProps) {
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -19,7 +25,7 @@ export function MortgageTabSwitcher({ type, onTypeChange }: MortgageTabSwitcherP
             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
         }`}
       >
-        Nová hypotéka
+        {product === "loan" ? "Nový úvěr" : "Nová hypotéka"}
       </button>
       <button
         type="button"

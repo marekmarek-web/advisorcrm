@@ -7,6 +7,9 @@ import type { BankOffer } from "@/lib/calculators/mortgage/mortgage.types";
 
 export interface MortgageBankOffersProps {
   offers: BankOffer[];
+  fetchedAt?: string;
+  source?: string;
+  sourceUrl?: string;
   /** Optional: when provided, "Chci nabídku" button is shown (web/lead mode). */
   onRequestOffer?: (bankName: string) => void;
 }
@@ -19,8 +22,18 @@ function getInitials(name: string): string {
 
 export function MortgageBankOffers({
   offers,
+  fetchedAt,
+  source,
+  sourceUrl,
   onRequestOffer,
 }: MortgageBankOffersProps) {
+  const sortedByMonthly = [...offers].sort(
+    (a, b) => a.monthlyPayment - b.monthlyPayment
+  );
+  const lowestMonthlyId = sortedByMonthly[0]?.bank.id;
+  const lowestRateId = [...offers].sort((a, b) => a.rate - b.rate)[0]?.bank.id;
+  const updatedAt = fetchedAt ? new Date(fetchedAt) : null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -28,7 +41,7 @@ export function MortgageBankOffers({
           Srovnání nabídek trhu
         </h3>
         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg w-fit">
-          Seřazeno od nejnižší splátky
+          Seřazeno od nejnižšího úroku
         </span>
       </div>
 
@@ -38,9 +51,30 @@ export function MortgageBankOffers({
             key={offer.bank.id}
             offer={offer}
             index={index}
+            isLowestRate={offer.bank.id === lowestRateId}
+            isLowestMonthly={offer.bank.id === lowestMonthlyId}
             onRequestOffer={onRequestOffer}
           />
         ))}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4 text-xs text-slate-600 leading-relaxed">
+        <p>
+          Sazby a splátky jsou orientační. Finální nabídka závisí na bonitě klienta,
+          účelu úvěru a podmínkách konkrétní banky. Výsledky slouží pro rychlou
+          orientaci poradce na trhu.
+        </p>
+        {updatedAt ? (
+          <p className="mt-2 text-slate-500">
+            Aktualizováno: {updatedAt.toLocaleDateString("cs-CZ")}{" "}
+            {updatedAt.toLocaleTimeString("cs-CZ", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {source ? ` · Zdroj: ${source}` : ""}
+            {sourceUrl ? ` (${sourceUrl})` : ""}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -49,10 +83,14 @@ export function MortgageBankOffers({
 function BankOfferCard({
   offer,
   index,
+  isLowestRate,
+  isLowestMonthly,
   onRequestOffer,
 }: {
   offer: BankOffer;
   index: number;
+  isLowestRate: boolean;
+  isLowestMonthly: boolean;
   onRequestOffer?: (bankName: string) => void;
 }) {
   const [logoError, setLogoError] = useState(false);
@@ -67,6 +105,16 @@ function BankOfferCard({
       {index === 0 && (
         <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl z-10 shadow-sm flex items-center gap-1">
           <CheckCircle2 size={10} /> Top volba
+        </div>
+      )}
+      {isLowestRate && (
+        <div className="absolute top-2 left-2 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg z-10">
+          Nejnižší sazba
+        </div>
+      )}
+      {isLowestMonthly && (
+        <div className="absolute bottom-2 left-2 bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg z-10">
+          Nejnižší splátka
         </div>
       )}
 

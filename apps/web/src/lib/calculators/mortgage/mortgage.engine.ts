@@ -14,7 +14,7 @@
 import { BANKS_DATA } from "./mortgage.config";
 import { MORTGAGE_MIN_RATE } from "./mortgage.constants";
 import type { MortgageState, MortgageResult, BankOffer } from "./mortgage.types";
-import type { MortgageSubType, LoanSubType } from "./mortgage.types";
+import type { BankEntry } from "./mortgage.types";
 
 /** PMT formula: (P * r * (1+r)^n) / ((1+r)^n - 1); for r=0: P/n. */
 export function computePMT(
@@ -45,7 +45,16 @@ export function getCalculatedLtv(state: MortgageState): number {
 
 /** Mortgage rate: base + penalty (LTV>91, american, investment, refi) + fix adjustment; min 4.19. */
 export function computeMortgageRate(state: MortgageState, fixYears: number): number {
-  const base = Math.min(...BANKS_DATA.map((b) => b.baseRate));
+  return computeMortgageRateWithBanks(state, fixYears, BANKS_DATA);
+}
+
+export function computeMortgageRateWithBanks(
+  state: MortgageState,
+  fixYears: number,
+  banks: BankEntry[]
+): number {
+  const sourceBanks = banks.length > 0 ? banks : BANKS_DATA;
+  const base = Math.min(...sourceBanks.map((b) => b.baseRate));
   let penalty = 0;
   const calcLtv = getCalculatedLtv(state);
   if (calcLtv > 91) penalty += 1.5;
@@ -66,8 +75,13 @@ export function computeMortgageRate(state: MortgageState, fixYears: number): num
 
 /** Loan rate: avg(bank.loanRate) + typeMod (auto -1, consolidation -0.5). */
 export function computeLoanRate(state: MortgageState): number {
+  return computeLoanRateWithBanks(state, BANKS_DATA);
+}
+
+export function computeLoanRateWithBanks(state: MortgageState, banks: BankEntry[]): number {
+  const sourceBanks = banks.length > 0 ? banks : BANKS_DATA;
   const avgRate =
-    BANKS_DATA.reduce((acc, b) => acc + (b.loanRate ?? 7.0), 0) / BANKS_DATA.length;
+    sourceBanks.reduce((acc, b) => acc + (b.loanRate ?? 7.0), 0) / sourceBanks.length;
   let typeMod = 0;
   if (state.loanType === "auto") typeMod = -1.0;
   if (state.loanType === "consolidation") typeMod = -0.5;
@@ -83,7 +97,11 @@ export function getBorrowingAmount(state: MortgageState): number {
 }
 
 /** Full result for current state (display LTV, labels, warnings). */
-export function calculateResult(state: MortgageState): MortgageResult {
+export function calculateResult(
+  state: MortgageState,
+  banksOverride?: BankEntry[]
+): MortgageResult {
+  const bankData = banksOverride && banksOverride.length > 0 ? banksOverride : BANKS_DATA;
   const fixYears = state.fix;
   const calcLtv = getCalculatedLtv(state);
   const borrowingAmount = getBorrowingAmount(state);
@@ -96,14 +114,14 @@ export function calculateResult(state: MortgageState): MortgageResult {
   let ltvWarningValue = 0;
 
   if (state.product === "mortgage") {
-    finalRate = computeMortgageRate(state, fixYears);
+    finalRate = computeMortgageRateWithBanks(state, fixYears, bankData);
     propertyValue = state.loan + state.own;
     showLtvRow = true;
     ltvLabel = "LTV";
     showLtvWarning = calcLtv > 91;
     ltvWarningValue = calcLtv;
   } else {
-    finalRate = computeLoanRate(state);
+    finalRate = computeLoanRateWithBanks(state, bankData);
     if (state.loanType === "auto") {
       propertyValue = borrowingAmount;
       showLtvRow = true;
@@ -160,11 +178,19 @@ function getBankMortgageRate(
 
 /** Sorted bank offers with rate and monthly payment. */
 export function getOffers(state: MortgageState): BankOffer[] {
+  return getOffersWithBanks(state, BANKS_DATA);
+}
+
+export function getOffersWithBanks(
+  state: MortgageState,
+  banksOverride?: BankEntry[]
+): BankOffer[] {
   const borrowingAmount = getBorrowingAmount(state);
   const months = state.term * 12;
   const fixYears = state.fix;
+  const bankData = banksOverride && banksOverride.length > 0 ? banksOverride : BANKS_DATA;
 
-  const sorted = [...BANKS_DATA].sort((a, b) => {
+  const sorted = [...bankData].sort((a, b) => {
     if (state.product === "mortgage") return a.baseRate - b.baseRate;
     return (a.loanRate ?? 10) - (b.loanRate ?? 10);
   });
@@ -189,6 +215,7 @@ export function getOffers(state: MortgageState): BankOffer[] {
     return {
       bank,
       rate,
+      apr: bank.apr,
       monthlyPayment: Math.round(monthlyPayment),
     };
   });
