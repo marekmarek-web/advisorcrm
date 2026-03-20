@@ -5,6 +5,8 @@ dist
 .env
 .env.local
 .env.*.local
+# Google OAuth client secret (nikdy necommitujte)
+client_secret*.json
 *.log
 .DS_Store
 .vercel
