@@ -107,11 +107,16 @@ export function createSeedBoard(): Board {
   };
 }
 
-let nextItemId = 10;
 let nextViewId = 2;
 
-export function nextId() {
-  return String(nextItemId++);
+export function nextId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }
 
 export function nextViewIdSeq() {

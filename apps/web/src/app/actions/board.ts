@@ -286,34 +286,53 @@ export async function saveBoardItemsBatch(
   }>
 ) {
   const auth = await requireAuthInAction();
-  for (const item of items) {
-    const existing = await db
-      .select({ id: boardItems.id })
-      .from(boardItems)
-      .where(and(eq(boardItems.tenantId, auth.tenantId), eq(boardItems.id, item.id)))
-      .limit(1);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (existing.length > 0) {
-      await db
-        .update(boardItems)
-        .set({
+  for (const item of items) {
+    try {
+      if (!uuidRegex.test(item.id)) {
+        const [row] = await db.insert(boardItems).values({
+          tenantId: auth.tenantId,
+          viewId,
           name: item.name,
           groupId: item.groupId,
           cells: item.cells as unknown as Record<string, unknown>,
           sortOrder: item.sortOrder,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(boardItems.tenantId, auth.tenantId), eq(boardItems.id, item.id)));
-    } else {
-      await db.insert(boardItems).values({
-        id: item.id,
-        tenantId: auth.tenantId,
-        viewId,
-        name: item.name,
-        groupId: item.groupId,
-        cells: item.cells as unknown as Record<string, unknown>,
-        sortOrder: item.sortOrder,
-      });
+        }).returning({ id: boardItems.id });
+        item.id = row.id;
+        continue;
+      }
+
+      const existing = await db
+        .select({ id: boardItems.id })
+        .from(boardItems)
+        .where(and(eq(boardItems.tenantId, auth.tenantId), eq(boardItems.id, item.id)))
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(boardItems)
+          .set({
+            name: item.name,
+            groupId: item.groupId,
+            cells: item.cells as unknown as Record<string, unknown>,
+            sortOrder: item.sortOrder,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(boardItems.tenantId, auth.tenantId), eq(boardItems.id, item.id)));
+      } else {
+        await db.insert(boardItems).values({
+          id: item.id,
+          tenantId: auth.tenantId,
+          viewId,
+          name: item.name,
+          groupId: item.groupId,
+          cells: item.cells as unknown as Record<string, unknown>,
+          sortOrder: item.sortOrder,
+        });
+      }
+    } catch (err) {
+      console.error(`[board] saveBoardItemsBatch failed for item ${item.id}:`, err);
     }
   }
 }

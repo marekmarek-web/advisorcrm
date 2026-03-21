@@ -85,6 +85,30 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoad = useRef(true);
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  const activeViewIdRef = useRef(activeViewId);
+  activeViewIdRef.current = activeViewId;
+
+  const flushSave = useCallback(() => {
+    if (!dbViewId) return;
+    const b = boardRef.current;
+    const view = b.views.find((v) => v.id === activeViewIdRef.current);
+    if (view) {
+      saveBoardViewConfig(dbViewId, {
+        columnsConfig: view.columns,
+        groupsConfig: b.groups.map((g) => ({ id: g.id, name: g.name, color: g.color, collapsed: g.collapsed, subtitle: g.subtitle })),
+      }).catch((err) => console.error("[board] saveBoardViewConfig failed", err));
+    }
+    const allItems = b.groups.flatMap((g, gi) =>
+      g.itemIds.map((itemId, ii) => {
+        const item = b.items[itemId];
+        return item ? { id: item.id, name: item.name, groupId: g.id, cells: item.cells as Record<string, string | number>, sortOrder: gi * 1000 + ii } : null;
+      }).filter(Boolean) as Array<{ id: string; name: string; groupId: string; cells: Record<string, string | number>; sortOrder: number }>
+    );
+    saveBoardItemsBatch(dbViewId, allItems).catch((err) => console.error("[board] saveBoardItemsBatch failed", err));
+  }, [dbViewId]);
+
   useEffect(() => {
     if (initialLoad.current) {
       initialLoad.current = false;
@@ -95,25 +119,18 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
       return;
     }
     if (saveTimerRef.current != null) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
-    saveTimerRef.current = setTimeout(() => {
-      const view = board.views.find((v) => v.id === activeViewId);
-      if (view) {
-        // Per-view: each board view has its own column config and groups (editable column/template logika)
-        saveBoardViewConfig(dbViewId, {
-          columnsConfig: view.columns,
-          groupsConfig: board.groups.map((g) => ({ id: g.id, name: g.name, color: g.color, collapsed: g.collapsed, subtitle: g.subtitle })),
-        }).catch(() => {});
+    saveTimerRef.current = setTimeout(flushSave, 800);
+  }, [board, hiddenColumnIds, activeViewId, dbViewId, flushSave]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current != null) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+        flushSave();
       }
-      // Always use item.name from state (never from cells) so changing status never overwrites client name
-      const allItems = board.groups.flatMap((g, gi) =>
-        g.itemIds.map((itemId, ii) => {
-          const item = board.items[itemId];
-          return item ? { id: item.id, name: item.name, groupId: g.id, cells: item.cells as Record<string, string | number>, sortOrder: gi * 1000 + ii } : null;
-        }).filter(Boolean) as Array<{ id: string; name: string; groupId: string; cells: Record<string, string | number>; sortOrder: number }>
-      );
-      saveBoardItemsBatch(dbViewId, allItems).catch(() => {});
-    }, 1500);
-  }, [board, hiddenColumnIds, activeViewId, dbViewId]);
+    };
+  }, [flushSave]);
   useEffect(() => {
     if (!dbViewId) return;
     listBoardViews().then(setViewsList).catch(() => setViewsList([]));
