@@ -131,6 +131,47 @@ export async function listCalendarEvents(
   return calendarRequest<GoogleCalendarEventsResponse>(accessToken, "GET", path);
 }
 
+/** Událostí na stránku (Google max 2500). */
+const CALENDAR_EVENTS_PAGE_SIZE = 500;
+/** Ochrana proti timeoutu serverless / extrémním kalendářům (~50k instancí). */
+const CALENDAR_EVENTS_MAX_PAGES = 100;
+
+/**
+ * Stáhne všechny události v časovém rozsahu včetně stránkování.
+ * `singleEvents=true` rozvine opakující se události (nutné k importu do CRM).
+ */
+export async function listAllCalendarEventsInRange(
+  accessToken: string,
+  calendarId: string,
+  options: { timeMin: string; timeMax: string }
+): Promise<{ items: GoogleCalendarEvent[]; truncated: boolean }> {
+  const items: GoogleCalendarEvent[] = [];
+  let pageToken: string | undefined;
+  let pages = 0;
+  let truncated = false;
+
+  do {
+    if (pages >= CALENDAR_EVENTS_MAX_PAGES) {
+      truncated = true;
+      break;
+    }
+    pages++;
+    const params = new URLSearchParams();
+    params.set("timeMin", options.timeMin);
+    params.set("timeMax", options.timeMax);
+    params.set("singleEvents", "true");
+    params.set("orderBy", "startTime");
+    params.set("maxResults", String(CALENDAR_EVENTS_PAGE_SIZE));
+    if (pageToken) params.set("pageToken", pageToken);
+    const path = `/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`;
+    const page = await calendarRequest<GoogleCalendarEventsResponse>(accessToken, "GET", path);
+    if (page.items?.length) items.push(...page.items);
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+
+  return { items, truncated };
+}
+
 /**
  * Create an event. Returns the created event with id.
  */

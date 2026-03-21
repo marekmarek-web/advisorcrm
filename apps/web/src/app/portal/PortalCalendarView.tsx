@@ -866,6 +866,7 @@ export function PortalCalendarView() {
   const handleCalendarSync = useCallback(async () => {
     setCalendarSyncLoading(true);
     try {
+      // Rozsah bere server (~2 roky zpět, 1 rok dopředu); timeMin/timeMax jen rozšíří okno, nezuží ho.
       const res = await fetch("/api/calendar/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -880,6 +881,7 @@ export function PortalCalendarView() {
         detail?: string;
         created?: number;
         updated?: number;
+        truncated?: boolean;
       };
       const syncOk = res.ok && data.ok === true;
       if (syncOk) {
@@ -889,6 +891,13 @@ export function PortalCalendarView() {
             ? `Synchronizováno: ${data.created ?? 0} nových, ${data.updated ?? 0} upraveno.`
             : "Kalendář byl synchronizován s Google."
         );
+        if (data.truncated) {
+          toast.showToast(
+            "Načteno maximum událostí z Google (limit stránek). Zbytek se nestáhl – zúžte rozsah v API nebo sync opakujte.",
+            "info",
+            10000
+          );
+        }
       } else {
         const hint = data.detail ? ` ${data.detail}` : "";
         toast.showToast(`${data.error ?? "Synchronizace se nepovedla."}${hint}`.trim(), "error", 12000);

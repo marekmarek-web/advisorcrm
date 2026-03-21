@@ -463,15 +463,10 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     setCalendarSyncing(true);
     setCalendarStatusError(null);
     try {
-      const now = new Date();
-      const start = new Date(now);
-      start.setDate(now.getDate() - 7);
-      const end = new Date(now);
-      end.setDate(now.getDate() + 30);
       const res = await fetch("/api/calendar/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeMin: start.toISOString(), timeMax: end.toISOString() }),
+        body: JSON.stringify({}),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; created?: number; updated?: number };
       if (!res.ok) {

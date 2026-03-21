@@ -321,11 +321,6 @@ export function GoogleCalendarUpcomingEvents() {
   const handleSync = useCallback(async () => {
     setSyncing(true);
     try {
-      const now = new Date();
-      const start = new Date(now);
-      start.setDate(now.getDate() - 7);
-      const end = new Date(now);
-      end.setDate(now.getDate() + 30);
       const res = await retryFetchWithTimeout(
         "/api/calendar/sync",
         {
@@ -334,9 +329,9 @@ export function GoogleCalendarUpcomingEvents() {
             "Content-Type": "application/json",
             "Idempotency-Key": buildIdempotencyKey("calendar-sync"),
           },
-          body: JSON.stringify({ timeMin: start.toISOString(), timeMax: end.toISOString() }),
+          body: JSON.stringify({}),
         },
-        { timeoutMs: 15_000, maxAttempts: 2 }
+        { timeoutMs: 120_000, maxAttempts: 2 }
       );
       const data = (await res.json().catch(() => ({}))) as { error?: string; created?: number; updated?: number };
       if (!res.ok) {
