@@ -1,6 +1,9 @@
 import type { SectionCtx } from '../types';
 import { nextSection, fmtCzk, fmtMonthly, fmtDaily, fmtBigCzk, esc } from '../helpers';
 import { computeInsurance } from '../../report';
+import { INSURANCE_LOGOS } from '../../constants';
+import { getRiskLabel } from '../../incomeProtection';
+import type { IncomeProtectionPerson, IncomeProtectionPlan, InsuranceFundingSource } from '../../types';
 
 export function renderInsurance(ctx: SectionCtx): string {
   const { data } = ctx;
@@ -40,6 +43,11 @@ export function renderInsurance(ctx: SectionCtx): string {
 
   if (ins.childInsurance && ins.childInsurance.length > 0) {
     html += renderChildrenInsurance(ctx, ins.childInsurance);
+  }
+
+  const persons = data.incomeProtection?.persons ?? [];
+  if (persons.length > 0) {
+    html += renderProposedInsurance(ctx, persons);
   }
 
   return html;
@@ -162,6 +170,73 @@ function renderChildrenInsurance(
       <span class="callout-icon">👶</span>
       <div><strong>Dětské pojištění</strong>
       Doporučujeme pojistit děti proti trvalým následkům úrazu, invaliditě a hospitalizaci. Pojistné je zpravidla velmi nízké a poskytuje významnou finanční ochranu.</div>
+    </div>
+  </div>
+</section>`;
+}
+
+function planTotalMonthly(plan: IncomeProtectionPlan): number {
+  if (plan.monthlyPremium != null && plan.monthlyPremium > 0) return plan.monthlyPremium;
+  if (plan.annualContribution != null && plan.annualContribution > 0) return Math.round(plan.annualContribution / 12);
+  return (plan.insuredRisks ?? [])
+    .filter((r) => r.enabled && r.finalPrice)
+    .reduce((sum, r) => sum + (r.finalPrice ?? 0), 0);
+}
+
+const FUNDING_LABELS: Record<InsuranceFundingSource, string> = { company: 'Firma', personal: 'Osobně', osvc: 'OSVČ' };
+const ROLE_LABELS: Record<string, string> = {
+  client: 'Klient', partner: 'Partner/ka', child: 'Dítě',
+  director: 'Jednatel', owner: 'Majitel', partner_company: 'Společník',
+};
+
+function renderProposedInsurance(ctx: SectionCtx, persons: IncomeProtectionPerson[]): string {
+  const num = nextSection(ctx.sectionCounter);
+  let totalMonthly = 0;
+
+  const rows = persons.flatMap((person) =>
+    (person.insurancePlans ?? []).map((plan) => {
+      const monthly = planTotalMonthly(plan);
+      totalMonthly += monthly;
+      const risks = (plan.insuredRisks ?? [])
+        .filter((r) => r.enabled)
+        .map((r) => getRiskLabel(r.riskType))
+        .join(', ') || '–';
+      const funding = plan.fundingSource ? FUNDING_LABELS[plan.fundingSource] ?? plan.fundingSource : '–';
+      const logoPath = plan.provider ? INSURANCE_LOGOS[plan.provider] : undefined;
+      const logoHtml = logoPath
+        ? `<img src="${esc(logoPath)}" alt="${esc(plan.provider)}" class="ins-provider-logo" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline'"><span class="ins-provider-fallback" style="display:none">${esc(plan.provider)}</span>`
+        : `<span class="ins-provider-fallback">${esc(plan.provider)}</span>`;
+      return `<tr>
+        <td class="bold">${esc(person.displayName ?? '')}</td>
+        <td class="muted">${esc(ROLE_LABELS[person.roleType ?? ''] ?? person.role ?? '')}</td>
+        <td class="ins-provider-cell">${logoHtml}</td>
+        <td>${esc(risks)}</td>
+        <td class="r num">${fmtMonthly(monthly)}</td>
+        <td class="muted">${esc(funding)}</td>
+      </tr>`;
+    }),
+  );
+
+  if (rows.length === 0) return '';
+
+  return `<section class="page" id="ins-proposed">
+  <div class="page-bar"></div>
+  <div class="page-inner">
+    <div class="sec-header">
+      <div class="sec-number">${num} — Navržené řešení</div>
+      <div class="sec-title">Navržené pojistné řešení</div>
+      <div class="sec-desc">Přehled navržených pojistných plánů a jejich měsíčních nákladů.</div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-cap"><span class="tbl-cap-title">Pojistné plány</span></div>
+      <table class="dt">
+        <thead><tr><th>Osoba</th><th>Role</th><th>Pojišťovna</th><th>Krytá rizika</th><th class="r">Měsíčně</th><th>Úhrada</th></tr></thead>
+        <tbody>
+          ${rows.join('\n')}
+          <tr class="sum-row"><td colspan="4" class="bold">Celkem měsíčně</td><td class="r num bold">${fmtMonthly(totalMonthly)}</td><td></td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>`;

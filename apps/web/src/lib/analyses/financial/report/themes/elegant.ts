@@ -273,6 +273,12 @@ table.dt td.num{font-family:var(--ff-serif);font-size:15px;font-variant-numeric:
 /* DVZ */
 .dvz-note{padding:var(--s4) var(--s5);background:var(--stone-50);border-radius:var(--r-md);border:1px solid var(--stone-200);font-size:11px;color:var(--stone-400);text-align:center;margin-top:var(--s5)}
 
+/* INSURANCE PROVIDER LOGOS */
+.ins-provider-cell{display:flex;align-items:center;gap:6px}
+.ins-provider-logo{width:24px;height:24px;object-fit:contain;border-radius:4px;flex-shrink:0}
+.ins-provider-fallback{font-size:11px;font-weight:600;color:var(--stone-500)}
+.sum-row td{border-top:2px solid var(--gold-500);padding-top:8px;font-weight:700}
+
 /* SIGNATURES */
 .sig-area{display:grid;grid-template-columns:1fr 1fr;gap:var(--s16);margin-top:var(--s16);padding-top:var(--s8)}
 .sig-box{text-align:center}

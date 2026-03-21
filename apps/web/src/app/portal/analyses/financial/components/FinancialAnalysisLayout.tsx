@@ -68,14 +68,17 @@ export function FinancialAnalysisLayout() {
     const payload = {
       title,
       description: notes.trim() || undefined,
-      contactId: data.clientId ?? undefined,
-      analysisId: analysisId ?? undefined,
+      contactId: data.clientId || undefined,
+      analysisId: analysisId || undefined,
     };
     let id: string | null = null;
     try {
       id = await createTask(payload);
-    } catch {
-      id = null;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      setConvertLoading(null);
+      setConvertError(msg || "Nepodařilo se vytvořit úkol. Zkuste to znovu nebo přidejte úkol ručně v sekci Úkoly.");
+      return;
     }
     setConvertLoading(null);
     if (id) {

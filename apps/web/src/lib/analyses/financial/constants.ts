@@ -66,6 +66,11 @@ export const FUND_DETAILS: Record<string, FundDetail> = {
     currency: 'CZK',
     minInvestment: '500 Kč',
     category: 'Nemovitostní',
+    heroImage: '/report-assets/atris/atris1.jpg',
+    galleryImages: [
+      '/report-assets/atris/atris2.jpg',
+      '/report-assets/atris/atris3.jpg',
+    ],
     benefits: [
       'Jeden z nejstarších retailových nemovitostních fondů v ČR (od roku 2009).',
       'Více než 20 tisíc investorů a dlouhodobě stabilní výkonnost.',
@@ -79,7 +84,7 @@ export const FUND_DETAILS: Record<string, FundDetail> = {
     ],
   },
   penta: {
-    name: 'PENTA Public',
+    name: 'Penta Investments',
     manager: 'Penta Investments',
     goal: 'Dlouhodobý růst hodnoty firem v regionu CEE',
     assets: 'Dr.Max, Fortuna, Penta Hospitals, Aero Vodochody',
@@ -97,6 +102,11 @@ export const FUND_DETAILS: Record<string, FundDetail> = {
     minInvestment: '1 000 000 Kč',
     category: 'Privátní kapitál',
     heroImage: '/logos/Penta.png',
+    galleryImages: [
+      '/report-assets/penta/penta1.png',
+      '/report-assets/penta/penta2.jpg',
+      '/report-assets/penta/penta3.webp',
+    ],
     benefits: [
       'Přístup k privátním investicím běžně nedostupným pro retailové investory.',
       'Aktivní správa portfoliových firem zkušeným investičním týmem.',
@@ -128,6 +138,11 @@ export const FUND_DETAILS: Record<string, FundDetail> = {
     currency: 'USD',
     morningstarRating: 5,
     category: 'Akciové ETF',
+    galleryImages: [
+      '/report-assets/msci/msci1.png',
+      '/report-assets/msci/msci2.png',
+      '/report-assets/msci/msci3.png',
+    ],
     benefits: [
       '<strong>Okamžitá diverzifikace</strong> do 1 320 firem jedním nákupem.',
       '<strong>Nejvyšší likvidita</strong> — fond prodejný kdykoliv v obchodních hodinách burzy.',
@@ -413,17 +428,19 @@ export const BENEFIT_OPTIMIZATION = {
   ownerTaxSavingsPercent: 21,
 } as const;
 
-/** Logo cesty pro pojišťovny (název pojišťovny → cesta v public). Složka např. public/logos/insurers/. */
+/** Logo cesty pro pojišťovny (název pojišťovny → cesta v public). */
 export const INSURANCE_LOGOS: Record<string, string> = {
-  'ČSOB Pojišťovna': '/logos/insurers/csob.png',
-  'Allianz pojišťovna': '/logos/insurers/allianz.png',
-  'Generali Pojišťovna': '/logos/insurers/generali.png',
-  'Kooperativa': '/logos/insurers/kooperativa.png',
-  'Slavia pojišťovna': '/logos/insurers/slavia.png',
-  'NN pojišťovna': '/logos/insurers/nn.png',
-  'UNIQA': '/logos/insurers/uniqa.png',
-  'AXA': '/logos/insurers/axa.png',
-  'MetLife': '/logos/insurers/metlife.png',
+  'ČSOB Pojišťovna': '/logos/csob-logo.png',
+  'Allianz pojišťovna': '/logos/allianz.png',
+  'Generali Pojišťovna': '/logos/generali.png',
+  'Kooperativa': '/logos/kooperativa_logo.png',
+  'Slavia pojišťovna': '/logos/slavia.jpg',
+  'Česká podnikatelská pojišťovna': '/logos/cpp.png',
+  'Maxima pojišťovna': '/logos/maxima.png',
+  'NN pojišťovna': '/logos/nn.png',
+  'UNIQA': '/logos/uniqa.png',
+  'AXA': '/logos/axa.png',
+  'MetLife': '/logos/metlife.png',
 };
 
 /** České pojišťovny pro dropdown. */
