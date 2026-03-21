@@ -16,7 +16,7 @@ function getLocalIp() {
 }
 
 const ip = getLocalIp();
-const url = `http://${ip}:3000`;
+const url = `http://${ip}:3000/prihlaseni?native=1`;
 console.log("Using CAPACITOR_SERVER_URL =", url);
 execSync("npx cap sync", {
   stdio: "inherit",

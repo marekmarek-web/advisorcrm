@@ -12,7 +12,7 @@ import {
   PieChart, Play, Quote, Search, Server, Share2, Shield, ShieldCheck, 
   Smartphone, Sparkles, Star, Sun, Sunrise, Sunset, Tags, UploadCloud, 
   User, Users, Zap, Link as LinkIcon, ChevronDown, HelpCircle, Mail,
-  Globe, XCircle, CheckCircle, Headset, Timer, LineChart, BookOpen, Database, Plus, X, Home
+  Globe, XCircle, CheckCircle, Headset, Timer, LineChart, BookOpen, Database, Plus, Home
 } from 'lucide-react';
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
@@ -374,7 +374,6 @@ const FAQS = [
 
 export default function PremiumLandingPage() {
   const [scrolled, setScrolled] = useState(false);
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [activeSecurityFeature, setActiveSecurityFeature] = useState('none');
   const [isAnnualPricing, setIsAnnualPricing] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -567,64 +566,19 @@ export default function PremiumLandingPage() {
             <a href="#aplikace" className="hover:text-white transition-colors">Aplikace</a>
             <a href="#workflow" className="hover:text-white transition-colors">Typický den</a>
             <a href="#pro-koho" className="hover:text-white transition-colors">Pro koho to je</a>
-            <button type="button" onClick={() => setLoginModalOpen(true)} className="hover:text-white transition-colors min-h-[44px] flex items-center">
-              Přihlášení
-            </button>
             <a href="#cenik" className="hover:text-white transition-colors">Ceník</a>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6">
-            <Link href="/prihlaseni" className="hidden md:flex min-h-[44px] min-w-[44px] items-center text-sm font-medium text-slate-300 hover:text-white transition-colors">Domluvit demo</Link>
-            <Link href="/prihlaseni?register=1" className="px-6 py-2.5 bg-white text-[#0a0f29] rounded-full text-sm font-bold hover:bg-slate-200 transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center gap-2 min-h-[44px]">
-              Vyzkoušet zdarma na 14 dní <ArrowRight size={14} />
+            <Link
+              href="/prihlaseni"
+              className="px-6 py-2.5 bg-white text-[#0a0f29] rounded-full text-sm font-bold hover:bg-slate-200 transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center gap-2 min-h-[44px]"
+            >
+              Portál Aidvisora <ArrowRight size={14} />
             </Link>
           </div>
         </div>
       </nav>
-
-      {/* Přihlašovací okno: Klient / Poradce */}
-      {loginModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setLoginModalOpen(false)}>
-          <div className="bg-[#0f1424] border border-white/10 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-              <h2 className="font-jakarta text-xl font-bold text-white">Přihlášení</h2>
-              <button type="button" onClick={() => setLoginModalOpen(false)} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Zavřít">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-3">
-              <Link
-                href="/prihlaseni?next=/client"
-                onClick={() => setLoginModalOpen(false)}
-                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
-                  <User size={24} className="text-indigo-300" />
-                </div>
-                <div>
-                  <p className="font-bold text-white group-hover:text-white">Klient</p>
-                  <p className="text-sm text-slate-400">Přihlásit se do klientské zóny – smlouvy, dokumenty, zprávy s poradcem.</p>
-                </div>
-                <ChevronRight size={20} className="text-slate-500 ml-auto shrink-0" />
-              </Link>
-              <Link
-                href="/prihlaseni"
-                onClick={() => setLoginModalOpen(false)}
-                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
-                  <Briefcase size={24} className="text-emerald-300" />
-                </div>
-                <div>
-                  <p className="font-bold text-white group-hover:text-white">Poradce</p>
-                  <p className="text-sm text-slate-400">Přihlásit se do portálu poradce – CRM, kalendář, pipeline.</p>
-                </div>
-                <ChevronRight size={20} className="text-slate-500 ml-auto shrink-0" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* --- HERO SEKCE --- */}
       <section className="relative pt-36 pb-20 md:pt-48 md:pb-24 px-6 overflow-hidden min-h-[90vh] flex flex-col items-center justify-center">
@@ -660,11 +614,11 @@ export default function PremiumLandingPage() {
           </p>
 
           <div className="hero-anim delay-300 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Link href="/prihlaseni?register=1" className="w-full sm:w-auto px-8 py-4 bg-white text-[#0a0f29] rounded-full text-base font-bold tracking-wide hover:bg-slate-200 transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.3)] text-center min-h-[44px] flex items-center justify-center">
-              Vyzkoušet zdarma na 14 dní
-            </Link>
-            <Link href="/prihlaseni" className="w-full sm:w-auto px-8 py-4 bg-white/5 text-white border border-white/10 rounded-full text-base font-bold tracking-wide hover:bg-white/10 transition-all flex items-center justify-center gap-2 backdrop-blur-md min-h-[44px]">
-              Domluvit demo
+            <Link
+              href="/prihlaseni"
+              className="w-full sm:w-auto px-8 py-4 bg-white text-[#0a0f29] rounded-full text-base font-bold tracking-wide hover:bg-slate-200 transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.3)] text-center min-h-[44px] flex items-center justify-center gap-2"
+            >
+              Portál Aidvisora <ArrowRight size={18} />
             </Link>
           </div>
 
@@ -1522,7 +1476,7 @@ export default function PremiumLandingPage() {
                  <div className="text-4xl font-black text-white mb-1">{isAnnualPricing ? '1 190' : '1 490'} <span className="text-lg text-slate-500 font-medium">Kč / měs.</span></div>
                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
                  
-                 <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-8 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                 <Link href="/prihlaseni" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-8 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Portál Aidvisora</Link>
                  
                  <ul className="space-y-4">
                    <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> 1 uživatel</li>
@@ -1542,7 +1496,7 @@ export default function PremiumLandingPage() {
                    <div className="text-5xl font-black text-white mb-1 relative z-20">{isAnnualPricing ? '1 590' : '1 990'} <span className="text-lg text-slate-500 font-medium">Kč / měs.</span></div>
                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8 relative z-20">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
                    
-                   <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 transition-colors mb-8 shadow-lg shadow-indigo-500/30 relative z-20 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                   <Link href="/prihlaseni" className="block w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 transition-colors mb-8 shadow-lg shadow-indigo-500/30 relative z-20 text-center min-h-[44px] flex items-center justify-center">Portál Aidvisora</Link>
                    
                    <ul className="space-y-4 relative z-20">
                      <li className="flex items-center gap-3 text-white text-sm font-medium"><Check size={18} className="text-indigo-400"/> Vše ze Starteru</li>
@@ -1561,7 +1515,7 @@ export default function PremiumLandingPage() {
                  <div className="text-4xl font-black text-white mb-1">{isAnnualPricing ? '1 990' : '2 490'} <span className="text-lg text-slate-500 font-medium">Kč / uživ.</span></div>
                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
                  
-                 <Link href="/prihlaseni" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-8 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Domluvit demo</Link>
+                 <Link href="/prihlaseni" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-8 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Portál Aidvisora</Link>
                  
                  <ul className="space-y-4">
                    <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> Vše z Pro</li>
@@ -1651,21 +1605,21 @@ export default function PremiumLandingPage() {
         <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
           <ScrollReveal>
             <h2 className="font-jakarta text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
-              Vyzkoušejte Aidvisoru zdarma na 14 dní.
+              Portál Aidvisora
             </h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Bez závazku si projdete CRM, klientskou zónu i hlavní workflow. Uvidíte, jestli vám systém sedí v každodenní praxi.
+              Přihlaste se do pracovního prostředí – CRM, klientská zóna, kalendář a dokumenty na jednom místě.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-              <Link href="/prihlaseni?register=1" className="w-full sm:w-auto px-10 py-5 bg-white text-[#0a0f29] rounded-full text-lg font-bold tracking-wide shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:scale-105 transition-all text-center min-h-[44px] flex items-center justify-center">
-                Vyzkoušet zdarma na 14 dní
-              </Link>
-              <Link href="/prihlaseni" className="w-full sm:w-auto px-10 py-5 bg-transparent text-white border border-white/20 rounded-full text-lg font-bold tracking-wide hover:bg-white/10 transition-all backdrop-blur-sm text-center min-h-[44px] flex items-center justify-center">
-                Domluvit demo
+              <Link
+                href="/prihlaseni"
+                className="w-full sm:w-auto px-10 py-5 bg-white text-[#0a0f29] rounded-full text-lg font-bold tracking-wide shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:scale-105 transition-all text-center min-h-[44px] flex items-center justify-center gap-2"
+              >
+                Otevřít portál <ArrowRight size={18} />
               </Link>
             </div>
             <p className="mt-8 text-slate-500 text-sm max-w-xl mx-auto">
-              Bez závazku. Během pár minut si vytvoříte účet a můžete si projít hlavní části systému.
+              Zvolte roli poradce nebo klienta na stránce přihlášení.
             </p>
           </ScrollReveal>
         </div>
@@ -1692,7 +1646,7 @@ export default function PremiumLandingPage() {
               <ul className="space-y-4 text-sm">
                 <li><a href="#aplikace" className="hover:text-white transition-colors">Vlastnosti CRM</a></li>
                 <li><a href="#klientska-zona" className="hover:text-white transition-colors">Klientská zóna</a></li>
-                <li><button type="button" onClick={() => setLoginModalOpen(true)} className="hover:text-white transition-colors text-left">Přihlášení</button></li>
+                <li><Link href="/prihlaseni" className="hover:text-white transition-colors">Portál Aidvisora</Link></li>
                 <li><a href="#ai-asistent" className="hover:text-white transition-colors">AI Asistent</a></li>
                 <li><a href="#cenik" className="hover:text-white transition-colors">Ceník a tarify</a></li>
                 <li><a href="#integrace" className="hover:text-white transition-colors">Integrace</a></li>

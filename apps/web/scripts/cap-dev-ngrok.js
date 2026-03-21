@@ -44,11 +44,12 @@ function getNgrokUrl() {
 
 getNgrokUrl()
   .then((url) => {
-    console.log("Ngrok URL:", url);
+    const loginUrl = `${url.replace(/\/$/, "")}/prihlaseni?native=1`;
+    console.log("Ngrok URL:", loginUrl);
     console.log("Spouštím cap sync...");
     execSync("npx cap sync", {
       stdio: "inherit",
-      env: { ...process.env, CAPACITOR_SERVER_URL: url },
+      env: { ...process.env, CAPACITOR_SERVER_URL: loginUrl },
     });
   })
   .catch((err) => {

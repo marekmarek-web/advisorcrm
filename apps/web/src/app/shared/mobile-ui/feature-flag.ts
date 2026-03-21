@@ -22,9 +22,9 @@ export function isMobileUiV1EnabledForRequest({
   userAgent: string | null | undefined;
   cookieStore: Pick<RequestCookies, "get">;
 }): boolean {
-  if (!isLikelyMobileUserAgent(userAgent)) return false;
   const mode = getMobileUiMode();
   if (mode === "off") return false;
   if (mode === "on") return true;
-  return cookieStore.get(MOBILE_UI_BETA_COOKIE)?.value === "1";
+  if (cookieStore.get(MOBILE_UI_BETA_COOKIE)?.value === "1") return true;
+  return isLikelyMobileUserAgent(userAgent);
 }

@@ -26,7 +26,18 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <!-- legacy scheme -->
                 <data android:scheme="aidvisor" />
+                <!-- aidvisora://auth/callback (legacy) -->
+                <data
+                    android:scheme="aidvisora"
+                    android:host="auth"
+                    android:pathPrefix="/callback" />
+                <!-- aidvisora://auth/done – used by /auth/callback route after code exchange -->
+                <data
+                    android:scheme="aidvisora"
+                    android:host="auth"
+                    android:path="/done" />
             </intent-filter>
 
         </activity>

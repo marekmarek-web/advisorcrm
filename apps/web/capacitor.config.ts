@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim() || "https://www.aidvisora.cz/prihlaseni";
+const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim() || "https://www.aidvisora.cz/prihlaseni?native=1";
 const isHttpServer = /^http:\/\//i.test(serverUrl);
 
 const config: CapacitorConfig = {
   appId: "cz.aidvisor.app", // TODO: replace with final production bundle id.
-  appName: "Aidvisor",
+  appName: "Aidvisora",
   webDir: "capacitor-app",
   server: {
     url: serverUrl,

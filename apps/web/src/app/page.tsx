@@ -5,6 +5,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import PremiumLandingPage from "./components/PremiumLandingPage";
+import { createClient } from "@/lib/supabase/server";
 
 function LandingFallback() {
   return (
@@ -14,10 +15,18 @@ function LandingFallback() {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
   if (process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
     redirect("/portal");
   }
+
+  // If OAuth lands on "/" after login, immediately continue to app flow.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    redirect("/register/complete?next=/portal/today");
+  }
+
   return (
     <Suspense fallback={<LandingFallback />}>
       <PremiumLandingPage />

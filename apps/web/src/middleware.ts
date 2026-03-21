@@ -4,6 +4,12 @@ import { NextResponse, type NextRequest } from "next/server";
 const PRODUCTION_DOMAIN = "https://www.aidvisora.cz";
 
 export async function middleware(request: NextRequest) {
+  const normalizeNext = (raw: string | null, fallback: string) => {
+    if (!raw || !raw.startsWith("/")) return fallback;
+    if (raw === "/" || raw === "/prihlaseni" || raw === "/login" || raw === "/register") return fallback;
+    return raw;
+  };
+
   const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
   // Přesměrovat starou Vercel URL na produkční doménu (aby Google login neposílal na advisorcrm-web.vercel.app)
   // Výjimka: /auth/callback s parametrem code NESMÍ být přesměrován – PKCE code_verifier je v cookie na této doméně,
@@ -133,7 +139,7 @@ export async function middleware(request: NextRequest) {
   }
   if (request.nextUrl.pathname === "/login" && user) {
     const url = request.nextUrl.clone();
-    url.pathname = request.nextUrl.searchParams.get("next") || "/portal/today";
+    url.pathname = normalizeNext(request.nextUrl.searchParams.get("next"), "/portal/today");
     url.searchParams.delete("next");
     return NextResponse.redirect(url);
   }
@@ -143,7 +149,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next({ request });
     }
     const url = request.nextUrl.clone();
-    url.pathname = request.nextUrl.searchParams.get("next") || "/portal/today";
+    url.pathname = normalizeNext(request.nextUrl.searchParams.get("next"), "/portal/today");
     url.searchParams.delete("next");
     return NextResponse.redirect(url);
   }

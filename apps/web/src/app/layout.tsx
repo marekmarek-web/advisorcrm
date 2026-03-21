@@ -6,6 +6,7 @@ import "../styles/weplan-theme.css";
 import "../styles/weplan-components.css";
 import "../styles/weplan-calendar.css";
 import { TooltipBlurListener } from "./components/TooltipBlurListener";
+import { NativeOAuthDeepLinkBridge } from "./components/NativeOAuthDeepLinkBridge";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const sourceSans = Source_Sans_3({
@@ -37,6 +38,7 @@ export default function RootLayout({
     <html lang="cs">
       <body className={sourceSans.className}>
         <TooltipBlurListener />
+        <NativeOAuthDeepLinkBridge />
         {children}
         <SpeedInsights />
       </body>
