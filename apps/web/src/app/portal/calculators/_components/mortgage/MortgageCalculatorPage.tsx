@@ -7,7 +7,7 @@ import { CalculatorMobileResultDock } from "../core/CalculatorMobileResultDock";
 import { MortgageInputPanel } from "./MortgageInputPanel";
 import { MortgageResultsPanel } from "./MortgageResultsPanel";
 import { MortgageBankOffers } from "./MortgageBankOffers";
-import { MortgageContactModal } from "./MortgageContactModal";
+import { MortgageAmortSection } from "./MortgageAmortSection";
 import {
   BANKS_DATA,
   DEFAULT_STATE,
@@ -41,7 +41,6 @@ export function MortgageCalculatorPage() {
     type: "new",
     ltvLock: 90,
   });
-  const [modalBank, setModalBank] = useState<string | null | undefined>(undefined);
   const [liveRates, setLiveRates] = useState<NormalizedOffer[] | null>(null);
   const defaultAllowedBanks = useMemo(
     () => BANKS_DATA.filter((bank) => ALLOWED_BANK_IDS.includes(bank.id as (typeof ALLOWED_BANK_IDS)[number])),
@@ -94,7 +93,6 @@ export function MortgageCalculatorPage() {
   return (
     <div className="pt-0 pb-56 lg:pb-0">
       <CalculatorPageShell>
-        {/* ── Header (standalone, no card) ── */}
         <div className="mb-3">
           <CalculatorPageHeader
             eyebrow="Kalkulačka hypoték a úvěrů · 2026"
@@ -103,7 +101,6 @@ export function MortgageCalculatorPage() {
           />
         </div>
 
-        {/* ── Main grid: input | result ── */}
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_360px]">
           <MortgageInputPanel
             state={state}
@@ -120,37 +117,32 @@ export function MortgageCalculatorPage() {
             onTypeChange={(type) => setState((s) => ({ ...s, type }))}
           />
           <div className="hidden lg:block sticky top-6">
-            <MortgageResultsPanel
-              result={result}
-              onCtaClick={() => setModalBank(null)}
-            />
+            <MortgageResultsPanel result={result} />
           </div>
         </div>
 
-        {/* ── Bank comparison ── */}
+        {/* Amortization analysis */}
+        {state.product === "mortgage" && (
+          <MortgageAmortSection
+            borrowingAmount={result.borrowingAmount}
+            annualRate={result.finalRate}
+            termYears={state.term}
+          />
+        )}
+
         <div className="mt-4 rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-white p-5 shadow-sm sm:p-6 md:p-7">
           <MortgageBankOffers
             offers={offers}
             fetchedAt={ratesMeta?.fetchedAt}
             source={ratesMeta?.source}
             sourceUrl={ratesMeta?.sourceUrl}
-            onRequestOffer={(bankName) => setModalBank(bankName)}
           />
         </div>
       </CalculatorPageShell>
 
       <CalculatorMobileResultDock>
-        <MortgageResultsPanel
-          result={result}
-          onCtaClick={() => setModalBank(null)}
-        />
+        <MortgageResultsPanel result={result} />
       </CalculatorMobileResultDock>
-      <MortgageContactModal
-        open={modalBank !== undefined}
-        bankName={modalBank ?? null}
-        state={state}
-        onClose={() => setModalBank(undefined)}
-      />
     </div>
   );
 }

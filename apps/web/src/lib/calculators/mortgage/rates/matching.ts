@@ -2,7 +2,7 @@ import { BANKS_DATA } from "../mortgage.config";
 import type { BankEntry } from "../mortgage.types";
 import type { NormalizedOffer } from "./types";
 
-export const ALLOWED_BANK_IDS = ["rb", "ucb", "csob", "cs", "mbank", "kb"] as const;
+export const ALLOWED_BANK_IDS = ["rb", "ucb", "csob", "cs", "mbank", "kb", "rsts", "mpyr"] as const;
 
 const CANONICAL_BANK_META: Record<(typeof ALLOWED_BANK_IDS)[number], { name: string }> = {
   rb: { name: "Raiffeisenbank" },
@@ -11,6 +11,8 @@ const CANONICAL_BANK_META: Record<(typeof ALLOWED_BANK_IDS)[number], { name: str
   cs: { name: "Česká spořitelna" },
   mbank: { name: "mBank" },
   kb: { name: "Komerční banka" },
+  rsts: { name: "Raiffeisen stavební spořitelna" },
+  mpyr: { name: "Modrá pyramida" },
 };
 
 function detectCanonicalBankId(providerId: string, providerName: string): (typeof ALLOWED_BANK_IDS)[number] | null {
@@ -26,6 +28,8 @@ function detectCanonicalBankId(providerId: string, providerName: string): (typeo
   if (id === "cs" || id.includes("sporitelna") || name.includes("ceska sporitelna")) return "cs";
   if (id.includes("mbank") || name.includes("mbank")) return "mbank";
   if (id === "kb" || name.includes("komercni banka")) return "kb";
+  if (id.includes("rsts") || name.includes("raiffeisen stavebni")) return "rsts";
+  if (id.includes("mpyr") || id.includes("modra") || name.includes("modra pyramida")) return "mpyr";
 
   return null;
 }
