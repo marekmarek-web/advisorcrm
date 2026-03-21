@@ -6,9 +6,14 @@ function bytesMatch(input: Uint8Array, signature: number[], offset = 0) {
   return true;
 }
 
-export async function detectMagicMimeType(file: File): Promise<string | null> {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer.slice(0, 64));
+/**
+ * Sniff MIME from the first bytes (same logic as legacy File read).
+ * Use this after a single `arrayBuffer()` read so the File/Blob is not read twice
+ * (Node/Undici can break a second consumer after arrayBuffer()).
+ */
+export function detectMagicMimeTypeFromBytes(head: Uint8Array): string | null {
+  const n = Math.min(64, head.byteLength);
+  const bytes = n === head.byteLength ? head : head.subarray(0, n);
 
   if (bytesMatch(bytes, [0x25, 0x50, 0x44, 0x46])) return "application/pdf";
   if (bytesMatch(bytes, [0xff, 0xd8, 0xff])) return "image/jpeg";
@@ -29,6 +34,11 @@ export async function detectMagicMimeType(file: File): Promise<string | null> {
   }
 
   return null;
+}
+
+export async function detectMagicMimeType(file: File): Promise<string | null> {
+  const buffer = await file.arrayBuffer();
+  return detectMagicMimeTypeFromBytes(new Uint8Array(buffer.slice(0, Math.min(64, buffer.byteLength))));
 }
 
 export function mimeMatchesAllowedSignature(expectedMime: string, detectedMime: string | null) {

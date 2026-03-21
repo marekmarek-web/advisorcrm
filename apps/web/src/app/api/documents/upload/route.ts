@@ -5,7 +5,7 @@ import { getMembership, hasPermission, type RoleName } from "@/lib/auth/get-memb
 import { logAudit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { executeIdempotent } from "@/lib/security/idempotency";
-import { detectMagicMimeType, mimeMatchesAllowedSignature } from "@/lib/security/file-signature";
+import { detectMagicMimeTypeFromBytes, mimeMatchesAllowedSignature } from "@/lib/security/file-signature";
 import { isUuid, sanitizeStorageSegment, toTrimmedString } from "@/lib/security/validation";
 
 export const dynamic = "force-dynamic";
@@ -75,19 +75,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Vyberte soubor." }, { status: 400 });
     }
 
-    const mimeType = file.type.toLowerCase();
-    if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+    const declaredMime = (file.type || "").toLowerCase().trim();
+
+    if (file.size > MAX_SIZE_BYTES) {
+      return NextResponse.json({ error: "Soubor je příliš velký (max 20 MB)." }, { status: 400 });
+    }
+
+    // Single read: avoid passing File to Storage after arrayBuffer() (breaks on Node/Undici for some clients).
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    const detectedMime = detectMagicMimeTypeFromBytes(fileBytes.subarray(0, Math.min(64, fileBytes.byteLength)));
+    let effectiveMime = declaredMime;
+    if (!effectiveMime || effectiveMime === "application/octet-stream") {
+      if (detectedMime && ALLOWED_MIME_TYPES.has(detectedMime)) {
+        effectiveMime = detectedMime;
+      }
+    }
+    if (!ALLOWED_MIME_TYPES.has(effectiveMime)) {
       return NextResponse.json(
         { error: "Nepodporovaný typ souboru. Povolené jsou PDF a obrázky (JPG, PNG, WEBP, GIF, HEIC)." },
         { status: 400 }
       );
     }
-
-    if (file.size > MAX_SIZE_BYTES) {
-      return NextResponse.json({ error: "Soubor je příliš velký (max 20 MB)." }, { status: 400 });
-    }
-    const detectedMime = await detectMagicMimeType(file);
-    if (!mimeMatchesAllowedSignature(mimeType, detectedMime)) {
+    if (!mimeMatchesAllowedSignature(effectiveMime, detectedMime)) {
       return NextResponse.json({ error: "Obsah souboru neodpovídá deklarovanému typu." }, { status: 400 });
     }
 
@@ -118,7 +127,10 @@ export async function POST(request: Request) {
 
     const performUpload = async (): Promise<{ status: number; body: UploadResponseBody }> => {
       const admin = createAdminClient();
-      const { error: uploadError } = await admin.storage.from("documents").upload(storagePath, file, { upsert: false });
+      const { error: uploadError } = await admin.storage.from("documents").upload(storagePath, fileBytes, {
+        contentType: effectiveMime,
+        upsert: false,
+      });
       if (uploadError) {
         const message =
           uploadError.message?.toLowerCase().includes("bucket") || uploadError.message?.toLowerCase().includes("not found")
@@ -136,8 +148,8 @@ export async function POST(request: Request) {
           contractId,
           name,
           storagePath,
-          mimeType: mimeType || null,
-          sizeBytes: file.size,
+          mimeType: effectiveMime || null,
+          sizeBytes: fileBytes.byteLength,
           tags,
           visibleToClient,
           uploadSource,

@@ -8,7 +8,7 @@ import { isMatchingAmbiguous } from "@/lib/ai/client-matching";
 import { logOpenAICall } from "@/lib/openai";
 import { logAudit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import { detectMagicMimeType, mimeMatchesAllowedSignature } from "@/lib/security/file-signature";
+import { detectMagicMimeTypeFromBytes, mimeMatchesAllowedSignature } from "@/lib/security/file-signature";
 import { tryBeginIdempotencyWindow } from "@/lib/security/idempotency";
 import { createSignedStorageUrl } from "@/lib/storage/signed-url";
 
@@ -58,20 +58,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const mimeType = file.type?.toLowerCase() || "";
+    // Single read: Node/Undici File can fail on Supabase upload after arrayBuffer() was consumed.
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    if (fileBytes.byteLength > MAX_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: "Soubor je příliš velký (max 20 MB)." },
+        { status: 400 }
+      );
+    }
+
+    const detectedMime = detectMagicMimeTypeFromBytes(fileBytes.subarray(0, Math.min(64, fileBytes.byteLength)));
+    let mimeType = (file.type?.toLowerCase() || "").trim();
+    // iOS/Safari often sends empty type or application/octet-stream for real PDFs.
+    if (detectedMime === "application/pdf") {
+      mimeType = "application/pdf";
+    }
     if (!ALLOWED_MIME.includes(mimeType)) {
       return NextResponse.json(
         { error: "Povolený formát je pouze PDF." },
         { status: 400 }
       );
     }
-    if (file.size > MAX_SIZE_BYTES) {
-      return NextResponse.json(
-        { error: "Soubor je příliš velký (max 20 MB)." },
-        { status: 400 }
-      );
-    }
-    const detectedMime = await detectMagicMimeType(file);
     if (!mimeMatchesAllowedSignature(mimeType, detectedMime)) {
       return NextResponse.json({ error: "Obsah souboru neodpovídá deklarovanému typu." }, { status: 400 });
     }
@@ -91,9 +98,10 @@ export async function POST(request: Request) {
     const storagePath = `contracts/${tenantId}/${id}/${Date.now()}-${safeName}`;
 
     const admin = createAdminClient();
-    const { error: uploadError } = await admin.storage
-      .from("documents")
-      .upload(storagePath, file, { upsert: false });
+    const { error: uploadError } = await admin.storage.from("documents").upload(storagePath, fileBytes, {
+      contentType: mimeType,
+      upsert: false,
+    });
 
     if (uploadError) {
       const safeMsg =
@@ -109,7 +117,7 @@ export async function POST(request: Request) {
       fileName: file.name,
       storagePath,
       mimeType,
-      sizeBytes: file.size,
+      sizeBytes: fileBytes.byteLength,
       processingStatus: "uploaded",
       uploadedBy: userId,
     });
@@ -235,6 +243,14 @@ export async function POST(request: Request) {
       needsHumanReview: pipelineResult.processingStatus === "review_required",
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const errName = err instanceof Error ? err.name : typeof err;
+    console.error(
+      "[route POST /api/contracts/upload] 500",
+      errName,
+      message,
+      err instanceof Error ? err.stack : ""
+    );
     return NextResponse.json(
       { error: "Nahrání smlouvy selhalo." },
       { status: 500 }
