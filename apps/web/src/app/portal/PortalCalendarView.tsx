@@ -818,25 +818,28 @@ export function PortalCalendarView() {
 
   useEffect(() => { loadDayTasks(selectedDate); }, [selectedDate, loadDayTasks]);
 
-  const rangeStart = useMemo(() => {
-    if (mode === "day") return new Date(selectedDate + "T00:00:00");
-    if (mode === "week" || mode === "workweek") return startOfWeek(currentDate, settings.firstDayOfWeek);
-    return new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const rangeStartIso = useMemo(() => {
+    if (mode === "day") return new Date(selectedDate + "T00:00:00").toISOString();
+    if (mode === "week" || mode === "workweek") return startOfWeek(currentDate, settings.firstDayOfWeek).toISOString();
+    return new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
   }, [mode, currentDate, selectedDate, settings.firstDayOfWeek]);
 
-  const rangeEnd = useMemo(() => {
+  const rangeEndIso = useMemo(() => {
     if (mode === "day") {
       const d = new Date(selectedDate + "T00:00:00");
       d.setDate(d.getDate() + 1);
-      return d;
+      return d.toISOString();
     }
     if (mode === "week" || mode === "workweek") {
-      const d = new Date(rangeStart);
+      const d = new Date(rangeStartIso);
       d.setDate(d.getDate() + (mode === "workweek" ? 5 : 7));
-      return d;
+      return d.toISOString();
     }
-    return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-  }, [mode, currentDate, rangeStart, selectedDate]);
+    return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1).toISOString();
+  }, [mode, currentDate, rangeStartIso, selectedDate]);
+
+  const rangeStart = useMemo(() => new Date(rangeStartIso), [rangeStartIso]);
+  const rangeEnd = useMemo(() => new Date(rangeEndIso), [rangeEndIso]);
 
   const [calendarLoadError, setCalendarLoadError] = useState(false);
   const [calendarSyncLoading, setCalendarSyncLoading] = useState(false);
@@ -844,11 +847,11 @@ export function PortalCalendarView() {
   const loadEvents = useCallback(() => {
     setLoading(true);
     setCalendarLoadError(false);
-    listEvents({ start: rangeStart.toISOString(), end: rangeEnd.toISOString() })
+    listEvents({ start: rangeStartIso, end: rangeEndIso })
       .then((data) => { setEvents(data); setCalendarLoadError(false); })
       .catch(() => { setEvents([]); setCalendarLoadError(true); })
       .finally(() => setLoading(false));
-  }, [rangeStart, rangeEnd]);
+  }, [rangeStartIso, rangeEndIso]);
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
   useEffect(() => { getContactsList().then(setContacts).catch(() => setContacts([])); }, []);
@@ -871,8 +874,8 @@ export function PortalCalendarView() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          timeMin: rangeStart.toISOString(),
-          timeMax: rangeEnd.toISOString(),
+          timeMin: rangeStartIso,
+          timeMax: rangeEndIso,
         }),
       });
       const data = (await res.json()) as {
@@ -907,7 +910,7 @@ export function PortalCalendarView() {
     } finally {
       setCalendarSyncLoading(false);
     }
-  }, [rangeStart, rangeEnd, loadEvents, toast]);
+  }, [rangeStartIso, rangeEndIso, loadEvents, toast]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   useEffect(() => { getOpenOpportunitiesList().then(setOpportunities).catch(() => setOpportunities([])); }, []);
 

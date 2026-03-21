@@ -81,18 +81,6 @@ function GoogleDriveLogo({ size = 18, className }: { size?: number; className?: 
   );
 }
 
-function GoogleCalendarLogo({ size = 18, className }: { size?: number; className?: string; strokeWidth?: number }) {
-  return (
-    <span className={className} style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-      <img
-        src="/logos/google-calendar.png"
-        alt="Google Kalendář"
-        style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto", objectFit: "contain" }}
-      />
-    </span>
-  );
-}
-
 function GmailLogo({ size = 18, className }: { size?: number; className?: string; strokeWidth?: number }) {
   return (
     <span className={className} style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
@@ -144,7 +132,6 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
       { href: "/portal/analyses", label: "Finanční analýzy", Icon: BarChart3, isHighlighted: true, hoverAnim: "group-hover:scale-110 group-hover:rotate-6" },
       { href: "/portal/calculators", label: "Kalkulačky", Icon: Calculator, hoverAnim: "group-hover:rotate-12 group-hover:scale-110" },
       { href: "/portal/mindmap", label: "Mindmap", Icon: Network, hoverAnim: "group-hover:-translate-y-1" },
-      { href: "/portal/setup?tab=integrace&provider=google-calendar", label: "Google Kalendář", Icon: GoogleCalendarLogo, hoverAnim: "group-hover:scale-110" },
       { href: "/portal/tools/drive", label: "Google Disk", Icon: GoogleDriveLogo, hoverAnim: "group-hover:scale-110" },
       { href: "/portal/tools/gmail", label: "Gmail", Icon: GmailLogo, hoverAnim: "group-hover:scale-110" },
     ],
