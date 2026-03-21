@@ -3,13 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalculatorPageShell } from "../core/CalculatorPageShell";
 import { CalculatorPageHeader } from "../core/CalculatorPageHeader";
-import { CalculatorInputSection } from "../core/CalculatorInputSection";
-import { CalculatorResultsSection } from "../core/CalculatorResultsSection";
-import { CalculatorModuleCard } from "../core/CalculatorModuleCard";
-import { CalculatorModuleMainGrid } from "../core/CalculatorModuleMainGrid";
 import { CalculatorMobileResultDock } from "../core/CalculatorMobileResultDock";
-import { MortgageProductSwitcher } from "./MortgageProductSwitcher";
-import { MortgageTabSwitcher } from "./MortgageTabSwitcher";
 import { MortgageInputPanel } from "./MortgageInputPanel";
 import { MortgageResultsPanel } from "./MortgageResultsPanel";
 import { MortgageBankOffers } from "./MortgageBankOffers";
@@ -71,10 +65,9 @@ export function MortgageCalculatorPage() {
           setLiveRates(payload.rates);
         }
       } catch {
-        // Keep static fallback from in-memory engine config.
+        // static fallback
       }
     })();
-
     return () => ctrl.abort();
   }, [state.product]);
 
@@ -89,83 +82,53 @@ export function MortgageCalculatorPage() {
       fixationYears: state.product === "mortgage" ? state.fix : undefined,
       mode: state.type,
     } as const;
-
     const ranked = rankOffersByScenario(liveRates, scenario);
     const normalized = normalizedOffersToBankEntries(ranked, state.product);
     return normalized.length > 0 ? normalized : defaultAllowedBanks;
   }, [liveRates, state, defaultAllowedBanks]);
 
-  const result = useMemo(
-    () => calculateResult(state, rankedBanks),
-    [state, rankedBanks]
-  );
-  const offers = useMemo(
-    () => getOffersWithBanks(state, rankedBanks),
-    [state, rankedBanks]
-  );
+  const result = useMemo(() => calculateResult(state, rankedBanks), [state, rankedBanks]);
+  const offers = useMemo(() => getOffersWithBanks(state, rankedBanks), [state, rankedBanks]);
   const ratesMeta = rankedBanks?.[0];
 
   return (
     <div className="pt-0 pb-56 lg:pb-0">
       <CalculatorPageShell>
-        <CalculatorModuleCard>
+        {/* ── Header (standalone, no card) ── */}
+        <div className="mb-3">
           <CalculatorPageHeader
             eyebrow="Kalkulačka hypoték a úvěrů · 2026"
             title="Spočítejte si splátku"
-            subtitle="Zjistěte měsíční splátku a srovnejte aktuální nabídky bank."
+            subtitle="Zjistěte přesnou měsíční splátku a srovnejte aktuální nabídky bank."
           />
-          <div className="mt-5 space-y-3">
-            <MortgageProductSwitcher
-              product={state.product}
-              onProductChange={(product) =>
-                setState((s) => ({
-                  ...s,
-                  product,
-                  ...(product === "mortgage"
-                    ? {
-                        loan: LIMITS.mortgage.default,
-                        own: 600_000,
-                        term: 30,
-                        fix: 5,
-                        type: "new" as const,
-                        ltvLock: 90 as number | null,
-                      }
-                    : {
-                        loan: LIMITS.loan.default,
-                        own: 0,
-                        term: 12,
-                        type: "new" as const,
-                        ltvLock: null,
-                      }),
-                }))
-              }
-            />
-            <MortgageTabSwitcher
-              product={state.product}
-              type={state.type}
-              onTypeChange={(type) => setState((s) => ({ ...s, type }))}
+        </div>
+
+        {/* ── Main grid: input | result ── */}
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_360px]">
+          <MortgageInputPanel
+            state={state}
+            onStateChange={setState}
+            onProductChange={(product) =>
+              setState((s) => ({
+                ...s,
+                product,
+                ...(product === "mortgage"
+                  ? { loan: LIMITS.mortgage.default, own: 600_000, term: 30, fix: 5, type: "new" as const, ltvLock: 90 as number | null }
+                  : { loan: LIMITS.loan.default, own: 0, term: 12, type: "new" as const, ltvLock: null }),
+              }))
+            }
+            onTypeChange={(type) => setState((s) => ({ ...s, type }))}
+          />
+          <div className="hidden lg:block sticky top-6">
+            <MortgageResultsPanel
+              result={result}
+              onCtaClick={() => setModalBank(null)}
             />
           </div>
-        </CalculatorModuleCard>
+        </div>
 
-        <CalculatorModuleMainGrid>
-          <CalculatorInputSection>
-            <MortgageInputPanel
-              state={state}
-              onStateChange={setState}
-            />
-          </CalculatorInputSection>
-          <CalculatorResultsSection>
-            <div className="hidden lg:block sticky top-6">
-              <MortgageResultsPanel
-                result={result}
-                onCtaClick={() => setModalBank(null)}
-              />
-            </div>
-          </CalculatorResultsSection>
-        </CalculatorModuleMainGrid>
-
-        <div className="w-full rounded-[20px] border-[1.5px] border-slate-200 bg-white p-5 shadow-sm sm:p-6 md:p-7">
+        {/* ── Bank comparison ── */}
+        <div className="mt-4 rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-white p-5 shadow-sm sm:p-6 md:p-7">
           <MortgageBankOffers
             offers={offers}
             fetchedAt={ratesMeta?.fetchedAt}
