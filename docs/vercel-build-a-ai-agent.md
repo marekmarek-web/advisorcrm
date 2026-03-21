@@ -52,7 +52,8 @@ Endpoint: **`POST /api/ai/assistant/chat`**
    - Chat používá **Responses API** s textovým promptem + kontext z DB.
 
 5. **Review smluv (upload + seznam)** – endpointy pod `/api/contracts/*` vyžadují jen **členství ve workspace** (stejně jako asistent), ne zvlášť `documents:read` / `documents:write`.  
-   Při chybě uploadu může odpověď obsahovat pole **`code`** (`STORAGE_*`, `DB_INSERT_REVIEW`, `CONTRACT_UPLOAD_UNHANDLED`) – v UI se zobrazí za textem chyby pro rychlejší diagnostiku.
+   Při chybě uploadu může odpověď obsahovat pole **`code`** (`STORAGE_*`, `DB_INSERT_REVIEW`, `CONTRACT_UPLOAD_UNHANDLED`) – v UI se zobrazí za textem chyby pro rychlejší diagnostiku.  
+   **Chyba `DB_INSERT_REVIEW`:** na produkční databázi (stejná jako `DATABASE_URL` na Vercelu) v Supabase → **SQL Editor** spusť skript **`docs/supabase-patch-contract_upload_reviews.sql`** (doplní / vytvoří tabulku `contract_upload_reviews`).
 
 ---
 

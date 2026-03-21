@@ -102,6 +102,8 @@ Nejjednodušší je **Vercel** (Next.js, automatické deploye z GitHubu).
 
 **Google / Apple přihlášení:** Návod je v `docs/GOOGLE-APPLE-LOGIN.md`.
 
+**Upload smluv: `DB_INSERT_REVIEW`:** Produkční Postgres nemá aktuální tabulku `contract_upload_reviews`. V Supabase (stejný projekt jako `DATABASE_URL` na Vercelu) → **SQL Editor** spusť `docs/supabase-patch-contract_upload_reviews.sql`.
+
 ## Struktura
 
 - `apps/web` – Next.js aplikace (Aidvisora)

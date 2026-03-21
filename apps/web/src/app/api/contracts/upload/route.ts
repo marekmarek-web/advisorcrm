@@ -139,7 +139,9 @@ export async function POST(request: Request) {
         uploadedBy: userId,
       });
     } catch (dbErr) {
-      console.error("[contracts/upload] createContractReview failed", dbErr);
+      const pgMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      const pgCode = (dbErr as { code?: string })?.code;
+      console.error("[contracts/upload] createContractReview failed", { message: pgMsg, code: pgCode });
       await admin.storage.from("documents").remove([storagePath]).catch(() => {});
       return NextResponse.json(
         {
