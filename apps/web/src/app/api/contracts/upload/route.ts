@@ -5,7 +5,12 @@ import { createContractReview, updateContractReview } from "@/lib/ai/review-queu
 import { runContractUnderstandingPipeline } from "@/lib/ai/contract-understanding-pipeline";
 import { findClientCandidates, buildAllDraftActions } from "@/lib/ai/draft-actions";
 import { isMatchingAmbiguous } from "@/lib/ai/client-matching";
-import { findMatchedDeals, findMatchedHouseholds } from "@/lib/ai/client-matching";
+import {
+  findMatchedCompanies,
+  findMatchedDeals,
+  findMatchedExistingContracts,
+  findMatchedHouseholds,
+} from "@/lib/ai/client-matching";
 import { logOpenAICall } from "@/lib/openai";
 import { logAudit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -239,6 +244,8 @@ export async function POST(request: Request) {
       clientMatchCandidates,
       String(data.extractedFields.contractNumber?.value ?? "")
     );
+    const matchedCompanies = await findMatchedCompanies(tenantId, data);
+    const matchedContracts = await findMatchedExistingContracts(tenantId, data, clientMatchCandidates);
     data.candidateMatches = {
       matchedClients: clientMatchCandidates.map((c) => ({
         entityId: c.clientId,
@@ -253,6 +260,8 @@ export async function POST(request: Request) {
       })),
       matchedHouseholds,
       matchedDeals,
+      matchedCompanies,
+      matchedContracts,
       score: clientMatchCandidates[0]?.score ?? 0,
       reason: clientMatchCandidates[0]?.reasons.join("; ") ?? "no_match",
       ambiguityFlags: isMatchingAmbiguous(clientMatchCandidates) ? ["multiple_close_candidates"] : [],
@@ -265,6 +274,12 @@ export async function POST(request: Request) {
     const reasonsForReview = [...pipelineResult.reasonsForReview];
     if (isMatchingAmbiguous(clientMatchCandidates)) {
       reasonsForReview.push("ambiguous_client_match");
+    }
+    if (
+      data.documentClassification.documentIntent === "modifies_existing_product" &&
+      matchedContracts.length === 0
+    ) {
+      reasonsForReview.push("missing_existing_contract_match");
     }
 
     await updateContractReview(reviewId, tenantId, {
@@ -279,12 +294,15 @@ export async function POST(request: Request) {
       detectedDocumentType: pipelineResult.detectedDocumentType,
       detectedDocumentSubtype: data.documentClassification.subtype ?? null,
       lifecycleStatus: data.documentClassification.lifecycleStatus ?? null,
+      documentIntent: data.documentClassification.documentIntent ?? null,
       extractionTrace: pipelineResult.extractionTrace,
       validationWarnings: pipelineResult.validationWarnings.length ? pipelineResult.validationWarnings : null,
       fieldConfidenceMap: pipelineResult.fieldConfidenceMap ?? undefined,
       classificationReasons: pipelineResult.classificationReasons.length ? pipelineResult.classificationReasons : null,
       dataCompleteness: data.dataCompleteness ?? null,
       sensitivityProfile: data.sensitivityProfile ?? null,
+      sectionSensitivity: data.sectionSensitivity ?? null,
+      relationshipInference: data.relationshipInference ?? null,
     });
     await logAudit({
       tenantId,

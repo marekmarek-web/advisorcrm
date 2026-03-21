@@ -15,6 +15,7 @@ import {
   normalizeClassification,
 } from "./document-classification";
 import {
+  DOCUMENT_INTENTS,
   DOCUMENT_LIFECYCLE_STATUSES,
   PRIMARY_DOCUMENT_TYPES,
 } from "./document-review-types";
@@ -33,6 +34,7 @@ const combinedSchema = z.object({
   primaryType: z.enum(PRIMARY_DOCUMENT_TYPES),
   subtype: z.string().optional(),
   lifecycleStatus: z.enum(DOCUMENT_LIFECYCLE_STATUSES).optional(),
+  documentIntent: z.enum(DOCUMENT_INTENTS).optional(),
   classificationConfidence: z.number().min(0).max(1),
   reasons: z.array(z.string()),
 });
@@ -49,6 +51,7 @@ const COMBINED_PROMPT = `Prohlédni přiložený dokument a vrať JEDINĚ platn�
 - primaryType: jedna z hodnot ${PRIMARY_DOCUMENT_TYPES.map((t) => `"${t}"`).join(", ")}
 - subtype: krátký produkt/instituce hint (např. "generali_bel_mondo"), jinak "unknown"
 - lifecycleStatus: jedna z hodnot ${DOCUMENT_LIFECYCLE_STATUSES.map((t) => `"${t}"`).join(", ")}
+- documentIntent: jedna z hodnot ${DOCUMENT_INTENTS.map((t) => `"${t}"`).join(", ")}
 
 JSON tvar:
 {
@@ -58,6 +61,7 @@ JSON tvar:
   "primaryType": "...",
   "subtype": "...",
   "lifecycleStatus": "...",
+  "documentIntent": "...",
   "classificationConfidence": 0-1,
   "reasons": ["krátké důvody pro typ dokumentu"]
 }`;
@@ -76,6 +80,7 @@ function mimeBlockedResult(mimeType: string): {
       primaryType: "unsupported_or_unknown",
       subtype: "unknown",
       lifecycleStatus: "unknown",
+      documentIntent: "manual_review_required",
       confidence: 0,
       reasons: ["Nepodporovaný MIME typ"],
     },
@@ -122,6 +127,7 @@ export async function runCombinedContractIntake(
       primaryType: d.primaryType,
       subtype: d.subtype,
       lifecycleStatus: d.lifecycleStatus,
+      documentIntent: d.documentIntent,
       confidence: d.classificationConfidence,
       reasons: d.reasons.length ? d.reasons : ["Klasifikace z kombinovaného kroku"],
     });

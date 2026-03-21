@@ -170,6 +170,31 @@ export function buildAllDraftActions(
   if (requested.includes("create_or_link_client")) {
     actions.push(buildCreateClientDraft(legacy));
   }
+  if (requested.includes("create_or_update_contract_record")) {
+    actions.push({
+      type: "create_or_update_contract_record",
+      label: "Vytvořit nebo aktualizovat smlouvu",
+      payload: {
+        contractNumber: fieldValue(maybeEnvelope, "contractNumber") ?? fieldValue(maybeEnvelope, "existingPolicyNumber"),
+        productName: fieldValue(maybeEnvelope, "productName"),
+        lifecycleStatus: maybeEnvelope.documentClassification.lifecycleStatus,
+      },
+    });
+  }
+  if (requested.includes("link_client")) {
+    actions.push({
+      type: "link_client",
+      label: "Spárovat klienta",
+      payload: {},
+    });
+  }
+  if (requested.includes("link_household")) {
+    actions.push({
+      type: "link_household",
+      label: "Spárovat household",
+      payload: {},
+    });
+  }
   if (requested.includes("create_contract_record")) {
     actions.push(buildCreateContractDraft(legacy));
   }
@@ -220,6 +245,125 @@ export function buildAllDraftActions(
       payload: {
         reason: maybeEnvelope.reviewWarnings.map((w) => w.code).join(", "),
       },
+    });
+  }
+  if (requested.includes("create_service_review_task")) {
+    actions.push({
+      type: "create_service_review_task",
+      label: "Vytvořit servisní review úkol",
+      payload: { reason: "final_contract_followup" },
+    });
+  }
+  if (requested.includes("propose_financial_analysis_refresh")) {
+    actions.push({
+      type: "propose_financial_analysis_refresh",
+      label: "Navrhnout refresh finanční analýzy",
+      payload: { sourceType: maybeEnvelope.documentClassification.primaryType },
+    });
+  }
+  if (requested.includes("attach_to_existing_contract")) {
+    actions.push({
+      type: "attach_to_existing_contract",
+      label: "Připojit k existující smlouvě",
+      payload: {
+        existingPolicyNumber: fieldValue(maybeEnvelope, "existingPolicyNumber"),
+      },
+    });
+  }
+  if (requested.includes("create_service_task")) {
+    actions.push({
+      type: "create_service_task",
+      label: "Vytvořit servisní úkol",
+      payload: {},
+    });
+  }
+  if (requested.includes("request_contract_mapping")) {
+    actions.push({
+      type: "request_contract_mapping",
+      label: "Vyžádat manuální mapování smlouvy",
+      payload: {},
+    });
+  }
+  if (requested.includes("attach_to_client_documents")) {
+    actions.push({
+      type: "attach_to_client_documents",
+      label: "Připojit do klientských dokumentů",
+      payload: {},
+    });
+  }
+  if (requested.includes("schedule_consultation")) {
+    actions.push({
+      type: "schedule_consultation",
+      label: "Naplánovat konzultaci",
+      payload: {},
+    });
+  }
+  if (requested.includes("prepare_comparison")) {
+    actions.push({
+      type: "prepare_comparison",
+      label: "Připravit srovnání variant",
+      payload: {},
+    });
+  }
+  if (requested.includes("attach_to_client_or_company")) {
+    actions.push({
+      type: "attach_to_client_or_company",
+      label: "Připojit ke klientovi nebo firmě",
+      payload: {},
+    });
+  }
+  if (requested.includes("attach_to_existing_financing_deal")) {
+    actions.push({
+      type: "attach_to_existing_financing_deal",
+      label: "Připojit k existujícímu financování",
+      payload: {},
+    });
+  }
+  if (requested.includes("update_income_profile")) {
+    actions.push({
+      type: "update_income_profile",
+      label: "Aktualizovat příjmový profil",
+      payload: {
+        netIncome: fieldValue(maybeEnvelope, "netWage") ?? fieldValue(maybeEnvelope, "averageNetIncomeLast3Months"),
+      },
+    });
+  }
+  if (requested.includes("mark_as_supporting_document")) {
+    actions.push({
+      type: "mark_as_supporting_document",
+      label: "Označit jako podpůrný dokument",
+      payload: {},
+    });
+  }
+  if (requested.includes("create_or_link_company_entity")) {
+    actions.push({
+      type: "create_or_link_company_entity",
+      label: "Vytvořit nebo propojit firmu",
+      payload: {
+        companyName: fieldValue(maybeEnvelope, "companyName"),
+        ico: fieldValue(maybeEnvelope, "ico") ?? fieldValue(maybeEnvelope, "companyId"),
+      },
+    });
+  }
+  if (requested.includes("attach_to_business_client")) {
+    actions.push({
+      type: "attach_to_business_client",
+      label: "Připojit k business klientovi",
+      payload: {},
+    });
+  }
+  if (requested.includes("attach_to_loan_or_financing_deal")) {
+    actions.push({
+      type: "attach_to_loan_or_financing_deal",
+      label: "Připojit k úvěrovému obchodu",
+      payload: {},
+    });
+  }
+  if (requested.includes("create_manual_review_task")) {
+    actions.push({
+      type: "create_manual_review_task",
+      label: "Vytvořit úkol manuální kontroly",
+      payload: {},
     });
   }
   // Keep email helper for user convenience.

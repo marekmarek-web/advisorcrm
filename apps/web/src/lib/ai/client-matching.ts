@@ -362,3 +362,80 @@ export async function findMatchedDeals(
   mapped.sort((a, b) => b.score - a.score);
   return mapped;
 }
+
+export async function findMatchedCompanies(
+  tenantId: string,
+  extracted: ExtractedContractSchema | DocumentReviewEnvelope
+): Promise<Array<{ entityId: string; score: number; reason: string }>> {
+  const { companyIdNorm, employerNorm } = extractSignals(extracted);
+  const out = new Map<string, { entityId: string; score: number; reason: string }>();
+  if (companyIdNorm) {
+    const rows = await db
+      .select({ id: companies.id, name: companies.name })
+      .from(companies)
+      .where(
+        and(
+          eq(companies.tenantId, tenantId),
+          sql`REPLACE(${companies.ico}, ' ', '') = ${companyIdNorm}`
+        )
+      )
+      .limit(5);
+    for (const row of rows) {
+      out.set(row.id, {
+        entityId: row.id,
+        score: 0.95,
+        reason: `Shoda IČO firmy ${row.name ?? row.id}`,
+      });
+    }
+  }
+  if (employerNorm) {
+    const rows = await db
+      .select({ id: companies.id, name: companies.name })
+      .from(companies)
+      .where(eq(companies.tenantId, tenantId))
+      .limit(200);
+    for (const row of rows) {
+      const companyNorm = normalizeForCompare(row.name);
+      if (!companyNorm || !companyNorm.includes(employerNorm)) continue;
+      const existing = out.get(row.id);
+      if (!existing || existing.score < 0.7) {
+        out.set(row.id, {
+          entityId: row.id,
+          score: 0.7,
+          reason: `Názvová shoda firmy ${row.name ?? row.id}`,
+        });
+      }
+    }
+  }
+  return [...out.values()].sort((a, b) => b.score - a.score);
+}
+
+export async function findMatchedExistingContracts(
+  tenantId: string,
+  extracted: ExtractedContractSchema | DocumentReviewEnvelope,
+  clientCandidates: ClientMatchCandidate[]
+): Promise<Array<{ entityId: string; score: number; reason: string }>> {
+  const asEnvelope = extracted as DocumentReviewEnvelope;
+  const possibleContractNumber = String(
+    asEnvelope?.extractedFields?.existingPolicyNumber?.value ??
+      asEnvelope?.extractedFields?.contractNumber?.value ??
+      ""
+  ).trim();
+  const out: Array<{ entityId: string; score: number; reason: string }> = [];
+  if (possibleContractNumber) {
+    const rows = await db
+      .select({ id: contracts.id, contractNumber: contracts.contractNumber, contactId: contracts.contactId })
+      .from(contracts)
+      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.contractNumber, possibleContractNumber)))
+      .limit(10);
+    for (const row of rows) {
+      const linkedClientScore = clientCandidates.find((c) => c.clientId === row.contactId)?.score ?? 0.65;
+      out.push({
+        entityId: row.id,
+        score: Math.min(1, 0.75 + linkedClientScore * 0.2),
+        reason: `Shoda čísla smlouvy ${row.contractNumber ?? possibleContractNumber}`,
+      });
+    }
+  }
+  return out.sort((a, b) => b.score - a.score);
+}

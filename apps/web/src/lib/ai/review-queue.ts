@@ -53,7 +53,26 @@ export type DraftActionType =
   | "create_income_verification_record"
   | "attach_to_existing_client"
   | "propose_financial_analysis_update"
-  | "request_manual_review";
+  | "request_manual_review"
+  | "create_or_update_contract_record"
+  | "link_client"
+  | "link_household"
+  | "propose_financial_analysis_refresh"
+  | "create_service_review_task"
+  | "attach_to_existing_contract"
+  | "create_service_task"
+  | "request_contract_mapping"
+  | "attach_to_client_documents"
+  | "schedule_consultation"
+  | "prepare_comparison"
+  | "attach_to_client_or_company"
+  | "attach_to_existing_financing_deal"
+  | "update_income_profile"
+  | "mark_as_supporting_document"
+  | "create_or_link_company_entity"
+  | "attach_to_business_client"
+  | "attach_to_loan_or_financing_deal"
+  | "create_manual_review_task";
 
 export interface DraftActionBase {
   type: DraftActionType;

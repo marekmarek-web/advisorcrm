@@ -55,6 +55,8 @@ export const contractUploadReviews = pgTable("contract_upload_reviews", {
   detectedDocumentSubtype: text("detected_document_subtype"),
   /** Pipeline: lifecycle status (contract/proposal/offer/...). */
   lifecycleStatus: text("lifecycle_status"),
+  /** Pipeline: intent derived from type + lifecycle. */
+  documentIntent: text("document_intent"),
   /** Pipeline: trace without document content (inputMode, documentType, classificationConfidence, extractionMode, warnings, failedStep). */
   extractionTrace: jsonb("extraction_trace"),
   /** Pipeline: validation warnings [{ code, message, field? }]. */
@@ -67,6 +69,10 @@ export const contractUploadReviews = pgTable("contract_upload_reviews", {
   dataCompleteness: jsonb("data_completeness"),
   /** GDPR profile of extracted document. */
   sensitivityProfile: text("sensitivity_profile"),
+  /** GDPR section-level sensitivity map. */
+  sectionSensitivity: jsonb("section_sensitivity"),
+  /** Explicit relationship inference block from extraction. */
+  relationshipInference: jsonb("relationship_inference"),
   /** Human correction: snapshot of payload before correction. */
   originalExtractedPayload: jsonb("original_extracted_payload"),
   /** Human correction: user-corrected payload. */

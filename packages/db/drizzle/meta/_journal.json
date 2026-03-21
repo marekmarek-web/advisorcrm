@@ -99,6 +99,13 @@
       "when": 1774600000000,
       "tag": "0014_document_review_redesign",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1774700000000,
+      "tag": "0015_document_review_phase_two",
+      "breakpoints": true
     }
   ]
 }

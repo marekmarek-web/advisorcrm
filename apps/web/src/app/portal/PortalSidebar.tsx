@@ -187,9 +187,10 @@ function getInitials(email: string | undefined): string {
 }
 
 function isItemActive(pathname: string, href: string): boolean {
-  if (pathname === href) return true;
-  if (href === "/portal/today") return false;
-  return pathname.startsWith(href + "/");
+  const hrefPath = href.split("?")[0]?.split("#")[0] ?? href;
+  if (pathname === hrefPath) return true;
+  if (hrefPath === "/portal/today") return false;
+  return pathname.startsWith(hrefPath + "/");
 }
 
 interface PortalSidebarProps {

@@ -65,12 +65,15 @@ export async function GET(
       detectedDocumentType: row.detectedDocumentType ?? undefined,
       detectedDocumentSubtype: row.detectedDocumentSubtype ?? undefined,
       lifecycleStatus: row.lifecycleStatus ?? undefined,
+      documentIntent: row.documentIntent ?? undefined,
       extractionTrace: row.extractionTrace ?? undefined,
       validationWarnings: row.validationWarnings ?? undefined,
       fieldConfidenceMap: row.fieldConfidenceMap ?? undefined,
       classificationReasons: row.classificationReasons ?? undefined,
       dataCompleteness: row.dataCompleteness ?? undefined,
       sensitivityProfile: row.sensitivityProfile ?? undefined,
+      sectionSensitivity: row.sectionSensitivity ?? undefined,
+      relationshipInference: row.relationshipInference ?? undefined,
       originalExtractedPayload: row.originalExtractedPayload ?? undefined,
       correctedPayload: row.correctedPayload ?? undefined,
       correctedFields: row.correctedFields ?? undefined,
@@ -92,6 +95,7 @@ export async function GET(
               detectedDocumentType: row.detectedDocumentType ?? undefined,
               detectedDocumentSubtype: row.detectedDocumentSubtype ?? undefined,
               lifecycleStatus: row.lifecycleStatus ?? undefined,
+              documentIntent: row.documentIntent ?? undefined,
               classificationReasons: row.classificationReasons ?? undefined,
             },
             verification: {
@@ -103,6 +107,8 @@ export async function GET(
             suggestedActions: row.draftActions ?? undefined,
             extractionTrace: row.extractionTrace ?? undefined,
             sensitivityProfile: row.sensitivityProfile ?? undefined,
+            sectionSensitivity: row.sectionSensitivity ?? undefined,
+            relationshipInference: row.relationshipInference ?? undefined,
           }
         : undefined,
     });

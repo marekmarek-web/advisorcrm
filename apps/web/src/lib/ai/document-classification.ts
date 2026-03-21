@@ -1,11 +1,15 @@
 import { z } from "zod";
 import { createResponseWithFile } from "@/lib/openai";
 import {
+  DOCUMENT_INTENTS,
   DOCUMENT_LIFECYCLE_STATUSES,
   PRIMARY_DOCUMENT_TYPES,
   type DocumentClassification,
 } from "./document-review-types";
-import { classifyLifecycleFromPrimary } from "./document-schema-registry";
+import {
+  classifyIntentFromClassification,
+  classifyLifecycleFromPrimary,
+} from "./document-schema-registry";
 
 export type ClassificationResult = DocumentClassification;
 export type ContractDocumentType = (typeof PRIMARY_DOCUMENT_TYPES)[number];
@@ -15,6 +19,7 @@ const classificationResponseSchema = z.object({
   primaryType: z.enum(PRIMARY_DOCUMENT_TYPES),
   subtype: z.string().min(1).max(120).optional(),
   lifecycleStatus: z.enum(DOCUMENT_LIFECYCLE_STATUSES).optional(),
+  documentIntent: z.enum(DOCUMENT_INTENTS).optional(),
   confidence: z.number().min(0).max(1),
   reasons: z.array(z.string()),
 });
@@ -24,6 +29,7 @@ Vrať JEDINĚ platný JSON objekt (žádný markdown, žádný úvod) s poli:
 - primaryType: jedna z hodnot ${PRIMARY_DOCUMENT_TYPES.map((t) => `"${t}"`).join(", ")}
 - subtype: co nejkonkrétnější produkt/instituce varianta (např. "generali_bel_mondo"), jinak "unknown"
 - lifecycleStatus: jedna z hodnot ${DOCUMENT_LIFECYCLE_STATUSES.map((t) => `"${t}"`).join(", ")}
+- documentIntent: jedna z hodnot ${DOCUMENT_INTENTS.map((t) => `"${t}"`).join(", ")}
 - confidence: číslo 0–1
 - reasons: krátké důvody (pole stringů)
 
@@ -32,10 +38,17 @@ Nikdy neoznač offer/proposal jako final_contract bez explicitního důkazu.`;
 
 export function normalizeClassification(raw: Partial<ClassificationResult>): ClassificationResult {
   const primaryType = (raw.primaryType ?? "unsupported_or_unknown") as ContractDocumentType;
+  const lifecycleStatus = classifyLifecycleFromPrimary(primaryType, raw.lifecycleStatus);
   return {
     primaryType,
     subtype: raw.subtype?.trim() || "unknown",
-    lifecycleStatus: classifyLifecycleFromPrimary(primaryType, raw.lifecycleStatus),
+    lifecycleStatus,
+    documentIntent:
+      raw.documentIntent ??
+      classifyIntentFromClassification({
+        primaryType,
+        lifecycleStatus,
+      }),
     confidence: typeof raw.confidence === "number" ? Math.max(0, Math.min(1, raw.confidence)) : 0,
     reasons: Array.isArray(raw.reasons) ? raw.reasons : [],
   };
@@ -48,7 +61,15 @@ export function parseClassificationResponse(raw: string): ClassificationResult {
   const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
   // Backward compatibility for older prompts/tests.
   const aliasMap: Record<string, ContractDocumentType> = {
+    life_insurance_final_contract: "life_insurance_final_contract",
     insurance_contract: "life_insurance_contract",
+    life_insurance_change_request: "life_insurance_change_request",
+    life_insurance_modelation: "life_insurance_modelation",
+    payslip_document: "payslip_document",
+    income_proof_document: "income_proof_document",
+    corporate_tax_return: "corporate_tax_return",
+    self_employed_tax_or_income_document: "self_employed_tax_or_income_document",
+    insurance_policy_change_or_service_doc: "insurance_policy_change_or_service_doc",
     investment_contract: "investment_service_agreement",
     loan_or_mortgage_contract: "consumer_loan_contract",
     amendment: "generic_financial_document",

@@ -20,6 +20,7 @@ import type { ValidationWarning } from "./extraction-validation";
 import { resolveDocumentSchema } from "./document-schema-router";
 import { runVerificationPass } from "./document-verification";
 import { resolveSensitivityProfile } from "./document-sensitivity";
+import { inferDocumentRelationships } from "./document-relationships";
 
 export type PipelineSuccess = {
   ok: true;
@@ -153,6 +154,7 @@ export async function runContractUnderstandingPipeline(
   const data = validated.data;
   data.documentClassification.primaryType = documentType;
   data.documentClassification.lifecycleStatus = classification.lifecycleStatus;
+  data.documentClassification.documentIntent = classification.documentIntent;
   data.documentClassification.subtype = classification.subtype;
   data.documentClassification.confidence = classification.confidence;
   data.documentClassification.reasons = classification.reasons;
@@ -193,6 +195,7 @@ export async function runContractUnderstandingPipeline(
     expirationDate: data.extractedFields.policyEndDate?.value as string | null,
   };
   const validation: ValidationResult = validateExtractedContract(legacyValidationPayload);
+  inferDocumentRelationships(data);
   const verification = runVerificationPass(data, schemaDefinition);
   data.sensitivityProfile = resolveSensitivityProfile(data);
   data.reviewWarnings = verification.warnings;

@@ -68,12 +68,15 @@ export type ContractReviewRow = {
   detectedDocumentType: string | null;
   detectedDocumentSubtype: string | null;
   lifecycleStatus: string | null;
+  documentIntent: string | null;
   extractionTrace: ExtractionTrace | null;
   validationWarnings: ValidationWarning[] | null;
   fieldConfidenceMap: Record<string, number> | null;
   classificationReasons: string[] | null;
   dataCompleteness: unknown;
   sensitivityProfile: string | null;
+  sectionSensitivity: unknown;
+  relationshipInference: unknown;
   originalExtractedPayload: unknown;
   correctedPayload: unknown;
   correctedFields: string[] | null;
@@ -161,6 +164,11 @@ const listReviewColumns = {
   confidence: contractUploadReviews.confidence,
   reasonsForReview: contractUploadReviews.reasonsForReview,
   reviewStatus: contractUploadReviews.reviewStatus,
+  detectedDocumentType: contractUploadReviews.detectedDocumentType,
+  detectedDocumentSubtype: contractUploadReviews.detectedDocumentSubtype,
+  lifecycleStatus: contractUploadReviews.lifecycleStatus,
+  documentIntent: contractUploadReviews.documentIntent,
+  sensitivityProfile: contractUploadReviews.sensitivityProfile,
   uploadedBy: contractUploadReviews.uploadedBy,
   createdAt: contractUploadReviews.createdAt,
   updatedAt: contractUploadReviews.updatedAt,
@@ -212,12 +220,15 @@ export async function updateContractReview(
     detectedDocumentType?: string | null;
     detectedDocumentSubtype?: string | null;
     lifecycleStatus?: string | null;
+    documentIntent?: string | null;
     extractionTrace?: ExtractionTrace | null;
     validationWarnings?: ValidationWarning[] | null;
     fieldConfidenceMap?: Record<string, number> | null;
     classificationReasons?: string[] | null;
     dataCompleteness?: unknown;
     sensitivityProfile?: string | null;
+    sectionSensitivity?: unknown;
+    relationshipInference?: unknown;
     originalExtractedPayload?: unknown;
     correctedPayload?: unknown;
     correctedFields?: string[] | null;

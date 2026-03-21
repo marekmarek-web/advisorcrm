@@ -86,17 +86,59 @@ export function runVerificationPass(
   }
 
   // Lifecycle sanity checks
+  const primaryType = envelope.documentClassification.primaryType;
   const lifecycle = envelope.documentClassification.lifecycleStatus;
-  const isFinal = lifecycle === "final_contract";
-  const isOfferish = lifecycle === "offer" || lifecycle === "proposal" || lifecycle === "comparison";
-  if (isOfferish && isFinal) {
+  const intent = envelope.documentClassification.documentIntent;
+  const isOfferish = lifecycle === "offer" || lifecycle === "proposal" || lifecycle === "comparison" || lifecycle === "modelation";
+  if (primaryType === "life_insurance_final_contract" && isOfferish) {
     warnings.push({
       code: "LIFECYCLE_CONFLICT",
-      message: "Dokument vypadá jako offer/proposal/comparison, ale je označen jako final_contract.",
+      message: "Final contract dokument má lifecycle, který odpovídá nabídce/projekci.",
       severity: "critical",
     });
     reasons.add("proposal_not_final_contract");
   }
+  if (
+    (primaryType === "life_insurance_modelation" || primaryType === "life_insurance_proposal") &&
+    lifecycle === "final_contract"
+  ) {
+    warnings.push({
+      code: "LIFECYCLE_CONFLICT",
+      message: "Modelace/návrh nesmí být označen jako final_contract bez explicitního důkazu.",
+      severity: "critical",
+    });
+    reasons.add("proposal_not_final_contract");
+  }
+
+  const noProductCreationTypes = new Set([
+    "payslip_document",
+    "income_proof_document",
+    "corporate_tax_return",
+    "self_employed_tax_or_income_document",
+    "income_confirmation",
+    "bank_statement",
+  ]);
+  if (noProductCreationTypes.has(primaryType) && intent === "creates_new_product") {
+    warnings.push({
+      code: "INTENT_CONFLICT_NO_PRODUCT_CREATION",
+      message: "Tento typ dokumentu nemá vytvářet nový produkt. Vyžaduje manuální kontrolu intentu.",
+      severity: "critical",
+    });
+    reasons.add("intent_conflict");
+  }
+
+  if (
+    (primaryType === "life_insurance_change_request" || primaryType === "insurance_policy_change_or_service_doc") &&
+    envelope.candidateMatches.matchedContracts.length === 0
+  ) {
+    warnings.push({
+      code: "CHANGE_REQUEST_MISSING_EXISTING_CONTRACT",
+      message: "Změnová žádost nemá spolehlivý match na existující smlouvu.",
+      severity: "critical",
+    });
+    reasons.add("missing_existing_contract_match");
+  }
+
   if (envelope.documentMeta.scannedVsDigital === "scanned" && (envelope.documentMeta.overallConfidence ?? 0.6) > 0.9) {
     warnings.push({
       code: "SCAN_CONFIDENCE_SUSPICIOUS",
