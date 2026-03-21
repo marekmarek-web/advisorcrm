@@ -73,6 +73,10 @@ Nejjednodušší je **Vercel** (Next.js, automatické deploye z GitHubu).
    - `SUPABASE_SERVICE_ROLE_KEY` – service role klíč
    - `DATABASE_URL` – Postgres connection string (Supabase → Settings → Database → Connection string, pooler, např. `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres`)
    - `NEXT_PUBLIC_APP_URL` – URL nasazené aplikace (např. `https://tvuj-projekt.vercel.app`), důležité pro auth callback a e-maily.
+   - **`OPENAI_API_KEY`** – nutné pro **AI asistenta** (chat v portálu) a další OpenAI volání; bez něj asistent odpovídá jen obecným fallbackem.
+   - Volitelně `OPENAI_MODEL` – přepíše výchozí model (jinak dle `apps/web/src/lib/openai.ts`).
+
+   **Build se po pushi nespustí nebo AI „nejede“:** viz **`docs/vercel-build-a-ai-agent.md`** (Root Directory `apps/web`, Git, `OPENAI_API_KEY`).
 
 3. **Supabase – povolené URL**
    V Supabase Dashboard → **Authentication → URL Configuration** přidej do **Redirect URLs** tvou produkční adresu (např. `https://tvuj-projekt.vercel.app/**`).

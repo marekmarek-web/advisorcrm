@@ -92,19 +92,30 @@ export async function POST(request: Request) {
 
     const urgentItems = await computePriorityItems(tenantId);
     const fallbackActions = buildSuggestedActionsFromUrgent(urgentItems);
+    const failError = (result as { error?: string }).error ?? "";
     logOpenAICall({
       endpoint: "assistant/chat",
       model: "—",
       latencyMs: Date.now() - start,
       success: false,
-      error: maskForLog((result as { error?: string }).error ?? "", 80),
+      error: maskForLog(failError, 80),
     });
+
+    const errLower = failError.toLowerCase();
+    const keyMissing =
+      errLower.includes("openai_api_key") ||
+      errLower.includes("openai key") ||
+      errLower.includes("api key");
 
     return NextResponse.json({
       message: "Odpověď není k dispozici. Zkuste to později nebo vyberte akci níže.",
       referencedEntities: [],
       suggestedActions: fallbackActions,
-      warnings: ["Služba AI dočasně nedostupná."],
+      warnings: keyMissing
+        ? [
+            "Na serveru chybí nebo je neplatný OPENAI_API_KEY (Vercel → Environment Variables → Production → Redeploy).",
+          ]
+        : ["Služba AI dočasně nedostupná."],
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Odeslání zprávy selhalo.";
