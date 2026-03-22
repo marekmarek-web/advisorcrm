@@ -21,7 +21,7 @@ import { resolveDocumentSchema } from "./document-schema-router";
 import { runVerificationPass } from "./document-verification";
 import { resolveSensitivityProfile } from "./document-sensitivity";
 import { inferDocumentRelationships } from "./document-relationships";
-import { isOpenAIRateLimitError } from "./openai-rate-limit";
+import { isOpenAIRateLimitError } from "@/lib/openai-rate-limit";
 
 export type PipelineSuccess = {
   ok: true;

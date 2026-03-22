@@ -84,7 +84,7 @@ export function StepClientInfo() {
       return;
     }
     if (!lastName) {
-      setCreateError("Doplňte jméno ve tvaru „Jméno Příjmení".");
+      setCreateError('Doplňte jméno ve tvaru „Jméno Příjmení".');
       return;
     }
     setCreatingClient(true);

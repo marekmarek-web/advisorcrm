@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { withOpenAIRateLimitRetry } from "./openai-rate-limit";
+import { withOpenAIRateLimitRetry } from "@/lib/openai-rate-limit";
 
 const defaultModel = "gpt-4o-mini";
 const fallbackModel = "gpt-4o-mini";
