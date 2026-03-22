@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gmail Workspace — Aidvisora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ================================================================
+   DESIGN TOKENS — Aidvisora brand system
+   ================================================================ */
+:root {
+  --font-ui:      'Inter', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --bg:           #F1F4FA;
+  --surface:      #FFFFFF;
+  --surface-2:    #F8FAFD;
+  --navy:         #0D1F4E;
+  --navy-2:       #1A3170;
+  --accent:       #2563EB;
+  --accent-light: #EFF4FF;
+  --accent-hover: #1D4ED8;
+  --green:        #059669;
+  --red:          #DC2626;
+  --red-light:    #FEF2F2;
+  --amber:        #D97706;
+  --amber-light:  #FFFBEB;
+
+  --text:         #0D1F4E;
+  --text-2:       #475569;
+  --text-3:       #94A3B8;
+  --text-4:       #CBD5E1;
+
+  --border:       #E2E8F0;
+  --border-2:     #CBD5E1;
+
+  --r-xl:  18px;
+  --r-lg:  12px;
+  --r-md:  8px;
+  --r-sm:  5px;
+
+  --sh-sm: 0 1px 3px rgba(13,31,78,0.06);
+  --sh-md: 0 4px 16px rgba(13,31,78,0.08);
+  --sh-lg: 0 16px 40px rgba(13,31,78,0.12);
+}
+
+/* ================================================================
+   RESET
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ================================================================
+   LAYOUT — full height 3-column split
+   ================================================================ */
+.workspace {
+  display: grid;
+  grid-template-columns: 220px 1fr 480px;
+  grid-template-rows: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ================================================================
+   SIDEBAR
+   ================================================================ */
+.sidebar {
+  background: var(--navy);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+
+.sidebar-header {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.sidebar-brand {
+  display: flex; align-items: center; gap: 9px; margin-bottom: 18px;
+}
+.sidebar-logo {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 0.75rem; font-weight: 800; color: #fff;
+  flex-shrink: 0;
+}
+.sidebar-brand-name {
+  font-family: var(--font-display); font-size: 0.95rem; font-weight: 700;
+  color: #fff; letter-spacing: -0.01em;
+}
+
+.compose-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 10px;
+  border-radius: var(--r-lg);
+  background: var(--accent);
+  border: none; cursor: pointer;
+  font-family: var(--font-display); font-size: 0.84rem; font-weight: 700;
+  color: #fff;
+  transition: all 0.18s;
+  position: relative; overflow: hidden;
+}
+.compose-btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.compose-btn:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(37,99,235,0.4); }
+.compose-btn svg   { width: 14px; height: 14px; }
+
+/* Nav items */
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 10px; scrollbar-width: none; }
+.sidebar-nav::-webkit-scrollbar { display: none; }
+
+.nav-section-label {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(255,255,255,0.28);
+  padding: 12px 8px 6px; display: block;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: var(--r-md);
+  font-size: 0.8rem; font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer; transition: all 0.15s;
+  margin-bottom: 1px; position: relative;
+}
+.nav-item:hover   { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
+.nav-item.active  { background: rgba(37,99,235,0.3); color: #fff; font-weight: 600; }
+.nav-item.active .nav-icon { color: #93C5FD; }
+
+.nav-icon {
+  width: 30px; height: 30px; border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.nav-icon svg { width: 14px; height: 14px; }
+
+.nav-badge {
+  margin-left: auto; font-size: 0.65rem; font-weight: 700;
+  background: var(--accent); color: #fff;
+  padding: 1px 7px; border-radius: 100px; min-width: 20px; text-align: center;
+}
+.nav-badge.red   { background: #EF4444; }
+.nav-badge.amber { background: #F59E0B; }
+.nav-badge.muted { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.5); }
+
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+.storage-bar-label {
+  display: flex; justify-content: space-between;
+  font-size: 0.68rem; color: rgba(255,255,255,0.35);
+  margin-bottom: 5px;
+}
+.storage-bar { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.storage-bar-fill { height: 100%; background: linear-gradient(90deg, #3B82F6, #38BDF8); border-radius: 2px; width: 42%; }
+
+/* ================================================================
+   EMAIL LIST PANEL
+   ================================================================ */
+.email-list-panel {
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.list-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.search-box {
+  flex: 1; display: flex; align-items: center; gap: 9px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-lg); padding: 8px 14px;
+  transition: all 0.18s;
+}
+.search-box:focus-within {
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+.search-box svg    { width: 14px; height: 14px; color: var(--text-3); flex-shrink: 0; }
+.search-box input  {
+  border: none; outline: none; background: transparent;
+  font-family: var(--font-ui); font-size: 0.82rem; color: var(--text);
+  flex: 1;
+}
+.search-box input::placeholder { color: var(--text-3); }
+
+.toolbar-btn {
+  width: 34px; height: 34px; border-radius: var(--r-md);
+  border: 1.5px solid var(--border); background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-2); transition: all 0.15s;
+  flex-shrink: 0;
+}
+.toolbar-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.toolbar-btn svg   { width: 14px; height: 14px; }
+
+/* Filter tabs */
+.filter-tabs {
+  display: flex; gap: 0;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.filter-tabs::-webkit-scrollbar { display: none; }
+
+.filter-tab {
+  padding: 11px 14px; font-size: 0.76rem; font-weight: 600;
+  color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent;
+  white-space: nowrap; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+}
+.filter-tab:hover { color: var(--text); }
+.filter-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.filter-tab-count {
+  font-size: 0.62rem; font-weight: 700;
+  background: var(--red-light); color: var(--red);
+  padding: 1px 6px; border-radius: 100px;
+}
+.filter-tab.active .filter-tab-count { background: var(--accent-light); color: var(--accent); }
+
+/* Email list */
+.email-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+.email-list::-webkit-scrollbar       { width: 4px; }
+.email-list::-webkit-scrollbar-track { background: transparent; }
+.email-list::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+.email-item {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+  position: relative;
+}
+.email-item:hover   { background: var(--surface); }
+.email-item.active  { background: var(--accent-light); }
+.email-item.unread  { background: var(--surface); }
+.email-item.unread::before {
+  content: '';
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 60%; border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.email-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 700;
+  color: #fff; flex-shrink: 0;
+}
+
+.email-body   { min-width: 0; }
+.email-sender {
+  font-size: 0.8rem; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.email-item:not(.unread) .email-sender { font-weight: 400; color: var(--text-2); }
+
+.email-subject {
+  font-size: 0.77rem; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.email-item:not(.unread) .email-subject { font-weight: 400; color: var(--text-2); }
+
+.email-preview { font-size: 0.72rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.email-meta   { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+.email-date   { font-size: 0.7rem; color: var(--text-3); white-space: nowrap; }
+.email-item.unread .email-date { color: var(--accent); font-weight: 600; }
+
+.email-tag {
+  font-size: 0.6rem; font-weight: 700; padding: 1px 6px;
+  border-radius: 100px; white-space: nowrap;
+}
+.tag-vercel  { background: #F0FDF4; color: #15803D; }
+.tag-client  { background: var(--accent-light); color: var(--accent); }
+.tag-promo   { background: var(--amber-light); color: var(--amber); }
+.tag-alert   { background: var(--red-light); color: var(--red); }
+
+.list-load-more {
+  text-align: center; padding: 14px;
+  font-size: 0.76rem; font-weight: 500; color: var(--text-2);
+  cursor: pointer; border-top: 1px solid var(--border);
+  transition: color 0.15s;
+}
+.list-load-more:hover { color: var(--accent); }
+
+/* ================================================================
+   EMAIL DETAIL PANEL
+   ================================================================ */
+.email-detail {
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.detail-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.detail-action-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: var(--r-md);
+  border: 1.5px solid var(--border); background: var(--surface);
+  font-family: var(--font-ui); font-size: 0.77rem; font-weight: 600;
+  color: var(--text-2); cursor: pointer; transition: all 0.15s;
+}
+.detail-action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.detail-action-btn.danger:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+.detail-action-btn svg { width: 13px; height: 13px; }
+
+.detail-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.detail-scroll::-webkit-scrollbar       { width: 4px; }
+.detail-scroll::-webkit-scrollbar-track { background: transparent; }
+.detail-scroll::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+.detail-content { padding: 24px 28px; }
+
+.detail-subject {
+  font-family: var(--font-display); font-size: 1.15rem; font-weight: 700;
+  color: var(--navy); margin-bottom: 16px; line-height: 1.3; letter-spacing: -0.01em;
+}
+
+.detail-meta {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 24px; padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 0.8rem; font-weight: 700;
+  color: #fff; flex-shrink: 0;
+  background: linear-gradient(135deg, #E91E63, #C2185B);
+}
+
+.detail-meta-text { flex: 1; min-width: 0; }
+.detail-from {
+  font-size: 0.82rem; font-weight: 600; color: var(--text); margin-bottom: 2px;
+}
+.detail-from span { font-weight: 400; color: var(--text-3); }
+.detail-to   { font-size: 0.74rem; color: var(--text-3); }
+.detail-timestamp { font-size: 0.72rem; color: var(--text-3); flex-shrink: 0; }
+
+/* Email body */
+.detail-body {
+  font-size: 0.85rem; color: var(--text-2); line-height: 1.75;
+}
+
+/* Special: Coupon card inside email */
+.email-coupon-card {
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--r-xl); overflow: hidden;
+  margin: 20px 0; box-shadow: var(--sh-sm);
+}
+.email-coupon-card-inner {
+  display: grid; grid-template-columns: 1fr 2fr;
+}
+.coupon-left {
+  background: var(--navy); padding: 20px 18px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; text-align: center;
+}
+.coupon-left-label {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: rgba(255,255,255,0.45);
+}
+.coupon-left-title {
+  font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; color: #fff;
+}
+.coupon-left-valid { font-size: 0.62rem; color: rgba(255,255,255,0.35); }
+
+.coupon-right {
+  padding: 20px 18px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+}
+.coupon-amount {
+  font-family: var(--font-display); font-size: 2rem; font-weight: 800;
+  color: var(--navy); letter-spacing: -0.02em;
+}
+.coupon-cta {
+  width: 100%; padding: 9px; border-radius: var(--r-md);
+  background: #FF6B00; border: none; cursor: pointer;
+  font-family: var(--font-display); font-size: 0.8rem; font-weight: 700;
+  color: #fff; letter-spacing: 0.02em; text-transform: uppercase; transition: all 0.15s;
+}
+.coupon-cta:hover { background: #E55C00; }
+.coupon-conditions {
+  font-size: 0.68rem; color: var(--text-3); text-decoration: underline; cursor: pointer;
+}
+
+/* Steps list in email */
+.email-steps { margin: 18px 0; display: flex; flex-direction: column; gap: 12px; }
+.email-step  { display: flex; gap: 12px; align-items: flex-start; }
+.step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.step-text { font-size: 0.8rem; color: var(--text-2); line-height: 1.6; padding-top: 2px; }
+
+/* ================================================================
+   REPLY COMPOSER
+   ================================================================ */
+.reply-composer {
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+.reply-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.reply-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); }
+.reply-to    { font-size: 0.75rem; color: var(--text-2); }
+
+.reply-textarea {
+  width: 100%; min-height: 64px; resize: none;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-lg); padding: 12px 14px;
+  font-family: var(--font-ui); font-size: 0.82rem; color: var(--text);
+  outline: none; line-height: 1.55; transition: border-color 0.15s;
+}
+.reply-textarea:focus { border-color: var(--accent); }
+.reply-textarea::placeholder { color: var(--text-3); }
+
+.reply-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 10px; gap: 8px;
+}
+
+.reply-send-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border-radius: var(--r-md); border: none;
+  background: var(--accent); color: #fff; cursor: pointer;
+  font-family: var(--font-display); font-size: 0.8rem; font-weight: 700;
+  transition: all 0.15s;
+}
+.reply-send-btn:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+.reply-send-btn svg { width: 13px; height: 13px; }
+
+.reply-btn-group { display: flex; gap: 5px; }
+.reply-icon-btn {
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  border: 1.5px solid var(--border); background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-3); transition: all 0.15s;
+}
+.reply-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.reply-icon-btn svg { width: 13px; height: 13px; }
+
+/* ================================================================
+   ANIMATIONS
+   ================================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.email-detail { animation: fadeIn 0.22s ease-out; }
+
+.email-item {
+  animation: slideIn 0.25s ease both;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.email-item:nth-child(1)  { animation-delay: 0.02s; }
+.email-item:nth-child(2)  { animation-delay: 0.04s; }
+.email-item:nth-child(3)  { animation-delay: 0.06s; }
+.email-item:nth-child(4)  { animation-delay: 0.08s; }
+.email-item:nth-child(5)  { animation-delay: 0.10s; }
+.email-item:nth-child(6)  { animation-delay: 0.12s; }
+.email-item:nth-child(7)  { animation-delay: 0.14s; }
+.email-item:nth-child(8)  { animation-delay: 0.16s; }
+.email-item:nth-child(9)  { animation-delay: 0.18s; }
+.email-item:nth-child(10) { animation-delay: 0.20s; }
+
+/* ================================================================
+   EMPTY STATE
+   ================================================================ */
+.empty-placeholder {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; padding: 40px;
+}
+.empty-icon { width: 52px; height: 52px; color: var(--text-4); }
+.empty-title { font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; color: var(--text-2); }
+.empty-sub   { font-size: 0.78rem; color: var(--text-3); text-align: center; }
+
+/* ================================================================
+   SCROLLBAR global
+   ================================================================ */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+</style>
+</head>
+<body>
+
+<div class="workspace">
+
+  <!-- ============================================================
+       SIDEBAR
+       ============================================================ -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">A</div>
+        <span class="sidebar-brand-name">Aidvisora</span>
+      </div>
+      <button class="compose-btn" onclick="openCompose()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Napsat e-mail
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Složky</span>
+
+      <div class="nav-item active" onclick="setFolder(this)">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v2H4z"/><path d="M4 8l8 5 8-5v10H4V8z"/></svg>
+        </div>
+        Doručená pošta
+        <span class="nav-badge">441</span>
+      </div>
+
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        Důležité
+        <span class="nav-badge muted">12</span>
+      </div>
+
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        Odeslané
+      </div>
+
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        Koncepty
+        <span class="nav-badge amber">3</span>
+      </div>
+
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </div>
+        Koš
+      </div>
+
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        Spam
+        <span class="nav-badge red">7</span>
+      </div>
+
+      <span class="nav-section-label" style="margin-top: 8px;">Kategorie</span>
+
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon" style="color: #8B5CF6;">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+        </div>
+        Primární
+      </div>
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon" style="color: #F59E0B;">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+        </div>
+        Aktualizace
+        <span class="nav-badge red">500</span>
+      </div>
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon" style="color: #10B981;">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+        </div>
+        Propagace
+        <span class="nav-badge muted">125</span>
+      </div>
+      <div class="nav-item" onclick="setFolder(this)">
+        <div class="nav-icon" style="color: #3B82F6;">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+        </div>
+        Sociální sítě
+        <span class="nav-badge muted">451</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="storage-bar-label">
+        <span>Úložiště</span>
+        <span>6,3 GB / 15 GB</span>
+      </div>
+      <div class="storage-bar">
+        <div class="storage-bar-fill"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       EMAIL LIST
+       ============================================================ -->
+  <div class="email-list-panel">
+    <div class="list-toolbar">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" placeholder="Hledat e-maily, kontakty...">
+      </div>
+      <button class="toolbar-btn" title="Filtrovat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" title="Obnovit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="filter-tabs">
+      <div class="filter-tab active">Vše</div>
+      <div class="filter-tab">Nepřečtené <span class="filter-tab-count">441</span></div>
+      <div class="filter-tab">S hvězdičkou</div>
+      <div class="filter-tab">Přílohy</div>
+    </div>
+
+    <!-- Email items -->
+    <div class="email-list" id="emailList">
+
+      <div class="email-item unread active" onclick="selectEmail(this, 0)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#FF6B00,#FF8C40);">AL</div>
+        <div class="email-body">
+          <div class="email-sender">Allegro</div>
+          <div class="email-subject">250 Kč na jeden klik. Berete?</div>
+          <div class="email-preview">Udělejte si radost za zlomek ceny.</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">21. 3.</span>
+          <span class="email-tag tag-promo">Promo</span>
+        </div>
+      </div>
+
+      <div class="email-item unread" onclick="selectEmail(this, 1)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#000,#333);">V</div>
+        <div class="email-body">
+          <div class="email-sender">Vercel</div>
+          <div class="email-subject">Failed production deployment</div>
+          <div class="email-preview">Hi marekmarek-web, There was an error deploying advisorcrm-web to the...</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">20. 3.</span>
+          <span class="email-tag tag-alert">Alert</span>
+        </div>
+      </div>
+
+      <div class="email-item" onclick="selectEmail(this, 1)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#000,#333);">V</div>
+        <div class="email-body">
+          <div class="email-sender">Vercel</div>
+          <div class="email-subject">Failed production deployments (3)</div>
+          <div class="email-preview">Hi marekmarek-web, There were 3 deployments with errors on marekmare...</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">20. 3.</span>
+          <span class="email-tag tag-alert">Alert</span>
+        </div>
+      </div>
+
+      <div class="email-item" onclick="selectEmail(this, 2)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#0068FF,#0057D9);">CA</div>
+        <div class="email-body">
+          <div class="email-sender">Calendly</div>
+          <div class="email-subject">Which plan is right for you?</div>
+          <div class="email-preview">Explore our most popular plans</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">20. 3.</span>
+          <span class="email-tag tag-promo">Promo</span>
+        </div>
+      </div>
+
+      <div class="email-item" onclick="selectEmail(this, 1)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#000,#333);">V</div>
+        <div class="email-body">
+          <div class="email-sender">Vercel</div>
+          <div class="email-subject">Failed production deployment</div>
+          <div class="email-preview">Hi marekmarek-web, There was an error deploying advisorcrm-web to the...</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">20. 3.</span>
+        </div>
+      </div>
+
+      <div class="email-item unread" onclick="selectEmail(this, 3)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#1A73E8,#0D47A1);">G</div>
+        <div class="email-body">
+          <div class="email-sender">GitHub</div>
+          <div class="email-subject">Vercel is requesting updated permissions</div>
+          <div class="email-preview">Updated Permissions Request — The GitHub App Vercel is requesting additional access...</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">20. 3.</span>
+          <span class="email-tag tag-client">Dev</span>
+        </div>
+      </div>
+
+      <div class="email-item" onclick="selectEmail(this, 4)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#CC0000,#990000);">ČP</div>
+        <div class="email-body">
+          <div class="email-sender">Česká pošta</div>
+          <div class="email-subject">Vezeme Vám zásilku CP14317208ODE</div>
+          <div class="email-preview">Vážený zákazníku, dnes v čase 10:00–12:00 hod. Vám budeme doručovat...</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">20. 3.</span>
+        </div>
+      </div>
+
+      <div class="email-item unread" onclick="selectEmail(this, 5)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#3ECF8E,#20B070);">SB</div>
+        <div class="email-body">
+          <div class="email-sender">Supabase</div>
+          <div class="email-subject">Security vulnerabilities detected</div>
+          <div class="email-preview">Security issues require your attention — please review immediately.</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">18. 3.</span>
+          <span class="email-tag tag-alert">Urgentní</span>
+        </div>
+      </div>
+
+      <div class="email-item" onclick="selectEmail(this, 6)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#FF6B00,#FF8C40);">AL</div>
+        <div class="email-body">
+          <div class="email-sender">Pošta Allegro</div>
+          <div class="email-subject">Vaše zásilka 1AM16424914 jsme převzali k přepravě</div>
+          <div class="email-preview">Právě jsme vyzvedli Vaši zásilku u ALLEGRO SP. Z O.O. a v následujících...</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">18. 3.</span>
+        </div>
+      </div>
+
+      <div class="email-item" onclick="selectEmail(this, 7)">
+        <div class="email-avatar" style="background: linear-gradient(135deg,#FF6750,#E53935);">RC</div>
+        <div class="email-body">
+          <div class="email-sender">Reclaim</div>
+          <div class="email-subject">Weekly Report: bre 14–20</div>
+          <div class="email-preview">2026 Time Blocking Guide: 7 tips to master focus 🎯 Did you know time blocking...</div>
+        </div>
+        <div class="email-meta">
+          <span class="email-date">20. 3.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="list-load-more" onclick="loadMore()">
+      Načíst další →
+    </div>
+  </div>
+
+  <!-- ============================================================
+       EMAIL DETAIL
+       ============================================================ -->
+  <div class="email-detail">
+    <div class="detail-toolbar">
+      <button class="detail-action-btn" onclick="replyEmail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>
+        </svg>
+        Odpovědět
+      </button>
+      <button class="detail-action-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>
+        </svg>
+        Přeposlat
+      </button>
+      <button class="detail-action-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/><path d="M9 22V12h6v10M2 10.5L12 2l10 8.5"/>
+        </svg>
+        Archivovat
+      </button>
+      <button class="detail-action-btn danger" style="margin-left: auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+        Smazat
+      </button>
+    </div>
+
+    <div class="detail-scroll">
+      <div class="detail-content" id="detailContent">
+
+        <div class="detail-subject">250 Kč na jeden klik. Berete?</div>
+
+        <div class="detail-meta">
+          <div class="detail-avatar">AL</div>
+          <div class="detail-meta-text">
+            <div class="detail-from">
+              Allegro <span>&lt;info@notifikace.allegro.cz&gt;</span>
+            </div>
+            <div class="detail-to">Komu: mfragtv@gmail.com</div>
+          </div>
+          <div class="detail-timestamp">21. 3. 2026, 9:14</div>
+        </div>
+
+        <div class="detail-body">
+          <div style="background: linear-gradient(135deg, #FF6B00, #FF8C40); display: inline-block; padding: 4px 14px; border-radius: 6px; margin-bottom: 16px;">
+            <span style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: #fff; letter-spacing: -0.01em;">allegro</span>
+          </div>
+
+          <p style="font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 6px;">Milý zákazníku,</p>
+          <p style="margin-bottom: 16px;">sezóna úlovků vrcholí. Vyberte si ten svůj!</p>
+          <p style="margin-bottom: 8px;">👉 Získejte svůj dárek! Klikněte na „Získat kupón".</p>
+          <p style="margin-bottom: 20px;">👉 Pro bezproblémové přiřazení kupónu si, prosím, vypněte blokování reklam.</p>
+
+          <p style="margin-bottom: 16px;">Pokud ještě nemáte aplikaci, nainstalujte si ji <a href="#" style="color: var(--accent); text-decoration: none; font-weight: 500;">zde</a>.</p>
+
+          <!-- Coupon card -->
+          <div class="email-coupon-card">
+            <div class="email-coupon-card-inner">
+              <div class="coupon-left">
+                <span class="coupon-left-label">Váš kupón</span>
+                <span class="coupon-left-title">Sleva</span>
+                <span class="coupon-left-valid">platný do 22. 3. 2026</span>
+              </div>
+              <div class="coupon-right">
+                <div class="coupon-amount">250 Kč</div>
+                <button class="coupon-cta">ZÍSKAT KUPÓN</button>
+                <span class="coupon-conditions">PODMÍNKY</span>
+              </div>
+            </div>
+          </div>
+
+          <p style="font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; color: var(--navy); margin: 20px 0 14px;">Jak využít kupón?</p>
+
+          <div class="email-steps">
+            <div class="email-step">
+              <div class="step-num">1</div>
+              <div class="step-text">Klikněte na tlačítko „Získat kupón", abyste aktivovali svůj kupón v hodnotě 250 Kč. Kupón bude automaticky připsán na Váš účet. Nezapomeňte si vypnout blokování reklam.</div>
+            </div>
+            <div class="email-step">
+              <div class="step-num">2</div>
+              <div class="step-text">Otevřete aplikaci Allegro a přidejte vybrané produkty do košíku. Pokud nemáte aplikaci Allegro, nainstalujte si ji <a href="#" style="color: var(--accent); text-decoration: none; font-weight: 500;">zde</a>.</div>
+            </div>
+            <div class="email-step">
+              <div class="step-num">3</div>
+              <div class="step-text">Po výběru způsobu doručení se Vám zobrazí přiřazený kupón. Kliknutím kupón vyberete a částka se Vám odečte. Minimální hodnota objednávky je 1200 Kč bez poštovného. Kupóny nelze kombinovat v jedné objednávce.</div>
+            </div>
+            <div class="email-step">
+              <div class="step-num">4</div>
+              <div class="step-text">Kupón je platný do 22. 3. 2026. Kupón nelze využít pro platbu na dobírku, pro jiné převody a při využití služby Twisto.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Reply composer -->
+    <div class="reply-composer" id="replyComposer" style="display:none;">
+      <div class="reply-header">
+        <span class="reply-label">Odpověď</span>
+        <span class="reply-to">info@notifikace.allegro.cz</span>
+      </div>
+      <textarea class="reply-textarea" placeholder="Napište odpověď..." rows="3"></textarea>
+      <div class="reply-actions">
+        <div class="reply-btn-group">
+          <button class="reply-icon-btn" title="Příloha">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <button class="reply-icon-btn" title="Emoji">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+            </svg>
+          </button>
+        </div>
+        <button class="reply-send-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+          Odeslat
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ================================================================
+// MOCK EMAIL DATA
+// ================================================================
+const emails = [
+  {
+    sender: "Allegro",
+    senderEmail: "info@notifikace.allegro.cz",
+    to: "mfragtv@gmail.com",
+    subject: "250 Kč na jeden klik. Berete?",
+    date: "21. 3. 2026, 9:14",
+    avatarColor: "linear-gradient(135deg,#FF6B00,#FF8C40)",
+    initials: "AL",
+    body: `<div style="background: linear-gradient(135deg, #FF6B00, #FF8C40); display: inline-block; padding: 4px 14px; border-radius: 6px; margin-bottom: 16px;">
+        <span style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: #fff; letter-spacing: -0.01em;">allegro</span>
+      </div>
+      <p style="font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 6px;">Milý zákazníku,</p>
+      <p style="margin-bottom: 16px;">sezóna úlovků vrcholí. Vyberte si ten svůj!</p>
+      <p style="margin-bottom: 8px;">👉 Získejte svůj dárek! Klikněte na „Získat kupón".</p>
+      <p style="margin-bottom: 20px;">👉 Pro bezproblémové přiřazení kupónu si, prosím, vypněte blokování reklam.</p>
+      <div class="email-coupon-card">
+        <div class="email-coupon-card-inner">
+          <div class="coupon-left"><span class="coupon-left-label">Váš kupón</span><span class="coupon-left-title">Sleva</span><span class="coupon-left-valid">platný do 22. 3. 2026</span></div>
+          <div class="coupon-right"><div class="coupon-amount">250 Kč</div><button class="coupon-cta">ZÍSKAT KUPÓN</button></div>
+        </div>
+      </div>`
+  },
+  {
+    sender: "Vercel",
+    senderEmail: "notifications@vercel.com",
+    to: "mfragtv@gmail.com",
+    subject: "Failed production deployment on team 'marekmarek-web's project'",
+    date: "20. 3. 2026, 14:23",
+    avatarColor: "linear-gradient(135deg,#000,#333)",
+    initials: "V",
+    body: `<p style="margin-bottom: 12px;">Hi <strong>marekmarek-web</strong>,</p>
+      <p style="margin-bottom: 16px;">There was an error deploying <strong>advisorcrm-web</strong> to the production environment on marekmarek-web's projects.</p>
+      <div style="background: var(--red-light); border: 1.5px solid rgba(220,38,38,0.2); border-radius: var(--r-lg); padding: 14px 16px; margin-bottom: 16px;">
+        <p style="font-size: 0.82rem; font-weight: 700; color: var(--red); margin-bottom: 6px;">Chyba deploymentu</p>
+        <code style="font-size: 0.75rem; color: #991B1B; background: rgba(220,38,38,0.08); padding: 2px 6px; border-radius: 4px;">Build failed: Module not found 'advisorcrm-web/components'</code>
+      </div>
+      <p style="margin-bottom: 8px;">You can also <a href="#" style="color: var(--accent); text-decoration: none; font-weight: 500;">view latest deployments</a> for branch.</p>`
+  },
+  {
+    sender: "Calendly",
+    senderEmail: "team@send.calendly.com",
+    to: "mfragtv@gmail.com",
+    subject: "Which plan is right for you?",
+    date: "20. 3. 2026, 11:05",
+    avatarColor: "linear-gradient(135deg,#0068FF,#0057D9)",
+    initials: "CA",
+    body: `<p style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: 14px;">Explore our most popular plans</p>
+      <p style="margin-bottom: 16px;">Hi, we noticed you've been using the free plan. Here's a quick comparison of our plans to help you decide what's right for you.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+        <div style="border: 1.5px solid var(--border); border-radius: var(--r-lg); padding: 14px;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 4px;">Standard</div>
+          <div style="font-size: 0.72rem; color: var(--text-3);">$12 / měs.</div>
+        </div>
+        <div style="border: 2px solid var(--accent); border-radius: var(--r-lg); padding: 14px; background: var(--accent-light);">
+          <div style="font-weight: 700; color: var(--accent); margin-bottom: 4px;">Teams ⭐</div>
+          <div style="font-size: 0.72rem; color: var(--text-3);">$20 / měs.</div>
+        </div>
+      </div>`
+  },
+];
+
+// ================================================================
+// INTERACTION
+// ================================================================
+let currentEmailIdx = 0;
+let replyVisible = false;
+
+function selectEmail(el, idx) {
+  // Remove active from all
+  document.querySelectorAll('.email-item').forEach(item => {
+    item.classList.remove('active');
+    item.classList.remove('unread');
+  });
+  el.classList.add('active');
+
+  currentEmailIdx = idx;
+  const email = emails[idx] || emails[0];
+  renderEmailDetail(email);
+
+  // Hide reply
+  document.getElementById('replyComposer').style.display = 'none';
+  replyVisible = false;
+}
+
+function renderEmailDetail(email) {
+  const c = document.getElementById('detailContent');
+  c.innerHTML = `
+    <div class="detail-subject">${email.subject}</div>
+    <div class="detail-meta">
+      <div class="detail-avatar" style="background: ${email.avatarColor};">${email.initials}</div>
+      <div class="detail-meta-text">
+        <div class="detail-from">${email.sender} <span>&lt;${email.senderEmail}&gt;</span></div>
+        <div class="detail-to">Komu: ${email.to}</div>
+      </div>
+      <div class="detail-timestamp">${email.date}</div>
+    </div>
+    <div class="detail-body">${email.body}</div>
+  `;
+}
+
+function replyEmail() {
+  const rc = document.getElementById('replyComposer');
+  replyVisible = !replyVisible;
+  rc.style.display = replyVisible ? 'block' : 'none';
+  if (replyVisible) rc.querySelector('textarea').focus();
+}
+
+function setFolder(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function openCompose() {
+  // Show reply composer as compose
+  const rc = document.getElementById('replyComposer');
+  rc.style.display = 'block';
+  rc.querySelector('.reply-label').textContent = 'Nová zpráva';
+  rc.querySelector('.reply-to').textContent = '';
+  rc.querySelector('textarea').value = '';
+  rc.querySelector('textarea').placeholder = 'Napište zprávu...';
+  rc.querySelector('textarea').focus();
+}
+
+function loadMore() {
+  // Mock — show a brief flash
+  const btn = document.querySelector('.list-load-more');
+  btn.textContent = 'Načítám...';
+  setTimeout(() => { btn.textContent = 'Načíst další →'; }, 800);
+}
+</script>
+</body>
+</html>
