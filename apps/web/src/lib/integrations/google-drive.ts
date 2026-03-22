@@ -68,10 +68,31 @@ async function driveRequest<T>(
 
 export async function listDriveFiles(
   accessToken: string,
-  opts: { query?: string; folderId?: string; pageSize?: number; pageToken?: string } = {}
+  opts: { query?: string; folderId?: string; pageSize?: number; pageToken?: string; extraQuery?: string } = {}
 ): Promise<DriveFileList> {
   const params = new URLSearchParams();
-  const qParts: string[] = ["trashed = false"];
+  const qParts: string[] = [];
+
+  if (opts.extraQuery) {
+    const eq = opts.extraQuery;
+    if (eq === "trashed=true") {
+      qParts.push("trashed = true");
+    } else if (eq === "sharedWithMe=true") {
+      qParts.push("sharedWithMe = true");
+      qParts.push("trashed = false");
+    } else if (eq === "starred=true") {
+      qParts.push("starred = true");
+      qParts.push("trashed = false");
+    } else if (eq.startsWith("modifiedTime")) {
+      qParts.push(eq);
+      qParts.push("trashed = false");
+    } else {
+      qParts.push("trashed = false");
+    }
+  } else {
+    qParts.push("trashed = false");
+  }
+
   if (opts.folderId) qParts.push(`'${opts.folderId}' in parents`);
   if (opts.query) qParts.push(`name contains '${opts.query.replace(/'/g, "\\'")}'`);
   params.set("q", qParts.join(" and "));

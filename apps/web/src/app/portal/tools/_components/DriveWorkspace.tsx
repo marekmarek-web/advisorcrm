@@ -17,15 +17,19 @@ type DriveFile = {
 
 type CtxState = { x: number; y: number; target?: DriveFile } | null;
 
-const NAV_ITEMS = [
-  { label: "Osobní", icon: "home" },
+type NavItem = {
+  label: string;
+  icon: string;
+  query?: string;
+  folderId?: string;
+};
+
+const NAV_ITEMS: NavItem[] = [
   { label: "Můj disk", icon: "folder" },
-  { label: "Počítače", icon: "monitor" },
-  { label: "Sdíleno se mnou", icon: "users" },
-  { label: "Nedávné", icon: "clock" },
-  { label: "S hvězdičkou", icon: "star" },
-  { label: "Spam", icon: "activity" },
-  { label: "Koš", icon: "trash" },
+  { label: "Sdíleno se mnou", icon: "users", query: "sharedWithMe=true" },
+  { label: "Nedávné", icon: "clock", query: "modifiedTime > '{{recent}}'" },
+  { label: "S hvězdičkou", icon: "star", query: "starred=true" },
+  { label: "Koš", icon: "trash", query: "trashed=true" },
 ];
 
 function getFileCategory(mime: string): "folder" | "pdf" | "pptx" | "xlsx" | "docx" | "video" | "image" | "generic" {
@@ -181,18 +185,15 @@ function FileTypeIcon({ type }: { type: string }) {
   );
 }
 
-/* Nav icon helper */
+/* Nav icon helper — matches NAV_ITEMS order */
 function NavIcon({ idx }: { idx: number }) {
   const props = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2 };
   switch (idx) {
-    case 0: return <svg {...props}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>;
-    case 1: return <svg {...props}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>;
-    case 2: return <svg {...props}><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>;
-    case 3: return <svg {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
-    case 4: return <svg {...props}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>;
-    case 5: return <svg {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
-    case 6: return <svg {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>;
-    case 7: return <svg {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>;
+    case 0: return <svg {...props}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>;
+    case 1: return <svg {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+    case 2: return <svg {...props}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>;
+    case 3: return <svg {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
+    case 4: return <svg {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>;
     default: return null;
   }
 }
@@ -312,7 +313,8 @@ export function DriveWorkspace() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeNav, setActiveNav] = useState(1);
+  const [activeNav, setActiveNav] = useState(0);
+  const [navQuery, setNavQuery] = useState<string | undefined>(undefined);
   const [alertVisible, setAlertVisible] = useState(true);
   const [ctx, setCtx] = useState<CtxState>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -326,6 +328,7 @@ export function DriveWorkspace() {
       const params = new URLSearchParams();
       if (q.trim()) params.set("q", q.trim());
       if (folderId) params.set("folderId", folderId);
+      if (navQuery) params.set("extraQuery", navQuery);
       const res = await fetch(`/api/drive/files?${params.toString()}`);
       const data = (await res.json().catch(() => ({}))) as { files?: DriveFile[]; error?: string };
       if (!res.ok) {
@@ -338,7 +341,7 @@ export function DriveWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [folderId, q]);
+  }, [folderId, q, navQuery]);
 
   useEffect(() => { loadFiles().catch(() => undefined); }, [loadFiles]);
 
@@ -441,11 +444,21 @@ export function DriveWorkspace() {
 
   const handleNavClick = (idx: number) => {
     setActiveNav(idx);
-    if (idx === 1) {
-      setFolderId(undefined);
+    const item = NAV_ITEMS[idx];
+    setFolderId(item?.folderId);
+    setSelected(new Set());
+    setSelectedFile(null);
+
+    if (item?.query) {
+      const resolved = item.query.replace(
+        "{{recent}}",
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      );
+      setNavQuery(resolved);
+      setFolderStack([{ name: item.label }]);
+    } else {
+      setNavQuery(undefined);
       setFolderStack([{ name: "Můj disk" }]);
-      setSelected(new Set());
-      setSelectedFile(null);
     }
   };
 

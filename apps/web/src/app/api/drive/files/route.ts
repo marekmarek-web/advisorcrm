@@ -36,10 +36,11 @@ export async function GET(request: Request) {
   const folderId = url.searchParams.get("folderId") ?? undefined;
   const query = url.searchParams.get("q") ?? undefined;
   const pageToken = url.searchParams.get("pageToken") ?? undefined;
+  const extraQuery = url.searchParams.get("extraQuery") ?? undefined;
 
   try {
     const accessToken = await getAccessToken(userId, tenantId);
-    const result = await listDriveFiles(accessToken, { folderId, query, pageToken, pageSize: 50 });
+    const result = await listDriveFiles(accessToken, { folderId, query, pageToken, pageSize: 50, extraQuery });
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof Response) return e;
