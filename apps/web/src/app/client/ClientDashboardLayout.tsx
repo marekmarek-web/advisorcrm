@@ -12,6 +12,7 @@ import {
   Plus,
   Shield,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import { ClientZoneExportButton } from "./ClientZoneExportButton";
@@ -24,6 +25,22 @@ type QuickStats = {
   riskCoveragePercent: number;
 };
 
+/** Serializable slice from `getClientFinancialSummaryForContact` for the client dashboard. */
+export type ClientPortalFinancialSummary = {
+  scope: "contact" | "household";
+  householdName: string | null;
+  income: number;
+  expenses: number;
+  surplus: number;
+  assets: number;
+  liabilities: number;
+  netWorth: number;
+  reserveOk: boolean;
+  priorities: string[];
+  gaps: string[];
+  goalsCount: number;
+};
+
 type ClientDashboardLayoutProps = {
   contact: { firstName: string; lastName: string; email: string | null } | undefined;
   isUnsubscribed: boolean;
@@ -34,6 +51,7 @@ type ClientDashboardLayoutProps = {
   paymentInstructionsCount: number;
   documentsCount: number;
   latestNotification: { title: string; body: string | null } | null;
+  financialSummary: ClientPortalFinancialSummary | null;
 };
 
 function formatMoney(value: number): string {
@@ -50,6 +68,7 @@ export function ClientDashboardLayout({
   paymentInstructionsCount,
   documentsCount,
   latestNotification,
+  financialSummary,
 }: ClientDashboardLayoutProps) {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
 
@@ -75,6 +94,112 @@ export function ClientDashboardLayout({
           Nový požadavek
         </button>
       </div>
+
+      {contractsCount === 0 && (
+        <div className="rounded-[24px] border border-indigo-100 bg-indigo-50/90 p-6 sm:p-8 shadow-sm">
+          <h3 className="text-lg font-black text-slate-900 mb-2">Vítejte v klientské zóně</h3>
+          <p className="text-sm text-slate-600 font-medium leading-relaxed max-w-2xl">
+            Váš poradce zatím nepřidal žádné smlouvy do portfolia. Jakmile je zaznamená, uvidíte je v
+            sekci Moje portfolio.
+          </p>
+          <Link
+            href="/client/portfolio"
+            className="mt-4 inline-flex min-h-[44px] items-center text-sm font-bold text-indigo-600 hover:underline"
+          >
+            Přejít na portfolio
+          </Link>
+        </div>
+      )}
+
+      {financialSummary && (
+        <div className="bg-white rounded-[24px] p-6 sm:p-8 border border-slate-100 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
+                <Wallet size={22} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
+                  Finanční přehled
+                </h3>
+                <p className="text-xs font-bold text-slate-500 mt-0.5">
+                  {financialSummary.scope === "household" && financialSummary.householdName
+                    ? `Domácnost: ${financialSummary.householdName}`
+                    : "Z poslední finanční analýzy"}
+                </p>
+              </div>
+            </div>
+            <span
+              className={`self-start px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border ${
+                financialSummary.reserveOk
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                  : "bg-amber-50 text-amber-800 border-amber-100"
+              }`}
+            >
+              {financialSummary.reserveOk ? "Rezerva v pořádku" : "Zkontrolujte rezervu"}
+            </span>
+          </div>
+
+          <div className="mb-6">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+              Čisté jmění
+            </p>
+            <p className="text-3xl font-display font-black text-slate-900">
+              {formatMoney(financialSummary.netWorth)}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[
+              { label: "Aktiva", value: financialSummary.assets },
+              { label: "Závazky", value: financialSummary.liabilities },
+              { label: "Příjmy", value: financialSummary.income },
+              { label: "Výdaje", value: financialSummary.expenses },
+              {
+                label: "Bilance",
+                value: financialSummary.surplus,
+                emphasize: true,
+              },
+            ].map((row) => (
+              <div key={row.label} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                  {row.label}
+                </span>
+                <span
+                  className={`text-sm font-black tabular-nums ${
+                    row.emphasize && financialSummary.surplus < 0
+                      ? "text-rose-600"
+                      : "text-slate-900"
+                  }`}
+                >
+                  {formatMoney(row.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {financialSummary.goalsCount > 0 && (
+            <p className="mt-4 text-xs font-bold text-slate-500">
+              Cíle v analýze: {financialSummary.goalsCount}
+            </p>
+          )}
+
+          {financialSummary.priorities.length > 0 && (
+            <p className="mt-2 text-sm text-slate-600">
+              <span className="font-black text-slate-800">Priority: </span>
+              {financialSummary.priorities.join(" · ")}
+            </p>
+          )}
+
+          {financialSummary.gaps.length > 0 && (
+            <ul className="mt-3 text-xs text-slate-500 font-medium space-y-1 list-disc list-inside">
+              {financialSummary.gaps.map((g) => (
+                <li key={g}>{g}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all">

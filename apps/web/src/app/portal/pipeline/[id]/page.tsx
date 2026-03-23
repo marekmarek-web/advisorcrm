@@ -89,7 +89,17 @@ export default async function OpportunityDetailPage({
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
               Obchodní případ {opportunity.opportunityNumber}
             </p>
-            <h1 className="text-xl font-semibold text-slate-800 mt-0.5">{opportunity.title}</h1>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold text-slate-800">{opportunity.title}</h1>
+              {opportunity.faSourceId ? (
+                <Link
+                  href={`/portal/analyses/financial?id=${encodeURIComponent(opportunity.faSourceId)}`}
+                  className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 min-h-[44px] sm:min-h-0"
+                >
+                  Z finanční analýzy
+                </Link>
+              ) : null}
+            </div>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <div className="text-right">

@@ -18,6 +18,7 @@ export const tasks = pgTable("tasks", {
   assignedTo: text("assigned_to"),
   createdBy: text("created_by"),
   teamTaskId: uuid("team_task_id").references(() => teamTasks.id, { onDelete: "set null" }),
+  awaitingDocument: boolean("awaiting_document").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -56,3 +56,11 @@ Ověření na každém API requestu: JWT → user_id → membership → role →
 ## OWASP baseline
 
 - Vstupy validovat a escapovat. SQL přes ORM (Drizzle), žádné raw SQL z uživatelského vstupu. Upload: povolené MIME typy a max velikost. CORS omezen na doménu aplikace. Rate limiting na auth a export endpointy (Vercel / middleware).
+
+## AI guardrails
+
+- **Suggest-only (copilot, not autopilot):** AI navrhuje text a návrhy; uživatel je vždy rozhoduje, co použije nebo odešle.
+- **Kontrola smluv:** změny z AI review vyžadují explicitní **Approve** a **Apply** – žádné tiché aplikování bez potvrzení.
+- **Označení v UI:** výstupy z AI jsou v rozhraní jasně označené jako generované / návrh od AI.
+- **Žádné přepsání CRM bez potvrzení:** data v CRM se nemění automaticky podle AI; změny jen po potvrzení uživatelem.
+- **Logování:** interakce s AI se zapisují do tabulky `ai_generations` a relevantní akce do `audit_log` pro dohledatelnost.

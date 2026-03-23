@@ -67,7 +67,7 @@ export default async function ClientPortfolioPage() {
       {contracts.length === 0 ? (
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center">
           <p className="text-slate-500 font-medium">
-            Portfolio zatím neobsahuje žádné aktivní položky.
+            Váš poradce zatím nepřidal žádné smlouvy.
           </p>
         </div>
       ) : (

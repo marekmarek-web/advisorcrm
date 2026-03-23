@@ -64,6 +64,7 @@ export async function POST(request: Request) {
     const result = await createResponseSafe(prompt);
     if (!result.ok) {
       return NextResponse.json({
+        fallback: true,
         subject: contextType === "post_meeting" ? `Shrnutí schůzky – ${client.name}` : `Follow-up – ${client.name}`,
         body: `Dobrý den,\n\nDěkujeme za spolupráci.\n\nS pozdravem`,
       });

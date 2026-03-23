@@ -7,6 +7,7 @@ import {
   opportunityStages,
   opportunities,
   contacts,
+  timelineItems,
 } from "db";
 import { eq, and, asc, isNull, lte, gte, sql } from "db";
 import { logActivity } from "./activity";
@@ -50,6 +51,7 @@ export type OpportunityDetail = {
   createdAt: Date;
   updatedAt: Date;
   opportunityNumber: string;
+  faSourceId: string | null;
   stages: OpportunityStageInfo[];
 };
 
@@ -227,6 +229,19 @@ export async function updateOpportunityStage(
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
   await ensureStageBelongsToTenant(auth.tenantId, stageId);
+
+  const [stageRow] = await db
+    .select({ name: opportunityStages.name })
+    .from(opportunityStages)
+    .where(
+      and(
+        eq(opportunityStages.tenantId, auth.tenantId),
+        eq(opportunityStages.id, stageId)
+      )
+    )
+    .limit(1);
+  const newStageName = stageRow?.name ?? "—";
+
   const updated = await db
     .update(opportunities)
     .set({ stageId, updatedAt: new Date() })
@@ -236,10 +251,22 @@ export async function updateOpportunityStage(
         eq(opportunities.id, opportunityId)
       )
     )
-    .returning({ id: opportunities.id });
+    .returning({ id: opportunities.id, contactId: opportunities.contactId });
   if (updated.length === 0) {
     throw new Error("Příležitost nebyla nalezena.");
   }
+  const contactId = updated[0]?.contactId ?? null;
+  await db
+    .insert(timelineItems)
+    .values({
+      tenantId: auth.tenantId,
+      contactId,
+      opportunityId: opportunityId,
+      type: "stage_change",
+      subject: `Obchod přesunut do fáze: ${newStageName}`,
+      createdBy: auth.userId,
+    })
+    .catch(() => {});
   try { await logActivity("opportunity", opportunityId, "status_change", { stageId }); } catch {}
 }
 
@@ -374,6 +401,7 @@ export async function getOpportunityById(id: string): Promise<OpportunityDetail 
       assignedTo: opportunities.assignedTo,
       closedAt: opportunities.closedAt,
       closedAs: opportunities.closedAs,
+      faSourceId: opportunities.faSourceId,
       customFields: opportunities.customFields,
       createdAt: opportunities.createdAt,
       updatedAt: opportunities.updatedAt,
@@ -421,6 +449,7 @@ export async function getOpportunityById(id: string): Promise<OpportunityDetail 
     assignedTo: row.assignedTo ?? null,
     closedAt: row.closedAt ?? null,
     closedAs: row.closedAs ?? null,
+    faSourceId: row.faSourceId ?? null,
     customFields: row.customFields as Record<string, unknown> | null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -521,19 +550,25 @@ export async function updateOpportunity(
 export async function closeOpportunity(opportunityId: string, won: boolean) {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
-  await db
+  const closedAt = new Date();
+  const closedAs = won ? "won" : "lost";
+  const rows = await db
     .update(opportunities)
     .set({
-      closedAt: new Date(),
-      closedAs: won ? "won" : "lost",
-      updatedAt: new Date(),
+      closedAt,
+      closedAs,
+      updatedAt: closedAt,
     })
     .where(
       and(
         eq(opportunities.tenantId, auth.tenantId),
         eq(opportunities.id, opportunityId)
       )
-    );
+    )
+    .returning({ id: opportunities.id });
+  if (rows.length === 0) {
+    throw new Error("Příležitost nebyla nalezena.");
+  }
   try { await logActivity("opportunity", opportunityId, won ? "won" : "lost"); } catch {}
 }
 

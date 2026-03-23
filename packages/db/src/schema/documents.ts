@@ -10,6 +10,7 @@ export const documents = pgTable("documents", {
   contractId: uuid("contract_id").references(() => contracts.id, { onDelete: "set null" }),
   opportunityId: uuid("opportunity_id").references(() => opportunities.id, { onDelete: "set null" }),
   name: text("name").notNull(),
+  documentType: text("document_type"),
   storagePath: text("storage_path").notNull(),
   mimeType: text("mime_type"),
   sizeBytes: bigint("size_bytes", { mode: "number" }),

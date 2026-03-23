@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, decimal, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, decimal, date, jsonb, boolean } from "drizzle-orm/pg-core";
 import { contacts } from "./contacts";
 import { financialAnalyses } from "./financial-analyses";
 
@@ -27,6 +27,7 @@ export const opportunities = pgTable("opportunities", {
   closedAs: text("closed_as"), // 'won' | 'lost'
   customFields: jsonb("custom_fields"),
   faSourceId: uuid("fa_source_id").references(() => financialAnalyses.id, { onDelete: "set null" }),
+  awaitingDocument: boolean("awaiting_document").default(false),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedReason: text("archived_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

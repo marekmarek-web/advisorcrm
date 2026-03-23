@@ -8,6 +8,7 @@ import { getPaymentInstructionsForContact } from "@/app/actions/payment-pdf";
 import { getClientRequests } from "@/app/actions/client-portal-requests";
 import { getPortalNotificationsForClient } from "@/app/actions/portal-notifications";
 import { getClientDashboardMetrics } from "@/app/actions/client-dashboard";
+import { getClientFinancialSummaryForContact } from "@/app/actions/client-financial-summary";
 import { ClientDashboardLayout } from "./ClientDashboardLayout";
 
 export default async function ClientZonePage() {
@@ -27,15 +28,41 @@ export default async function ClientZonePage() {
 
   const isUnsubscribed = !!contact?.notificationUnsubscribedAt;
 
-  const [contractsList, documentsList, paymentInstructions, requestsList, quickStats, notifications] =
-    await Promise.all([
-      getContractsByContact(auth.contactId),
-      getDocumentsForClient(auth.contactId),
-      getPaymentInstructionsForContact(auth.contactId),
-      getClientRequests(),
-      getClientDashboardMetrics(auth.contactId),
-      getPortalNotificationsForClient(),
-    ]);
+  const [
+    contractsList,
+    documentsList,
+    paymentInstructions,
+    requestsList,
+    quickStats,
+    notifications,
+    financialSummaryRaw,
+  ] = await Promise.all([
+    getContractsByContact(auth.contactId),
+    getDocumentsForClient(auth.contactId),
+    getPaymentInstructionsForContact(auth.contactId),
+    getClientRequests(),
+    getClientDashboardMetrics(auth.contactId),
+    getPortalNotificationsForClient(),
+    getClientFinancialSummaryForContact(auth.contactId),
+  ]);
+
+  const financialSummary =
+    financialSummaryRaw.status === "missing" || !financialSummaryRaw.primaryAnalysisId
+      ? null
+      : {
+          scope: financialSummaryRaw.scope,
+          householdName: financialSummaryRaw.householdName,
+          income: financialSummaryRaw.income,
+          expenses: financialSummaryRaw.expenses,
+          surplus: financialSummaryRaw.surplus,
+          assets: financialSummaryRaw.assets,
+          liabilities: financialSummaryRaw.liabilities,
+          netWorth: financialSummaryRaw.netWorth,
+          reserveOk: financialSummaryRaw.reserveOk,
+          priorities: financialSummaryRaw.priorities,
+          gaps: financialSummaryRaw.gaps,
+          goalsCount: financialSummaryRaw.goalsCount,
+        };
 
   const openRequests = requestsList.filter((r) => r.statusKey !== "done");
   const latestNotification = notifications[0] ?? null;
@@ -58,6 +85,7 @@ export default async function ClientZonePage() {
             }
           : null
       }
+      financialSummary={financialSummary}
     />
   );
 }

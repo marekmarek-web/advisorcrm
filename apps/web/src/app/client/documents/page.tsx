@@ -35,8 +35,8 @@ export default async function ClientDocumentsPage() {
 
           {documentsList.length === 0 ? (
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-center">
-              <p className="text-slate-500 text-sm">
-                Zatím zde nejsou žádné dokumenty ke stažení.
+              <p className="text-slate-500 text-sm font-medium">
+                Zatím nemáte žádné dokumenty.
               </p>
               <p className="mt-2 text-sm text-slate-500">
                 Máte dotaz?{" "}
