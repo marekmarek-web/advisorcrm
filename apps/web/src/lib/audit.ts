@@ -49,3 +49,28 @@ export async function logAudit(params: {
     userAgent: ctx.userAgent ?? undefined,
   });
 }
+
+/**
+ * Fire-and-forget audit action logger.
+ * Errors are caught silently so callers are never blocked.
+ */
+export function logAuditAction(params: {
+  tenantId: string;
+  userId: string;
+  action: string;
+  entityType?: string;
+  entityId?: string;
+  meta?: Record<string, unknown>;
+}): void {
+  db.insert(auditLog)
+    .values({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      action: params.action,
+      entityType: params.entityType ?? undefined,
+      entityId: params.entityId ?? undefined,
+      meta: params.meta ?? undefined,
+    })
+    .then(() => {})
+    .catch(() => {});
+}

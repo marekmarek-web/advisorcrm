@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createResponseSafe, logOpenAICall } from "@/lib/openai";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,11 @@ export async function POST(request: Request) {
     const membership = await getMembership(user.id);
     if (!membership) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const limiter = checkRateLimit(request, "ai-business-plan-insight", `${membership.tenantId}:${user.id}`, { windowMs: 60_000, maxRequests: 10 });
+    if (!limiter.ok) {
+      return NextResponse.json({ error: "Too many requests. Please retry later." }, { status: 429, headers: { "Retry-After": String(limiter.retryAfterSec) } });
     }
 
     const body = await request.json().catch(() => ({}));

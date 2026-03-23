@@ -38,6 +38,7 @@ export const households = pgTable("households", {
   tenantId: uuid("tenant_id").notNull(),
   name: text("name").notNull(),
   icon: text("icon"), // e.g. "home", "users", "heart" – from predefined set
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

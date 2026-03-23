@@ -27,6 +27,8 @@ export const opportunities = pgTable("opportunities", {
   closedAs: text("closed_as"), // 'won' | 'lost'
   customFields: jsonb("custom_fields"),
   faSourceId: uuid("fa_source_id").references(() => financialAnalyses.id, { onDelete: "set null" }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedReason: text("archived_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

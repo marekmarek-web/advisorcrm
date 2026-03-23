@@ -1,5 +1,5 @@
 import { db, memberships, roles, clientContacts, contacts } from "db";
-import { eq, and } from "db";
+import { eq, and, asc } from "db";
 
 export type RoleName = "Admin" | "Director" | "Manager" | "Advisor" | "Viewer" | "Client";
 
@@ -27,6 +27,7 @@ export async function getMembership(userId: string): Promise<MembershipResult | 
       and(eq(memberships.tenantId, clientContacts.tenantId), eq(memberships.userId, clientContacts.userId))
     )
     .where(eq(memberships.userId, userId))
+    .orderBy(asc(memberships.joinedAt))
     .limit(1);
   const row = rows[0];
   if (!row) return null;

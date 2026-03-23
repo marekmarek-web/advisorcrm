@@ -69,6 +69,7 @@ export const contracts = pgTable("contracts", {
   startDate: date("start_date", { mode: "string" }),
   anniversaryDate: date("anniversary_date", { mode: "string" }),
   note: text("note"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

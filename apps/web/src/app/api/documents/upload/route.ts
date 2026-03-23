@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, documents, activityLog } from "db";
+import { db, documents, activityLog, contacts, opportunities, contracts, eq, and } from "db";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getMembership, hasPermission, type RoleName } from "@/lib/auth/get-membership";
 import { logAudit } from "@/lib/audit";
@@ -118,6 +118,19 @@ export async function POST(request: Request) {
 
     if ((contactId && !isUuid(contactId)) || (opportunityId && !isUuid(opportunityId)) || (contractId && !isUuid(contractId))) {
       return NextResponse.json({ error: "Invalid entity identifier." }, { status: 400 });
+    }
+
+    if (contactId) {
+      const [row] = await db.select({ id: contacts.id }).from(contacts).where(and(eq(contacts.id, contactId), eq(contacts.tenantId, membership.tenantId))).limit(1);
+      if (!row) return NextResponse.json({ error: "Contact not found." }, { status: 403 });
+    }
+    if (opportunityId) {
+      const [row] = await db.select({ id: opportunities.id }).from(opportunities).where(and(eq(opportunities.id, opportunityId), eq(opportunities.tenantId, membership.tenantId))).limit(1);
+      if (!row) return NextResponse.json({ error: "Opportunity not found." }, { status: 403 });
+    }
+    if (contractId) {
+      const [row] = await db.select({ id: contracts.id }).from(contracts).where(and(eq(contracts.id, contractId), eq(contracts.tenantId, membership.tenantId))).limit(1);
+      if (!row) return NextResponse.json({ error: "Contract not found." }, { status: 403 });
     }
 
     const idempotencyKeyHeader = request.headers.get("idempotency-key")?.trim() || "";

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { logOpenAICall } from "@/lib/openai";
+import { createClient } from "@/lib/supabase/server";
+import { getMembership } from "@/lib/auth/get-membership";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,13 @@ function isModelError(err: unknown): boolean {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const membership = await getMembership(user.id);
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const apiKeyPresent = Boolean(apiKey);
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getIntegrationApiAuth } from "../../integrations/auth";
 import { getValidDriveAccessToken } from "@/lib/integrations/google-drive-integration-service";
 import {
@@ -52,6 +53,12 @@ export async function POST(request: Request) {
   const authResult = await getIntegrationApiAuth(request);
   if (!authResult.ok) return authResult.response;
   const { userId, tenantId } = authResult.auth;
+
+  const limiter = checkRateLimit(request, "drive-files-write", `${tenantId}:${userId}`, { windowMs: 60_000, maxRequests: 15 });
+  if (!limiter.ok) {
+    return NextResponse.json({ error: "Too many requests. Please retry later." }, { status: 429, headers: { "Retry-After": String(limiter.retryAfterSec) } });
+  }
+
   try {
     const accessToken = await getAccessToken(userId, tenantId);
     const contentType = request.headers.get("content-type") ?? "";

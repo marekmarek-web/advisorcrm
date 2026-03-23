@@ -19,6 +19,7 @@ export const documents = pgTable("documents", {
   /** Phase 0: mark sensitive documents; access can be restricted and logged (e.g. sensitive_document_view). */
   sensitive: boolean("sensitive").default(false),
   uploadedBy: text("uploaded_by").notNull(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

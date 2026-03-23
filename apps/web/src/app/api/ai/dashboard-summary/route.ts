@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createResponseSafe } from "@/lib/openai";
 import { logOpenAICall } from "@/lib/openai";
 import {
@@ -52,6 +53,11 @@ export async function GET(request: Request) {
     const membership = await getMembership(userId);
     if (!membership) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const limiter = checkRateLimit(request, "ai-dashboard-summary", `${membership.tenantId}:${userId}`, { windowMs: 60_000, maxRequests: 15 });
+    if (!limiter.ok) {
+      return NextResponse.json({ error: "Too many requests. Please retry later." }, { status: 429, headers: { "Retry-After": String(limiter.retryAfterSec) } });
     }
 
     const tenantId = membership.tenantId;
