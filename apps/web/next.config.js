@@ -1,4 +1,5 @@
 const path = require("path");
+const { withSentryConfig } = require("@sentry/nextjs");
 const nextVersion = require("next/package.json").version;
 const nextMajor = Number.parseInt(nextVersion.split(".")[0] || "0", 10);
 
@@ -54,5 +55,13 @@ module.exports = (phase, _context) => {
     }
     return c;
   };
-  return base;
+
+  return withSentryConfig(base, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    tunnelRoute: "/monitoring",
+  });
 };

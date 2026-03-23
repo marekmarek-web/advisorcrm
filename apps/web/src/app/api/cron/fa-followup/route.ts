@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, faPlanItems, financialAnalyses, tasks, contacts, eq, and, isNull, lte, sql } from "db";
+import { cronAuthResponse } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -9,15 +10,8 @@ const WAITING_SIGNATURE_DAYS = 7;
 const DRAFT_DAYS = 30;
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
-  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
-  if (isProduction && !secret) {
-    return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 500 });
-  }
-  if (secret && authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = cronAuthResponse(request);
+  if (denied) return denied;
 
   let tasksCreated = 0;
 

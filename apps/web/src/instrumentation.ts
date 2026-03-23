@@ -1,13 +1,16 @@
+import * as Sentry from "@sentry/nextjs";
+
 export async function register() {
   await import("./env");
 
-  // When @sentry/nextjs is installed and SENTRY_DSN is set, uncomment:
-  // if (process.env.NEXT_RUNTIME === "nodejs" && process.env.SENTRY_DSN) {
-  //   const Sentry = await import("@sentry/nextjs");
-  //   Sentry.init({
-  //     dsn: process.env.SENTRY_DSN,
-  //     environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
-  //     tracesSampleRate: 0.2,
-  //   });
-  // }
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./sentry.server.config");
+  }
+
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("./sentry.edge.config");
+  }
 }
+
+/** Zachytí neošetřené chyby requestů na serveru (vyžaduje @sentry/nextjs ≥ 8.28). */
+export const onRequestError = Sentry.captureRequestError;

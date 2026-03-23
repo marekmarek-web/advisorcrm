@@ -1,4 +1,14 @@
 {
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "pnpm build"
+  "buildCommand": "pnpm build",
+  "crons": [
+    {
+      "path": "/api/cron/fa-followup",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/service-reminders",
+      "schedule": "0 7 * * *"
+    }
+  ]
 }

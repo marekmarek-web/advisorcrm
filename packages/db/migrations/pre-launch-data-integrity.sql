@@ -1,5 +1,9 @@
 -- Pre-launch data integrity: soft delete, unique email, FK constraints
 
+-- contacts: archived columns (needed for partial unique index below; may already exist from Drizzle/push)
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS archived_reason text;
+
 -- Soft delete columns
 ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS archived_reason text;

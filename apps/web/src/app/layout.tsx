@@ -16,8 +16,9 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "Aidvisora – Portál poradce",
-  description: "CRM pro finanční poradce v ČR. Domácnosti, pipeline, meeting notes, smlouvy.",
+  title: "Aidvisora – pracovní systém pro finanční poradce",
+  description:
+    "Přestaňte řídit poradenství přes Excel, e-mail a WhatsApp. Klienti, podklady, úkoly a obchody přehledně na jednom místě — CRM, portál, dokumenty a pipeline pro poradce a týmy.",
   icons: { icon: "/favicon.png", apple: "/favicon.png" },
 };
 
