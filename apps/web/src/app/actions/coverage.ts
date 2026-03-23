@@ -56,6 +56,7 @@ export async function getCoverageForContact(contactId: string): Promise<GetCover
       linkedOpportunityId: r.linkedOpportunityId,
       notes: r.notes,
       isRelevant: r.isRelevant,
+      faItemId: r.faItemId ?? null,
       updatedAt: r.updatedAt,
       updatedBy: r.updatedBy,
     }));

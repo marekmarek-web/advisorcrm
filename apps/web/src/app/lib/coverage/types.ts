@@ -16,6 +16,7 @@ export type ResolvedCoverageItem = {
   source: CoverageSource;
   isRelevant: boolean;
   notes: string | null;
+  faItemId?: string | null;
 };
 
 /** Souhrn počtů pro summary bar. */
@@ -40,6 +41,7 @@ export type ContactCoverageRow = {
   linkedOpportunityId: string | null;
   notes: string | null;
   isRelevant: boolean | null;
+  faItemId?: string | null;
   updatedAt: Date;
   updatedBy: string | null;
 };

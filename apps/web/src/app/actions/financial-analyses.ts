@@ -262,8 +262,13 @@ export async function setFinancialAnalysisStatus(
 
   if (status === "completed") {
     try {
-      const { extractFaPlanItems } = await import("./fa-plan-items");
+      const { extractFaPlanItems, getFaPlanItems } = await import("./fa-plan-items");
       await extractFaPlanItems(id);
+      const planItems = await getFaPlanItems(id);
+      if (planItems.length > 0) {
+        const { importFaItemsToCoverage } = await import("./coverage");
+        await importFaItemsToCoverage(id, planItems.map((i) => i.id));
+      }
     } catch {
       // non-critical: plan items extraction failure should not block status update
     }

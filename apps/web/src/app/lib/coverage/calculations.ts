@@ -53,6 +53,7 @@ export function resolveCoverageItems(
     let source: ResolvedCoverageItem["source"] = "default";
     const isRelevant = stored?.isRelevant ?? true;
     const notes = stored?.notes ?? null;
+    const faItemId = stored?.faItemId ?? null;
 
     if (stored && stored.status) {
       status = parseStatus(stored.status);
@@ -109,6 +110,7 @@ export function resolveCoverageItems(
       source,
       isRelevant,
       notes,
+      faItemId,
     });
   }
 

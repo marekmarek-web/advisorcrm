@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   BarChart2,
+  Briefcase,
   Car,
   Home,
   ShieldCheck,
@@ -22,6 +23,7 @@ import {
   setCoverageStatus,
   createOpportunityFromCoverageItem,
   createTaskFromCoverageItem,
+  createOpportunityFromFaItem,
 } from "@/app/actions/coverage";
 import type { ResolvedCoverageItem, CoverageSummary } from "@/app/lib/coverage/types";
 import type { CoverageStatus } from "@/app/lib/coverage/types";
@@ -341,6 +343,47 @@ function CoverageActionsMenu({
 }
 
 /** Jedna položka – spec: tlačítko s ikonou stavu (Hotovo/Řeší se/Nastavit), cyklus none->pending->active->none. Optimistic update: UI se změní hned, persistence na pozadí. */
+function CreateFaOpportunityButton({
+  faItemId,
+  onCreated,
+}: {
+  faItemId: string;
+  onCreated: () => void;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    try {
+      const newId = await createOpportunityFromFaItem(faItemId);
+      onCreated();
+      toast.showToast("Obchod založen z FA", "success");
+      if (newId) router.push(`/portal/pipeline/${newId}`);
+      else router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Obchod se nepodařilo vytvořit";
+      toast.showToast(msg, "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="min-h-[44px] min-w-[44px] p-2 rounded-[var(--wp-radius-sm)] hover:bg-indigo-50 text-indigo-500 hover:text-indigo-700 transition-colors touch-manipulation disabled:opacity-50"
+      title="Založit obchod z FA"
+      aria-label="Založit obchod z finanční analýzy"
+    >
+      <Briefcase size={18} strokeWidth={2} />
+    </button>
+  );
+}
+
 function CoverageItemRow({
   contactId,
   item,
@@ -390,6 +433,8 @@ function CoverageItemRow({
   const label =
     single && isDone ? "Hotovo" : single && isPending ? "Řeší se" : single && isNone ? "Nastavit" : item.label;
 
+  const showFaButton = !!item.faItemId && !item.linkedOpportunityId;
+
   return (
     <div className="flex items-center gap-2 w-full min-w-0">
       <button
@@ -404,6 +449,9 @@ function CoverageItemRow({
         {isNone && <Circle size={16} className="text-slate-300 shrink-0 group-hover/btn:text-indigo-400 transition-colors" aria-hidden />}
         <span className="min-w-0 line-clamp-2 text-left break-words">{label}</span>
       </button>
+      {!single && showFaButton && (
+        <CreateFaOpportunityButton faItemId={item.faItemId!} onCreated={onRefresh} />
+      )}
       {!single && (
         <CoverageActionsMenu
           contactId={contactId}

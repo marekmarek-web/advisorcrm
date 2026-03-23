@@ -87,11 +87,12 @@ async function seed() {
 
   const stageIds: string[] = [];
   const stages = [
-    { name: "Lead", sortOrder: 0, probability: 10 },
-    { name: "Kvalifikace", sortOrder: 1, probability: 30 },
-    { name: "Nabídka", sortOrder: 2, probability: 60 },
-    { name: "Vyjednávání", sortOrder: 3, probability: 80 },
-    { name: "Uzavřeno", sortOrder: 4, probability: 100 },
+    { name: "Zahájeno", sortOrder: 0, probability: 0 },
+    { name: "Analýza potřeb", sortOrder: 1, probability: 20 },
+    { name: "Nabídka", sortOrder: 2, probability: 40 },
+    { name: "Před uzavřením", sortOrder: 3, probability: 60 },
+    { name: "Realizace", sortOrder: 4, probability: 80 },
+    { name: "Péče a servis", sortOrder: 5, probability: 100 },
   ];
   for (const s of stages) {
     const res = await db.insert(opportunityStages).values({

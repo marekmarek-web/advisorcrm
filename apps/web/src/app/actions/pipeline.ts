@@ -244,12 +244,12 @@ export async function updateOpportunityStage(
 }
 
 const DEFAULT_STAGES = [
-  { name: "Začínáme", sortOrder: 0 },
-  { name: "Analýza potřeb", sortOrder: 1 },
-  { name: "Šla nabídka", sortOrder: 2 },
-  { name: "Před uzavřením", sortOrder: 3 },
-  { name: "Realizace", sortOrder: 4 },
-  { name: "Péče & Servis", sortOrder: 5 },
+  { name: "Zahájeno", sortOrder: 0, probability: 0 },
+  { name: "Analýza potřeb", sortOrder: 1, probability: 20 },
+  { name: "Nabídka", sortOrder: 2, probability: 40 },
+  { name: "Před uzavřením", sortOrder: 3, probability: 60 },
+  { name: "Realizace", sortOrder: 4, probability: 80 },
+  { name: "Péče a servis", sortOrder: 5, probability: 100 },
 ];
 
 export async function ensureDefaultStages(): Promise<void> {
@@ -266,6 +266,7 @@ export async function ensureDefaultStages(): Promise<void> {
       tenantId: auth.tenantId,
       name: stage.name,
       sortOrder: stage.sortOrder,
+      probability: stage.probability,
     });
     existingOrders.add(stage.sortOrder);
   }

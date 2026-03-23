@@ -78,12 +78,9 @@ export async function extractFaPlanItems(analysisId: string): Promise<number> {
   const data = (fa.payload as { data?: FinancialAnalysisData })?.data;
   if (!data) return 0;
 
-  const existing = await db
-    .select({ id: faPlanItems.id })
-    .from(faPlanItems)
-    .where(eq(faPlanItems.analysisId, analysisId))
-    .limit(1);
-  if (existing.length > 0) return 0;
+  await db
+    .delete(faPlanItems)
+    .where(and(eq(faPlanItems.tenantId, auth.tenantId), eq(faPlanItems.analysisId, analysisId)));
 
   const items: (typeof faPlanItems.$inferInsert)[] = [];
 
