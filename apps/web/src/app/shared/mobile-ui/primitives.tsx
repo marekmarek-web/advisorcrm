@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, createElement, useEffect, useState } from "react";
 import { X, Plus, AlertCircle, Wifi, WifiOff, PackageOpen, RefreshCw } from "lucide-react";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 
@@ -113,7 +113,7 @@ export function MobileBottomNav({
               )}
             >
               <div className="relative flex-shrink-0">
-                <Icon size={deviceClass === "tablet" ? 18 : 20} />
+                {createElement(Icon, { size: deviceClass === "tablet" ? 18 : 20 })}
                 {item.badge && item.badge > 0 ? (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 text-center">
                     {item.badge > 9 ? "9+" : item.badge}
@@ -237,7 +237,7 @@ export function FilterChips({
   onChange,
 }: {
   value: string;
-  options: Array<{ id: string; label: string; badge?: number; tone?: "neutral" | "warning" }>;
+  options: Array<{ id: string; label: string; badge?: number; tone?: "neutral" | "warning" | "danger" }>;
   onChange: (id: string) => void;
 }) {
   return (
@@ -245,6 +245,7 @@ export function FilterChips({
       {options.map((opt) => {
         const active = value === opt.id;
         const warning = opt.tone === "warning";
+        const danger = opt.tone === "danger";
         return (
           <button
             key={opt.id}
@@ -254,8 +255,9 @@ export function FilterChips({
             className={cx(
               "min-h-[36px] whitespace-nowrap rounded-lg border px-3 text-xs font-bold transition-colors duration-150 active:scale-95",
               active && "bg-indigo-50 text-indigo-700 border-indigo-200",
-              !active && !warning && "bg-white text-slate-600 border-slate-200 hover:border-slate-300",
-              !active && warning && "bg-rose-50 text-rose-700 border-rose-200"
+              !active && !warning && !danger && "bg-white text-slate-600 border-slate-200 hover:border-slate-300",
+              !active && warning && "bg-amber-50 text-amber-800 border-amber-200",
+              !active && danger && "bg-rose-50 text-rose-800 border-rose-300"
             )}
           >
             {opt.label}
@@ -301,12 +303,7 @@ export function FloatingActionButton({
       aria-label={label}
       title={label}
     >
-      <Icon size={22} />
-    </button>
-  );
-}
-    >
-      +
+      {createElement(Icon, { size: 22 })}
     </button>
   );
 }
@@ -466,7 +463,7 @@ export function EmptyState({
     <MobileCard className="text-center py-10">
       <div className="flex justify-center mb-3">
         <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
-          <Icon size={22} className="text-slate-400" />
+          {createElement(Icon, { size: 22, className: "text-slate-400" })}
         </div>
       </div>
       <p className="font-black text-slate-900">{title}</p>
