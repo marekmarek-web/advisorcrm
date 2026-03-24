@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PRODUCTION_DOMAIN = "https://www.aidvisora.cz";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const normalizeNext = (raw: string | null, fallback: string) => {
     if (!raw || !raw.startsWith("/")) return fallback;
     if (raw === "/" || raw === "/prihlaseni" || raw === "/login" || raw === "/register") return fallback;
@@ -11,9 +11,6 @@ export async function middleware(request: NextRequest) {
   };
 
   const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
-  // Přesměrovat starou Vercel URL na produkční doménu (aby Google login neposílal na advisorcrm-web.vercel.app)
-  // Výjimka: /auth/callback s parametrem code NESMÍ být přesměrován – PKCE code_verifier je v cookie na této doméně,
-  // po redirectu na jinou doménu by callback selhal s "PKCE code verifier not found in storage".
   const host = request.headers.get("host") ?? "";
   const isAuthCallbackWithCode =
     request.nextUrl.pathname === "/auth/callback" && request.nextUrl.searchParams.has("code");
@@ -27,7 +24,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Odkaz z e-mailu vypršel (otp_expired) → stránka přihlášení s chybou
   if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.get("error_code") === "otp_expired") {
     const url = request.nextUrl.clone();
     url.pathname = "/prihlaseni";
@@ -36,7 +32,6 @@ export async function middleware(request: NextRequest) {
     url.searchParams.delete("error_description");
     return NextResponse.redirect(url);
   }
-  // Staré URL přihlášení/registrace → stránka přihlášení
   if (request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/prihlaseni";
@@ -62,7 +57,6 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // /api/contracts/*, /api/ai/*, /api/calendar/*, /api/integrations/*: auth + dev bypass. Před skip auth.
   if ((isContractsApi || isAiAssistantApi || isCalendarApi || isDriveApi || isGmailApi || isIntegrationsApi) && supabaseUrl && supabaseAnonKey) {
     const response = NextResponse.next({ request });
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -101,7 +95,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // Lokální demo: povolit dashboard bez přihlášení (SKIP_AUTH=true). Na Vercelu produkce nikdy.
   if (!isProduction && process.env.VERCEL_ENV !== "production" && process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
     const requestHeaders = new Headers(request.headers);
     if (pathname.startsWith("/client")) {
