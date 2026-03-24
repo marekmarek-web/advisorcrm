@@ -1,27 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
-import { createResponseSafe } from "@/lib/openai";
-import { logOpenAICall } from "@/lib/openai";
-import { buildAssistantContext } from "@/lib/ai/assistant-context";
-import {
-  computePriorityItems,
-  buildSuggestedActionsFromUrgent,
-} from "@/lib/ai/dashboard-priority";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { getOrCreateSession } from "@/lib/ai/assistant-session";
+import { routeAssistantMessage, type AssistantResponse } from "@/lib/ai/assistant-tool-router";
 
 export const dynamic = "force-dynamic";
 
 const USER_ID_HEADER = "x-user-id";
 
-function maskForLog(s: string, maxLen: number): string {
-  const t = s.trim();
-  if (t.length <= maxLen) return t;
-  return t.slice(0, maxLen) + "...";
-}
-
 export async function POST(request: Request) {
-  const start = Date.now();
   try {
     let userId: string | null = request.headers.get(USER_ID_HEADER);
     if (!userId) {
@@ -35,7 +23,6 @@ export async function POST(request: Request) {
       userId = user.id;
     }
     const membership = await getMembership(userId);
-    // Každý uživatel s účtem ve workspace může používat asistenta; placená / role-based omezení přidáme později.
     if (!membership) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -46,7 +33,7 @@ export async function POST(request: Request) {
     if (!rate.ok) {
       return NextResponse.json(
         { error: "Příliš mnoho požadavků. Zkuste to znovu později." },
-        { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } }
+        { status: 429, headers: { "Retry-After": String(rate.retryAfterSec) } },
       );
     }
 
@@ -56,68 +43,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Chybí zpráva." }, { status: 400 });
     }
 
+    const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined;
+    const activeContext = body.activeContext ?? {};
+
     const tenantId = membership.tenantId;
-    const context = await buildAssistantContext(tenantId);
+    const session = getOrCreateSession(sessionId, tenantId, userId);
 
-    const system =
-      "Jsi asistent poradce v CRM. Odpovídej stručně a v češtině. Můžeš navrhovat konkrétní kroky (otevřít review smlouvy, úkoly, klienty, návrh e-mailu). Nepiš dlouhé odstavce.";
-    const fullPrompt = `${system}\n\nKontext:\n${context}\n\nUživatel: ${message}\n\nAsistent:`;
+    const response: AssistantResponse = await routeAssistantMessage(
+      message,
+      session,
+      activeContext,
+    );
 
-    const result = await createResponseSafe(fullPrompt);
-
-    if (result.ok) {
-      const text = result.text.trim();
-      const suggestedActions: Array<{ type: string; label: string; payload: Record<string, unknown> }> = [];
-      const refMatches = text.match(/\[(review|task|client):([a-f0-9-]+)\]/gi);
-      const referencedEntities = refMatches
-        ? refMatches.map((r) => {
-            const m = r.match(/\[(review|task|client):([a-f0-9-]+)\]/i);
-            return m ? { type: m[1], id: m[2] } : null;
-          }).filter((x): x is { type: string; id: string } => x != null)
-        : [];
-
-      logOpenAICall({
-        endpoint: "assistant/chat",
-        model: "—",
-        latencyMs: Date.now() - start,
-        success: true,
-      });
-
-      return NextResponse.json({
-        message: text.slice(0, 2000),
-        referencedEntities,
-        suggestedActions,
-        warnings: [],
-      });
-    }
-
-    const urgentItems = await computePriorityItems(tenantId);
-    const fallbackActions = buildSuggestedActionsFromUrgent(urgentItems);
-    const failError = (result as { error?: string }).error ?? "";
-    logOpenAICall({
-      endpoint: "assistant/chat",
-      model: "—",
-      latencyMs: Date.now() - start,
-      success: false,
-      error: maskForLog(failError, 80),
-    });
-
-    const errLower = failError.toLowerCase();
-    const keyMissing =
-      errLower.includes("openai_api_key") ||
-      errLower.includes("openai key") ||
-      errLower.includes("api key");
-
-    return NextResponse.json({
-      message: "Odpověď není k dispozici. Zkuste to později nebo vyberte akci níže.",
-      referencedEntities: [],
-      suggestedActions: fallbackActions,
-      warnings: keyMissing
-        ? [
-            "Na serveru chybí nebo je neplatný OPENAI_API_KEY (Vercel → Environment Variables → Production → Redeploy).",
-          ]
-        : ["Služba AI dočasně nedostupná."],
-    });
+    return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Odeslání zprávy selhalo.";
     return NextResponse.json({ error: message }, { status: 500 });

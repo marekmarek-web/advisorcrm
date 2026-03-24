@@ -1,7 +1,7 @@
 "use client";
 
-import { type ReactNode } from "react";
-import { X } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { X, Plus, AlertCircle, Wifi, WifiOff, PackageOpen, RefreshCw } from "lucide-react";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 
 type ClassName = { className?: string };
@@ -102,12 +102,14 @@ export function MobileBottomNav({
               key={item.id}
               type="button"
               onClick={() => onSelect(item.id)}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
               className={cx(
-                "min-h-[44px] rounded-xl",
+                "min-h-[44px] rounded-xl transition-colors duration-150",
                 deviceClass === "tablet"
                   ? "flex items-center gap-2 px-4 py-1.5 text-sm font-bold"
                   : "flex flex-col items-center justify-center gap-1 text-[10px] font-bold",
-                active ? "text-indigo-700 bg-indigo-50" : "text-slate-500"
+                active ? "text-indigo-700 bg-indigo-50" : "text-slate-500 hover:text-slate-700"
               )}
             >
               <div className="relative flex-shrink-0">
@@ -145,8 +147,18 @@ export function MobileSection({ title, action, children, className }: { title?: 
   );
 }
 
-export function MobileCard({ children, className }: { children: ReactNode } & ClassName) {
-  return <div className={cx("bg-white border border-slate-200 rounded-2xl p-4 shadow-sm", className)}>{children}</div>;
+export function MobileCard({ children, className, pressable }: { children: ReactNode; pressable?: boolean } & ClassName) {
+  return (
+    <div
+      className={cx(
+        "bg-white border border-slate-200 rounded-2xl p-4 shadow-sm",
+        pressable && "transition-transform active:scale-[0.99] cursor-pointer",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function MetricCard({
@@ -229,7 +241,7 @@ export function FilterChips({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1" role="group" aria-label="Filter">
       {options.map((opt) => {
         const active = value === opt.id;
         const warning = opt.tone === "warning";
@@ -238,15 +250,18 @@ export function FilterChips({
             key={opt.id}
             type="button"
             onClick={() => onChange(opt.id)}
+            aria-pressed={active}
             className={cx(
-              "min-h-[36px] whitespace-nowrap rounded-lg border px-3 text-xs font-bold",
+              "min-h-[36px] whitespace-nowrap rounded-lg border px-3 text-xs font-bold transition-colors duration-150 active:scale-95",
               active && "bg-indigo-50 text-indigo-700 border-indigo-200",
-              !active && !warning && "bg-white text-slate-600 border-slate-200",
+              !active && !warning && "bg-white text-slate-600 border-slate-200 hover:border-slate-300",
               !active && warning && "bg-rose-50 text-rose-700 border-rose-200"
             )}
           >
             {opt.label}
-            {typeof opt.badge === "number" ? <span className="ml-1.5">{opt.badge}</span> : null}
+            {typeof opt.badge === "number" ? (
+              <span className="ml-1.5 text-slate-400">{opt.badge}</span>
+            ) : null}
           </button>
         );
       })}
@@ -269,14 +284,27 @@ export function StickyActionBar({ children }: { children: ReactNode }) {
   );
 }
 
-export function FloatingActionButton({ onClick, label }: { onClick: () => void; label: string }) {
+export function FloatingActionButton({
+  onClick,
+  label,
+  icon: Icon = Plus,
+}: {
+  onClick: () => void;
+  label: string;
+  icon?: React.ElementType;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="fixed z-40 right-4 bottom-[calc(90px+var(--safe-area-bottom))] min-h-[52px] min-w-[52px] rounded-full bg-indigo-600 text-white shadow-lg"
+      className="fixed z-40 right-4 bottom-[calc(90px+var(--safe-area-bottom))] min-h-[52px] min-w-[52px] rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
       aria-label={label}
       title={label}
+    >
+      <Icon size={22} />
+    </button>
+  );
+}
     >
       +
     </button>
@@ -288,19 +316,50 @@ function OverlayContainer({
   onClose,
   children,
   fullScreen,
+  labelId,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   fullScreen?: boolean;
+  labelId?: string;
 }) {
+  // Lock body scroll when open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[100]">
-      <button type="button" aria-label="Zavřít" className="absolute inset-0 bg-slate-900/40" onClick={onClose} />
+    <div
+      className="fixed inset-0 z-[100]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={labelId}
+    >
+      {/* Backdrop */}
+      <button
+        type="button"
+        aria-label="Zavřít"
+        className="absolute inset-0 bg-slate-900/40 animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+      {/* Panel */}
       <div
         className={cx(
           "absolute left-0 right-0 bg-white border-t border-slate-200 shadow-2xl",
+          "animate-in slide-in-from-bottom duration-300 ease-out",
           fullScreen
             ? "top-0 bottom-0 rounded-none pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)]"
             : "bottom-0 max-h-[85vh] rounded-t-3xl pb-[var(--safe-area-bottom)]"
@@ -323,11 +382,17 @@ export function BottomSheet({
   title: string;
   children: ReactNode;
 }) {
+  const labelId = `bs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   return (
-    <OverlayContainer open={open} onClose={onClose}>
+    <OverlayContainer open={open} onClose={onClose} labelId={labelId}>
       <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2">
-        <h3 className="font-black text-sm">{title}</h3>
-        <button type="button" onClick={onClose} className="min-h-[36px] min-w-[36px] rounded-lg border border-slate-200 grid place-items-center">
+        <h3 id={labelId} className="font-black text-sm">{title}</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Zavřít panel"
+          className="min-h-[36px] min-w-[36px] rounded-lg border border-slate-200 grid place-items-center hover:bg-slate-50 transition-colors"
+        >
           <X size={16} />
         </button>
       </div>
@@ -347,11 +412,17 @@ export function FullscreenSheet({
   title: string;
   children: ReactNode;
 }) {
+  const labelId = `fs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   return (
-    <OverlayContainer open={open} onClose={onClose} fullScreen>
+    <OverlayContainer open={open} onClose={onClose} fullScreen labelId={labelId}>
       <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2">
-        <h3 className="font-black text-sm">{title}</h3>
-        <button type="button" onClick={onClose} className="min-h-[36px] min-w-[36px] rounded-lg border border-slate-200 grid place-items-center">
+        <h3 id={labelId} className="font-black text-sm">{title}</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Zavřít"
+          className="min-h-[36px] min-w-[36px] rounded-lg border border-slate-200 grid place-items-center hover:bg-slate-50 transition-colors"
+        >
           <X size={16} />
         </button>
       </div>
@@ -384,15 +455,22 @@ export function EmptyState({
   title,
   description,
   action,
+  icon: Icon = PackageOpen,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  icon?: React.ElementType;
 }) {
   return (
-    <MobileCard className="text-center py-8">
+    <MobileCard className="text-center py-10">
+      <div className="flex justify-center mb-3">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
+          <Icon size={22} className="text-slate-400" />
+        </div>
+      </div>
       <p className="font-black text-slate-900">{title}</p>
-      {description ? <p className="text-sm text-slate-500 mt-1">{description}</p> : null}
+      {description ? <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">{description}</p> : null}
       {action ? <div className="mt-4">{action}</div> : null}
     </MobileCard>
   );
@@ -406,22 +484,43 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <MobileCard className="border-rose-200 bg-rose-50/50">
-      <p className="font-bold text-rose-800">{title}</p>
-      {onRetry ? (
-        <button type="button" onClick={onRetry} className="mt-2 min-h-[40px] px-3 rounded-lg border border-rose-200 text-rose-700 text-sm font-bold">
-          Zkusit znovu
-        </button>
-      ) : null}
+    <MobileCard className="border-rose-200 bg-rose-50/50 px-4">
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <AlertCircle size={16} className="text-rose-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-rose-800 text-sm">{title}</p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors"
+            >
+              <RefreshCw size={12} />
+              Zkusit znovu
+            </button>
+          ) : null}
+        </div>
+      </div>
     </MobileCard>
   );
 }
 
-export function LoadingSkeleton({ rows = 4 }: { rows?: number }) {
+export function LoadingSkeleton({ rows = 4, variant = "card" }: { rows?: number; variant?: "card" | "row" | "list" }) {
+  const heights =
+    variant === "row"
+      ? ["h-10", "h-10", "h-10", "h-10", "h-10"]
+      : variant === "list"
+        ? ["h-14", "h-14", "h-14", "h-14", "h-14"]
+        : ["h-20", "h-16", "h-24", "h-16", "h-20", "h-18"];
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 px-4 py-3">
       {Array.from({ length: rows }).map((_, idx) => (
-        <div key={idx} className="h-20 rounded-2xl bg-slate-200/70 animate-pulse" />
+        <div
+          key={idx}
+          className={cx("rounded-2xl bg-slate-200/70 animate-pulse", heights[idx % heights.length])}
+        />
       ))}
     </div>
   );
@@ -814,4 +913,112 @@ export function ProfileFieldRow({
       <p className="text-sm font-semibold text-slate-900 mt-0.5">{value || "—"}</p>
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/*  OfflineBanner – shows when browser has no network connection       */
+/* ------------------------------------------------------------------ */
+
+export function OfflineBanner() {
+  const [offline, setOffline] = useState(
+    typeof navigator !== "undefined" ? !navigator.onLine : false
+  );
+  const [justCameBack, setJustCameBack] = useState(false);
+
+  useEffect(() => {
+    function onOffline() { setOffline(true); setJustCameBack(false); }
+    function onOnline() {
+      setOffline(false);
+      setJustCameBack(true);
+      setTimeout(() => setJustCameBack(false), 3000);
+    }
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", onOnline);
+    };
+  }, []);
+
+  if (!offline && !justCameBack) return null;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={cx(
+        "fixed top-[calc(var(--safe-area-top)+4rem)] inset-x-4 z-[200] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg",
+        "animate-in slide-in-from-top duration-300",
+        offline
+          ? "bg-rose-600 text-white"
+          : "bg-emerald-600 text-white"
+      )}
+    >
+      <div className="flex-shrink-0">
+        {offline ? <WifiOff size={16} /> : <Wifi size={16} />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-black">
+          {offline ? "Offline – zkontrolujte připojení" : "Připojení obnoveno"}
+        </p>
+        {offline ? (
+          <p className="text-[10px] text-white/80 mt-0.5">Data se aktualizují po obnovení spojení.</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Toast – transient feedback notification                           */
+/* ------------------------------------------------------------------ */
+
+export type ToastVariant = "success" | "error" | "info";
+
+export function Toast({
+  message,
+  variant = "info",
+  onDismiss,
+}: {
+  message: string;
+  variant?: ToastVariant;
+  onDismiss: () => void;
+}) {
+  useEffect(() => {
+    const timer = setTimeout(onDismiss, 3500);
+    return () => clearTimeout(timer);
+  }, [onDismiss]);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={cx(
+        "fixed bottom-[calc(96px+var(--safe-area-bottom))] inset-x-4 z-[201] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg",
+        "animate-in slide-in-from-bottom duration-300",
+        variant === "success" && "bg-emerald-600 text-white",
+        variant === "error" && "bg-rose-600 text-white",
+        variant === "info" && "bg-[#0a0f29] text-white"
+      )}
+    >
+      <p className="flex-1 text-xs font-bold">{message}</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Zavřít"
+        className="w-6 h-6 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
+export function useToast() {
+  const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
+  function showToast(message: string, variant: ToastVariant = "info") {
+    setToast({ message, variant });
+  }
+  function dismissToast() { setToast(null); }
+  return { toast, showToast, dismissToast };
 }

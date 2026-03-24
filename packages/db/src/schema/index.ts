@@ -40,3 +40,4 @@ export * from "./fa-sync-log";
 export * from "./ai-generations";
 export * from "./ai-feedback";
 export * from "./user-devices";
+export * from "./communication-drafts";

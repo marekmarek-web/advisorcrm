@@ -52,8 +52,11 @@ import {
   MobileHeader,
   MobileScreen,
   MobileSection,
+  OfflineBanner,
   StatusBadge,
   StepWizard,
+  Toast,
+  useToast,
 } from "@/app/shared/mobile-ui/primitives";
 import { HouseholdDetailScreen } from "./screens/HouseholdDetailScreen";
 import { ContractsReviewScreen } from "./screens/ContractsReviewScreen";
@@ -159,6 +162,7 @@ export function MobilePortalClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const deviceClass = useDeviceClass();
+  const { toast, showToast, dismissToast } = useToast();
   const [tab, setTab] = useState<TabId>(() => toTaskFilter(pathname));
   const [kpis] = useState<DashboardKpis>(initialKpis);
   const [tasks, setTasks] = useState<TaskRow[]>(initialTasks);
@@ -393,6 +397,7 @@ export function MobilePortalClient({
         setTaskWizardStep(1);
         setTaskDraft({ title: "", dueDate: new Date().toISOString().slice(0, 10), contactId: "", description: "" });
         refreshTasks(taskFilter);
+        showToast("Úkol byl vytvořen", "success");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Úkol se nepodařilo vytvořit.");
       }
@@ -432,6 +437,7 @@ export function MobilePortalClient({
           expectedCloseDate: "",
         });
         refreshPipeline();
+        showToast("Příležitost byla vytvořena", "success");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Případ se nepodařilo vytvořit.");
       }
@@ -523,6 +529,10 @@ export function MobilePortalClient({
 
   return (
     <MobileAppShell deviceClass={deviceClass}>
+      {/* Global banners */}
+      <OfflineBanner />
+      {toast ? <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} /> : null}
+
       <MobileHeader
         title={headerTitle}
         subtitle={headerSubtitle}
@@ -558,7 +568,7 @@ export function MobilePortalClient({
         }
       />
 
-      <MobileScreen>
+      <MobileScreen key={pathname} className="page-enter">
         {error ? <ErrorState title={error} onRetry={() => { refreshTasks(taskFilter); refreshContacts(); refreshPipeline(); }} /> : null}
         {busy ? <LoadingSkeleton rows={2} /> : null}
 

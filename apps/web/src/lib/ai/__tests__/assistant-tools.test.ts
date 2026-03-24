@@ -1,10 +1,29 @@
 import { describe, it, expect, vi } from "vitest";
 
+const chainable = () => {
+  const chain: Record<string, unknown> = {};
+  const self = () => chain;
+  chain.select = vi.fn().mockImplementation(self);
+  chain.from = vi.fn().mockImplementation(self);
+  chain.where = vi.fn().mockImplementation(self);
+  chain.leftJoin = vi.fn().mockImplementation(self);
+  chain.orderBy = vi.fn().mockImplementation(self);
+  chain.limit = vi.fn().mockResolvedValue([]);
+  chain.execute = vi.fn().mockResolvedValue({ rows: [] });
+  chain.insert = vi.fn().mockImplementation(self);
+  chain.values = vi.fn().mockImplementation(self);
+  return chain;
+};
 vi.mock("db", () => ({
-  db: { select: vi.fn().mockReturnThis(), from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]), orderBy: vi.fn().mockReturnThis(), execute: vi.fn().mockResolvedValue({ rows: [] }) },
+  db: chainable(),
   eq: vi.fn(), and: vi.fn(), isNull: vi.fn(), sql: vi.fn(), asc: vi.fn(), desc: vi.fn(),
-  tasks: {}, contacts: {}, contracts: {}, opportunities: {}, opportunityStages: {},
-  contractUploadReviews: {}, clientPaymentSetups: {}, contractReviewCorrections: {},
+  tasks: { contactId: "contactId", id: "id", tenantId: "tenantId", completedAt: "completedAt", dueDate: "dueDate", title: "title" },
+  contacts: { id: "id", tenantId: "tenantId", firstName: "firstName", lastName: "lastName", nextServiceDue: "nextServiceDue", email: "email", phone: "phone" },
+  contracts: {}, opportunities: { id: "id", tenantId: "tenantId", title: "title", expectedCloseDate: "expectedCloseDate", contactId: "contactId", closedAt: "closedAt" },
+  opportunityStages: {},
+  contractUploadReviews: { id: "id", tenantId: "tenantId", fileName: "fileName", processingStatus: "processingStatus", confidence: "confidence", createdAt: "createdAt", reviewStatus: "reviewStatus", extractionTrace: "extractionTrace", extractedPayload: "extractedPayload", detectedDocumentType: "detectedDocumentType", matchedClientId: "matchedClientId", matchedClientCandidates: "matchedClientCandidates" },
+  clientPaymentSetups: { id: "id", tenantId: "tenantId", needsHumanReview: "needsHumanReview", productName: "productName", providerName: "providerName" },
+  contractReviewCorrections: {},
 }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/openai", () => ({ createResponseSafe: vi.fn() }));
