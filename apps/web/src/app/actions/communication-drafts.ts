@@ -29,13 +29,13 @@ export async function createDraft(params: {
     })
     .returning();
 
-  logAudit({
+  logAuditAction({
     action: "communication_draft_created",
     userId: auth.userId,
     tenantId: auth.tenantId,
-    resourceId: row.id,
-    resourceType: "communication_draft",
-    metadata: { draftType: params.draftType },
+    entityId: row.id,
+    entityType: "communication_draft",
+    meta: { draftType: params.draftType },
   });
 
   return row;
