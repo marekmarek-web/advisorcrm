@@ -159,15 +159,16 @@ export function useAidvisoraLogin() {
       const nextPath = role === "client" ? clientNextPath : advisorNextPath;
       const encodedNext = encodeURIComponent(nextPath);
       const isNative = forceNative || isNativeRuntime();
-      const redirectTo = isNative
-        ? `${baseUrl}/auth/callback?native=1&next=${encodedNext}`
-        : `${baseUrl}/auth/callback?next=${encodedNext}`;
 
       if (isNative) {
+        // Native flow: redirect to the bridge route which passes the auth code
+        // back to the app via deep link. The code is exchanged CLIENT-SIDE in
+        // the WebView (NativeOAuthDeepLinkBridge) so the session ends up in the
+        // correct cookie store.
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
-            redirectTo,
+            redirectTo: `${baseUrl}/auth/native-bridge`,
             skipBrowserRedirect: true,
           },
         });
@@ -181,9 +182,12 @@ export function useAidvisoraLogin() {
         return;
       }
 
+      // Web flow: normal OAuth redirect handled entirely by the browser.
       await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo },
+        options: {
+          redirectTo: `${baseUrl}/auth/callback?next=${encodedNext}`,
+        },
       });
     },
     [forceNative, role, clientNextPath, advisorNextPath]

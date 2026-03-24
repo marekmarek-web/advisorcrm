@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
+/**
+ * Web-only OAuth callback. Exchanges the Supabase auth code for a session
+ * and redirects to the target page. Native app OAuth uses /auth/native-bridge
+ * instead (code is exchanged client-side in the WebView).
+ */
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -35,19 +39,6 @@ export async function GET(request: Request) {
           `${origin}/prihlaseni?error=${encodeURIComponent(error.message)}`
         );
       }
-    }
-
-    // Prefer explicit flag from redirectTo for native OAuth.
-    // Fallback to cookie-based detection for older flows.
-    const nativeFromQuery = searchParams.get("native") === "1";
-    const cookieStore = await cookies();
-    const nativeFromCookie = cookieStore.get("mobile_ui_v1_beta")?.value === "1";
-    const isNative = nativeFromQuery || nativeFromCookie;
-    if (isNative) {
-      // Chrome Custom Tabs block HTTP 302 redirects to custom URL schemes.
-      // Redirect to an intermediate page that uses JavaScript to trigger the
-      // deep link, which Android handles reliably.
-      return NextResponse.redirect(`${origin}/auth/native-return`);
     }
 
     return NextResponse.redirect(`${origin}${next.startsWith("/") ? next : "/" + next}`);
