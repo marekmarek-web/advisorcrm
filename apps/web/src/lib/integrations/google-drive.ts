@@ -233,3 +233,28 @@ export async function downloadDriveFile(
     contentType: res.headers.get("content-type"),
   };
 }
+
+/** Export nativního Google souboru (Docs/Sheets/Slides) do PDF apod. */
+export async function exportDriveFile(
+  accessToken: string,
+  fileId: string,
+  exportMimeType: string
+): Promise<{ data: Buffer; contentType: string | null }> {
+  const params = new URLSearchParams({ mimeType: exportMimeType });
+  const res = await fetch(
+    `${DRIVE_API}/files/${encodeURIComponent(fileId)}/export?${params.toString()}`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Drive export failed: ${res.status} ${err}`);
+  }
+  const arr = await res.arrayBuffer();
+  return {
+    data: Buffer.from(arr),
+    contentType: res.headers.get("content-type") || exportMimeType,
+  };
+}

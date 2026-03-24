@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { DriveUploadDialog } from "./DriveUploadDialog";
 import { IntegrationConnectionGate } from "./IntegrationConnectionGate";
+import { isDrivePreviewSupportedInApp } from "@/lib/integrations/drive-preview-strategy";
 import s from "./DriveWorkspace.module.css";
 
 type DriveFile = {
@@ -216,12 +217,15 @@ function ContextMenu({ x, y, file, onClose, onAction }: {
   const style: React.CSSProperties = {
     position: "fixed",
     left: Math.min(x, (typeof window !== "undefined" ? window.innerWidth : 1200) - 210),
-    top: Math.min(y, (typeof window !== "undefined" ? window.innerHeight : 800) - 340),
+    top: Math.min(y, (typeof window !== "undefined" ? window.innerHeight : 800) - 380),
     zIndex: 200,
   };
 
-  const items = [
-    { label: "Otevřít", action: "open" },
+  const isFolder = file?.mimeType === "application/vnd.google-apps.folder";
+  const canPreview = !!file && !isFolder && isDrivePreviewSupportedInApp(file.mimeType);
+  const items: ({ label: string; action: string; danger?: boolean } | null)[] = [
+    ...(canPreview ? [{ label: "Náhled", action: "preview" }] : []),
+    { label: isFolder ? "Otevřít" : "Otevřít v Google", action: "open" },
     { label: "Sdílet", action: "share" },
     { label: "Stáhnout", action: "download" },
     { label: "Přidat s hvězdičkou", action: "star" },
@@ -320,6 +324,18 @@ export function DriveWorkspace() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [folderStack, setFolderStack] = useState<{ id?: string; name: string }[]>([{ name: "Můj disk" }]);
+  const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
+
+  const closePreview = useCallback(() => setPreviewFile(null), []);
+
+  useEffect(() => {
+    if (!previewFile) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePreview();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewFile, closePreview]);
 
   const loadFiles = useCallback(async () => {
     setError(null);
@@ -349,6 +365,7 @@ export function DriveWorkspace() {
   const regularFiles = useMemo(() => files.filter(f => f.mimeType !== "application/vnd.google-apps.folder"), [files]);
 
   const openFolder = (folder: DriveFile) => {
+    setPreviewFile(null);
     setFolderStack(prev => [...prev, { id: folder.id, name: folder.name }]);
     setFolderId(folder.id);
     setSelected(new Set());
@@ -356,6 +373,7 @@ export function DriveWorkspace() {
   };
 
   const navigateBreadcrumb = (idx: number) => {
+    setPreviewFile(null);
     const newStack = folderStack.slice(0, idx + 1);
     setFolderStack(newStack);
     setFolderId(newStack[newStack.length - 1]?.id);
@@ -423,6 +441,9 @@ export function DriveWorkspace() {
     setSelectedFile(file);
 
     switch (action) {
+      case "preview":
+        if (isDrivePreviewSupportedInApp(file.mimeType)) setPreviewFile(file);
+        break;
       case "open":
         if (file.mimeType === "application/vnd.google-apps.folder") openFolder(file);
         else if (file.webViewLink) window.open(file.webViewLink, "_blank");
@@ -443,6 +464,7 @@ export function DriveWorkspace() {
   }
 
   const handleNavClick = (idx: number) => {
+    setPreviewFile(null);
     setActiveNav(idx);
     const item = NAV_ITEMS[idx];
     setFolderId(item?.folderId);
@@ -529,43 +551,45 @@ export function DriveWorkspace() {
             </div>
           )}
 
-          <div className={s.contentToolbar}>
-            <div className={s.breadcrumb}>
-              {folderStack.map((crumb, i) => (
-                <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {i > 0 && <span className={s.breadcrumbSep}>›</span>}
-                  <button
-                    className={`${s.breadcrumbItem} ${i === folderStack.length - 1 ? s.breadcrumbCurrent : ""}`}
-                    onClick={() => navigateBreadcrumb(i)}
-                  >
-                    {crumb.name}
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            <div className={s.toolbarRight}>
-              {["Typ", "Lidé", "Změněno"].map(f => (
-                <div key={f} className={s.filterChip}>
-                  {f}
-                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="6 9 12 15 18 9" /></svg>
+          <div className={`${s.mainWorkspace} ${previewFile ? s.mainWorkspaceWithPreview : ""}`}>
+            <div className={s.mainColumn}>
+              <div className={s.contentToolbar}>
+                <div className={s.breadcrumb}>
+                  {folderStack.map((crumb, i) => (
+                    <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {i > 0 && <span className={s.breadcrumbSep}>›</span>}
+                      <button
+                        className={`${s.breadcrumbItem} ${i === folderStack.length - 1 ? s.breadcrumbCurrent : ""}`}
+                        onClick={() => navigateBreadcrumb(i)}
+                      >
+                        {crumb.name}
+                      </button>
+                    </span>
+                  ))}
                 </div>
-              ))}
 
-              <div className={s.viewToggle}>
-                <button className={`${s.viewBtn} ${view === "list" ? s.viewBtnActive : ""}`} onClick={() => setView("list")} title="Seznam">
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
-                </button>
-                <button className={`${s.viewBtn} ${view === "grid" ? s.viewBtnActive : ""}`} onClick={() => setView("grid")} title="Mřížka">
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
-                </button>
+                <div className={s.toolbarRight}>
+                  {["Typ", "Lidé", "Změněno"].map(f => (
+                    <div key={f} className={s.filterChip}>
+                      {f}
+                      <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="6 9 12 15 18 9" /></svg>
+                    </div>
+                  ))}
+
+                  <div className={s.viewToggle}>
+                    <button className={`${s.viewBtn} ${view === "list" ? s.viewBtnActive : ""}`} onClick={() => setView("list")} title="Seznam">
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
+                    </button>
+                    <button className={`${s.viewBtn} ${view === "grid" ? s.viewBtnActive : ""}`} onClick={() => setView("grid")} title="Mřížka">
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {error && <div className={s.errorBanner}>{error}</div>}
+              {error && <div className={s.errorBanner}>{error}</div>}
 
-          <div className={s.contentScroll} onContextMenu={e => handleCtx(e)}>
+              <div className={s.contentScroll} onContextMenu={e => handleCtx(e)}>
             {loading && !files.length ? (
               <div className={s.loadingOverlay}>
                 <div className={s.spinner} />
@@ -629,7 +653,10 @@ export function DriveWorkspace() {
                           <div key={file.id}
                             className={`${view === "grid" ? s.fileCard : s.fileRow} ${selected.has(file.id) ? s.fileSelected : ""}`}
                             onClick={e => toggleSelect(file, e)}
-                            onDoubleClick={() => file.webViewLink && window.open(file.webViewLink, "_blank")}
+                            onDoubleClick={() => {
+                              if (isDrivePreviewSupportedInApp(file.mimeType)) setPreviewFile(file);
+                              else if (file.webViewLink) window.open(file.webViewLink, "_blank");
+                            }}
                             onContextMenu={e => handleCtx(e, file)}
                             style={{ animationDelay: `${(i + folders.length) * 0.02 + 0.1}s` }}
                           >
@@ -676,10 +703,46 @@ export function DriveWorkspace() {
                 )}
               </>
             )}
+              </div>
+            </div>
+
+            {previewFile && (
+              <aside className={s.previewPane} role="dialog" aria-label="Náhled souboru">
+                <div className={s.previewHeader}>
+                  <span className={s.previewTitle} title={previewFile.name}>{previewFile.name}</span>
+                  <button type="button" className={s.previewClose} onClick={closePreview}>
+                    Zavřít
+                  </button>
+                </div>
+                <div className={s.previewBody}>
+                  {previewFile.mimeType.startsWith("image/") ? (
+                    <img
+                      className={s.previewImg}
+                      src={`/api/drive/files/${previewFile.id}/preview`}
+                      alt=""
+                    />
+                  ) : (
+                    <iframe
+                      title="Náhled"
+                      className={s.previewIframe}
+                      src={`/api/drive/files/${previewFile.id}/preview`}
+                    />
+                  )}
+                </div>
+              </aside>
+            )}
           </div>
         </main>
 
-        {ctx && <ContextMenu x={ctx.x} y={ctx.y} file={ctx.target} onClose={() => setCtx(null)} onAction={handleCtxAction} />}
+        {ctx && (
+          <ContextMenu
+            x={ctx.x}
+            y={ctx.y}
+            file={ctx.target ?? selectedFile ?? undefined}
+            onClose={() => setCtx(null)}
+            onAction={handleCtxAction}
+          />
+        )}
         {renameOpen && selectedFile && <RenameDialog name={selectedFile.name} onClose={() => setRenameOpen(false)} onSave={onRename} />}
         {shareOpen && selectedFile && <ShareDialog fileName={selectedFile.name} onClose={() => setShareOpen(false)} onShare={onShare} />}
       </div>

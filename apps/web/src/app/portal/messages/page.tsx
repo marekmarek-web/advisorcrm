@@ -2,12 +2,22 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { redirect } from "next/navigation";
 import { PortalMessagesView } from "./PortalMessagesView";
 
+function isRedirectError(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";
+}
+
 export default async function PortalMessagesPage({
   searchParams,
 }: {
   searchParams: Promise<{ contact?: string }>;
 }) {
-  const auth = await requireAuth();
+  let auth;
+  try {
+    auth = await requireAuth();
+  } catch (e) {
+    if (isRedirectError(e)) throw e;
+    redirect("/prihlaseni?error=auth_error");
+  }
   const { contact: contactParam } = await searchParams;
 
   if (auth.roleName === "Client") {

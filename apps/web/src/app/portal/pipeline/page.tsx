@@ -3,8 +3,15 @@ import { getContactsList } from "@/app/actions/contacts";
 import { PipelineBoard } from "@/app/dashboard/pipeline/PipelineBoard";
 
 export default async function PipelinePage() {
-  await ensureDefaultStages();
-  const [stages, contactsList] = await Promise.all([getPipeline(), getContactsList()]);
+  let stages: Awaited<ReturnType<typeof getPipeline>> = [];
+  let contactsList: Awaited<ReturnType<typeof getContactsList>> = [];
+  try {
+    await ensureDefaultStages();
+    [stages, contactsList] = await Promise.all([getPipeline(), getContactsList()]);
+  } catch {
+    stages = [];
+    contactsList = [];
+  }
   const contacts = contactsList.map((c) => ({ id: c.id, firstName: c.firstName, lastName: c.lastName }));
 
   const totalPotential = stages.reduce(

@@ -18,21 +18,35 @@ export type DocumentRow = {
   contractId: string | null;
   visibleToClient: boolean | null;
   createdAt: Date;
+  uploadSource: string | null;
+  processingStatus: string | null;
+  processingStage: string | null;
+  aiInputSource: string | null;
+  pageCount: number | null;
+  isScanLike: boolean | null;
 };
+
+const documentSelectFields = {
+  id: documents.id,
+  name: documents.name,
+  mimeType: documents.mimeType,
+  tags: documents.tags,
+  contractId: documents.contractId,
+  visibleToClient: documents.visibleToClient,
+  createdAt: documents.createdAt,
+  uploadSource: documents.uploadSource,
+  processingStatus: documents.processingStatus,
+  processingStage: documents.processingStage,
+  aiInputSource: documents.aiInputSource,
+  pageCount: documents.pageCount,
+  isScanLike: documents.isScanLike,
+} as const;
 
 export async function getDocumentsForContact(contactId: string): Promise<DocumentRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:read")) throw new Error("Forbidden");
   const rows = await db
-    .select({
-      id: documents.id,
-      name: documents.name,
-      mimeType: documents.mimeType,
-      tags: documents.tags,
-      contractId: documents.contractId,
-      visibleToClient: documents.visibleToClient,
-      createdAt: documents.createdAt,
-    })
+    .select(documentSelectFields)
     .from(documents)
     .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.contactId, contactId)));
   return rows;
@@ -42,15 +56,7 @@ export async function getDocumentsForOpportunity(opportunityId: string): Promise
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:read")) throw new Error("Forbidden");
   const rows = await db
-    .select({
-      id: documents.id,
-      name: documents.name,
-      mimeType: documents.mimeType,
-      tags: documents.tags,
-      contractId: documents.contractId,
-      visibleToClient: documents.visibleToClient,
-      createdAt: documents.createdAt,
-    })
+    .select(documentSelectFields)
     .from(documents)
     .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.opportunityId, opportunityId)));
   return rows;
@@ -61,15 +67,7 @@ export async function getDocumentsForClient(contactId: string): Promise<Document
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || !auth.contactId || auth.contactId !== contactId) throw new Error("Forbidden");
   const rows = await db
-    .select({
-      id: documents.id,
-      name: documents.name,
-      mimeType: documents.mimeType,
-      tags: documents.tags,
-      contractId: documents.contractId,
-      visibleToClient: documents.visibleToClient,
-      createdAt: documents.createdAt,
-    })
+    .select(documentSelectFields)
     .from(documents)
     .where(
       and(

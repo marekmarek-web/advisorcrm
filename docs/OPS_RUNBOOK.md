@@ -46,6 +46,8 @@ Ověření ručně z terminálu:
 
 ### 2) Env proměnné na Vercelu
 
+**Lokální `.env.local` se na Vercel nepřenáší** – každou proměnnou, kterou máš v `apps/web/.env.local` a kterou aplikace v produkci potřebuje, musíš znovu zadat v dashboardu (nebo `vercel env add`). U Adobe PDF Services viz tabulku **Document Processing (Adobe PDF Services)** níže.
+
 1. **vercel.com** → vyber **projekt** (web app).
 2. **Settings** → **Environment Variables**.
 3. Přidej/uprav proměnné (Production; případně Preview):
@@ -133,9 +135,12 @@ V repu je manuální setup podle [sentry-for-ai `sentry-nextjs-sdk/SKILL.md`](ht
 | `DOCUMENT_PROCESSING_PROVIDER` | ❌ | `"adobe"` / `"disabled"` / `"none"` (výchozí `"none"`) |
 | `DOCUMENT_PROCESSING_ENABLED` | ❌ | `"true"` zapne processing pipeline |
 | `DOCUMENT_EXTRACT_ENABLED` | ❌ | `"true"` zapne strukturovanou extrakci (stojí extra Adobe transakce) |
-| `ADOBE_PDF_SERVICES_CLIENT_ID` | ❌ | Adobe PDF Services client ID (povinné když provider=adobe) |
-| `ADOBE_PDF_SERVICES_CLIENT_SECRET` | ❌ | Adobe PDF Services client secret |
-| `ADOBE_PDF_SERVICES_REGION` | ❌ | Adobe region (výchozí `"ew1"`) |
+| `ADOBE_PDF_SERVICES_CLIENT_ID` | ❌ | Client ID (povinné když provider=adobe). Alias: `PDF_SERVICES_CLIENT_ID` (Adobe ukázky). |
+| `ADOBE_PDF_SERVICES_CLIENT_SECRET` | ❌ | Client secret. Alias: `PDF_SERVICES_CLIENT_SECRET`. |
+| `ADOBE_PDF_SERVICES_REGION` | ❌ | `ew1` = host `pdf-services-ew1.adobe.io` (EU), `ue1` = `pdf-services-ue1.adobe.io`, jinak výchozí `pdf-services.adobe.io`. Výchozí v aplikaci: `ew1`. |
+| `ADOBE_OCR_LANG` | ❌ | Jazyk pro OCR (např. `en-US`). Výchozí `en-US`; `cs-CZ` jen pokud Adobe API přijme. |
+
+**Extract PDF** vrací ZIP (`structuredData.json` + přílohy). Aplikace ukládá ZIP i vyextrahovaný JSON do bucketu `documents`.
 
 **Bez Adobe credentials systém funguje normálně** – upload, viewer a AI review s fallback kvalitou. Adobe je volitelný enhancement.
 

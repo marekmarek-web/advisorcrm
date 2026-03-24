@@ -14,6 +14,8 @@ export type UploadMetadata = {
   tags?: string[];
   visibleToClient?: boolean;
   uploadSource?: UploadSource;
+  pageCount?: number;
+  capturedPlatform?: "ios" | "android";
 };
 
 export type UploadResponse = {
@@ -121,6 +123,8 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       if (metadata.tags?.length) formData.set("tags", metadata.tags.join(","));
       if (metadata.visibleToClient != null) formData.set("visibleToClient", String(metadata.visibleToClient));
       formData.set("uploadSource", metadata.uploadSource ?? "web");
+      if (metadata.pageCount != null) formData.set("pageCount", String(metadata.pageCount));
+      if (metadata.capturedPlatform) formData.set("capturedPlatform", metadata.capturedPlatform);
 
       setState("uploading");
       setError(null);

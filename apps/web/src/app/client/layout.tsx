@@ -9,31 +9,50 @@ import { ClientPortalShell } from "./ClientPortalShell";
 import { ClientMobileApp } from "./mobile/ClientMobileApp";
 import "./client-portal.css";
 
+function isRedirectError(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";
+}
+
 export default async function ClientZoneLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const auth = await requireAuth();
+  let auth;
+  try {
+    auth = await requireAuth();
+  } catch (e) {
+    if (isRedirectError(e)) throw e;
+    redirect("/prihlaseni?error=auth_error");
+  }
   if (auth.roleName !== "Client") {
     redirect("/portal");
   }
 
-  const [unreadNotificationsCount, contact, advisor] = await Promise.all([
-    getPortalNotificationsUnreadCount(),
-    auth.contactId
-      ? db
-          .select({
-            firstName: contacts.firstName,
-            lastName: contacts.lastName,
-          })
-          .from(contacts)
-          .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, auth.contactId)))
-          .limit(1)
-          .then((rows) => rows[0] ?? null)
-      : Promise.resolve(null),
-    auth.contactId ? getAssignedAdvisorForClient(auth.contactId).catch(() => null) : Promise.resolve(null),
-  ]);
+  let unreadNotificationsCount = 0;
+  let contact: { firstName: string | null; lastName: string | null } | null = null;
+  let advisor: Awaited<ReturnType<typeof getAssignedAdvisorForClient>> = null;
+  try {
+    [unreadNotificationsCount, contact, advisor] = await Promise.all([
+      getPortalNotificationsUnreadCount(),
+      auth.contactId
+        ? db
+            .select({
+              firstName: contacts.firstName,
+              lastName: contacts.lastName,
+            })
+            .from(contacts)
+            .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, auth.contactId)))
+            .limit(1)
+            .then((rows) => rows[0] ?? null)
+        : Promise.resolve(null),
+      auth.contactId ? getAssignedAdvisorForClient(auth.contactId).catch(() => null) : Promise.resolve(null),
+    ]);
+  } catch {
+    unreadNotificationsCount = 0;
+    contact = null;
+    advisor = null;
+  }
 
   const fullName = contact
     ? `${contact.firstName} ${contact.lastName}`.trim()

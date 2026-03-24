@@ -2,7 +2,12 @@ import { getHouseholdsWithMembers } from "@/app/actions/households";
 import { HouseholdListClient } from "./HouseholdListClient";
 
 export default async function HouseholdsPage() {
-  const list = await getHouseholdsWithMembers();
+  let list: Awaited<ReturnType<typeof getHouseholdsWithMembers>> = [];
+  try {
+    list = await getHouseholdsWithMembers();
+  } catch {
+    list = [];
+  }
 
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full min-h-screen bg-[#f4f7f9]" style={{ animation: "wp-fade-in 0.3s ease" }}>

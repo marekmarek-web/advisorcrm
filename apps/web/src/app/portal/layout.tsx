@@ -42,7 +42,13 @@ export default async function PortalLayout({
   const headerList = await headers();
   if (auth.roleName === "Advisor") {
     const pathname = headerList.get("x-pathname");
-    if (pathname && !pathname.startsWith("/portal/setup") && (await getContactsCount()) === 0) {
+    let contactsCount = -1;
+    try {
+      contactsCount = await getContactsCount();
+    } catch {
+      contactsCount = -1;
+    }
+    if (pathname && !pathname.startsWith("/portal/setup") && contactsCount === 0) {
       redirect("/portal/setup");
     }
   }

@@ -1,0 +1,897 @@
+"use client";
+
+import React, { useState, useRef, useCallback } from "react";
+import {
+  FileText,
+  User,
+  Shield,
+  Heart,
+  Sparkles,
+  AlertCircle,
+  AlertTriangle,
+  Lightbulb,
+  TrendingUp,
+  ShieldCheck,
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  Edit2,
+  RotateCcw,
+  Info,
+  Activity,
+  Filter,
+  Building2,
+  Clock,
+  Eye,
+} from "lucide-react";
+import type {
+  ExtractionDocument,
+  ExtractedGroup,
+  ExtractedField,
+  AIRecommendation,
+  FieldFilter,
+  FieldStatus,
+  ExtractionReviewState,
+} from "@/lib/ai-review/types";
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  User,
+  FileText,
+  Shield,
+  Heart,
+  Building2,
+};
+
+function getIcon(name: string) {
+  return ICON_MAP[name] ?? FileText;
+}
+
+/* ─── Confidence Badge ──────────────────────────────────────────── */
+
+function ConfidenceBadge({
+  confidence,
+  status,
+}: {
+  confidence: number;
+  status: FieldStatus;
+}) {
+  const colors: Record<FieldStatus, string> = {
+    success: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    warning: "bg-amber-100 text-amber-700 border-amber-200",
+    error: "bg-rose-100 text-rose-700 border-rose-200",
+  };
+  return (
+    <span
+      className={`px-2 py-0.5 rounded text-[10px] font-black tracking-widest border inline-flex items-center gap-1 ${colors[status]}`}
+    >
+      {confidence}% AI
+    </span>
+  );
+}
+
+/* ─── Field Styles ──────────────────────────────────────────────── */
+
+function fieldInputClass(status: FieldStatus) {
+  const map: Record<FieldStatus, string> = {
+    success:
+      "border-slate-200 bg-slate-50 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-100 text-slate-900",
+    warning:
+      "border-amber-300 bg-amber-50 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-100 text-amber-900",
+    error:
+      "border-rose-300 bg-rose-50 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-100 text-rose-900",
+  };
+  return map[status];
+}
+
+/* ─── Recommendation icon ───────────────────────────────────────── */
+
+function RecIcon({ type }: { type: AIRecommendation["type"] }) {
+  switch (type) {
+    case "warning":
+      return <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />;
+    case "insight":
+      return <Lightbulb size={18} className="text-indigo-500 shrink-0 mt-0.5" />;
+    case "opportunity":
+      return <TrendingUp size={18} className="text-emerald-500 shrink-0 mt-0.5" />;
+    case "compliance":
+      return <ShieldCheck size={18} className="text-orange-500 shrink-0 mt-0.5" />;
+    case "next_step":
+      return <ArrowRight size={18} className="text-blue-500 shrink-0 mt-0.5" />;
+  }
+}
+
+function recTypeBadge(type: AIRecommendation["type"]) {
+  const map: Record<AIRecommendation["type"], { label: string; cls: string }> = {
+    warning: { label: "Upozornění", cls: "bg-amber-100 text-amber-700" },
+    insight: { label: "Zjištění", cls: "bg-indigo-100 text-indigo-700" },
+    opportunity: { label: "Příležitost", cls: "bg-emerald-100 text-emerald-700" },
+    compliance: { label: "Compliance", cls: "bg-orange-100 text-orange-700" },
+    next_step: { label: "Další krok", cls: "bg-blue-100 text-blue-700" },
+  };
+  const v = map[type];
+  return (
+    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${v.cls}`}>
+      {v.label}
+    </span>
+  );
+}
+
+/* ─── Section Navigation ────────────────────────────────────────── */
+
+const SECTIONS = [
+  { id: "summary", label: "Shrnutí" },
+  { id: "recommendations", label: "AI akce" },
+  { id: "diagnostics", label: "Diagnostika" },
+  { id: "data", label: "Data" },
+  { id: "extra", label: "Doporučení" },
+] as const;
+
+function SectionNav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
+  return (
+    <nav className="flex gap-1 overflow-x-auto py-2 px-1 hide-scrollbar">
+      {SECTIONS.map((s) => (
+        <button
+          key={s.id}
+          onClick={() => onScrollTo(s.id)}
+          className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors whitespace-nowrap"
+        >
+          {s.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/* ─── Filter Bar ────────────────────────────────────────────────── */
+
+const FILTERS: { value: FieldFilter; label: string }[] = [
+  { value: "all", label: "Vše" },
+  { value: "warning", label: "Warning" },
+  { value: "error", label: "Chyby" },
+  { value: "edited", label: "Upravené" },
+  { value: "unconfirmed", label: "Nepotvrzené" },
+];
+
+function FilterBar({
+  active,
+  onChange,
+  warningCount,
+  errorCount,
+}: {
+  active: FieldFilter;
+  onChange: (f: FieldFilter) => void;
+  warningCount: number;
+  errorCount: number;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Filter size={14} className="text-slate-400" />
+      {FILTERS.map((f) => {
+        const count =
+          f.value === "warning"
+            ? warningCount
+            : f.value === "error"
+              ? errorCount
+              : null;
+        return (
+          <button
+            key={f.value}
+            onClick={() => onChange(f.value)}
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
+              active === f.value
+                ? "bg-indigo-100 text-indigo-700"
+                : "text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            {f.label}
+            {count != null && count > 0 && (
+              <span className="ml-1 text-[9px]">({count})</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Document Meta Header ──────────────────────────────────────── */
+
+function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
+  return (
+    <div>
+      <div className="flex items-start gap-3 mb-2">
+        <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+          <FileText size={20} />
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-display font-black text-slate-900 tracking-tight truncate">
+            {doc.fileName}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-slate-500 mt-1">
+            <span className="text-indigo-600">{doc.documentType}</span>
+            <span className="w-1 h-1 bg-slate-300 rounded-full" />
+            <span className="flex items-center gap-1">
+              <User size={12} /> {doc.clientName}
+            </span>
+            <span className="w-1 h-1 bg-slate-300 rounded-full" />
+            <span className="flex items-center gap-1">
+              <Clock size={12} /> {doc.uploadTime}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold text-slate-400 mt-1.5">
+            <span>{doc.pageCount} stran</span>
+            <span className="w-1 h-1 bg-slate-200 rounded-full" />
+            <span>Zdroj: {doc.uploadSource}</span>
+            <span className="w-1 h-1 bg-slate-200 rounded-full" />
+            <span>Provider: {doc.extractionProvider}</span>
+            <span className="w-1 h-1 bg-slate-200 rounded-full" />
+            <span>Zpracováno: {doc.lastProcessedAt}</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 mt-3">
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+          <Activity size={14} className="text-indigo-500" />
+          <span className="text-xs font-black text-slate-700">
+            Celková jistota:{" "}
+            <span className="text-indigo-600">{doc.globalConfidence}%</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+          <Eye size={14} className="text-slate-400" />
+          <span className="text-xs font-black text-slate-700">
+            Status: <span className="text-amber-600">K revizi</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Executive Summary ─────────────────────────────────────────── */
+
+function ExecutiveSummaryCard({ doc }: { doc: ExtractionDocument }) {
+  const { diagnostics: d } = doc;
+  return (
+    <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm p-5 md:p-6">
+      <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+        <Info size={14} className="text-indigo-500" /> Shrnutí dokumentu
+      </h3>
+      <p className="text-sm font-medium text-slate-700 leading-relaxed mb-4">
+        {doc.executiveSummary}
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatBox label="Nalezeno polí" value={`${d.extractedFields}/${d.totalFields}`} color="indigo" />
+        <StatBox label="Warning" value={String(d.warningCount)} color="amber" />
+        <StatBox label="Chyby" value={String(d.errorCount)} color="rose" />
+        <StatBox label="Pokrytí" value={`${d.extractionCoverage}%`} color="emerald" />
+      </div>
+    </div>
+  );
+}
+
+function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
+  const bgMap: Record<string, string> = {
+    indigo: "bg-indigo-50 text-indigo-700",
+    amber: "bg-amber-50 text-amber-700",
+    rose: "bg-rose-50 text-rose-700",
+    emerald: "bg-emerald-50 text-emerald-700",
+  };
+  return (
+    <div className={`rounded-xl px-3 py-2.5 ${bgMap[color] ?? "bg-slate-50 text-slate-700"}`}>
+      <div className="text-lg font-black">{value}</div>
+      <div className="text-[10px] font-bold uppercase tracking-widest opacity-70">{label}</div>
+    </div>
+  );
+}
+
+/* ─── AI Recommendations Card ───────────────────────────────────── */
+
+function AIRecommendationsCard({
+  recommendations,
+  dismissedMap,
+  onDismiss,
+  onRestore,
+  onCreateTask,
+  onFieldClick,
+}: {
+  recommendations: AIRecommendation[];
+  dismissedMap: Record<string, boolean>;
+  onDismiss: (id: string) => void;
+  onRestore: (id: string) => void;
+  onCreateTask: (rec: AIRecommendation) => void;
+  onFieldClick: (fieldId: string, page?: number) => void;
+}) {
+  const visible = recommendations.filter((r) => !dismissedMap[r.id]);
+  const dismissed = recommendations.filter((r) => dismissedMap[r.id]);
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 rounded-[20px] border border-indigo-100 shadow-sm p-5 md:p-6 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
+      <div className="relative z-10">
+        <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 mb-4 flex items-center gap-2">
+          <Sparkles size={16} className="text-indigo-500" />
+          AI Analýza a navrhované akce
+          <span className="ml-auto text-indigo-500 font-bold text-[10px] normal-case tracking-normal">
+            {visible.length} aktivních
+          </span>
+        </h3>
+
+        <div className="space-y-3">
+          {visible.map((rec) => (
+            <div
+              key={rec.id}
+              className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-indigo-100/50 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <RecIcon type={rec.type} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    {recTypeBadge(rec.type)}
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 leading-snug">
+                    {rec.title}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {rec.description}
+                  </p>
+                  {rec.linkedFieldIds.length > 0 && (
+                    <button
+                      onClick={() =>
+                        onFieldClick(rec.linkedFieldIds[0], rec.linkedPage)
+                      }
+                      className="mt-2 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+                    >
+                      Zobrazit v dokumentu <ArrowRight size={12} />
+                    </button>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => onCreateTask(rec)}
+                      className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-100/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Vytvořit úkol
+                    </button>
+                    <button
+                      onClick={() => onDismiss(rec.id)}
+                      className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Zahodit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {dismissed.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-indigo-100">
+            <p className="text-[10px] font-bold text-indigo-400 mb-2">
+              {dismissed.length} zahozených doporučení
+            </p>
+            {dismissed.map((rec) => (
+              <div
+                key={rec.id}
+                className="flex items-center justify-between py-1.5 text-xs text-slate-400"
+              >
+                <span className="truncate">{rec.title}</span>
+                <button
+                  onClick={() => onRestore(rec.id)}
+                  className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 ml-2 shrink-0"
+                >
+                  Obnovit
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Review Attention Banner ───────────────────────────────────── */
+
+function ReviewAttentionBanner({
+  warningCount,
+  errorCount,
+  onShowProblems,
+}: {
+  warningCount: number;
+  errorCount: number;
+  onShowProblems: () => void;
+}) {
+  if (warningCount === 0 && errorCount === 0) return null;
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 md:p-5 flex items-start gap-3 shadow-sm">
+      <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-bold text-amber-900 mb-1">
+          Vyžadována vaše kontrola
+        </h4>
+        <p className="text-xs font-medium text-amber-800/80 leading-relaxed">
+          AI upozorňuje na{" "}
+          {warningCount > 0 && (
+            <span className="font-bold">{warningCount} pole s nižší jistotou</span>
+          )}
+          {warningCount > 0 && errorCount > 0 && " a "}
+          {errorCount > 0 && (
+            <span className="font-bold">{errorCount} chybějící/problematické údaje</span>
+          )}
+          . Zkontrolujte prosím vyznačená pole s náhledem originálu vpravo.
+        </p>
+        <button
+          onClick={onShowProblems}
+          className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-700 hover:text-amber-900 transition-colors flex items-center gap-1"
+        >
+          Přejít na problémy <ArrowRight size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Extraction Diagnostics ────────────────────────────────────── */
+
+function ExtractionDiagnosticsCard({ doc }: { doc: ExtractionDocument }) {
+  const [open, setOpen] = useState(false);
+  const { diagnostics: d } = doc;
+
+  const ocrLabel: Record<string, string> = {
+    good: "Dobrá",
+    fair: "Průměrná",
+    poor: "Špatná",
+  };
+  const ocrColor: Record<string, string> = {
+    good: "text-emerald-600",
+    fair: "text-amber-600",
+    poor: "text-rose-600",
+  };
+
+  return (
+    <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-5 md:px-6 py-4 flex items-center justify-between text-left"
+      >
+        <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+          <Activity size={14} className="text-indigo-500" /> Diagnostika extrakce
+        </span>
+        {open ? <ChevronDown size={16} className="text-slate-400" /> : <ChevronRight size={16} className="text-slate-400" />}
+      </button>
+      {open && (
+        <div className="px-5 md:px-6 pb-5 pt-0 border-t border-slate-100">
+          <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                OCR kvalita
+              </span>
+              <p className={`font-bold ${ocrColor[d.ocrQuality]}`}>
+                {ocrLabel[d.ocrQuality]}
+              </p>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Nevyřešená pole
+              </span>
+              <p className="font-bold text-slate-800">{d.unresolvedFieldCount}</p>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Konflikty hodnot
+              </span>
+              <p className="font-bold text-slate-800">{d.conflictingValueCount}</p>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Nečitelné strany
+              </span>
+              <p className="font-bold text-slate-800">
+                {d.pagesWithoutReadableText.length === 0
+                  ? "Žádné"
+                  : d.pagesWithoutReadableText.join(", ")}
+              </p>
+            </div>
+          </div>
+          {d.notes.length > 0 && (
+            <div className="mt-4 space-y-1.5">
+              {d.notes.map((note, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-2 text-xs text-slate-600"
+                >
+                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0" />
+                  {note}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Extracted Field Row ───────────────────────────────────────── */
+
+function ExtractedFieldRow({
+  field,
+  isActive,
+  editedValue,
+  isConfirmed,
+  onFieldClick,
+  onEdit,
+  onConfirm,
+  onRevert,
+}: {
+  field: ExtractedField;
+  isActive: boolean;
+  editedValue?: string;
+  isConfirmed: boolean;
+  onFieldClick: (fieldId: string, page?: number) => void;
+  onEdit: (fieldId: string, value: string) => void;
+  onConfirm: (fieldId: string) => void;
+  onRevert: (fieldId: string) => void;
+}) {
+  const isEdited = editedValue !== undefined;
+  const displayValue = editedValue ?? field.value;
+  const hasBeenEdited = isEdited && editedValue !== field.originalAiValue;
+
+  return (
+    <div
+      className={`relative flex flex-col transition-all ${
+        field.status !== "success" ? "md:col-span-2" : ""
+      } ${isActive ? "ring-2 ring-indigo-300 rounded-xl" : ""}`}
+    >
+      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className="truncate">{field.label}</span>
+          {isConfirmed && (
+            <span className="inline-flex items-center gap-0.5 text-emerald-600">
+              <Check size={10} /> OK
+            </span>
+          )}
+          {hasBeenEdited && !isConfirmed && (
+            <span className="text-blue-500 normal-case tracking-normal font-bold">
+              upraveno
+            </span>
+          )}
+        </span>
+        <ConfidenceBadge confidence={field.confidence} status={field.status} />
+      </label>
+
+      <div className="relative group/input">
+        <input
+          type="text"
+          value={displayValue}
+          onChange={(e) => onEdit(field.id, e.target.value)}
+          onClick={() => onFieldClick(field.id, field.page)}
+          className={`w-full px-4 py-3 rounded-xl text-sm font-bold transition-all border outline-none ${fieldInputClass(
+            field.status
+          )} ${isConfirmed ? "opacity-70" : ""}`}
+          readOnly={isConfirmed}
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/input:opacity-100 transition-all">
+          {!isConfirmed && (
+            <button
+              onClick={() => onConfirm(field.id)}
+              title="Potvrdit hodnotu"
+              className="p-1.5 bg-white text-emerald-500 hover:text-emerald-700 rounded-md shadow-sm border border-slate-100"
+            >
+              <Check size={14} />
+            </button>
+          )}
+          {hasBeenEdited && (
+            <button
+              onClick={() => onRevert(field.id)}
+              title="Vrátit na AI návrh"
+              className="p-1.5 bg-white text-slate-400 hover:text-indigo-600 rounded-md shadow-sm border border-slate-100"
+            >
+              <RotateCcw size={14} />
+            </button>
+          )}
+          {isConfirmed && (
+            <button
+              onClick={() => onRevert(field.id)}
+              title="Zrušit potvrzení"
+              className="p-1.5 bg-white text-slate-400 hover:text-amber-600 rounded-md shadow-sm border border-slate-100"
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {field.message && (
+        <div
+          className={`mt-2 ml-1 text-xs font-bold flex items-start gap-1.5 ${
+            field.status === "warning" ? "text-amber-600" : "text-rose-600"
+          }`}
+        >
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <span className="leading-snug">{field.message}</span>
+        </div>
+      )}
+
+      {field.sourceType && (
+        <div className="mt-1 ml-1 text-[10px] text-slate-400 flex items-center gap-2">
+          <span>Zdroj: {field.sourceType.toUpperCase()}</span>
+          {field.page && <span>Strana {field.page}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Extracted Group Card ──────────────────────────────────────── */
+
+function ExtractedGroupCard({
+  group,
+  isCollapsed,
+  onToggle,
+  state,
+  onFieldClick,
+  onEdit,
+  onConfirm,
+  onRevert,
+  filter,
+}: {
+  group: ExtractedGroup;
+  isCollapsed: boolean;
+  onToggle: () => void;
+  state: ExtractionReviewState;
+  onFieldClick: (fieldId: string, page?: number) => void;
+  onEdit: (fieldId: string, value: string) => void;
+  onConfirm: (fieldId: string) => void;
+  onRevert: (fieldId: string) => void;
+  filter: FieldFilter;
+}) {
+  const GroupIcon = getIcon(group.iconName);
+
+  const filteredFields = group.fields.filter((f) => {
+    if (filter === "all") return true;
+    if (filter === "warning") return f.status === "warning";
+    if (filter === "error") return f.status === "error";
+    if (filter === "edited") return state.editedFields[f.id] !== undefined;
+    if (filter === "unconfirmed") return !state.confirmedFields[f.id];
+    return true;
+  });
+
+  const warningCount = group.fields.filter((f) => f.status === "warning").length;
+  const errorCount = group.fields.filter((f) => f.status === "error").length;
+
+  if (filteredFields.length === 0 && filter !== "all") return null;
+
+  return (
+    <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full px-5 md:px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between"
+      >
+        <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+          <GroupIcon size={16} className="text-indigo-500" />
+          {group.name}
+          <span className="text-[10px] font-bold text-slate-400 normal-case tracking-normal">
+            {group.fields.length} polí
+          </span>
+        </h3>
+        <div className="flex items-center gap-2">
+          {warningCount > 0 && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              {warningCount} warning
+            </span>
+          )}
+          {errorCount > 0 && (
+            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+              {errorCount} error
+            </span>
+          )}
+          {isCollapsed ? (
+            <ChevronRight size={16} className="text-slate-400" />
+          ) : (
+            <ChevronDown size={16} className="text-slate-400" />
+          )}
+        </div>
+      </button>
+
+      {!isCollapsed && (
+        <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+          {filteredFields.map((field) => (
+            <ExtractedFieldRow
+              key={field.id}
+              field={field}
+              isActive={state.activeFieldId === field.id}
+              editedValue={state.editedFields[field.id]}
+              isConfirmed={state.confirmedFields[field.id] ?? false}
+              onFieldClick={onFieldClick}
+              onEdit={onEdit}
+              onConfirm={onConfirm}
+              onRevert={onRevert}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Extra Recommendations Card ────────────────────────────────── */
+
+function ExtraRecommendationsCard({
+  recommendations,
+  dismissedMap,
+  onDismiss,
+  onCreateTask,
+}: {
+  recommendations: AIRecommendation[];
+  dismissedMap: Record<string, boolean>;
+  onDismiss: (id: string) => void;
+  onCreateTask: (rec: AIRecommendation) => void;
+}) {
+  const visible = recommendations.filter((r) => !dismissedMap[r.id]);
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="bg-gradient-to-br from-emerald-50/50 to-blue-50/30 rounded-[20px] border border-emerald-100 shadow-sm p-5 md:p-6">
+      <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-800 mb-4 flex items-center gap-2">
+        <TrendingUp size={16} className="text-emerald-500" />
+        Další doporučení od AI
+      </h3>
+      <div className="space-y-3">
+        {visible.map((rec) => (
+          <div
+            key={rec.id}
+            className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-emerald-100/50 shadow-sm"
+          >
+            <div className="flex items-start gap-3">
+              <RecIcon type={rec.type} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  {recTypeBadge(rec.type)}
+                </div>
+                <p className="text-sm font-bold text-slate-800">{rec.title}</p>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  {rec.description}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => onCreateTask(rec)}
+                    className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-100/50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Vytvořit úkol
+                  </button>
+                  <button
+                    onClick={() => onDismiss(rec.id)}
+                    className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Skrýt
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Left Panel ───────────────────────────────────────────── */
+
+type LeftPanelProps = {
+  doc: ExtractionDocument;
+  state: ExtractionReviewState;
+  onFieldClick: (fieldId: string, page?: number) => void;
+  onEdit: (fieldId: string, value: string) => void;
+  onConfirm: (fieldId: string) => void;
+  onRevert: (fieldId: string) => void;
+  onFilterChange: (filter: FieldFilter) => void;
+  onToggleGroup: (groupId: string) => void;
+  onDismissRec: (id: string) => void;
+  onRestoreRec: (id: string) => void;
+  onCreateTask: (rec: AIRecommendation) => void;
+};
+
+export function ExtractionLeftPanel({
+  doc,
+  state,
+  onFieldClick,
+  onEdit,
+  onConfirm,
+  onRevert,
+  onFilterChange,
+  onToggleGroup,
+  onDismissRec,
+  onRestoreRec,
+  onCreateTask,
+}: LeftPanelProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToSection = useCallback(
+    (id: string) => {
+      const el = scrollRef.current?.querySelector(`[data-section="${id}"]`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    []
+  );
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 lg:px-10 sticky top-0 z-10">
+        <SectionNav onScrollTo={scrollToSection} />
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 lg:p-10"
+      >
+        <div className="max-w-3xl mx-auto space-y-6 md:space-y-8">
+          <div data-section="summary">
+            <DocumentMetaHeader doc={doc} />
+          </div>
+
+          <ExecutiveSummaryCard doc={doc} />
+
+          <div data-section="recommendations">
+            <AIRecommendationsCard
+              recommendations={doc.recommendations}
+              dismissedMap={state.dismissedRecommendations}
+              onDismiss={onDismissRec}
+              onRestore={onRestoreRec}
+              onCreateTask={onCreateTask}
+              onFieldClick={onFieldClick}
+            />
+          </div>
+
+          <ReviewAttentionBanner
+            warningCount={doc.diagnostics.warningCount}
+            errorCount={doc.diagnostics.errorCount}
+            onShowProblems={() => onFilterChange("error")}
+          />
+
+          <div data-section="diagnostics">
+            <ExtractionDiagnosticsCard doc={doc} />
+          </div>
+
+          <div data-section="data">
+            <div className="mb-4">
+              <FilterBar
+                active={state.filter}
+                onChange={onFilterChange}
+                warningCount={doc.diagnostics.warningCount}
+                errorCount={doc.diagnostics.errorCount}
+              />
+            </div>
+            <div className="space-y-5">
+              {doc.groups.map((group) => (
+                <ExtractedGroupCard
+                  key={group.id}
+                  group={group}
+                  isCollapsed={state.collapsedGroups[group.id] ?? false}
+                  onToggle={() => onToggleGroup(group.id)}
+                  state={state}
+                  onFieldClick={onFieldClick}
+                  onEdit={onEdit}
+                  onConfirm={onConfirm}
+                  onRevert={onRevert}
+                  filter={state.filter}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div data-section="extra">
+            <ExtraRecommendationsCard
+              recommendations={doc.extraRecommendations}
+              dismissedMap={state.dismissedRecommendations}
+              onDismiss={onDismissRec}
+              onCreateTask={onCreateTask}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

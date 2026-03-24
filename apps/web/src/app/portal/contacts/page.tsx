@@ -3,7 +3,12 @@ import { CsvImportForm } from "@/app/dashboard/contacts/CsvImportForm";
 import { ContactsPageClient } from "./ContactsPageClient";
 
 export default async function ContactsPage() {
-  const list = await getContactsList();
+  let list: Awaited<ReturnType<typeof getContactsList>> = [];
+  try {
+    list = await getContactsList();
+  } catch {
+    list = [];
+  }
 
   return (
     <div className="p-4 space-y-8">

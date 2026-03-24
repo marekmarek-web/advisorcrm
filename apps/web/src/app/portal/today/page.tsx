@@ -11,6 +11,10 @@ import { perfLog } from "@/lib/perf-log";
 import { DashboardEditable } from "./DashboardEditable";
 import { LinesAndDotsLoader } from "@/app/components/LinesAndDotsLoader";
 
+function isRedirectError(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";
+}
+
 function DashboardLoader() {
   return (
     <div className="flex-1 flex items-center justify-center min-h-[60vh] bg-[#f8fafc]">
@@ -76,10 +80,29 @@ async function DashboardLoaded({
 
 async function DashboardGate() {
   const perfStart = Date.now();
-  await requireAuth();
-  const contactCount = await getContactsCount();
-  const user = await getCachedSupabaseUser();
-  const advisorName = (user?.user_metadata?.full_name as string | undefined) ?? null;
+  let contactCount = 0;
+  let advisorName: string | null = null;
+  try {
+    await requireAuth();
+    contactCount = await getContactsCount();
+    const user = await getCachedSupabaseUser();
+    advisorName = (user?.user_metadata?.full_name as string | undefined) ?? null;
+  } catch (e) {
+    if (isRedirectError(e)) throw e;
+    perfLog("portal/today-fallback", perfStart);
+    return (
+      <DashboardEditable
+        kpis={FALLBACK_KPIS}
+        serviceRecommendations={[]}
+        initialNotes={[]}
+        advisorName={advisorName}
+        initialAnalyses={[]}
+        productionSummary={null}
+        productionError={null}
+        businessPlanWidgetData={null}
+      />
+    );
+  }
 
   if (contactCount === 0) {
     perfLog("portal/today-empty-tenant", perfStart);

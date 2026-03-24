@@ -107,6 +107,10 @@ export async function POST(request: Request) {
     const uploadSource = parseUploadSource(formData.get("uploadSource"));
     const visibleToClient = parseBoolean(formData.get("visibleToClient"));
     const tags = parseTags(formData.get("tags"));
+    const pageCountRaw = formData.get("pageCount");
+    const pageCount = pageCountRaw ? parseInt(String(pageCountRaw), 10) || null : null;
+    const capturedPlatform = (formData.get("capturedPlatform") as "ios" | "android") || null;
+    const isScanLike = uploadSource === "mobile_scan" || uploadSource === "mobile_camera" ? true : null;
 
     const contactIdValue = toTrimmedString(contactIdRaw);
     const opportunityIdValue = toTrimmedString(opportunityIdRaw);
@@ -167,6 +171,9 @@ export async function POST(request: Request) {
           visibleToClient,
           uploadSource,
           uploadedBy: user.id,
+          pageCount,
+          capturedPlatform,
+          isScanLike,
         })
         .returning({
           id: documents.id,

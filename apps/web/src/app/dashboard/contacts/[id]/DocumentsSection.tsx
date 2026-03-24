@@ -10,6 +10,7 @@ import { getContractsByContact } from "@/app/actions/contracts";
 import type { DocumentRow } from "@/app/actions/documents";
 import type { ContractRow } from "@/app/actions/contracts";
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
+import { ProcessingStatusBadge } from "@/app/components/documents/ProcessingStatusBadge";
 
 export function DocumentsSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<DocumentRow[]>([]);
@@ -104,6 +105,14 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
                 </span>
               )}
               <span className="text-slate-400">{new Date(d.createdAt).toLocaleDateString("cs-CZ")}</span>
+              <ProcessingStatusBadge
+                documentId={d.id}
+                processingStatus={d.processingStatus}
+                processingStage={d.processingStage}
+                aiInputSource={d.aiInputSource}
+                isScanLike={d.isScanLike}
+                compact
+              />
               <label className="flex items-center gap-1.5 text-slate-600 min-h-[44px]">
                 <input
                   type="checkbox"

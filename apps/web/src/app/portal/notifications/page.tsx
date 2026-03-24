@@ -8,7 +8,12 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default async function NotificationsPage() {
-  const notifications = await getNotificationLog();
+  let notifications: Awaited<ReturnType<typeof getNotificationLog>> = [];
+  try {
+    notifications = await getNotificationLog();
+  } catch {
+    notifications = [];
+  }
 
   return (
     <div className="p-4 space-y-4 wp-fade-in">
