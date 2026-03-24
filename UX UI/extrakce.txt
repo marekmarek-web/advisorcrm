@@ -1,0 +1,354 @@
+"use client";
+
+import React, { useState } from 'react';
+import { 
+  FileText, CheckCircle2, AlertCircle, Sparkles, 
+  BrainCircuit, ChevronRight, Clock, ArrowLeft,
+  ShieldCheck, User, Calendar, Check, X, 
+  ZoomIn, ZoomOut, Maximize, AlertTriangle, 
+  Edit2, Shield, Heart, Building2, Lightbulb
+} from 'lucide-react';
+
+// ==========================================
+// 1. MOCK DATA PRO VYTĚŽENÝ DOKUMENT
+// ==========================================
+const ACTIVE_FILE = {
+  id: 'f1',
+  name: 'Kooperativa_Zivot_Smlouva.pdf',
+  type: 'Životní pojištění',
+  client: 'Jan Novák',
+  status: 'needs_review', 
+  uploadTime: 'Dnes, 10:42',
+  globalConfidence: 88,
+  pages: 4,
+  // NOVÉ: Umělou inteligencí generovaná doporučení a akční kroky
+  aiRecommendations: [
+    { id: 1, type: 'warning', text: 'Chybí obmyšlená osoba. V případě smrti spadne plnění do dědického řízení.' },
+    { id: 2, type: 'insight', text: 'Pojistná částka na smrt (2.5M Kč) nepokrývá zůstatek stávající hypotéky klienta (4.2M Kč). Doporučuji navrhnout navýšení.' }
+  ],
+  // Strukturovaná data z AI
+  extractedData: [
+    {
+      group: 'Smluvní strany',
+      icon: User,
+      fields: [
+        { id: 'pojistnik', label: 'Pojistník', value: 'Jan Novák', confidence: 99, status: 'success' },
+        { id: 'rc', label: 'Rodné číslo', value: '850415/1234', confidence: 98, status: 'success' },
+        { id: 'adresa', label: 'Adresa', value: 'Sluneční 145, Praha 4', confidence: 95, status: 'success' },
+      ]
+    },
+    {
+      group: 'Parametry smlouvy',
+      icon: FileText,
+      fields: [
+        { id: 'pojistovna', label: 'Pojišťovna', value: 'Kooperativa pojišťovna, a.s.', confidence: 100, status: 'success' },
+        { id: 'cislo', label: 'Číslo smlouvy', value: '6543219870', confidence: 99, status: 'success' },
+        { id: 'pocatek', label: 'Počátek pojištění', value: '01. 05. 2026', confidence: 92, status: 'success' },
+        { id: 'platba', label: 'Měsíční pojistné', value: '1 450 Kč', confidence: 85, status: 'warning', message: 'Nižší jistota čtení. Zkontrolujte částku v PDF (str. 2).' },
+      ]
+    },
+    {
+      group: 'Krytá rizika',
+      icon: Shield,
+      fields: [
+        { id: 'smrt', label: 'Smrt (Základní částka)', value: '2 500 000 Kč', confidence: 98, status: 'success' },
+        { id: 'invalidita', label: 'Invalidita 3. stupeň', value: 'Nenalezeno', confidence: 80, status: 'error', message: 'Nenalezeno v textu dokumentu.' },
+        { id: 'trvale', label: 'Trvalé následky úrazu', value: '1 000 000 Kč', confidence: 90, status: 'success' },
+      ]
+    },
+    {
+      group: 'Ostatní ujednání',
+      icon: Heart,
+      fields: [
+        { id: 'obmyslena', label: 'Obmyšlená osoba', value: 'Nevyplněno', confidence: 99, status: 'error', message: 'Údaj chybí. Nutno dořešit s klientem.' },
+        { id: 'vinkulace', label: 'Vinkulace', value: 'Ne', confidence: 95, status: 'success' },
+      ]
+    }
+  ]
+};
+
+export default function AIReviewView() {
+  const [activeFile] = useState(ACTIVE_FILE);
+
+  // Helper pro vizualizaci inputů podle stavu jistoty AI
+  const getFieldStyles = (status) => {
+    switch (status) {
+      case 'success': 
+        return 'border-slate-200 bg-slate-50 focus-within:border-indigo-400 focus-within:ring-indigo-100 text-slate-900';
+      case 'warning': 
+        return 'border-amber-300 bg-amber-50 focus-within:border-amber-500 focus-within:ring-amber-100 text-amber-900';
+      case 'error': 
+        return 'border-rose-300 bg-rose-50 focus-within:border-rose-500 focus-within:ring-rose-100 text-rose-900';
+      default: 
+        return 'border-slate-200 bg-slate-50 focus-within:border-indigo-400 text-slate-900';
+    }
+  };
+
+  const getConfidenceBadge = (confidence, status) => {
+    if (!confidence) return null;
+    let colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (status === 'warning') colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
+    if (status === 'error') colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
+
+    return (
+      <div className={`px-2 py-0.5 rounded text-[10px] font-black tracking-widest border ${colorClass} flex items-center gap-1`}>
+        {confidence}% AI
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-[#f8fafc] font-sans text-slate-800 overflow-hidden">
+      
+      {/* Vložené CSS */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap');
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        
+        .glass-input {
+          outline: none;
+          transition: all 0.2s ease;
+        }
+      `}</style>
+
+      {/* --- TOP NAV --- */}
+      <header className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between shadow-sm z-20 flex-shrink-0">
+        <div className="flex items-center gap-6">
+          <button className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">
+            <ArrowLeft size={16} /> Zpět na seznam smluv
+          </button>
+          <div className="w-px h-5 bg-slate-200"></div>
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+             <span>AI Extrakce</span>
+             <span className="opacity-30">/</span>
+             <span className="text-indigo-600 flex items-center gap-1.5"><BrainCircuit size={14}/> {activeFile.name}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all">
+            Zahodit
+          </button>
+          <button className="flex items-center gap-2 px-6 py-2.5 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95">
+            <Check size={16} /> Schválit do CRM
+          </button>
+        </div>
+      </header>
+
+      {/* --- HLAVNÍ OBSAH (2 Sloupce) --- */}
+      <main className="flex-1 flex overflow-hidden">
+        
+        {/* ========================================================= */}
+        {/* SLOUPEC 1: EXTRAHOVANÁ DATA & AI DOPORUČENÍ (Střed/Levo) */}
+        {/* ========================================================= */}
+        <section className="w-[55%] flex flex-col bg-[#f4f7f9] border-r border-slate-200 z-0">
+          
+          <div className="flex-1 overflow-y-auto custom-scroll p-6 lg:p-10">
+            <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              
+              {/* Hlavička dokumentu */}
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">{activeFile.name}</h1>
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mt-1">
+                      <span className="text-indigo-600">{activeFile.type}</span>
+                      <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                      <span className="flex items-center gap-1"><User size={12}/> {activeFile.client}</span>
+                      <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                      <span>Nahráno {activeFile.uploadTime}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- AI DOPORUČENÍ / AKCE (Vyžádaná fičura) --- */}
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 rounded-[24px] border border-indigo-100 shadow-sm p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+                <div className="relative z-10">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 mb-4 flex items-center gap-2">
+                    <Sparkles size={16} className="text-indigo-500" /> 
+                    AI Analýza a navrhované akce
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {activeFile.aiRecommendations.map(rec => (
+                      <div key={rec.id} className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-indigo-100/50 flex items-start gap-3 shadow-sm">
+                        {rec.type === 'warning' ? (
+                          <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                        ) : (
+                          <Lightbulb size={18} className="text-indigo-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 leading-snug">{rec.text}</p>
+                          <div className="mt-3 flex gap-2">
+                            <button className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-100/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                              Vytvořit úkol
+                            </button>
+                            <button className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg transition-colors">
+                              Zahodit
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Upozorňovací Banner pro chybějící data */}
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3 shadow-sm">
+                <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-bold text-amber-900 mb-1">Vyžadována vaše kontrola</h4>
+                  <p className="text-xs font-medium text-amber-800/80 leading-relaxed">
+                    AI upozorňuje na data s nižší jistotou čtení nebo chybějící údaje. Zkontrolujte prosím oranžově a červeně vyznačená pole s náhledem originálu vpravo.
+                  </p>
+                </div>
+              </div>
+
+              {/* --- VYKRESLENÍ EXTRAHOVANÝCH SKUPIN --- */}
+              <div className="space-y-6">
+                {activeFile.extractedData.map((group, gIdx) => {
+                  const GroupIcon = group.icon;
+                  return (
+                    <div key={gIdx} className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden">
+                      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                          <GroupIcon size={16} className="text-indigo-500" /> {group.group}
+                        </h3>
+                      </div>
+                      
+                      <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {group.fields.map(field => (
+                          <div key={field.id} className={`relative flex flex-col ${field.status !== 'success' ? 'md:col-span-2' : ''}`}>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1 flex items-center justify-between">
+                              {field.label}
+                              {getConfidenceBadge(field.confidence, field.status)}
+                            </label>
+                            
+                            <div className="relative group/input">
+                              <input 
+                                type="text"
+                                defaultValue={field.value}
+                                className={`w-full px-4 py-3 rounded-xl text-sm font-bold transition-all border glass-input ${getFieldStyles(field.status)}`}
+                              />
+                              <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-white text-slate-400 hover:text-indigo-600 rounded-md shadow-sm border border-slate-100 opacity-0 group-hover/input:opacity-100 transition-all">
+                                <Edit2 size={14} />
+                              </button>
+                            </div>
+
+                            {field.message && (
+                              <div className={`mt-2 ml-1 text-xs font-bold flex items-start gap-1.5
+                                ${field.status === 'warning' ? 'text-amber-600' : 'text-rose-600'}
+                              `}>
+                                <AlertCircle size={14} className="shrink-0 mt-0.5" /> 
+                                <span className="leading-snug">{field.message}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* SLOUPEC 2: NÁHLED DOKUMENTU (PDF VIEWER) - Šířka: 45% */}
+        {/* ========================================================= */}
+        <aside className="w-[45%] flex flex-col bg-[#e2e8f0] relative z-0">
+          
+          {/* Hlavička PDF Vieweru */}
+          <div className="h-16 px-6 border-b border-slate-300 bg-slate-100 flex items-center justify-between flex-shrink-0 shadow-sm z-10">
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-slate-500" />
+              <span className="text-xs font-bold text-slate-700 truncate">{activeFile.name}</span>
+            </div>
+            
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+              <button className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors"><ZoomOut size={16}/></button>
+              <span className="text-[10px] font-black w-12 text-center">100%</span>
+              <button className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors"><ZoomIn size={16}/></button>
+              <div className="w-px h-4 bg-slate-200 mx-1"></div>
+              <button className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors"><Maximize size={16}/></button>
+            </div>
+          </div>
+
+          {/* Samotný PDF dokument (Simulace) */}
+          <div className="flex-1 overflow-y-auto custom-scroll p-8 flex justify-center">
+            
+            {/* A4 Stránka (Placeholder s fake textem pro ilustraci) */}
+            <div className="w-full max-w-[700px] bg-white shadow-2xl rounded-sm min-h-[900px] p-12 relative animate-in fade-in duration-700">
+              
+              {/* Hlavička simulované smlouvy */}
+              <div className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-end">
+                <div className="w-32 h-10 bg-emerald-600 text-white font-black text-xl flex items-center justify-center">KOOP</div>
+                <div className="text-right">
+                  <h2 className="text-2xl font-bold text-slate-900">Pojistná smlouva</h2>
+                  <p className="text-sm text-slate-500">Číslo: 6543219870</p>
+                </div>
+              </div>
+
+              {/* Simulovaný text s "Highlighy" z AI */}
+              <div className="space-y-8 text-sm text-slate-700 leading-relaxed font-serif">
+                <div className="bg-indigo-50/50 border border-indigo-100 p-2 -mx-2 rounded-lg">
+                  <strong>Pojistník:</strong> <span className="bg-indigo-200/50 px-1 rounded font-sans font-semibold">Jan Novák</span>, 
+                  nar. <span className="bg-indigo-200/50 px-1 rounded font-sans font-semibold">850415/1234</span>, 
+                  trvale bytem <span className="bg-indigo-200/50 px-1 rounded font-sans font-semibold">Sluneční 145, Praha 4</span>.
+                </div>
+                
+                <p>
+                  Smluvní strany uzavírají tuto pojistnou smlouvu pro produkt FLEXI Životní pojištění.
+                  Počátek pojištění je stanoven na <span className="bg-indigo-200/50 px-1 rounded font-sans font-semibold">01. 05. 2026</span>.
+                </p>
+
+                <h4 className="font-bold text-slate-900 text-lg mt-8 mb-4">Rozsah pojištění</h4>
+                <table className="w-full border-collapse border border-slate-300 text-sm">
+                  <tbody>
+                    <tr>
+                      <td className="border border-slate-300 p-3">Základní pojištění pro případ smrti</td>
+                      <td className="border border-slate-300 p-3 text-right bg-indigo-50"><span className="bg-indigo-200/50 px-1 rounded font-sans font-semibold">2 500 000 Kč</span></td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 p-3">Trvalé následky úrazu</td>
+                      <td className="border border-slate-300 p-3 text-right"><span className="bg-indigo-200/50 px-1 rounded font-sans font-semibold">1 000 000 Kč</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="mt-10 pt-10 border-t border-slate-200 space-y-6">
+                  <p className="flex items-center gap-2">
+                    <strong>Měsíční pojistné:</strong> 
+                    <span className="bg-amber-100 border border-amber-300 px-2 py-0.5 rounded font-sans font-bold text-amber-900 cursor-help" title="Částka hůře čitelná">
+                      1 450 Kč
+                    </span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <strong>Obmyšlená osoba:</strong> 
+                    <span className="bg-rose-100 border border-rose-300 px-2 py-0.5 rounded font-sans font-bold text-rose-900 cursor-help" title="Údaj nenalezen v dokumentu">
+                      Dle zákona (Není uvedena)
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </aside>
+
+      </main>
+    </div>
+  );
+}
