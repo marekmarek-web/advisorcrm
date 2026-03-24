@@ -10,6 +10,9 @@ import type {
   ClientMatchCandidate,
   DraftAction,
 } from "./types";
+import { buildHumanSummary, buildHumanErrorMessage } from "@/lib/ai/document-messages";
+import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
+import type { InputMode } from "@/lib/ai/input-mode-detection";
 
 type ApiReviewDetail = Record<string, unknown>;
 
@@ -23,6 +26,7 @@ const SECTION_LABELS: Record<string, string> = {
   coverage: "Krytí",
   risks: "Krytá rizika",
   parties: "Smluvní strany",
+  payment: "Platební údaje",
   other: "Ostatní",
 };
 
@@ -41,23 +45,72 @@ const SECTION_ICONS: Record<string, string> = {
 
 const FIELD_LABELS: Record<string, string> = {
   contractNumber: "Číslo smlouvy",
+  existingPolicyNumber: "Číslo existující pojistky",
+  businessCaseNumber: "Číslo obch. případu",
   institutionName: "Pojišťovna / instituce",
+  insurer: "Pojišťovna",
+  lender: "Poskytovatel úvěru",
+  provider: "Poskytovatel",
+  platform: "Platforma",
   productName: "Produkt",
   fullName: "Jméno a příjmení",
+  clientFullName: "Jméno klienta",
   firstName: "Jméno",
   lastName: "Příjmení",
   email: "E-mail",
+  clientEmail: "E-mail klienta",
   phone: "Telefon",
+  clientPhone: "Telefon klienta",
   birthDate: "Datum narození",
   personalId: "Rodné číslo",
+  maskedPersonalId: "Rodné číslo (maskované)",
+  companyId: "IČO",
   address: "Adresa",
+  permanentAddress: "Trvalé bydliště",
   startDate: "Počátek smlouvy",
+  policyStartDate: "Počátek pojištění",
+  policyEndDate: "Konec pojištění",
   endDate: "Konec smlouvy",
+  dateSigned: "Datum podpisu",
   premiumAmount: "Pojistné",
+  totalMonthlyPremium: "Celkové měsíční pojistné",
+  riskPremium: "Rizikové pojistné",
+  investmentPremium: "Investiční pojistné",
   premiumFrequency: "Frekvence plateb",
+  paymentFrequency: "Frekvence plateb",
   deathBenefit: "Pojistná částka na smrt",
   beneficiary: "Obmyšlená osoba",
+  beneficiaries: "Oprávněné osoby",
   vinkulace: "Vinkulace",
+  coverages: "Sjednaná rizika",
+  riders: "Připojištění",
+  investmentStrategy: "Investiční strategie",
+  investmentFunds: "Fondy",
+  fundAllocation: "Alokace fondů",
+  feeStructure: "Poplatková struktura",
+  loanAmount: "Výše úvěru",
+  installmentAmount: "Výše splátky",
+  interestRate: "Úroková sazba",
+  rpsn: "RPSN",
+  installmentCount: "Počet splátek",
+  bankAccount: "Číslo účtu",
+  iban: "IBAN",
+  bic: "SWIFT/BIC",
+  bankCode: "Kód banky",
+  variableSymbol: "Variabilní symbol",
+  specificSymbol: "Specifický symbol",
+  regularAmount: "Pravidelná částka",
+  oneOffAmount: "Jednorázová částka",
+  currency: "Měna",
+  firstPaymentDate: "Datum první platby",
+  paymentPurpose: "Účel platby",
+  paymentType: "Typ platby",
+  employerName: "Zaměstnavatel",
+  employeeFullName: "Jméno zaměstnance",
+  netWage: "Čistá mzda",
+  grossWage: "Hrubá mzda",
+  advisorName: "Zprostředkovatel",
+  brokerName: "Makléř",
 };
 
 function fieldConfidence(
@@ -263,22 +316,29 @@ function buildSummary(
   groups: ExtractedGroup[],
   diagnostics: ExtractionDiagnostics
 ): string {
-  const docType = detail.detectedDocumentType as string | undefined;
-  const allFields = groups.flatMap((g) => g.fields);
-  const parts: string[] = [];
+  const extracted = (detail.extractedPayload ?? {}) as Record<string, unknown>;
+  const client = (extracted.client ?? {}) as Record<string, unknown>;
+  const primaryType = (detail.detectedDocumentType as PrimaryDocumentType) ?? "generic_financial_document";
+  const lifecycle = (detail.lifecycleStatus as string) ?? "unknown";
+  const inputMode = (detail.inputMode as InputMode) ?? "text_pdf";
+  const confidence = (detail.confidence as number) ?? 0;
+  const contentFlags = (extracted.contentFlags ?? {}) as Record<string, boolean>;
 
-  if (docType) parts.push(`Dokument typu: ${docType}.`);
-  parts.push(
-    `AI vytěžila ${diagnostics.extractedFields} z ${diagnostics.totalFields} polí.`
-  );
-  if (diagnostics.errorCount > 0) {
-    parts.push(`${diagnostics.errorCount} polí vyžaduje ruční kontrolu.`);
-  }
-  if (diagnostics.warningCount > 0) {
-    parts.push(`${diagnostics.warningCount} polí s nižší jistotou čtení.`);
-  }
+  const humanSummary = buildHumanSummary({
+    primaryType,
+    lifecycleStatus: lifecycle as Parameters<typeof buildHumanSummary>[0]["lifecycleStatus"],
+    inputMode,
+    confidence,
+    productName: extracted.productName as string | undefined,
+    institutionName: extracted.institutionName as string | undefined,
+    contractNumber: extracted.contractNumber as string | undefined,
+    clientName: [client.fullName, client.firstName, client.lastName].filter(Boolean).join(" ") || undefined,
+    containsPaymentInstructions: contentFlags.containsPaymentInstructions ?? false,
+    reasonsForReview: detail.reasonsForReview as string[] | undefined,
+  });
 
-  return parts.join(" ");
+  const techDetail = `AI vytěžila ${diagnostics.extractedFields} z ${diagnostics.totalFields} polí.`;
+  return `${humanSummary} ${techDetail}`;
 }
 
 export function mapApiToExtractionDocument(
@@ -326,7 +386,13 @@ export function mapApiToExtractionDocument(
     groups,
     extraRecommendations: [],
     pdfUrl,
-    errorMessage: detail.errorMessage as string | undefined,
+    errorMessage: detail.errorMessage
+      ? buildHumanErrorMessage({
+          errorMessage: detail.errorMessage as string,
+          primaryType: detail.detectedDocumentType as PrimaryDocumentType | undefined,
+          inputMode: detail.inputMode as InputMode | undefined,
+        })
+      : undefined,
     reasonsForReview: detail.reasonsForReview as string[] | undefined,
     clientMatchCandidates:
       (detail.clientMatchCandidates as ClientMatchCandidate[] | undefined) ?? [],

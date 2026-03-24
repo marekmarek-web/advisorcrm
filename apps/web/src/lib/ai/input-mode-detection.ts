@@ -6,16 +6,19 @@
 import { z } from "zod";
 import { createResponseWithFile } from "@/lib/openai";
 
-export const INPUT_MODES = ["text_pdf", "scanned_pdf", "image_document", "unsupported"] as const;
+export const INPUT_MODES = ["text_pdf", "scanned_pdf", "mixed_pdf", "image_document", "unsupported"] as const;
 export type InputMode = (typeof INPUT_MODES)[number];
 
-export const EXTRACTION_MODES = ["text", "vision_fallback"] as const;
+export const EXTRACTION_MODES = ["text", "ocr_enhanced", "vision_fallback"] as const;
 export type ExtractionMode = (typeof EXTRACTION_MODES)[number];
 
 export type InputModeResult = {
   inputMode: InputMode;
   confidence?: number;
   extractionMode: ExtractionMode;
+  ocrRequired: boolean;
+  pageCount?: number;
+  qualityWarnings: string[];
   extractionWarnings: string[];
 };
 
@@ -23,33 +26,63 @@ const responseSchema = z.object({
   inputMode: z.enum(INPUT_MODES),
   confidence: z.number().min(0).max(1).optional(),
   reason: z.string().optional(),
+  pageCount: z.number().int().positive().optional(),
+  qualityIssues: z.array(z.string()).optional(),
 });
 
 const DETECTION_PROMPT = `Prohlédni přiložený dokument. Urči, zda jde o:
 - text_pdf: PDF s výběrovým textem (textová vrstva)
 - scanned_pdf: naskenované PDF (obrázky stránek, bez textové vrstvy)
-- image_document: obrázek (JPG, PNG apod.)
+- mixed_pdf: PDF obsahující kombinaci textu a obrázků/scanů
+- image_document: obrázek (JPG, PNG, HEIC apod.)
 - unsupported: nelze určit nebo nepodporovaný formát
 
-Vrať JEDINĚ platný JSON objekt (žádný markdown): { "inputMode": "...", "confidence": 0-1, "reason": "krátký důvod" }.`;
+Pokud je dokument šikmo, má špatný kontrast, je částečně oříznutý, nebo jinak nečitelný, zapiš to do qualityIssues.
 
-/** MIME types we allow for extraction; others get unsupported without calling the model. */
+Vrať JEDINĚ platný JSON objekt (žádný markdown):
+{ "inputMode": "...", "confidence": 0-1, "reason": "krátký důvod", "pageCount": N, "qualityIssues": ["..."] }.`;
+
 const ALLOWED_MIMES = new Set([
   "application/pdf",
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
+
+function resolveExtractionMode(inputMode: InputMode): ExtractionMode {
+  switch (inputMode) {
+    case "text_pdf":
+      return "text";
+    case "mixed_pdf":
+      return "ocr_enhanced";
+    case "scanned_pdf":
+    case "image_document":
+      return "vision_fallback";
+    default:
+      return "vision_fallback";
+  }
+}
+
+function resolveOcrRequired(inputMode: InputMode): boolean {
+  return inputMode === "scanned_pdf" || inputMode === "mixed_pdf" || inputMode === "image_document";
+}
 
 export async function detectInputMode(
   fileUrl: string,
   mimeType?: string | null
 ): Promise<InputModeResult> {
   const warnings: string[] = [];
+  const qualityWarnings: string[] = [];
   if (mimeType && !ALLOWED_MIMES.has(mimeType)) {
     return {
       inputMode: "unsupported",
       extractionMode: "vision_fallback",
+      ocrRequired: false,
+      qualityWarnings: [],
       extractionWarnings: [`Nepodporovaný typ souboru: ${mimeType}`],
     };
   }
@@ -66,17 +99,23 @@ export async function detectInputMode(
         inputMode: "unsupported",
         confidence: 0,
         extractionMode: "vision_fallback",
+        ocrRequired: false,
+        qualityWarnings: [],
         extractionWarnings: warnings,
       };
     }
-    const { inputMode, confidence, reason } = result.data;
-    const extractionMode: ExtractionMode =
-      inputMode === "text_pdf" ? "text" : "vision_fallback";
+    const { inputMode, confidence, reason, pageCount, qualityIssues } = result.data;
+    const extractionMode = resolveExtractionMode(inputMode);
+    const ocrRequired = resolveOcrRequired(inputMode);
     if (reason) warnings.push(reason);
+    if (qualityIssues?.length) qualityWarnings.push(...qualityIssues);
     return {
       inputMode,
       confidence,
       extractionMode,
+      ocrRequired,
+      pageCount,
+      qualityWarnings,
       extractionWarnings: warnings,
     };
   } catch {
@@ -84,6 +123,8 @@ export async function detectInputMode(
     return {
       inputMode: "unsupported",
       extractionMode: "vision_fallback",
+      ocrRequired: false,
+      qualityWarnings: [],
       extractionWarnings: warnings,
     };
   }

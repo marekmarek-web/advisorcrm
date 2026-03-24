@@ -139,9 +139,10 @@ export async function applyContractReview(
       }
 
       for (const action of draftActions) {
-        if (action.type === "create_contract" && effectiveContactId) {
+        if ((action.type === "create_contract" || action.type === "create_or_update_contract_record") && effectiveContactId) {
           const contractNumber = (action.payload.contractNumber as string)?.trim() || null;
           const institutionName = (action.payload.institutionName as string)?.trim() || null;
+          const segment = (action.payload.segment as string)?.trim() || "ZP";
           const existingContractId = await findExistingContractId(
             tenantId,
             effectiveContactId,
@@ -159,7 +160,7 @@ export async function applyContractReview(
               tenantId,
               contactId: effectiveContactId,
               advisorId: userId,
-              segment: "ZP",
+              segment,
               partnerName: institutionName,
               productName: (action.payload.productName as string)?.trim() || null,
               contractNumber,
@@ -182,10 +183,26 @@ export async function applyContractReview(
             })
             .returning({ id: tasks.id });
           if (inserted?.id) resultPayload.createdTaskId = inserted.id;
-        } else if (action.type === "create_payment") {
-          // TODO: payments/invoices table when available
-        } else if (action.type === "draft_email") {
-          // No DB write
+        } else if (action.type === "create_payment_setup" || action.type === "create_payment") {
+          resultPayload.paymentSetup = {
+            obligationName: (action.payload.obligationName as string) || "Platba",
+            paymentType: (action.payload.paymentType as string) || "regular",
+            provider: (action.payload.provider as string) || "",
+            contractReference: (action.payload.contractReference as string) || "",
+            recipientAccount: (action.payload.recipientAccount as string) || (action.payload.accountNumber as string) || "",
+            iban: (action.payload.iban as string) || "",
+            bankCode: (action.payload.bankCode as string) || "",
+            variableSymbol: (action.payload.variableSymbol as string) || "",
+            specificSymbol: (action.payload.specificSymbol as string) || "",
+            regularAmount: (action.payload.regularAmount as string) || (action.payload.amount as string) || "",
+            oneOffAmount: (action.payload.oneOffAmount as string) || "",
+            currency: (action.payload.currency as string) || "CZK",
+            frequency: (action.payload.frequency as string) || "",
+            firstDueDate: (action.payload.firstDueDate as string) || (action.payload.firstPaymentDate as string) || "",
+            clientNote: (action.payload.clientNote as string) || "",
+          };
+        } else if (action.type === "draft_email" || action.type === "create_notification") {
+          // No DB write - these are UI-only suggestions
         }
       }
     });

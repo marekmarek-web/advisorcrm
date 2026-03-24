@@ -6,6 +6,45 @@ import { resolveDocumentSchema } from "./document-schema-router";
 export { findClientCandidates } from "./client-matching";
 export type { ClientMatchingContext } from "./client-matching";
 
+/** Maps document primary type to CRM contract segment code. */
+export function resolveSegmentFromType(primaryType: string): string {
+  const map: Record<string, string> = {
+    life_insurance_final_contract: "ZP",
+    life_insurance_contract: "ZP",
+    life_insurance_investment_contract: "ZP",
+    life_insurance_proposal: "ZP",
+    life_insurance_change_request: "ZP",
+    life_insurance_modelation: "ZP",
+    nonlife_insurance_contract: "MAJ",
+    liability_insurance_offer: "ODP",
+    consumer_loan_contract: "UVER",
+    consumer_loan_with_payment_protection: "UVER",
+    mortgage_document: "HYPO",
+    pension_contract: "DPS",
+    investment_service_agreement: "INV",
+    investment_subscription_document: "INV",
+    investment_modelation: "INV",
+  };
+  return map[primaryType] ?? "ZP";
+}
+
+/** Structured payment setup object for the client portal. */
+export type PaymentSetupPayload = {
+  obligationName: string;
+  paymentType: string;
+  provider: string;
+  contractReference: string;
+  recipientAccount: string;
+  iban: string;
+  variableSymbol: string;
+  specificSymbol: string;
+  amount: string;
+  currency: string;
+  frequency: string;
+  firstDueDate: string;
+  clientNote: string;
+};
+
 export function buildCreateClientDraft(extracted: ExtractedContractSchema): DraftActionBase {
   const c = extracted.client;
   return {
@@ -144,6 +183,52 @@ function toLegacyProjection(envelope: DocumentReviewEnvelope): ExtractedContract
   };
 }
 
+function buildPaymentSetupDraft(envelope: DocumentReviewEnvelope): DraftActionBase {
+  const fv = (key: string) => String(fieldValue(envelope, key) ?? "");
+  return {
+    type: "create_payment_setup",
+    label: "Vytvořit platební údaje do portálu",
+    payload: {
+      obligationName: fv("productName") || fv("platform") || "Platba",
+      paymentType: fv("paymentType") || "regular",
+      provider: fv("provider") || fv("platform") || fv("insurer") || "",
+      contractReference: fv("contractReference") || fv("contractNumber") || "",
+      recipientAccount: fv("bankAccount") || "",
+      iban: fv("iban") || "",
+      bankCode: fv("bankCode") || "",
+      variableSymbol: fv("variableSymbol") || "",
+      specificSymbol: fv("specificSymbol") || "",
+      regularAmount: fv("regularAmount") || "",
+      oneOffAmount: fv("oneOffAmount") || "",
+      currency: fv("currency") || "CZK",
+      frequency: fv("paymentFrequency") || "",
+      firstDueDate: fv("firstPaymentDate") || "",
+      clientNote: fv("paymentPurpose") || "",
+      separateInstructionsCZK: fv("separateInstructionsCZK") || "",
+      separateInstructionsEUR: fv("separateInstructionsEUR") || "",
+      separateInstructionsUSD: fv("separateInstructionsUSD") || "",
+    } satisfies Record<string, unknown>,
+  };
+}
+
+function buildNotificationDraft(envelope: DocumentReviewEnvelope): DraftActionBase {
+  const primaryType = envelope.documentClassification.primaryType;
+  const lifecycle = envelope.documentClassification.lifecycleStatus;
+  let message = "Nový dokument byl zpracován.";
+  if (lifecycle === "final_contract") {
+    message = `Nová smlouva byla rozpoznána: ${String(fieldValue(envelope, "productName") || primaryType)}.`;
+  } else if (lifecycle === "proposal" || lifecycle === "offer") {
+    message = `Rozpoznán návrh/nabídka: ${String(fieldValue(envelope, "productName") || primaryType)}.`;
+  } else if (primaryType === "payment_instruction" || primaryType === "investment_payment_instruction") {
+    message = `Rozpoznány platební instrukce od: ${String(fieldValue(envelope, "provider") || fieldValue(envelope, "platform") || "")}.`;
+  }
+  return {
+    type: "create_notification",
+    label: "Vytvořit notifikaci",
+    payload: { message },
+  };
+}
+
 function dedupeActions(actions: DraftActionBase[]): DraftActionBase[] {
   const key = (a: DraftActionBase) => `${a.type}:${JSON.stringify(a.payload)}`;
   const seen = new Set<string>();
@@ -178,8 +263,12 @@ export function buildAllDraftActions(
         contractNumber: fieldValue(maybeEnvelope, "contractNumber") ?? fieldValue(maybeEnvelope, "existingPolicyNumber"),
         productName: fieldValue(maybeEnvelope, "productName"),
         lifecycleStatus: maybeEnvelope.documentClassification.lifecycleStatus,
+        segment: resolveSegmentFromType(maybeEnvelope.documentClassification.primaryType),
       },
     });
+  }
+  if (requested.includes("create_payment_setup")) {
+    actions.push(buildPaymentSetupDraft(maybeEnvelope));
   }
   if (requested.includes("link_client")) {
     actions.push({
@@ -368,5 +457,15 @@ export function buildAllDraftActions(
   }
   // Keep email helper for user convenience.
   actions.push(buildDraftEmailSuggestion(legacy));
+  actions.push(buildNotificationDraft(maybeEnvelope));
+
+  // For payment types: also add payment setup if content flags indicate payment data
+  const hasPaymentFlag = maybeEnvelope.contentFlags?.containsPaymentInstructions;
+  const isPaymentType = maybeEnvelope.documentClassification.primaryType === "payment_instruction" ||
+    maybeEnvelope.documentClassification.primaryType === "investment_payment_instruction";
+  if (hasPaymentFlag && !isPaymentType && !requested.includes("create_payment_setup")) {
+    actions.push(buildPaymentSetupDraft(maybeEnvelope));
+  }
+
   return dedupeActions(actions);
 }

@@ -13,6 +13,24 @@ export type ApplyResultPayload = {
   createdTaskId?: string;
   createdNoteId?: string;
   createdEmailDraftId?: string;
+  /** Structured payment setup extracted from payment instruction documents. */
+  paymentSetup?: {
+    obligationName: string;
+    paymentType: string;
+    provider: string;
+    contractReference: string;
+    recipientAccount: string;
+    iban: string;
+    bankCode: string;
+    variableSymbol: string;
+    specificSymbol: string;
+    regularAmount: string;
+    oneOffAmount: string;
+    currency: string;
+    frequency: string;
+    firstDueDate: string;
+    clientNote: string;
+  };
   bridgeSuggestions?: Array<{
     id: string;
     label: string;
@@ -27,6 +45,9 @@ export type ExtractionTrace = {
   documentType?: string;
   classificationConfidence?: number;
   extractionMode?: string;
+  ocrRequired?: boolean;
+  pageCount?: number;
+  qualityWarnings?: string[];
   warnings?: string[];
   failedStep?: string;
 };

@@ -12,7 +12,7 @@ import {
   validateExtractionByType,
   type ExtractedContractByType,
 } from "./extraction-schemas-by-type";
-import { validateExtractedContract, type ValidationResult } from "./extraction-validation";
+import { validateExtractedContract, validateDocumentEnvelope, type ValidationResult } from "./extraction-validation";
 import { decideReviewStatus } from "./review-decision-engine";
 import type { ContractProcessingStatus } from "db";
 import type { ExtractionTrace } from "./review-queue-repository";
@@ -118,7 +118,14 @@ export async function runContractUnderstandingPipeline(
 
   trace.inputMode = inputModeResult.inputMode;
   trace.extractionMode = inputModeResult.extractionMode;
-  trace.warnings = [...(trace.warnings ?? []), ...inputModeResult.extractionWarnings];
+  trace.ocrRequired = inputModeResult.ocrRequired ?? false;
+  trace.pageCount = inputModeResult.pageCount;
+  trace.qualityWarnings = inputModeResult.qualityWarnings ?? [];
+  trace.warnings = [
+    ...(trace.warnings ?? []),
+    ...inputModeResult.extractionWarnings,
+    ...(inputModeResult.qualityWarnings ?? []),
+  ];
 
   if (inputModeResult.inputMode === "unsupported" && inputModeResult.extractionWarnings.length > 0) {
     const msg = inputModeResult.extractionWarnings[0];
@@ -131,7 +138,8 @@ export async function runContractUnderstandingPipeline(
     };
   }
 
-  const isScanFallback = inputModeResult.extractionMode === "vision_fallback";
+  const mode = inputModeResult.extractionMode as string;
+  const isScanFallback = mode === "vision_fallback" || mode === "ocr_enhanced";
 
   trace.documentType = classification.primaryType;
   trace.classificationConfidence = classification.confidence;
@@ -194,12 +202,46 @@ export async function runContractUnderstandingPipeline(
   data.documentClassification.subtype = classification.subtype;
   data.documentClassification.confidence = classification.confidence;
   data.documentClassification.reasons = classification.reasons;
+  const inputModeStr = inputModeResult.inputMode as string;
   data.documentMeta.scannedVsDigital =
-    inputModeResult.inputMode === "text_pdf"
+    inputModeStr === "text_pdf"
       ? "digital"
-      : inputModeResult.inputMode === "scanned_pdf"
+      : inputModeStr === "scanned_pdf" || inputModeStr === "mixed_pdf" || inputModeStr === "image_document"
         ? "scanned"
         : "unknown";
+
+  const lifecycle = data.documentClassification.lifecycleStatus;
+  const intent = data.documentClassification.documentIntent;
+  if (!data.contentFlags) {
+    data.contentFlags = {
+      isFinalContract: false,
+      isProposalOnly: false,
+      containsPaymentInstructions: false,
+      containsClientData: false,
+      containsAdvisorData: false,
+      containsMultipleDocumentSections: false,
+    };
+  }
+  if (lifecycle === "final_contract") data.contentFlags.isFinalContract = true;
+  if (lifecycle === "proposal" || lifecycle === "offer" || lifecycle === "illustration" || lifecycle === "modelation" || lifecycle === "non_binding_projection") {
+    data.contentFlags.isProposalOnly = true;
+  }
+  const paymentFields = ["bankAccount", "iban", "variableSymbol", "regularAmount", "oneOffAmount"];
+  const hasPaymentData = paymentFields.some((k) => {
+    const f = data.extractedFields[k];
+    return f && f.status === "extracted" && f.value != null;
+  });
+  if (hasPaymentData || documentType === "payment_instruction" || documentType === "investment_payment_instruction") {
+    data.contentFlags.containsPaymentInstructions = true;
+  }
+  const clientFields = ["fullName", "clientFullName", "birthDate", "maskedPersonalId", "email", "phone"];
+  if (clientFields.some((k) => data.extractedFields[k]?.status === "extracted")) {
+    data.contentFlags.containsClientData = true;
+  }
+  const advisorFields = ["advisorName", "brokerName", "intermediaryName"];
+  if (advisorFields.some((k) => data.extractedFields[k]?.status === "extracted")) {
+    data.contentFlags.containsAdvisorData = true;
+  }
   const extractionConfidence =
     typeof data.documentMeta.overallConfidence === "number"
       ? data.documentMeta.overallConfidence
@@ -213,6 +255,12 @@ export async function runContractUnderstandingPipeline(
   );
 
   // Step 6: Validation
+  // Envelope-level validation (proposal/contract confusion, payment completeness, change doc refs)
+  const envelopeValidation = validateDocumentEnvelope(data);
+  if (envelopeValidation.warnings.length) {
+    allReasons.push(...envelopeValidation.reasonsForReview);
+  }
+
   const legacyValidationPayload = {
     contractNumber: data.extractedFields.contractNumber?.value as string | null,
     institutionName: data.extractedFields.institutionName?.value as string | null,
@@ -289,7 +337,7 @@ export async function runContractUnderstandingPipeline(
     extractionMode: inputModeResult.extractionMode,
     detectedDocumentType: documentType,
     extractionTrace: trace,
-    validationWarnings: [...validation.warnings, ...verification.warnings],
+    validationWarnings: [...validation.warnings, ...verification.warnings, ...envelopeValidation.warnings],
     fieldConfidenceMap,
     classificationReasons: classification.reasons,
   };

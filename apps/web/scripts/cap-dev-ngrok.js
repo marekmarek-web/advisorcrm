@@ -4,6 +4,7 @@
  */
 const http = require("http");
 const { execSync } = require("child_process");
+const { ensureNativeLoginUrl } = require("./capacitor-dev-url");
 
 const NGROK_API = "http://127.0.0.1:4040/api/tunnels";
 
@@ -44,12 +45,12 @@ function getNgrokUrl() {
 
 getNgrokUrl()
   .then((url) => {
-    const loginUrl = `${url.replace(/\/$/, "")}/prihlaseni?native=1`;
-    console.log("Ngrok URL:", loginUrl);
+    const serverUrl = ensureNativeLoginUrl(url);
+    console.log("Ngrok URL:", serverUrl);
     console.log("Spouštím cap sync...");
     execSync("npx cap sync", {
       stdio: "inherit",
-      env: { ...process.env, CAPACITOR_SERVER_URL: loginUrl },
+      env: { ...process.env, CAPACITOR_SERVER_URL: serverUrl },
     });
   })
   .catch((err) => {

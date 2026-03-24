@@ -48,7 +48,7 @@ export function decideReviewStatus(params: ReviewDecisionParams): ContractProces
   const hasWarnings = validation.warnings.length > 0;
   const lowClassification = classificationConfidence < confidenceThreshold;
   const lowExtraction = extractionConfidence < confidenceThreshold;
-  const isScanOrImage = inputMode === "scanned_pdf" || inputMode === "image_document";
+  const isScanOrImage = inputMode === "scanned_pdf" || inputMode === "image_document" || inputMode === "mixed_pdf";
 
   if (hasBlockingValidation) {
     return "review_required";

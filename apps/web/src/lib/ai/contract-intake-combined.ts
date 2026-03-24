@@ -25,6 +25,10 @@ const ALLOWED_MIMES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
 const combinedSchema = z.object({
@@ -44,7 +48,8 @@ const COMBINED_PROMPT = `Prohlédni přiložený dokument a vrať JEDINĚ platn�
 Část A — režim dokumentu (inputMode):
 - text_pdf: PDF s výběrovým textem (textová vrstva)
 - scanned_pdf: naskenované PDF (stránky jako obrázky)
-- image_document: obrázek (JPG/PNG apod.)
+- mixed_pdf: PDF obsahující kombinaci textu a obrázků/scanů
+- image_document: obrázek (JPG/PNG/HEIC apod.)
 - unsupported: nelze určit nebo nepodporovaný formát
 
 Část B — klasifikace dokumentu:
@@ -74,6 +79,8 @@ function mimeBlockedResult(mimeType: string): {
     input: {
       inputMode: "unsupported",
       extractionMode: "vision_fallback",
+      ocrRequired: false,
+      qualityWarnings: [],
       extractionWarnings: [`Nepodporovaný typ souboru: ${mimeType}`],
     },
     classification: {
@@ -113,7 +120,9 @@ export async function runCombinedContractIntake(
       return null;
     }
     const d = parsed.data;
-    const extractionMode: ExtractionMode = d.inputMode === "text_pdf" ? "text" : "vision_fallback";
+    const extractionMode: ExtractionMode =
+      d.inputMode === "text_pdf" ? "text" : d.inputMode === "mixed_pdf" ? "ocr_enhanced" : "vision_fallback";
+    const ocrRequired = d.inputMode === "scanned_pdf" || d.inputMode === "mixed_pdf" || d.inputMode === "image_document";
     const extractionWarnings: string[] = [];
     if (d.inputReason) extractionWarnings.push(d.inputReason);
 
@@ -121,6 +130,8 @@ export async function runCombinedContractIntake(
       inputMode: d.inputMode,
       confidence: d.inputConfidence,
       extractionMode,
+      ocrRequired,
+      qualityWarnings: [],
       extractionWarnings,
     };
     const classification: ClassificationResult = normalizeClassification({

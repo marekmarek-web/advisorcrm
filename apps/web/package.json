@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "dev:unlock": "node -e \"try { require('fs').unlinkSync('.next/dev/lock'); } catch (_) {}\" && next dev --webpack",
+    "dev:clear-lock": "node -e \"try { require('fs').unlinkSync('.next/dev/lock'); } catch (_) {}\"",
+    "dev:unlock": "pnpm dev:clear-lock && next dev --webpack",
     "dev:turbo": "next dev",
     "dev:clean": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && next dev --webpack",
     "dev:demo": "cross-env NEXT_PUBLIC_SKIP_AUTH=true next dev --webpack",
@@ -16,8 +17,8 @@
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
     "cap:open:android": "npx cap open android",
-    "cap:dev": "cross-env CAPACITOR_SERVER_URL=http://localhost:3000 npx cap sync",
-    "cap:dev:android": "cross-env CAPACITOR_SERVER_URL=http://10.0.2.2:3000 npx cap sync",
+    "cap:dev": "cross-env CAPACITOR_SERVER_URL=http://localhost:3000/prihlaseni?native=1 npx cap sync",
+    "cap:dev:android": "cross-env CAPACITOR_SERVER_URL=http://10.0.2.2:3000/prihlaseni?native=1 npx cap sync",
     "cap:dev:remote": "node scripts/cap-dev-remote.js",
     "cap:dev:ngrok": "node scripts/cap-dev-ngrok.js",
     "emulator:android": "node scripts/start-android-emulator.js"

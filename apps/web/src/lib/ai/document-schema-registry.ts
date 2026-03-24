@@ -88,6 +88,58 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
       ],
     },
   },
+  life_insurance_investment_contract: {
+    primaryType: "life_insurance_investment_contract",
+    allowedLifecycle: ["final_contract", "proposal", "annex", "unknown"],
+    subtypeHints: ["generali_bel_mondo_investment", "csob_invest_zivot", "uniqa_invest"],
+    defaultIntent: "creates_new_product",
+    extractionRules: {
+      required: [
+        "extractedFields.insurer",
+        "extractedFields.productName",
+        "extractedFields.contractNumber",
+        "extractedFields.policyStartDate",
+        "extractedFields.investmentStrategy",
+      ],
+      optional: [
+        "extractedFields.policyEndDate",
+        "extractedFields.totalMonthlyPremium",
+        "extractedFields.riskPremium",
+        "extractedFields.investmentPremium",
+        "extractedFields.investmentFunds",
+        "extractedFields.fundAllocation",
+        "extractedFields.regularExtraContribution",
+        "extractedFields.feeStructure",
+        "extractedFields.coverages",
+        "extractedFields.riders",
+        "extractedFields.beneficiaries",
+        ...commonOptional,
+      ],
+      conditional: [
+        "extractedFields.paymentAccounts_if_present",
+        "extractedFields.surrenderValue_if_available",
+      ],
+      notApplicableRules: [
+        "pure risk coverage fields may not apply if no risk rider",
+      ],
+      matchingKeys: [
+        "fullName", "birthDate", "maskedPersonalId", "email", "phone", "address", "householdMembers",
+      ],
+      crmMappingTarget: "contracts(segment=ZP_INV)",
+      reviewRules: [
+        "proposal must never be marked as final contract",
+        "investment allocation must sum to 100% if present",
+        "intermediary fields must not be merged into client contacts",
+      ],
+      suggestedActionRules: [
+        "create_or_link_client",
+        "create_or_update_contract_record",
+        "link_household",
+        "create_task",
+        "propose_financial_analysis_refresh",
+      ],
+    },
+  },
   life_insurance_proposal: {
     primaryType: "life_insurance_proposal",
     allowedLifecycle: ["proposal", "offer", "unknown"],
@@ -115,6 +167,41 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
         "create_or_link_client",
         "create_opportunity",
         "create_task_followup",
+      ],
+    },
+  },
+  nonlife_insurance_contract: {
+    primaryType: "nonlife_insurance_contract",
+    allowedLifecycle: ["final_contract", "proposal", "offer", "annex", "unknown"],
+    subtypeHints: ["property_insurance", "vehicle_insurance", "travel_insurance", "liability_insurance"],
+    defaultIntent: "creates_new_product",
+    extractionRules: {
+      required: [
+        "extractedFields.insurer",
+        "extractedFields.productName",
+        "extractedFields.contractNumber",
+        "extractedFields.policyStartDate",
+        "extractedFields.insuredObject",
+      ],
+      optional: [
+        "extractedFields.policyEndDate",
+        "extractedFields.annualPremium",
+        "extractedFields.paymentFrequency",
+        "extractedFields.coverageLimit",
+        "extractedFields.deductible",
+        "extractedFields.insuredRisks",
+        "extractedFields.insuredAddress",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.coinsured_if_present"],
+      notApplicableRules: ["investment and life-specific fields are not_applicable"],
+      matchingKeys: ["fullName", "birthDate", "maskedPersonalId", "email", "phone", "address"],
+      crmMappingTarget: "contracts(segment=NZP)",
+      reviewRules: ["distinguish between offer and signed contract"],
+      suggestedActionRules: [
+        "create_or_link_client",
+        "create_contract_record",
+        "create_task",
       ],
     },
   },
@@ -195,6 +282,204 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
       crmMappingTarget: "contracts(segment=HYPO)",
       reviewRules: ["annex must not overwrite final contract data without review"],
       suggestedActionRules: ["create_or_link_client", "create_task_manual_review"],
+    },
+  },
+  pension_contract: {
+    primaryType: "pension_contract",
+    allowedLifecycle: ["final_contract", "proposal", "annex", "unknown"],
+    subtypeHints: ["doplnkove_penzijni_sporeni", "transformovany_fond", "penzijni_pripojisteni"],
+    defaultIntent: "creates_new_product",
+    extractionRules: {
+      required: [
+        "extractedFields.provider",
+        "extractedFields.productName",
+        "extractedFields.contractNumber",
+        "extractedFields.participantFullName",
+      ],
+      optional: [
+        "extractedFields.contributionParticipant",
+        "extractedFields.contributionEmployer",
+        "extractedFields.stateContribution",
+        "extractedFields.investmentStrategy",
+        "extractedFields.beneficiaries",
+        "extractedFields.startDate",
+        "extractedFields.paymentFrequency",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.taxOptimization_if_present"],
+      notApplicableRules: ["loan-specific fields are not_applicable"],
+      matchingKeys: ["participantFullName", "birthDate", "maskedPersonalId", "email", "phone", "address"],
+      crmMappingTarget: "contracts(segment=PP)",
+      reviewRules: ["distinguish DPS from transformed fund"],
+      suggestedActionRules: [
+        "create_or_link_client",
+        "create_contract_record",
+        "create_task",
+        "propose_financial_analysis_refresh",
+      ],
+    },
+  },
+  investment_modelation: {
+    primaryType: "investment_modelation",
+    allowedLifecycle: ["illustration", "modelation", "non_binding_projection", "unknown"],
+    subtypeHints: ["fund_modelation", "portfolio_projection", "investment_illustration"],
+    defaultIntent: "illustrative_only",
+    extractionRules: {
+      required: [
+        "extractedFields.provider",
+        "extractedFields.productName",
+      ],
+      optional: [
+        "extractedFields.projectedReturn",
+        "extractedFields.investmentHorizon",
+        "extractedFields.riskProfile",
+        "extractedFields.proposedFunds",
+        "extractedFields.regularContribution",
+        "extractedFields.oneOffContribution",
+        "extractedFields.feeProjection",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.scenarioComparison_if_present"],
+      notApplicableRules: ["final contract and binding fields are not_applicable"],
+      matchingKeys: ["fullName", "birthDate", "maskedPersonalId", "email", "phone"],
+      crmMappingTarget: "opportunity+documents",
+      reviewRules: ["explicitly mark as non-binding projection"],
+      suggestedActionRules: [
+        "create_opportunity",
+        "attach_to_client_documents",
+        "schedule_consultation",
+        "prepare_comparison",
+      ],
+    },
+  },
+  payment_instruction: {
+    primaryType: "payment_instruction",
+    allowedLifecycle: ["confirmation", "statement", "unknown"],
+    subtypeHints: ["insurance_payment", "loan_repayment", "standing_order"],
+    defaultIntent: "reference_only",
+    extractionRules: {
+      required: [
+        "extractedFields.provider",
+        "extractedFields.bankAccount",
+        "extractedFields.variableSymbol",
+      ],
+      optional: [
+        "extractedFields.productName",
+        "extractedFields.contractReference",
+        "extractedFields.iban",
+        "extractedFields.bic",
+        "extractedFields.bankCode",
+        "extractedFields.specificSymbol",
+        "extractedFields.regularAmount",
+        "extractedFields.oneOffAmount",
+        "extractedFields.currency",
+        "extractedFields.paymentFrequency",
+        "extractedFields.firstPaymentDate",
+        "extractedFields.paymentPurpose",
+        "extractedFields.paymentType",
+        "extractedFields.minimumInvestment",
+        "extractedFields.separateInstructionsCZK",
+        "extractedFields.separateInstructionsEUR",
+        "extractedFields.separateInstructionsUSD",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.clientName_if_present"],
+      notApplicableRules: ["contract creation fields are not_applicable unless explicit contract reference"],
+      matchingKeys: ["clientName", "contractReference", "variableSymbol", "iban"],
+      crmMappingTarget: "payment_setup+portal",
+      reviewRules: [
+        "payment instruction is never a contract",
+        "incomplete payment details must go to review",
+        "validate IBAN format",
+        "validate variable symbol format",
+      ],
+      suggestedActionRules: [
+        "create_payment_setup",
+        "attach_to_existing_contract",
+        "attach_to_existing_client",
+        "request_manual_review",
+      ],
+    },
+  },
+  investment_payment_instruction: {
+    primaryType: "investment_payment_instruction",
+    allowedLifecycle: ["confirmation", "statement", "unknown"],
+    subtypeHints: ["fundoo_investment", "amundi_investment", "conseq_investment"],
+    defaultIntent: "reference_only",
+    extractionRules: {
+      required: [
+        "extractedFields.platform",
+        "extractedFields.bankAccount",
+      ],
+      optional: [
+        "extractedFields.productName",
+        "extractedFields.investmentType",
+        "extractedFields.contractReference",
+        "extractedFields.clientName",
+        "extractedFields.variableSymbol",
+        "extractedFields.specificSymbol",
+        "extractedFields.iban",
+        "extractedFields.bic",
+        "extractedFields.bankCode",
+        "extractedFields.regularAmount",
+        "extractedFields.oneOffAmount",
+        "extractedFields.currency",
+        "extractedFields.paymentFrequency",
+        "extractedFields.firstPaymentDate",
+        "extractedFields.minimumInvestment",
+        "extractedFields.separateInstructionsCZK",
+        "extractedFields.separateInstructionsEUR",
+        "extractedFields.separateInstructionsUSD",
+        "extractedFields.paymentPurpose",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.fundName_if_present"],
+      notApplicableRules: ["contract creation and insurance fields are not_applicable"],
+      matchingKeys: ["clientName", "contractReference", "variableSymbol", "iban"],
+      crmMappingTarget: "payment_setup+portal",
+      reviewRules: [
+        "investment payment instruction is never a contract",
+        "validate IBAN and account format",
+        "separate CZK/EUR/USD instructions if present",
+      ],
+      suggestedActionRules: [
+        "create_payment_setup",
+        "attach_to_existing_contract",
+        "attach_to_existing_client",
+        "request_manual_review",
+      ],
+    },
+  },
+  payment_schedule: {
+    primaryType: "payment_schedule",
+    allowedLifecycle: ["statement", "confirmation", "unknown"],
+    subtypeHints: ["loan_repayment_schedule", "insurance_premium_schedule"],
+    defaultIntent: "reference_only",
+    extractionRules: {
+      required: [
+        "extractedFields.provider",
+        "extractedFields.contractReference",
+      ],
+      optional: [
+        "extractedFields.clientName",
+        "extractedFields.scheduleRows",
+        "extractedFields.totalPayments",
+        "extractedFields.paymentFrequency",
+        "extractedFields.firstPaymentDate",
+        "extractedFields.lastPaymentDate",
+        "extractedFields.installmentAmount",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.interestBreakdown_if_present"],
+      notApplicableRules: ["new product creation is not_applicable"],
+      matchingKeys: ["clientName", "contractReference"],
+      crmMappingTarget: "documents+contract_attachment",
+      reviewRules: ["payment schedule is supplementary data, not a contract"],
+      suggestedActionRules: [
+        "attach_to_existing_contract",
+        "attach_to_existing_client",
+        "mark_as_supporting_document",
+      ],
     },
   },
   income_confirmation: {
@@ -343,6 +628,141 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
       crmMappingTarget: "opportunities(segment=ODP)",
       reviewRules: ["comparison never equals final contract"],
       suggestedActionRules: ["create_opportunity", "create_task_followup"],
+    },
+  },
+  financial_analysis_document: {
+    primaryType: "financial_analysis_document",
+    allowedLifecycle: ["confirmation", "unknown"],
+    subtypeHints: ["financial_analysis", "risk_assessment", "needs_analysis"],
+    defaultIntent: "supports_financial_analysis",
+    extractionRules: {
+      required: ["extractedFields.clientName", "extractedFields.analysisDate"],
+      optional: [
+        "extractedFields.advisorName",
+        "extractedFields.totalIncome",
+        "extractedFields.totalExpenses",
+        "extractedFields.existingProducts",
+        "extractedFields.recommendations",
+        "extractedFields.riskProfile",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.investmentHorizon_if_present"],
+      notApplicableRules: ["product contract fields are not_applicable"],
+      matchingKeys: ["clientName", "birthDate", "email", "phone", "address"],
+      crmMappingTarget: "documents+financial_analysis",
+      reviewRules: ["analysis document is not a product or contract"],
+      suggestedActionRules: [
+        "attach_to_existing_client",
+        "propose_financial_analysis_update",
+        "mark_as_supporting_document",
+      ],
+    },
+  },
+  precontract_information: {
+    primaryType: "precontract_information",
+    allowedLifecycle: ["offer", "proposal", "unknown"],
+    subtypeHints: ["ipid", "kid", "precontract_info_sheet"],
+    defaultIntent: "illustrative_only",
+    extractionRules: {
+      required: ["extractedFields.provider", "extractedFields.productName"],
+      optional: [
+        "extractedFields.productType",
+        "extractedFields.coverageSummary",
+        "extractedFields.exclusions",
+        "extractedFields.premiumRange",
+        ...commonOptional,
+      ],
+      conditional: [],
+      notApplicableRules: ["contract-specific fields are not_applicable"],
+      matchingKeys: ["clientName"],
+      crmMappingTarget: "documents",
+      reviewRules: ["precontract info is never a signed contract"],
+      suggestedActionRules: [
+        "attach_to_client_documents",
+        "attach_to_existing_contract",
+      ],
+    },
+  },
+  identity_document: {
+    primaryType: "identity_document",
+    allowedLifecycle: ["confirmation", "unknown"],
+    subtypeHints: ["citizen_id", "passport", "drivers_license", "residence_permit"],
+    defaultIntent: "supports_underwriting_or_bonita",
+    extractionRules: {
+      required: ["extractedFields.documentType", "extractedFields.fullName"],
+      optional: [
+        "extractedFields.documentNumber",
+        "extractedFields.birthDate",
+        "extractedFields.nationality",
+        "extractedFields.issuedDate",
+        "extractedFields.expiryDate",
+        "extractedFields.issuingAuthority",
+        "extractedFields.address",
+        ...commonOptional,
+      ],
+      conditional: ["extractedFields.maskedPersonalId_if_visible"],
+      notApplicableRules: ["financial product fields are not_applicable"],
+      matchingKeys: ["fullName", "birthDate", "maskedPersonalId"],
+      crmMappingTarget: "documents+identity_verification",
+      reviewRules: ["high sensitivity - identity data", "never auto-apply without review"],
+      suggestedActionRules: [
+        "attach_to_existing_client",
+        "request_manual_review",
+        "mark_as_supporting_document",
+      ],
+    },
+  },
+  medical_questionnaire: {
+    primaryType: "medical_questionnaire",
+    allowedLifecycle: ["confirmation", "unknown"],
+    subtypeHints: ["health_questionnaire", "medical_report"],
+    defaultIntent: "supports_underwriting_or_bonita",
+    extractionRules: {
+      required: ["extractedFields.clientName"],
+      optional: [
+        "extractedFields.questionnaireDate",
+        "extractedFields.relatedContractNumber",
+        "extractedFields.insurer",
+        ...commonOptional,
+      ],
+      conditional: [],
+      notApplicableRules: ["health data extraction requires explicit compliance clearance"],
+      matchingKeys: ["clientName", "birthDate", "maskedPersonalId"],
+      crmMappingTarget: "documents+health_underwriting",
+      reviewRules: [
+        "health_data sensitivity profile must be applied",
+        "never extract specific health conditions without compliance flag",
+      ],
+      suggestedActionRules: [
+        "attach_to_existing_client",
+        "attach_to_existing_contract",
+        "request_manual_review",
+      ],
+    },
+  },
+  consent_or_declaration: {
+    primaryType: "consent_or_declaration",
+    allowedLifecycle: ["confirmation", "unknown"],
+    subtypeHints: ["gdpr_consent", "aml_declaration", "pep_declaration", "investment_risk_acknowledgment"],
+    defaultIntent: "reference_only",
+    extractionRules: {
+      required: ["extractedFields.declarationType", "extractedFields.clientName"],
+      optional: [
+        "extractedFields.signedDate",
+        "extractedFields.relatedContractNumber",
+        "extractedFields.provider",
+        ...commonOptional,
+      ],
+      conditional: [],
+      notApplicableRules: ["product contract fields are not_applicable"],
+      matchingKeys: ["clientName", "birthDate", "maskedPersonalId"],
+      crmMappingTarget: "documents+compliance",
+      reviewRules: ["consent is not a product document"],
+      suggestedActionRules: [
+        "attach_to_existing_client",
+        "attach_to_existing_contract",
+        "mark_as_supporting_document",
+      ],
     },
   },
   service_agreement: {
@@ -622,23 +1042,35 @@ export function classifyLifecycleFromPrimary(
   const fallbackMap: Record<(typeof PRIMARY_DOCUMENT_TYPES)[number], DocumentLifecycleStatus> = {
     life_insurance_final_contract: "final_contract",
     life_insurance_contract: "final_contract",
+    life_insurance_investment_contract: "final_contract",
     life_insurance_proposal: "proposal",
     life_insurance_change_request: "policy_change_request",
     life_insurance_modelation: "illustration",
+    nonlife_insurance_contract: "final_contract",
     consumer_loan_contract: "final_contract",
     consumer_loan_with_payment_protection: "final_contract",
     mortgage_document: "unknown",
+    pension_contract: "final_contract",
+    investment_service_agreement: "onboarding_form",
+    investment_subscription_document: "proposal",
+    investment_modelation: "modelation",
+    payment_instruction: "confirmation",
+    investment_payment_instruction: "confirmation",
+    payment_schedule: "statement",
     payslip_document: "payroll_statement",
     income_proof_document: "income_proof",
     income_confirmation: "confirmation",
     corporate_tax_return: "tax_return",
     self_employed_tax_or_income_document: "tax_or_income_proof",
+    financial_analysis_document: "confirmation",
     insurance_policy_change_or_service_doc: "policy_change_request",
     bank_statement: "statement",
-    investment_service_agreement: "onboarding_form",
-    investment_subscription_document: "proposal",
     liability_insurance_offer: "offer",
     insurance_comparison: "comparison",
+    precontract_information: "offer",
+    identity_document: "confirmation",
+    medical_questionnaire: "confirmation",
+    consent_or_declaration: "confirmation",
     service_agreement: "final_contract",
     generic_financial_document: "unknown",
     unsupported_or_unknown: "unknown",
@@ -670,13 +1102,66 @@ export function classifyIntentFromClassification(params: {
   return "reference_only";
 }
 
+const PAYMENT_INSTRUCTION_PROMPT_ADDENDUM = `
+KRITICKÉ POKYNY PRO PLATEBNÍ INSTRUKCE:
+Tento dokument obsahuje platební pokyny. Extrahuj přesně:
+- komu platit (provider/platform),
+- na jaký účet (bankAccount, IBAN, bankCode),
+- jaký symbol použít (variableSymbol, specificSymbol),
+- kolik platit (regularAmount, oneOffAmount),
+- jak často (paymentFrequency),
+- v jaké měně (currency),
+- od kdy (firstPaymentDate),
+- co je účelem platby (paymentPurpose, paymentType),
+- minimální investice (minimumInvestment), pokud je uvedena,
+- pokud jsou oddělené instrukce pro CZK/EUR/USD, extrahuj je odděleně do separateInstructionsCZK, separateInstructionsEUR, separateInstructionsUSD.
+
+Platební instrukce NIKDY NENÍ smlouva. Neoznačuj ji jako final_contract.
+U chybějících platebních údajů přidej reviewWarning s kódem "incomplete_payment_details".
+`;
+
+const PROPOSAL_VS_CONTRACT_PROMPT_ADDENDUM = `
+KRITICKÉ: Rozliš návrh/modelaci od finální smlouvy.
+- "Pojistná smlouva" + číslo smlouvy + podpis/datum uzavření = finální smlouva.
+- "Návrh pojistné smlouvy", "Detailní nabídka", "Modelace", "informační sdělení" = NÁVRH, ne smlouva.
+- "může se lišit od konečné výše" = modelace.
+- Pokud chybí finální doložka nebo podpis, raději označ jako proposal.
+Nastav contentFlags.isFinalContract resp. contentFlags.isProposalOnly.
+`;
+
+const CHANGE_REQUEST_PROMPT_ADDENDUM = `
+Tento dokument je změna/dodatek k existující smlouvě.
+Vždy extrahuj referenci na existující číslo smlouvy (existingPolicyNumber).
+Nikdy neoznačuj jako novou smlouvu.
+`;
+
+function getTypeSpecificAddendum(primaryType: string): string {
+  if (primaryType === "payment_instruction" || primaryType === "investment_payment_instruction") {
+    return PAYMENT_INSTRUCTION_PROMPT_ADDENDUM;
+  }
+  if (primaryType === "life_insurance_proposal" || primaryType === "life_insurance_modelation" ||
+      primaryType === "investment_modelation" || primaryType === "precontract_information" ||
+      primaryType === "liability_insurance_offer" || primaryType === "insurance_comparison") {
+    return PROPOSAL_VS_CONTRACT_PROMPT_ADDENDUM;
+  }
+  if (primaryType === "life_insurance_change_request" || primaryType === "insurance_policy_change_or_service_doc") {
+    return CHANGE_REQUEST_PROMPT_ADDENDUM;
+  }
+  if (primaryType === "life_insurance_final_contract" || primaryType === "life_insurance_contract" ||
+      primaryType === "life_insurance_investment_contract" || primaryType === "nonlife_insurance_contract") {
+    return PROPOSAL_VS_CONTRACT_PROMPT_ADDENDUM;
+  }
+  return "";
+}
+
 export function buildSchemaPrompt(
   schemaDef: DocumentSchemaDefinition,
   isScanFallback: boolean
 ): string {
   const scanHint = isScanFallback
-    ? "Dokument je pravděpodobně scan. U nečitelných dat použij status inferred_low_confidence nebo not_found."
+    ? "Dokument je pravděpodobně scan. U nečitelných dat použij status inferred_low_confidence nebo not_found. Pokud je kvalita nízká, přidej reviewWarning."
     : "";
+  const typeAddendum = getTypeSpecificAddendum(schemaDef.primaryType);
   return `Jsi extrakční engine pro finanční dokumenty.\n${scanHint}\n\n` +
     `Dokument klasifikace:\n` +
     `- primaryType: ${schemaDef.primaryType}\n` +
@@ -697,7 +1182,8 @@ export function buildSchemaPrompt(
     `- reviewWarnings[]\n` +
     `- suggestedActions[]\n` +
     `- dataCompleteness\n` +
-    `- sensitivityProfile\n\n` +
+    `- sensitivityProfile\n` +
+    `- contentFlags{isFinalContract, isProposalOnly, containsPaymentInstructions, containsClientData, containsAdvisorData, containsMultipleDocumentSections}\n\n` +
     `Rules:\n` +
     `- required fields: ${schemaDef.extractionRules.required.join(", ") || "none"}\n` +
     `- optional fields: ${schemaDef.extractionRules.optional.join(", ") || "none"}\n` +
@@ -711,7 +1197,8 @@ export function buildSchemaPrompt(
     `- explicitly_not_selected použij pro \"nesjednáno\".\n` +
     `- not_applicable když pole pro tento typ dokumentu nedává smysl.\n` +
     `- missing když je pole required, ale chybí v dokumentu.\n` +
-    `- not_found když dokument je relevantní, ale údaj se nepodařilo najít.\n`;
+    `- not_found když dokument je relevantní, ale údaj se nepodařilo najít.\n` +
+    typeAddendum;
 }
 
 export function safeParseReviewEnvelope(raw: string): {

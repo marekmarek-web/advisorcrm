@@ -4,6 +4,7 @@
  */
 const os = require("os");
 const { execSync } = require("child_process");
+const { ensureNativeLoginUrl } = require("./capacitor-dev-url");
 
 function getLocalIp() {
   const ifaces = os.networkInterfaces();
@@ -16,7 +17,7 @@ function getLocalIp() {
 }
 
 const ip = getLocalIp();
-const url = `http://${ip}:3000/prihlaseni?native=1`;
+const url = ensureNativeLoginUrl(`http://${ip}:3000`);
 console.log("Using CAPACITOR_SERVER_URL =", url);
 execSync("npx cap sync", {
   stdio: "inherit",

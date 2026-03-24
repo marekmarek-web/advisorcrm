@@ -57,6 +57,14 @@ function baseEnvelope(primaryType: DocumentReviewEnvelope["documentClassificatio
     reviewWarnings: [],
     suggestedActions: [],
     sensitivityProfile: "standard_personal_data",
+    contentFlags: {
+      isFinalContract: false,
+      isProposalOnly: false,
+      containsPaymentInstructions: false,
+      containsClientData: false,
+      containsAdvisorData: false,
+      containsMultipleDocumentSections: false,
+    },
   };
 }
 

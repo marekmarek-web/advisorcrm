@@ -1,4 +1,5 @@
 const path = require("path");
+const { PHASE_DEVELOPMENT_SERVER } = require("next/constants");
 const { withSentryConfig } = require("@sentry/nextjs");
 const nextVersion = require("next/package.json").version;
 const nextMajor = Number.parseInt(nextVersion.split(".")[0] || "0", 10);
@@ -48,6 +49,21 @@ const nextConfig = {
 // Workaround for __webpack_require__.n is not a function in dev.
 module.exports = (phase, _context) => {
   const base = { ...nextConfig };
+  if (phase === PHASE_DEVELOPMENT_SERVER) {
+    const extra =
+      process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean) ?? [];
+    base.allowedDevOrigins = [
+      "10.0.2.2",
+      "127.0.0.1",
+      "localhost",
+      "*.ngrok-free.app",
+      "*.ngrok.io",
+      "*.ngrok.app",
+      ...extra,
+    ];
+  }
   const origWebpack = base.webpack;
   base.webpack = (config, options) => {
     const c = origWebpack ? origWebpack(config, options) : config;

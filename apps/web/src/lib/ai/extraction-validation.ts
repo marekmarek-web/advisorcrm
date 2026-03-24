@@ -21,15 +21,33 @@ const PAYMENT_FREQUENCY_VALUES = new Set([
   "quarterly",
   "yearly",
   "annual",
+  "semi-annual",
   "one-time",
   "jednorázově",
   "měsíčně",
   "čtvrtletně",
+  "pololetně",
   "ročně",
-  "yearly",
-  "quarterly",
-  "monthly",
 ]);
+
+/** Czech IBAN: CZ + 2 check digits + 20 digits = 24 chars. Generic: 15-34 alphanumeric. */
+function isValidIbanFormat(iban: string): boolean {
+  const cleaned = iban.replace(/\s/g, "").toUpperCase();
+  if (cleaned.startsWith("CZ")) return /^CZ\d{22}$/.test(cleaned);
+  return /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(cleaned);
+}
+
+/** Czech account number: prefix-number/bankCode or just number/bankCode. */
+function isValidCzechAccountFormat(account: string): boolean {
+  const cleaned = account.replace(/\s/g, "");
+  return /^(\d{0,6}-?)?\d{2,10}\/\d{4}$/.test(cleaned);
+}
+
+/** Variable symbol: 1-10 digits. */
+function isValidVariableSymbol(vs: string): boolean {
+  const cleaned = vs.replace(/\s/g, "");
+  return /^\d{1,10}$/.test(cleaned);
+}
 
 function addWarning(
   warnings: ValidationWarning[],
@@ -56,6 +74,9 @@ export function validateExtractedContract(payload: {
     amount?: number | string | null;
     currency?: string | null;
     frequency?: string | null;
+    iban?: string | null;
+    accountNumber?: string | null;
+    variableSymbol?: string | null;
   } | null;
   effectiveDate?: string | null;
   expirationDate?: string | null;
@@ -234,12 +255,142 @@ export function validateExtractedContract(payload: {
     }
   }
 
+  // IBAN
+  const iban = payload.paymentDetails?.iban
+    ?? (payload as Record<string, unknown>).iban as string | undefined;
+  if (iban != null && String(iban).trim() !== "") {
+    if (!isValidIbanFormat(String(iban).trim())) {
+      addWarning(
+        warnings,
+        reasonsForReview,
+        "IBAN_FORMAT",
+        "IBAN nemá platný formát",
+        "iban",
+        "iban_format"
+      );
+    }
+  }
+
+  // Account number
+  const accountNumber = payload.paymentDetails?.accountNumber
+    ?? (payload as Record<string, unknown>).accountNumber as string | undefined;
+  if (accountNumber != null && String(accountNumber).trim() !== "") {
+    const cleaned = String(accountNumber).trim();
+    if (cleaned.includes("/") && !isValidCzechAccountFormat(cleaned)) {
+      addWarning(
+        warnings,
+        reasonsForReview,
+        "ACCOUNT_NUMBER_FORMAT",
+        "Číslo účtu nemá platný formát",
+        "accountNumber",
+        "account_number_format"
+      );
+    }
+  }
+
+  // Variable symbol
+  const variableSymbol = payload.paymentDetails?.variableSymbol
+    ?? (payload as Record<string, unknown>).variableSymbol as string | undefined;
+  if (variableSymbol != null && String(variableSymbol).trim() !== "") {
+    if (!isValidVariableSymbol(String(variableSymbol).trim())) {
+      addWarning(
+        warnings,
+        reasonsForReview,
+        "VARIABLE_SYMBOL_FORMAT",
+        "Variabilní symbol nemá platný formát (1-10 číslic)",
+        "variableSymbol",
+        "variable_symbol_format"
+      );
+    }
+  }
+
   const valid = warnings.filter((w) =>
     ["AMOUNT_INVALID", "AMOUNT_NEGATIVE", "DATE_EFFECTIVE", "DATE_EXPIRATION", "DATE_RANGE"].includes(w.code)
   ).length === 0;
 
   return {
     valid,
+    warnings,
+    reasonsForReview: [...new Set(reasonsForReview)],
+  };
+}
+
+/**
+ * Extended validation for the full DocumentReviewEnvelope.
+ * Includes proposal/contract confusion detection and payment instruction completeness.
+ */
+export function validateDocumentEnvelope(payload: {
+  documentClassification?: {
+    primaryType?: string;
+    lifecycleStatus?: string;
+  };
+  contentFlags?: {
+    isFinalContract?: boolean;
+    isProposalOnly?: boolean;
+    containsPaymentInstructions?: boolean;
+  };
+  extractedFields?: Record<string, { value?: unknown; status?: string }>;
+}): ValidationResult {
+  const warnings: ValidationWarning[] = [];
+  const reasonsForReview: string[] = [];
+  const primaryType = payload.documentClassification?.primaryType ?? "";
+  const lifecycle = payload.documentClassification?.lifecycleStatus ?? "";
+  const fields = payload.extractedFields ?? {};
+
+  const proposalTypes = new Set([
+    "life_insurance_proposal", "life_insurance_modelation", "investment_modelation",
+    "precontract_information", "liability_insurance_offer", "insurance_comparison",
+  ]);
+  if (proposalTypes.has(primaryType) && payload.contentFlags?.isFinalContract) {
+    addWarning(warnings, reasonsForReview, "PROPOSAL_MARKED_AS_CONTRACT",
+      "Návrh/modelace je označen jako finální smlouva. Zkontrolujte klasifikaci.",
+      "documentClassification.lifecycleStatus", "proposal_marked_as_contract");
+  }
+
+  const contractTypes = new Set([
+    "life_insurance_final_contract", "life_insurance_contract",
+    "life_insurance_investment_contract", "nonlife_insurance_contract",
+    "consumer_loan_contract", "consumer_loan_with_payment_protection",
+  ]);
+  if (contractTypes.has(primaryType) && payload.contentFlags?.isProposalOnly) {
+    addWarning(warnings, reasonsForReview, "CONTRACT_MARKED_AS_PROPOSAL",
+      "Finální smlouva je označena jako návrh. Zkontrolujte klasifikaci.",
+      "documentClassification.lifecycleStatus", "contract_marked_as_proposal");
+  }
+
+  const paymentTypes = new Set(["payment_instruction", "investment_payment_instruction"]);
+  if (paymentTypes.has(primaryType)) {
+    if (lifecycle === "final_contract") {
+      addWarning(warnings, reasonsForReview, "PAYMENT_INSTRUCTION_AS_CONTRACT",
+        "Platební instrukce nesmí být označena jako smlouva.",
+        "documentClassification.lifecycleStatus", "payment_instruction_as_contract");
+    }
+    const requiredPaymentFields = ["bankAccount", "variableSymbol"];
+    const missingPayment = requiredPaymentFields.filter((k) => {
+      const f = fields[k];
+      return !f || f.status !== "extracted" || f.value == null;
+    });
+    if (missingPayment.length > 0) {
+      addWarning(warnings, reasonsForReview, "INCOMPLETE_PAYMENT_DETAILS",
+        `Platební instrukce neobsahují dost údajů: chybí ${missingPayment.join(", ")}`,
+        undefined, "incomplete_payment_details");
+    }
+  }
+
+  const changeTypes = new Set(["life_insurance_change_request", "insurance_policy_change_or_service_doc"]);
+  if (changeTypes.has(primaryType)) {
+    const policyRef = fields.existingPolicyNumber ?? fields.contractNumber;
+    if (!policyRef || policyRef.status !== "extracted" || !policyRef.value) {
+      addWarning(warnings, reasonsForReview, "CHANGE_WITHOUT_CONTRACT_REF",
+        "Změnový dokument neobsahuje referenci na existující smlouvu.",
+        "extractedFields.existingPolicyNumber", "change_without_contract_ref");
+    }
+  }
+
+  return {
+    valid: warnings.filter((w) =>
+      ["PROPOSAL_MARKED_AS_CONTRACT", "PAYMENT_INSTRUCTION_AS_CONTRACT"].includes(w.code)
+    ).length === 0,
     warnings,
     reasonsForReview: [...new Set(reasonsForReview)],
   };
