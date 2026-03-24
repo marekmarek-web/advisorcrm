@@ -184,8 +184,8 @@
 @media (min-width: 1024px) {
   .mainWorkspaceWithPreview .previewPane {
     position: relative;
-    width: min(42vw, 480px);
     max-width: 100%;
+    min-width: 0;
     flex-shrink: 0;
     border-left: 1px solid var(--border);
     box-shadow: none;
@@ -263,6 +263,39 @@
   max-height: min(70vh, 640px);
   margin: auto;
   object-fit: contain;
+}
+.previewResizeHandle {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .mainWorkspaceWithPreview .previewResizeHandle {
+    display: block;
+    width: 12px;
+    cursor: col-resize;
+    touch-action: none;
+    flex-shrink: 0;
+    position: relative;
+    background: transparent;
+  }
+  .mainWorkspaceWithPreview .previewResizeHandle::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 5px;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--border);
+    transition: background-color 0.15s ease;
+  }
+  .mainWorkspaceWithPreview .previewResizeHandle:hover::before,
+  .mainWorkspaceWithPreview .previewResizeHandle:focus-visible::before,
+  .mainWorkspaceWithPreview .previewResizeHandleActive::before {
+    background: var(--accent);
+  }
+  .mainWorkspaceWithPreview .previewResizeHandle:focus-visible {
+    outline: none;
+  }
 }
 
 /* Alert banner */

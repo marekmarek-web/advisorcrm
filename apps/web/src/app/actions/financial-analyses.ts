@@ -4,7 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { db } from "db";
 import { financialAnalyses, householdMembers, contacts, households } from "db";
-import { eq, and, desc } from "db";
+import { eq, and, desc, sql } from "db";
 
 export type FinancialAnalysisStatus = "draft" | "completed" | "exported" | "archived";
 
@@ -85,7 +85,8 @@ export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem
       lastExportedAt: financialAnalyses.lastExportedAt,
       contactId: financialAnalyses.contactId,
       householdId: financialAnalyses.householdId,
-      payload: financialAnalyses.payload,
+      clientName: sql<string | null>`${financialAnalyses.payload} #>> '{data,client,name}'`,
+      currentStep: sql<number | null>`(${financialAnalyses.payload} ->> 'currentStep')::int`,
       linkedCompanyId: financialAnalyses.linkedCompanyId,
       lastRefreshedFromSharedAt: financialAnalyses.lastRefreshedFromSharedAt,
     })
@@ -93,12 +94,8 @@ export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem
     .where(eq(financialAnalyses.tenantId, auth.tenantId))
     .orderBy(desc(financialAnalyses.updatedAt));
   return rows.map((r) => {
-    const payload = r.payload as {
-      data?: { client?: { name?: string }; [k: string]: unknown };
-      currentStep?: number;
-    } | null;
-    const clientName = payload?.data?.client?.name ?? null;
-    const currentStep = payload?.currentStep ?? 0;
+    const clientName = r.clientName ?? null;
+    const currentStep = r.currentStep ?? 0;
     const progress =
       r.status === "draft" || r.status === "archived"
         ? Math.min(100, Math.round((currentStep / FINANCIAL_WIZARD_TOTAL_STEPS) * 100))

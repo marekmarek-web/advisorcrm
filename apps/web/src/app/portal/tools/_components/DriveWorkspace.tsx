@@ -6,6 +6,11 @@ import { IntegrationConnectionGate } from "./IntegrationConnectionGate";
 import { isDrivePreviewSupportedInApp } from "@/lib/integrations/drive-preview-strategy";
 import s from "./DriveWorkspace.module.css";
 
+const PREVIEW_WIDTH_STORAGE_KEY = "drivePreviewPaneWidth";
+const PREVIEW_MIN_WIDTH = 320;
+const PREVIEW_DEFAULT_WIDTH = 560;
+const PREVIEW_MIN_MAIN_COLUMN = 320;
+
 type DriveFile = {
   id: string;
   name: string;
@@ -325,8 +330,73 @@ export function DriveWorkspace() {
   const [shareOpen, setShareOpen] = useState(false);
   const [folderStack, setFolderStack] = useState<{ id?: string; name: string }[]>([{ name: "Můj disk" }]);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
+  const [previewPaneWidthPx, setPreviewPaneWidthPx] = useState(PREVIEW_DEFAULT_WIDTH);
+  const [isDesktopPreviewLayout, setIsDesktopPreviewLayout] = useState(false);
+  const [isResizingPreview, setIsResizingPreview] = useState(false);
+  const mainWorkspaceRef = useRef<HTMLDivElement>(null);
+  const resizeDragRef = useRef<{ pointerId: number | null; min: number; max: number }>({
+    pointerId: null,
+    min: PREVIEW_MIN_WIDTH,
+    max: PREVIEW_DEFAULT_WIDTH,
+  });
 
   const closePreview = useCallback(() => setPreviewFile(null), []);
+
+  const getPreviewWidthBounds = useCallback(() => {
+    if (typeof window === "undefined") {
+      return { min: PREVIEW_MIN_WIDTH, max: PREVIEW_DEFAULT_WIDTH };
+    }
+    const workspaceWidth = mainWorkspaceRef.current?.clientWidth ?? window.innerWidth;
+    const hardMax = Math.min(Math.floor(window.innerWidth * 0.9), 1400);
+    const layoutMax = Math.max(PREVIEW_MIN_WIDTH, workspaceWidth - PREVIEW_MIN_MAIN_COLUMN);
+    return {
+      min: PREVIEW_MIN_WIDTH,
+      max: Math.max(PREVIEW_MIN_WIDTH, Math.min(hardMax, layoutMax)),
+    };
+  }, []);
+
+  const clampPreviewWidth = useCallback((value: number) => {
+    const bounds = getPreviewWidthBounds();
+    return Math.min(Math.max(Math.round(value), bounds.min), bounds.max);
+  }, [getPreviewWidthBounds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const applyDesktopState = () => setIsDesktopPreviewLayout(media.matches);
+    applyDesktopState();
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", applyDesktopState);
+      return () => media.removeEventListener("change", applyDesktopState);
+    }
+    media.addListener(applyDesktopState);
+    return () => media.removeListener(applyDesktopState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(PREVIEW_WIDTH_STORAGE_KEY);
+    const parsed = raw ? Number(raw) : Number.NaN;
+    if (Number.isFinite(parsed)) {
+      setPreviewPaneWidthPx(clampPreviewWidth(parsed));
+      return;
+    }
+    setPreviewPaneWidthPx(clampPreviewWidth(PREVIEW_DEFAULT_WIDTH));
+  }, [clampPreviewWidth]);
+
+  useEffect(() => {
+    if (!isDesktopPreviewLayout || typeof window === "undefined") return;
+    window.localStorage.setItem(PREVIEW_WIDTH_STORAGE_KEY, String(previewPaneWidthPx));
+  }, [isDesktopPreviewLayout, previewPaneWidthPx]);
+
+  useEffect(() => {
+    if (!isDesktopPreviewLayout || typeof window === "undefined") return;
+    const onResize = () => {
+      setPreviewPaneWidthPx((current) => clampPreviewWidth(current));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [isDesktopPreviewLayout, clampPreviewWidth]);
 
   useEffect(() => {
     if (!previewFile) return;
@@ -336,6 +406,59 @@ export function DriveWorkspace() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [previewFile, closePreview]);
+
+  const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDesktopPreviewLayout) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const bounds = getPreviewWidthBounds();
+    resizeDragRef.current = { pointerId: e.pointerId, min: bounds.min, max: bounds.max };
+    setIsResizingPreview(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [isDesktopPreviewLayout, getPreviewWidthBounds]);
+
+  const handleResizePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = resizeDragRef.current;
+    if (drag.pointerId !== e.pointerId) return;
+    const rect = mainWorkspaceRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const next = rect.right - e.clientX;
+    const clamped = Math.min(Math.max(Math.round(next), drag.min), drag.max);
+    setPreviewPaneWidthPx(clamped);
+  }, []);
+
+  const endPreviewResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = resizeDragRef.current;
+    if (drag.pointerId !== e.pointerId) return;
+    resizeDragRef.current.pointerId = null;
+    setIsResizingPreview(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
+
+  const handleResizeHandleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isDesktopPreviewLayout) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setPreviewPaneWidthPx((current) => clampPreviewWidth(current + 16));
+      return;
+    }
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setPreviewPaneWidthPx((current) => clampPreviewWidth(current - 16));
+      return;
+    }
+    if (e.key === "Home") {
+      e.preventDefault();
+      setPreviewPaneWidthPx(getPreviewWidthBounds().min);
+      return;
+    }
+    if (e.key === "End") {
+      e.preventDefault();
+      setPreviewPaneWidthPx(getPreviewWidthBounds().max);
+    }
+  }, [clampPreviewWidth, getPreviewWidthBounds, isDesktopPreviewLayout]);
 
   const loadFiles = useCallback(async () => {
     setError(null);
@@ -551,7 +674,7 @@ export function DriveWorkspace() {
             </div>
           )}
 
-          <div className={`${s.mainWorkspace} ${previewFile ? s.mainWorkspaceWithPreview : ""}`}>
+          <div ref={mainWorkspaceRef} className={`${s.mainWorkspace} ${previewFile ? s.mainWorkspaceWithPreview : ""}`}>
             <div className={s.mainColumn}>
               <div className={s.contentToolbar}>
                 <div className={s.breadcrumb}>
@@ -706,8 +829,31 @@ export function DriveWorkspace() {
               </div>
             </div>
 
+            {previewFile && isDesktopPreviewLayout && (
+              <div
+                className={`${s.previewResizeHandle} ${isResizingPreview ? s.previewResizeHandleActive : ""}`}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Změnit šířku náhledu"
+                aria-valuemin={PREVIEW_MIN_WIDTH}
+                aria-valuemax={getPreviewWidthBounds().max}
+                aria-valuenow={previewPaneWidthPx}
+                tabIndex={0}
+                onPointerDown={handleResizePointerDown}
+                onPointerMove={handleResizePointerMove}
+                onPointerUp={endPreviewResize}
+                onPointerCancel={endPreviewResize}
+                onKeyDown={handleResizeHandleKeyDown}
+              />
+            )}
+
             {previewFile && (
-              <aside className={s.previewPane} role="dialog" aria-label="Náhled souboru">
+              <aside
+                className={s.previewPane}
+                role="dialog"
+                aria-label="Náhled souboru"
+                style={isDesktopPreviewLayout ? { width: `${previewPaneWidthPx}px` } : undefined}
+              >
                 <div className={s.previewHeader}>
                   <span className={s.previewTitle} title={previewFile.name}>{previewFile.name}</span>
                   <button type="button" className={s.previewClose} onClick={closePreview}>

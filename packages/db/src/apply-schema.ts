@@ -40,7 +40,6 @@ ALTER TABLE contacts ADD COLUMN IF NOT EXISTS zip text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS tags text[];
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS lifecycle_stage text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS avatar_url text;
-ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS avatar_url text;
 ALTER TABLE board_views ADD COLUMN IF NOT EXISTS groups_config jsonb;
 ALTER TABLE households ADD COLUMN IF NOT EXISTS icon text;
 ALTER TABLE mindmap_maps ADD COLUMN IF NOT EXISTS name text;
@@ -95,10 +94,18 @@ CREATE TABLE IF NOT EXISTS advisor_preferences (
   user_id text NOT NULL,
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   quick_actions jsonb,
+  avatar_url text,
+  phone text,
+  website text,
+  report_logo_url text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(tenant_id, user_id)
 );
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS website text;
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS report_logo_url text;
 CREATE TABLE IF NOT EXISTS companies (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,

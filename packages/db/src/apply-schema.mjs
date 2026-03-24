@@ -166,6 +166,50 @@ CREATE TABLE IF NOT EXISTS financial_shared_facts (
   updated_at timestamptz NOT NULL DEFAULT now(),
   created_by text
 );
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS analysis_id uuid;
+DO $$ BEGIN
+  ALTER TABLE tasks ADD CONSTRAINT tasks_analysis_id_financial_analyses_id_fk
+    FOREIGN KEY (analysis_id) REFERENCES financial_analyses(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS advisor_preferences (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id text NOT NULL,
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  quick_actions jsonb,
+  avatar_url text,
+  phone text,
+  website text,
+  report_logo_url text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, user_id)
+);
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS website text;
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS report_logo_url text;
+CREATE TABLE IF NOT EXISTS fa_plan_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  analysis_id uuid NOT NULL REFERENCES financial_analyses(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES contacts(id) ON DELETE SET NULL,
+  opportunity_id uuid REFERENCES opportunities(id) ON DELETE SET NULL,
+  item_type text NOT NULL,
+  item_key text,
+  segment_code text,
+  label text,
+  provider text,
+  amount_monthly numeric(14,2),
+  amount_annual numeric(14,2),
+  status text NOT NULL DEFAULT 'recommended',
+  source_payload jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS fa_plan_items_analysis_idx ON fa_plan_items (analysis_id);
+CREATE INDEX IF NOT EXISTS fa_plan_items_contact_idx ON fa_plan_items (contact_id);
 `;
 
 // Globální partneři (tenant_id NULL) – vidí je každý tenant v dropdownu (po jednom, aby nepadl multi-statement)
