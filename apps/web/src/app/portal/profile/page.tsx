@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth/require-auth";
+import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
+import { getWorkspaceBillingSnapshot } from "@/lib/stripe/workspace-billing";
 import { db, tenants, advisorPreferences, memberships } from "db";
 import { eq, and } from "db";
 import { AdvisorProfileView } from "./AdvisorProfileView";
@@ -19,6 +21,7 @@ const FALLBACK_INITIAL = {
   reportLogoUrl: null as string | null,
   currentSupervisorId: null as string | null,
   supervisorOptions: [] as SupervisorOption[],
+  billing: undefined as WorkspaceBillingSnapshot | undefined,
 };
 
 export default async function ProfilePage() {
@@ -74,6 +77,11 @@ export default async function ProfilePage() {
       .limit(1);
     const supervisorOptions = await listSupervisorOptions().catch(() => []);
 
+    const billing = await getWorkspaceBillingSnapshot({
+      tenantId: auth.tenantId,
+      roleName: auth.roleName,
+    });
+
     initial = {
       email,
       fullName,
@@ -84,6 +92,7 @@ export default async function ProfilePage() {
       reportLogoUrl: prefsRow?.reportLogoUrl ?? null,
       currentSupervisorId: membershipRow?.parentId ?? null,
       supervisorOptions,
+      billing,
     };
   } catch {
     isFallback = true;

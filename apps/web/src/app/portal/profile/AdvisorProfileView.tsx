@@ -26,6 +26,8 @@ import {
   BarChart3,
   User,
 } from "lucide-react";
+import { WorkspaceStripeBilling } from "@/app/components/billing/WorkspaceStripeBilling";
+import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
 import type { SupervisorOption } from "@/app/actions/auth";
@@ -53,6 +55,7 @@ export type AdvisorProfileInitial = {
   reportLogoUrl?: string | null;
   currentSupervisorId?: string | null;
   supervisorOptions?: SupervisorOption[];
+  billing?: WorkspaceBillingSnapshot;
 };
 
 function parseFullName(full: string | null): { firstName: string; lastName: string } {
@@ -1004,6 +1007,12 @@ export function AdvisorProfileView({
                 <BarChart3 size={18} /> Produkce
               </Link>
             </div>
+
+            {initial.billing ? (
+              <div className="mt-8 pt-8 border-t border-slate-100">
+                <WorkspaceStripeBilling billing={initial.billing} billingContext="profile" />
+              </div>
+            ) : null}
           </div>
         )}
       </main>

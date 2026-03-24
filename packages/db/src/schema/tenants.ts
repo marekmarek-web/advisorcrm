@@ -4,6 +4,8 @@ export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  /** Stripe Customer id (cus_…), jeden na workspace */
+  stripeCustomerId: text("stripe_customer_id").unique(),
   notificationEmail: text("notification_email"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

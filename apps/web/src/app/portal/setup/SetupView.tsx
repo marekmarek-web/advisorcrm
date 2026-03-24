@@ -41,8 +41,10 @@ import {
   getDefaultQuickActionsConfig,
   type QuickActionId,
 } from "@/lib/quick-actions";
+import { WorkspaceStripeBilling } from "@/app/components/billing/WorkspaceStripeBilling";
 import { useToast } from "@/app/components/Toast";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
 
 const TABS = [
   { id: "osobni", label: "Osobní údaje", keywords: ["osobní", "údaje", "fakturace", "heslo", "zabezpečení", "2fa", "rychlé", "demo"] },
@@ -61,6 +63,7 @@ export type SetupInitial = {
   fullName: string | null;
   roleName: string;
   tenantName: string;
+  billing?: WorkspaceBillingSnapshot;
 };
 
 function parseFullName(full: string | null): { firstName: string; lastName: string } {
@@ -425,7 +428,12 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [gmailStatusError, setGmailStatusError] = useState<string | null>(null);
   const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
   // Resend
-  const [resendStatus, setResendStatus] = useState<{ connected: boolean; fromEmail: string | null } | null>(null);
+  const [resendStatus, setResendStatus] = useState<{
+    connected: boolean;
+    fromEmail: string | null;
+    replyToEmail: string | null;
+    fromDomain: string | null;
+  } | null>(null);
   const [resendStatusLoading, setResendStatusLoading] = useState(false);
   const [resendStatusError, setResendStatusError] = useState<string | null>(null);
 
@@ -572,13 +580,24 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     setResendStatusError(null);
     try {
       const res = await fetch("/api/resend/status");
-      const data = (await res.json().catch(() => ({}))) as { connected?: boolean; fromEmail?: string | null; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        connected?: boolean;
+        fromEmail?: string | null;
+        replyToEmail?: string | null;
+        fromDomain?: string | null;
+        error?: string;
+      };
       if (!res.ok) {
         setResendStatusError(data.error ?? "Stav Resendu se nepodařilo načíst.");
         setResendStatus(null);
         return;
       }
-      setResendStatus({ connected: !!data.connected, fromEmail: data.fromEmail ?? null });
+      setResendStatus({
+        connected: !!data.connected,
+        fromEmail: data.fromEmail ?? null,
+        replyToEmail: data.replyToEmail ?? null,
+        fromDomain: data.fromDomain ?? null,
+      });
     } catch {
       setResendStatusError("Stav Resendu se nepodařilo načíst.");
       setResendStatus(null);
@@ -1195,45 +1214,77 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 animate-in fade-in duration-300">
             <div className="lg:col-span-1 space-y-6">
               <div className="bg-gradient-to-br from-[#1a1c2e] to-slate-800 rounded-[24px] p-8 text-white shadow-xl">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Aktuální Tarif</h3>
-                <div className="flex items-end gap-3 mb-6">
-                  <span className="text-4xl font-black tracking-tight">Pro</span>
-                  <span className="text-sm font-bold text-slate-400 mb-1">/ 1 990 Kč měs.</span>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Aktuální tarif</h3>
+                <div className="flex flex-col gap-1 mb-6">
+                  <span className="text-3xl sm:text-4xl font-black tracking-tight leading-tight break-words">
+                    {initial.billing?.plan ?? "Zatím bez aktivního plánu"}
+                  </span>
+                  {initial.billing?.subscriptionStatus ? (
+                    <span className="text-sm font-bold text-slate-400">
+                      Stav: {initial.billing.subscriptionStatus}
+                    </span>
+                  ) : null}
+                  {initial.billing?.currentPeriodEnd ? (
+                    <span className="text-sm font-medium text-slate-400">
+                      Období do{" "}
+                      {new Date(initial.billing.currentPeriodEnd).toLocaleDateString("cs-CZ", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="space-y-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400" /> Neomezení klienti</div>
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400" /> AI Asistent</div>
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400" /> Týmová spolupráce</div>
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400" /> Finanční analýzy</div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400 shrink-0" /> Neomezení klienti</div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400 shrink-0" /> AI Asistent</div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400 shrink-0" /> Týmová spolupráce</div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300"><CheckCircle size={16} className="text-emerald-400 shrink-0" /> Finanční analýzy</div>
                 </div>
                 <div className="text-xs text-slate-500 mb-4 space-y-1">
-                  <p>Tarify: Starter 1 490 Kč · Pro 1 990 Kč · Team 2 490 Kč/uživ.</p>
-                  <p>Více na <a href="https://www.aidvisora.cz" target="_blank" rel="noopener noreferrer" className="underline text-indigo-300 hover:text-white">aidvisora.cz</a></p>
+                  <p>Přehled cen a tarifů na webu: Starter / Pro / Team.</p>
+                  <p>
+                    Více na{" "}
+                    <a href="https://www.aidvisora.cz" target="_blank" rel="noopener noreferrer" className="underline text-indigo-300 hover:text-white">
+                      aidvisora.cz
+                    </a>
+                  </p>
                 </div>
-                <button type="button" onClick={() => toast.showToast("Tato funkce bude dostupná v příští verzi.")} className="w-full py-3 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-colors min-h-[44px]">Změnit tarif</button>
                 <a
                   href="https://www.aidvisora.cz"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full mt-3 py-3 bg-slate-100 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-colors min-h-[44px] inline-flex items-center justify-center"
+                  className="w-full py-3 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-colors min-h-[44px] inline-flex items-center justify-center"
                 >
                   Porovnat tarify na webu
                 </a>
               </div>
-              <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6">
-                <h3 className="font-black text-slate-900 mb-4 flex items-center gap-2"><CreditCard size={18} className="text-slate-400" /> Platební metoda</h3>
-                <div className="flex items-center gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50 min-h-[44px]">
-                  <span className="text-sm font-medium text-slate-500">Připravujeme propojení platební metody.</span>
-                </div>
-              </div>
             </div>
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <CreditCard size={22} className="text-slate-400 shrink-0" />
+                  <h2 className="text-lg font-black text-slate-900">Předplatné a platby</h2>
+                </div>
+                <p className="text-sm text-slate-500 mb-6 max-w-xl">
+                  Zde zahájíte předplatné přes Stripe Checkout nebo otevřete Customer Portal (karty, faktury, zrušení).
+                </p>
+                {initial.billing ? (
+                  <WorkspaceStripeBilling billing={initial.billing} billingContext="setup" showTitle={false} />
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    Správa předplatného vyžaduje nastavení Stripe na serveru (např. STRIPE_SECRET_KEY, STRIPE_PRICE_ID) a databázovou migraci pro billing.
+                  </p>
+                )}
+              </div>
               <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden h-full">
                 <div className="px-6 sm:px-8 py-6 border-b border-slate-50">
                   <h2 className="text-lg font-black text-slate-900">Historie plateb</h2>
                 </div>
-                <div className="p-4">
-                  <p className="text-sm text-slate-500 py-6 text-center">Zatím žádné faktury. Po zapnutí fakturace se zde zobrazí historie.</p>
+                <div className="p-4 sm:p-6">
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    Detail faktur a historii najdete ve Stripe Customer Portalu (tlačítko „Spravovat platby a faktury“ výše).
+                  </p>
                 </div>
               </div>
             </div>
@@ -1542,7 +1593,22 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                                   {resendStatus?.connected ? "Resend je nakonfigurovaný." : "Resend zatím není nakonfigurovaný (chybí RESEND_API_KEY)."}
                                 </p>
                                 <p className="text-xs text-slate-500">
-                                  Odesílatel: <span className="font-bold text-slate-700">{resendStatus?.fromEmail ?? "—"}</span>
+                                  Odesílatel (From): <span className="font-bold text-slate-700">{resendStatus?.fromEmail ?? "—"}</span>
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  Doména pro generovaný From:{" "}
+                                  <span className="font-bold text-slate-700">{resendStatus?.fromDomain ?? "—"}</span>
+                                  <span className="block text-slate-400 mt-0.5">
+                                    Env <code className="text-[11px]">RESEND_FROM_DOMAIN</code> nebo z <code className="text-[11px]">RESEND_FROM_EMAIL</code>.
+                                  </span>
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  Odpovědi (Reply-To):{" "}
+                                  <span className="font-bold text-slate-700">{resendStatus?.replyToEmail ?? "—"}</span>
+                                  <span className="block text-slate-400 mt-0.5">
+                                    Firemní e-mail bez ověření domény v Resend nastav jako <code className="text-[11px]">RESEND_REPLY_TO</code>; u přihlášeného poradce
+                                    jde o e-mail z profilu / účtu.
+                                  </span>
                                 </p>
                                 <button
                                   type="button"

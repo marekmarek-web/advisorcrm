@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { getWorkspaceBillingSnapshot } from "@/lib/stripe/workspace-billing";
 import { db, tenants } from "db";
 import { eq } from "db";
 import { SetupView } from "./SetupView";
@@ -20,6 +21,11 @@ export default async function SetupPage() {
     .limit(1);
   const tenantName = tenantRow?.name ?? "—";
 
+  const billing = await getWorkspaceBillingSnapshot({
+    tenantId: auth.tenantId,
+    roleName: auth.roleName,
+  });
+
   return (
     <SetupView
       initial={{
@@ -28,6 +34,7 @@ export default async function SetupPage() {
         fullName,
         roleName: auth.roleName,
         tenantName,
+        billing,
       }}
     />
   );
