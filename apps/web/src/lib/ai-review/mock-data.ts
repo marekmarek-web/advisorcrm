@@ -15,6 +15,19 @@ export const MOCK_EXTRACTION: ExtractionDocument = {
   lastProcessedAt: "Dnes, 10:43",
   pdfUrl: "",
 
+  clientMatchCandidates: [
+    {
+      clientId: "mock-client-1",
+      score: 0.94,
+      confidence: "high",
+      reasons: ["Shoda jména", "Shoda adresy"],
+      matchedFields: { pojistnik: true, rc: true },
+      displayName: "Jan Novák",
+    },
+  ],
+  draftActions: [],
+  isApplied: false,
+
   executiveSummary:
     "Dokument je životní pojistná smlouva Kooperativy. AI vytěžila 14 z 16 klíčových polí. 2 pole vyžadují ruční kontrolu (měsíční pojistné, invalidita 3. stupeň). Chybí obmyšlená osoba — doporučeno dořešit s klientem.",
 
