@@ -14,6 +14,7 @@ client_secret*.json
 *.rar
 crm.rar
 api.txt
+resend api.txt
 
 # Capacitor temporary/build artifacts
 apps/web/.capacitor
