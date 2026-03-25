@@ -8,13 +8,14 @@ import { auditLog } from "db";
 
 export type AuditMeta = Record<string, unknown>;
 
-type AuditRequestContext = {
+export type AuditRequestContext = {
   ipAddress?: string | null;
   userAgent?: string | null;
   requestId?: string | null;
 };
 
-function buildRequestContext(request: Request): AuditRequestContext {
+/** Exported for background jobs that cannot keep the original Request alive. */
+export function buildRequestContext(request: Request): AuditRequestContext {
   const forwardedFor = request.headers.get("x-forwarded-for");
   const ipAddress = (forwardedFor?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || null) ?? null;
   const userAgent = request.headers.get("user-agent");

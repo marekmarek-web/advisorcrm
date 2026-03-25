@@ -75,16 +75,22 @@ export async function applyDraftActions(input: ApplyDraftActionsInput): Promise<
           if (!contactId) {
             throw new Error("Pro vytvoření smlouvy je potřeba nejdřív vytvořit klienta (create_client).");
           }
+          const segment = String(action.payload.segment ?? "ZP").trim() || "ZP";
+          const productName = (action.payload.productName as string)?.trim() || null;
+          const docType = (action.payload.documentType as string)?.trim() || null;
+          const noteParts = [productName, docType].filter(Boolean);
           await tx.insert(contracts).values({
             tenantId,
             contactId,
             advisorId: userId,
-            segment: "ZP",
-            partnerName: (action.payload.institutionName as string) || null,
-            productName: (action.payload.productName as string) || null,
-            contractNumber: (action.payload.contractNumber as string) || null,
-            startDate: (action.payload.effectiveDate as string) || null,
-            note: (action.payload.documentType as string) || null,
+            segment,
+            partnerName: (action.payload.institutionName as string)?.trim() || null,
+            productName,
+            contractNumber: (action.payload.contractNumber as string)?.trim() || null,
+            startDate: (action.payload.effectiveDate as string)?.trim() || null,
+            premiumAmount: (action.payload.premiumAmount as string)?.trim() || null,
+            premiumAnnual: (action.payload.premiumAnnual as string)?.trim() || null,
+            note: noteParts.length ? noteParts.join(" · ") : null,
           });
         } else if (action.type === "create_task") {
           const title = (action.payload.title as string)?.trim() || action.label;

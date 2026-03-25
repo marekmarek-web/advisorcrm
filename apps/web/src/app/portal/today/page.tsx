@@ -39,6 +39,8 @@ const FALLBACK_KPIS = {
   recentActivity: [],
   tasksDueToday: [],
   opportunitiesInStep3And4: [],
+  czPublicHolidayToday: null,
+  birthdaysToday: [],
 } as Awaited<ReturnType<typeof getDashboardKpis>>;
 
 async function DashboardLoaded({

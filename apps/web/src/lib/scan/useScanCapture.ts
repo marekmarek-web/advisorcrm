@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useDocumentCapture } from "@/lib/upload/useDocumentCapture";
+import { pickMultipleImagesFromGallery } from "@/lib/upload/webImagePick";
 import { buildPdfFromImages } from "./pdfBuilder";
 import { checkScanQuality, type ScanQualityResult, type ScanQualityIssue } from "./quality-checks";
 
@@ -112,6 +113,41 @@ export function useScanCapture() {
     setError(null);
   }, []);
 
+  /** Pick several images at once (file input); works in mobile browsers and Capacitor WebView. */
+  const addPagesFromGalleryBatch = useCallback(async (): Promise<ScanCaptureResult> => {
+    if (isCapturing) return { ok: false, error: "Probíhá výběr souborů." };
+    const remaining = 20 - scanPages.length;
+    if (remaining <= 0) return { ok: false, error: "Limit 20 stran." };
+
+    setIsCapturing(true);
+    setQualityWarnings([]);
+    try {
+      const files = await pickMultipleImagesFromGallery(remaining);
+      if (files.length === 0) {
+        const message = "Výběr byl zrušen.";
+        setError(message);
+        return { ok: false, error: message };
+      }
+
+      const newPages: ScanPage[] = [];
+      let lastQuality: ScanQualityResult | undefined;
+      for (const file of files) {
+        const quality = await checkScanQuality(file);
+        lastQuality = quality;
+        newPages.push({ id: nextPageId(), file, quality });
+      }
+      if (lastQuality && lastQuality.issues.length > 0) {
+        setQualityWarnings(lastQuality.issues);
+      }
+
+      setScanPages((prev) => [...prev, ...newPages]);
+      setError(null);
+      return { ok: true, qualityResult: lastQuality };
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [isCapturing, scanPages.length]);
+
   const buildPdf = useCallback(
     async (documentName?: string): Promise<File | null> => {
       if (scanPages.length === 0) return null;
@@ -153,6 +189,7 @@ export function useScanCapture() {
     hasQualityIssues,
     setError,
     capturePage,
+    addPagesFromGalleryBatch,
     retakePage,
     removePage,
     reorderPages,

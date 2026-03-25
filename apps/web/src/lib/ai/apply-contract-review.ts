@@ -154,6 +154,11 @@ export async function applyContractReview(
             resultPayload.createdContractId = existingContractId;
             continue;
           }
+          const premiumAmountRaw = (action.payload.premiumAmount as string | undefined)?.trim() || null;
+          const premiumAnnualRaw = (action.payload.premiumAnnual as string | undefined)?.trim() || null;
+          const productName = (action.payload.productName as string)?.trim() || null;
+          const docType = (action.payload.documentType as string)?.trim() || null;
+          const noteParts = [productName, docType].filter(Boolean);
           const [inserted] = await tx
             .insert(contracts)
             .values({
@@ -162,10 +167,12 @@ export async function applyContractReview(
               advisorId: userId,
               segment,
               partnerName: institutionName,
-              productName: (action.payload.productName as string)?.trim() || null,
+              productName,
               contractNumber,
-              startDate: (action.payload.effectiveDate as string) || null,
-              note: (action.payload.documentType as string)?.trim() || null,
+              startDate: (action.payload.effectiveDate as string)?.trim() || null,
+              premiumAmount: premiumAmountRaw,
+              premiumAnnual: premiumAnnualRaw,
+              note: noteParts.length ? noteParts.join(" · ") : null,
             })
             .returning({ id: contracts.id });
           if (inserted?.id) resultPayload.createdContractId = inserted.id;

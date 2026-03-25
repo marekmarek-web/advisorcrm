@@ -2,7 +2,7 @@
 
 import { Camera, FileUp, Images, ScanLine } from "lucide-react";
 import { BaseModal } from "@/app/components/BaseModal";
-import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
+import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 
 export type UploadSourceOption = "camera" | "gallery" | "file" | "scan";
 
@@ -13,8 +13,8 @@ type UploadSourceSheetProps = {
 };
 
 export function UploadSourceSheet({ open, onClose, onSelect }: UploadSourceSheetProps) {
-  const { isNative } = useNativePlatform();
-  const options = isNative
+  const { useExpandedUploadSheet } = useCaptureCapabilities();
+  const options = useExpandedUploadSheet
     ? [
         { id: "scan" as const, label: "Skenovat dokument", icon: ScanLine },
         { id: "camera" as const, label: "Vyfotit dokument", icon: Camera },

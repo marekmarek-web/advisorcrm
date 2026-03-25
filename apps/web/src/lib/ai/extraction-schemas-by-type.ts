@@ -56,6 +56,32 @@ export function buildExtractionPrompt(
   return buildSchemaPrompt(definition, isScanFallback);
 }
 
+const MAX_DOCUMENT_TEXT_CHARS = 120_000;
+
+/**
+ * Second-pass extraction from preprocess markdown/OCR text (no second PDF upload to the model).
+ */
+export function wrapExtractionPromptWithDocumentText(
+  extractionPrompt: string,
+  documentMarkdown: string
+): string {
+  const trimmed = documentMarkdown.trim();
+  const body =
+    trimmed.length > MAX_DOCUMENT_TEXT_CHARS
+      ? `${trimmed.slice(0, MAX_DOCUMENT_TEXT_CHARS)}\n\n[… dokument zkrácen kvůli limitu délky …]`
+      : trimmed;
+  return `${extractionPrompt}
+
+---
+
+Níže je text dokumentu (převod z PDF / OCR). Extrahuj údaje výhradně z tohoto textu. Chybějící pole označ podle pravidel výše (missing / unknown).
+
+<<<DOCUMENT_TEXT>>>
+${body}
+<<<END_DOCUMENT_TEXT>>>
+`;
+}
+
 export function validateExtractionByType(
   raw: string,
   documentType: ContractDocumentType

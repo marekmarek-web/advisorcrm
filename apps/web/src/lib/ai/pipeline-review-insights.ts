@@ -33,6 +33,14 @@ export type PipelineInsights = {
   readabilityScore?: number;
   failedStep?: string;
   paymentPreview?: PaymentInstructionPreview;
+  /** Adobe / OCR před LLM (ms). */
+  preprocessDurationMs?: number;
+  /** LLM + validace po preprocessu (ms). */
+  pipelineDurationMs?: number;
+  /** Celkem preprocess + pipeline (ms), pokud jsou obě známé. */
+  totalProcessingDurationMs?: number;
+  /** Druhý krok extrakce: celé PDF vs text z preprocessu. */
+  extractionSecondPass?: "pdf" | "text";
 };
 
 function maskIbanHint(iban: unknown): string | undefined {
@@ -75,6 +83,15 @@ export function buildPipelineInsightsFromReviewRow(row: ContractReviewRow): Pipe
     };
   }
 
+  const preprocessDurationMs =
+    typeof trace.preprocessDurationMs === "number" ? trace.preprocessDurationMs : undefined;
+  const pipelineDurationMs =
+    typeof trace.pipelineDurationMs === "number" ? trace.pipelineDurationMs : undefined;
+  const totalProcessingDurationMs =
+    preprocessDurationMs != null && pipelineDurationMs != null
+      ? preprocessDurationMs + pipelineDurationMs
+      : undefined;
+
   return {
     normalizedPipelineClassification: trace.normalizedPipelineClassification,
     extractionRoute: trace.extractionRoute,
@@ -87,5 +104,9 @@ export function buildPipelineInsightsFromReviewRow(row: ContractReviewRow): Pipe
     readabilityScore: trace.readabilityScore,
     failedStep: trace.failedStep,
     paymentPreview,
+    preprocessDurationMs,
+    pipelineDurationMs,
+    totalProcessingDurationMs,
+    extractionSecondPass: trace.extractionSecondPass,
   };
 }

@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, numeric, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, numeric, unique, jsonb } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
 
 export const advisorBusinessPlanPeriodTypes = ["month", "quarter", "year"] as const;
@@ -21,6 +21,15 @@ export const advisorBusinessPlans = pgTable(
     periodNumber: integer("period_number").notNull(), // 1-12 month, 1-4 quarter, 0 year
     title: text("title"),
     status: text("status").notNull().default("active"), // 'active' | 'archived'
+    /** Přičítá se k automatickým actuals metrikám (klíče = metric_type). */
+    manualMetricAdjustments: jsonb("manual_metric_adjustments").$type<Record<string, number> | null>(),
+    /** Cílový produkční mix (%) pro donut, když v CRM ještě nejsou smlouvy v období. */
+    targetMixPct: jsonb("target_mix_pct").$type<{
+      investments: number;
+      pension: number;
+      life: number;
+      hypo: number;
+    } | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

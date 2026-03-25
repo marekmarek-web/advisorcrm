@@ -31,6 +31,7 @@ export type DocumentBusinessStatus =
 export type DocumentAiInputSource = "markdown" | "extract" | "ocr_text" | "native_text" | "none";
 export type DocumentSourceChannel =
   | "web_upload"
+  | "web_scan"
   | "ai_drawer"
   | "mobile_camera"
   | "mobile_gallery"

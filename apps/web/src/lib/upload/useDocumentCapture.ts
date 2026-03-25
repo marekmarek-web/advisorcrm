@@ -1,8 +1,12 @@
 "use client";
 
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-import { useCallback } from "react";
-import { isNativePlatform } from "@/lib/capacitor/platform";
+import { useCallback, useMemo } from "react";
+import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
+import {
+  pickSingleImageFromCamera,
+  pickSingleImageFromGallery,
+} from "@/lib/upload/webImagePick";
 
 export type CaptureResult = {
   file: File | null;
@@ -35,49 +39,87 @@ function toUserMessage(error: unknown): string {
 }
 
 export function useDocumentCapture() {
+  const { tier, useNativeCameraPlugin } = useCaptureCapabilities();
+
+  const isAvailable = useMemo(
+    () => tier === "native_capacitor" || tier === "web_mobile",
+    [tier]
+  );
+
   const captureFromCamera = useCallback(async (): Promise<CaptureResult> => {
-    if (!isNativePlatform()) {
-      return { file: null, error: "Pořízení fotografie je dostupné pouze v mobilní aplikaci." };
+    if (tier === "web_desktop") {
+      return {
+        file: null,
+        error: "Fotoaparát je v prohlížeči na počítači nedostupný. Nahrajte soubor nebo použijte mobil.",
+      };
+    }
+
+    if (useNativeCameraPlugin) {
+      try {
+        const photo = await Camera.getPhoto({
+          source: CameraSource.Camera,
+          resultType: CameraResultType.Uri,
+          quality: 80,
+          width: 2048,
+          correctOrientation: true,
+        });
+        const file = await photoToFile(photo, "camera");
+        return { file };
+      } catch (error) {
+        return { file: null, error: toUserMessage(error) };
+      }
     }
 
     try {
-      const photo = await Camera.getPhoto({
-        source: CameraSource.Camera,
-        resultType: CameraResultType.Uri,
-        quality: 80,
-        width: 2048,
-        correctOrientation: true,
-      });
-      const file = await photoToFile(photo, "camera");
+      const file = await pickSingleImageFromCamera();
+      if (!file) {
+        return { file: null, error: "Výběr byl zrušen." };
+      }
       return { file };
     } catch (error) {
       return { file: null, error: toUserMessage(error) };
     }
-  }, []);
+  }, [tier, useNativeCameraPlugin]);
 
   const captureFromGallery = useCallback(async (): Promise<CaptureResult> => {
-    if (!isNativePlatform()) {
-      return { file: null, error: "Galerie je dostupná pouze v mobilní aplikaci." };
+    if (tier === "web_desktop") {
+      return {
+        file: null,
+        error: "Galerie v tomto zobrazení použijte přes „Vybrat soubor“.",
+      };
+    }
+
+    if (useNativeCameraPlugin) {
+      try {
+        const photo = await Camera.getPhoto({
+          source: CameraSource.Photos,
+          resultType: CameraResultType.Uri,
+          quality: 80,
+          width: 2048,
+          correctOrientation: true,
+        });
+        const file = await photoToFile(photo, "gallery");
+        return { file };
+      } catch (error) {
+        return { file: null, error: toUserMessage(error) };
+      }
     }
 
     try {
-      const photo = await Camera.getPhoto({
-        source: CameraSource.Photos,
-        resultType: CameraResultType.Uri,
-        quality: 80,
-        width: 2048,
-        correctOrientation: true,
-      });
-      const file = await photoToFile(photo, "gallery");
+      const file = await pickSingleImageFromGallery();
+      if (!file) {
+        return { file: null, error: "Výběr byl zrušen." };
+      }
       return { file };
     } catch (error) {
       return { file: null, error: toUserMessage(error) };
     }
-  }, []);
+  }, [tier, useNativeCameraPlugin]);
 
   return {
-    isAvailable: isNativePlatform(),
+    isAvailable,
     captureFromCamera,
     captureFromGallery,
+    tier,
   };
 }

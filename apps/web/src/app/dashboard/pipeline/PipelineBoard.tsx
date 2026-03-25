@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { useToast } from "@/app/components/Toast";
+import { PIPELINE_COLUMN_THEMES as COLUMN_THEMES } from "@/lib/pipeline/column-themes";
 
 type ContactOption = { id: string; firstName: string; lastName: string };
 
@@ -45,16 +46,6 @@ const CASE_TYPES = [
   { value: "pojištění", label: "Pojištění" },
   { value: "úvěr", label: "Úvěr" },
   { value: "jiné", label: "Jiné" },
-];
-
-// v2-style: color, textColor, borderColor, solidBg (for number badge), accent (card border)
-const COLUMN_THEMES = [
-  { color: "bg-emerald-50/80", textColor: "text-emerald-700", borderColor: "border-emerald-100", solidBg: "bg-emerald-500", accent: "border-b-emerald-400" },
-  { color: "bg-blue-50/80", textColor: "text-blue-700", borderColor: "border-blue-100", solidBg: "bg-blue-500", accent: "border-b-blue-400" },
-  { color: "bg-indigo-50/80", textColor: "text-indigo-700", borderColor: "border-indigo-100", solidBg: "bg-indigo-500", accent: "border-b-indigo-400" },
-  { color: "bg-amber-50/80", textColor: "text-amber-700", borderColor: "border-amber-100", solidBg: "bg-amber-500", accent: "border-b-amber-400" },
-  { color: "bg-rose-50/80", textColor: "text-rose-700", borderColor: "border-rose-100", solidBg: "bg-rose-500", accent: "border-b-rose-400" },
-  { color: "bg-purple-50/80", textColor: "text-purple-700", borderColor: "border-purple-100", solidBg: "bg-purple-500", accent: "border-b-purple-400" },
 ];
 
 const STAGE_SUBTITLES: Record<number, string> = {

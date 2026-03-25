@@ -17,6 +17,11 @@ import type { BusinessPlanMetricType } from "./types";
 export type MetricsActuals = Partial<Record<BusinessPlanMetricType, number>>;
 
 /**
+ * Kalendářní události počítané jako „schůzky“ v business plánu (konzistence s referral / funnel).
+ */
+export const BUSINESS_PLAN_MEETING_EVENT_TYPES = ["schuzka", "followup", "kafe"] as const;
+
+/**
  * Compute all metric actuals for the given period. periodStart/periodEnd are Date objects (start of day and exclusive end).
  */
 export async function computeAllMetrics(
@@ -170,7 +175,7 @@ async function getMeetingsCount(
       and(
         eq(events.tenantId, tenantId),
         eq(events.assignedTo, userId),
-        eq(events.eventType, "schuzka"),
+        inArray(events.eventType, [...BUSINESS_PLAN_MEETING_EVENT_TYPES]),
         gte(events.startAt, periodStart),
         lt(events.startAt, periodEnd)
       )
@@ -326,13 +331,16 @@ async function getProduction(
   return Number(rows[0]?.total ?? 0);
 }
 
-/** Production by segment for mix donut: investments (INV+DIP+DPS), life (ZP), hypo (HYPO). */
+/**
+ * Production by segment for mix donut: investice (INV+DIP), penze (DPS), ŽP, hypo.
+ * Oddělené DPS odpovídá reportingu „plánovaný mix“.
+ */
 export async function getProductionMix(
   tenantId: string,
   userId: string,
   periodStart: Date,
   periodEnd: Date
-): Promise<{ investments: number; life: number; hypo: number }> {
+): Promise<{ investments: number; pension: number; life: number; hypo: number }> {
   const startStr = periodStart.toISOString().slice(0, 10);
   const endStr = periodEnd.toISOString().slice(0, 10);
   const base = and(
@@ -341,13 +349,19 @@ export async function getProductionMix(
     gte(contracts.startDate, startStr),
     lt(contracts.startDate, endStr)
   );
-  const [inv, zp, hypo] = await Promise.all([
+  const [inv, penze, zp, hypo] = await Promise.all([
     db
       .select({
         total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
       })
       .from(contracts)
-      .where(and(base, sql`${contracts.segment} IN ('INV', 'DIP', 'DPS')`)),
+      .where(and(base, sql`${contracts.segment} IN ('INV', 'DIP')`)),
+    db
+      .select({
+        total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
+      })
+      .from(contracts)
+      .where(and(base, eq(contracts.segment, "DPS"))),
     db
       .select({
         total: sql<string>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
@@ -363,6 +377,7 @@ export async function getProductionMix(
   ]);
   return {
     investments: Number(inv[0]?.total ?? 0),
+    pension: Number(penze[0]?.total ?? 0),
     life: Number(zp[0]?.total ?? 0),
     hypo: Number(hypo[0]?.total ?? 0),
   };

@@ -166,6 +166,10 @@ export type ExtractionDocument = {
     readabilityScore?: number;
     failedStep?: string;
     paymentPreview?: Record<string, unknown>;
+    preprocessDurationMs?: number;
+    pipelineDurationMs?: number;
+    totalProcessingDurationMs?: number;
+    extractionSecondPass?: "pdf" | "text";
   };
 };
 

@@ -6,13 +6,14 @@ import {
   Calendar,
   Banknote,
   ChevronRight,
-  TrendingUp,
   ArrowRight,
+  ArrowRightLeft,
   Pencil,
   Trash2,
   Trophy,
-  Skull,
+  Ban,
 } from "lucide-react";
+import { getPipelineColumnTheme } from "@/lib/pipeline/column-themes";
 import type { StageWithOpportunities, OpportunityCard } from "@/app/actions/pipeline";
 import {
   updateOpportunity,
@@ -54,20 +55,53 @@ function formatCloseDate(d: string | null): string {
   return new Date(d).toLocaleDateString("cs-CZ", { day: "numeric", month: "short" });
 }
 
-const STAGE_ACCENT = [
-  "border-l-blue-500",
-  "border-l-indigo-500",
-  "border-l-violet-500",
-  "border-l-amber-500",
-  "border-l-emerald-500",
-];
-
-function stageAccentClass(sortOrder: number): string {
-  const i = Math.max(0, sortOrder - 1) % STAGE_ACCENT.length;
-  return STAGE_ACCENT[i] ?? "border-l-slate-400";
-}
-
 type OppSelected = OpportunityCard & { stageName: string; stageId: string };
+
+function QuickMoveSheet({
+  opp,
+  stages,
+  onClose,
+  onMove,
+}: {
+  opp: OppSelected;
+  stages: StageWithOpportunities[];
+  onClose: () => void;
+  onMove: (toStageId: string) => void;
+}) {
+  return (
+    <BottomSheet open title="Přesunout případ" onClose={onClose}>
+      <p className="text-sm font-bold text-slate-800 mb-3 truncate">{opp.title}</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Vyberte fázi</p>
+      <div className="space-y-1.5 max-h-[min(60vh,420px)] overflow-y-auto">
+        {stages.map((stage, stageIdx) => {
+          const theme = getPipelineColumnTheme(stageIdx);
+          return (
+            <button
+              key={stage.id}
+              type="button"
+              onClick={() => onMove(stage.id)}
+              className={cx(
+                "w-full min-h-[48px] rounded-xl border text-left px-4 text-sm font-semibold flex items-center justify-between transition-colors active:scale-[0.99]",
+                stage.id === opp.stageId
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                "border-l-4",
+                theme.mobileBorderL
+              )}
+            >
+              {stage.name}
+              {stage.id === opp.stageId ? (
+                <span className="text-[10px] font-black text-indigo-500 uppercase">Aktuální</span>
+              ) : (
+                <ArrowRight size={14} className="text-slate-300" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </BottomSheet>
+  );
+}
 
 function OpportunityDetailSheet({
   opp,
@@ -266,9 +300,9 @@ function OpportunityDetailSheet({
                   if (!window.confirm("Označit jako prohraný?")) return;
                   runMutation(() => closeOpportunity(opp.id, false), "Případ uzavřen jako prohraný.");
                 }}
-                className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-100 text-slate-800 text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] disabled:opacity-50"
+                className="min-h-[44px] rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] disabled:opacity-50"
               >
-                <Skull size={14} /> Prohraný
+                <Ban size={14} /> Prohraný
               </button>
             </div>
           </div>
@@ -276,29 +310,32 @@ function OpportunityDetailSheet({
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Posunout do fáze</p>
             <div className="space-y-1.5">
-              {stages.map((stage) => (
-                <button
-                  key={stage.id}
-                  type="button"
-                  disabled={pending}
-                  onClick={() => onMove(stage.id)}
-                  className={cx(
-                    "w-full min-h-[44px] rounded-xl border text-left px-4 text-sm font-semibold flex items-center justify-between transition-colors active:scale-[0.99]",
-                    stage.name === opp.stageName
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                      : "border-slate-200 text-slate-700 hover:bg-slate-50",
-                    "border-l-4",
-                    stageAccentClass(stage.sortOrder)
-                  )}
-                >
-                  {stage.name}
-                  {stage.name === opp.stageName ? (
-                    <span className="text-[10px] font-black text-indigo-500 uppercase">Aktuální</span>
-                  ) : (
-                    <ArrowRight size={14} className="text-slate-300" />
-                  )}
-                </button>
-              ))}
+              {stages.map((stage, stageIdx) => {
+                const theme = getPipelineColumnTheme(stageIdx);
+                return (
+                  <button
+                    key={stage.id}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => onMove(stage.id)}
+                    className={cx(
+                      "w-full min-h-[44px] rounded-xl border text-left px-4 text-sm font-semibold flex items-center justify-between transition-colors active:scale-[0.99]",
+                      stage.name === opp.stageName
+                        ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                      "border-l-4",
+                      theme.mobileBorderL
+                    )}
+                  >
+                    {stage.name}
+                    {stage.name === opp.stageName ? (
+                      <span className="text-[10px] font-black text-indigo-500 uppercase">Aktuální</span>
+                    ) : (
+                      <ArrowRight size={14} className="text-slate-300" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -338,6 +375,7 @@ export function PipelineScreen({
   onPipelineRefresh,
 }: PipelineScreenProps) {
   const [selectedOpp, setSelectedOpp] = useState<OppSelected | null>(null);
+  const [quickMoveOpp, setQuickMoveOpp] = useState<OppSelected | null>(null);
 
   const totalDeals = useMemo(() => pipeline.reduce((s, st) => s + st.opportunities.length, 0), [pipeline]);
   const totalValue = useMemo(
@@ -371,7 +409,8 @@ export function PipelineScreen({
       </div>
 
       <div className={cx("grid gap-3", isTablet ? "grid-cols-2" : "grid-cols-1")}>
-        {pipeline.map((stage) => {
+        {pipeline.map((stage, stageIdx) => {
+          const theme = getPipelineColumnTheme(stageIdx);
           const stageValue = stage.opportunities.reduce(
             (s, o) => s + (o.expectedValue ? Number(o.expectedValue) : 0),
             0
@@ -379,19 +418,26 @@ export function PipelineScreen({
           const urgentCount = stage.opportunities.filter(
             (o) => o.expectedCloseDate && o.expectedCloseDate < new Date().toISOString().slice(0, 10)
           ).length;
-          const accent = stageAccentClass(stage.sortOrder);
 
           return (
             <MobileSection key={stage.id} title={stage.name}>
-              <MobileCard
-                className={cx(
-                  "p-3 flex items-center gap-3 bg-gradient-to-r from-slate-50 to-white border-l-4",
-                  accent
-                )}
-              >
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 flex-shrink-0">
-                  <TrendingUp size={16} />
-                </div>
+              <MobileCard className="p-0 overflow-hidden border border-slate-200/80 shadow-sm">
+                <div className={cx("h-1.5 w-full shrink-0", theme.mobileHeaderBar)} aria-hidden />
+                <div
+                  className={cx(
+                    "p-3 flex items-center gap-3 border-b",
+                    theme.color,
+                    theme.borderColor
+                  )}
+                >
+                  <div
+                    className={cx(
+                      "w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0 text-xs font-black",
+                      theme.solidBg
+                    )}
+                  >
+                    {stageIdx + 1}
+                  </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-lg font-black text-slate-900">{stage.opportunities.length}</p>
                   <p className="text-xs text-slate-500 font-bold">
@@ -399,10 +445,11 @@ export function PipelineScreen({
                   </p>
                 </div>
                 {urgentCount > 0 ? (
-                  <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-lg">
+                  <span className="text-[10px] font-black text-rose-600 bg-white/80 px-2 py-1 rounded-lg border border-rose-100">
                     {urgentCount} prošlé
                   </span>
                 ) : null}
+                </div>
               </MobileCard>
 
               {stage.opportunities.length === 0 ? (
@@ -412,45 +459,61 @@ export function PipelineScreen({
                   const isPastDue =
                     opp.expectedCloseDate &&
                     opp.expectedCloseDate < new Date().toISOString().slice(0, 10);
+                  const rowSelected = { ...opp, stageName: stage.name, stageId: stage.id };
                   return (
-                    <button
+                    <div
                       key={opp.id}
-                      type="button"
-                      onClick={() => setSelectedOpp({ ...opp, stageName: stage.name, stageId: stage.id })}
                       className={cx(
-                        "w-full text-left rounded-2xl border bg-white shadow-sm p-3.5 transition-all active:scale-[0.99] border-l-4",
-                        accent,
+                        "flex rounded-2xl border bg-white shadow-sm overflow-hidden transition-all border-l-4",
+                        theme.mobileBorderL,
                         isPastDue ? "border-t-rose-200 border-r-rose-200 border-b-rose-200 bg-rose-50/30" : "border-t-slate-200 border-r-slate-200 border-b-slate-200"
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-sm font-bold text-slate-900 leading-snug flex-1">{opp.title}</p>
-                        <ChevronRight size={14} className="text-slate-300 flex-shrink-0 mt-0.5" />
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOpp(rowSelected)}
+                        className="flex-1 min-w-0 text-left p-3.5 active:bg-slate-50/80 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <p className="text-sm font-bold text-slate-900 leading-snug flex-1">{opp.title}</p>
+                          <ChevronRight size={14} className="text-slate-300 flex-shrink-0 mt-0.5" />
+                        </div>
 
-                      <div className="flex flex-wrap gap-2 items-center">
-                        {opp.contactName ? (
-                          <span className="flex items-center gap-1 text-[11px] text-slate-500 font-bold">
-                            <Users size={11} /> {opp.contactName}
-                          </span>
-                        ) : null}
-                        {opp.expectedValue ? (
-                          <span className="flex items-center gap-1 text-[11px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
-                            <Banknote size={11} /> {formatValue(opp.expectedValue)}
-                          </span>
-                        ) : null}
-                        {opp.expectedCloseDate ? (
-                          <span
-                            className={cx(
-                              "flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded",
-                              isPastDue ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-600"
-                            )}
-                          >
-                            <Calendar size={11} /> {formatCloseDate(opp.expectedCloseDate)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </button>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {opp.contactName ? (
+                            <span className="flex items-center gap-1 text-[11px] text-slate-500 font-bold">
+                              <Users size={11} /> {opp.contactName}
+                            </span>
+                          ) : null}
+                          {opp.expectedValue ? (
+                            <span className="flex items-center gap-1 text-[11px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                              <Banknote size={11} /> {formatValue(opp.expectedValue)}
+                            </span>
+                          ) : null}
+                          {opp.expectedCloseDate ? (
+                            <span
+                              className={cx(
+                                "flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded",
+                                isPastDue ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-600"
+                              )}
+                            >
+                              <Calendar size={11} /> {formatCloseDate(opp.expectedCloseDate)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickMoveOpp(rowSelected)}
+                        className="shrink-0 w-[52px] min-h-[44px] flex flex-col items-center justify-center gap-0.5 border-l border-slate-100 bg-slate-50/90 text-slate-600 active:bg-indigo-50 active:text-indigo-700"
+                        aria-label="Přesunout do jiné fáze"
+                      >
+                        <ArrowRightLeft size={18} />
+                        <span className="text-[9px] font-black uppercase tracking-tighter leading-none text-center px-0.5">
+                          Fáze
+                        </span>
+                      </button>
+                    </div>
                   );
                 })
               )}
@@ -458,6 +521,19 @@ export function PipelineScreen({
           );
         })}
       </div>
+
+      {quickMoveOpp ? (
+        <QuickMoveSheet
+          opp={quickMoveOpp}
+          stages={pipeline}
+          onClose={() => setQuickMoveOpp(null)}
+          onMove={(toStageId) => {
+            onMoveOpportunity(quickMoveOpp.id, toStageId);
+            setQuickMoveOpp(null);
+            onPipelineRefresh();
+          }}
+        />
+      ) : null}
 
       {selectedOpp ? (
         <OpportunityDetailSheet

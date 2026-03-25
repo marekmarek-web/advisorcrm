@@ -68,6 +68,7 @@ export async function getProductionSummary(
     .where(
       and(
         eq(contracts.tenantId, auth.tenantId),
+        eq(contracts.advisorId, auth.userId),
         gte(contracts.startDate, start.toISOString().slice(0, 10)),
         lt(contracts.startDate, end.toISOString().slice(0, 10))
       )
@@ -130,6 +131,7 @@ export async function getContractsForPeriod(
     .where(
       and(
         eq(contracts.tenantId, auth.tenantId),
+        eq(contracts.advisorId, auth.userId),
         gte(contracts.startDate, start.toISOString().slice(0, 10)),
         lt(contracts.startDate, end.toISOString().slice(0, 10))
       )

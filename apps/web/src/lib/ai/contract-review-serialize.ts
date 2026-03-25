@@ -65,6 +65,18 @@ export function serializeContractReviewDetailResponse(
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     pipelineInsights: buildPipelineInsightsFromReviewRow(row),
+    processingTiming: (() => {
+      const t = row.extractionTrace ?? {};
+      const pre = typeof t.preprocessDurationMs === "number" ? t.preprocessDurationMs : undefined;
+      const pipe = typeof t.pipelineDurationMs === "number" ? t.pipelineDurationMs : undefined;
+      if (pre == null && pipe == null && t.extractionSecondPass == null) return undefined;
+      return {
+        preprocessDurationMs: pre,
+        pipelineDurationMs: pipe,
+        totalMs: pre != null && pipe != null ? pre + pipe : undefined,
+        extractionSecondPass: t.extractionSecondPass,
+      };
+    })(),
     applyGate: evaluateApplyReadiness(row),
     debug: includeDebug
       ? {

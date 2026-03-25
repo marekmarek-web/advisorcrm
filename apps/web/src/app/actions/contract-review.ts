@@ -150,6 +150,29 @@ export async function confirmCreateNewClient(reviewId: string): Promise<Contract
   return { ok: true };
 }
 
+/** Schválí kontrolu a hned zapisuje draft akce do CRM (dva kroky v jednom volání). */
+export async function approveAndApplyContractReview(
+  id: string,
+  options?: {
+    fieldEdits?: Record<string, string>;
+    rawExtractedPayload?: Record<string, unknown>;
+    correctionReason?: string | null;
+    overrideGateReasons?: string[];
+    overrideReason?: string;
+  },
+): Promise<ContractReviewActionResult> {
+  const approved = await approveContractReview(id, {
+    fieldEdits: options?.fieldEdits,
+    rawExtractedPayload: options?.rawExtractedPayload,
+    correctionReason: options?.correctionReason,
+  });
+  if (!approved.ok) return approved;
+  return applyContractReviewDrafts(id, {
+    overrideGateReasons: options?.overrideGateReasons,
+    overrideReason: options?.overrideReason,
+  });
+}
+
 export async function applyContractReviewDrafts(
   id: string,
   options?: {

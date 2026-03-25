@@ -24,7 +24,7 @@ import {
   type QuickActionId,
   type QuickActionItem,
 } from "@/lib/quick-actions";
-import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
+import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 
 const ICON_MAP = {
   UserPlus,
@@ -64,7 +64,7 @@ function ItemIcon({ item }: { item: QuickActionItem }) {
 }
 
 export function QuickNewMenu() {
-  const { isNative } = useNativePlatform();
+  const { showScanInQuickMenu } = useCaptureCapabilities();
   const [open, setOpen] = useState(false);
   const [order, setOrder] = useState<QuickActionId[]>(DEFAULT_QUICK_ACTIONS_ORDER);
   const [visible, setVisible] = useState<Record<string, boolean>>(() => {
@@ -159,7 +159,7 @@ export function QuickNewMenu() {
               <div className="h-5 w-3/4 bg-slate-100 rounded animate-pulse" />
             </div>
           )}
-          {isNative ? (
+          {showScanInQuickMenu ? (
             <Link
               href="/portal/scan"
               role="menuitem"

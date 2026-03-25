@@ -116,6 +116,7 @@ function resolveSourceChannel(uploadSource: string | null): DocumentSourceChanne
     case "mobile_file": return "mobile_file";
     case "mobile_share": return "mobile_share";
     case "mobile_scan": return "mobile_scan";
+    case "web_scan": return "web_scan";
     case "email_attachment": return "email_attachment";
     case "api": return "api";
     case "ai_drawer": return "ai_drawer";
@@ -125,7 +126,10 @@ function resolveSourceChannel(uploadSource: string | null): DocumentSourceChanne
 }
 
 function resolveInputMode(doc: DocumentRow, decision: { reason: string }): DocumentInputMode {
-  const isMobile = doc.uploadSource === "mobile_scan" || doc.uploadSource === "mobile_camera";
+  const isMobile =
+    doc.uploadSource === "mobile_scan" ||
+    doc.uploadSource === "web_scan" ||
+    doc.uploadSource === "mobile_camera";
   const isImage = doc.mimeType?.startsWith("image/") ?? false;
   if (isImage || isMobile) return "image_document";
   if (doc.isScanLike && doc.hasTextLayer) return "mixed_pdf";

@@ -37,6 +37,7 @@ import {
   listBusinessPlans,
   createBusinessPlan,
   setPlanTargets,
+  savePlanManualOverrides,
   getVisionGoals,
   upsertVisionGoals,
   getTeamBusinessPlanSummary,
@@ -70,10 +71,11 @@ function visionRowToGoal(row: { id: string; title: string; progressPct: number }
 
 const MIX_COLORS = [
   { label: "Investice", color: "#10b981" },
+  { label: "Penze (DPS)", color: "#8b5cf6" },
   { label: "Životní poj.", color: "#f43f5e" },
   { label: "Hypotéky", color: "#3b82f6" },
 ];
-const DEFAULT_MIX_PCT = [50, 30, 20];
+const DEFAULT_MIX_PCT = [40, 15, 25, 20];
 
 type VisionGoal = { id: string; title: string; progress: number; colorClass: string; textClass: string };
 
@@ -102,6 +104,17 @@ export function BusinessPlanView() {
   const [viewMode, setViewMode] = useState<"my" | "team">("my");
   const [teamSummary, setTeamSummary] = useState<TeamBusinessPlanMemberSummary[]>([]);
   const [teamLoading, setTeamLoading] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    meetingsDelta: "",
+    newClientsDelta: "",
+    productionDelta: "",
+    mixInv: "40",
+    mixPen: "15",
+    mixLife: "25",
+    mixHypo: "20",
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,6 +188,21 @@ export function BusinessPlanView() {
   useEffect(() => {
     if (viewMode === "team") loadTeamSummary();
   }, [viewMode, loadTeamSummary]);
+
+  useEffect(() => {
+    if (!isManualModalOpen || !plan) return;
+    const m = plan.manualMetricAdjustments ?? {};
+    const t = plan.targetMixPct;
+    setManualForm({
+      meetingsDelta: m.meetings != null ? String(m.meetings) : "",
+      newClientsDelta: m.new_clients != null ? String(m.new_clients) : "",
+      productionDelta: m.production != null ? String(m.production) : "",
+      mixInv: t ? String(t.investments) : "40",
+      mixPen: t ? String(t.pension) : "15",
+      mixLife: t ? String(t.life) : "25",
+      mixHypo: t ? String(t.hypo) : "20",
+    });
+  }, [isManualModalOpen, plan]);
 
   const hasTargets = plan && plan.targets.length > 0;
   const isConfigured = plan && hasTargets;
@@ -304,15 +332,33 @@ export function BusinessPlanView() {
   ];
 
   const rawMix = progressResult?.productionMix;
-  const totalMix = rawMix ? rawMix.investments + rawMix.life + rawMix.hypo : 0;
+  const targetMixFallback = progressResult?.planTargetMixPct;
+  const totalMix = rawMix
+    ? rawMix.investments + rawMix.pension + rawMix.life + rawMix.hypo
+    : 0;
   const mix =
     totalMix > 0 && rawMix
       ? [
           { label: MIX_COLORS[0].label, pct: Math.round((rawMix.investments / totalMix) * 100), color: MIX_COLORS[0].color },
-          { label: MIX_COLORS[1].label, pct: Math.round((rawMix.life / totalMix) * 100), color: MIX_COLORS[1].color },
-          { label: MIX_COLORS[2].label, pct: Math.round((rawMix.hypo / totalMix) * 100), color: MIX_COLORS[2].color },
+          { label: MIX_COLORS[1].label, pct: Math.round((rawMix.pension / totalMix) * 100), color: MIX_COLORS[1].color },
+          { label: MIX_COLORS[2].label, pct: Math.round((rawMix.life / totalMix) * 100), color: MIX_COLORS[2].color },
+          { label: MIX_COLORS[3].label, pct: Math.round((rawMix.hypo / totalMix) * 100), color: MIX_COLORS[3].color },
         ]
-      : MIX_COLORS.map((m, i) => ({ ...m, pct: DEFAULT_MIX_PCT[i]! }));
+      : (() => {
+          const t = targetMixFallback;
+          if (t) {
+            const sum = t.investments + t.pension + t.life + t.hypo;
+            if (sum > 0) {
+              return [
+                { label: MIX_COLORS[0].label, pct: Math.round((t.investments / sum) * 100), color: MIX_COLORS[0].color },
+                { label: MIX_COLORS[1].label, pct: Math.round((t.pension / sum) * 100), color: MIX_COLORS[1].color },
+                { label: MIX_COLORS[2].label, pct: Math.round((t.life / sum) * 100), color: MIX_COLORS[2].color },
+                { label: MIX_COLORS[3].label, pct: Math.round((t.hypo / sum) * 100), color: MIX_COLORS[3].color },
+              ];
+            }
+          }
+          return MIX_COLORS.map((m, i) => ({ ...m, pct: DEFAULT_MIX_PCT[i]! }));
+        })();
 
   const renderSVGDonut = (mixData: { pct: number; color: string }[]) => {
     let currentOffset = 0;
@@ -700,9 +746,11 @@ export function BusinessPlanView() {
 
               <div className="lg:col-span-1 bg-white rounded-[32px] p-6 md:p-8 border border-slate-100 shadow-sm flex flex-col hover:shadow-md transition-shadow">
                 <h2 className="text-lg font-display font-bold text-slate-900 flex items-center gap-2 mb-2">
-                  <PieChart className="text-emerald-500" size={20} /> Plánovaný mix
+                  <PieChart className="text-emerald-500" size={20} /> Produkční mix
                 </h2>
-                <p className="text-xs font-medium text-slate-500 mb-8">Z čeho by se měla skládat vaše produkce.</p>
+                <p className="text-xs font-medium text-slate-500 mb-8">
+                  Podle smluv v období (Kč); pokud v období není produkce, zobrazí se uložený cílový mix nebo výchozí poměr.
+                </p>
                 <div className="flex justify-center mb-8 relative">
                   {renderSVGDonut(mix)}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -726,6 +774,15 @@ export function BusinessPlanView() {
         )}
 
         <div className="flex flex-wrap items-center gap-3 mt-6 pb-8">
+          {isConfigured && plan?.planId ? (
+            <button
+              type="button"
+              onClick={() => setIsManualModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors min-h-[44px]"
+            >
+              <FileSignature size={16} /> Ruční doplnění
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={openParamsModal}
@@ -743,6 +800,152 @@ export function BusinessPlanView() {
           </button>
         </div>
       </main>
+
+      {isManualModalOpen && plan?.planId ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+              <h2 className="text-lg font-bold text-slate-900">Ruční doplnění</h2>
+              <button
+                type="button"
+                onClick={() => setIsManualModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-md hover:bg-slate-200 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto custom-scroll text-sm">
+              <p className="text-slate-600">
+                <strong>Přičíst k automatickým číslům z CRM</strong> (schůzky, klienti, produkce v Kč). Záporná hodnota sníží výsledek.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="block">
+                  <span className="text-xs font-bold text-slate-500">Schůzky Δ</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={manualForm.meetingsDelta}
+                    onChange={(e) => setManualForm((f) => ({ ...f, meetingsDelta: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2.5 min-h-[44px] border border-slate-200 rounded-xl"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-bold text-slate-500">Noví klienti Δ</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={manualForm.newClientsDelta}
+                    onChange={(e) => setManualForm((f) => ({ ...f, newClientsDelta: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2.5 min-h-[44px] border border-slate-200 rounded-xl"
+                  />
+                </label>
+                <label className="block sm:col-span-1">
+                  <span className="text-xs font-bold text-slate-500">Produkce Δ (Kč)</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={manualForm.productionDelta}
+                    onChange={(e) => setManualForm((f) => ({ ...f, productionDelta: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2.5 min-h-[44px] border border-slate-200 rounded-xl"
+                  />
+                </label>
+              </div>
+              <p className="text-slate-600 pt-2">
+                <strong>Cílový mix</strong> (váhy) se použije v koláči, jen když v období není žádná produkce v CRM.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {(
+                  [
+                    ["mixInv", "Investice"] as const,
+                    ["mixPen", "Penze"] as const,
+                    ["mixLife", "ŽP"] as const,
+                    ["mixHypo", "Hypo"] as const,
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="block">
+                    <span className="text-xs font-bold text-slate-500">{label}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={manualForm[key]}
+                      onChange={(e) => setManualForm((f) => ({ ...f, [key]: e.target.value }))}
+                      className="mt-1 w-full px-3 py-2.5 min-h-[44px] border border-slate-200 rounded-xl"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!plan?.planId) return;
+                  setManualSaving(true);
+                  try {
+                    await savePlanManualOverrides(plan.planId, {
+                      manualMetricAdjustments: null,
+                      targetMixPct: null,
+                    });
+                    await load();
+                    setIsManualModalOpen(false);
+                  } finally {
+                    setManualSaving(false);
+                  }
+                }}
+                disabled={manualSaving}
+                className="px-4 py-2.5 min-h-[44px] text-slate-600 font-bold text-sm"
+              >
+                Vymazat
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsManualModalOpen(false)}
+                className="px-4 py-2.5 min-h-[44px] bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm"
+              >
+                Zrušit
+              </button>
+              <button
+                type="button"
+                disabled={manualSaving}
+                onClick={async () => {
+                  if (!plan?.planId) return;
+                  setManualSaving(true);
+                  try {
+                    const adjustments: Record<string, number> = {};
+                    const md = (k: keyof typeof manualForm, dbKey: string) => {
+                      const n = Number.parseFloat(String(manualForm[k]).replace(",", "."));
+                      if (Number.isFinite(n) && n !== 0) adjustments[dbKey] = n;
+                    };
+                    md("meetingsDelta", "meetings");
+                    md("newClientsDelta", "new_clients");
+                    md("productionDelta", "production");
+                    const inv = Math.max(0, Number.parseFloat(manualForm.mixInv) || 0);
+                    const pen = Math.max(0, Number.parseFloat(manualForm.mixPen) || 0);
+                    const life = Math.max(0, Number.parseFloat(manualForm.mixLife) || 0);
+                    const hypo = Math.max(0, Number.parseFloat(manualForm.mixHypo) || 0);
+                    const mixSum = inv + pen + life + hypo;
+                    await savePlanManualOverrides(plan.planId, {
+                      manualMetricAdjustments: Object.keys(adjustments).length > 0 ? adjustments : null,
+                      targetMixPct:
+                        mixSum > 0
+                          ? { investments: inv, pension: pen, life: life, hypo: hypo }
+                          : null,
+                    });
+                    await load();
+                    setIsManualModalOpen(false);
+                  } finally {
+                    setManualSaving(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-6 py-2.5 min-h-[44px] bg-indigo-600 text-white rounded-xl font-bold text-sm"
+              >
+                <Save size={16} /> Uložit
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isVisionModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">

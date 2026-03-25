@@ -3,13 +3,14 @@
  * Steps: detect input mode -> classify -> choose schema -> structured extraction -> validation -> review decision.
  */
 
-import { createResponseWithFile } from "@/lib/openai";
+import { createResponse, createResponseWithFile } from "@/lib/openai";
 import { runCombinedContractIntake } from "./contract-intake-combined";
 import { detectInputMode } from "./input-mode-detection";
 import { classifyContractDocument } from "./document-classification";
 import {
   buildExtractionPrompt,
   validateExtractionByType,
+  wrapExtractionPromptWithDocumentText,
   type ExtractedContractByType,
 } from "./extraction-schemas-by-type";
 import { validateExtractedContract, validateDocumentEnvelope, type ValidationResult } from "./extraction-validation";
@@ -486,11 +487,37 @@ export async function runContractUnderstandingPipeline(
   const schemaDefinition = selectSchemaForType(documentType);
   trace.selectedSchema = documentType;
 
-  // Step 5: Structured extraction
+  // Step 5: Structured extraction (text second pass when preprocess text is long enough — skips second PDF upload)
   const extractionPrompt = buildExtractionPrompt(documentType, isScanFallback);
+  const hint = (options?.ruleBasedTextHint ?? "").trim();
+  const minTextChars = 800;
+  const readabilityOk =
+    typeof options?.preprocessMeta?.readabilityScore === "number" &&
+    options.preprocessMeta.readabilityScore >= 68;
+  const isTextPdf = inputModeResult.inputMode === "text_pdf";
+  const allowTextSecondPass =
+    hint.length >= minTextChars && !isScanFallback && (isTextPdf || readabilityOk);
+
   let rawExtraction: string;
   try {
-    rawExtraction = await createResponseWithFile(fileUrl, extractionPrompt);
+    if (allowTextSecondPass) {
+      trace.extractionSecondPass = "text";
+      const wrapped = wrapExtractionPromptWithDocumentText(extractionPrompt, hint);
+      try {
+        rawExtraction = await createResponse(wrapped);
+      } catch (textErr) {
+        trace.extractionSecondPass = "pdf";
+        trace.warnings = [
+          ...(trace.warnings ?? []),
+          "text_second_pass_failed_fallback_pdf",
+          textErr instanceof Error ? textErr.message : String(textErr),
+        ];
+        rawExtraction = await createResponseWithFile(fileUrl, extractionPrompt);
+      }
+    } else {
+      trace.extractionSecondPass = "pdf";
+      rawExtraction = await createResponseWithFile(fileUrl, extractionPrompt);
+    }
   } catch (e) {
     trace.failedStep = "structured_extraction";
     trace.warnings = [...(trace.warnings ?? []), e instanceof Error ? e.message : String(e)];

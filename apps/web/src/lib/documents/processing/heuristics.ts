@@ -42,7 +42,10 @@ export function decideProcessing(input: HeuristicsInput): ProcessingDecision {
     return { shouldProcess: false, runOcr: false, runMarkdown: false, runExtract: false, reason: "too_many_pages" };
   }
 
-  const isMobileScan = input.uploadSource === "mobile_scan" || input.uploadSource === "mobile_camera";
+  const isMobileScan =
+    input.uploadSource === "mobile_scan" ||
+    input.uploadSource === "web_scan" ||
+    input.uploadSource === "mobile_camera";
   const scanLike = input.isScanLike ?? isMobileScan;
   const hasText = input.hasTextLayer ?? false;
 

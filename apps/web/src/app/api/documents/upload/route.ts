@@ -32,6 +32,7 @@ type UploadSource =
   | "mobile_file"
   | "mobile_share"
   | "mobile_scan"
+  | "web_scan"
   | "ai_drawer"
   | "backoffice_import";
 type UploadResponseBody =
@@ -54,6 +55,7 @@ function parseUploadSource(value: FormDataEntryValue | null): UploadSource {
     raw === "mobile_file" ||
     raw === "mobile_share" ||
     raw === "mobile_scan" ||
+    raw === "web_scan" ||
     raw === "ai_drawer" ||
     raw === "backoffice_import"
   ) {
@@ -161,7 +163,10 @@ export async function POST(request: Request) {
     const pageCountRaw = formData.get("pageCount");
     const pageCount = pageCountRaw ? parseInt(String(pageCountRaw), 10) || null : null;
     const capturedPlatform = (formData.get("capturedPlatform") as "ios" | "android") || null;
-    const isScanLike = uploadSource === "mobile_scan" || uploadSource === "mobile_camera" ? true : null;
+    const isScanLike =
+      uploadSource === "mobile_scan" || uploadSource === "web_scan" || uploadSource === "mobile_camera"
+        ? true
+        : null;
     const captureMode = parseCaptureMode(formData.get("captureMode"));
     const captureQualityWarnings = parseCaptureQualityWarnings(formData.get("captureQualityWarnings"));
     const manualCropApplied = parseOptionalBoolean(formData.get("manualCropApplied"));
@@ -174,6 +179,7 @@ export async function POST(request: Request) {
       mobile_file: "mobile_file",
       mobile_share: "mobile_share",
       mobile_scan: "mobile_scan",
+      web_scan: "web_scan",
     };
     const sourceChannel: DocumentSourceChannel = sourceChannelMap[uploadSource] ?? "web_upload";
 

@@ -48,3 +48,4 @@ export * from "./escalation-events";
 export * from "./analytics-snapshots";
 export * from "./tenant-settings";
 export * from "./dead-letter-items";
+export * from "./portal-feedback";

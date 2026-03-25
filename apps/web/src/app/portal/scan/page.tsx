@@ -17,9 +17,10 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import Link from "next/link";
 import { ContactPicker, type ContactPickerValue } from "@/app/components/upload/ContactPicker";
-import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 import { getPlatform } from "@/lib/capacitor/platform";
+import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 import { useScanCapture, type ScanPage } from "@/lib/scan/useScanCapture";
 import { useFileUpload } from "@/lib/upload/useFileUpload";
 
@@ -130,12 +131,13 @@ function SortablePageCard({
 export default function ScanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isNative } = useNativePlatform();
+  const { supportsMultiPageScan, tier } = useCaptureCapabilities();
   const {
     scanPages,
     pageIds,
     pages,
     capturePage,
+    addPagesFromGalleryBatch,
     retakePage,
     removePage,
     reorderPages,
@@ -169,16 +171,10 @@ export default function ScanPage() {
   );
 
   useEffect(() => {
-    if (!isNative) {
-      router.replace("/portal/today");
-    }
-  }, [isNative, router]);
-
-  useEffect(() => {
-    if (!isNative || hasStartedCapture.current) return;
+    if (tier !== "native_capacitor" || hasStartedCapture.current) return;
     hasStartedCapture.current = true;
     void capturePage();
-  }, [capturePage, isNative]);
+  }, [capturePage, tier]);
 
   useEffect(() => {
     const initialContactId = searchParams.get("contactId");
@@ -261,14 +257,15 @@ export default function ScanPage() {
     try {
       const docName = documentType.trim() || "Sken";
       const platform = getPlatform();
-      const capturedPlatform = platform === "ios" || platform === "android" ? platform : undefined;
+      const capturedPlatform =
+        tier === "native_capacitor" && (platform === "ios" || platform === "android") ? platform : undefined;
       const captureQualityWarnings = buildPageLevelCaptureWarnings(scanPages);
 
       await uploadFile(preparedPdf, {
         contactId: selectedContact.id,
         name: docName,
         tags,
-        uploadSource: "mobile_scan",
+        uploadSource: tier === "native_capacitor" ? "mobile_scan" : "web_scan",
         pageCount: pages.length,
         capturedPlatform,
         captureMode: "multi_page_scan",
@@ -296,7 +293,33 @@ export default function ScanPage() {
     setStep("metadata");
   };
 
-  if (!isNative) return null;
+  if (!supportsMultiPageScan) {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-8 pt-8 sm:px-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h1 className="text-lg font-semibold text-slate-900">Sken na tomto zařízení</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Vícestránkové skenování je v širokém webovém zobrazení vypnuté. Nahrajte PDF nebo obrázek v sekci dokumentů,
+            nebo použijte telefon (prohlížeč nebo aplikaci Aidvisora).
+          </p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/portal/documents"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white"
+            >
+              Otevřít dokumenty
+            </Link>
+            <Link
+              href="/portal/today"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700"
+            >
+              Zpět na přehled
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (step === "capture") {
     return (
@@ -307,6 +330,13 @@ export default function ScanPage() {
             Vyfoťte jednotlivé strany dokumentu. Přetažením změníte pořadí.
           </p>
         </div>
+
+        {tier === "web_mobile" ? (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+            V prohlížeči se po klepnutí na <strong>Přidat stranu</strong> otevře systémové okno fotoaparátu nebo výběr
+            souboru. Každou stranu přidejte zvlášť, nebo najednou přes <strong>Více z galerie</strong>.
+          </div>
+        ) : null}
 
         <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
           <h2 className="mb-1 text-xs font-semibold text-blue-800">Tipy pro kvalitní sken</h2>
@@ -366,25 +396,38 @@ export default function ScanPage() {
               Některé strany mají nízkou kvalitu. Doporučujeme je přefotit pro lepší rozpoznání textu.
             </div>
           ) : null}
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  void capturePage();
+                }}
+                disabled={isCapturing || !canAddMore}
+                className="min-h-[44px] flex-1 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {isCapturing ? "Otevírám výběr…" : canAddMore ? "Přidat stranu" : "Limit 20 stran"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("metadata")}
+                disabled={pages.length === 0}
+                className="min-h-[44px] flex-1 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Pokračovat ({pages.length} {pages.length === 1 ? "strana" : pages.length < 5 ? "strany" : "stran"})
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => {
                 setError(null);
-                void capturePage();
+                void addPagesFromGalleryBatch();
               }}
               disabled={isCapturing || !canAddMore}
-              className="min-h-[44px] flex-1 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isCapturing ? "Otevírám kameru..." : canAddMore ? "Přidat stranu" : "Limit 20 stran"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep("metadata")}
-              disabled={pages.length === 0}
-              className="min-h-[44px] flex-1 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Pokračovat ({pages.length} {pages.length === 1 ? "strana" : pages.length < 5 ? "strany" : "stran"})
+              Více z galerie (najednou)
             </button>
           </div>
         </div>
@@ -403,12 +446,22 @@ export default function ScanPage() {
         </div>
 
         {pdfPreviewUrl ? (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-            <iframe
-              title="Náhled PDF před nahráním"
-              src={pdfPreviewUrl}
-              className="min-h-[50vh] w-full bg-white"
-            />
+          <div className="space-y-2">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+              <iframe
+                title="Náhled PDF před nahráním"
+                src={pdfPreviewUrl}
+                className="min-h-[50vh] w-full bg-white"
+              />
+            </div>
+            <a
+              href={pdfPreviewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-[44px] items-center text-sm font-semibold text-blue-700 underline-offset-2 hover:underline"
+            >
+              Otevřít náhled v novém okně (Safari / mobil)
+            </a>
           </div>
         ) : (
           <p className="text-sm text-slate-500">Náhled není k dispozici.</p>

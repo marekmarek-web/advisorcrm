@@ -65,6 +65,8 @@ export type ExtractionTrace = {
   preprocessDurationMs?: number;
   /** OpenAI pipeline duration after preprocess (ms). */
   pipelineDurationMs?: number;
+  /** Structured extraction: full PDF vs text-only second pass (faster when safe). */
+  extractionSecondPass?: "pdf" | "text";
   preprocessMode?: string;
   preprocessStatus?: string;
   /** 0–1 text / OCR coverage heuristic (Adobe + input mode). */

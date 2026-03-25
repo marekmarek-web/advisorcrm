@@ -35,6 +35,7 @@ import {
   useToast,
 } from "@/app/shared/mobile-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
+import { humanizeAdvisorActionError } from "@/lib/ui/humanize-action-error";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -358,7 +359,7 @@ export function AnalysesHubScreen({
       try {
         setItems(await listFinancialAnalyses());
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Načtení analýz selhalo.");
+        setError(humanizeAdvisorActionError(e, "Načtení analýz selhalo."));
       }
     });
   }
@@ -392,7 +393,7 @@ export function AnalysesHubScreen({
         showToast("Analýza vytvořena — otevíráme průvodce.", "success");
         router.push(`/portal/analyses/financial?id=${encodeURIComponent(id)}`);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Vytvoření analýzy selhalo.");
+        setError(humanizeAdvisorActionError(e, "Vytvoření analýzy selhalo."));
       }
     });
   }
@@ -404,7 +405,7 @@ export function AnalysesHubScreen({
         await setFinancialAnalysisStatus(detailId, status);
         reload();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Aktualizace statusu selhala.");
+        setError(humanizeAdvisorActionError(e, "Aktualizace statusu selhala."));
       }
     });
   }

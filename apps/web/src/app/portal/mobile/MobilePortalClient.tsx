@@ -81,6 +81,8 @@ import { ProductionScreen } from "./screens/ProductionScreen";
 import { MobileSideDrawer } from "@/app/shared/mobile-ui/MobileSideDrawer";
 import { MobileGlobalSearchOverlay } from "./MobileGlobalSearchOverlay";
 import { MobileShellErrorBoundary } from "@/app/shared/mobile-ui/MobileShellErrorBoundary";
+import { ToastProvider } from "@/app/components/Toast";
+import { PortalFeedbackLauncher } from "@/app/portal/PortalFeedbackLauncher";
 import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 import { HouseholdsListMobileScreen } from "./screens/HouseholdsListMobileScreen";
 import { MessagesMobileScreen } from "./screens/MessagesMobileScreen";
@@ -760,6 +762,7 @@ export function MobilePortalClient({
   }
 
   return (
+    <ToastProvider>
     <MobileAppShell deviceClass={deviceClass}>
       {/* Global banners */}
       <OfflineBanner />
@@ -1135,5 +1138,7 @@ export function MobilePortalClient({
         deviceClass={deviceClass}
       />
     </MobileAppShell>
+    <PortalFeedbackLauncher variant="mobile" />
+    </ToastProvider>
   );
 }

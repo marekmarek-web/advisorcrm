@@ -1,9 +1,51 @@
 import { PDFDocument } from "pdf-lib";
 
+async function embedRasterPage(
+  pdfDoc: PDFDocument,
+  pageFile: File
+): Promise<Awaited<ReturnType<PDFDocument["embedPng"]>>> {
+  const bytes = new Uint8Array(await pageFile.arrayBuffer());
+  const mime = (pageFile.type || "").toLowerCase();
+
+  if (mime === "image/png") {
+    return pdfDoc.embedPng(bytes);
+  }
+  if (mime === "image/jpeg" || mime === "image/jpg") {
+    return pdfDoc.embedJpg(bytes);
+  }
+
+  if (typeof createImageBitmap === "undefined") {
+    throw new Error(
+      "Tento typ obrázku nelze v prohlížeči vložit do PDF. Uložte prosím jako JPG nebo PNG, nebo použijte mobilní aplikaci."
+    );
+  }
+
+  const bitmap = await createImageBitmap(pageFile);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Canvas není k dispozici.");
+    }
+    ctx.drawImage(bitmap, 0, 0);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.88));
+    if (!blob) {
+      throw new Error("Konverze obrázku do PDF selhala.");
+    }
+    const jpegBytes = new Uint8Array(await blob.arrayBuffer());
+    return pdfDoc.embedJpg(jpegBytes);
+  } finally {
+    bitmap.close();
+  }
+}
+
 /**
  * Build a single PDF from an array of image File objects.
  * Pages are embedded in order and scaled to fit a standard A4-ish page
  * while preserving aspect ratio.
+ * Non-JPEG/PNG images are rasterized via canvas in the browser (HEIC/WebP/GIF…).
  */
 export async function buildPdfFromImages(
   pages: File[],
@@ -22,16 +64,7 @@ export async function buildPdfFromImages(
   pdfDoc.setCreationDate(new Date());
 
   for (const pageFile of pages) {
-    const bytes = new Uint8Array(await pageFile.arrayBuffer());
-    const mime = pageFile.type.toLowerCase();
-
-    let image;
-    if (mime === "image/png") {
-      image = await pdfDoc.embedPng(bytes);
-    } else {
-      image = await pdfDoc.embedJpg(bytes);
-    }
-
+    const image = await embedRasterPage(pdfDoc, pageFile);
     const { width: imgW, height: imgH } = image.scale(1);
 
     const PAGE_W = 595.28; // A4 width in points
@@ -58,7 +91,6 @@ export async function buildPdfFromImages(
   const safeName = (options?.documentName ?? "scan").replace(/[^a-zA-Z0-9._-]/g, "_");
   const fileName = `${safeName}-${timestamp}.pdf`;
 
-  // Copy into a fresh Uint8Array so TS accepts BlobPart (ArrayBuffer vs ArrayBufferLike).
   return new File([new Uint8Array(pdfBytes)], fileName, {
     type: "application/pdf",
     lastModified: timestamp,

@@ -1,9 +1,10 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { getCzPublicHolidayLabel, getPragueCalendarParts } from "@/lib/calendar/cz-public-holidays";
 import { db } from "db";
 import { events, tasks, opportunities, contacts, contracts, activityLog, opportunityStages } from "db";
-import { eq, and, gte, lt, isNull, asc, desc, sql, inArray } from "db";
+import { eq, and, gte, lt, isNull, isNotNull, asc, desc, sql, inArray } from "db";
 
 export type TodayEvent = {
   id: string;
@@ -28,10 +29,16 @@ export type DashboardKpis = {
   tasksDueToday: Array<{ id: string; title: string; dueDate: string; contactName: string | null }>;
   /** Obchody ve fázích sortOrder 3 a 4 (Před uzavřením, Realizace). */
   opportunitiesInStep3And4: Array<{ id: string; title: string; stageName: string; contactName: string | null }>;
+  /** Státní svátek dle kalendáře Europe/Prague (null = běžný den). */
+  czPublicHolidayToday: string | null;
+  /** Kontakty s narozeninami dnes (MM-DD v Europe/Prague). */
+  birthdaysToday: Array<{ id: string; firstName: string; lastName: string }>;
 };
 
 export async function getDashboardKpis(): Promise<DashboardKpis> {
   const auth = await requireAuthInAction();
+  const pragueToday = getPragueCalendarParts();
+  const czPublicHolidayToday = getCzPublicHolidayLabel(pragueToday.year, pragueToday.month, pragueToday.day);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -57,6 +64,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     pipelineAtRiskList,
     opportunitiesStep3And4List,
     recentActivityList,
+    birthdaysTodayList,
   ] = await Promise.all([
     db
       .select({
@@ -224,6 +232,23 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
       .where(eq(activityLog.tenantId, auth.tenantId))
       .orderBy(desc(activityLog.createdAt))
       .limit(10),
+    db
+      .select({
+        id: contacts.id,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+      })
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.tenantId, auth.tenantId),
+          isNull(contacts.archivedAt),
+          isNotNull(contacts.birthDate),
+          sql`to_char(${contacts.birthDate}, 'MM-DD') = ${pragueToday.mmdd}`
+        )
+      )
+      .orderBy(asc(contacts.lastName), asc(contacts.firstName))
+      .limit(25),
   ]);
 
   const todayEvents: TodayEvent[] = meetingsList.map((e) => ({
@@ -296,6 +321,12 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     createdAt: a.createdAt,
   }));
 
+  const birthdaysToday = birthdaysTodayList.map((c) => ({
+    id: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName,
+  }));
+
   return {
     meetingsToday: meetingsList.length,
     tasksOpen: tasksList.length,
@@ -309,5 +340,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     recentActivity,
     tasksDueToday,
     opportunitiesInStep3And4,
+    czPublicHolidayToday,
+    birthdaysToday,
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileText,
   Image,
@@ -44,6 +44,8 @@ import {
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
+import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
+import { humanizeAdvisorActionError } from "@/lib/ui/humanize-action-error";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -67,7 +69,9 @@ function getSourceLabel(source: string | null): string {
     case "mobile_camera": return "Fotoaparát";
     case "mobile_gallery": return "Galerie";
     case "mobile_file": return "Soubor";
-    case "mobile_scan": return "Sken";
+    case "mobile_scan":
+    case "web_scan":
+      return "Sken";
     case "mobile_share": return "Sdílení";
     case "ai_drawer": return "AI";
     default: return "Web";
@@ -469,16 +473,32 @@ function UploadSheet({
   onClose,
   onUpload,
   busy,
+  showMultiPageScan,
 }: {
   open: boolean;
   onClose: () => void;
   onUpload: (file: File, source: string) => void;
   busy: boolean;
+  showMultiPageScan: boolean;
 }) {
+  const router = useRouter();
   return (
     <BottomSheet open={open} onClose={onClose} title="Nahrát dokument">
       <div className="space-y-3">
         <p className="text-xs text-slate-500">PDF nebo obrázek (max 20 MB).</p>
+        {showMultiPageScan ? (
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              router.push("/portal/scan");
+            }}
+            className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 px-3 flex items-center justify-center gap-2 text-sm font-bold text-indigo-800"
+          >
+            <ScanLine size={18} className="text-indigo-600 shrink-0" />
+            Vícestránkový sken (PDF)
+          </button>
+        ) : null}
         <div className="grid grid-cols-2 gap-2">
           <label className="flex flex-col items-center justify-center gap-1.5 min-h-[80px] rounded-xl border border-dashed border-indigo-300 bg-indigo-50/50 cursor-pointer">
             <Camera size={22} className="text-indigo-600" />
@@ -554,6 +574,7 @@ export function DocumentsHubScreen({
 }: {
   deviceClass?: DeviceClass;
 }) {
+  const { supportsMultiPageScan } = useCaptureCapabilities();
   const searchParams = useSearchParams();
   const docIdFromQuery = searchParams.get("doc");
   const deepLinkHandled = useRef(false);
@@ -574,7 +595,7 @@ export function DocumentsHubScreen({
         const rows = await listDocuments();
         setDocs(rows);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Načtení dokumentů selhalo.");
+        setError(humanizeAdvisorActionError(e, "Načtení dokumentů selhalo."));
       }
     });
   }, []);
@@ -783,6 +804,7 @@ export function DocumentsHubScreen({
         onClose={() => setUploadOpen(false)}
         onUpload={handleUpload}
         busy={pending}
+        showMultiPageScan={supportsMultiPageScan}
       />
 
       {/* Phone detail sheet */}

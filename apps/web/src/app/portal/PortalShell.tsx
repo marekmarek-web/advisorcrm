@@ -11,6 +11,7 @@ import { UserMenu } from "@/app/components/UserMenu";
 import { ToastProvider } from "@/app/components/Toast";
 import { AiAssistantDrawerProvider, useAiAssistantDrawer } from "./AiAssistantDrawerContext";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
+import { PortalFeedbackLauncher } from "./PortalFeedbackLauncher";
 import { useShareIntent } from "@/lib/share/useShareIntent";
 import { usePushNotifications } from "@/lib/push/usePushNotifications";
 import { mapPushNotificationToRoute } from "@/lib/push/routing";
@@ -282,6 +283,8 @@ function PortalShellInner({
             </div>
           </div>
         )}
+
+        <PortalFeedbackLauncher variant="desktop" />
 
         {/* Floating AI assistant button – pouze když je panel zavřený (shared state s AiAssistantDrawer) */}
         {!aiDrawerOpen && (

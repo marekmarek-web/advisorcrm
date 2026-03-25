@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Image as ImageIcon, UploadCloud, X } from "lucide-react";
 import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
+import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 import { useDocumentCapture } from "@/lib/upload/useDocumentCapture";
 import { type UploadSource, useFileUpload } from "@/lib/upload/useFileUpload";
 import { UploadSourceSheet, type UploadSourceOption } from "./UploadSourceSheet";
@@ -40,8 +41,8 @@ type DocumentUploadZoneProps = {
   onUploaded?: (doc: UploadedDocument) => void;
 };
 
-function sourceToUploadSource(source: UploadSourceOption, isNative: boolean): UploadSource {
-  if (!isNative) return "web";
+function sourceToUploadSource(source: UploadSourceOption, useMobileChannels: boolean): UploadSource {
+  if (!useMobileChannels) return "web";
   if (source === "camera") return "mobile_camera";
   if (source === "gallery") return "mobile_gallery";
   if (source === "scan") return "mobile_scan";
@@ -83,6 +84,8 @@ export function DocumentUploadZone({
   const [captureError, setCaptureError] = useState<string | null>(null);
 
   const { isNative } = useNativePlatform();
+  const { useExpandedUploadSheet, tier } = useCaptureCapabilities();
+  const useMobileUploadChannels = tier !== "web_desktop";
   const { captureFromCamera, captureFromGallery } = useDocumentCapture();
   const {
     state,
@@ -165,7 +168,7 @@ export function DocumentUploadZone({
         name: name.trim() || file.name,
         tags,
         visibleToClient,
-        uploadSource: sourceToUploadSource(selectedSource, isNative),
+        uploadSource: sourceToUploadSource(selectedSource, useMobileUploadChannels),
       });
 
       onUploaded?.(uploaded);
@@ -197,7 +200,7 @@ export function DocumentUploadZone({
         >
           <button
             type="button"
-            onClick={() => (isNative ? setSheetOpen(true) : openFilePicker())}
+            onClick={() => (useExpandedUploadSheet ? setSheetOpen(true) : openFilePicker())}
             className="w-full min-h-[44px] rounded-lg px-4 py-3 border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-2"
           >
             <UploadCloud size={18} />
@@ -329,7 +332,7 @@ export function DocumentUploadZone({
             {!inProgress && (
               <button
                 type="button"
-                onClick={() => (isNative ? setSheetOpen(true) : openFilePicker())}
+                onClick={() => (useExpandedUploadSheet ? setSheetOpen(true) : openFilePicker())}
                 className="rounded-[var(--wp-radius)] px-4 py-2.5 min-h-[44px] text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-slate-100"
               >
                 Vybrat jiný soubor

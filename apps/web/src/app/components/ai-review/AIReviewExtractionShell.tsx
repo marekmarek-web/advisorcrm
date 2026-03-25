@@ -106,6 +106,7 @@ type Props = {
   onBack: () => void;
   onDiscard: () => void;
   onApprove: (editedFields: Record<string, string>) => void | Promise<void>;
+  onApproveAndApply?: (editedFields: Record<string, string>) => void | Promise<void>;
   onReject?: (reason?: string) => void;
   onApply?: () => void;
   onSelectClient?: (clientId: string) => void;
@@ -119,6 +120,7 @@ export function AIReviewExtractionShell({
   onBack,
   onDiscard,
   onApprove,
+  onApproveAndApply,
   onReject,
   onApply,
   onSelectClient,
@@ -140,6 +142,8 @@ export function AIReviewExtractionShell({
   const isApproved = doc.reviewStatus === "approved";
   const hasResolvedClient = !!doc.matchedClientId || doc.createNewClientConfirmed === "true";
   const canApply = isApproved && hasResolvedClient && !doc.isApplied;
+  const canApproveAndApply =
+    !!onApproveAndApply && canApproveReject && hasResolvedClient;
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -195,6 +199,11 @@ export function AIReviewExtractionShell({
     void Promise.resolve(onApprove(state.editedFields));
   }, [onApprove, state.editedFields]);
 
+  const handleApproveAndApplyClick = useCallback(() => {
+    if (!onApproveAndApply) return;
+    void Promise.resolve(onApproveAndApply(state.editedFields));
+  }, [onApproveAndApply, state.editedFields]);
+
   return (
     <div className="flex flex-col h-full min-h-[600px] bg-[#f8fafc] font-sans text-slate-800 overflow-hidden -m-4 md:-m-6">
       <style>{`
@@ -212,14 +221,28 @@ export function AIReviewExtractionShell({
         onBack={onBack}
         onDiscard={onDiscard}
         onApprove={handleApproveClick}
+        onApproveAndApply={canApproveAndApply ? handleApproveAndApplyClick : undefined}
         isApproving={isApproving}
         canApproveReject={canApproveReject}
+        canApproveAndApply={canApproveAndApply}
         canApply={canApply}
         isApplied={doc.isApplied}
         onReject={() => setShowRejectModal(true)}
         onApply={() => setShowApplyConfirm(true)}
         actionLoading={actionLoading}
       />
+
+      {isApproved && !doc.isApplied && hasResolvedClient && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-6 py-3">
+          <div className="max-w-5xl mx-auto flex items-start gap-3">
+            <AlertCircle size={18} className="text-amber-700 shrink-0 mt-0.5" />
+            <p className="text-sm font-medium text-amber-950 leading-snug">
+              Kontrola je schválená, ale klient a smlouva v CRM ještě nevznikly, dokud neklepnete na{" "}
+              <strong>Zapsat do CRM</strong>. Schválení jen potvrzuje správnost extrakce.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Failed state banner */}
       {isFailed && doc.errorMessage && (
@@ -293,6 +316,32 @@ export function AIReviewExtractionShell({
               {doc.pipelineInsights.preprocessStatus ? (
                 <span>
                   Preprocess: <span className="text-slate-900">{doc.pipelineInsights.preprocessStatus}</span>
+                </span>
+              ) : null}
+              {typeof doc.pipelineInsights.preprocessDurationMs === "number" ? (
+                <span>
+                  Předzpracování:{" "}
+                  <span className="text-slate-900">
+                    {(doc.pipelineInsights.preprocessDurationMs / 1000).toFixed(1)} s
+                  </span>
+                </span>
+              ) : null}
+              {typeof doc.pipelineInsights.pipelineDurationMs === "number" ? (
+                <span>
+                  AI pipeline:{" "}
+                  <span className="text-slate-900">
+                    {(doc.pipelineInsights.pipelineDurationMs / 1000).toFixed(1)} s
+                  </span>
+                </span>
+              ) : null}
+              {doc.pipelineInsights.extractionSecondPass ? (
+                <span>
+                  2. krok:{" "}
+                  <span className="text-slate-900">
+                    {doc.pipelineInsights.extractionSecondPass === "text"
+                      ? "text (bez druhého PDF)"
+                      : "PDF"}
+                  </span>
                 </span>
               ) : null}
             </div>
@@ -626,26 +675,28 @@ export function AIReviewExtractionShell({
             className="rounded-2xl bg-white border border-slate-200 p-6 max-w-md w-full shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Aplikovat do CRM?</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Zapsat do CRM?</h3>
             <p className="text-sm text-slate-600 mb-4">
-              Návrhové akce (klient, smlouva, úkol…) budou zapsány do CRM. Tuto akci lze provést jen jednou.
+              Návrhové akce (klient, smlouva, úkol…) budou zapsány do databáze. Tuto akci lze provést jen jednou.
             </p>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => setShowApplyConfirm(false)}
                 className="px-4 min-h-[44px] rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50"
               >
                 Zrušit
               </button>
               <button
+                type="button"
                 onClick={() => {
                   onApply?.();
                   setShowApplyConfirm(false);
                 }}
-                disabled={actionLoading === "apply"}
+                disabled={actionLoading === "apply" || actionLoading === "approveApply"}
                 className="px-4 min-h-[44px] rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50"
               >
-                {actionLoading === "apply" ? "Aplikuji…" : "Aplikovat"}
+                {actionLoading === "apply" ? "Zapisuji…" : "Zapsat"}
               </button>
             </div>
           </div>

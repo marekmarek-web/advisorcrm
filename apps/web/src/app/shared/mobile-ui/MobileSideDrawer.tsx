@@ -186,16 +186,10 @@ export function MobileSideDrawer({
   const widthClass = deviceClass === "tablet" ? "w-[320px]" : "w-[min(85vw,320px)]";
 
   return (
-    <div className="fixed inset-0 z-[100] flex" role="dialog" aria-modal="true" aria-label="Menu">
-      <button
-        type="button"
-        className="flex-1 bg-black/40 animate-in fade-in duration-200"
-        aria-label="Zavřít menu"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-[100] flex flex-row" role="dialog" aria-modal="true" aria-label="Menu">
       <aside
         className={cx(
-          "h-full bg-white shadow-xl flex flex-col border-l border-slate-100 animate-in slide-in-from-left duration-300 ease-out",
+          "h-full bg-white shadow-xl flex flex-col border-r border-slate-100 animate-in slide-in-from-left duration-300 ease-out shrink-0",
           widthClass
         )}
       >
@@ -269,6 +263,12 @@ export function MobileSideDrawer({
           </button>
         </div>
       </aside>
+      <button
+        type="button"
+        className="flex-1 min-w-0 bg-black/40 animate-in fade-in duration-200"
+        aria-label="Zavřít menu"
+        onClick={onClose}
+      />
     </div>
   );
 }

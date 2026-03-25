@@ -9,14 +9,24 @@ import {
   advisorVisionGoals,
 } from "db";
 import { eq, and, asc, inArray } from "db";
-import type { PeriodType, BusinessPlanMetricType, MetricUnit } from "@/lib/business-plan/types";
-import { getPlanPeriod } from "@/lib/business-plan/types";
-import { computeAllMetrics, getCallsCount, getProductionMix } from "@/lib/business-plan/metrics";
+import {
+  BUSINESS_PLAN_METRIC_TYPES,
+  getPlanPeriod,
+  type PeriodType,
+  type BusinessPlanMetricType,
+  type MetricUnit,
+  type PlanProgress,
+  type SlippageRecommendation,
+} from "@/lib/business-plan/types";
+import {
+  computeAllMetrics,
+  getCallsCount,
+  getProductionMix,
+  type MetricsActuals,
+} from "@/lib/business-plan/metrics";
 import { computeProgress, type PlanWithTargets } from "@/lib/business-plan/progress";
 import { listTeamMembersWithNames } from "@/app/actions/team-overview";
 import { getSlippageRecommendations } from "@/lib/business-plan/recommendations";
-import type { PlanProgress, SlippageRecommendation } from "@/lib/business-plan/types";
-
 export type PlanListItem = {
   id: string;
   periodType: string;
@@ -39,6 +49,13 @@ export type PlanWithTargetsRow = {
   periodStart: Date;
   periodEnd: Date;
   targets: { metricType: BusinessPlanMetricType; targetValue: number; unit: MetricUnit }[];
+  manualMetricAdjustments?: Record<string, number> | null;
+  targetMixPct?: {
+    investments: number;
+    pension: number;
+    life: number;
+    hypo: number;
+  } | null;
 };
 
 export type PlanProgressResult = {
@@ -47,8 +64,26 @@ export type PlanProgressResult = {
   /** Funnel actuals for UI (calls = telefonat events). */
   funnelActuals?: { calls: number };
   /** Production by segment (Kč) for mix donut. */
-  productionMix?: { investments: number; life: number; hypo: number };
+  productionMix?: { investments: number; pension: number; life: number; hypo: number };
+  /** Cílový mix pro donut při nulové produkci v období. */
+  planTargetMixPct?: {
+    investments: number;
+    pension: number;
+    life: number;
+    hypo: number;
+  } | null;
 };
+
+function applyManualMetricAdjustments(actuals: MetricsActuals, raw: unknown): void {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+  const o = raw as Record<string, unknown>;
+  for (const key of BUSINESS_PLAN_METRIC_TYPES) {
+    const v = o[key];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      actuals[key] = (actuals[key] ?? 0) + v;
+    }
+  }
+}
 
 export type VisionGoalRow = { id: string; title: string; progressPct: number; sortOrder: number };
 
@@ -182,6 +217,8 @@ export async function getActivePlan(
     periodStart: period.start,
     periodEnd: period.end,
     targets,
+    manualMetricAdjustments: (planRow.manualMetricAdjustments as Record<string, number> | null) ?? null,
+    targetMixPct: planRow.targetMixPct ?? null,
   };
 }
 
@@ -230,6 +267,8 @@ export async function getPlanWithTargets(
     periodStart: period.start,
     periodEnd: period.end,
     targets,
+    manualMetricAdjustments: (planRow.manualMetricAdjustments as Record<string, number> | null) ?? null,
+    targetMixPct: planRow.targetMixPct ?? null,
   };
 }
 
@@ -246,6 +285,7 @@ export async function getPlanProgress(
     plan.periodStart,
     plan.periodEnd
   );
+  applyManualMetricAdjustments(actuals, plan.manualMetricAdjustments);
   const calls = await getCallsCount(plan.tenantId, plan.userId, plan.periodStart, plan.periodEnd);
   const productionMix = await getProductionMix(plan.tenantId, plan.userId, plan.periodStart, plan.periodEnd);
   const planForProgress: PlanWithTargets = {
@@ -267,7 +307,44 @@ export async function getPlanProgress(
     recommendations,
     funnelActuals: { calls },
     productionMix,
+    planTargetMixPct: plan.targetMixPct ?? null,
   };
+}
+
+/** Uloží ruční korekce metrik a volitelný cílový produkční mix (pro donut bez dat v CRM). */
+export async function savePlanManualOverrides(
+  planId: string,
+  payload: {
+    manualMetricAdjustments: Record<string, number> | null;
+    targetMixPct: {
+      investments: number;
+      pension: number;
+      life: number;
+      hypo: number;
+    } | null;
+  }
+): Promise<void> {
+  const auth = await requireAuthInAction();
+  const [row] = await db
+    .select({ id: advisorBusinessPlans.id })
+    .from(advisorBusinessPlans)
+    .where(
+      and(
+        eq(advisorBusinessPlans.id, planId),
+        eq(advisorBusinessPlans.tenantId, auth.tenantId),
+        eq(advisorBusinessPlans.userId, auth.userId)
+      )
+    )
+    .limit(1);
+  if (!row) throw new Error("Plan not found");
+  await db
+    .update(advisorBusinessPlans)
+    .set({
+      manualMetricAdjustments: payload.manualMetricAdjustments,
+      targetMixPct: payload.targetMixPct,
+      updatedAt: new Date(),
+    })
+    .where(eq(advisorBusinessPlans.id, planId));
 }
 
 /** Create a plan for the given period. Returns plan id. */
@@ -493,6 +570,7 @@ export async function getTeamBusinessPlanSummary(
       period.start,
       period.end
     );
+    applyManualMetricAdjustments(actuals, planRow.manualMetricAdjustments);
     const planForProgress: PlanWithTargets = {
       planId: planRow.id,
       tenantId: planRow.tenantId,

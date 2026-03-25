@@ -3,6 +3,7 @@ import {
   getSchemaForDocumentType,
   validateExtractionByType,
   buildExtractionPrompt,
+  wrapExtractionPromptWithDocumentText,
   SECTION_CONFIDENCE_KEYS,
 } from "../extraction-schemas-by-type";
 import type { ContractDocumentType } from "../document-classification";
@@ -131,6 +132,16 @@ describe("extraction-schemas-by-type", () => {
       const promptText = buildExtractionPrompt("unsupported_or_unknown", false);
       expect(promptScan).toMatch(/scan|nasken|inferred_low_confidence/i);
       expect(promptScan.length).toBeGreaterThan(promptText.length);
+    });
+  });
+
+  describe("wrapExtractionPromptWithDocumentText", () => {
+    it("embeds markdown body between delimiters", () => {
+      const out = wrapExtractionPromptWithDocumentText("DO EXTRACT JSON", "## Page 1\nFoo bar");
+      expect(out).toContain("DO EXTRACT JSON");
+      expect(out).toContain("<<<DOCUMENT_TEXT>>>");
+      expect(out).toContain("<<<END_DOCUMENT_TEXT>>>");
+      expect(out).toContain("Foo bar");
     });
   });
 

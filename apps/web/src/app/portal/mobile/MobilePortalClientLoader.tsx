@@ -24,6 +24,8 @@ const EMPTY_KPIS: DashboardKpis = {
   recentActivity: [],
   tasksDueToday: [],
   opportunitiesInStep3And4: [],
+  czPublicHolidayToday: null,
+  birthdaysToday: [],
 };
 
 const EMPTY_COUNTS: TaskCounts = { all: 0, today: 0, week: 0, overdue: 0, completed: 0 };

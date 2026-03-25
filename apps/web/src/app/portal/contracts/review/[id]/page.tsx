@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   approveContractReview,
+  approveAndApplyContractReview,
   rejectContractReview,
   applyContractReviewDrafts,
   selectMatchedClient,
@@ -46,8 +47,9 @@ function ProcessingProgress({ stepHint }: { stepHint?: string }) {
           {label}
           {dots}
         </p>
-        <p className="text-sm text-slate-500 font-medium max-w-xs">
-          AI čte dokument a extrahuje data. Obvykle to trvá 20–50 sekund. Stránka se automaticky aktualizuje.
+        <p className="text-sm text-slate-500 font-medium max-w-md">
+          AI čte dokument a extrahuje data. U delších PDF nebo se skenem to může trvat i 1–2 minuty. Po dokončení
+          uvidíte v detailu rozklad času (předzpracování vs. AI). Stránka se automaticky aktualizuje.
         </p>
       </div>
       <div className="flex gap-2">
@@ -255,7 +257,7 @@ export default function ContractReviewDetailPage() {
     try {
       const result = await applyContractReviewDrafts(id);
       if (result.ok) {
-        toast.showToast("Akce aplikovány do CRM.", "success");
+        toast.showToast("Údaje zapsány do CRM.", "success");
         load();
       } else {
         toast.showToast(result.error ?? "Chyba", "error");
@@ -264,6 +266,27 @@ export default function ContractReviewDetailPage() {
       setActionLoading(null);
     }
   }, [id, toast, load]);
+
+  const handleApproveAndApply = useCallback(
+    async (editedFields: Record<string, string>) => {
+      setActionLoading("approveApply");
+      try {
+        const result = await approveAndApplyContractReview(id, {
+          fieldEdits: editedFields,
+          rawExtractedPayload: rawExtractedPayload ?? undefined,
+        });
+        if (result.ok) {
+          toast.showToast("Kontrola schválena a údaje zapsány do CRM.", "success");
+          load();
+        } else {
+          toast.showToast(result.error ?? "Chyba", "error");
+        }
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [id, rawExtractedPayload, toast, load]
+  );
 
   const handleSelectClient = useCallback(
     async (clientId: string) => {
@@ -337,6 +360,7 @@ export default function ContractReviewDetailPage() {
       onBack={handleBack}
       onDiscard={handleDiscard}
       onApprove={handleApprove}
+      onApproveAndApply={handleApproveAndApply}
       onReject={handleReject}
       onApply={handleApply}
       onSelectClient={handleSelectClient}

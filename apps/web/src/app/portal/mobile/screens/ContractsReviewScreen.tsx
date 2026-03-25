@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import {
   approveContractReview,
+  approveAndApplyContractReview,
   applyContractReviewDrafts,
   confirmCreateNewClient,
   rejectContractReview,
@@ -67,6 +68,7 @@ type ReviewDetail = {
   draftActions?: unknown[] | null;
   clientMatchCandidates?: Array<{ id: string; fullName?: string; score?: number }> | null;
   matchedClientId?: string;
+  createNewClientConfirmed?: string | null;
   createdAt: string;
 };
 
@@ -190,6 +192,7 @@ function ReviewDetailPanel({
   detail,
   pending,
   onApprove,
+  onApproveAndApply,
   onReject,
   onApply,
   onSelectClient,
@@ -198,6 +201,7 @@ function ReviewDetailPanel({
   detail: ReviewDetail;
   pending: boolean;
   onApprove: () => void;
+  onApproveAndApply: () => void;
   onReject: () => void;
   onApply: () => void;
   onSelectClient: (clientId: string) => void;
@@ -205,6 +209,13 @@ function ReviewDetailPanel({
 }) {
   const status = detail.reviewStatus ?? detail.processingStatus;
   const cfg = getStatusConfig(status);
+  const canReviewDecision =
+    (detail.processingStatus === "extracted" || detail.processingStatus === "review_required") &&
+    (detail.reviewStatus === "pending" || detail.reviewStatus === null);
+  const hasResolvedClient =
+    !!detail.matchedClientId?.trim() || detail.createNewClientConfirmed === "true";
+  const isApprovedOnly = detail.reviewStatus === "approved";
+  const isApplied = detail.reviewStatus === "applied";
 
   const extractedFields = detail.extractedPayload
     ? Object.entries(detail.extractedPayload).filter(([, v]) => v != null && v !== "")
@@ -369,54 +380,70 @@ function ReviewDetailPanel({
         </MobileCard>
       ) : null}
 
+      {isApprovedOnly && !isApplied && hasResolvedClient ? (
+        <MobileCard className="p-3.5 bg-amber-50 border-amber-200">
+          <p className="text-xs font-medium text-amber-950 leading-snug">
+            Schváleno, ale v CRM ještě není zapsáno. Klepněte na <strong>Zapsat do CRM</strong> níže.
+          </p>
+        </MobileCard>
+      ) : null}
+
       {/* Decision buttons */}
       <MobileCard className="p-3.5">
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2.5">
           Rozhodnutí
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={onApprove}
-            disabled={pending || status === "approved"}
-            className={cx(
-              "min-h-[44px] rounded-xl border text-xs font-bold transition-colors",
-              status === "approved"
-                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
-            )}
-          >
-            <CheckCircle2 size={14} className="mx-auto mb-0.5" />
-            Schválit
-          </button>
-          <button
-            type="button"
-            onClick={onReject}
-            disabled={pending || status === "rejected"}
-            className={cx(
-              "min-h-[44px] rounded-xl border text-xs font-bold transition-colors",
-              status === "rejected"
-                ? "border-rose-300 bg-rose-50 text-rose-700"
-                : "border-rose-200 bg-white text-rose-700 hover:bg-rose-50"
-            )}
-          >
-            <XCircle size={14} className="mx-auto mb-0.5" />
-            Zamítnout
-          </button>
-          <button
-            type="button"
-            onClick={onApply}
-            disabled={pending || status === "applied"}
-            className={cx(
-              "min-h-[44px] rounded-xl border text-xs font-bold transition-colors",
-              status === "applied"
-                ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                : "border-indigo-200 bg-[#1a1c2e] text-white"
-            )}
-          >
-            <Zap size={14} className="mx-auto mb-0.5" />
-            Aplikovat
-          </button>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={onReject}
+              disabled={pending || status === "rejected" || !canReviewDecision}
+              className={cx(
+                "min-h-[44px] rounded-xl border text-xs font-bold transition-colors",
+                status === "rejected"
+                  ? "border-rose-300 bg-rose-50 text-rose-700"
+                  : "border-rose-200 bg-white text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+              )}
+            >
+              <XCircle size={14} className="mx-auto mb-0.5" />
+              Zamítnout
+            </button>
+            <button
+              type="button"
+              onClick={onApprove}
+              disabled={pending || !canReviewDecision}
+              className={cx(
+                "min-h-[44px] rounded-xl border text-xs font-bold transition-colors",
+                status === "approved" || status === "applied"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+              )}
+            >
+              <CheckCircle2 size={14} className="mx-auto mb-0.5" />
+              Jen schválit
+            </button>
+          </div>
+          {canReviewDecision && hasResolvedClient ? (
+            <button
+              type="button"
+              onClick={onApproveAndApply}
+              disabled={pending}
+              className="w-full min-h-[44px] rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-wide"
+            >
+              Schválit a zapsat do CRM
+            </button>
+          ) : null}
+          {isApprovedOnly && !isApplied && hasResolvedClient ? (
+            <button
+              type="button"
+              onClick={onApply}
+              disabled={pending}
+              className="w-full min-h-[44px] rounded-xl bg-[#1a1c2e] text-white text-xs font-black uppercase tracking-wide"
+            >
+              Zapsat do CRM
+            </button>
+          ) : null}
         </div>
       </MobileCard>
     </div>
@@ -563,6 +590,16 @@ export function ContractsReviewScreen({
     });
   }
 
+  async function handleApproveAndApply() {
+    if (!detail) return;
+    startTransition(async () => {
+      const result = await approveAndApplyContractReview(detail.id);
+      if (!result.ok) setError(result.error);
+      await fetchList();
+      await fetchDetail(detail.id);
+    });
+  }
+
   const isTablet = deviceClass === "tablet" || deviceClass === "desktop";
 
   return (
@@ -647,6 +684,7 @@ export function ContractsReviewScreen({
                 detail={detail}
                 pending={pending}
                 onApprove={handleApprove}
+                onApproveAndApply={handleApproveAndApply}
                 onReject={handleReject}
                 onApply={handleApply}
                 onSelectClient={(id) => startTransition(async () => { await selectMatchedClient(detail.id, id); await fetchDetail(detail.id); })}
@@ -679,6 +717,7 @@ export function ContractsReviewScreen({
               detail={detail}
               pending={pending}
               onApprove={handleApprove}
+              onApproveAndApply={handleApproveAndApply}
               onReject={handleReject}
               onApply={handleApply}
               onSelectClient={(id) => startTransition(async () => { await selectMatchedClient(detail.id, id); await fetchDetail(detail.id); })}
