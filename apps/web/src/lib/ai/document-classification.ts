@@ -34,7 +34,8 @@ Vrať JEDINĚ platný JSON objekt (žádný markdown, žádný úvod) s poli:
 - reasons: krátké důvody (pole stringů)
 
 Rozhoduj podle nadpisů, institucí, sekcí, klíčových frází, tabulek a kontextových patternů.
-Nikdy neoznač offer/proposal jako final_contract bez explicitního důkazu.`;
+Nikdy neoznač offer/proposal jako final_contract bez explicitního důkazu.
+Všechny textové hodnoty (reasons apod.) piš VŽDY česky.`;
 
 export function normalizeClassification(raw: Partial<ClassificationResult>): ClassificationResult {
   const primaryType = (raw.primaryType ?? "unsupported_or_unknown") as ContractDocumentType;
@@ -95,7 +96,7 @@ export function parseClassificationResponse(raw: string): ClassificationResult {
     return normalizeClassification({
       primaryType: "unsupported_or_unknown",
       confidence: 0,
-      reasons: ["Parse error: " + result.error.message],
+      reasons: ["Chyba parsování: " + result.error.message],
       subtype: "unknown",
       lifecycleStatus: "unknown",
     });

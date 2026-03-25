@@ -40,7 +40,8 @@ const DETECTION_PROMPT = `Prohlédni přiložený dokument. Urči, zda jde o:
 Pokud je dokument šikmo, má špatný kontrast, je částečně oříznutý, nebo jinak nečitelný, zapiš to do qualityIssues.
 
 Vrať JEDINĚ platný JSON objekt (žádný markdown):
-{ "inputMode": "...", "confidence": 0-1, "reason": "krátký důvod", "pageCount": N, "qualityIssues": ["..."] }.`;
+{ "inputMode": "...", "confidence": 0-1, "reason": "krátký důvod", "pageCount": N, "qualityIssues": ["..."] }.
+Všechny textové hodnoty (reason, qualityIssues apod.) piš VŽDY česky.`;
 
 const ALLOWED_MIMES = new Set([
   "application/pdf",

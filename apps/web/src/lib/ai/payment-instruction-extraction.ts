@@ -44,7 +44,8 @@ confidence (0-1), needsHumanReview (boolean pokud jsou údaje nejasné nebo prot
 Pravidla:
 - IBAN a číslo účtu nikdy nehalucinuj; pokud nejsou čitelné, nech prázdné a needsHumanReview=true.
 - Částku a měnu odvozuj jen z dokumentu.
-- Krátké důvody dej do paymentNote pokud potřebuješ vysvětlit nejistotu.`;
+- Krátké důvody dej do paymentNote pokud potřebuješ vysvětlit nejistotu.
+- Všechny textové hodnoty (paymentNote apod.) piš VŽDY česky.`;
 
 function str(v: unknown): string {
   if (v == null) return "";

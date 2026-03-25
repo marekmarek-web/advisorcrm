@@ -69,7 +69,8 @@ JSON tvar:
   "documentIntent": "...",
   "classificationConfidence": 0-1,
   "reasons": ["krátké důvody pro typ dokumentu"]
-}`;
+}
+Všechny textové hodnoty (reasons, inputReason apod.) piš VŽDY česky.`;
 
 function mimeBlockedResult(mimeType: string): {
   input: InputModeResult;

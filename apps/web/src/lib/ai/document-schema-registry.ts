@@ -1198,6 +1198,7 @@ export function buildSchemaPrompt(
     `- not_applicable když pole pro tento typ dokumentu nedává smysl.\n` +
     `- missing když je pole required, ale chybí v dokumentu.\n` +
     `- not_found když dokument je relevantní, ale údaj se nepodařilo najít.\n` +
+    `Všechny textové hodnoty (reasons, reviewWarnings.message, suggestedActions.label apod.) piš VŽDY česky.\n` +
     typeAddendum;
 }
 

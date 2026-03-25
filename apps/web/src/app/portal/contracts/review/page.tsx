@@ -166,6 +166,7 @@ export default function ContractReviewListPage() {
     try {
       const formData = new FormData();
       formData.set("file", file);
+      // Step 1: Fast upload (Storage + DB row), returns immediately.
       const res = await fetch("/api/contracts/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
@@ -173,6 +174,7 @@ export default function ContractReviewListPage() {
         return;
       }
       const reviewId = data.id as string;
+      // Step 2: Navigate to detail page, which triggers processing and polls for status.
       router.push(`/portal/contracts/review/${reviewId}`);
     } catch {
       setError("Nahrání souboru selhalo.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   approveContractReview,
@@ -14,6 +14,56 @@ import { AIReviewExtractionShell } from "@/app/components/ai-review/AIReviewExtr
 import { mapApiToExtractionDocument } from "@/lib/ai-review/mappers";
 import type { ExtractionDocument } from "@/lib/ai-review/types";
 
+const PROCESSING_STEPS = [
+  { key: "uploaded", label: "Soubor nahrán" },
+  { key: "preprocessing", label: "Předpracování dokumentu" },
+  { key: "classifying", label: "Klasifikace smlouvy" },
+  { key: "extracting", label: "AI extrakce dat" },
+  { key: "matching", label: "Hledání klientů a smluv" },
+  { key: "processing", label: "Zpracovávám…" },
+] as const;
+
+function ProcessingProgress({ stepHint }: { stepHint?: string }) {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setFrame((f) => f + 1), 600);
+    return () => clearInterval(t);
+  }, []);
+  const dots = ".".repeat((frame % 3) + 1);
+  const label = stepHint
+    ? PROCESSING_STEPS.find((s) => s.key === stepHint)?.label ?? "Zpracovávám"
+    : "Zpracovávám";
+  return (
+    <div className="flex flex-col items-center justify-center h-[70vh] gap-6 text-center px-4">
+      <div className="relative w-20 h-20">
+        <div className="absolute inset-0 rounded-full bg-indigo-100 animate-ping opacity-40" />
+        <div className="relative w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        </div>
+      </div>
+      <div>
+        <p className="text-xl font-black text-slate-800 mb-1">
+          {label}
+          {dots}
+        </p>
+        <p className="text-sm text-slate-500 font-medium max-w-xs">
+          AI čte dokument a extrahuje data. Obvykle to trvá 20–50 sekund. Stránka se automaticky aktualizuje.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        {PROCESSING_STEPS.slice(0, 5).map((s, i) => (
+          <div
+            key={s.key}
+            className={`h-1.5 rounded-full transition-all duration-700 ${
+              i <= (frame % 5) ? "w-8 bg-indigo-500" : "w-4 bg-slate-200"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ContractReviewDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -26,6 +76,10 @@ export default function ContractReviewDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [processingStepHint, setProcessingStepHint] = useState<string | undefined>();
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processingStartedRef = useRef(false);
 
   const loadPdf = useCallback(async () => {
     try {
@@ -50,6 +104,7 @@ export default function ContractReviewDetailPage() {
         throw new Error("Načtení detailu selhalo.");
       }
       const data = await res.json();
+      setProcessingStatus(data.processingStatus ?? null);
       const mapped = mapApiToExtractionDocument(data, pdfUrl);
       setDoc(mapped);
     } catch (e) {
@@ -59,13 +114,78 @@ export default function ContractReviewDetailPage() {
     }
   }, [id, pdfUrl]);
 
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollingRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/contracts/review/${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const status: string = data.processingStatus ?? "";
+        setProcessingStatus(status);
+        if (status !== "uploaded" && status !== "processing") {
+          stopPolling();
+          const mapped = mapApiToExtractionDocument(data, pdfUrl);
+          setDoc(mapped);
+          setLoading(false);
+          if (status === "failed") {
+            setError(data.errorMessage ?? "Extrakce selhala.");
+          }
+        }
+      } catch {
+        /* polling error – keep retrying */
+      }
+    }, 3000);
+  }, [id, pdfUrl, stopPolling]);
+
+  const triggerProcessing = useCallback(async () => {
+    if (processingStartedRef.current) return;
+    processingStartedRef.current = true;
+    setProcessingStepHint("preprocessing");
+    try {
+      const res = await fetch(`/api/contracts/review/${id}/process`, { method: "POST" });
+      const data = await res.json().catch(() => ({})) as { error?: string; code?: string };
+      if (!res.ok && res.status !== 409) {
+        setError(data.error ?? "Spuštění zpracování selhalo.");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("Spuštění zpracování selhalo.");
+      setLoading(false);
+      return;
+    }
+    startPolling();
+  }, [id, startPolling]);
+
   useEffect(() => {
     loadPdf();
   }, [loadPdf]);
 
   useEffect(() => {
+    if (!id) return;
     load();
-  }, [load]);
+  }, [load, id]);
+
+  useEffect(() => {
+    if (processingStatus === "uploaded") {
+      triggerProcessing();
+    } else if (processingStatus === "processing") {
+      setProcessingStepHint("extracting");
+      startPolling();
+    }
+  }, [processingStatus, triggerProcessing, startPolling]);
+
+  useEffect(() => {
+    return () => stopPolling();
+  }, [stopPolling]);
 
   const handleBack = useCallback(() => {
     router.push("/portal/contracts/review");
@@ -177,6 +297,10 @@ export default function ContractReviewDetailPage() {
       setActionLoading(null);
     }
   }, [id, toast, load]);
+
+  if (processingStatus === "uploaded" || processingStatus === "processing") {
+    return <ProcessingProgress stepHint={processingStepHint} />;
+  }
 
   if (loading && !doc) {
     return (

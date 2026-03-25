@@ -11,6 +11,7 @@ import type {
   DraftAction,
 } from "./types";
 import { buildHumanSummary, buildHumanErrorMessage } from "@/lib/ai/document-messages";
+import { getReasonMessage } from "@/lib/ai/reason-codes";
 import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
 import type { InputMode } from "@/lib/ai/input-mode-detection";
 
@@ -231,12 +232,14 @@ function buildRecommendations(
 
   const reasons = (detail.reasonsForReview as string[] | undefined) ?? [];
   for (const reason of reasons) {
+    const isCode = /^[a-z][a-z0-9_]+$/.test(reason);
+    const description = isCode ? getReasonMessage(reason) : reason;
     recs.push({
       id: `reason-${idx++}`,
       type: "warning",
       severity: "high",
       title: "Důvod ke kontrole",
-      description: reason,
+      description,
       linkedFieldIds: [],
       actionState: "pending",
       dismissed: false,

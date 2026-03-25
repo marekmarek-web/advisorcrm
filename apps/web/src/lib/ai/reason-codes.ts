@@ -49,6 +49,29 @@ const REGISTRY: ReasonCode[] = [
 
   // Pipeline
   { code: "pipeline_failed_step", severity: "blocking", humanMessage: "Pipeline selhala v jednom z kroků — zkontrolujte detail.", retryRecommended: true, retryStrategy: "manual_escalation" },
+
+  // Extraction confidence & quality
+  { code: "low_confidence", severity: "warning", humanMessage: "Nízká jistota extrakce — zkontrolujte výsledek.", retryRecommended: false },
+  { code: "critical_review_warning", severity: "blocking", humanMessage: "Kritické upozornění extrakce — dokument vyžaduje ruční kontrolu.", retryRecommended: false },
+  { code: "incomplete_required_data", severity: "warning", humanMessage: "Chybí povinné údaje — doplňte ručně nebo ověřte s klientem.", retryRecommended: false },
+  { code: "sensitive_section_detected", severity: "warning", humanMessage: "Dokument obsahuje citlivé osobní údaje.", retryRecommended: false },
+  { code: "low_text_coverage_estimate", severity: "warning", humanMessage: "Nízké pokrytí textu v dokumentu — pravděpodobně scan bez OCR.", retryRecommended: false },
+  { code: "adobe_preprocess_failed_fallback", severity: "warning", humanMessage: "Adobe preprocessing selhal — extrakce proběhla na surových datech.", retryRecommended: true },
+  { code: "model_flagged", severity: "warning", humanMessage: "Model označil dokument ke kontrole.", retryRecommended: false },
+
+  // Document lifecycle
+  { code: "proposal_not_final_contract", severity: "warning", humanMessage: "Dokument je návrh smlouvy — není to finální smlouva.", retryRecommended: false },
+  { code: "offer_not_binding_contract", severity: "warning", humanMessage: "Dokument je nabídka — není to závazná smlouva.", retryRecommended: false },
+  { code: "proposal_or_modelation_not_final_contract", severity: "warning", humanMessage: "Návrh nebo modelace — nejedná se o finální smlouvu.", retryRecommended: false },
+  { code: "supporting_document_review", severity: "info", humanMessage: "Podpůrný dokument vyžaduje ruční kontrolu.", retryRecommended: false },
+
+  // Payment
+  { code: "payment_needs_review", severity: "warning", humanMessage: "Platební pokyny vyžadují ruční kontrolu.", retryRecommended: false },
+  { code: "payment_extraction_failed", severity: "blocking", humanMessage: "Extrakce platebních pokynů selhala.", retryRecommended: true },
+  { code: "payment_validation_needs_review", severity: "warning", humanMessage: "Validace platebních údajů vyžaduje ruční kontrolu.", retryRecommended: false },
+
+  // Matching
+  { code: "missing_existing_contract_match", severity: "warning", humanMessage: "Nenalezena odpovídající existující smlouva v CRM.", retryRecommended: false },
 ];
 
 const CODE_MAP = new Map<string, ReasonCode>(REGISTRY.map((r) => [r.code, r]));

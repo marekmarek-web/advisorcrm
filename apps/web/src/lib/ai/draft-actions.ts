@@ -299,7 +299,7 @@ export function buildAllDraftActions(
       type: "create_opportunity",
       label: "Vytvořit obchodní příležitost",
       payload: {
-        title: `${maybeEnvelope.documentClassification.primaryType} – follow-up`,
+        title: `${maybeEnvelope.documentClassification.primaryType} – navazující akce`,
         lifecycleStatus: maybeEnvelope.documentClassification.lifecycleStatus,
       },
     });
