@@ -12,7 +12,9 @@ export function getMobileUiMode(): MobileUiMode {
 
 export function isLikelyMobileUserAgent(ua: string | null | undefined): boolean {
   if (!ua) return false;
-  return /iphone|ipod|android.+mobile|android(?!.*tablet)|mobile|windows phone|opera mini|blackberry/i.test(ua);
+  // `; wv)` = Android System WebView (Capacitor / in-app browser) — must count as mobile shell even without "Mobile" in UA.
+  // `android(?!.*tablet)` still lets many phones/tablets through; tablets with "Tablet" in model often match `android.+mobile` via "Mobile Safari".
+  return /iphone|ipod|android.+mobile|android(?!.*tablet)|;\s*wv\)|mobile|windows phone|opera mini|blackberry/i.test(ua);
 }
 
 export function isMobileUiV1EnabledForRequest({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
@@ -152,8 +152,6 @@ export default function ScanPage() {
     hasQualityIssues,
   } = useScanCapture();
   const { uploadFile, progress } = useFileUpload();
-  const hasStartedCapture = useRef(false);
-
   const [step, setStep] = useState<ScanStep>("capture");
   const [selectedContact, setSelectedContact] = useState<ContactPickerValue | null>(null);
   const [documentType, setDocumentType] = useState("");
@@ -169,12 +167,6 @@ export default function ScanPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
-
-  useEffect(() => {
-    if (tier !== "native_capacitor" || hasStartedCapture.current) return;
-    hasStartedCapture.current = true;
-    void capturePage();
-  }, [capturePage, tier]);
 
   useEffect(() => {
     const initialContactId = searchParams.get("contactId");

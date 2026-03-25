@@ -90,6 +90,7 @@ import { MessagesMobileScreen } from "./screens/MessagesMobileScreen";
 import { NotesMobileScreen } from "./screens/NotesMobileScreen";
 import { ColdContactsMobileScreen } from "./screens/ColdContactsMobileScreen";
 import type { RoleName } from "@/shared/rolePermissions";
+import ScanPage from "../scan/page";
 
 function RouteLoadingSkeleton() {
   return (
@@ -180,6 +181,7 @@ function isDetailRoute(pathname: string): boolean {
   if (/^\/portal\/contracts\/review\/[^/]+$/.test(pathname)) return true;
   if (/^\/portal\/calculators\/[^/]+$/.test(pathname)) return true;
   if (pathname.startsWith("/portal/analyses/financial")) return true;
+  if (pathname.startsWith("/portal/scan")) return true;
   return false;
 }
 
@@ -192,6 +194,7 @@ function resolveParentRoute(pathname: string): string {
   if (/^\/portal\/mindmap\/[^/]+/.test(pathname)) return "/portal/mindmap";
   if (/^\/portal\/contracts\/review\/[^/]+/.test(pathname)) return "/portal/contracts/review";
   if (/^\/portal\/calculators\/[^/]+/.test(pathname)) return "/portal/calculators";
+  if (pathname.startsWith("/portal/scan")) return "/portal/documents";
   return "/portal/today";
 }
 
@@ -224,6 +227,7 @@ const ROUTE_META: Array<{
   { test: (p) => p.startsWith("/portal/calendar"), title: "Kalendář", subtitle: "Schůzky a události" },
   { test: (p) => p.startsWith("/portal/ai"), title: "AI Asistent", subtitle: "Váš CRM asistent s přístupem k datům" },
   { test: (p) => p.startsWith("/portal/production"), title: "Produkce", subtitle: "Uzavřené smlouvy a pojistné" },
+  { test: (p) => p.startsWith("/portal/scan"), title: "Skenovat dokument", subtitle: "Vícestránkový sken" },
   { test: (p) => p.startsWith("/portal/documents"), title: "Dokumenty", subtitle: "Nahrané dokumenty a skeny" },
   { test: (p) => p.startsWith("/portal/tools"), title: "Nástroje Google", subtitle: "Gmail a Google Drive" },
 ];
@@ -345,6 +349,7 @@ export function MobilePortalClient({
   const onToolsRoute = pathname.startsWith("/portal/tools");
   const onAiRoute = pathname.startsWith("/portal/ai");
   const onProductionRoute = pathname.startsWith("/portal/production");
+  const onScanRoute = pathname.startsWith("/portal/scan");
   const onDocumentsRoute = pathname.startsWith("/portal/documents");
   const onMessagesRoute = pathname.startsWith("/portal/messages");
   const onNotesRoute = pathname.startsWith("/portal/notes");
@@ -641,6 +646,7 @@ export function MobilePortalClient({
         />
       );
     if (onAiRoute) return <AiAssistantChatScreen />;
+    if (onScanRoute) return <ScanPage />;
     if (onDocumentsRoute) return <DocumentsHubScreen deviceClass={deviceClass} />;
     if (onProductionRoute) return <ProductionScreen deviceClass={deviceClass} />;
     if (onToolsRoute) {
