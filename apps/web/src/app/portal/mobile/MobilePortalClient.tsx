@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { Suspense, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -127,6 +127,10 @@ const ActionCenterScreen = dynamic(
   () => import("./screens/ActionCenterScreen").then((m) => m.ActionCenterScreen),
   { loading: () => <RouteLoadingSkeleton /> },
 );
+const PortalScanFlow = dynamic(
+  () => import("../scan/PortalScanFlow").then((m) => m.PortalScanFlow),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
 
 type TabId = "home" | "tasks" | "clients" | "pipeline" | "none";
 type TaskFilter = "all" | "today" | "week" | "overdue" | "completed";
@@ -180,6 +184,7 @@ function isDetailRoute(pathname: string): boolean {
   if (/^\/portal\/contracts\/review\/[^/]+$/.test(pathname)) return true;
   if (/^\/portal\/calculators\/[^/]+$/.test(pathname)) return true;
   if (pathname.startsWith("/portal/analyses/financial")) return true;
+  if (pathname === "/portal/scan" || pathname.startsWith("/portal/scan/")) return true;
   return false;
 }
 
@@ -192,6 +197,7 @@ function resolveParentRoute(pathname: string): string {
   if (/^\/portal\/mindmap\/[^/]+/.test(pathname)) return "/portal/mindmap";
   if (/^\/portal\/contracts\/review\/[^/]+/.test(pathname)) return "/portal/contracts/review";
   if (/^\/portal\/calculators\/[^/]+/.test(pathname)) return "/portal/calculators";
+  if (pathname === "/portal/scan" || pathname.startsWith("/portal/scan/")) return "/portal/documents";
   return "/portal/today";
 }
 
@@ -224,6 +230,7 @@ const ROUTE_META: Array<{
   { test: (p) => p.startsWith("/portal/calendar"), title: "Kalendář", subtitle: "Schůzky a události" },
   { test: (p) => p.startsWith("/portal/ai"), title: "AI Asistent", subtitle: "Váš CRM asistent s přístupem k datům" },
   { test: (p) => p.startsWith("/portal/production"), title: "Produkce", subtitle: "Uzavřené smlouvy a pojistné" },
+  { test: (p) => p.startsWith("/portal/scan"), title: "Skenovat", subtitle: "Vícestránkový dokument do PDF" },
   { test: (p) => p.startsWith("/portal/documents"), title: "Dokumenty", subtitle: "Nahrané dokumenty a skeny" },
   { test: (p) => p.startsWith("/portal/tools"), title: "Nástroje Google", subtitle: "Gmail a Google Drive" },
 ];
@@ -346,6 +353,7 @@ export function MobilePortalClient({
   const onAiRoute = pathname.startsWith("/portal/ai");
   const onProductionRoute = pathname.startsWith("/portal/production");
   const onDocumentsRoute = pathname.startsWith("/portal/documents");
+  const onScanRoute = pathname === "/portal/scan" || pathname.startsWith("/portal/scan/");
   const onMessagesRoute = pathname.startsWith("/portal/messages");
   const onNotesRoute = pathname.startsWith("/portal/notes");
   const onBoardRoute = pathname === "/portal/board" || pathname.startsWith("/portal/board/");
@@ -641,6 +649,13 @@ export function MobilePortalClient({
         />
       );
     if (onAiRoute) return <AiAssistantChatScreen />;
+    if (onScanRoute) {
+      return (
+        <Suspense fallback={<RouteLoadingSkeleton />}>
+          <PortalScanFlow />
+        </Suspense>
+      );
+    }
     if (onDocumentsRoute) return <DocumentsHubScreen deviceClass={deviceClass} />;
     if (onProductionRoute) return <ProductionScreen deviceClass={deviceClass} />;
     if (onToolsRoute) {
