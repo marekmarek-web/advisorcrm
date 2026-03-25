@@ -25,6 +25,7 @@ const EMPTY_KPIS: DashboardKpis = {
   tasksDueToday: [],
   opportunitiesInStep3And4: [],
   czPublicHolidayToday: null,
+  czNameDaysToday: [],
   birthdaysToday: [],
 };
 

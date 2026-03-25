@@ -24,6 +24,7 @@ import {
   LayoutDashboard,
   Cake,
   Landmark,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardKpis } from "@/app/actions/dashboard";
@@ -697,6 +698,17 @@ export function DashboardScreen({
         <p className="text-sm text-slate-700">
           <span className="font-bold text-slate-900">Státní svátek: </span>
           {kpis.czPublicHolidayToday ?? "žádný"}
+        </p>
+        <p className="text-sm text-slate-700 mt-2 flex gap-2">
+          <Gift size={16} className="text-violet-500 shrink-0 mt-0.5" aria-hidden />
+          <span>
+            <span className="font-bold text-slate-900">Kalendář jmen: </span>
+            {kpis.czNameDaysToday.length === 0 ? (
+              <span className="text-slate-500">dnes žádné jméno</span>
+            ) : (
+              kpis.czNameDaysToday.join(", ")
+            )}
+          </span>
         </p>
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="flex items-center gap-2 mb-2">

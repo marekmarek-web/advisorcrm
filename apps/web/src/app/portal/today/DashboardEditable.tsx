@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   Cake,
   Landmark,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardKpis } from "@/app/actions/dashboard";
@@ -689,6 +690,17 @@ export function DashboardEditable({
             <p className="text-slate-700">
               <span className="font-bold text-slate-900">Státní svátek: </span>
               {kpis.czPublicHolidayToday ?? "žádný (běžný den)"}
+            </p>
+            <p className="text-slate-700">
+              <span className="inline-flex items-center gap-1.5 font-bold text-slate-900">
+                <Gift size={15} className="text-violet-500 shrink-0" aria-hidden />
+                Svátek podle kalendáře jmen:{" "}
+              </span>
+              {kpis.czNameDaysToday.length === 0 ? (
+                <span className="text-slate-500">dnes žádné jméno v kalendáři</span>
+              ) : (
+                <span>{kpis.czNameDaysToday.join(", ")}</span>
+              )}
             </p>
             <div>
               <div className="flex items-center gap-2 mb-1.5">

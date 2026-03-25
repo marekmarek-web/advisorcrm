@@ -2,6 +2,7 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { getCzPublicHolidayLabel, getPragueCalendarParts } from "@/lib/calendar/cz-public-holidays";
+import { getCzNameDaysForDate } from "@/lib/calendar/cz-name-days";
 import { db } from "db";
 import { events, tasks, opportunities, contacts, contracts, activityLog, opportunityStages } from "db";
 import { eq, and, gte, lt, isNull, isNotNull, asc, desc, sql, inArray } from "db";
@@ -31,6 +32,8 @@ export type DashboardKpis = {
   opportunitiesInStep3And4: Array<{ id: string; title: string; stageName: string; contactName: string | null }>;
   /** Státní svátek dle kalendáře Europe/Prague (null = běžný den). */
   czPublicHolidayToday: string | null;
+  /** Jména podle českého občanského kalendáře jmen (Europe/Prague, stejný den jako svátky). */
+  czNameDaysToday: string[];
   /** Kontakty s narozeninami dnes (MM-DD v Europe/Prague). */
   birthdaysToday: Array<{ id: string; firstName: string; lastName: string }>;
 };
@@ -39,6 +42,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
   const auth = await requireAuthInAction();
   const pragueToday = getPragueCalendarParts();
   const czPublicHolidayToday = getCzPublicHolidayLabel(pragueToday.year, pragueToday.month, pragueToday.day);
+  const czNameDaysToday = getCzNameDaysForDate(pragueToday.year, pragueToday.month, pragueToday.day);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -341,6 +345,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     tasksDueToday,
     opportunitiesInStep3And4,
     czPublicHolidayToday,
+    czNameDaysToday,
     birthdaysToday,
   };
 }

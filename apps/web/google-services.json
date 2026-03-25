@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "191851038715",
+    "project_id": "app-72bf29f8",
+    "storage_bucket": "app-72bf29f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:191851038715:android:f0fe79fcc732b5244c6d5e",
+        "android_client_info": {
+          "package_name": "cz.aidvisora.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVlQkYZlWX3PG0BDCa1JQXW6N7Ufg1VKA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
