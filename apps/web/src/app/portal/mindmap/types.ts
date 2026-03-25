@@ -33,3 +33,11 @@ export type MindmapContext = {
 };
 
 export type MindmapInteractionMode = "select" | "pan" | "connect" | "add";
+
+/** Copied node fields for paste elsewhere (no id/position/CRM links). */
+export type MindmapNodeClipboardData = {
+  title: string;
+  subtitle: string | null;
+  type: MindmapNodeType;
+  metadata: MindmapNodeMetadata | null;
+};

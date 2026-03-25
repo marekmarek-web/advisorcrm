@@ -1,0 +1,611 @@
+"use client";
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { 
+  Menu, Search, Plus, Calendar as CalendarIcon, 
+  ChevronLeft, ChevronRight, Bell, AlignLeft, 
+  X, Clock, MapPin, User, CheckCircle2, 
+  Signal, Wifi, BatteryMedium, Edit2, Trash2, 
+  Phone, Mail, Check, Video, CalendarDays, CalendarRange
+} from 'lucide-react';
+
+// ==========================================
+// POMOCNÉ FUNKCE A MOCK DATA
+// ==========================================
+const HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 7:00 - 21:00
+const DAYS_OF_WEEK = ['PO', 'ÚT', 'ST', 'ČT', 'PÁ', 'SO', 'NE'];
+const MONTHS = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+
+const INITIAL_EVENTS = [
+  {
+    id: 1, title: 'Schůzka: Rodina Novákova', date: '2026-03-25',
+    startTime: '10:00', endTime: '11:30', startHour: 10.0, duration: 1.5,
+    type: 'meeting', color: 'bg-indigo-100/90 border-indigo-300 text-indigo-900 border-l-indigo-600',
+    client: 'Jan Novák', location: 'Kancelář Praha'
+  },
+  {
+    id: 2, title: 'Příprava na hypotéku', date: '2026-03-24',
+    startTime: '09:00', endTime: '10:30', startHour: 9.0, duration: 1.5,
+    type: 'admin', color: 'bg-amber-100/90 border-amber-300 text-amber-900 border-l-amber-500',
+  },
+  {
+    id: 3, title: 'Oběd s partnerem', date: '2026-03-26',
+    startTime: '12:00', endTime: '13:00', startHour: 12.0, duration: 1,
+    type: 'personal', color: 'bg-slate-100/90 border-slate-300 text-slate-800 border-l-slate-400',
+  },
+  {
+    id: 4, title: 'Online: Kristýna Benešová', date: '2026-03-25',
+    startTime: '14:00', endTime: '15:00', startHour: 14.0, duration: 1,
+    type: 'video', color: 'bg-emerald-100/90 border-emerald-300 text-emerald-900 border-l-emerald-500',
+    client: 'Kristýna Benešová', location: 'Google Meet'
+  }
+];
+
+const HOUR_HEIGHT = 70; 
+
+// Formátování data do ISO stringu (YYYY-MM-DD) bez ohledu na timezone
+const formatDateString = (date) => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+export default function MobileCalendar() {
+  // --- STAVY ---
+  const [currentDate, setCurrentDate] = useState(new Date(2026, 2, 25)); // Default 25. Březen 2026
+  const [view, setView] = useState('3day'); // 'day' | '3day' | 'week'
+  const [events, setEvents] = useState(INITIAL_EVENTS);
+  
+  // Stavy UI (Panely a modály)
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  
+  const [formData, setFormData] = useState({ title: '', date: '', startTime: '09:00', endTime: '10:00', type: 'meeting', client: '', location: '' });
+
+  const scrollRef = useRef(null);
+
+  // Inicializační posun na aktuální čas (cca 10:00)
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = (10 - 7) * HOUR_HEIGHT - 20; 
+    }
+  }, []);
+
+  // --- LOGIKA GENEROVÁNÍ DNŮ ---
+  const visibleDays = useMemo(() => {
+    const days = [];
+    const base = new Date(currentDate);
+    
+    if (view === 'day') {
+      days.push(base);
+    } else if (view === '3day') {
+      days.push(new Date(base));
+      days.push(new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1));
+      days.push(new Date(base.getFullYear(), base.getMonth(), base.getDate() + 2));
+    } else if (view === 'week') {
+      const dayOfWeek = base.getDay() || 7; // Po-Ne (1-7)
+      const startOfWeek = new Date(base);
+      startOfWeek.setDate(base.getDate() - dayOfWeek + 1);
+      for (let i = 0; i < 7; i++) {
+        days.push(new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + i));
+      }
+    }
+
+    return days.map(d => {
+      const isTodayStr = formatDateString(d) === formatDateString(new Date(2026, 2, 25)); // Simulujeme dnešek
+      return {
+        dateObj: d,
+        dateStr: formatDateString(d),
+        name: DAYS_OF_WEEK[d.getDay() === 0 ? 6 : d.getDay() - 1],
+        dayNum: d.getDate(),
+        isToday: isTodayStr,
+        isWeekend: d.getDay() === 0 || d.getDay() === 6
+      };
+    });
+  }, [currentDate, view]);
+
+  // --- NAVIGACE ---
+  const handlePrev = () => {
+    const newDate = new Date(currentDate);
+    if (view === 'day') newDate.setDate(newDate.getDate() - 1);
+    if (view === '3day') newDate.setDate(newDate.getDate() - 3);
+    if (view === 'week') newDate.setDate(newDate.getDate() - 7);
+    setCurrentDate(newDate);
+  };
+
+  const handleNext = () => {
+    const newDate = new Date(currentDate);
+    if (view === 'day') newDate.setDate(newDate.getDate() + 1);
+    if (view === '3day') newDate.setDate(newDate.getDate() + 3);
+    if (view === 'week') newDate.setDate(newDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date(2026, 2, 25));
+  };
+
+  // --- LOGIKA FORMULÁŘE (VYTVOŘENÍ A ÚPRAVA) ---
+  const openNewEventForm = (hour = 9, dateStr = formatDateString(currentDate)) => {
+    const sTime = `${String(Math.floor(hour)).padStart(2, '0')}:00`;
+    const eTime = `${String(Math.floor(hour) + 1).padStart(2, '0')}:00`;
+    setFormData({ title: '', date: dateStr, startTime: sTime, endTime: eTime, type: 'meeting', client: '', location: '' });
+    setEditingId(null);
+    setIsFormOpen(true);
+  };
+
+  const openEditEventForm = (event) => {
+    setFormData({
+      title: event.title, date: event.date, startTime: event.startTime, endTime: event.endTime,
+      type: event.type, client: event.client || '', location: event.location || ''
+    });
+    setEditingId(event.id);
+    setSelectedEvent(null);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveEvent = () => {
+    if (!formData.title) return;
+
+    const [sH, sM] = formData.startTime.split(':').map(Number);
+    const startHour = sH + (sM / 60);
+    const [eH, eM] = formData.endTime.split(':').map(Number);
+    let duration = (eH + (eM / 60)) - startHour;
+    if (duration <= 0) duration = 1;
+
+    let color = 'bg-slate-100/90 border-slate-300 text-slate-800 border-l-slate-400';
+    if (formData.type === 'meeting') color = 'bg-indigo-100/90 border-indigo-300 text-indigo-900 border-l-indigo-600';
+    else if (formData.type === 'admin') color = 'bg-amber-100/90 border-amber-300 text-amber-900 border-l-amber-500';
+    else if (formData.type === 'video') color = 'bg-emerald-100/90 border-emerald-300 text-emerald-900 border-l-emerald-500';
+
+    const newEventObj = { id: editingId || Date.now(), ...formData, startHour, duration, color };
+
+    if (editingId) setEvents(events.map(e => e.id === editingId ? newEventObj : e));
+    else setEvents([...events, newEventObj]);
+    
+    setIsFormOpen(false);
+  };
+
+  const handleDeleteEvent = (id) => {
+    setEvents(events.filter(e => e.id !== id));
+    setSelectedEvent(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-0 md:p-8 font-sans selection:bg-indigo-500 selection:text-white relative">
+      
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .cal-grid-lines {
+          background-image: linear-gradient(to bottom, #f1f5f9 1px, transparent 1px);
+          background-size: 100% ${HOUR_HEIGHT}px;
+        }
+
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        .slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .slide-right { animation: slideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes slideRight { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+      `}</style>
+
+      {/* ========================================================= */}
+      {/* MOCKUP TELEFONU */}
+      {/* ========================================================= */}
+      <div className="w-full md:max-w-[420px] h-[100dvh] md:h-[880px] bg-white relative overflow-hidden flex flex-col md:rounded-[45px] md:shadow-[0_0_60px_rgba(99,102,241,0.2)] md:border-[8px] md:border-slate-900">
+        
+        {/* FAKE iOS STATUS BAR */}
+        <div className="h-12 w-full px-6 flex justify-between items-center z-50 absolute top-0 text-slate-900 font-semibold text-[13px] bg-white/90 backdrop-blur-md">
+          <span>10:45</span>
+          <div className="flex items-center gap-1.5">
+            <Signal size={14} className="fill-current" />
+            <Wifi size={14} />
+            <BatteryMedium size={16} className="fill-current" />
+          </div>
+        </div>
+
+        {/* --- HLAVIČKA APLIKACE (Top Bar) --- */}
+        <header className="pt-14 pb-3 px-4 border-b border-slate-100 flex flex-col bg-white z-40 shrink-0 shadow-sm">
+          {/* Horní řádek s Hamburgerem a Hledáním */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setIsMenuOpen(true)} className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                <Menu size={22} />
+              </button>
+              <h1 className="text-xl font-display font-bold text-slate-900 tracking-tight">
+                {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"><Search size={20}/></button>
+              <button onClick={handleToday} className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">
+                Dnes
+              </button>
+            </div>
+          </div>
+
+          {/* Spodní řádek se šipkami pro přesun v čase */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-100">
+              <button onClick={handlePrev} className="p-1.5 text-slate-500 hover:bg-white hover:shadow-sm rounded-lg transition-all"><ChevronLeft size={20}/></button>
+              <button onClick={handleNext} className="p-1.5 text-slate-500 hover:bg-white hover:shadow-sm rounded-lg transition-all"><ChevronRight size={20}/></button>
+            </div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+              {view === 'day' ? 'Den' : view === '3day' ? '3 Dny' : 'Týden'}
+            </div>
+          </div>
+        </header>
+
+        {/* --- HLAVNÍ KALENDÁŘ (Mřížka) --- */}
+        <div className="flex-1 flex flex-col relative z-10 bg-white overflow-hidden">
+          
+          {/* Týdenní pás (Hlavička Dnů) */}
+          <div className="flex border-b border-slate-200 bg-white z-30 shrink-0 pl-12 sm:pl-14 shadow-sm relative">
+            {visibleDays.map((day) => (
+              <div 
+                key={day.dateStr} 
+                className={`flex-1 flex flex-col items-center justify-center py-3 border-r border-slate-100 last:border-r-0
+                  ${day.isWeekend ? 'bg-slate-50/50' : 'bg-white'}
+                `}
+              >
+                <span className={`text-[10px] font-black uppercase tracking-widest mb-1 transition-colors ${day.isToday ? 'text-indigo-600' : 'text-slate-400'}`}>
+                  {day.name}
+                </span>
+                <div className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-base font-bold transition-all
+                  ${day.isToday ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700'}
+                `}>
+                  {day.dayNum}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Mřížka Hodin a Událostí (Scrollable) */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar bg-white relative">
+            <div className="flex relative" style={{ height: `${HOURS.length * HOUR_HEIGHT}px` }}>
+              
+              {/* Osa hodin */}
+              <div className="w-12 sm:w-14 flex-shrink-0 border-r border-slate-100 bg-white relative z-10">
+                {HOURS.map((hour, idx) => (
+                  <div key={idx} className="relative" style={{ height: `${HOUR_HEIGHT}px` }}>
+                    <span className="absolute -top-2.5 right-2 text-[10px] font-bold text-slate-400">
+                      {hour}:00
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Buňky a Události */}
+              <div className="flex-1 relative cal-grid-lines bg-white flex">
+                
+                {/* Linka aktuálního času (Simulujeme cca 10:45) */}
+                <div className="absolute left-0 w-full z-20 pointer-events-none flex items-center" style={{ top: `${(10 - 7 + 45/60) * HOUR_HEIGHT}px` }}>
+                  <div className="absolute -left-12 sm:-left-14 w-12 sm:w-14 flex justify-end pr-1">
+                    <span className="text-[10px] font-black text-rose-600 bg-white px-1 rounded-md">10:45</span>
+                  </div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-600 -ml-1 border-2 border-white shadow-sm"></div>
+                  <div className="flex-1 h-[2px] bg-rose-500 shadow-sm opacity-70"></div>
+                </div>
+
+                {/* Sloupce dnů */}
+                {visibleDays.map((day, dayIdx) => (
+                  <div key={dayIdx} className={`flex-1 border-r border-slate-100 relative ${day.isWeekend ? 'bg-slate-50/50' : ''}`}>
+                    
+                    {/* Mřížka pro kliknutí (Nová událost) */}
+                    <div className="absolute inset-0 flex flex-col z-0">
+                      {HOURS.map(hour => (
+                        <div 
+                          key={hour} 
+                          onClick={() => openNewEventForm(hour, day.dateStr)}
+                          className="flex-1 border-b border-transparent active:bg-indigo-50 cursor-pointer"
+                        ></div>
+                      ))}
+                    </div>
+
+                    {/* Vykreslení událostí - UPRAVENO ZALAMOVÁNÍ A BEZ ČASU */}
+                    {events.filter(e => e.date === day.dateStr).map(event => {
+                      const topPx = (event.startHour - 7) * HOUR_HEIGHT;
+                      const heightPx = event.duration * HOUR_HEIGHT;
+                      return (
+                        <div 
+                          key={event.id}
+                          onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
+                          className={`absolute left-1 right-1 rounded-lg p-1.5 border border-l-[3px] cursor-pointer transition-all overflow-hidden shadow-sm active:scale-95 flex flex-col
+                            ${event.color}
+                          `}
+                          style={{ top: `${topPx + 1}px`, height: `${heightPx - 2}px`, zIndex: 15 }}
+                        >
+                          <h4 className="font-bold text-[10px] leading-[1.15] break-words line-clamp-3 text-slate-800">
+                            {event.title}
+                          </h4>
+                          
+                          {/* Jméno klienta zobrazeno jen pokud je událost dostatečně vysoká a má vyplněného klienta */}
+                          {event.client && heightPx >= HOUR_HEIGHT && (
+                            <div className="flex items-center gap-1 mt-1 text-[9px] font-bold opacity-80 truncate">
+                              <User size={10} className="shrink-0" /> <span className="truncate">{event.client}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- FLOATING ACTION BUTTON (FAB) --- */}
+        <button 
+          onClick={() => openNewEventForm()}
+          className="absolute bottom-6 right-5 w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-600/30 active:scale-90 transition-transform z-30"
+        >
+          <Plus size={24} strokeWidth={2.5} />
+        </button>
+
+        {/* Falešný iOS Home Indicator */}
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1/3 h-1.5 bg-slate-900 rounded-full z-50 pointer-events-none"></div>
+
+        {/* ========================================================= */}
+        {/* HAMBURGER MENU (Boční vysouvací panel) */}
+        {/* ========================================================= */}
+        {isMenuOpen && (
+          <div className="absolute inset-0 z-[100] flex">
+            {/* Tmavé pozadí */}
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm fade-in" onClick={() => setIsMenuOpen(false)}></div>
+            
+            {/* Panel */}
+            <div className="w-[300px] h-full bg-white relative z-10 flex flex-col slide-right shadow-2xl">
+              <div className="pt-14 pb-4 px-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
+                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-black text-sm">W</div>
+                <span className="font-display font-black text-xl tracking-tight">Aidvisora</span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 hide-scrollbar">
+                
+                {/* Výběr pohledu */}
+                <div>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-2">Zobrazení</h3>
+                  <div className="space-y-1">
+                    {[
+                      { id: 'day', label: '1 Den', icon: CalendarIcon },
+                      { id: '3day', label: '3 Dny', icon: CalendarDays },
+                      { id: 'week', label: 'Týden', icon: CalendarRange }
+                    ].map(v => (
+                      <button 
+                        key={v.id}
+                        onClick={() => { setView(v.id); setIsMenuOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-colors
+                          ${view === v.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}
+                        `}
+                      >
+                        <v.icon size={18} className={view === v.id ? 'text-indigo-500' : 'text-slate-400'} />
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mini kalendář pro navigaci */}
+                <div className="px-2">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Rychlý přesun</h3>
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-bold text-sm">{MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
+                      <div className="flex gap-1">
+                        <button onClick={handlePrev} className="p-1 text-slate-400 hover:bg-slate-200 rounded"><ChevronLeft size={16}/></button>
+                        <button onClick={handleNext} className="p-1 text-slate-400 hover:bg-slate-200 rounded"><ChevronRight size={16}/></button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-y-1">
+                      {DAYS_OF_WEEK.map(d => <div key={d} className="text-[9px] font-black text-slate-400 text-center mb-1">{d}</div>)}
+                      {Array.from({ length: 31 }).map((_, i) => {
+                        const day = i + 1;
+                        const isSel = day === currentDate.getDate();
+                        const isTod = day === 25; // Simulovaný dnešek
+                        return (
+                          <div 
+                            key={day} 
+                            onClick={() => {
+                              const d = new Date(currentDate);
+                              d.setDate(day);
+                              setCurrentDate(d);
+                              setIsMenuOpen(false);
+                            }}
+                            className={`h-7 w-7 mx-auto flex items-center justify-center text-xs rounded-full cursor-pointer transition-all
+                              ${isSel ? 'bg-indigo-600 text-white font-bold' : isTod ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}
+                            `}
+                          >
+                            {day}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filtry kalendářů */}
+                <div>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-2">Aktivní kalendáře</h3>
+                  <div className="space-y-3 px-2">
+                    <label className="flex items-center gap-3"><input type="checkbox" defaultChecked className="w-5 h-5 rounded-md accent-indigo-600" /><span className="text-sm font-bold text-slate-700">Osobní</span></label>
+                    <label className="flex items-center gap-3"><input type="checkbox" defaultChecked className="w-5 h-5 rounded-md accent-emerald-500" /><span className="text-sm font-bold text-slate-700">Schůzky</span></label>
+                    <label className="flex items-center gap-3"><input type="checkbox" defaultChecked className="w-5 h-5 rounded-md accent-amber-500" /><span className="text-sm font-bold text-slate-700">Administrativa</span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* MODÁL: DETAIL UDÁLOSTI (Bottom Sheet) */}
+        {/* ========================================================= */}
+        {selectedEvent && (
+          <div className="absolute inset-0 z-[110] flex flex-col justify-end bg-slate-900/60 backdrop-blur-[2px] fade-in" onClick={() => setSelectedEvent(null)}>
+            <div className="bg-white rounded-t-[32px] w-full flex flex-col overflow-hidden slide-up pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.15)]" onClick={e => e.stopPropagation()}>
+              
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2"></div>
+
+              <div className="px-6 py-3 flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 leading-tight mb-1 pr-4">{selectedEvent.title}</h2>
+                  <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md w-fit border border-indigo-100">
+                    <Clock size={12} /> {selectedEvent.date.split('-').reverse().join('. ')} • {selectedEvent.startTime} – {selectedEvent.endTime}
+                  </div>
+                </div>
+                <button onClick={() => setSelectedEvent(null)} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:bg-slate-200 transition-colors shrink-0">
+                  <X size={18} strokeWidth={2.5} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {selectedEvent.client && (
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-xs">
+                      {selectedEvent.client.split(' ').map(n=>n[0]).join('')}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Klient</p>
+                      <p className="text-sm font-bold text-slate-900">{selectedEvent.client}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="p-2.5 text-indigo-600 bg-white border border-slate-200 rounded-xl shadow-sm"><Phone size={16}/></button>
+                      <button className="p-2.5 text-indigo-600 bg-white border border-slate-200 rounded-xl shadow-sm"><Mail size={16}/></button>
+                    </div>
+                  </div>
+                )}
+                
+                {selectedEvent.location && (
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
+                      {selectedEvent.type === 'video' ? <Video size={18} /> : <MapPin size={18} />}
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Místo konání</p>
+                      <p className="text-sm font-bold text-slate-800">{selectedEvent.location}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 mt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => openEditEventForm(selectedEvent)}
+                    className="flex items-center justify-center gap-2 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-black transition-colors hover:bg-slate-50 active:scale-95 shadow-sm"
+                  >
+                    <Edit2 size={16} /> Upravit
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteEvent(selectedEvent.id)}
+                    className="flex items-center justify-center gap-2 py-3.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-sm font-black transition-colors hover:bg-rose-100 active:scale-95"
+                  >
+                    <Trash2 size={16} /> Smazat
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* MODÁL: FORMULÁŘ (Nový / Upravit) - Plná obrazovka */}
+        {/* ========================================================= */}
+        {isFormOpen && (
+          <div className="absolute inset-0 z-[120] bg-white flex flex-col fade-in">
+            {/* Form Header */}
+            <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100 bg-slate-50/80 pt-4 shrink-0">
+              <button onClick={() => setIsFormOpen(false)} className="text-sm font-bold text-slate-500 px-2 py-1 active:scale-95">Zrušit</button>
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">{editingId ? 'Úprava události' : 'Nová událost'}</h2>
+              <button onClick={handleSaveEvent} className="text-sm font-black text-indigo-600 px-2 py-1 active:scale-95">Uložit</button>
+            </div>
+
+            {/* Form Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 hide-scrollbar pb-20">
+              
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Název aktivity *</label>
+                <input 
+                  type="text" 
+                  value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
+                  placeholder="Např. Schůzka s klientem" 
+                  className="w-full text-xl font-black text-slate-900 border-b-2 border-slate-200 py-3 outline-none focus:border-indigo-500 bg-transparent placeholder:text-slate-300 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Typ události</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'meeting', label: 'Schůzka', color: 'indigo' },
+                    { id: 'video', label: 'Online', color: 'emerald' },
+                    { id: 'admin', label: 'Úkol', color: 'amber' },
+                    { id: 'personal', label: 'Osobní', color: 'slate' }
+                  ].map(t => (
+                    <button 
+                      key={t.id} type="button"
+                      onClick={() => setFormData({...formData, type: t.id})}
+                      className={`py-3 rounded-xl text-xs font-bold border transition-colors 
+                        ${formData.type === t.id ? `bg-${t.color}-50 border-${t.color}-200 text-${t.color}-700 shadow-sm` : 'bg-white border-slate-200 text-slate-600'}
+                      `}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-5">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Datum</label>
+                  <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400 shadow-sm text-slate-700" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Od</label>
+                    <input type="time" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400 shadow-sm text-slate-700" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Do</label>
+                    <input type="time" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400 shadow-sm text-slate-700" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Klient (Volitelně)</label>
+                  <div className="relative">
+                    <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input type="text" value={formData.client} onChange={e => setFormData({...formData, client: e.target.value})} placeholder="Jméno klienta..." className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400 shadow-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Místo / Odkaz</label>
+                  <div className="relative">
+                    <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Adresa nebo Meet..." className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-400 shadow-sm" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Odesílací tlačítko na mobilu plovoucí dole pro lepší dosah */}
+            <div className="absolute bottom-6 left-6 right-6">
+               <button onClick={handleSaveEvent} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-600/30 active:scale-95 transition-transform">
+                 Uložit událost
+               </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}

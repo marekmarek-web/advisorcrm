@@ -7,6 +7,10 @@ export const PUSH_EVENT_TYPES = [
   "NEW_TASK",
   "REQUEST_STATUS_CHANGE",
   "NEW_MESSAGE",
+  "REVIEW_WAITING",
+  "PAYMENT_BLOCKED",
+  "REMINDER_DUE",
+  "ESCALATION",
 ] as const;
 
 export type PushEventType = (typeof PUSH_EVENT_TYPES)[number];

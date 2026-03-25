@@ -1,11 +1,17 @@
 const path = require("path");
 const { PHASE_DEVELOPMENT_SERVER } = require("next/constants");
 const { withSentryConfig } = require("@sentry/nextjs");
+const withBundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true",
+});
 const nextVersion = require("next/package.json").version;
 const nextMajor = Number.parseInt(nextVersion.split(".")[0] || "0", 10);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Monorepo: lockfile lives at repo root (advisor-crm). Parent folder (e.g. WePlan) may
+  // have another pnpm-lock.yaml — pin tracing root so Next does not infer the wrong root.
+  outputFileTracingRoot: path.join(__dirname, "..", ".."),
   reactStrictMode: true,
   transpilePackages: ["db"],
   experimental: {
@@ -76,7 +82,7 @@ module.exports = (phase, _context) => {
     return c;
   };
 
-  return withSentryConfig(base, {
+  return withSentryConfig(withBundleAnalyzer(base), {
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,
     authToken: process.env.SENTRY_AUTH_TOKEN,

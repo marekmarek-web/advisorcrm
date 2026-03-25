@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, date, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, date, unique, boolean } from "drizzle-orm/pg-core";
 
 export const contacts = pgTable("contacts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -29,6 +29,10 @@ export const contacts = pgTable("contacts", {
   nextServiceDue: date("next_service_due", { mode: "string" }),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedReason: text("archived_reason"),
+  preferredChannel: text("preferred_channel"),
+  doNotEmail: boolean("do_not_email").notNull().default(false),
+  doNotPush: boolean("do_not_push").notNull().default(false),
+  bestContactTime: text("best_contact_time"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

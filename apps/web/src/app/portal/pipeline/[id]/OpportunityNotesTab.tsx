@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { MessageSquare, Save, Trash2 } from "lucide-react";
 import {
   getMeetingNotesByOpportunityId,
   createMeetingNote,
   deleteMeetingNote,
 } from "@/app/actions/meeting-notes";
-import type { MeetingNoteRow } from "@/app/actions/meeting-notes";
+import type { MeetingNoteRowWithContent } from "@/app/actions/meeting-notes";
 
 export function OpportunityNotesTab({
   opportunityId,
@@ -15,7 +16,7 @@ export function OpportunityNotesTab({
   opportunityId: string;
   contactId: string | null;
 }) {
-  const [list, setList] = useState<MeetingNoteRow[]>([]);
+  const [list, setList] = useState<MeetingNoteRowWithContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -63,36 +64,85 @@ export function OpportunityNotesTab({
     load();
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Načítání…</p>;
+  if (loading) {
+    return <p className="text-sm font-medium text-slate-500">Načítání…</p>;
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 flex flex-col h-full">
       {contactId ? (
-        <form onSubmit={handleAdd} className="rounded-xl border border-slate-200 p-4 space-y-2">
-          <label className="block text-sm font-medium text-slate-700">Datum schůzky</label>
-          <input type="datetime-local" step={300} name="meetingAt" className="rounded border border-slate-300 px-2 py-1 text-sm w-full max-w-xs" required />
-          <label className="block text-sm font-medium text-slate-700">Poznámka</label>
-          <textarea name="body" rows={3} className="rounded border border-slate-300 px-2 py-1 text-sm w-full" required />
-          <button type="submit" disabled={saving} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-            {saving ? "Ukládám…" : "Přidat poznámku"}
-          </button>
+        <form onSubmit={handleAdd} className="flex flex-col gap-4">
+          <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-800">
+            <MessageSquare size={16} className="text-indigo-500 shrink-0" aria-hidden />
+            Nová poznámka k obchodu
+          </div>
+          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Datum schůzky
+          </label>
+          <input
+            type="datetime-local"
+            step={300}
+            name="meetingAt"
+            className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+            required
+          />
+          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Text
+          </label>
+          <textarea
+            name="body"
+            rows={5}
+            placeholder="Zapište si detaily z jednání, požadavky klienta…"
+            className="w-full min-h-[200px] p-5 border border-slate-200 rounded-2xl bg-slate-50 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm font-medium resize-none shadow-inner"
+            required
+          />
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-8 py-3.5 bg-[#1a1c2e] hover:bg-[#2a2d4a] text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-900/20 transition-all active:scale-95 min-h-[44px] disabled:opacity-50"
+            >
+              <Save size={16} aria-hidden />
+              {saving ? "Ukládám…" : "Uložit poznámku"}
+            </button>
+          </div>
         </form>
       ) : (
-        <p className="text-sm text-slate-500">Pro přidání poznámky přiřaďte obchodu klienta.</p>
+        <p className="text-sm font-medium text-slate-500 rounded-2xl border border-slate-100 bg-slate-50 p-5">
+          Pro přidání poznámky přiřaďte obchodu klienta.
+        </p>
       )}
 
       {list.length === 0 ? (
-        <p className="text-sm text-slate-500">Žádné poznámky.</p>
+        <p className="text-sm font-medium text-slate-500">Žádné poznámky.</p>
       ) : (
         <ul className="space-y-3">
           {list.map((n) => (
-            <li key={n.id} className="rounded-xl border border-slate-200 p-3 flex justify-between items-start">
-              <div>
-                <p className="text-xs text-slate-500">{new Date(n.meetingAt).toLocaleString("cs-CZ")} · {n.domain}</p>
-                <p className="text-sm text-slate-800 mt-1">Poznámka (viz detail)</p>
+            <li
+              key={n.id}
+              className="rounded-2xl border border-slate-100 bg-white shadow-sm p-4 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                  {new Date(n.meetingAt).toLocaleString("cs-CZ")} · {n.domain}
+                </p>
+                {n.contentPreview ? (
+                  <p className="text-sm font-medium text-slate-800 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {n.contentPreview}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500 mt-2">Poznámka bez textu</p>
+                )}
+                <p className="text-xs text-slate-400 mt-1">{n.contactName}</p>
               </div>
-              <button type="button" onClick={() => handleDelete(n.id)} className="text-xs text-red-600 hover:underline">
-                Smazat
+              <button
+                type="button"
+                onClick={() => handleDelete(n.id)}
+                className="min-h-[44px] min-w-[44px] sm:min-w-0 inline-flex items-center justify-center gap-1 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs uppercase tracking-wider shrink-0 self-end sm:self-start px-3"
+                aria-label="Smazat poznámku"
+              >
+                <Trash2 size={16} aria-hidden />
+                <span className="sm:hidden">Smazat</span>
               </button>
             </li>
           ))}

@@ -183,7 +183,7 @@ export function StepIncomeProtection() {
         {persons.map((person) => (
           <section
             key={person.personKey}
-            className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+            className="bg-white border border-slate-200 rounded-2xl shadow-sm"
           >
             <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
               <h3 className="text-lg font-bold text-slate-800">

@@ -103,6 +103,7 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
       { href: "/portal/messages", label: "Zprávy", Icon: MessageCircle, badgeKey: "messages", hoverAnim: "group-hover:rotate-[20deg] origin-top" },
       { href: "/portal/calendar", label: "Kalendář", Icon: Calendar, isHighlighted: true, hoverAnim: "group-hover:-translate-y-1 group-hover:scale-110" },
       { href: "/portal/notes", label: "Zápisky", Icon: FileText, hoverAnim: "group-hover:translate-x-1" },
+      { href: "/portal/action-center", label: "Akční centrum", Icon: Zap, hoverAnim: "group-hover:scale-110" },
     ],
   },
   {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { FileText, User, Briefcase, CheckSquare, Trash2, Tag } from "lucide-react";
+import { FileText, User, Briefcase, CheckSquare, Trash2, Tag, ClipboardCopy, ClipboardPaste } from "lucide-react";
 import type { MindmapNode } from "./types";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
@@ -18,6 +18,13 @@ const NODE_TYPES: { value: MindmapNode["type"]; label: string }[] = [
   { value: "recommendation", label: "Doporučení" },
 ];
 
+type DraftTargetSnapshot = {
+  id: string;
+  type: MindmapNode["type"];
+  title: string;
+  metadata: MindmapNode["metadata"] | null;
+};
+
 type MindmapSidePanelProps = {
   node: MindmapNode | null;
   entityType: "contact" | "household" | "standalone";
@@ -26,6 +33,9 @@ type MindmapSidePanelProps = {
   onUpdateNode?: (id: string, data: Partial<MindmapNode>) => void;
   onDeleteNode?: (id: string) => void;
   fullscreenOnMobile?: boolean;
+  onCopyNodeData?: () => void;
+  onPasteNodeData?: () => void;
+  hasClipboard?: boolean;
 };
 
 export function MindmapSidePanel({
@@ -36,6 +46,9 @@ export function MindmapSidePanel({
   onUpdateNode,
   onDeleteNode,
   fullscreenOnMobile,
+  onCopyNodeData,
+  onPasteNodeData,
+  hasClipboard = false,
 }: MindmapSidePanelProps) {
   const [editTitle, setEditTitle] = useState("");
   const [editSubtitle, setEditSubtitle] = useState("");
@@ -43,30 +56,40 @@ export function MindmapSidePanel({
   const [editDetail, setEditDetail] = useState("");
   const [editProgress, setEditProgress] = useState(0);
 
+  /** Blur can run after props switched to another node; writes must target this snapshot. */
+  const draftTargetRef = useRef<DraftTargetSnapshot | null>(null);
+
   useEffect(() => {
     if (node) {
+      draftTargetRef.current = {
+        id: node.id,
+        type: node.type,
+        title: node.title,
+        metadata: node.metadata ? { ...node.metadata } : null,
+      };
       setEditTitle(node.title);
       setEditSubtitle(node.subtitle ?? "");
       setEditValue((node.metadata?.value as string) ?? "");
       setEditDetail((node.metadata?.detail as string) ?? "");
       setEditProgress(Number(node.metadata?.progress ?? 0));
     }
-  }, [node?.id, node?.title, node?.subtitle, node?.metadata]);
+  }, [node?.id, node?.type, node?.title, node?.subtitle, node?.metadata]);
 
   const applyEdits = useCallback(() => {
-    if (!node || !onUpdateNode) return;
-    const meta: NonNullable<MindmapNode["metadata"]> = { ...(node.metadata ?? {}) };
-    if (node.type === "item" || node.type === "goal" || node.type === "category") {
+    const target = draftTargetRef.current;
+    if (!target || !onUpdateNode) return;
+    const meta: NonNullable<MindmapNode["metadata"]> = { ...(target.metadata ?? {}) };
+    if (target.type === "item" || target.type === "goal" || target.type === "category") {
       meta.value = editValue || undefined;
       meta.detail = editDetail || undefined;
-      if (node.type === "goal") meta.progress = Math.min(100, Math.max(0, editProgress));
+      if (target.type === "goal") meta.progress = Math.min(100, Math.max(0, editProgress));
     }
-    onUpdateNode(node.id, {
-      title: editTitle.trim() || node.title,
+    onUpdateNode(target.id, {
+      title: editTitle.trim() || target.title,
       subtitle: editSubtitle.trim() || null,
       metadata: Object.keys(meta).length ? meta : null,
     });
-  }, [node, onUpdateNode, editTitle, editSubtitle, editValue, editDetail, editProgress]);
+  }, [onUpdateNode, editTitle, editSubtitle, editValue, editDetail, editProgress]);
 
   if (!node) {
     return null;
@@ -111,7 +134,14 @@ export function MindmapSidePanel({
           {canEdit && !isCore ? (
             <CustomDropdown
               value={node.type}
-              onChange={(id) => onUpdateNode?.(node.id, { type: id as MindmapNode["type"] })}
+              onChange={(id) => {
+                const nextType = id as MindmapNode["type"];
+                const tid = draftTargetRef.current?.id ?? node.id;
+                onUpdateNode?.(tid, { type: nextType });
+                if (draftTargetRef.current?.id === tid) {
+                  draftTargetRef.current = { ...draftTargetRef.current, type: nextType };
+                }
+              }}
               options={NODE_TYPES.map((t) => ({ id: t.value, label: t.label }))}
               placeholder="Typ"
               icon={Tag}
@@ -258,6 +288,26 @@ export function MindmapSidePanel({
               >
                 <CheckSquare size={16} /> Úkol
               </Link>
+            )}
+            {canEdit && onCopyNodeData && (
+              <button
+                type="button"
+                onClick={() => onCopyNodeData()}
+                className="flex items-center gap-2 px-3 py-3 md:py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 min-h-[44px] md:min-h-0 text-left w-full"
+              >
+                <ClipboardCopy size={16} /> Zkopírovat data uzlu
+              </button>
+            )}
+            {canEdit && onPasteNodeData && !isCore && (
+              <button
+                type="button"
+                onClick={() => onPasteNodeData()}
+                disabled={!hasClipboard}
+                title={!hasClipboard ? "Nejdřív zkopírujte data z jiného uzlu" : undefined}
+                className="flex items-center gap-2 px-3 py-3 md:py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 min-h-[44px] md:min-h-0 text-left w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                <ClipboardPaste size={16} /> Vložit data uzlu
+              </button>
             )}
           </div>
         </div>

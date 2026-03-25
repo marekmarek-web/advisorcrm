@@ -559,6 +559,7 @@ export async function updateOpportunity(
     caseType?: string;
     contactId?: string | null;
     stageId?: string;
+    probability?: number | null;
     expectedValue?: string | null;
     expectedCloseDate?: string | null;
     closedAt?: Date | null;
@@ -577,6 +578,9 @@ export async function updateOpportunity(
   if (data.title != null && !data.title.trim()) {
     throw new Error("Název případu je povinný.");
   }
+  if (data.probability != null && (data.probability < 0 || data.probability > 100)) {
+    throw new Error("Pravděpodobnost musí být 0–100.");
+  }
   const updated = await db
     .update(opportunities)
     .set({
@@ -584,6 +588,7 @@ export async function updateOpportunity(
       ...(data.caseType != null && { caseType: data.caseType }),
       ...(data.contactId !== undefined && { contactId: data.contactId || null }),
       ...(data.stageId != null && { stageId: data.stageId }),
+      ...(data.probability !== undefined && { probability: data.probability ?? null }),
       ...(data.expectedValue !== undefined && { expectedValue: data.expectedValue || null }),
       ...(data.expectedCloseDate !== undefined && { expectedCloseDate: data.expectedCloseDate || null }),
       ...(data.closedAt !== undefined && { closedAt: data.closedAt || null }),

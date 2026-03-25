@@ -15,6 +15,7 @@ import {
   Globe, XCircle, CheckCircle, Headset, Timer, LineChart, BookOpen, Database, Plus, Home
 } from 'lucide-react';
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { LANDING_FAQS } from "@/data/landing-faq";
 
 // --- CUSTOM HOOK & KOMPONENTA PRO SCROLL ANIMACE (REVEAL) ---
 interface ScrollRevealProps {
@@ -424,15 +425,7 @@ const REVIEWS = [
   { id: 5, text: "Skvělá podpora a okamžitý přehled nad produkcí týmu. Pro manažery je to silný nástroj.", author: "Karel Svoboda", role: "Ředitel pobočky", initials: "KS" },
 ];
 
-const FAQS = [
-  { id: 1, q: "Umí to importovat existující data?", a: "Ano. Základní import klientů zvládnete z Excelu nebo CSV. S daty vám pomůžeme tak, aby byl přechod z původního systému co nejrychlejší." },
-  { id: 2, q: "Je to vhodné pro celý tým?", a: "Ano. Aidvisora je vhodná pro samostatné poradce i týmy. Umožňuje pracovat s různými rolemi, sdíleným přehledem a navazujícími workflow." },
-  { id: 3, q: "Jak funguje klientská zóna?", a: "Klient přes svůj portál zadá požadavek, nahraje podklady nebo napíše zprávu. Poradce dostane upozornění a vše řeší v navazujícím procesu uvnitř aplikace." },
-  { id: 4, q: "Co přesně AI umí a neumí?", a: "AI pomáhá s prioritami, follow-upy a čtením vybraných údajů z dokumentů. Finální kontrola a rozhodnutí jsou vždy na poradci. Aidvisora bez potvrzení uživatele nemění klientská data." },
-  { id: 5, q: "Kde jsou uložená data?", a: "Data ukládáme v bezpečném prostředí v rámci EU. Systém podporuje auditní stopu akcí, práci se souhlasy a export dat." },
-  { id: 6, q: "Jak dlouho trvá nasazení?", a: "Základní účet založíte během několika minut. U týmů záleží na rozsahu nastavení, importu dat a onboarding procesu." },
-  { id: 7, q: "Dá se to propojit s Google / Outlook / e-mailem?", a: "Google Kalendář je klíčová integrace pro práci se schůzkami a termíny. E-mailové notifikace a automatické zprávy lze řešit přes specializovaného poskytovatele. Další napojení budeme rozšiřovat postupně." }
-];
+const FAQS = LANDING_FAQS.map((item) => ({ ...item }));
 
 export default function PremiumLandingPage() {
   const [scrolled, setScrolled] = useState(false);
@@ -620,25 +613,29 @@ export default function PremiumLandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "glass-nav py-4 shadow-2xl shadow-black/50" : "bg-transparent py-6"}`}>
         <div className="max-w-[1400px] mx-auto px-6 md:px-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-            <img src="/Aidvisora logo A.png" alt="" className="h-10 w-10 object-contain shrink-0 brightness-0 invert" aria-hidden />
+            <img src="/Aidvisora logo A.png" alt="" width={40} height={40} fetchPriority="high" className="h-10 w-10 object-contain shrink-0 brightness-0 invert" aria-hidden />
             <span className="font-jakarta font-bold text-2xl tracking-tight text-white hidden sm:inline">Aidvisora</span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-inter font-medium text-sm text-slate-400">
-            <a href="#hlavni-workflow" className="hover:text-white transition-colors">Workflow</a>
-            <a href="#demo-video" className="hover:text-white transition-colors">Demo</a>
-            <a href="#aplikace" className="hover:text-white transition-colors">Moduly</a>
+          <div className="hidden lg:flex items-center gap-8 xl:gap-10 font-inter font-medium text-sm text-slate-400">
+            <a href="#jak-to-funguje" className="hover:text-white transition-colors">Jak to funguje</a>
             <a href="#pro-koho" className="hover:text-white transition-colors">Pro koho</a>
             <a href="#cenik" className="hover:text-white transition-colors">Ceník</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/prihlaseni?register=1"
+              className="hidden sm:inline-flex px-5 py-2.5 bg-indigo-600 text-white rounded-full text-sm font-bold hover:bg-indigo-500 transition-all items-center min-h-[44px]"
+            >
+              Vyzkoušet zdarma na 14 dní
+            </Link>
             <Link
               href="/prihlaseni"
-              className="px-6 py-2.5 bg-white text-[#0a0f29] rounded-full text-sm font-bold hover:bg-slate-200 transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center gap-2 min-h-[44px]"
+              className="px-5 py-2.5 bg-white text-[#0a0f29] rounded-full text-sm font-bold hover:bg-slate-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center gap-2 min-h-[44px]"
             >
-              Portál Aidvisora <ArrowRight size={14} />
+              Přihlásit se <ArrowRight size={14} />
             </Link>
           </div>
         </div>
@@ -669,69 +666,93 @@ export default function PremiumLandingPage() {
 
               <h1 className="hero-anim delay-100 font-jakarta text-4xl sm:text-5xl md:text-6xl lg:text-[3.25rem] xl:text-7xl font-extrabold tracking-tight text-glow-shimmer leading-[1.1] mb-6 hyphens-none">
                 Přestaňte řídit poradenství přes Excel,{" "}
-                <span className="whitespace-nowrap">e-mail</span> a WhatsApp.
+                <span className="whitespace-nowrap">e-mail</span> a chaotické skupinové chaty.
               </h1>
 
               <p className="hero-anim delay-200 font-inter text-lg md:text-xl text-slate-400 max-w-2xl mb-8 leading-relaxed lg:mx-0 mx-auto">
-                Mějte klienty, podklady, úkoly a obchody přehledně na jednom místě. Aidvisora spojuje CRM, klientský portál, dokumenty, follow-upy a obchodní workflow do jednoho systému pro finanční poradce a týmy.
+                CRM, klientská zóna a workflow pro finanční poradce — klienti, dokumenty, schůzky a úkoly na jednom místě.
+                <span className="block mt-2 text-base md:text-lg text-slate-500">Méně administrativy, více přehledu a lepší servis pro klienta.</span>
               </p>
 
-              <div className="hero-anim delay-300 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-4 lg:justify-start justify-center">
+              <div className="hero-anim delay-300 mb-5 lg:justify-start justify-center flex">
                 <Link
                   href="/prihlaseni?register=1"
                   className="w-full sm:w-auto px-8 py-4 bg-white text-[#0a0f29] rounded-full text-base font-bold tracking-wide hover:bg-slate-200 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.2)] text-center min-h-[44px] flex items-center justify-center"
                 >
-                  Vyzkoušet zdarma
+                  Vyzkoušet zdarma na 14 dní
                 </Link>
-                <a
-                  href="#demo-video"
-                  className="w-full sm:w-auto px-8 py-4 bg-white/5 text-white border border-white/10 rounded-full text-base font-bold tracking-wide hover:bg-white/10 transition-all flex items-center justify-center gap-2 backdrop-blur-md min-h-[44px]"
-                >
-                  <Play size={18} className="shrink-0" />
-                  Podívat se na 2min demo
-                </a>
               </div>
-              <p className="hero-anim delay-300 text-xs text-slate-500 mb-6 lg:text-left text-center">14 dní na vyzkoušení. Bez závazků.</p>
-              <p className="hero-anim delay-300 text-sm text-slate-400 mb-6 lg:text-left text-center">
-                <a href="#ukazka-workflow" className="text-indigo-300 hover:text-white underline underline-offset-4 font-medium min-h-[44px] inline-flex items-center">
-                  Projít si ukázku workflow
-                </a>
+              <p className="hero-anim delay-300 text-xs text-slate-500 mb-5 lg:text-left text-center">
+                Bez závazku — 14 dní na vyzkoušení.
               </p>
+              <div className="hero-anim delay-300 flex flex-wrap gap-x-4 gap-y-2 justify-center lg:justify-start text-[11px] sm:text-xs text-slate-500 mb-8">
+                <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-500/80 shrink-0" /> Data v EU</span>
+                <span className="text-slate-600 hidden sm:inline">·</span>
+                <span>Auditní stopa</span>
+                <span className="text-slate-600 hidden sm:inline">·</span>
+                <span>Role a oprávnění</span>
+              </div>
 
               <p className="hero-anim delay-400 text-sm md:text-base text-slate-400 max-w-xl border-t border-white/10 pt-6 lg:text-left text-center lg:mx-0 mx-auto">
-                Méně chaosu v podkladech. Více dotažených obchodů. Profesionální servis pro klienta.
+                Méně chaosu v podkladech. Více dotažených obchodů.
               </p>
             </div>
 
             <div className="hero-anim delay-200 flex-1 w-full max-w-xl mx-auto lg:mx-0 mt-12 lg:mt-0">
-              <div className="relative rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#060918]/80 shadow-[0_0_60px_rgba(99,102,241,0.2)] overflow-hidden aspect-video flex flex-col items-center justify-center p-6 md:p-8">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 to-transparent pointer-events-none"></div>
-                <div className="relative z-10 text-center">
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/10">
-                    <Play size={32} className="text-white ml-1" />
-                  </div>
-                  <p className="text-white font-jakarta font-bold text-sm md:text-base mb-1">Hlavní workflow v aplikaci</p>
-                  <p className="text-xs text-slate-400 mb-6 max-w-[240px] mx-auto">Místo pro krátké demo video (45–75 s). Nahrajte odkaz přes proměnnou prostředí.</p>
-                  {DEMO_VIDEO_URL ? (
+              {DEMO_VIDEO_URL ? (
+                <div className="relative rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#060918]/80 shadow-[0_0_60px_rgba(99,102,241,0.2)] overflow-hidden aspect-video flex flex-col items-center justify-center p-6 md:p-8">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 to-transparent pointer-events-none" />
+                  <div className="relative z-10 text-center">
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/10">
+                      <Play size={32} className="text-white ml-1" />
+                    </div>
+                    <p className="text-white font-jakarta font-bold text-sm md:text-base mb-3">Krátké demo</p>
                     <a
                       href={DEMO_VIDEO_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex min-h-[44px] items-center justify-center px-6 py-3 rounded-full text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-all"
                     >
-                      Přehrát demo
+                      Přehrát video
                     </a>
-                  ) : (
-                    <a
-                      href="#demo-video"
-                      className="inline-flex min-h-[44px] items-center justify-center px-6 py-3 rounded-full text-sm font-bold bg-white/10 text-white hover:bg-white/20 transition-all"
-                    >
-                      Ukázka videa níže
-                    </a>
-                  )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="relative rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#060918]/80 shadow-[0_0_60px_rgba(99,102,241,0.15)] overflow-hidden p-8 md:p-10 min-h-[280px] flex flex-col justify-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/15 to-transparent pointer-events-none" />
+                  <div className="relative z-10 text-center lg:text-left">
+                    <p className="text-white font-jakarta font-bold text-lg mb-3">Všechno pod jednou střechou</p>
+                    <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto lg:mx-0">
+                      Kalendář, pipeline, karta klienta, dokumenty a klientský portál — přehledně propojené, bez skákání mezi Excelem a e-maily.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* --- ROI TEASER --- */}
+      <section id="roi-teaser" className="py-10 md:py-12 border-b border-white/10 bg-[#060918]/90 scroll-mt-24">
+        <div className="max-w-[1100px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-2">Orientační model</p>
+            <p className="text-slate-300 text-sm md:text-base max-w-xl">
+              Odhad měsíční hodnoty podle vašich vstupů — doladíte v plné kalkulačce níže.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
+            <div className="text-2xl md:text-3xl font-black text-emerald-400 tabular-nums">
+              {formatNumber(roiValue)}{" "}
+              <span className="text-base text-slate-500 font-medium">Kč / měs.</span>
+            </div>
+            <a
+              href="#roi-kalkulacka"
+              className="min-h-[44px] px-6 py-3 rounded-full bg-white text-[#0a0f29] text-sm font-bold hover:bg-slate-200 transition-colors whitespace-nowrap inline-flex items-center justify-center"
+            >
+              Spočítat přínos
+            </a>
           </div>
         </div>
       </section>
@@ -768,12 +789,103 @@ export default function PremiumLandingPage() {
         </div>
       </section>
 
+      {/* --- AI ASISTENT & DŮVĚRYHODNOST --- */}
+      <section id="ai-asistent" className="py-32 relative overflow-hidden bg-[#060918] scroll-mt-24">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none z-0"></div>
+        
+        <div className="max-w-[1400px] mx-auto px-6 relative z-10 border-t border-white/10 pt-20">
+          <ScrollReveal immediate>
+            <div className="bg-white/5 border border-white/10 rounded-[48px] p-8 md:p-16 lg:p-24 backdrop-blur-md flex flex-col lg:flex-row items-center gap-16 shadow-2xl mb-16">
+              
+              <div className="lg:w-1/2">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-8">
+                  <Bot size={16} /> Pomocník se smlouvou, ne místo vás
+                </div>
+                <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+                  AI, která pomůže se <span className="text-glow-shimmer">smlouvou a dalším krokem.</span>
+                </h2>
+                <p className="text-base md:text-lg text-slate-400 mb-10 md:mb-12 leading-relaxed max-w-xl">
+                  Přečte PDF s vámi na mysli: vytáhne klíčové údaje, upozorní na mezery a navrhne, co ověřit. Rozhodujete vy — nic se nemění bez vašeho potvrzení.
+                </p>
+
+                <div className="space-y-3 md:space-y-4">
+                  {[
+                    {
+                      icon: Activity,
+                      title: "Mezery v krytí",
+                      desc: "Krátce ukáže, kde může chybět pojistné krytí nebo pozornost při schůzce.",
+                    },
+                    {
+                      icon: FileText,
+                      title: "Údaje ze smlouvy",
+                      desc: "Hlavní částky a typ produktu z PDF přehledně k doplnění nebo kontrole u klienta.",
+                    },
+                    {
+                      icon: Bell,
+                      title: "Úkoly a priority",
+                      desc: "Připomene follow-upy a termíny v kontextu klienta — bez přebírání vaší práce.",
+                    },
+                  ].map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start gap-4 p-4 md:p-5 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
+                      >
+                        <div className="mt-0.5 bg-purple-500/20 p-3 rounded-xl text-purple-400 border border-purple-500/30 shrink-0">
+                          <Icon size={20} />
+                        </div>
+                        <div className="min-w-0 pt-0.5">
+                          <h4 className="text-white font-bold text-base md:text-lg mb-1.5">{item.title}</h4>
+                          <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="lg:w-1/2 w-full">
+                 <AiSandbox />
+              </div>
+
+            </div>
+          </ScrollReveal>
+
+          {/* AI TRUST LAYER */}
+          <ScrollReveal delay={300} immediate>
+            <div className="max-w-4xl mx-auto text-center border border-white/10 bg-white/5 rounded-3xl p-10">
+               <h3 className="font-jakarta text-2xl font-bold text-white mb-3">AI navrhuje, <span className="text-purple-400">poradce rozhoduje.</span></h3>
+               <p className="text-slate-400 mb-8 max-w-xl mx-auto">Věříme, že umělá inteligence je užitečný pomocník, ale u peněz má poslední slovo vždy člověk. Proto jsme nastavili jasná pravidla.</p>
+               
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                  <div className="flex flex-col gap-2">
+                    <CheckCircle2 size={24} className="text-emerald-400 mb-2"/>
+                    <h4 className="font-bold text-white">Lidská kontrola</h4>
+                    <p className="text-sm text-slate-400">AI nikdy nemění klientská data bez vašeho výslovného souhlasu na 1 klik.</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Search size={24} className="text-emerald-400 mb-2"/>
+                    <h4 className="font-bold text-white">Auditovatelnost</h4>
+                    <p className="text-sm text-slate-400">Vždy přesně víte, z jakého dokumentu a věty AI daný údaj vyčetla.</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Lock size={24} className="text-emerald-400 mb-2"/>
+                    <h4 className="font-bold text-white">Bezpečné zpracování</h4>
+                    <p className="text-sm text-slate-400">Data z PDF se po analýze nikde netrénují a zůstávají v uzavřeném sandboxu.</p>
+                  </div>
+               </div>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
       {/* --- EVOLUCE PRAXE (Srovnání Dnes vs S Aidvisorou) --- */}
-      <section id="hlavni-workflow" className="py-24 relative overflow-hidden bg-[#060918] scroll-mt-24">
+      <section id="jak-to-funguje" className="py-24 relative overflow-hidden bg-[#060918] scroll-mt-24">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-indigo-500/10 rounded-[100%] blur-[120px] pointer-events-none"></div>
         
         <div className="max-w-[1200px] mx-auto px-6 relative z-10">
-          <ScrollReveal>
+          <ScrollReveal immediate>
             <div className="text-center mb-20">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-black uppercase tracking-widest mb-6">
                 <ArrowRight size={14} className="text-indigo-400"/> Jak to vypadá v praxi
@@ -891,7 +1003,7 @@ export default function PremiumLandingPage() {
                 Náš moderní kalendář není jen doplněk. Je to plnohodnotný nástroj s přetahováním, týdenní mřížkou a bočním panelem agendy, kam vám AI chystá úkoly na daný den.
               </p>
               <ul className="space-y-3 pt-4">
-                <li className="flex items-center gap-3 text-slate-300"><CheckCircle2 size={18} className="text-indigo-500"/> Obousměrná synchronizace (Google, MS)</li>
+                <li className="flex items-center gap-3 text-slate-300"><CheckCircle2 size={18} className="text-indigo-500"/> Synchronizace s Google Kalendářem</li>
                 <li className="flex items-center gap-3 text-slate-300"><CheckCircle2 size={18} className="text-indigo-500"/> Postranní panel s nevyřešenými úkoly</li>
                 <li className="flex items-center gap-3 text-slate-300"><CheckCircle2 size={18} className="text-indigo-500"/> Snadné plánování schůzek s klienty</li>
               </ul>
@@ -946,9 +1058,9 @@ export default function PremiumLandingPage() {
                      <div className="h-4 w-3/4 bg-white/30 rounded"></div>
                   </div>
                 </div>
-                {/* Sloupec 2: Podpisy */}
+                {/* Sloupec 2: Dokončení obchodu (ne e-podpis) */}
                 <div className="w-1/2 h-full flex flex-col gap-4 relative z-10 border-l border-white/5 pl-4">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Podpisy</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Dokončení</div>
                   {/* Cílový slot pro animovanou kartu */}
                   <div className="border-2 border-dashed border-indigo-500/30 rounded-2xl h-[100px] flex items-center justify-center bg-indigo-500/5">
                      <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Přetáhněte sem</span>
@@ -966,7 +1078,7 @@ export default function PremiumLandingPage() {
               <div className="w-14 h-14 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30"><KanbanSquare size={28}/></div>
               <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Přehled obchodů a příležitostí v pipeline.</h3>
               <p className="text-lg text-slate-400 leading-relaxed">
-                Nenechte žádný obchod vychladnout. Přesouvejte klienty z Přípravy rovnou k Podpisu. Systém vás sám upozorní na blokátory nebo úkoly po termínu.
+                Nenechte žádný obchod vychladnout. Přesuňte příležitosti z přípravy k dokončení — připomene blokátory a úkoly po termínu.
               </p>
             </ScrollReveal>
           </div>
@@ -1073,12 +1185,11 @@ export default function PremiumLandingPage() {
 
       {/* --- TYPICKÝ DEN (Workflow Storytelling) --- */}
       <section id="workflow" className="py-32 relative bg-[#0a0f29] border-t border-white/5 scroll-mt-24">
-        <div id="demo-video" className="sr-only" aria-hidden="true" />
         <div className="max-w-[1000px] mx-auto px-6">
           <ScrollReveal>
             <div className="text-center mb-24">
               <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-4">Váš nový pracovní den.</h2>
-              <p className="text-xl text-slate-400">Jak může vypadat váš pracovní den s Aidvisorou.</p>
+              <p className="text-xl text-slate-400">Stručný průřez: priority, schůzka, portál klienta, večer bez chaosu.</p>
             </div>
           </ScrollReveal>
 
@@ -1088,9 +1199,13 @@ export default function PremiumLandingPage() {
             </div>
 
             <ScrollReveal className="relative flex flex-col md:flex-row items-start md:items-center justify-between mb-16 md:mb-24 group">
+              <div className="md:hidden pl-20 pr-4 mb-4 w-full order-first">
+                 <h3 className="font-jakarta text-lg font-bold text-white mb-1">Ráno: priority</h3>
+                 <p className="text-sm text-slate-400">Náhled na dnešní schůzky, úkoly a co dotáhnout — bez deseti složek.</p>
+              </div>
               <div className="hidden md:block md:w-5/12 text-right pr-12">
-                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Ranní káva a brífing</h3>
-                 <p className="text-slate-400">AI Asistent projde vaše data a sestaví seznam priorit. Ukáže vám, komu končí fixace a na co se dnes soustředit.</p>
+                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Ráno: priority</h3>
+                 <p className="text-slate-400">Náhled na dnešní schůzky, úkoly a co je potřeba dotáhnout — bez procházení deseti složek.</p>
               </div>
               <div className="absolute left-0 md:left-1/2 w-14 h-14 bg-[#0a0f29] border-4 border-slate-800 rounded-full flex items-center justify-center md:-translate-x-1/2 z-10 shadow-[0_0_20px_rgba(251,191,36,0.2)] group-hover:border-amber-500 transition-colors">
                 <Sunrise className="text-amber-500" size={24} />
@@ -1098,13 +1213,17 @@ export default function PremiumLandingPage() {
               <div className="w-full pl-20 md:pl-0 md:w-5/12 md:text-left md:pl-12">
                  <SpotlightCard className="p-6">
                    <div className="flex items-center gap-3 mb-3"><Bot className="text-purple-400" size={20}/><span className="text-sm font-bold text-white">AI Brífing (08:00)</span></div>
-                   <p className="text-sm text-slate-400 italic">"Dobré ráno! Dnes máte 3 schůzky. Klient Petr Malý slaví narozeniny a rodině Novákově chybí podpis na smlouvě."</p>
+                   <p className="text-sm text-slate-400 italic">„Dnes 3 schůzky, 2 otevřené úkoly — rodina Novákových čeká na doplnění podkladu.“</p>
                  </SpotlightCard>
               </div>
             </ScrollReveal>
 
             <ScrollReveal className="relative flex flex-col md:flex-row items-start md:items-center justify-between mb-16 md:mb-24 group">
-              <div className="w-full pl-20 md:pl-0 md:w-5/12 md:text-right md:pr-12 order-2 md:order-1">
+              <div className="md:hidden pl-20 pr-4 mb-4 w-full order-2">
+                 <h3 className="font-jakarta text-lg font-bold text-white mb-1">Schůzka u klienta</h3>
+                 <p className="text-sm text-slate-400">Data u karty klienta, kalkulačky a PDF bez přepínání nástrojů.</p>
+              </div>
+              <div className="w-full pl-20 md:pl-0 md:w-5/12 md:text-right md:pr-12 order-3 md:order-1">
                  <SpotlightCard className="p-6">
                    <div className="flex items-center gap-3 mb-3"><Briefcase className="text-blue-400" size={20}/><span className="text-sm font-bold text-white">Schůzka s klientem (11:00)</span></div>
                    <div className="space-y-2">
@@ -1116,16 +1235,20 @@ export default function PremiumLandingPage() {
               <div className="absolute left-0 md:left-1/2 w-14 h-14 bg-[#0a0f29] border-4 border-slate-800 rounded-full flex items-center justify-center md:-translate-x-1/2 z-10 shadow-[0_0_20px_rgba(59,130,246,0.2)] group-hover:border-blue-500 transition-colors order-1 md:order-2">
                 <Sun className="text-blue-500" size={24} />
               </div>
-              <div className="hidden md:block md:w-5/12 text-left pl-12 order-3">
-                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Schůzky na kliknutí</h3>
-                 <p className="text-slate-400">Otevřete interaktivní kalkulačku, vytvoříte s klientem vizuální finanční plán a jedním kliknutím vygenerujete PDF report.</p>
+              <div className="hidden md:block md:w-5/12 text-left pl-12 order-4 md:order-3">
+                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Schůzka u klienta</h3>
+                 <p className="text-slate-400">Data a dokumenty u karty klienta, kalkulačky a výstup do PDF — bez přepínání mezi nástroji.</p>
               </div>
             </ScrollReveal>
 
             <ScrollReveal className="relative flex flex-col md:flex-row items-start md:items-center justify-between mb-16 md:mb-24 group">
+              <div className="md:hidden pl-20 pr-4 mb-4 w-full order-first">
+                 <h3 className="font-jakarta text-lg font-bold text-white mb-1">Portál klienta</h3>
+                 <p className="text-sm text-slate-400">Klient nahraje podklad nebo napíše — u vás úkol a upozornění.</p>
+              </div>
               <div className="hidden md:block md:w-5/12 text-right pr-12">
-                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Klientská zóna pracuje za vás</h3>
-                 <p className="text-slate-400">Zatímco jste na obědě, klient vám přes svůj portál sám bezpečně nahraje chybějící občanku a napíše rychlý dotaz do chatu.</p>
+                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Portál klienta</h3>
+                 <p className="text-slate-400">Klient bezpečně nahraje podklad nebo pošle zprávu — u vás vznikne úkol a upozornění.</p>
               </div>
               <div className="absolute left-0 md:left-1/2 w-14 h-14 bg-[#0a0f29] border-4 border-slate-800 rounded-full flex items-center justify-center md:-translate-x-1/2 z-10 shadow-[0_0_20px_rgba(16,185,129,0.2)] group-hover:border-emerald-500 transition-colors">
                 <Smartphone className="text-emerald-500" size={24} />
@@ -1148,9 +1271,9 @@ export default function PremiumLandingPage() {
               <div className="absolute left-0 md:left-1/2 w-14 h-14 bg-[#0a0f29] border-4 border-slate-800 rounded-full flex items-center justify-center md:-translate-x-1/2 z-10 shadow-[0_0_20px_rgba(99,102,241,0.2)] group-hover:border-indigo-500 transition-colors order-1 md:order-2">
                 <Moon className="text-indigo-500" size={24} />
               </div>
-              <div className="hidden md:block md:w-5/12 text-left pl-12 order-3">
-                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Čistý stůl</h3>
-                 <p className="text-slate-400">Přesouváte obchody v Kanbanu, delegujete úkoly na asistentku a odcházíte s čistou hlavou. Přehled úkolů a obchodů máte v jednom místě, nic nepřeskočí.</p>
+              <div className="hidden md:block md:w-5/12 text-left pl-12 order-4 md:order-3">
+                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Konec dne</h3>
+                 <p className="text-slate-400">Pipeline a úkoly aktualizované — víte, co zítra otevřít jako první.</p>
               </div>
             </ScrollReveal>
 
@@ -1285,98 +1408,6 @@ export default function PremiumLandingPage() {
               </div>
             </ScrollReveal>
           </div>
-        </div>
-      </section>
-
-      {/* --- AI ASISTENT & DŮVĚRYHODNOST --- */}
-      <section id="ai-asistent" className="py-32 relative overflow-hidden bg-[#060918] scroll-mt-24">
-        <div id="ukazka-workflow" className="sr-only" aria-hidden="true" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none z-0"></div>
-        
-        <div className="max-w-[1400px] mx-auto px-6 relative z-10 border-t border-white/10 pt-20">
-          <ScrollReveal>
-            <div className="bg-white/5 border border-white/10 rounded-[48px] p-8 md:p-16 lg:p-24 backdrop-blur-md flex flex-col lg:flex-row items-center gap-16 shadow-2xl mb-16">
-              
-              <div className="lg:w-1/2">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-8">
-                  <Bot size={16} /> Pomocník se smlouvou, ne místo vás
-                </div>
-                <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                  AI, která pomůže se <span className="text-glow-shimmer">smlouvou a dalším krokem.</span>
-                </h2>
-                <p className="text-base md:text-lg text-slate-400 mb-10 md:mb-12 leading-relaxed max-w-xl">
-                  Přečte PDF s vámi na mysli: vytáhne klíčové údaje, upozorní na mezery a navrhne, co ověřit. Rozhodujete vy — nic se nemění bez vašeho potvrzení.
-                </p>
-
-                <div className="space-y-3 md:space-y-4">
-                  {[
-                    {
-                      icon: Activity,
-                      title: "Mezery v krytí",
-                      desc: "Krátce ukáže, kde může chybět pojistné krytí nebo pozornost při schůzce.",
-                    },
-                    {
-                      icon: FileText,
-                      title: "Údaje ze smlouvy",
-                      desc: "Hlavní částky a typ produktu z PDF přehledně k doplnění nebo kontrole u klienta.",
-                    },
-                    {
-                      icon: Bell,
-                      title: "Úkoly a priority",
-                      desc: "Připomene follow-upy a termíny v kontextu klienta — bez přebírání vaší práce.",
-                    },
-                  ].map((item, i) => {
-                    const Icon = item.icon;
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-start gap-4 p-4 md:p-5 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
-                      >
-                        <div className="mt-0.5 bg-purple-500/20 p-3 rounded-xl text-purple-400 border border-purple-500/30 shrink-0">
-                          <Icon size={20} />
-                        </div>
-                        <div className="min-w-0 pt-0.5">
-                          <h4 className="text-white font-bold text-base md:text-lg mb-1.5">{item.title}</h4>
-                          <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="lg:w-1/2 w-full">
-                 <AiSandbox />
-              </div>
-
-            </div>
-          </ScrollReveal>
-
-          {/* AI TRUST LAYER */}
-          <ScrollReveal delay={200}>
-            <div className="max-w-4xl mx-auto text-center border border-white/10 bg-white/5 rounded-3xl p-10">
-               <h3 className="font-jakarta text-2xl font-bold text-white mb-3">AI navrhuje, <span className="text-purple-400">poradce rozhoduje.</span></h3>
-               <p className="text-slate-400 mb-8 max-w-xl mx-auto">Věříme, že umělá inteligence je užitečný pomocník, ale u peněz má poslední slovo vždy člověk. Proto jsme nastavili jasná pravidla.</p>
-               
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                  <div className="flex flex-col gap-2">
-                    <CheckCircle2 size={24} className="text-emerald-400 mb-2"/>
-                    <h4 className="font-bold text-white">Lidská kontrola</h4>
-                    <p className="text-sm text-slate-400">AI nikdy nemění klientská data bez vašeho výslovného souhlasu na 1 klik.</p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Search size={24} className="text-emerald-400 mb-2"/>
-                    <h4 className="font-bold text-white">Auditovatelnost</h4>
-                    <p className="text-sm text-slate-400">Vždy přesně víte, z jakého dokumentu a věty AI daný údaj vyčetla.</p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Lock size={24} className="text-emerald-400 mb-2"/>
-                    <h4 className="font-bold text-white">Bezpečné zpracování</h4>
-                    <p className="text-sm text-slate-400">Data z PDF se po analýze nikde netrénují a zůstávají v uzavřeném sandboxu.</p>
-                  </div>
-               </div>
-            </div>
-          </ScrollReveal>
         </div>
       </section>
 
@@ -1553,7 +1584,7 @@ export default function PremiumLandingPage() {
                <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-3xl flex flex-col items-center justify-center hover:bg-white/10 transition-colors h-full text-center">
                  <Mail size={40} className="text-rose-400 mb-4 shrink-0" />
                  <h4 className="font-bold text-white text-lg mb-2">E-mailové notifikace</h4>
-                 <p className="text-sm text-slate-400">Systémové e-maily, upozornění, přání a další automatické zprávy klientům.</p>
+                 <p className="text-sm text-slate-400">Upozornění a systémové e-maily podle událostí v aplikaci (např. nový požadavek z portálu) — bez slibu hromadného newsletteru.</p>
                </div>
              </ScrollReveal>
              <ScrollReveal delay={300}>
@@ -1571,6 +1602,10 @@ export default function PremiumLandingPage() {
                </div>
              </ScrollReveal>
           </div>
+
+          <p className="mt-12 md:mt-16 max-w-3xl mx-auto text-sm text-slate-500 leading-relaxed text-center px-2">
+            Data zpracováváme s ohledem na EU a řízení přístupů podle rolí. Důležité akce zanechávají stopu vhodnou pro kontrolu a audit vaší praxe.
+          </p>
         </div>
       </section>
 
@@ -1583,11 +1618,18 @@ export default function PremiumLandingPage() {
                <p className="text-xl text-slate-400 max-w-2xl mx-auto">Vyberte si tarif podle toho, jak velký je váš byznys. Můžete kdykoliv přejít na vyšší nebo nižší plán.</p>
                
                <div className="inline-flex bg-white/5 border border-white/10 rounded-full p-1 mt-10">
-                 <button className={`px-6 py-2.5 rounded-full text-sm font-bold ${!isAnnualPricing ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`} onClick={() => setIsAnnualPricing(false)}>Měsíčně</button>
-                 <button className={`px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${isAnnualPricing ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`} onClick={() => setIsAnnualPricing(true)}>
-                   Ročně <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">-20%</span>
+                 <button type="button" className={`min-h-[44px] px-6 py-2.5 rounded-full text-sm font-bold ${!isAnnualPricing ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`} onClick={() => setIsAnnualPricing(false)}>Měsíčně</button>
+                 <button type="button" className={`min-h-[44px] px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${isAnnualPricing ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`} onClick={() => setIsAnnualPricing(true)}>
+                   Ročně <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">−20 %</span>
                  </button>
                </div>
+               <p className="text-sm text-slate-500 mt-4 max-w-lg mx-auto">
+                 Při roční fakturaci platíte o 20 % méně než při měsíčním tarifu (stejné funkce, jiné fakturační období).
+               </p>
+               <p className="text-xs text-slate-500 mt-3 max-w-xl mx-auto leading-relaxed">
+                 <strong className="text-slate-400">Starter</strong> — CRM, kalendář, pipeline a základní AI.{" "}
+                 <strong className="text-slate-400">Pro</strong> navíc klientská zóna, pokročilejší AI s PDF, finanční analýzy a kalkulačky.
+               </p>
              </div>
           </ScrollReveal>
 
@@ -1599,7 +1641,8 @@ export default function PremiumLandingPage() {
                  <div className="text-4xl font-black text-white mb-1">{isAnnualPricing ? '1 190' : '1 490'} <span className="text-lg text-slate-500 font-medium">Kč / měs.</span></div>
                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
                  
-                 <Link href="/prihlaseni" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-8 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Portál Aidvisora</Link>
+                 <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-2 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                 <Link href="/prihlaseni" className="block w-full py-3 text-slate-400 text-sm font-medium hover:text-white transition-colors text-center mb-8">Už mám účet — přihlásit se</Link>
                  
                  <ul className="space-y-4">
                    <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> 1 uživatel</li>
@@ -1619,7 +1662,8 @@ export default function PremiumLandingPage() {
                    <div className="text-5xl font-black text-white mb-1 relative z-20">{isAnnualPricing ? '1 590' : '1 990'} <span className="text-lg text-slate-500 font-medium">Kč / měs.</span></div>
                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8 relative z-20">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
                    
-                   <Link href="/prihlaseni" className="block w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 transition-colors mb-8 shadow-lg shadow-indigo-500/30 relative z-20 text-center min-h-[44px] flex items-center justify-center">Portál Aidvisora</Link>
+                   <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 transition-colors mb-2 shadow-lg shadow-indigo-500/30 relative z-20 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                   <Link href="/prihlaseni" className="block w-full py-3 text-indigo-200/90 text-sm font-medium hover:text-white transition-colors mb-8 relative z-20 text-center">Už mám účet — přihlásit se</Link>
                    
                    <ul className="space-y-4 relative z-20">
                      <li className="flex items-center gap-3 text-white text-sm font-medium"><Check size={18} className="text-indigo-400"/> Vše ze Starteru</li>
@@ -1638,7 +1682,8 @@ export default function PremiumLandingPage() {
                  <div className="text-4xl font-black text-white mb-1">{isAnnualPricing ? '1 990' : '2 490'} <span className="text-lg text-slate-500 font-medium">Kč / uživ.</span></div>
                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
                  
-                 <Link href="/prihlaseni" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-8 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Portál Aidvisora</Link>
+                 <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-2 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                 <Link href="/prihlaseni" className="block w-full py-3 text-slate-400 text-sm font-medium hover:text-white transition-colors text-center mb-8">Už mám účet — přihlásit se</Link>
                  
                  <ul className="space-y-4">
                    <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> Vše z Pro</li>
@@ -1655,9 +1700,9 @@ export default function PremiumLandingPage() {
       <section id="jak-zacit" className="py-24 relative overflow-hidden bg-[#060918]">
         <div className="max-w-[1200px] mx-auto px-6 border-t border-white/10 pt-24 text-center">
           <ScrollReveal>
-            <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-6">Začnete bez složité migrace.</h2>
+            <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-6">Začněte s přehledným onboardingem.</h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-16 leading-relaxed">
-              Přechod na nový systém nemusí být složitý. Pomůžeme vám s importem dat i prvním nastavením tak, abyste mohli začít pracovat co nejdříve.
+              Účet založíte během chvíle. U týmů klademe důraz na import klientů, napárování rolí a společné nastavení workflow — bez zbytečného chaosu.
             </p>
           </ScrollReveal>
 
@@ -1698,51 +1743,69 @@ export default function PremiumLandingPage() {
           </ScrollReveal>
 
           <div className="space-y-4 max-w-3xl mx-auto">
-            {FAQS.map((faq) => (
+            {FAQS.map((faq) => {
+              const expanded = openFaq === faq.id;
+              return (
               <ScrollReveal key={faq.id} delay={100}>
                 <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden transition-all">
-                  <button 
-                    onClick={() => setOpenFaq(openFaq === faq.id ? null : faq.id)}
-                    className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 rounded-2xl"
+                  <button
+                    type="button"
+                    id={`faq-q-${faq.id}`}
+                    aria-expanded={expanded}
+                    aria-controls={`faq-panel-${faq.id}`}
+                    onClick={() => setOpenFaq(expanded ? null : faq.id)}
+                    className="w-full px-6 py-5 min-h-[44px] flex items-center justify-between text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 rounded-2xl"
                   >
                     <span className="font-bold text-white pr-4">{faq.q}</span>
-                    <ChevronDown size={20} className={`text-slate-400 shrink-0 transition-transform duration-200 ${openFaq === faq.id ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={20} className={`text-slate-400 shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} aria-hidden />
                   </button>
-                  {openFaq === faq.id && (
-                    <div className="px-6 pb-5 pt-0">
-                      <p className="text-slate-400 leading-relaxed text-sm max-w-prose animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div
+                    id={`faq-panel-${faq.id}`}
+                    role="region"
+                    aria-labelledby={`faq-q-${faq.id}`}
+                    className={`grid transition-[grid-template-rows] duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                  >
+                    <div className="overflow-hidden min-h-0">
+                      <p className="px-6 pb-5 pt-0 text-slate-400 leading-relaxed text-sm max-w-prose border-t border-white/5">
                         {faq.a}
                       </p>
                     </div>
-                  )}
+                  </div>
                 </div>
               </ScrollReveal>
-            ))}
+            );
+            })}
           </div>
         </div>
       </section>
 
       {/* --- FOOTER CTA --- */}
-      <section className="py-40 relative overflow-hidden border-t border-white/10">
+      <section className="py-24 md:py-40 relative overflow-hidden border-t border-white/10">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-900/20 pointer-events-none"></div>
         <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
           <ScrollReveal>
-            <h2 className="font-jakarta text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
-              Portál Aidvisora
+            <h2 className="font-jakarta text-3xl sm:text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
+              Vyzkoušejte Aidvisoru v praxi
             </h2>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Přihlaste se do pracovního prostředí – CRM, klientská zóna, kalendář a dokumenty na jednom místě.
+            <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+              14 dní bez závazku — stejné prostředí jako po přihlášení. CRM, klientská zóna, kalendář a dokumenty na jednom místě.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 sm:gap-6">
+              <Link
+                href="/prihlaseni?register=1"
+                className="w-full sm:w-auto px-10 py-5 bg-white text-[#0a0f29] rounded-full text-lg font-bold tracking-wide shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:scale-[1.02] transition-transform text-center min-h-[44px] flex items-center justify-center gap-2"
+              >
+                Vyzkoušet zdarma na 14 dní <ArrowRight size={18} />
+              </Link>
               <Link
                 href="/prihlaseni"
-                className="w-full sm:w-auto px-10 py-5 bg-white text-[#0a0f29] rounded-full text-lg font-bold tracking-wide shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:scale-105 transition-all text-center min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-10 py-5 border border-white/20 text-white rounded-full text-lg font-bold hover:bg-white/10 transition-colors text-center min-h-[44px] flex items-center justify-center"
               >
-                Otevřít portál <ArrowRight size={18} />
+                Přihlásit se
               </Link>
             </div>
             <p className="mt-8 text-slate-500 text-sm max-w-xl mx-auto">
-              Zvolte roli poradce nebo klienta na stránce přihlášení.
+              Na přihlášení zvolte roli poradce nebo klienta.
             </p>
           </ScrollReveal>
         </div>
@@ -1751,11 +1814,11 @@ export default function PremiumLandingPage() {
       {/* --- FOOTER (ROZŠÍŘENÝ O SEO A PRÁVNÍ ODKAZY) --- */}
       <footer className="bg-[#060918] text-slate-500 py-16 px-6 border-t border-white/10">
         <ScrollReveal>
-          <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12 mb-16">
+          <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
             
             <div className="lg:col-span-2">
               <Link href="/" className="flex items-center gap-3 mb-6">
-                <img src="/Aidvisora logo A.png" alt="" className="h-10 w-10 object-contain shrink-0 brightness-0 invert" aria-hidden />
+                <img src="/Aidvisora logo A.png" alt="" width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 object-contain shrink-0 brightness-0 invert" aria-hidden />
                 <span className="font-jakarta font-bold text-2xl tracking-tight text-white">Aidvisora</span>
               </Link>
               <p className="text-sm max-w-sm leading-relaxed mb-6">Pracovní systém pro finanční poradce a týmy. CRM, klientská zóna a workflow na jednom místě.</p>
@@ -1777,34 +1840,16 @@ export default function PremiumLandingPage() {
             </div>
 
             <div>
-              <h4 className="text-white font-bold mb-6 font-jakarta text-lg">Use Cases (SEO)</h4>
-              <ul className="space-y-4 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">CRM pro poradce</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Klientská zóna pro poradce</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">AI pro finance</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Pipeline pro hypotéky</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Digitální správa klientů</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-bold mb-6 font-jakarta text-lg">Blog & Návody</h4>
-              <ul className="space-y-4 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Jak digitalizovat praxi</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Jak zvýšit follow-up rate</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Využití AI v poradenství</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Průvodce klientskou zónou</a></li>
-              </ul>
-            </div>
-
-            <div>
-               <h4 className="text-white font-bold mb-6 font-jakarta text-lg">Právní a Bezpečnost</h4>
+               <h4 className="text-white font-bold mb-6 font-jakarta text-lg">Právní a podpora</h4>
                <ul className="space-y-4 text-sm">
                 <li><Link href="/terms" className="hover:text-white transition-colors">Obchodní podmínky</Link></li>
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Zásady ochrany (GDPR)</Link></li>
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Nastavení Cookies</Link></li>
-                <li><a href="#" className="hover:text-white transition-colors">SLA a Onboarding Support</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Status systému</a></li>
+                <li>
+                  <a href="mailto:podpora@aidvisora.cz?subject=Onboarding%20a%20podpora" className="hover:text-white transition-colors">
+                    Onboarding a technická podpora
+                  </a>
+                </li>
               </ul>
             </div>
 

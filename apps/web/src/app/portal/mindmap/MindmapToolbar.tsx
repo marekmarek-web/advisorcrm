@@ -1,14 +1,31 @@
 "use client";
 
 import { Settings } from "lucide-react";
+import type { MindmapInteractionMode } from "./types";
 
-export function MindmapToolbar() {
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+export function MindmapToolbar({
+  mode,
+  onModeChange,
+  onOpenSettings,
+}: {
+  mode: MindmapInteractionMode;
+  onModeChange: (m: MindmapInteractionMode) => void;
+  onOpenSettings: () => void;
+}) {
   return (
-    <div className="absolute left-6 top-6 flex flex-col gap-3 z-50">
+    <div className="absolute left-3 top-[4.5rem] md:left-6 md:top-6 flex flex-col gap-3 z-50">
       <div className="bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-xl border border-slate-200 flex flex-col gap-1">
         <button
           type="button"
-          className="p-3 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+          onClick={() => onModeChange("select")}
+          className={cx(
+            "p-3 rounded-xl transition-colors",
+            mode === "select" ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+          )}
           title="Nástroj pro výběr"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -18,7 +35,11 @@ export function MindmapToolbar() {
         </button>
         <button
           type="button"
-          className="p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          onClick={() => onModeChange("connect")}
+          className={cx(
+            "p-3 rounded-xl transition-colors",
+            mode === "connect" ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+          )}
           title="Spojování uzlů (Link)"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -29,6 +50,7 @@ export function MindmapToolbar() {
         <div className="w-10 h-px bg-slate-200 mx-auto my-1" />
         <button
           type="button"
+          onClick={onOpenSettings}
           className="p-3 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
           title="Nastavení mapy"
         >

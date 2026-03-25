@@ -115,3 +115,111 @@ export function paymentInstructionTemplate(params: {
     html,
   };
 }
+
+export function requestMissingDataTemplate(params: {
+  contactName: string;
+  missingFields: string[];
+  documentName?: string;
+  advisorName?: string;
+  unsubscribeUrl?: string;
+}) {
+  const fieldsList = params.missingFields.map((f) => `<li>${f}</li>`).join("");
+  const html = layout(`
+    <h2 style="font-size: 16px; margin: 0 0 12px;">Doplnění údajů</h2>
+    <p style="font-size: 14px; line-height: 1.5;">
+      Dobrý den, pane/paní <strong>${params.contactName}</strong>,
+    </p>
+    <p style="font-size: 14px; line-height: 1.5;">
+      po zpracování ${params.documentName ? `dokumentu <strong>${params.documentName}</strong>` : "Vašeho dokumentu"}
+      nám chybí následující údaje:
+    </p>
+    <ul style="font-size: 14px; line-height: 1.6;">${fieldsList}</ul>
+    <p style="font-size: 14px;">Prosíme o jejich doplnění co nejdříve.</p>
+    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
+    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
+  `);
+  return { subject: `Doplnění údajů – ${params.contactName}`, html };
+}
+
+export function reviewFollowupTemplate(params: {
+  contactName: string;
+  reviewFileName: string;
+  reviewStatus: string;
+  advisorName?: string;
+  unsubscribeUrl?: string;
+}) {
+  const html = layout(`
+    <h2 style="font-size: 16px; margin: 0 0 12px;">Stav kontroly dokumentu</h2>
+    <p style="font-size: 14px; line-height: 1.5;">
+      Dokument <strong>${params.reviewFileName}</strong> byl zkontrolován.
+    </p>
+    <p style="font-size: 14px;">Aktuální stav: <strong>${params.reviewStatus}</strong></p>
+    <p style="font-size: 14px;">V případě dotazů se obraťte na svého poradce.</p>
+    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
+    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
+  `);
+  return { subject: `Výsledek kontroly – ${params.reviewFileName}`, html };
+}
+
+export function policyStatusUpdateTemplate(params: {
+  contactName: string;
+  policyName: string;
+  status: string;
+  detail?: string;
+  advisorName?: string;
+  unsubscribeUrl?: string;
+}) {
+  const html = layout(`
+    <h2 style="font-size: 16px; margin: 0 0 12px;">Aktualizace stavu pojistky</h2>
+    <p style="font-size: 14px; line-height: 1.5;">
+      Pojistka <strong>${params.policyName}</strong> pro <strong>${params.contactName}</strong>:
+    </p>
+    <p style="font-size: 14px;">Stav: <strong>${params.status}</strong></p>
+    ${params.detail ? `<p style="font-size: 14px; color: #676879;">${params.detail}</p>` : ""}
+    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
+    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
+  `);
+  return { subject: `Status pojistky – ${params.policyName}`, html };
+}
+
+export function reminderBeforeDeadlineTemplate(params: {
+  contactName: string;
+  deadlineType: string;
+  deadlineDate: string;
+  advisorName?: string;
+  unsubscribeUrl?: string;
+}) {
+  const html = layout(`
+    <h2 style="font-size: 16px; margin: 0 0 12px;">Připomínka blížícího se termínu</h2>
+    <p style="font-size: 14px; line-height: 1.5;">
+      Blíží se termín <strong>${params.deadlineType}</strong> pro <strong>${params.contactName}</strong>:
+      <strong>${params.deadlineDate}</strong>.
+    </p>
+    <p style="font-size: 14px;">Doporučujeme podniknout kroky co nejdříve.</p>
+    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
+    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
+  `);
+  return { subject: `Připomínka: ${params.deadlineType} – ${params.contactName}`, html };
+}
+
+export function internalSummaryTemplate(params: {
+  advisorName: string;
+  summaryDate: string;
+  urgentCount: number;
+  pendingReviewCount: number;
+  overdueTaskCount: number;
+  blockedPaymentCount: number;
+}) {
+  const html = layout(`
+    <h2 style="font-size: 16px; margin: 0 0 12px;">Denní souhrn – ${params.summaryDate}</h2>
+    <p style="font-size: 14px; line-height: 1.5;">Dobrý den, ${params.advisorName},</p>
+    <table style="font-size: 14px; border-collapse: collapse;">
+      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Urgentní položky:</td><td><strong>${params.urgentCount}</strong></td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Čekající review:</td><td><strong>${params.pendingReviewCount}</strong></td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Úkoly po termínu:</td><td><strong>${params.overdueTaskCount}</strong></td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Blokované platby:</td><td><strong>${params.blockedPaymentCount}</strong></td></tr>
+    </table>
+    <p style="font-size: 14px; margin-top: 12px;">Přihlaste se do Aidvisora pro detail.</p>
+  `);
+  return { subject: `Denní souhrn – ${params.summaryDate}`, html };
+}

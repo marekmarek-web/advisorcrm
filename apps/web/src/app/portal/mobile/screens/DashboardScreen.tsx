@@ -21,6 +21,7 @@ import {
   TrendingUp,
   StickyNote,
   CheckCircle2,
+  LayoutDashboard,
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardKpis } from "@/app/actions/dashboard";
@@ -51,7 +52,8 @@ const QUICK_ACTIONS: {
   { icon: UserPlus, label: "Nový klient", action: "newClient" },
   { icon: Calendar, label: "Nová schůzka", href: "/portal/calendar?new=1" },
   { icon: Briefcase, label: "Nový případ", action: "newOpportunity" },
-  { icon: MessageSquare, label: "Zpráva", href: "/portal/contacts" },
+  { icon: MessageSquare, label: "Zpráva", href: "/portal/messages" },
+  { icon: LayoutDashboard, label: "Board", href: "/portal/board" },
   { icon: Calculator, label: "Kalkulačky", href: "/portal/calculators" },
   { icon: PieChart, label: "Analýza", href: "/portal/analyses/financial" },
   { icon: Sparkles, label: "AI Smlouvy", href: "/portal/contracts/review" },
@@ -797,7 +799,7 @@ export function DashboardScreen({
         <WidgetCard
           icon={MessageSquare}
           title="Zprávy"
-          href="/portal/contacts"
+          href="/portal/messages"
           iconColor="text-emerald-500"
           borderColor="border-t-4 border-t-emerald-500"
         >
@@ -809,6 +811,7 @@ export function DashboardScreen({
           <WidgetCard
             icon={StickyNote}
             title="Zápisky"
+            href="/portal/notes"
             iconColor="text-amber-500"
             borderColor="border-t-4 border-t-slate-400"
           >

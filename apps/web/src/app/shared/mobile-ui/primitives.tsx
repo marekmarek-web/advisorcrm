@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, createElement, useEffect, useState } from "react";
+import { type ButtonHTMLAttributes, type ReactNode, createElement, useEffect, useState } from "react";
 import { X, Plus, AlertCircle, Wifi, WifiOff, PackageOpen, RefreshCw } from "lucide-react";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 
@@ -76,7 +76,8 @@ export function MobileBottomNav({
   deviceClass = "phone",
 }: {
   items: Array<{ id: string; label: string; icon: React.ComponentType<{ size?: number }>; badge?: number }>;
-  activeId: string;
+  /** When null, no tab is shown as active (e.g. deep-linked tool routes). */
+  activeId: string | null;
   onSelect: (id: string) => void;
   deviceClass?: DeviceClass;
 }) {
@@ -96,7 +97,7 @@ export function MobileBottomNav({
       >
         {items.map((item) => {
           const Icon = item.icon;
-          const active = item.id === activeId;
+          const active = activeId != null && item.id === activeId;
           return (
             <button
               key={item.id}
@@ -963,6 +964,35 @@ export function OfflineBanner() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  PendingButton – mutation feedback                                  */
+/* ------------------------------------------------------------------ */
+
+export function PendingButton({
+  children,
+  isPending,
+  className,
+  type = "button",
+  disabled,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { isPending?: boolean }) {
+  return (
+    <button
+      type={type}
+      disabled={disabled || isPending}
+      className={cx(
+        "inline-flex items-center justify-center gap-2 transition-opacity active:scale-[0.97] transition-transform duration-100",
+        isPending && "opacity-50 cursor-not-allowed",
+        className
+      )}
+      {...rest}
+    >
+      {isPending ? <RefreshCw size={14} className="animate-spin shrink-0" aria-hidden /> : null}
+      {children}
+    </button>
   );
 }
 

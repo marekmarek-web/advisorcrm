@@ -2,10 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Save } from "lucide-react";
 import { updateOpportunity } from "@/app/actions/pipeline";
 import type { OpportunityDetail } from "@/app/actions/pipeline";
 
-const SECTIONS: { key: string; label: string; fields: { key: string; label: string; type: "text" | "number" | "date" | "checkbox" }[] }[] = [
+const SECTIONS: {
+  key: string;
+  label: string;
+  fields: { key: string; label: string; type: "text" | "number" | "date" | "checkbox" }[];
+}[] = [
   {
     key: "obecne",
     label: "Obecné",
@@ -14,7 +19,7 @@ const SECTIONS: { key: string; label: string; fields: { key: string; label: stri
       { key: "cislo_smlouvy", label: "Číslo smlouvy", type: "text" },
       { key: "cislo_nabidky", label: "Číslo nabídky", type: "text" },
       { key: "pocatek", label: "Počátek", type: "date" },
-      { key: "pojistne", label: "Pojistné", type: "text" },
+      { key: "pojistne", label: "Pojištění", type: "text" },
       { key: "frekvence", label: "Frekvence", type: "text" },
     ],
   },
@@ -106,29 +111,41 @@ export function OpportunityCustomFieldsTab({
   return (
     <div className="space-y-6">
       {SECTIONS.map((section) => (
-        <div key={section.key} className="rounded-xl border border-slate-200 p-4">
-          <h3 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">{section.label}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div
+          key={section.key}
+          className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5 sm:p-6"
+        >
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 pb-3 border-b border-slate-50">
+            {section.label}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {section.fields.map((field) => (
               <div key={field.key}>
                 {field.type === "checkbox" ? (
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={!!values[field.key]}
                       onChange={(e) => setOne(field.key, e.target.checked)}
-                      className="rounded border-slate-300"
+                      className="rounded border-slate-300 size-5 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="text-sm text-slate-700">{field.label}</span>
+                    <span className="text-sm font-semibold text-slate-700">{field.label}</span>
                   </label>
                 ) : (
                   <>
-                    <label className="block text-xs font-medium text-slate-600 mb-0.5">{field.label}</label>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                      {field.label}
+                    </label>
                     <input
                       type={field.type}
                       value={String(values[field.key] ?? "")}
-                      onChange={(e) => setOne(field.key, field.type === "number" ? e.target.valueAsNumber : e.target.value)}
-                      className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                      onChange={(e) =>
+                        setOne(
+                          field.key,
+                          field.type === "number" ? e.target.valueAsNumber : e.target.value,
+                        )
+                      }
+                      className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                     />
                   </>
                 )}
@@ -141,8 +158,9 @@ export function OpportunityCustomFieldsTab({
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className="rounded bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-8 py-3.5 bg-[#1a1c2e] hover:bg-[#2a2d4a] text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-50"
       >
+        <Save size={16} aria-hidden />
         {saving ? "Ukládám…" : "Uložit vlastní pole"}
       </button>
     </div>

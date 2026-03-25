@@ -417,23 +417,38 @@ export function ClientProfileScreen({
   useEffect(() => {
     startTransition(async () => {
       setError(null);
-      try {
-        const [contactData, householdData, taskData, pipelineData, documentsData] =
-          await Promise.all([
-            getContact(contactId),
-            getHouseholdForContact(contactId),
-            getTasksByContactId(contactId),
-            getPipelineByContact(contactId),
-            getDocumentsForContact(contactId),
-          ]);
-        setContact(contactData as ContactDetail | null);
-        setHousehold(householdData);
-        setTasks(taskData);
-        setPipeline(pipelineData);
-        setDocuments(documentsData);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Nepodařilo se načíst klientský profil.");
+      const results = await Promise.allSettled([
+        getContact(contactId),
+        getHouseholdForContact(contactId),
+        getTasksByContactId(contactId),
+        getPipelineByContact(contactId),
+        getDocumentsForContact(contactId),
+      ]);
+
+      const contactRes = results[0];
+      if (contactRes.status === "rejected") {
+        setError(
+          contactRes.reason instanceof Error
+            ? contactRes.reason.message
+            : "Nepodařilo se načíst klientský profil."
+        );
+        return;
       }
+
+      const contactData = contactRes.value as ContactDetail | null;
+      setContact(contactData);
+
+      if (results[1].status === "fulfilled") setHousehold(results[1].value);
+      else setHousehold(null);
+
+      if (results[2].status === "fulfilled") setTasks(results[2].value);
+      else setTasks([]);
+
+      if (results[3].status === "fulfilled") setPipeline(results[3].value);
+      else setPipeline([]);
+
+      if (results[4].status === "fulfilled") setDocuments(results[4].value);
+      else setDocuments([]);
     });
   }, [contactId]);
 

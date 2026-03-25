@@ -36,6 +36,8 @@ export interface CalendarSettingsModalProps {
   onClose: () => void;
   initialSettings: CalendarSettings;
   onSave: (settings: CalendarSettings) => void;
+  /** Fullscreen stepper-friendly layout for mobile portal. */
+  layout?: "center" | "fullscreen";
 }
 
 export function CalendarSettingsModal({
@@ -43,6 +45,7 @@ export function CalendarSettingsModal({
   onClose,
   initialSettings,
   onSave,
+  layout = "center",
 }: CalendarSettingsModalProps) {
   const [form, setForm] = useState<CalendarSettings>({ ...initialSettings });
 
@@ -75,8 +78,16 @@ export function CalendarSettingsModal({
 
   if (!open) return null;
 
+  const fullscreen = layout === "fullscreen";
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8 bg-slate-900/40 backdrop-blur-sm">
+    <div
+      className={
+        fullscreen
+          ? "fixed inset-0 z-[110] flex flex-col bg-white"
+          : "fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:p-8"
+      }
+    >
       <style>{`
         .cal-settings-check {
           appearance: none; width: 20px; height: 20px; border: 2px solid #cbd5e1;
@@ -103,16 +114,20 @@ export function CalendarSettingsModal({
       `}</style>
 
       <div
-        className="w-full max-w-[640px] bg-white rounded-[32px] shadow-2xl shadow-indigo-900/10 border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className={
+          fullscreen
+            ? "flex h-full w-full flex-col overflow-hidden border-0 bg-white"
+            : "flex max-h-[90vh] w-full max-w-[640px] flex-col overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-2xl shadow-indigo-900/10"
+        }
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-4 sm:px-8 sm:py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
               <Calendar size={20} />
             </div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Nastavení kalendáře</h2>
+            <h2 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">Nastavení kalendáře</h2>
           </div>
           <button
             type="button"
@@ -310,7 +325,7 @@ export function CalendarSettingsModal({
           </div>
 
           {/* Footer */}
-          <div className="px-8 py-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-4 sm:px-8 sm:py-5">
             <button
               type="button"
               onClick={onClose}

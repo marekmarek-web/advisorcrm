@@ -7,7 +7,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
-    sendDefaultPii: true,
+    sendDefaultPii: process.env.NODE_ENV !== "production",
     tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
     enableLogs: true,
   });

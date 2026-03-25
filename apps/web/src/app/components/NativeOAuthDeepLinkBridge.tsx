@@ -92,15 +92,19 @@ export function NativeOAuthDeepLinkBridge() {
     };
 
     (async () => {
-      const launchUrl = await App.getLaunchUrl();
-      if (launchUrl?.url) handleOpenUrl(launchUrl.url);
+      try {
+        const launchUrl = await App.getLaunchUrl();
+        if (launchUrl?.url) await handleOpenUrl(launchUrl.url);
 
-      const listener = await App.addListener("appUrlOpen", (event) => {
-        handleOpenUrl(event.url);
-      });
+        const listener = await App.addListener("appUrlOpen", (event) => {
+          void handleOpenUrl(event.url);
+        });
 
-      if (disposed) listener.remove();
-      else removeListener = () => listener.remove();
+        if (disposed) listener.remove();
+        else removeListener = () => listener.remove();
+      } catch (e) {
+        console.error("[NativeOAuthDeepLinkBridge] init failed", e);
+      }
     })();
 
     return () => {

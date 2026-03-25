@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   CheckCircle2,
@@ -28,7 +29,10 @@ import {
   FullscreenSheet,
   LoadingSkeleton,
   MobileCard,
+  PendingButton,
   StatusBadge,
+  Toast,
+  useToast,
 } from "@/app/shared/mobile-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 
@@ -146,16 +150,22 @@ function AnalysisDetailPanel({
 }) {
   const [payload, setPayload] = useState<{ currentStep?: number; data?: Record<string, unknown> } | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingDetail(true);
+    setDetailError(null);
     getFinancialAnalysis(detailId)
       .then((row) => {
         if (cancelled) return;
         setPayload((row?.payload ?? null) as typeof payload);
       })
-      .catch(() => setPayload(null))
+      .catch((e) => {
+        if (cancelled) return;
+        setPayload(null);
+        setDetailError(e instanceof Error ? e.message : "Detail analýzy se nepodařilo načíst.");
+      })
       .finally(() => !cancelled && setLoadingDetail(false));
     return () => { cancelled = true; };
   }, [detailId]);
@@ -191,6 +201,30 @@ function AnalysisDetailPanel({
       {/* Client data */}
       {loadingDetail ? (
         <LoadingSkeleton rows={2} />
+      ) : detailError ? (
+        <MobileCard className="p-4 border-rose-200 bg-rose-50/80">
+          <p className="text-sm font-bold text-rose-800">{detailError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setDetailError(null);
+              setLoadingDetail(true);
+              getFinancialAnalysis(detailId)
+                .then((row) => {
+                  setPayload((row?.payload ?? null) as typeof payload);
+                  setDetailError(null);
+                })
+                .catch((e) => {
+                  setPayload(null);
+                  setDetailError(e instanceof Error ? e.message : "Detail analýzy se nepodařilo načíst.");
+                })
+                .finally(() => setLoadingDetail(false));
+            }}
+            className="mt-3 min-h-[44px] px-4 rounded-xl bg-rose-600 text-white text-sm font-bold"
+          >
+            Zkusit znovu
+          </button>
+        </MobileCard>
       ) : (
         <>
           <MobileCard className="divide-y divide-slate-100 py-0">
@@ -309,6 +343,8 @@ export function AnalysesHubScreen({
   detailIdFromPath: string | null;
   deviceClass?: DeviceClass;
 }) {
+  const router = useRouter();
+  const { toast, showToast, dismissToast } = useToast();
   const [items, setItems] = useState<FinancialAnalysisListItem[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [detailOpen, setDetailOpen] = useState(false);
@@ -353,8 +389,8 @@ export function AnalysesHubScreen({
           payload: { currentStep: 1, data: { client: { name: "" } } },
         });
         reload();
-        setDetailId(id);
-        setDetailOpen(true);
+        showToast("Analýza vytvořena — otevíráme průvodce.", "success");
+        router.push(`/portal/analyses/financial?id=${encodeURIComponent(id)}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Vytvoření analýzy selhalo.");
       }
@@ -380,6 +416,7 @@ export function AnalysesHubScreen({
 
   return (
     <>
+      {toast ? <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} /> : null}
       {error ? <ErrorState title={error} onRetry={reload} /> : null}
 
       {/* Header */}
@@ -398,15 +435,15 @@ export function AnalysesHubScreen({
             >
               <RefreshCw size={14} className={cx("text-slate-500", pending && "animate-spin")} />
             </button>
-            <button
+            <PendingButton
               type="button"
               onClick={handleCreate}
-              disabled={pending}
-              className="flex items-center gap-1.5 min-h-[36px] rounded-xl bg-indigo-600 text-white px-3 text-xs font-bold"
+              isPending={pending}
+              className="flex items-center gap-1.5 min-h-[36px] rounded-xl bg-indigo-600 text-white px-3 text-xs font-bold disabled:opacity-40"
             >
               <Plus size={14} />
               Nová
-            </button>
+            </PendingButton>
           </div>
         </div>
         <div className="mt-2">

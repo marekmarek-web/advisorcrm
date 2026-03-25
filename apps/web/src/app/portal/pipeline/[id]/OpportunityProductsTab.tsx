@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ShieldAlert } from "lucide-react";
 import { getContractsByContact } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
 
@@ -28,51 +29,74 @@ export function OpportunityProductsTab({
 
   if (!contactId) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm font-medium text-slate-500">
         Pro zobrazení produktů přiřaďte obchodu klienta (kontakt).
       </p>
     );
   }
-  if (loading) return <p className="text-sm text-slate-500">Načítání…</p>;
+  if (loading) {
+    return <p className="text-sm font-medium text-slate-500">Načítání…</p>;
+  }
   if (contracts.length === 0) {
     return (
-      <p className="text-sm text-slate-500">
-        Klient {contactName} zatím nemá evidované smlouvy.{" "}
-        <Link href={`/portal/contacts/${contactId}`} className="text-blue-600 hover:underline">
-          Přidat v detailu kontaktu
-        </Link>
-      </p>
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 text-center">
+        <p className="text-sm font-medium text-slate-600">
+          Klient {contactName} zatím nemá evidované smlouvy.{" "}
+          <Link
+            href={`/portal/contacts/${contactId}`}
+            className="font-black text-indigo-600 hover:underline min-h-[44px] inline-flex items-center"
+          >
+            Přidat v detailu kontaktu
+          </Link>
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th className="text-left p-3 font-medium text-slate-700">Segment</th>
-            <th className="text-left p-3 font-medium text-slate-700">Partner / Produkt</th>
-            <th className="text-left p-3 font-medium text-slate-700">Č. smlouvy</th>
-            <th className="text-left p-3 font-medium text-slate-700">Pojistné</th>
-          </tr>
-        </thead>
-        <tbody>
-          {contracts.map((c) => (
-            <tr key={c.id} className="border-b border-slate-100 last:border-0">
-              <td className="p-3 text-slate-600">{c.segment}</td>
-              <td className="p-3">
-                {c.partnerName ?? "—"} / {c.productName ?? "—"}
-              </td>
-              <td className="p-3 text-slate-600">{c.contractNumber ?? "—"}</td>
-              <td className="p-3">
-                {c.premiumAnnual ? `${Number(c.premiumAnnual).toLocaleString("cs-CZ")} Kč` : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="p-3 text-xs text-slate-500 border-t border-slate-100">
-        <Link href={`/portal/contacts/${contactId}`} className="text-blue-600 hover:underline">
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="text-lg font-black text-slate-900">Sjednávané produkty</h3>
+      </div>
+      <ul className="space-y-3">
+        {contracts.map((c) => {
+          const premium = c.premiumAnnual
+            ? `${Number(c.premiumAnnual).toLocaleString("cs-CZ")} Kč/rok`
+            : "—";
+          const subtitle = [c.partnerName, c.productName].filter(Boolean).join(" · ") || "—";
+          return (
+            <li
+              key={c.id}
+              className="p-4 sm:p-5 border border-slate-200 rounded-2xl bg-white shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shrink-0">
+                  <ShieldAlert size={20} aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 text-base leading-snug">
+                    {c.segment || "Produkt"}
+                    {c.contractNumber ? (
+                      <span className="text-slate-500 font-semibold text-sm block mt-0.5">
+                        č. smlouvy {c.contractNumber}
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="text-xs font-bold text-slate-500 mt-1 truncate">{subtitle}</p>
+                </div>
+              </div>
+              <div className="text-lg font-black text-slate-800 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 shrink-0 self-start sm:self-center">
+                {premium}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs font-medium text-slate-500 pt-1">
+        <Link
+          href={`/portal/contacts/${contactId}`}
+          className="font-black text-indigo-600 hover:underline min-h-[44px] inline-flex items-center"
+        >
           Otevřít detail kontaktu a smlouvy
         </Link>
       </p>

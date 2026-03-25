@@ -70,11 +70,24 @@ export async function getMeetingNotesForBoard(): Promise<MeetingNoteForBoard[]> 
   }));
 }
 
-export async function getMeetingNotesByOpportunityId(opportunityId: string): Promise<MeetingNoteRow[]> {
+export type MeetingNoteRowWithContent = MeetingNoteRow & {
+  contentPreview: string | null;
+};
+
+export async function getMeetingNotesByOpportunityId(
+  opportunityId: string,
+): Promise<MeetingNoteRowWithContent[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
   const rows = await db
-    .select({ id: meetingNotes.id, meetingAt: meetingNotes.meetingAt, domain: meetingNotes.domain, contactId: meetingNotes.contactId, createdAt: meetingNotes.createdAt })
+    .select({
+      id: meetingNotes.id,
+      meetingAt: meetingNotes.meetingAt,
+      domain: meetingNotes.domain,
+      contactId: meetingNotes.contactId,
+      createdAt: meetingNotes.createdAt,
+      content: meetingNotes.content,
+    })
     .from(meetingNotes)
     .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.opportunityId, opportunityId)))
     .orderBy(desc(meetingNotes.meetingAt))
@@ -82,8 +95,21 @@ export async function getMeetingNotesByOpportunityId(opportunityId: string): Pro
   const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
   const contactList = contactIds.length ? await db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName }).from(contacts).where(eq(contacts.tenantId, auth.tenantId)) : [];
   const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
-  return rows.map((r) => ({ id: r.id, meetingAt: r.meetingAt, domain: r.domain, contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek", createdAt: r.createdAt }));
-
+  return rows.map((r) => {
+    const body =
+      r.content && typeof r.content === "object" && r.content !== null && "body" in r.content
+        ? String((r.content as { body?: unknown }).body ?? "")
+        : "";
+    const preview = body.trim() ? (body.length > 160 ? `${body.slice(0, 160)}…` : body) : null;
+    return {
+      id: r.id,
+      meetingAt: r.meetingAt,
+      domain: r.domain,
+      contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek",
+      createdAt: r.createdAt,
+      contentPreview: preview,
+    };
+  });
 }
 
 export async function createMeetingNote(form: {

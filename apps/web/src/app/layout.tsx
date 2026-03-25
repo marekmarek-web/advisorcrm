@@ -1,25 +1,44 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3 } from "next/font/google";
 import "./globals.css";
-import "../styles/monday.css";
 import "../styles/weplan-theme.css";
 import "../styles/weplan-components.css";
-import "../styles/weplan-calendar.css";
 import { TooltipBlurListener } from "./components/TooltipBlurListener";
 import { NativeOAuthDeepLinkBridge } from "./components/NativeOAuthDeepLinkBridge";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const sourceSans = Source_Sans_3({
   subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
   variable: "--font-primary",
+  display: "swap",
+  preload: true,
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://aidvisora.cz";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Aidvisora – pracovní systém pro finanční poradce",
   description:
-    "Přestaňte řídit poradenství přes Excel, e-mail a WhatsApp. Klienti, podklady, úkoly a obchody přehledně na jednom místě — CRM, portál, dokumenty a pipeline pro poradce a týmy.",
+    "CRM, klientská zóna a workflow pro finanční poradce. Klienti, dokumenty, schůzky a úkoly na jednom místě — méně administrativy, více přehledu.",
   icons: { icon: "/favicon.png", apple: "/favicon.png" },
+  openGraph: {
+    title: "Aidvisora – pracovní systém pro finanční poradce",
+    description:
+      "CRM, klientská zóna a workflow pro finanční poradce. Klienti, dokumenty, schůzky a úkoly na jednom místě.",
+    type: "website",
+    locale: "cs_CZ",
+    url: siteUrl,
+    siteName: "Aidvisora",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Aidvisora – pracovní systém pro finanční poradce",
+    description:
+      "CRM, klientská zóna a workflow pro finanční poradce. Klienti, dokumenty, schůzky a úkoly na jednom místě.",
+  },
 };
 
 export const viewport: Viewport = {

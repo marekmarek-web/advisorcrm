@@ -21,10 +21,13 @@ import {
   EyeOff,
   Trash2,
   ScanLine,
+  Pencil,
+  Download,
 } from "lucide-react";
 import {
   listDocuments,
   deleteDocument,
+  updateDocument,
   updateDocumentVisibleToClient,
   type DocumentRow,
 } from "@/app/actions/documents";
@@ -207,20 +210,61 @@ function DocumentCard({
 /*  Detail panel                                                       */
 /* ------------------------------------------------------------------ */
 
+function parseTagsInput(raw: string): string[] {
+  return raw
+    .split(/[,;]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
 function DocumentDetailPanel({
   doc,
   pending,
   onToggleVisibility,
   onDelete,
+  onSaveMetadata,
 }: {
   doc: DocItem;
   pending: boolean;
   onToggleVisibility: () => void;
   onDelete: () => void;
+  onSaveMetadata: (name: string, tags: string[]) => Promise<void>;
 }) {
   const FileIcon = getFileIcon(doc.mimeType);
   const proc = getProcessingConfig(doc.processingStatus);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState(doc.name);
+  const [editTags, setEditTags] = useState(doc.tags?.join(", ") ?? "");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingMeta, setSavingMeta] = useState(false);
+
+  useEffect(() => {
+    setEditMode(false);
+    setEditName(doc.name);
+    setEditTags(doc.tags?.join(", ") ?? "");
+    setSaveError(null);
+  }, [doc.id, doc.name, doc.tags]);
+
+  const downloadHref = `/api/documents/${doc.id}/download`;
+
+  async function handleSaveMeta() {
+    const name = editName.trim();
+    if (!name) {
+      setSaveError("Název je povinný.");
+      return;
+    }
+    setSavingMeta(true);
+    setSaveError(null);
+    try {
+      await onSaveMetadata(name, parseTagsInput(editTags));
+      setEditMode(false);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Uložení se nepodařilo.");
+    } finally {
+      setSavingMeta(false);
+    }
+  }
 
   return (
     <div className="space-y-3 pb-4">
@@ -231,7 +275,17 @@ function DocumentDetailPanel({
             <FileIcon size={22} className="text-indigo-300" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-black text-white truncate">{doc.name}</p>
+            {editMode ? (
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full min-h-[40px] rounded-lg border border-white/30 bg-white/10 text-white text-sm font-bold px-2 py-1.5"
+                placeholder="Název dokumentu"
+              />
+            ) : (
+              <p className="text-base font-black text-white truncate">{doc.name}</p>
+            )}
             {doc.contactName ? (
               <p className="text-xs text-indigo-300 mt-0.5 flex items-center gap-1">
                 <User size={10} /> {doc.contactName}
@@ -283,9 +337,43 @@ function DocumentDetailPanel({
       </MobileCard>
 
       {/* Tags */}
-      {doc.tags?.length ? (
-        <MobileCard className="p-3.5">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Tagy</p>
+      <MobileCard className="p-3.5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Tagy</p>
+        {editMode ? (
+          <>
+            <textarea
+              value={editTags}
+              onChange={(e) => setEditTags(e.target.value)}
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              placeholder="např. smlouva, 2024, hypotéka (čárkou oddělené)"
+            />
+            {saveError ? <p className="text-xs text-rose-600 font-semibold mt-2">{saveError}</p> : null}
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMode(false);
+                  setEditName(doc.name);
+                  setEditTags(doc.tags?.join(", ") ?? "");
+                  setSaveError(null);
+                }}
+                disabled={savingMeta}
+                className="min-h-[44px] rounded-xl border border-slate-200 text-sm font-bold text-slate-600"
+              >
+                Zrušit
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMeta}
+                disabled={savingMeta}
+                className="min-h-[44px] rounded-xl bg-indigo-600 text-white text-sm font-bold"
+              >
+                {savingMeta ? "Ukládám…" : "Uložit"}
+              </button>
+            </div>
+          </>
+        ) : doc.tags?.length ? (
           <div className="flex flex-wrap gap-1.5">
             {doc.tags.map((tag) => (
               <span key={tag} className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1">
@@ -293,8 +381,10 @@ function DocumentDetailPanel({
               </span>
             ))}
           </div>
-        </MobileCard>
-      ) : null}
+        ) : (
+          <p className="text-xs text-slate-500">Žádné tagy — použijte Upravit.</p>
+        )}
+      </MobileCard>
 
       {/* Actions */}
       <MobileCard className="p-3.5">
@@ -302,6 +392,31 @@ function DocumentDetailPanel({
           Akce
         </p>
         <div className="space-y-2">
+          <a
+            href={downloadHref}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800 flex items-center justify-center gap-2"
+          >
+            <Download size={14} /> Otevřít / stáhnout
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setEditMode((v) => {
+                if (v) {
+                  setEditName(doc.name);
+                  setEditTags(doc.tags?.join(", ") ?? "");
+                  setSaveError(null);
+                }
+                return !v;
+              });
+            }}
+            disabled={pending || savingMeta}
+            className="w-full min-h-[44px] rounded-xl border border-slate-200 text-sm font-bold text-slate-700 flex items-center justify-center gap-2"
+          >
+            <Pencil size={14} /> {editMode ? "Zavřít úpravy" : "Upravit název a tagy"}
+          </button>
           <button
             type="button"
             onClick={onToggleVisibility}
@@ -530,6 +645,27 @@ export function DocumentsHubScreen({
     });
   }
 
+  function handleSaveDocumentMetadata(name: string, tags: string[]) {
+    return new Promise<void>((resolve, reject) => {
+      startTransition(async () => {
+        try {
+          const id = selectedDoc?.id;
+          if (!id) throw new Error("Žádný dokument");
+          await updateDocument(id, { name, tags });
+          const rows = await listDocuments();
+          setDocs(rows);
+          setSelectedDoc((prev) => {
+            if (!prev || prev.id !== id) return prev;
+            return rows.find((d) => d.id === id) ?? prev;
+          });
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+  }
+
   const isTablet = deviceClass === "tablet" || deviceClass === "desktop";
 
   return (
@@ -601,6 +737,7 @@ export function DocumentsHubScreen({
                 pending={pending}
                 onToggleVisibility={handleToggleVisibility}
                 onDelete={handleDelete}
+                onSaveMetadata={handleSaveDocumentMetadata}
               />
             ) : (
               <div className="h-full flex items-center justify-center">
@@ -644,6 +781,7 @@ export function DocumentsHubScreen({
             pending={pending}
             onToggleVisibility={handleToggleVisibility}
             onDelete={handleDelete}
+            onSaveMetadata={handleSaveDocumentMetadata}
           />
         </BottomSheet>
       ) : null}

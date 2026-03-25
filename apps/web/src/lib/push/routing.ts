@@ -43,5 +43,23 @@ export function mapPushNotificationToRoute(notification: PushNotificationSchema)
     return "/portal/messages";
   }
 
+  if (type === "REVIEW_WAITING") {
+    const reviewId = pickId(data, ["reviewId", "relatedEntityId"]);
+    return reviewId ? `/portal/contracts/review/${encodeURIComponent(reviewId)}` : "/portal/today";
+  }
+
+  if (type === "PAYMENT_BLOCKED") {
+    const contactId = pickId(data, ["contactId", "relatedEntityId"]);
+    return contactId ? `/portal/contacts/${encodeURIComponent(contactId)}#payments` : "/portal/today";
+  }
+
+  if (type === "REMINDER_DUE") {
+    return "/portal/today";
+  }
+
+  if (type === "ESCALATION") {
+    return "/portal/team-overview";
+  }
+
   return FALLBACK_ROUTE;
 }

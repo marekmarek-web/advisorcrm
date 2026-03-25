@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Home,
   Users,
@@ -8,11 +9,15 @@ import {
   BarChart2,
   UserPlus,
   X,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   addHouseholdMember,
+  deleteHousehold,
   getHousehold,
   removeHouseholdMember,
+  updateHousehold,
   type HouseholdDetail,
 } from "@/app/actions/households";
 import {
@@ -89,6 +94,7 @@ export function HouseholdDetailScreen({
   householdId: string;
   contacts: ContactRow[];
 }) {
+  const router = useRouter();
   const [detail, setDetail] = useState<HouseholdDetail | null>(null);
   const [opportunities, setOpportunities] = useState<OpportunityByHouseholdRow[]>([]);
   const [analyses, setAnalyses] = useState<FinancialAnalysisListItem[]>([]);
@@ -99,6 +105,13 @@ export function HouseholdDetailScreen({
   const [addOpen, setAddOpen] = useState(false);
   const [newMemberContactId, setNewMemberContactId] = useState("");
   const [newMemberRole, setNewMemberRole] = useState("member");
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editIcon, setEditIcon] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const memberContactIds = useMemo(
     () => new Set(detail?.members.map((m) => m.contactId) ?? []),
@@ -164,6 +177,52 @@ export function HouseholdDetailScreen({
     });
   }
 
+  function openEditSheet() {
+    if (!detail) return;
+    setEditName(detail.name);
+    setEditIcon(detail.icon?.trim() ?? "");
+    setEditError(null);
+    setEditOpen(true);
+  }
+
+  async function handleSaveEdit() {
+    const name = editName.trim();
+    if (!name) {
+      setEditError("Název je povinný.");
+      return;
+    }
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      const iconVal = editIcon.trim() || null;
+      await updateHousehold(householdId, name, iconVal);
+      setEditOpen(false);
+      reload();
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : "Uložení se nepodařilo.");
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
+  async function handleDeleteHousehold() {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Opravdu smazat tuto domácnost? Tato akce je nevratná.")
+    ) {
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      await deleteHousehold(householdId);
+      router.push("/portal/households");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Domácnost se nepodařilo smazat.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   if (pending && !detail) return <LoadingSkeleton rows={3} />;
   if (error) return <ErrorState title={error} onRetry={reload} />;
   if (!detail) return <EmptyState title="Domácnost nebyla nalezena" />;
@@ -180,6 +239,24 @@ export function HouseholdDetailScreen({
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-black text-white truncate">{householdName}</h2>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={openEditSheet}
+                disabled={deleteBusy}
+                className="flex items-center gap-1 text-[11px] font-black text-white/90 bg-white/15 px-2.5 py-1.5 rounded-lg min-h-[36px] border border-white/20"
+              >
+                <Pencil size={12} /> Upravit
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteHousehold}
+                disabled={deleteBusy}
+                className="flex items-center gap-1 text-[11px] font-black text-rose-100 bg-rose-500/30 px-2.5 py-1.5 rounded-lg min-h-[36px] border border-rose-400/40"
+              >
+                <Trash2 size={12} /> {deleteBusy ? "Mažu…" : "Smazat"}
+              </button>
+            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="flex items-center gap-1 text-[11px] font-black text-white/70 bg-white/10 px-2 py-0.5 rounded-lg">
                 <Users size={11} /> {detail.members.length} {detail.members.length === 1 ? "člen" : detail.members.length < 5 ? "členové" : "členů"}
@@ -335,6 +412,51 @@ export function HouseholdDetailScreen({
           )}
         </MobileSection>
       ) : null}
+
+      {/* Edit household */}
+      <BottomSheet
+        open={editOpen}
+        onClose={() => !editBusy && setEditOpen(false)}
+        title="Upravit domácnost"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">
+              Ikona (emoji, volitelné)
+            </label>
+            <input
+              type="text"
+              value={editIcon}
+              onChange={(e) => setEditIcon(e.target.value)}
+              className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
+              placeholder="🏠"
+              maxLength={8}
+              disabled={editBusy}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">
+              Název
+            </label>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
+              disabled={editBusy}
+            />
+          </div>
+          {editError ? <p className="text-sm text-rose-600 font-semibold">{editError}</p> : null}
+          <button
+            type="button"
+            onClick={handleSaveEdit}
+            disabled={editBusy || !editName.trim()}
+            className="w-full min-h-[48px] rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"
+          >
+            {editBusy ? "Ukládám…" : "Uložit"}
+          </button>
+        </div>
+      </BottomSheet>
 
       {/* Add member sheet */}
       <BottomSheet

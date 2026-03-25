@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { getOpportunityById } from "@/app/actions/pipeline";
-import { OpportunityProgressBar } from "./OpportunityProgressBar";
+
+/** Vždy čerstvá data + žádné statické cachování starého RSC shellu po deployi. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+import { DealDetailHeader } from "./DealDetailHeader";
 import { OpportunityTabLayout } from "./OpportunityTabLayout";
 import { OpportunitySidebar } from "./OpportunitySidebar";
 import { OpportunityTimelineTab } from "./OpportunityTimelineTab";
@@ -10,7 +15,6 @@ import { OpportunityOffersTab } from "./OpportunityOffersTab";
 import { OpportunityLinkedTab } from "./OpportunityLinkedTab";
 import { OpportunityNotesTab } from "./OpportunityNotesTab";
 import { OpportunityCustomFieldsTab } from "./OpportunityCustomFieldsTab";
-import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 
 export default async function OpportunityDetailPage({
   params,
@@ -21,17 +25,16 @@ export default async function OpportunityDetailPage({
   const opportunity = await getOpportunityById(id);
   if (!opportunity) notFound();
 
-  const probability = opportunity.probability ?? opportunity.stageProbability ?? 0;
-  const valueStr = opportunity.expectedValue
-    ? `${Number(opportunity.expectedValue).toLocaleString("cs-CZ")} Kč`
-    : "—";
-  const openedStr = opportunity.createdAt
-    ? new Date(opportunity.createdAt).toLocaleDateString("cs-CZ")
-    : "—";
-  const closeStr = opportunity.expectedCloseDate ?? "—";
-
   const tabs = [
-    { id: "casova_osa" as const, content: <OpportunityTimelineTab opportunityId={opportunity.id} stages={opportunity.stages} /> },
+    {
+      id: "casova_osa" as const,
+      content: (
+        <OpportunityTimelineTab
+          opportunityId={opportunity.id}
+          stages={opportunity.stages}
+        />
+      ),
+    },
     {
       id: "produkty" as const,
       content: (
@@ -75,68 +78,43 @@ export default async function OpportunityDetailPage({
     },
   ];
 
+  const crumbNumber = opportunity.opportunityNumber;
+
   return (
-    <div className="p-4 max-w-[1600px] mx-auto">
-      <Breadcrumbs
-        items={[
-          { label: "Obchody", href: "/portal/pipeline" },
-          { label: opportunity.opportunityNumber ?? opportunity.title },
-        ]}
-      />
-      <div className="rounded-xl border border-slate-200 bg-white p-6 mb-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-              Obchodní případ {opportunity.opportunityNumber}
-            </p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-semibold text-slate-800">{opportunity.title}</h1>
-              {opportunity.faSourceId ? (
-                <Link
-                  href={`/portal/analyses/financial?id=${encodeURIComponent(opportunity.faSourceId)}`}
-                  className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 min-h-[44px] sm:min-h-0"
-                >
-                  Z finanční analýzy
-                </Link>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <div className="text-right">
-              <p className="text-slate-500 text-xs">Konečná cena</p>
-              <p className="font-semibold text-slate-800">{valueStr}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-slate-500 text-xs">Pravděpodobnost výhry</p>
-              <p className="font-semibold text-slate-800">{probability}%</p>
-            </div>
+    <div className="min-h-screen bg-[#f4f7f9] font-sans text-slate-800 pb-20">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 sm:px-8 py-4 sticky top-0 z-50 flex items-center justify-between">
+        <div className="flex items-center gap-4 sm:gap-6 min-w-0 flex-wrap">
+          <Link
+            href="/portal/pipeline"
+            className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors min-h-[44px] min-w-[44px] -ml-2 px-2"
+          >
+            <ArrowLeft size={16} aria-hidden />
+            <span className="hidden sm:inline">Zpět do pipeline</span>
+            <span className="sm:hidden">Zpět</span>
+          </Link>
+          <div className="w-px h-6 bg-slate-200 hidden sm:block" aria-hidden />
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 min-w-0">
+            <span>Obchody</span>
+            <span className="opacity-30" aria-hidden>
+              /
+            </span>
+            <span className="text-slate-800 truncate">{crumbNumber}</span>
           </div>
         </div>
+      </header>
 
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <OpportunityProgressBar
-            opportunityId={opportunity.id}
-            stages={opportunity.stages}
-            currentStageId={opportunity.stageId}
-            closedAt={opportunity.closedAt}
-          />
-        </div>
+      <main className="max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <DealDetailHeader opportunity={opportunity} />
 
-        <div className="mt-3 flex gap-6 text-sm text-slate-500">
-          <span>Otevřeno od {openedStr}</span>
-          <span>Odhad uzavření {closeStr}</span>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8 items-start">
+          <div className="xl:col-span-8 min-w-0">
+            <OpportunityTabLayout tabs={tabs} defaultTab="casova_osa" />
+          </div>
+          <div className="xl:col-span-4 min-w-0">
+            <OpportunitySidebar opportunity={opportunity} />
+          </div>
         </div>
-      </div>
-
-      <div className="flex flex-col xl:flex-row gap-6">
-        <div className="flex-1 min-w-0">
-          <OpportunityTabLayout tabs={tabs} defaultTab="casova_osa" />
-        </div>
-        <div className="w-full xl:w-auto">
-          <OpportunitySidebar opportunity={opportunity} />
-        </div>
-      </div>
-
+      </main>
     </div>
   );
 }

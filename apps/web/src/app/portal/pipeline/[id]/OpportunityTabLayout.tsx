@@ -55,26 +55,43 @@ export function OpportunityTabLayout({
   }, []);
 
   return (
-    <div className="mt-4">
-      <nav className="flex gap-0 border-b border-slate-200" aria-label="Záložky">
+    <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px] sm:min-h-[600px]">
+      <div
+        className="flex items-center border-b border-slate-100 px-2 sm:px-4 pt-2 overflow-x-auto hide-scrollbar bg-slate-50/50"
+        role="tablist"
+        aria-label="Záložky obchodu"
+      >
         {TAB_IDS.map((id) => (
           <button
             key={id}
             type="button"
+            role="tab"
+            aria-selected={activeId === id}
             onClick={() => setTab(id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`min-h-[44px] px-4 sm:px-6 py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap touch-manipulation ${
               activeId === id
-                ? "border-blue-600 text-blue-600 bg-white"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-200"
+                ? "text-indigo-600"
+                : "text-slate-400 hover:text-slate-800"
             }`}
           >
             {TAB_LABELS[id]}
+            {activeId === id ? (
+              <span
+                className="absolute bottom-0 left-0 w-full h-[3px] bg-indigo-600 rounded-t-md"
+                aria-hidden
+              />
+            ) : null}
           </button>
         ))}
-      </nav>
-      <div className="pt-4">
+      </div>
+      <div className="p-4 sm:p-8 flex-1 min-h-0">
         {tabs.map((tab) => (
-          <div key={tab.id} className={activeId === tab.id ? "block" : "hidden"}>
+          <div
+            key={tab.id}
+            role="tabpanel"
+            hidden={activeId !== tab.id}
+            className={activeId === tab.id ? "block" : "hidden"}
+          >
             {tab.content}
           </div>
         ))}

@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import {
   LayoutDashboard,
   CheckSquare,
   Users,
   Briefcase,
-  LayoutGrid,
   Bell,
   ArrowLeft,
+  Menu,
+  Sparkles,
+  Search,
+  FileText,
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import type { DashboardKpis } from "@/app/actions/dashboard";
 import type { ServiceRecommendationWithContact } from "@/app/actions/service-engine";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
@@ -45,7 +49,6 @@ import {
   ErrorState,
   FloatingActionButton,
   FullscreenSheet,
-  LoadingSkeleton,
   MobileAppShell,
   MobileBottomNav,
   MobileCard,
@@ -61,15 +64,15 @@ import {
 import { HouseholdDetailScreen } from "./screens/HouseholdDetailScreen";
 import { ContractsReviewScreen } from "./screens/ContractsReviewScreen";
 import { AnalysesHubScreen } from "./screens/AnalysesHubScreen";
+import { FinancialAnalysisWizardScreen } from "./screens/FinancialAnalysisWizardScreen";
 import { CalculatorsHubScreen } from "./screens/CalculatorsHubScreen";
 import { BusinessPlanScreen } from "./screens/BusinessPlanScreen";
 import { TeamOverviewScreen } from "./screens/TeamOverviewScreen";
 import { SettingsProfileScreen } from "./screens/SettingsProfileScreen";
 import { NotificationsInboxScreen } from "./screens/NotificationsInboxScreen";
-import { CalendarMobileScreen } from "./screens/CalendarMobileScreen";
+import { CalendarScreen } from "./screens/calendar/CalendarScreen";
 import { notifyRouteForWebview, notifyWebviewReady } from "@/app/shared/mobile-ui/webview-bridge";
 import { useDeviceClass } from "@/lib/ui/useDeviceClass";
-import { ToolsHubScreen } from "./screens/ToolsHubScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { TasksScreen } from "./screens/TasksScreen";
 import { ContactsScreen } from "./screens/ContactsScreen";
@@ -77,30 +80,29 @@ import { PipelineScreen } from "./screens/PipelineScreen";
 import { AiAssistantChatScreen } from "./screens/AiAssistantChatScreen";
 import { DocumentsHubScreen } from "./screens/DocumentsHubScreen";
 import { ProductionScreen } from "./screens/ProductionScreen";
+import { MobileSideDrawer } from "@/app/shared/mobile-ui/MobileSideDrawer";
+import { MobileGlobalSearchOverlay } from "./MobileGlobalSearchOverlay";
+import { MobileShellErrorBoundary } from "@/app/shared/mobile-ui/MobileShellErrorBoundary";
+import { PlaceholderScreen } from "./screens/PlaceholderScreen";
+import { HouseholdsListMobileScreen } from "./screens/HouseholdsListMobileScreen";
+import { MessagesMobileScreen } from "./screens/MessagesMobileScreen";
+import { NotesMobileScreen } from "./screens/NotesMobileScreen";
+import { BoardMobileScreen } from "./screens/BoardMobileScreen";
+import { ColdContactsMobileScreen } from "./screens/ColdContactsMobileScreen";
+import { MindmapHubMobileScreen, MindmapMapMobileScreen } from "./screens/MindmapMobileScreen";
+import type { RoleName } from "@/lib/auth/get-membership";
 
-type TabId = "home" | "tasks" | "clients" | "pipeline" | "menu";
+type TabId = "home" | "tasks" | "clients" | "pipeline" | "ai" | "none";
 type TaskFilter = "all" | "today" | "week" | "overdue" | "completed";
 
-function toTaskFilter(pathname: string): TabId {
+/** Bottom navigation highlight only for primary tabs; other routes use `none`. */
+function pathnameToBottomTab(pathname: string): TabId {
+  if (pathname.startsWith("/portal/today")) return "home";
   if (pathname.startsWith("/portal/tasks")) return "tasks";
   if (pathname.startsWith("/portal/contacts")) return "clients";
   if (pathname.startsWith("/portal/pipeline")) return "pipeline";
-  if (pathname.startsWith("/portal/contracts")) return "menu";
-  if (pathname.startsWith("/portal/analyses")) return "menu";
-  if (pathname.startsWith("/portal/calculators")) return "menu";
-  if (pathname.startsWith("/portal/households")) return "menu";
-  if (pathname.startsWith("/portal/business-plan")) return "menu";
-  if (pathname.startsWith("/portal/team-overview")) return "menu";
-  if (pathname.startsWith("/portal/setup")) return "menu";
-  if (pathname.startsWith("/portal/profile")) return "menu";
-  if (pathname.startsWith("/portal/notifications")) return "menu";
-  if (pathname.startsWith("/portal/calendar")) return "menu";
-  if (pathname.startsWith("/portal/tools")) return "menu";
-  if (pathname.startsWith("/portal/ai")) return "menu";
-  if (pathname.startsWith("/portal/production")) return "menu";
-  if (pathname.startsWith("/portal/documents")) return "menu";
-  if (pathname.startsWith("/portal/today")) return "home";
-  return "menu";
+  if (pathname.startsWith("/portal/ai")) return "ai";
+  return "none";
 }
 
 
@@ -129,6 +131,90 @@ function parseCalculatorSlugFromPath(pathname: string): string | null {
   return m?.[1] ?? null;
 }
 
+function parseMindmapMapId(pathname: string): string | null {
+  const m = pathname.match(/^\/portal\/mindmap\/([^/]+)$/);
+  return m?.[1] ?? null;
+}
+
+/** True for routes with a dynamic segment (show back arrow, not hamburger). */
+function isDetailRoute(pathname: string): boolean {
+  if (/^\/portal\/contacts\/[^/]+$/.test(pathname) && !pathname.endsWith("/new")) return true;
+  if (/^\/portal\/households\/[^/]+$/.test(pathname)) return true;
+  if (/^\/portal\/pipeline\/[^/]+$/.test(pathname)) return true;
+  if (/^\/portal\/mindmap\/[^/]+$/.test(pathname)) return true;
+  if (/^\/portal\/contracts\/review\/[^/]+$/.test(pathname)) return true;
+  if (/^\/portal\/calculators\/[^/]+$/.test(pathname)) return true;
+  if (pathname.startsWith("/portal/analyses/financial")) return true;
+  return false;
+}
+
+/** Resolve the logical parent route for the back button. */
+function resolveParentRoute(pathname: string): string {
+  if (pathname.startsWith("/portal/analyses/financial")) return "/portal/analyses";
+  if (/^\/portal\/contacts\/[^/]+/.test(pathname)) return "/portal/contacts";
+  if (/^\/portal\/households\/[^/]+/.test(pathname)) return "/portal/households";
+  if (/^\/portal\/pipeline\/[^/]+/.test(pathname)) return "/portal/pipeline";
+  if (/^\/portal\/mindmap\/[^/]+/.test(pathname)) return "/portal/mindmap";
+  if (/^\/portal\/contracts\/review\/[^/]+/.test(pathname)) return "/portal/contracts/review";
+  if (/^\/portal\/calculators\/[^/]+/.test(pathname)) return "/portal/calculators";
+  return "/portal/today";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Route metadata — replaces nested ternary header title chains       */
+/* ------------------------------------------------------------------ */
+
+const ROUTE_META: Array<{
+  test: (p: string) => boolean;
+  title: string;
+  subtitle: string;
+}> = [
+  { test: (p) => p.startsWith("/portal/messages"), title: "Zprávy", subtitle: "Konverzace s klienty" },
+  { test: (p) => p.startsWith("/portal/notes"), title: "Zápisky", subtitle: "Poznámky ze schůzek" },
+  { test: (p) => p === "/portal/board" || p.startsWith("/portal/board/"), title: "Board", subtitle: "Přehled obchodů" },
+  { test: (p) => p.startsWith("/portal/cold-contacts"), title: "Studené kontakty", subtitle: "Telefonáty a leady" },
+  { test: (p) => p === "/portal/households" || p === "/portal/households/", title: "Domácnosti", subtitle: "Seznam domácností" },
+  { test: (p) => /^\/portal\/households\/[^/]+/.test(p), title: "Domácnost", subtitle: "Detail domácnosti" },
+  { test: (p) => p === "/portal/mindmap" || p === "/portal/mindmap/", title: "Mindmap", subtitle: "Výběr map" },
+  { test: (p) => /^\/portal\/mindmap\/[^/]+$/.test(p), title: "Mapa", subtitle: "Úprava mapy" },
+  { test: (p) => p.startsWith("/portal/contracts/review"), title: "AI smlouvy", subtitle: "Review queue" },
+  { test: (p) => p.startsWith("/portal/contracts"), title: "Smlouvy", subtitle: "Ostatní sekce smluv" },
+  { test: (p) => p.startsWith("/portal/analyses/financial"), title: "Finanční analýza", subtitle: "Průvodce analýzou" },
+  { test: (p) => p.startsWith("/portal/analyses"), title: "Analýzy", subtitle: "Finanční analýzy" },
+  { test: (p) => p.startsWith("/portal/calculators"), title: "Kalkulačky", subtitle: "Výpočty a CTA" },
+  { test: (p) => p.startsWith("/portal/business-plan"), title: "Můj plán", subtitle: "Business plán" },
+  { test: (p) => p.startsWith("/portal/team-overview"), title: "Týmový přehled", subtitle: "Týmové KPI a alerty" },
+  { test: (p) => p.startsWith("/portal/setup") || p.startsWith("/portal/profile"), title: "Nastavení", subtitle: "Profil, preference, integrace" },
+  { test: (p) => p.startsWith("/portal/notifications"), title: "Notifikace", subtitle: "Inbox a log notifikací" },
+  { test: (p) => p.startsWith("/portal/calendar"), title: "Kalendář", subtitle: "Schůzky a události" },
+  { test: (p) => p.startsWith("/portal/ai"), title: "AI Asistent", subtitle: "Váš CRM asistent s přístupem k datům" },
+  { test: (p) => p.startsWith("/portal/production"), title: "Produkce", subtitle: "Uzavřené smlouvy a pojistné" },
+  { test: (p) => p.startsWith("/portal/documents"), title: "Dokumenty", subtitle: "Nahrané dokumenty a skeny" },
+  { test: (p) => p.startsWith("/portal/tools"), title: "Nástroje Google", subtitle: "Gmail a Google Drive" },
+];
+
+/** First-match lookup through ROUTE_META, then tab-based fallback. */
+function resolveHeaderMeta(
+  pathname: string,
+  tab: TabId,
+  advisorName: string,
+  selectedContact: ContactRow | null,
+): { title: string; subtitle: string } {
+  if (selectedContact) {
+    return { title: `${selectedContact.firstName} ${selectedContact.lastName}`, subtitle: "Klientský profil" };
+  }
+  for (const entry of ROUTE_META) {
+    if (entry.test(pathname)) return { title: entry.title, subtitle: entry.subtitle };
+  }
+  const subtitle = tab === "none" ? `Menu • ${advisorName}` : `Advisor • ${advisorName}`;
+  if (tab === "home") return { title: "Přehled", subtitle };
+  if (tab === "tasks") return { title: "Úkoly", subtitle };
+  if (tab === "clients") return { title: "Klienti", subtitle };
+  if (tab === "pipeline") return { title: "Pipeline", subtitle };
+  if (tab === "ai") return { title: "AI Asistent", subtitle };
+  return { title: "Aidvisor", subtitle };
+}
+
 export function MobilePortalClient({
   advisorName,
   initialKpis,
@@ -143,6 +229,8 @@ export function MobilePortalClient({
   productionSummary = null,
   productionError = null,
   businessPlanWidgetData = null,
+  canWriteCalendar = true,
+  roleName = "Advisor",
 }: {
   advisorName: string;
   initialKpis: DashboardKpis;
@@ -157,20 +245,25 @@ export function MobilePortalClient({
   productionSummary?: ProductionSummary | null;
   productionError?: string | null;
   businessPlanWidgetData?: BusinessPlanWidgetData | null;
+  canWriteCalendar?: boolean;
+  roleName?: RoleName;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const deviceClass = useDeviceClass();
   const { toast, showToast, dismissToast } = useToast();
-  const [tab, setTab] = useState<TabId>(() => toTaskFilter(pathname));
+  const [tab, setTab] = useState<TabId>(() => pathnameToBottomTab(pathname));
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [kpis] = useState<DashboardKpis>(initialKpis);
   const [tasks, setTasks] = useState<TaskRow[]>(initialTasks);
   const [taskCounts, setTaskCounts] = useState<TaskCounts>(initialTaskCounts);
   const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
   const [contacts, setContacts] = useState<ContactRow[]>(initialContacts);
   const [pipeline, setPipeline] = useState<StageWithOpportunities[]>(initialPipeline);
-  const [busy, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notificationBadgeCount, setNotificationBadgeCount] = useState(0);
 
@@ -203,7 +296,10 @@ export function MobilePortalClient({
   const selectedCalculatorSlug = parseCalculatorSlugFromPath(pathname);
   const selectedAnalysisIdFromQuery = searchParams.get("id");
   const onContractsRoute = pathname.startsWith("/portal/contracts/review");
+  const onContractsOtherRoute =
+    pathname.startsWith("/portal/contracts") && !pathname.startsWith("/portal/contracts/review");
   const onAnalysesRoute = pathname.startsWith("/portal/analyses");
+  const onAnalysesFinancialRoute = pathname.startsWith("/portal/analyses/financial");
   const onCalculatorsRoute = pathname.startsWith("/portal/calculators");
   const onBusinessPlanRoute = pathname.startsWith("/portal/business-plan");
   const onTeamOverviewRoute = pathname.startsWith("/portal/team-overview");
@@ -214,6 +310,18 @@ export function MobilePortalClient({
   const onAiRoute = pathname.startsWith("/portal/ai");
   const onProductionRoute = pathname.startsWith("/portal/production");
   const onDocumentsRoute = pathname.startsWith("/portal/documents");
+  const onMessagesRoute = pathname.startsWith("/portal/messages");
+  const onNotesRoute = pathname.startsWith("/portal/notes");
+  const onBoardRoute = pathname === "/portal/board" || pathname.startsWith("/portal/board/");
+  const onColdContactsRoute = pathname.startsWith("/portal/cold-contacts");
+  const mindmapMapId = parseMindmapMapId(pathname);
+  const onMindmapHubRoute = pathname === "/portal/mindmap" || pathname === "/portal/mindmap/";
+  const onMindmapMapRoute = Boolean(mindmapMapId);
+  const onHouseholdsListRoute = pathname === "/portal/households";
+
+  const browserPluginLikelyAvailable =
+    !Capacitor.isNativePlatform() ||
+    (typeof Capacitor.isPluginAvailable === "function" && Capacitor.isPluginAvailable("Browser"));
 
   useEffect(() => {
     notifyWebviewReady();
@@ -224,7 +332,7 @@ export function MobilePortalClient({
   }, [pathname, searchParams]);
 
   useEffect(() => {
-    setTab(toTaskFilter(pathname));
+    setTab(pathnameToBottomTab(pathname));
     if (selectedOpportunityPathId) {
       setSelectedOpportunityId(selectedOpportunityPathId);
       setOpportunityDetailOpen(true);
@@ -240,6 +348,7 @@ export function MobilePortalClient({
           getNotificationBadgeCount(),
           getUnreadConversationsCount(),
         ]);
+        setUnreadMessagesCount(unreadInbox);
         setNotificationBadgeCount(notificationLogBadge + unreadInbox);
       } catch {
         setNotificationBadgeCount(0);
@@ -261,62 +370,39 @@ export function MobilePortalClient({
     return null;
   }, [pipeline, selectedOpportunityId]);
 
-
-
+  const headerMeta = useMemo(
+    () => resolveHeaderMeta(pathname, tab, advisorName, selectedContact),
+    [pathname, tab, advisorName, selectedContact],
+  );
 
   const stageOptions = useMemo(() => pipeline.map((s) => ({ id: s.id, label: s.name })), [pipeline]);
+  const pipelineContactOptions = useMemo(
+    () =>
+      contacts.map((c) => ({
+        id: c.id,
+        label: [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || "Kontakt",
+      })),
+    [contacts]
+  );
 
   function navigateTab(next: TabId) {
-    setTab(next);
+    setDrawerOpen(false);
     if (next === "home") router.push("/portal/today");
     else if (next === "tasks") router.push("/portal/tasks");
     else if (next === "clients") router.push("/portal/contacts");
     else if (next === "pipeline") router.push("/portal/pipeline");
-    else router.push("/portal/tools");
+    else if (next === "ai") router.push("/portal/ai");
+    else return;
+    setTab(next);
   }
 
-  function isWaveSubviewActive() {
-    return Boolean(
-      selectedContactId ||
-        selectedHouseholdId ||
-        onContractsRoute ||
-        onAnalysesRoute ||
-        onCalculatorsRoute ||
-        onBusinessPlanRoute ||
-        onTeamOverviewRoute ||
-        onSetupRoute ||
-        onNotificationsRoute ||
-        onToolsRoute ||
-        onCalendarRoute ||
-        onAiRoute ||
-        onProductionRoute ||
-        onDocumentsRoute
-    );
-  }
-
-  const BACK_ROUTE_MAP: Array<[boolean, string]> = [
-    [Boolean(selectedContactId), "/portal/contacts"],
-    [Boolean(selectedHouseholdId), "/portal/households"],
-    [onContractsRoute, "/portal/tools"],
-    [onAnalysesRoute, "/portal/tools"],
-    [onCalculatorsRoute, "/portal/tools"],
-    [onBusinessPlanRoute, "/portal/tools"],
-    [onTeamOverviewRoute, "/portal/tools"],
-    [onCalendarRoute, "/portal/tools"],
-    [onSetupRoute, "/portal/tools"],
-    [onNotificationsRoute, "/portal/tools"],
-    [onAiRoute, "/portal/tools"],
-    [onProductionRoute, "/portal/tools"],
-    [onDocumentsRoute, "/portal/tools"],
-    [onToolsRoute, "/portal/tools"],
-  ];
+  const detailRouteActive = isDetailRoute(pathname);
 
   function handleHeaderBack() {
-    for (const [condition, route] of BACK_ROUTE_MAP) {
-      if (condition) {
-        router.push(route);
-        return;
-      }
+    setDrawerOpen(false);
+    if (detailRouteActive) {
+      router.push(resolveParentRoute(pathname));
+      return;
     }
     if (typeof window !== "undefined" && window.history.length <= 1) {
       router.push("/portal/today");
@@ -449,6 +535,7 @@ export function MobilePortalClient({
       try {
         await updateOpportunityStage(oppId, toStageId);
         refreshPipeline();
+        showToast("Případ byl přesunut", "success");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Případ se nepodařilo přesunout.");
       }
@@ -460,72 +547,167 @@ export function MobilePortalClient({
     { id: "tasks", label: "Úkoly", icon: CheckSquare, badge: taskCounts.overdue > 0 ? taskCounts.overdue : undefined },
     { id: "clients", label: "Klienti", icon: Users },
     { id: "pipeline", label: "Pipeline", icon: Briefcase },
-    { id: "menu", label: "Nástroje", icon: LayoutGrid, badge: notificationBadgeCount > 0 ? notificationBadgeCount : undefined },
+    { id: "ai", label: "AI", icon: Sparkles, badge: notificationBadgeCount > 0 ? notificationBadgeCount : undefined },
   ];
 
-  const headerTitle = selectedContact
-    ? `${selectedContact.firstName} ${selectedContact.lastName}`
-    : selectedHouseholdId
-      ? "Domácnost"
-      : onContractsRoute
-        ? "AI smlouvy"
-        : onAnalysesRoute
-          ? "Analýzy"
-          : onCalculatorsRoute
-            ? "Kalkulačky"
-            : onBusinessPlanRoute
-              ? "Můj plán"
-              : onTeamOverviewRoute
-                ? "Týmový přehled"
-                : onSetupRoute
-                  ? "Nastavení"
-                  : onNotificationsRoute
-                    ? "Notifikace"
-                    : onAiRoute
-                      ? "AI Asistent"
-                      : onProductionRoute
-                        ? "Produkce"
-                        : onDocumentsRoute
-                          ? "Dokumenty"
-            : tab === "home"
-              ? "Přehled"
-              : tab === "tasks"
-                ? "Úkoly"
-                : tab === "clients"
-                  ? "Klienti"
-                  : tab === "pipeline"
-                    ? "Pipeline"
-                    : "Nástroje";
+  /** Exactly one screen mounts per render — no more overlapping conditionals. */
+  function resolveActiveScreen(): React.ReactNode {
+    // Detail routes (dynamic segment) — check before their parent hub
+    if (selectedHouseholdId) {
+      return <HouseholdDetailScreen householdId={selectedHouseholdId} contacts={contacts} />;
+    }
+    if (onAnalysesFinancialRoute) return <FinancialAnalysisWizardScreen />;
+    if (onMindmapMapRoute && mindmapMapId) return <MindmapMapMobileScreen mapId={mindmapMapId} />;
 
-  const headerSubtitle = selectedContact
-    ? "Klientský profil"
-    : selectedHouseholdId
-      ? "Detail domácnosti"
-      : onContractsRoute
-        ? "Review queue"
-        : onAnalysesRoute
-          ? "Finanční analýzy"
-          : onCalculatorsRoute
-            ? "Výpočty a CTA"
-            : onBusinessPlanRoute
-              ? "Business plán"
-              : onTeamOverviewRoute
-                ? "Týmové KPI a alerty"
-                : onSetupRoute
-                  ? "Profil, preference, integrace"
-                  : onNotificationsRoute
-                    ? "Inbox a log notifikací"
-                    : onAiRoute
-                      ? "Váš CRM asistent s přístupem k datům"
-                      : onProductionRoute
-                        ? "Uzavřené smlouvy a pojistné"
-                        : onDocumentsRoute
-                          ? "Nahrané dokumenty a skeny"
-                        : onCalendarRoute
-                      ? "Schůzky a události"
-                      : onToolsRoute
-                        ? "Gmail a Google Drive"
-            : `Advisor • ${advisorName}`;
+    // Pathname-based section / hub routes
+    if (onHouseholdsListRoute) return <HouseholdsListMobileScreen />;
+    if (onMindmapHubRoute) return <MindmapHubMobileScreen />;
+    if (onMessagesRoute) return <MessagesMobileScreen />;
+    if (onNotesRoute) return <NotesMobileScreen />;
+    if (onBoardRoute) return <BoardMobileScreen />;
+    if (onColdContactsRoute) return <ColdContactsMobileScreen />;
+    if (onContractsRoute) return <ContractsReviewScreen detailIdFromPath={selectedContractReviewId} />;
+    if (onContractsOtherRoute) {
+      return <PlaceholderScreen title="Smlouvy" description="Tato část smluv (mimo AI review) je zatím optimalizovaná pro desktop." icon={FileText} />;
+    }
+    if (onAnalysesRoute) return <AnalysesHubScreen detailIdFromPath={selectedAnalysisIdFromQuery} deviceClass={deviceClass} />;
+    if (onCalculatorsRoute) {
+      return (
+        <CalculatorsHubScreen
+          detailSlugFromPath={selectedCalculatorSlug}
+          onCreateTaskFromResult={(title) => {
+            setTaskDraft((prev) => ({ ...prev, title, dueDate: prev.dueDate || new Date().toISOString().slice(0, 10) }));
+            setTaskCreateOpen(true);
+          }}
+          onCreateOpportunityFromResult={(title) => {
+            setOpportunityDraft((prev) => ({ ...prev, title }));
+            setOpportunityCreateOpen(true);
+          }}
+          onOpenAnalyses={() => router.push("/portal/analyses")}
+          deviceClass={deviceClass}
+        />
+      );
+    }
+    if (onBusinessPlanRoute) return <BusinessPlanScreen deviceClass={deviceClass} />;
+    if (onTeamOverviewRoute) return <TeamOverviewScreen deviceClass={deviceClass} />;
+    if (onSetupRoute) return <SettingsProfileScreen advisorName={advisorName} />;
+    if (onNotificationsRoute) return <NotificationsInboxScreen onBadgeCountChange={setNotificationBadgeCount} />;
+    if (onCalendarRoute) return <CalendarScreen contacts={contacts} deviceClass={deviceClass} canWriteCalendar={canWriteCalendar} />;
+    if (onAiRoute) return <AiAssistantChatScreen />;
+    if (onDocumentsRoute) return <DocumentsHubScreen deviceClass={deviceClass} />;
+    if (onProductionRoute) return <ProductionScreen deviceClass={deviceClass} />;
+    if (onToolsRoute) {
+      return (
+        <MobileSection title="Nástroje Google">
+          {!browserPluginLikelyAvailable ? (
+            <MobileCard className="p-3 mb-2 border-amber-200 bg-amber-50">
+              <p className="text-xs font-bold text-amber-900">
+                V této aplikaci chybí plugin prohlížeče (Capacitor Browser). OAuth přihlášení ke Google může selhat — použijte webový prohlížeč nebo aktualizujte build.
+              </p>
+            </MobileCard>
+          ) : null}
+          <div className="grid grid-cols-1 gap-2">
+            <MobileCard>
+              <p className="text-sm font-bold text-slate-900">Gmail Workspace</p>
+              <p className="mt-1 text-xs text-slate-600">
+                Na mobilu otevřete Gmail integraci přes Nastavení &gt; Integrace nebo desktop režim.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push("/portal/setup?tab=integrace&provider=gmail")}
+                className="mt-3 min-h-[44px] w-full rounded-xl border border-slate-300 text-sm font-bold text-slate-700 active:scale-[0.99] transition-transform"
+              >
+                Otevřít Gmail integraci
+              </button>
+            </MobileCard>
+            <MobileCard>
+              <p className="text-sm font-bold text-slate-900">Google Drive Workspace</p>
+              <p className="mt-1 text-xs text-slate-600">
+                Na mobilu otevřete Drive integraci přes Nastavení &gt; Integrace nebo desktop režim.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push("/portal/setup?tab=integrace&provider=google-drive")}
+                className="mt-3 min-h-[44px] w-full rounded-xl border border-slate-300 text-sm font-bold text-slate-700 active:scale-[0.99] transition-transform"
+              >
+                Otevřít Drive integraci
+              </button>
+            </MobileCard>
+          </div>
+        </MobileSection>
+      );
+    }
+
+    // Tab-based (bottom nav primary screens)
+    if (tab === "tasks") {
+      return (
+        <TasksScreen
+          tasks={tasks}
+          taskCounts={taskCounts}
+          taskFilter={taskFilter}
+          contacts={contacts}
+          deviceClass={deviceClass}
+          onFilterChange={(next) => {
+            setTaskFilter(next);
+            refreshTasks(next);
+          }}
+          onToggleTask={onTaskToggle}
+          onDeleteTask={onTaskDelete}
+          onQuickOverdueFix={onTaskQuickOverdueFix}
+        />
+      );
+    }
+    if (tab === "clients") {
+      return (
+        <ContactsScreen
+          contacts={contacts}
+          selectedContactId={selectedContactId}
+          deviceClass={deviceClass}
+          onSelectContact={(id) => router.push(`/portal/contacts/${id}`)}
+          onOpenNewContact={() => setClientCreateOpen(true)}
+          onTaskWizard={(contactId) => {
+            setTaskDraft((prev) => ({ ...prev, contactId }));
+            setTaskCreateOpen(true);
+          }}
+          onOpportunityWizard={(contactId) => {
+            setOpportunityDraft((prev) => ({ ...prev, contactId }));
+            setOpportunityCreateOpen(true);
+          }}
+          onOpenHousehold={(householdId) => router.push(`/portal/households/${householdId}`)}
+        />
+      );
+    }
+    if (tab === "pipeline") {
+      return (
+        <PipelineScreen
+          pipeline={pipeline}
+          deviceClass={deviceClass}
+          onMoveOpportunity={onOpportunityMove}
+          contactOptions={pipelineContactOptions}
+          onOpenContact={(id) => router.push(`/portal/contacts/${id}`)}
+          onPipelineRefresh={refreshPipeline}
+        />
+      );
+    }
+
+    // Default fallback: Dashboard
+    return (
+      <DashboardScreen
+        kpis={kpis}
+        advisorName={advisorName}
+        serviceRecommendations={serviceRecommendations}
+        initialNotes={initialNotes}
+        initialAnalyses={initialAnalyses}
+        productionSummary={productionSummary}
+        productionError={productionError}
+        businessPlanWidgetData={businessPlanWidgetData}
+        deviceClass={deviceClass}
+        onNewTask={() => setTaskCreateOpen(true)}
+        onNewClient={() => setClientCreateOpen(true)}
+        onNewOpportunity={() => setOpportunityCreateOpen(true)}
+      />
+    );
+  }
 
   return (
     <MobileAppShell deviceClass={deviceClass}>
@@ -534,208 +716,118 @@ export function MobilePortalClient({
       {toast ? <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} /> : null}
 
       <MobileHeader
-        title={headerTitle}
-        subtitle={headerSubtitle}
+        title={headerMeta.title}
+        subtitle={headerMeta.subtitle}
         deviceClass={deviceClass}
         left={
-          isWaveSubviewActive() ? (
+          detailRouteActive ? (
             <button
               type="button"
               onClick={handleHeaderBack}
-              className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center"
+              className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center active:scale-95 transition-transform"
               aria-label="Zpět"
             >
               <ArrowLeft size={18} />
             </button>
           ) : (
-            <Image src="/aidvisora-logo-a.png" alt="Aidvisora" width={28} height={28} className="rounded-lg" />
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center active:scale-95 transition-transform"
+              aria-label="Otevřít menu"
+            >
+              <Menu size={20} />
+            </button>
           )
         }
         right={
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setGlobalSearchOpen(true)}
+              className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center active:scale-95 transition-transform"
+              aria-label="Hledat"
+            >
+              <Search size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                router.push("/portal/ai");
+              }}
+              className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center active:scale-95 transition-transform text-indigo-600"
+              aria-label="Zeptat se AI"
+            >
+              <Sparkles size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/portal/notifications")}
+              className="relative min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center active:scale-95 transition-transform"
+              aria-label="Notifikace"
+            >
+              <Bell size={18} />
+              {notificationBadgeCount > 0 ? (
+                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 text-center">
+                  {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        }
+      />
+
+      <MobileSideDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        pathname={pathname}
+        onNavigate={(href) => {
+          setDrawerOpen(false);
+          router.push(href);
+        }}
+        showTeamOverview={showTeamOverview}
+        advisorName={advisorName}
+        deviceClass={deviceClass}
+        tasksBadge={taskCounts.overdue > 0 ? taskCounts.overdue : undefined}
+        messagesBadge={unreadMessagesCount > 0 ? unreadMessagesCount : undefined}
+        onOpenAi={() => router.push("/portal/ai")}
+        roleName={roleName}
+        searchSlot={
           <button
             type="button"
-            onClick={() => router.push("/portal/notifications")}
-            className="relative min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 grid place-items-center"
-            aria-label="Notifikace"
+            onClick={() => {
+              setDrawerOpen(false);
+              setGlobalSearchOpen(true);
+            }}
+            className="w-full flex items-center gap-2 min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-500 text-left active:scale-[0.99] transition-transform"
           >
-            <Bell size={18} />
-            {notificationBadgeCount > 0 ? (
-              <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 text-center">
-                {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-              </span>
-            ) : null}
+            <Search size={16} className="shrink-0 text-slate-400" />
+            <span className="truncate">Hledat v CRM…</span>
           </button>
         }
       />
 
-      <MobileScreen key={pathname} className="page-enter">
+      <MobileGlobalSearchOverlay open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
+
+      <MobileScreen
+        key={pathname}
+        className={`page-enter${onCalendarRoute ? " flex min-h-0 flex-1 flex-col px-0 !space-y-0 pt-2" : ""}`}
+      >
         {error ? <ErrorState title={error} onRetry={() => { refreshTasks(taskFilter); refreshContacts(); refreshPipeline(); }} /> : null}
-        {busy ? <LoadingSkeleton rows={2} /> : null}
 
-        {!selectedContact && tab === "home" ? (
-          <DashboardScreen
-            kpis={kpis}
-            advisorName={advisorName}
-            serviceRecommendations={serviceRecommendations}
-            initialNotes={initialNotes}
-            initialAnalyses={initialAnalyses}
-            productionSummary={productionSummary}
-            productionError={productionError}
-            businessPlanWidgetData={businessPlanWidgetData}
-            deviceClass={deviceClass}
-            onNewTask={() => setTaskCreateOpen(true)}
-            onNewClient={() => setClientCreateOpen(true)}
-            onNewOpportunity={() => setOpportunityCreateOpen(true)}
-          />
-        ) : null}
-
-        {!selectedContact && tab === "tasks" ? (
-          <TasksScreen
-            tasks={tasks}
-            taskCounts={taskCounts}
-            taskFilter={taskFilter}
-            contacts={contacts}
-            deviceClass={deviceClass}
-            onFilterChange={(next) => {
-              setTaskFilter(next);
-              refreshTasks(next);
-            }}
-            onToggleTask={onTaskToggle}
-            onDeleteTask={onTaskDelete}
-            onQuickOverdueFix={onTaskQuickOverdueFix}
-          />
-        ) : null}
-
-        {tab === "clients" ? (
-          <ContactsScreen
-            contacts={contacts}
-            selectedContactId={selectedContactId}
-            deviceClass={deviceClass}
-            onSelectContact={(id) => router.push(`/portal/contacts/${id}`)}
-            onOpenNewContact={() => setClientCreateOpen(true)}
-            onTaskWizard={(contactId) => {
-              setTaskDraft((prev) => ({ ...prev, contactId }));
-              setTaskCreateOpen(true);
-            }}
-            onOpportunityWizard={(contactId) => {
-              setOpportunityDraft((prev) => ({ ...prev, contactId }));
-              setOpportunityCreateOpen(true);
-            }}
-            onOpenHousehold={(householdId) => router.push(`/portal/households/${householdId}`)}
-          />
-        ) : null}
-
-        {!selectedContact && tab === "pipeline" ? (
-          <PipelineScreen
-            pipeline={pipeline}
-            deviceClass={deviceClass}
-            onMoveOpportunity={onOpportunityMove}
-          />
-        ) : null}
-
-        {!selectedContact &&
-        !selectedHouseholdId &&
-        !onContractsRoute &&
-        !onAnalysesRoute &&
-        !onCalculatorsRoute &&
-        !onBusinessPlanRoute &&
-        !onTeamOverviewRoute &&
-        !onSetupRoute &&
-        !onNotificationsRoute &&
-        !onCalendarRoute &&
-        !onDocumentsRoute &&
-        !onToolsRoute &&
-        tab === "menu" ? (
-          <ToolsHubScreen showTeamOverview={showTeamOverview} deviceClass={deviceClass} />
-        ) : null}
-
-        {selectedHouseholdId ? (
-          <HouseholdDetailScreen householdId={selectedHouseholdId} contacts={contacts} />
-        ) : null}
-
-        {onContractsRoute ? (
-          <ContractsReviewScreen detailIdFromPath={selectedContractReviewId} />
-        ) : null}
-
-        {onAnalysesRoute ? (
-          <AnalysesHubScreen detailIdFromPath={selectedAnalysisIdFromQuery} deviceClass={deviceClass} />
-        ) : null}
-
-        {onCalculatorsRoute ? (
-          <CalculatorsHubScreen
-            detailSlugFromPath={selectedCalculatorSlug}
-            onCreateTaskFromResult={(title) => {
-              setTaskDraft((prev) => ({ ...prev, title, dueDate: prev.dueDate || new Date().toISOString().slice(0, 10) }));
-              setTaskCreateOpen(true);
-            }}
-            onCreateOpportunityFromResult={(title) => {
-              setOpportunityDraft((prev) => ({ ...prev, title }));
-              setOpportunityCreateOpen(true);
-            }}
-            onOpenAnalyses={() => router.push("/portal/analyses")}
-            deviceClass={deviceClass}
-          />
-        ) : null}
-
-        {onBusinessPlanRoute ? <BusinessPlanScreen deviceClass={deviceClass} /> : null}
-
-        {onTeamOverviewRoute ? <TeamOverviewScreen deviceClass={deviceClass} /> : null}
-
-        {onSetupRoute ? <SettingsProfileScreen advisorName={advisorName} /> : null}
-
-        {onNotificationsRoute ? (
-          <NotificationsInboxScreen onBadgeCountChange={setNotificationBadgeCount} />
-        ) : null}
-
-        {onCalendarRoute ? <CalendarMobileScreen contacts={contacts} deviceClass={deviceClass} /> : null}
-
-        {onAiRoute ? <AiAssistantChatScreen /> : null}
-
-        {onDocumentsRoute ? <DocumentsHubScreen deviceClass={deviceClass} /> : null}
-
-        {onProductionRoute ? <ProductionScreen deviceClass={deviceClass} /> : null}
-
-        {onToolsRoute ? (
-          <MobileSection title="Nástroje Google">
-            <div className="grid grid-cols-1 gap-2">
-              <MobileCard>
-                <p className="text-sm font-bold text-slate-900">Gmail Workspace</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Na mobilu otevřete Gmail integraci přes Nastavení &gt; Integrace nebo desktop režim.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/portal/setup?tab=integrace&provider=gmail")}
-                  className="mt-3 min-h-[44px] w-full rounded-xl border border-slate-300 text-sm font-bold text-slate-700"
-                >
-                  Otevřít Gmail integraci
-                </button>
-              </MobileCard>
-              <MobileCard>
-                <p className="text-sm font-bold text-slate-900">Google Drive Workspace</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Na mobilu otevřete Drive integraci přes Nastavení &gt; Integrace nebo desktop režim.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/portal/setup?tab=integrace&provider=google-drive")}
-                  className="mt-3 min-h-[44px] w-full rounded-xl border border-slate-300 text-sm font-bold text-slate-700"
-                >
-                  Otevřít Drive integraci
-                </button>
-              </MobileCard>
-            </div>
-          </MobileSection>
-        ) : null}
+        <MobileShellErrorBoundary>
+          {resolveActiveScreen()}
+        </MobileShellErrorBoundary>
       </MobileScreen>
 
-      {!isWaveSubviewActive() && tab === "tasks" ? (
+      {!detailRouteActive && tab === "tasks" ? (
         <FloatingActionButton onClick={() => setTaskCreateOpen(true)} label="Nový úkol" />
       ) : null}
-      {!isWaveSubviewActive() && tab === "clients" ? (
+      {!detailRouteActive && tab === "clients" ? (
         <FloatingActionButton onClick={() => setClientCreateOpen(true)} label="Nový klient" />
       ) : null}
-      {!isWaveSubviewActive() && tab === "pipeline" ? (
+      {!detailRouteActive && tab === "pipeline" ? (
         <FloatingActionButton onClick={() => setOpportunityCreateOpen(true)} label="Nový případ" />
       ) : null}
 
@@ -900,35 +992,98 @@ export function MobilePortalClient({
         {!selectedOpportunity ? (
           <EmptyState title="Případ nenalezen" />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <MobileCard>
-              <p className="text-lg font-black">{selectedOpportunity.title}</p>
-              <p className="text-sm text-slate-600 mt-1">{selectedOpportunity.contactName}</p>
-              <div className="mt-2 flex items-center gap-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Obchodní případ
+              </p>
+              <p className="text-lg font-black text-slate-900 mt-1 leading-tight">
+                {selectedOpportunity.title}
+              </p>
+              <div className="mt-3 min-h-[44px] flex items-center">
+                {selectedOpportunity.contactId ? (
+                  <Link
+                    href={`/portal/contacts/${selectedOpportunity.contactId}`}
+                    className="text-sm font-black text-indigo-600 hover:underline py-2 -my-2"
+                  >
+                    {selectedOpportunity.contactName}
+                  </Link>
+                ) : (
+                  <span className="text-sm text-slate-600">
+                    {selectedOpportunity.contactName || "Bez klienta"}
+                  </span>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
                 <StatusBadge tone="info">{selectedOpportunity.stageName}</StatusBadge>
                 <StatusBadge>{selectedOpportunity.caseType || "Jiné"}</StatusBadge>
               </div>
             </MobileCard>
+
             <MobileCard>
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-black">Posunout do fáze</p>
-              <div className="mt-2 space-y-2">
-                {stageOptions.map((stage) => (
-                  <button
-                    key={stage.id}
-                    type="button"
-                    onClick={() => onOpportunityMove(selectedOpportunity.id, stage.id)}
-                    className="w-full min-h-[44px] rounded-xl border border-slate-200 text-left px-3 text-sm font-semibold"
-                  >
-                    {stage.label}
-                  </button>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Konečná cena
+                  </p>
+                  <p className="text-base font-black text-slate-900 mt-1">
+                    {selectedOpportunity.expectedValue
+                      ? `${Number(selectedOpportunity.expectedValue).toLocaleString("cs-CZ")} Kč`
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Odhad uzavření
+                  </p>
+                  <p className="text-base font-bold text-slate-800 mt-1">
+                    {selectedOpportunity.expectedCloseDate
+                      ? (() => {
+                          const d = new Date(selectedOpportunity.expectedCloseDate!);
+                          return Number.isNaN(d.getTime())
+                            ? selectedOpportunity.expectedCloseDate
+                            : d.toLocaleDateString("cs-CZ");
+                        })()
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+            </MobileCard>
+
+            <MobileCard>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-black">
+                Posunout do fáze
+              </p>
+              <div className="mt-3 space-y-2">
+                {stageOptions.map((stage) => {
+                  const active = stage.id === selectedOpportunity.stageId;
+                  return (
+                    <button
+                      key={stage.id}
+                      type="button"
+                      onClick={() => onOpportunityMove(selectedOpportunity.id, stage.id)}
+                      className={`w-full min-h-[44px] rounded-xl border text-left px-3 text-sm font-semibold transition-colors touch-manipulation ${
+                        active
+                          ? "border-blue-600 bg-blue-50 text-blue-800"
+                          : "border-slate-200 text-slate-800 hover:bg-slate-50 active:bg-slate-100"
+                      }`}
+                    >
+                      {stage.label}
+                    </button>
+                  );
+                })}
               </div>
             </MobileCard>
           </div>
         )}
       </FullscreenSheet>
 
-      <MobileBottomNav items={navItems} activeId={tab} onSelect={(id) => navigateTab(id as TabId)} deviceClass={deviceClass} />
+      <MobileBottomNav
+        items={navItems}
+        activeId={tab === "none" ? null : tab}
+        onSelect={(id) => navigateTab(id as TabId)}
+        deviceClass={deviceClass}
+      />
     </MobileAppShell>
   );
 }

@@ -90,15 +90,43 @@ export async function sendPushToUser(eventInput: PushEventPayload): Promise<void
     );
 
   for (const device of devices) {
-    const response = await fetch(`${FCM_BASE_URL}/${account.project_id}/messages:send`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(buildMessage(device.pushToken, event)),
-      cache: "no-store",
-    });
+    let finalStatus = "failed";
+    let attempts = 0;
+    const maxRetries = 1;
+
+    while (attempts <= maxRetries) {
+      const response = await fetch(`${FCM_BASE_URL}/${account.project_id}/messages:send`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(buildMessage(device.pushToken, event)),
+        cache: "no-store",
+      });
+
+      if (response.ok) {
+        finalStatus = "sent";
+        break;
+      }
+
+      const errorBody = await response.text().catch(() => "");
+      const isUnregistered = errorBody.includes("UNREGISTERED") || errorBody.includes("INVALID_ARGUMENT");
+
+      if (isUnregistered) {
+        try {
+          await db.update(userDevices).set({ revokedAt: new Date() })
+            .where(eq(userDevices.id, device.id));
+        } catch { /* best-effort revoke */ }
+        finalStatus = "token_revoked";
+        break;
+      }
+
+      attempts++;
+      if (attempts <= maxRetries) {
+        await new Promise((r) => setTimeout(r, 5_000));
+      }
+    }
 
     await db.insert(notificationLog).values({
       tenantId: event.tenantId,
@@ -106,11 +134,11 @@ export async function sendPushToUser(eventInput: PushEventPayload): Promise<void
       template: event.type,
       subject: event.title,
       recipient: device.pushToken,
-      status: response.ok ? "sent" : "failed",
+      status: finalStatus,
       meta: {
         userId: event.userId,
         deviceId: device.id,
-        responseStatus: response.status,
+        attempts: attempts + 1,
       },
     });
   }

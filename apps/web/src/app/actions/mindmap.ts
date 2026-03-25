@@ -3,7 +3,7 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/get-membership";
 import { db } from "db";
-import { mindmapMaps, mindmapNodes, mindmapEdges } from "db";
+import { mindmapMaps, mindmapNodes, mindmapEdges, contacts, households } from "db";
 import { eq, and, desc, or, sql, inArray } from "db";
 
 export type MindmapEntityType = "contact" | "household" | "standalone";
@@ -231,26 +231,34 @@ export async function listRecentClientMaps(): Promise<ClientMapItem[]> {
   const contactIds = [...new Set(maps.filter((m) => m.entityType === "contact").map((m) => m.entityId))];
   const householdIds = [...new Set(maps.filter((m) => m.entityType === "household").map((m) => m.entityId))];
 
-  const { getContact } = await import("./contacts");
-  const { getHousehold } = await import("./households");
-
   const contactNames = new Map<string, { name: string; isPodnikatel: boolean }>();
-  await Promise.all(
-    contactIds.map(async (id) => {
-      const c = await getContact(id);
-      const name = c ? `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Kontakt" : "Kontakt";
-      const isPodnikatel = !!(c?.tags && Array.isArray(c.tags) && c.tags.includes("podnikatel"));
-      contactNames.set(id, { name, isPodnikatel });
-    })
-  );
+  if (contactIds.length > 0) {
+    const contactRows = await db
+      .select({
+        id: contacts.id,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        tags: contacts.tags,
+      })
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, auth.tenantId), inArray(contacts.id, contactIds)));
+    for (const c of contactRows) {
+      const name = `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Kontakt";
+      const isPodnikatel = !!(c.tags && Array.isArray(c.tags) && c.tags.includes("podnikatel"));
+      contactNames.set(c.id, { name, isPodnikatel });
+    }
+  }
 
   const householdNames = new Map<string, string>();
-  await Promise.all(
-    householdIds.map(async (id) => {
-      const h = await getHousehold(id);
-      householdNames.set(id, h?.name ?? "Domácnost");
-    })
-  );
+  if (householdIds.length > 0) {
+    const householdRows = await db
+      .select({ id: households.id, name: households.name })
+      .from(households)
+      .where(and(eq(households.tenantId, auth.tenantId), inArray(households.id, householdIds)));
+    for (const h of householdRows) {
+      householdNames.set(h.id, h.name ?? "Domácnost");
+    }
+  }
 
   return maps.map((m) => {
     const entityType = m.entityType as "contact" | "household";

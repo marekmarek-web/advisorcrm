@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Paperclip, User, Plus, Search, X } from "lucide-react";
 import {
   getConversationsList,
@@ -71,7 +71,6 @@ function MessageBubble({
 
 export function PortalMessagesView({ initialContactId }: { initialContactId: string | null }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedContactId, setSelectedContactId] = useState<string | null>(initialContactId);
@@ -80,6 +79,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
   const [msgAttachments, setMsgAttachments] = useState<Record<string, MessageAttachmentRow[]>>({});
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -377,6 +377,22 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
             </div>
 
             <div className="shrink-0 border-t border-slate-200 p-3 bg-white">
+              {sendError ? (
+                <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-rose-800 font-semibold">{sendError}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSendError(null);
+                      handleSend();
+                    }}
+                    disabled={isPending}
+                    className="shrink-0 min-h-[40px] px-4 rounded-lg bg-rose-600 text-white text-sm font-bold disabled:opacity-50"
+                  >
+                    Zkusit znovu
+                  </button>
+                </div>
+              ) : null}
               {files.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {files.map((f, i) => (

@@ -14,13 +14,14 @@ type MindmapCanvasProps = {
   onNodePositionChange: (id: string, x: number, y: number) => void;
   onNodeSelect: (id: string | null) => void;
   onCanvasClick: () => void;
-  renderNode: (node: MindmapNode, opts: { isDragging: boolean }) => React.ReactNode;
+  renderNode: (node: MindmapNode, opts: { isDragging: boolean; isSelected: boolean }) => React.ReactNode;
 };
 
 export function MindmapCanvas({
   nodes,
   edges,
   viewport,
+  selectedNodeId,
   onViewportChange,
   onNodePositionChange,
   onNodeSelect,
@@ -182,6 +183,7 @@ export function MindmapCanvas({
             >
               {renderNode(node, {
                 isDragging: draggingNodeId === node.id,
+                isSelected: selectedNodeId === node.id,
               })}
             </div>
           ))}

@@ -217,6 +217,22 @@ export function AiAssistantChatScreen() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  /** iOS: keep latest messages visible when the on-screen keyboard resizes the visual viewport. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const bump = () => {
+      requestAnimationFrame(() => scrollToBottom());
+    };
+    vv.addEventListener("resize", bump);
+    vv.addEventListener("scroll", bump);
+    return () => {
+      vv.removeEventListener("resize", bump);
+      vv.removeEventListener("scroll", bump);
+    };
+  }, []);
+
   async function sendMessage(text: string) {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
@@ -342,7 +358,7 @@ export function AiAssistantChatScreen() {
       </div>
 
       {/* ---- Input bar ---- */}
-      <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 py-3 safe-area-bottom">
+      <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 pt-3 pb-[max(0.75rem,var(--safe-area-bottom))]">
         {!isEmpty ? (
           <div className="flex justify-end mb-2">
             <button
@@ -365,6 +381,7 @@ export function AiAssistantChatScreen() {
               e.target.style.height = "auto";
               e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
             }}
+            onFocus={() => requestAnimationFrame(() => scrollToBottom())}
             onKeyDown={handleKeyDown}
             placeholder="Napište zprávu…"
             disabled={isTyping}
