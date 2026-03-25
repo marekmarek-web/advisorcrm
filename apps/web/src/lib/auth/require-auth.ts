@@ -1,10 +1,12 @@
+import "server-only";
+
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getMembership, getDemoClientContactId } from "./get-membership";
-import type { RoleName } from "./get-membership";
+import type { RoleName } from "@/shared/rolePermissions";
 import {
   isDemoMode,
   DEMO_TENANT_ID,

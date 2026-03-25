@@ -2,7 +2,7 @@
 
 import * as XLSX from "xlsx";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { contacts } from "db";
 import { eq } from "db";

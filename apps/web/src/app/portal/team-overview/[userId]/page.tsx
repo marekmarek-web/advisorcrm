@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { getTeamMemberDetail } from "@/app/actions/team-overview";
 import { TeamMemberDetailView } from "./TeamMemberDetailView";
 

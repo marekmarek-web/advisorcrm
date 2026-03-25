@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db, contacts, households, householdMembers, financialAnalyses, faSyncLog, eq, and, isNull } from "db";
 import { createContact } from "./contacts";
 import { buildSyncPreview, type ExistingContactForDedup, type FaSyncPersonPreview, type FaSyncPreview } from "@/lib/analyses/financial/contactSync";

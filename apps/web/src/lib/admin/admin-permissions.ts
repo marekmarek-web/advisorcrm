@@ -3,7 +3,7 @@
  * Scope derivation and access controls for admin operations.
  */
 
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/lib/auth/permissions";
 import type { SettingDomain } from "./settings-registry";
 
 export type AdminScope =

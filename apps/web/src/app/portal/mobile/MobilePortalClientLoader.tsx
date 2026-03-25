@@ -8,7 +8,7 @@ import { listFinancialAnalyses, type FinancialAnalysisListItem } from "@/app/act
 import { getProductionSummary, type ProductionSummary } from "@/app/actions/production";
 import { getBusinessPlanWidgetData } from "@/app/actions/business-plan";
 import type { BusinessPlanWidgetData } from "@/app/portal/today/DashboardEditable";
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/shared/rolePermissions";
 import { MobilePortalClient } from "./MobilePortalClient";
 
 const EMPTY_KPIS: DashboardKpis = {

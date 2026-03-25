@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { TeamOverviewView } from "./TeamOverviewView";
-import type { TeamOverviewScope } from "@/lib/team-hierarchy";
+import type { TeamOverviewScope } from "@/lib/team-hierarchy-types";
 import {
   getTeamOverviewKpis,
   getTeamMemberMetrics,

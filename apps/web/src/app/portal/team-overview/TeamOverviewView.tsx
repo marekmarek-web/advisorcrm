@@ -24,7 +24,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint, TeamOverviewPeriod } from "@/app/actions/team-overview";
-import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy";
+import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
 import { getTeamOverviewKpis, getTeamMemberMetrics, getTeamAlerts, getNewcomerAdaptation, getTeamPerformanceOverTime, listTeamMembersWithNames, getTeamHierarchy } from "@/app/actions/team-overview";
 import { generateTeamSummaryAction, getLatestTeamSummaryAction, submitAiFeedbackAction } from "@/app/actions/ai-generations";
 import { createTeamActionFromAi } from "@/app/actions/ai-actions";

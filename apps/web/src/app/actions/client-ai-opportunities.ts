@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getClientFinancialSummaryForContact } from "@/app/actions/client-financial-summary";
 import { getFinancialSummary } from "@/app/actions/financial";
 import { getCoverageForContact } from "@/app/actions/coverage";

@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { contracts, contacts, unsubscribeTokens } from "db";
 import { eq, and } from "db";

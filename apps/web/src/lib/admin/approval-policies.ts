@@ -3,7 +3,7 @@
  * Role-based and risk-level approval authority model.
  */
 
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/lib/auth/permissions";
 
 export type ApprovalDomain =
   | "review"

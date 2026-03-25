@@ -4,7 +4,7 @@
  * document-sensitivity.ts, and export-governance.ts into a single library.
  */
 
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/lib/auth/permissions";
 
 // ---- Pattern definitions ----
 

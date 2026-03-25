@@ -1,13 +1,16 @@
+import "server-only";
+
 import { db, memberships, roles, clientContacts, contacts } from "db";
 import { eq, and, asc } from "db";
+import type { RoleName } from "@/shared/rolePermissions";
 
-export type RoleName = "Admin" | "Director" | "Manager" | "Advisor" | "Viewer" | "Client";
+export type { RoleName } from "@/shared/rolePermissions";
 
 export type MembershipResult = {
   membershipId: string;
   tenantId: string;
   roleId: string;
-  roleName: string;
+  roleName: RoleName;
   contactId?: string | null;
 };
 
@@ -35,7 +38,7 @@ export async function getMembership(userId: string): Promise<MembershipResult | 
     membershipId: row.membershipId,
     tenantId: row.tenantId,
     roleId: row.roleId,
-    roleName: row.roleName,
+    roleName: row.roleName as RoleName,
     contactId: row.contactId ?? undefined,
   };
 }
@@ -54,25 +57,4 @@ export async function getDemoClientContactId(tenantId: string): Promise<string |
     .where(eq(contacts.tenantId, tenantId))
     .limit(1);
   return rows[0]?.id ?? null;
-}
-
-export function hasPermission(roleName: RoleName, action: string): boolean {
-  const admin = ["*"];
-  const director = ["contacts:*", "households:*", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*", "export:*", "team_overview:read", "team_calendar:write"];
-  const manager = ["contacts:*", "households:*", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*", "export:*", "team_overview:read", "team_calendar:write"];
-  const advisor = ["contacts:read", "contacts:write", "households:read", "households:write", "opportunities:*", "tasks:*", "events:*", "documents:*", "meeting_notes:*", "team_overview:read"];
-  const viewer = ["contacts:read", "households:read", "opportunities:read", "tasks:read", "events:read", "documents:read"];
-  const client = ["client_zone:*"];
-  const map: Record<RoleName, string[]> = {
-    Admin: admin,
-    Director: director,
-    Manager: manager,
-    Advisor: advisor,
-    Viewer: viewer,
-    Client: client,
-  };
-  const perms = map[roleName as RoleName] ?? [];
-  if (perms.includes("*")) return true;
-  const [entity, act] = action.split(":");
-  return perms.some((p) => p === action || p === `${entity}:*`);
 }

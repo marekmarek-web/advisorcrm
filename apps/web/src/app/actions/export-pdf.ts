@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { contacts, households, householdMembers, opportunities, opportunityStages } from "db";
 import { eq, and, isNull } from "db";

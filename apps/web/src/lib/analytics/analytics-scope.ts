@@ -3,7 +3,7 @@
  * Role-based data visibility for all analytics queries.
  */
 
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/lib/auth/permissions";
 
 export type ScopeType = "advisor" | "manager" | "director" | "admin";
 

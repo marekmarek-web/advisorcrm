@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import {
   getTeamTree,
   getVisibleUserIds,

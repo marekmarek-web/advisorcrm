@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedApiUserId } from "@/lib/auth/api-auth-user";
-import { getMembership, hasPermission } from "@/lib/auth/get-membership";
+import { getMembership } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { resolveAnalyticsScope, canAccessAnalytics } from "@/lib/analytics/analytics-scope";
 import { getTeamAnalyticsSummary, getTeamMemberComparison } from "@/lib/analytics/team-analytics";
 

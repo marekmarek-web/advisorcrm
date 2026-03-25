@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { createResponse } from "@/lib/openai";
 import { validateContactExtraction } from "@/lib/ai/extraction-schemas";
 

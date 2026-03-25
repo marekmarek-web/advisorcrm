@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -64,19 +65,16 @@ import {
 import { HouseholdDetailScreen } from "./screens/HouseholdDetailScreen";
 import { ContractsReviewScreen } from "./screens/ContractsReviewScreen";
 import { AnalysesHubScreen } from "./screens/AnalysesHubScreen";
-import { FinancialAnalysisWizardScreen } from "./screens/FinancialAnalysisWizardScreen";
 import { CalculatorsHubScreen } from "./screens/CalculatorsHubScreen";
 import { BusinessPlanScreen } from "./screens/BusinessPlanScreen";
 import { TeamOverviewScreen } from "./screens/TeamOverviewScreen";
 import { SettingsProfileScreen } from "./screens/SettingsProfileScreen";
 import { NotificationsInboxScreen } from "./screens/NotificationsInboxScreen";
-import { CalendarScreen } from "./screens/calendar/CalendarScreen";
 import { notifyRouteForWebview, notifyWebviewReady } from "@/app/shared/mobile-ui/webview-bridge";
 import { useDeviceClass } from "@/lib/ui/useDeviceClass";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { TasksScreen } from "./screens/TasksScreen";
 import { ContactsScreen } from "./screens/ContactsScreen";
-import { PipelineScreen } from "./screens/PipelineScreen";
 import { AiAssistantChatScreen } from "./screens/AiAssistantChatScreen";
 import { DocumentsHubScreen } from "./screens/DocumentsHubScreen";
 import { ProductionScreen } from "./screens/ProductionScreen";
@@ -87,10 +85,45 @@ import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 import { HouseholdsListMobileScreen } from "./screens/HouseholdsListMobileScreen";
 import { MessagesMobileScreen } from "./screens/MessagesMobileScreen";
 import { NotesMobileScreen } from "./screens/NotesMobileScreen";
-import { BoardMobileScreen } from "./screens/BoardMobileScreen";
 import { ColdContactsMobileScreen } from "./screens/ColdContactsMobileScreen";
-import { MindmapHubMobileScreen, MindmapMapMobileScreen } from "./screens/MindmapMobileScreen";
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/shared/rolePermissions";
+
+function RouteLoadingSkeleton() {
+  return (
+    <div className="flex flex-1 min-h-[40vh] items-center justify-center px-4 text-slate-500 text-sm">
+      Načítání…
+    </div>
+  );
+}
+
+const CalendarScreen = dynamic(
+  () => import("./screens/calendar/CalendarScreen").then((m) => m.CalendarScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const BoardMobileScreen = dynamic(
+  () => import("./screens/BoardMobileScreen").then((m) => m.BoardMobileScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const MindmapHubMobileScreen = dynamic(
+  () => import("./screens/MindmapMobileScreen").then((m) => m.MindmapHubMobileScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const MindmapMapMobileScreen = dynamic(
+  () => import("./screens/MindmapMobileScreen").then((m) => m.MindmapMapMobileScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const FinancialAnalysisWizardScreen = dynamic(
+  () => import("./screens/FinancialAnalysisWizardScreen").then((m) => m.FinancialAnalysisWizardScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const PipelineScreen = dynamic(
+  () => import("./screens/PipelineScreen").then((m) => m.PipelineScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const ActionCenterScreen = dynamic(
+  () => import("./screens/ActionCenterScreen").then((m) => m.ActionCenterScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
 
 type TabId = "home" | "tasks" | "clients" | "pipeline" | "ai" | "none";
 type TaskFilter = "all" | "today" | "week" | "overdue" | "completed";
@@ -212,7 +245,7 @@ function resolveHeaderMeta(
   if (tab === "clients") return { title: "Klienti", subtitle };
   if (tab === "pipeline") return { title: "Pipeline", subtitle };
   if (tab === "ai") return { title: "AI Asistent", subtitle };
-  return { title: "Aidvisor", subtitle };
+  return { title: "Aidvisora", subtitle };
 }
 
 export function MobilePortalClient({
@@ -300,6 +333,7 @@ export function MobilePortalClient({
     pathname.startsWith("/portal/contracts") && !pathname.startsWith("/portal/contracts/review");
   const onAnalysesRoute = pathname.startsWith("/portal/analyses");
   const onAnalysesFinancialRoute = pathname.startsWith("/portal/analyses/financial");
+  const onAnalysesCompanyRoute = pathname.startsWith("/portal/analyses/company");
   const onCalculatorsRoute = pathname.startsWith("/portal/calculators");
   const onBusinessPlanRoute = pathname.startsWith("/portal/business-plan");
   const onTeamOverviewRoute = pathname.startsWith("/portal/team-overview");
@@ -318,6 +352,7 @@ export function MobilePortalClient({
   const onMindmapHubRoute = pathname === "/portal/mindmap" || pathname === "/portal/mindmap/";
   const onMindmapMapRoute = Boolean(mindmapMapId);
   const onHouseholdsListRoute = pathname === "/portal/households";
+  const onActionCenterRoute = pathname.startsWith("/portal/action-center");
 
   const browserPluginLikelyAvailable =
     !Capacitor.isNativePlatform() ||
@@ -561,6 +596,7 @@ export function MobilePortalClient({
 
     // Pathname-based section / hub routes
     if (onHouseholdsListRoute) return <HouseholdsListMobileScreen />;
+    if (onActionCenterRoute) return <ActionCenterScreen />;
     if (onMindmapHubRoute) return <MindmapHubMobileScreen />;
     if (onMessagesRoute) return <MessagesMobileScreen />;
     if (onNotesRoute) return <NotesMobileScreen />;
@@ -569,6 +605,9 @@ export function MobilePortalClient({
     if (onContractsRoute) return <ContractsReviewScreen detailIdFromPath={selectedContractReviewId} />;
     if (onContractsOtherRoute) {
       return <PlaceholderScreen title="Smlouvy" description="Tato část smluv (mimo AI review) je zatím optimalizovaná pro desktop." icon={FileText} />;
+    }
+    if (onAnalysesCompanyRoute) {
+      return <PlaceholderScreen title="Firemní analýza" description="Firemní finanční analýza je optimalizovaná pro desktop. Otevřete ji na počítači pro plnou funkcionalitu." icon={Briefcase} />;
     }
     if (onAnalysesRoute) return <AnalysesHubScreen detailIdFromPath={selectedAnalysisIdFromQuery} deviceClass={deviceClass} />;
     if (onCalculatorsRoute) {

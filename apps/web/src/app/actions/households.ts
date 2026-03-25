@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db, households, householdMembers, contacts, eq, and, asc } from "db";
 import { createPortalNotification } from "./portal-notifications";
 import { logActivity } from "./activity";

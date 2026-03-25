@@ -4,7 +4,7 @@ import { db } from "db";
 import { contacts } from "db";
 import { eq, and, or, sql } from "db";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { createCompany } from "./companies";
 import { getCompanyByIco } from "./companies";
 import { upsertCompanyPersonLinks } from "./company-person-links";

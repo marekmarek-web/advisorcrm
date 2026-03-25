@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getMembership, hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { getMembership } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createResponseSafe } from "@/lib/openai";
 import { logOpenAICall } from "@/lib/openai";
-import type { TeamOverviewScope } from "@/lib/team-hierarchy";
+import type { TeamOverviewScope } from "@/lib/team-hierarchy-types";
 import {
   getTeamOverviewKpis,
   getTeamMemberMetrics,

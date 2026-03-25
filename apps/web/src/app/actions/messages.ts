@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db, messages, messageAttachments, tenants, contacts, eq, and, asc, isNull, sql } from "db";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
@@ -275,7 +275,9 @@ export async function notifyAdvisorNewMessage(
   }
   const [tenant] = await db.select({ notificationEmail: tenants.notificationEmail }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
   const email = tenant?.notificationEmail?.trim();
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://advisorcrm-web.vercel.app";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.aidvisora.cz");
   const messagesUrl = `${baseUrl}/portal/messages?contact=${contactId}`;
   const { subject, html } = newMessageAdvisorTemplate({
     contactName: displayName,

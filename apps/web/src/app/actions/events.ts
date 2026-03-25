@@ -1,7 +1,8 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission, getMembership } from "@/lib/auth/get-membership";
+import { getMembership } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getValidAccessToken } from "@/lib/integrations/google-calendar-integration-service";
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from "@/lib/integrations/google-calendar";
 import { db } from "db";

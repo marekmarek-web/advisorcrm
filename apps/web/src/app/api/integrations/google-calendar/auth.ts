@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { getMembership, hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { getMembership } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 
 const USER_ID_HEADER = "x-user-id";
 

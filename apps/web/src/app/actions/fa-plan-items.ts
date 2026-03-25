@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db, financialAnalyses, faPlanItems, eq, and } from "db";
 import type { FinancialAnalysisData } from "@/lib/analyses/financial/types";
 import { CREDIT_WISH_BANKS } from "@/lib/analyses/financial/constants";

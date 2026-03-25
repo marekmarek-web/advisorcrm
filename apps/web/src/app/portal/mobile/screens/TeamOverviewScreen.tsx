@@ -25,7 +25,7 @@ import {
   type TeamOverviewPeriod,
 } from "@/app/actions/team-overview";
 import { createTeamEvent, createTeamTask } from "@/app/actions/team-events";
-import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy";
+import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
 import {
   AIInsightCard,
   BottomSheet,

@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getMeetingNote } from "@/app/actions/meeting-notes";
 import { getEvent } from "@/app/actions/events";
 import { getHouseholdForContact } from "@/app/actions/households";

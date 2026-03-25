@@ -24,5 +24,7 @@ export async function GET(request: Request) {
     getPipelineLatency(membership.tenantId),
   ]);
 
-  return NextResponse.json({ metrics, breakdown, latency });
+  const res = NextResponse.json({ metrics, breakdown, latency });
+  res.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=120");
+  return res;
 }

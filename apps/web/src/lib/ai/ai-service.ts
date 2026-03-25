@@ -3,7 +3,7 @@
  * Do not call from client components.
  */
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getPromptId, getPromptVersion, type PromptType } from "@/lib/ai/prompt-registry";
 import { createResponseFromPrompt } from "@/lib/openai";
 import { saveGeneration } from "@/lib/ai/ai-generations-repository";

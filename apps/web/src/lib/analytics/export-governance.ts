@@ -3,7 +3,7 @@
  * Permission checks, PII masking, and audit trail for report exports.
  */
 
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/lib/auth/permissions";
 import type { ReportType, ReportPayload } from "./reporting-service";
 
 const EXPORT_PERMISSIONS: Record<ReportType, RoleName[]> = {

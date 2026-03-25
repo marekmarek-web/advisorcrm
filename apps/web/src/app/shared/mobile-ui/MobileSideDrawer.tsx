@@ -25,7 +25,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
-import { hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/shared/rolePermissions";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");

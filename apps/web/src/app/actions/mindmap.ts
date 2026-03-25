@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { mindmapMaps, mindmapNodes, mindmapEdges, contacts, households } from "db";
 import { eq, and, desc, or, sql, inArray } from "db";

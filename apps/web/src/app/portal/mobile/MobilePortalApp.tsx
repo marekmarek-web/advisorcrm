@@ -1,5 +1,5 @@
 import { getCachedMembership, getCachedSupabaseUser } from "@/lib/auth/require-auth";
-import { hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/shared/rolePermissions";
 import { Suspense } from "react";
 import { MobilePortalClientLoader } from "./MobilePortalClientLoader";
 

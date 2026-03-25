@@ -86,21 +86,39 @@ export function usePushNotifications(options: UsePushNotificationsOptions = {}) 
 
   const syncPermissions = useCallback(async () => {
     if (!isSupported) return;
-    const status = await PushNotifications.checkPermissions();
-    setPermissionState(status.receive);
+    try {
+      const status = await PushNotifications.checkPermissions();
+      setPermissionState(status.receive);
+    } catch (e) {
+      console.error("[push] checkPermissions failed", e);
+      setPermissionState("prompt");
+      setError(e instanceof Error ? e.message : "Push oprávnění se nepodařilo zkontrolovat.");
+    }
   }, [isSupported]);
 
   const requestSystemPermission = useCallback(async () => {
     if (!isSupported) return;
     markSoftPromptSeen();
-    const status = await PushNotifications.requestPermissions();
-    setPermissionState(status.receive);
+    try {
+      const status = await PushNotifications.requestPermissions();
+      setPermissionState(status.receive);
+    } catch (e) {
+      console.error("[push] requestPermissions failed", e);
+      setError(e instanceof Error ? e.message : "Oprávnění k oznámením se nepodařilo vyžádat.");
+    }
   }, [isSupported, markSoftPromptSeen]);
 
   const registerForPush = useCallback(async () => {
     if (!isSupported) return;
     registrationRequestedRef.current = true;
-    await PushNotifications.register();
+    try {
+      await PushNotifications.register();
+    } catch (e) {
+      registrationRequestedRef.current = false;
+      const message = e instanceof Error ? e.message : "Push registrace selhala.";
+      setError(message);
+      console.error("[push] register failed", e);
+    }
   }, [isSupported]);
 
   useEffect(() => {
@@ -113,25 +131,48 @@ export function usePushNotifications(options: UsePushNotificationsOptions = {}) 
       setError(null);
       localStorage.setItem(PUSH_TOKEN_STORAGE_KEY, tokenValue);
       void registerTokenOnBackend(tokenValue, platform);
+    }).catch((e) => {
+      console.error("[push] registration listener attach failed", e);
+      setError(e instanceof Error ? e.message : "Push registrace není k dispozici.");
     });
 
     const onRegistrationError = PushNotifications.addListener("registrationError", (registrationError) => {
       setError(registrationError.error);
+    }).catch((e) => {
+      console.error("[push] registrationError listener attach failed", e);
     });
 
     const onNotificationReceived = PushNotifications.addListener("pushNotificationReceived", (notification) => {
       onReceivedRef.current?.(notification);
+    }).catch((e) => {
+      console.error("[push] pushNotificationReceived listener attach failed", e);
     });
 
     const onNotificationAction = PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
       onActionRef.current?.(action);
+    }).catch((e) => {
+      console.error("[push] pushNotificationActionPerformed listener attach failed", e);
     });
 
     return () => {
-      onRegistration.then((listener) => listener.remove()).catch(() => {});
-      onRegistrationError.then((listener) => listener.remove()).catch(() => {});
-      onNotificationReceived.then((listener) => listener.remove()).catch(() => {});
-      onNotificationAction.then((listener) => listener.remove()).catch(() => {});
+      const detach = (p: Promise<unknown>) => {
+        void p
+          .then((listener) => {
+            if (
+              listener &&
+              typeof listener === "object" &&
+              "remove" in listener &&
+              typeof (listener as { remove?: unknown }).remove === "function"
+            ) {
+              void (listener as { remove: () => void | Promise<void> }).remove();
+            }
+          })
+          .catch(() => {});
+      };
+      detach(onRegistration);
+      detach(onRegistrationError);
+      detach(onNotificationReceived);
+      detach(onNotificationAction);
     };
   }, [isSupported, platform, syncPermissions]);
 

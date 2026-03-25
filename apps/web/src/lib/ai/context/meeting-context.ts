@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { hasPermission } from "@/lib/auth/get-membership";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getEvent } from "@/app/actions/events";
 import { buildClientAiContextRaw, type ClientAiContextRaw } from "./client-context";
 import { renderClientAiPromptVariables } from "./client-context";

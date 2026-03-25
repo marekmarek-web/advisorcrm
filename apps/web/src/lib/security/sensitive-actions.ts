@@ -5,7 +5,7 @@
  */
 
 import { logAudit } from "@/lib/audit";
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/lib/auth/permissions";
 
 export type SensitiveActionType =
   | "payment_apply"

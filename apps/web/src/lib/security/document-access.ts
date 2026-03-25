@@ -5,7 +5,7 @@
 
 import { logAudit } from "@/lib/audit";
 import { db, auditLog, eq, and, desc, like } from "db";
-import type { RoleName } from "@/lib/auth/get-membership";
+import type { RoleName } from "@/lib/auth/permissions";
 
 export type DocumentAccessPurpose = "preview" | "download" | "export" | "processing" | "review";
 

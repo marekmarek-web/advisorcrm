@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db, documents, activityLog, contacts, opportunities, contracts, eq, and } from "db";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { getMembership, hasPermission, type RoleName } from "@/lib/auth/get-membership";
+import { getMembership } from "@/lib/auth/get-membership";
+import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { logAudit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { executeIdempotent } from "@/lib/security/idempotency";
