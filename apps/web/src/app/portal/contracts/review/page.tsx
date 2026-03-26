@@ -20,16 +20,7 @@ import {
 import { useAiAssistantDrawer } from "@/app/portal/AiAssistantDrawerContext";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { isLikelyPdfUpload } from "@/lib/security/file-signature";
-
-type ProcessingStatus =
-  | "uploaded"
-  | "processing"
-  | "extracted"
-  | "review_required"
-  | "failed"
-  | "scan_pending_ocr"
-  | "blocked";
-type ReviewStatus = "pending" | "approved" | "rejected" | "applied";
+import type { ProcessingStatus, ReviewStatus } from "@/lib/ai-review/types";
 
 type ReviewItem = {
   id: string;
@@ -59,6 +50,7 @@ const PROCESSING_LABELS: Record<ProcessingStatus, string> = {
 
 const REVIEW_LABELS: Record<ReviewStatus, string> = {
   pending: "Čeká",
+  in_review: "V kontrole",
   approved: "Schváleno",
   rejected: "Zamítnuto",
   applied: "Aplikováno",

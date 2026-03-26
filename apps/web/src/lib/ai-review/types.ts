@@ -1,3 +1,5 @@
+import type { ContractProcessingStatus } from "db";
+
 export type FieldStatus = "success" | "warning" | "error";
 
 export type RecommendationType =
@@ -20,14 +22,8 @@ export type FieldSource = "ai" | "ocr" | "manual";
 
 export type ReviewStatus = "pending" | "in_review" | "approved" | "rejected" | "applied";
 
-export type ProcessingStatus =
-  | "uploaded"
-  | "processing"
-  | "extracted"
-  | "review_required"
-  | "failed"
-  | "scan_pending_ocr"
-  | "blocked";
+/** Jednotný seznam s DB / Drizzle (`contract_upload_reviews.processing_status`). */
+export type ProcessingStatus = ContractProcessingStatus;
 
 export type BoundingBox = {
   x: number;
