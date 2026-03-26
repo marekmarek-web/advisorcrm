@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { dashboardPrimaryCtaClassName } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 export interface DashboardCardProps {
   title: string;
@@ -34,21 +33,23 @@ export function DashboardCard({
 }: DashboardCardProps) {
   return (
     <div
-      className={`flex flex-col rounded-[32px] border border-slate-100 min-h-[240px] overflow-hidden ${backgroundClass ?? "bg-white"} ${topBorderClass ?? ""} ${className}`}
+      className={`flex min-h-[240px] flex-col overflow-hidden rounded-[32px] border border-slate-100 dark:border-white/10 ${backgroundClass ?? "bg-white dark:bg-wp-surface"} ${topBorderClass ?? ""} ${className}`}
     >
       <div className="px-6 sm:px-8 py-5 sm:py-6 flex items-center justify-between shrink-0">
-        <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-          <Icon size={18} className={iconColorClass ?? "text-slate-400"} />
+        <h2 className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-slate-100 md:text-lg">
+          <Icon size={20} className={iconColorClass ?? "text-slate-400"} />
           {title}
         </h2>
         {rightElement != null ? rightElement : null}
       </div>
-      <div className="px-6 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto min-h-0 flex flex-col">
+      <div className="flex min-h-0 flex-1 flex-col items-stretch overflow-y-auto px-6 sm:px-8 pb-6 sm:pb-8">
         {children}
         {footerLink && (
-          <Link href={footerLink} className={`mt-auto pt-4 w-fit shrink-0 ${dashboardPrimaryCtaClassName}`}>
-            {footerLabel} <ChevronRight size={14} />
-          </Link>
+          <div className="mt-auto flex w-full shrink-0 justify-center pt-4">
+            <CreateActionButton href={footerLink} icon={ChevronRight} className="shadow-md">
+              {footerLabel}
+            </CreateActionButton>
+          </div>
         )}
       </div>
     </div>

@@ -14,6 +14,8 @@ if (dsn) {
     replaysOnErrorSampleRate: 1.0,
     enableLogs: true,
     integrations: [Sentry.replayIntegration()],
+    // Sentry.io injected scripts / browser extensions (not our app).
+    ignoreErrors: [/has no method ['"]updateFrom['"]/, /sentry\/scripts\//i],
   });
 }
 

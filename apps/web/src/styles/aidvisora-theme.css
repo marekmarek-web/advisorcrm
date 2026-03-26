@@ -27,6 +27,14 @@
   --wp-message-box-border: #e9ebf0;
   --wp-button-bg: #1f1c24;
 
+  /* Portal shell (header + hlavní „glass“ obal) */
+  --wp-header-bg: rgba(255, 255, 255, 0.88);
+  --wp-header-border: #e2e8f0;
+  --wp-shell-inset-bg: transparent;
+  --wp-shell-main-bg: rgba(255, 255, 255, 0.52);
+  --wp-shell-main-border: rgba(148, 163, 184, 0.22);
+  --wp-shell-main-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+
   /* Aidvisora – hero navy / dark surfaces (sidebar, calendar panel, „Dnes“ karta) */
   --aidv-hero-navy: #0a0f29;
   --aidv-surface-dark: #0a0f29;
@@ -162,4 +170,57 @@
   --status-domluvit: #037f4c;
   --status-x: #333333;
   --status-done: #00c875;
+}
+
+/**
+ * Globální tmavý motiv (next-themes: class "dark" na <html>).
+ * Zaměřeno na shell tokeny; postupně doplňovat komponenty mimo portál.
+ */
+.dark {
+  --wp-bg: #0b1020;
+  --wp-surface: #12182b;
+  --wp-border: rgba(255, 255, 255, 0.1);
+  --wp-text: #f1f5f9;
+  --wp-text-muted: #94a3b8;
+  --wp-primary: #f8fafc;
+  --wp-primary-hover: #e2e8f0;
+  --wp-link: #e2e8f0;
+  --wp-link-hover-bg: rgba(99, 102, 241, 0.2);
+  --wp-link-active-bg: #6366f1;
+  --wp-link-active: #ffffff;
+  --wp-search-bg: #1e293b;
+  --wp-message-box-hover: rgba(30, 41, 59, 0.85);
+  --wp-message-box-border: rgba(255, 255, 255, 0.08);
+  --wp-button-bg: #e2e8f0;
+
+  --wp-header-bg: rgba(15, 23, 42, 0.82);
+  --wp-header-border: rgba(255, 255, 255, 0.08);
+  --wp-shell-inset-bg: transparent;
+  --wp-shell-main-bg: rgba(30, 41, 59, 0.45);
+  --wp-shell-main-border: rgba(255, 255, 255, 0.08);
+  --wp-shell-main-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+
+  --aidv-create-bg: #1e293b;
+  --aidv-create-bg-hover: #334155;
+  --aidv-dashboard-cta-bg: #4f46e5;
+  --aidv-dashboard-cta-bg-hover: #6366f1;
+  --aidv-dashboard-cta-ring: rgba(129, 140, 248, 0.45);
+
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 14%;
+  --card-foreground: 210 40% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 217 33% 17%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62% 45%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 224 76% 55%;
 }

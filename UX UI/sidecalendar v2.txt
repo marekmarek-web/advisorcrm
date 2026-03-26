@@ -1,0 +1,415 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Calendar as CalendarIcon, 
+  Plus, 
+  Users, 
+  MessageSquare, 
+  ArrowRight, 
+  Sparkles, 
+  Bug, 
+  X, 
+  Send, 
+  Paperclip, 
+  Clock, 
+  CheckCircle2, 
+  AlignLeft,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
+
+// --- MOCK DATA ---
+const AGENDA_ITEMS = [
+  { id: 1, time: '12:00', date: '31. 3.', title: 'Havdan', client: 'Ivan Havdan', inDays: 'za 5 dní' },
+  { id: 2, time: '14:30', date: '2. 4.', title: 'Pojistky - Revize', client: 'Karel Zelený', inDays: 'za 7 dní' }
+];
+
+const MESSAGES = [
+  { id: 1, name: 'Jan Novák', text: 'Dobrý den, posílám podklady k té hypotéce...', time: 'před 2 h', initials: 'JN', color: 'from-emerald-400 to-emerald-600', unread: true },
+  { id: 2, name: 'Martin Dvořák', text: 'Zdravím, platí zítřejší schůzka?', time: 'včera', initials: 'MD', color: 'from-orange-400 to-rose-500', unread: false },
+  { id: 3, name: 'Lucie Bílá', text: 'Smlouvy jsou podepsané v portálu.', time: '7 d', initials: 'LB', color: 'from-indigo-400 to-purple-600', unread: false }
+];
+
+const CHAT_HISTORY = [
+  { id: 1, sender: 'Jan Novák', text: 'Dobrý den, posílám podklady k té hypotéce. Dejte mi prosím vědět, zda je to všechno.', time: '14:20', isMe: false },
+  { id: 2, sender: 'Já', text: 'Zdravím Jane, děkuji. Podívám se na to a zítra dopoledne bych vám zavolal s návrhem.', time: '14:45', isMe: true },
+];
+
+const App = () => {
+  const [activeModal, setActiveModal] = useState(null); // 'add_event', 'chat', 'ai', null
+  const [activeChat, setActiveChat] = useState(null);
+  const [chatInput, setChatInput] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  // Přepínač témat a stavu panelu
+  const [isDark, setIsDark] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => { setIsLoaded(true); }, []);
+
+  const openChat = (user) => {
+    setActiveChat(user);
+    setActiveModal('chat');
+  };
+
+  // --- THEME DICTIONARY (Správa barev pro Light / Dark mode) ---
+  const t = isDark ? {
+    mainBg: 'bg-[#040814]',
+    appBg: 'bg-gradient-to-br from-[#0B0F19] to-[#040814]',
+    textPrimary: 'text-white',
+    textSecondary: 'text-slate-400',
+    textTertiary: 'text-slate-500',
+    sidebar: 'bg-[#0F1528]/80 border-white/5 shadow-[-30px_0_60px_rgba(0,0,0,0.6)]',
+    card: 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10',
+    btnGhost: 'text-slate-500 hover:text-white hover:bg-white/10',
+    btnPrimary: 'bg-white text-[#0B0F19] hover:bg-indigo-50 hover:shadow-[0_0_20px_rgba(255,255,255,0.4)]',
+    btnFloating: 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10',
+    input: 'bg-[#040814]/60 border-white/10 text-white placeholder:text-slate-600 focus:border-indigo-500/50',
+    timelineDrop: 'bg-[#0F1528] border-indigo-500/30 group-hover:border-indigo-400 group-hover:shadow-[0_0_15px_rgba(99,102,241,0.4)]',
+    modalBg: 'bg-[#0F1528]/90 border-white/10',
+    modalBackdrop: 'bg-[#040814]/80',
+    msgMyBg: 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white',
+    msgOtherBg: 'bg-white/10 text-slate-200 border-white/5',
+    glowText: 'bg-gradient-to-br from-white to-indigo-200 text-transparent bg-clip-text',
+    glowAmbient: 'shadow-[0_0_50px_rgba(99,102,241,0.2)]',
+    aiButton: 'shadow-[0_0_30px_rgba(99,102,241,0.5)] hover:shadow-[0_0_40px_rgba(168,85,247,0.7)]'
+  } : {
+    mainBg: 'bg-[#FAFAFC]',
+    appBg: 'bg-gradient-to-br from-indigo-50/50 to-slate-100/50',
+    textPrimary: 'text-slate-900',
+    textSecondary: 'text-slate-500',
+    textTertiary: 'text-slate-400',
+    sidebar: 'bg-white/80 border-white shadow-[-30px_0_60px_rgba(0,0,0,0.05)]',
+    card: 'bg-white/60 border-white shadow-sm hover:bg-white hover:shadow-md hover:-translate-y-0.5',
+    btnGhost: 'text-slate-400 hover:text-slate-700 hover:bg-slate-100/50',
+    btnPrimary: 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5',
+    btnFloating: 'bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 shadow-sm',
+    input: 'bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100',
+    timelineDrop: 'bg-white border-indigo-200 shadow-sm group-hover:border-indigo-400 group-hover:shadow-md',
+    modalBg: 'bg-white/95 border-white shadow-[0_0_60px_rgba(0,0,0,0.1)]',
+    modalBackdrop: 'bg-slate-900/20',
+    msgMyBg: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white',
+    msgOtherBg: 'bg-slate-50 text-slate-700 border-slate-100',
+    glowText: 'bg-gradient-to-br from-indigo-900 to-indigo-500 text-transparent bg-clip-text',
+    glowAmbient: 'shadow-2xl shadow-indigo-100',
+    aiButton: 'shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-purple-200'
+  };
+
+  // --- REUSABLE GLASS MODAL ---
+  const GlassModal = ({ isOpen, onClose, title, children, icon: Icon, glowColor = 'indigo' }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div className={`absolute inset-0 ${t.modalBackdrop} backdrop-blur-md transition-opacity`} onClick={onClose}></div>
+        
+        {/* Modal Window */}
+        <div className={`relative ${t.modalBg} backdrop-blur-2xl w-full max-w-lg rounded-[2.5rem] border ${t.glowAmbient} p-8 animate-in fade-in zoom-in-95 duration-300 overflow-hidden`}>
+          {/* Background Glow */}
+          <div className={`absolute -top-24 -right-24 w-48 h-48 bg-${glowColor}-500/${isDark ? '30' : '10'} rounded-full blur-[80px]`}></div>
+          
+          <button onClick={onClose} className={`absolute top-6 right-6 p-2 rounded-full transition-all z-10 ${t.btnGhost}`}>
+            <X size={20} />
+          </button>
+          
+          <div className="flex items-center gap-4 mb-8 relative z-10">
+            {Icon && (
+              <div className={`w-12 h-12 rounded-2xl bg-${glowColor}-500/10 text-${glowColor}-${isDark ? '400' : '600'} flex items-center justify-center border border-${glowColor}-500/20`}>
+                <Icon size={24} />
+              </div>
+            )}
+            <h2 className={`text-2xl font-jakarta font-bold ${t.textPrimary} tracking-wide`}>{title}</h2>
+          </div>
+          
+          <div className="relative z-10">
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`min-h-screen ${t.mainBg} flex font-inter overflow-hidden transition-all duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+      
+      {/* --- INJECT CSS --- */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+        .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}; }
+        
+        .smooth-spring { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      `}} />
+
+      {/* --- FAKE MAIN APP AREA --- */}
+      {/* Dynamicky se roztahuje nebo zmenšuje podle toho, zda je sidebar otevřený (mr-[420px]) */}
+      <div className={`flex-1 ${t.appBg} relative h-screen overflow-hidden flex flex-col transition-all duration-[800ms] smooth-spring ${isSidebarOpen ? 'mr-[420px]' : 'mr-0'}`}>
+        
+        <div className={`absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[120px] transition-colors duration-700 ${isDark ? 'bg-indigo-600/10' : 'bg-indigo-400/20'}`}></div>
+        <div className={`flex-1 flex flex-col items-center justify-center text-center transition-opacity duration-700 ${isDark ? 'opacity-30' : 'opacity-50'}`}>
+          <Sparkles size={48} className="mx-auto mb-4 text-indigo-500" />
+          <h1 className={`text-4xl font-jakarta font-bold mb-2 ${t.textPrimary}`}>Aidvisor 2030</h1>
+          <p className={`text-lg ${t.textSecondary}`}>Hlavní pracovní plocha</p>
+        </div>
+
+        {/* Vysouvací úchyt (Pull tab) na pravém okraji */}
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className={`fixed right-0 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center justify-center w-10 h-32 rounded-l-2xl border-y border-l transition-all duration-[800ms] smooth-spring backdrop-blur-xl group cursor-pointer overflow-hidden ${
+            isSidebarOpen ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100 shadow-[-10px_0_30px_rgba(0,0,0,0.05)]'
+          } ${isDark ? 'bg-[#0F1528]/80 border-white/10 text-slate-400 hover:text-white' : 'bg-white/80 border-white shadow-sm text-slate-400 hover:text-indigo-600'}`}
+          title="Vysunout panel s kalendářem"
+        >
+          <div className="flex flex-col items-center gap-3 opacity-70 group-hover:opacity-100 transition-opacity">
+            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <div className="w-px h-6 bg-current opacity-20 rounded-full"></div>
+            <CalendarIcon size={16} />
+          </div>
+        </button>
+
+      </div>
+
+      {/* --- SIDEBAR 2030 (Sliding Panel) --- */}
+      <aside className={`w-[420px] h-screen fixed right-0 top-0 flex flex-col z-30 backdrop-blur-3xl transition-transform duration-[800ms] smooth-spring border-l ${
+        isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+      } ${t.sidebar}`}>
+        
+        {/* Top Header */}
+        <div className="px-8 py-6 flex items-center justify-between">
+          <div className="flex gap-3">
+            <button className={`transition-colors rounded-xl p-2 ${t.btnGhost}`} title="Kalendář (Plná verze)">
+              <CalendarIcon size={20} />
+            </button>
+            {/* Tlačítko pro skrytí/zasunutí panelu */}
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className={`transition-colors rounded-xl p-2 bg-slate-500/10 ${t.btnGhost}`} 
+              title="Skrýt panel"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-8 pb-32 space-y-10">
+          
+          {/* 1. KALENDÁŘ SECTION */}
+          <section>
+            <h3 className={`text-[10px] font-jakarta font-extrabold uppercase tracking-[0.2em] mb-4 ml-1 ${t.textTertiary}`}>Kalendář</h3>
+            
+            <div className={`rounded-3xl p-6 relative overflow-hidden group transition-all duration-500 border ${t.card}`}>
+              <div className={`absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+              
+              <div className="flex justify-between items-center relative z-10">
+                <div>
+                  <div className={`text-[11px] font-jakarta font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>Dnes</div>
+                  <div className={`text-2xl font-jakarta font-extrabold tracking-tight ${t.glowText}`}>26. března 2026</div>
+                </div>
+                
+                <button 
+                  onClick={() => setActiveModal('add_event')}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${t.btnPrimary}`}
+                >
+                  <Plus size={24} strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* 2. AGENDA SECTION */}
+          <section>
+            <h3 className={`text-[10px] font-jakarta font-extrabold uppercase tracking-[0.2em] mb-6 ml-1 ${t.textTertiary}`}>Agenda</h3>
+            
+            <div className="relative pl-12 space-y-6">
+              {/* Vertical Timeline Line */}
+              <div className={`absolute left-5 top-2 bottom-2 w-px bg-gradient-to-b ${isDark ? 'from-indigo-500/50 via-slate-700 to-transparent' : 'from-indigo-300 via-slate-200 to-transparent'}`}></div>
+              
+              {AGENDA_ITEMS.map((item, i) => (
+                <div key={item.id} className="relative group cursor-pointer" onClick={() => setActiveModal('add_event')}>
+                  {/* Timeline Dot */}
+                  <div className={`absolute -left-12 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border flex items-center justify-center transition-all z-10 ${t.timelineDrop}`}>
+                    <Users size={16} className={isDark ? 'text-indigo-400' : 'text-indigo-600'} />
+                  </div>
+                  
+                  {/* Agenda Card */}
+                  <div className={`rounded-2xl p-5 group-hover:translate-x-1 transition-all duration-300 border ${t.card}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-sm font-jakarta font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{item.time}</span>
+                      <span className={`text-xs font-semibold ${t.textTertiary}`}>{item.date}</span>
+                    </div>
+                    <h4 className={`text-base font-jakarta font-bold mb-1 ${t.textPrimary}`}>{item.title}</h4>
+                    <div className="flex justify-between items-end">
+                      <span className={`text-sm font-medium ${t.textSecondary}`}>{item.client}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${t.textTertiary}`}>{item.inDays}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 3. ZPRÁVY Z PORTÁLU */}
+          <section>
+            <h3 className={`text-[10px] font-jakarta font-extrabold uppercase tracking-[0.2em] mb-4 ml-1 ${t.textTertiary}`}>Zprávy z portálu</h3>
+            
+            <div className="space-y-3">
+              {MESSAGES.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  onClick={() => openChat(msg)}
+                  className={`rounded-2xl p-4 flex gap-4 items-center cursor-pointer group transition-colors relative border ${t.card}`}
+                >
+                  {/* Unread Indicator */}
+                  {msg.unread && <div className={`absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-indigo-500 rounded-full animate-pulse ${isDark ? 'shadow-[0_0_10px_rgba(99,102,241,0.8)]' : 'shadow-md shadow-indigo-300'}`}></div>}
+                  
+                  {/* Avatar */}
+                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${msg.color} flex items-center justify-center text-white font-jakarta font-bold text-sm shadow-lg shrink-0`}>
+                    {msg.initials}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className={`text-sm font-jakarta font-bold truncate ${msg.unread ? t.textPrimary : t.textSecondary}`}>{msg.name}</h4>
+                      <span className={`text-[10px] font-bold uppercase shrink-0 ${t.textTertiary}`}>{msg.time}</span>
+                    </div>
+                    <p className={`text-xs truncate ${msg.unread ? (isDark ? 'text-indigo-200' : 'text-indigo-600') + ' font-semibold' : t.textSecondary}`}>Vy: {msg.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <button 
+              onClick={() => setActiveModal('chat')}
+              className={`mt-4 flex items-center gap-2 text-xs font-jakarta font-bold transition-colors ml-1 group ${isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+            >
+              Otevřít chat <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </section>
+
+        </div>
+
+        {/* --- STICKY FOOTER --- */}
+        <div className={`absolute bottom-0 left-0 right-0 p-8 pt-0 bg-gradient-to-t ${isDark ? 'from-[#0B0F19] via-[#0B0F19]' : 'from-[#FAFAFC] via-[#FAFAFC]'} to-transparent pointer-events-none transition-colors duration-700`}>
+          
+          {/* Floating Actions Buttons */}
+          <div className="flex flex-col items-end gap-3 pointer-events-auto">
+            <button className={`w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 ${t.btnFloating}`} title="Nahlásit chybu">
+              <Bug size={20} />
+            </button>
+            <button 
+              onClick={() => setActiveModal('ai')}
+              className={`w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white transition-all hover:scale-110 group relative ${t.aiButton}`}
+              title="Aidvisor AI"
+            >
+              <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-[spin_4s_linear_infinite]"></div>
+              <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* --- MODALS --- */}
+
+      {/* 1. Add Event Modal */}
+      <GlassModal isOpen={activeModal === 'add_event'} onClose={() => setActiveModal(null)} title="Nová událost" icon={CalendarIcon} glowColor="indigo">
+        <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setActiveModal(null); }}>
+          <div>
+            <label className={`text-xs font-jakarta font-bold uppercase tracking-widest block mb-2 ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>Název aktivity</label>
+            <input type="text" placeholder="Např. Schůzka s klientem" className={`w-full rounded-xl px-4 py-3 transition-all outline-none border ${t.input}`} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`text-xs font-jakarta font-bold uppercase tracking-widest block mb-2 ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>Datum</label>
+              <input type="date" className={`w-full rounded-xl px-4 py-3 transition-all outline-none border ${t.input} ${isDark ? '[color-scheme:dark]' : ''}`} />
+            </div>
+            <div>
+              <label className={`text-xs font-jakarta font-bold uppercase tracking-widest block mb-2 ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>Čas</label>
+              <input type="time" className={`w-full rounded-xl px-4 py-3 transition-all outline-none border ${t.input} ${isDark ? '[color-scheme:dark]' : ''}`} />
+            </div>
+          </div>
+          <button type="submit" className={`w-full mt-4 font-jakarta font-bold rounded-xl py-4 transition-colors flex items-center justify-center gap-2 ${t.btnPrimary}`}>
+            <CheckCircle2 size={18} /> Uložit do kalendáře
+          </button>
+        </form>
+      </GlassModal>
+
+      {/* 2. Chat Modal */}
+      <GlassModal isOpen={activeModal === 'chat'} onClose={() => setActiveModal(null)} title={activeChat ? `Chat: ${activeChat.name}` : "Zprávy z portálu"} icon={MessageSquare} glowColor="purple">
+        <div className="h-[400px] flex flex-col">
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4 mb-4">
+            {CHAT_HISTORY.map((msg) => (
+              <div key={msg.id} className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className={`text-[10px] font-bold ${t.textTertiary}`}>{msg.sender}</span>
+                  <span className={`text-[9px] font-semibold ${t.textTertiary}`}>{msg.time}</span>
+                </div>
+                <div className={`p-4 max-w-[85%] rounded-2xl text-sm leading-relaxed border ${
+                  msg.isMe 
+                    ? `${t.msgMyBg} border-transparent rounded-tr-sm` 
+                    : `${t.msgOtherBg} rounded-tl-sm`
+                }`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Input Area */}
+          <div className="relative mt-auto">
+            <input 
+              type="text" 
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Napište zprávu..." 
+              className={`w-full rounded-2xl pl-5 pr-14 py-4 transition-all outline-none border ${t.input}`} 
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button className={`p-2 transition-colors rounded-lg ${t.btnGhost}`}>
+                <Paperclip size={18} />
+              </button>
+              <button className="p-2 bg-purple-500 hover:bg-purple-400 text-white rounded-xl transition-colors shadow-lg shadow-purple-500/30">
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </GlassModal>
+
+      {/* 3. AI Assistant Modal */}
+      <GlassModal isOpen={activeModal === 'ai'} onClose={() => setActiveModal(null)} title="Aidvisor AI 2030" icon={Sparkles} glowColor="amber">
+        <div className="space-y-6">
+          <div className={`p-5 border rounded-2xl relative overflow-hidden ${isDark ? 'bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20' : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200/60'}`}>
+            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none blur-3xl ${isDark ? 'bg-amber-500/20' : 'bg-amber-300/30'}`}></div>
+            <h4 className={`text-sm font-jakarta font-bold mb-2 flex items-center gap-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+              <AlignLeft size={16} /> Predikce dnešního dne
+            </h4>
+            <p className={`text-sm leading-relaxed font-medium ${isDark ? 'text-amber-100/80' : 'text-amber-900/80'}`}>
+              Máte naplánované 2 schůzky. Klient Ivan Havdan má vysokou pravděpodobnost uzavření (85 %). Doporučuji si před schůzkou projít jeho investiční profil z minulého roku.
+            </p>
+          </div>
+          
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Zeptejte se AI na cokoliv z vašich dat..." 
+              className={`w-full rounded-2xl pl-5 pr-14 py-4 transition-all outline-none border ${t.input} ${!isDark ? 'focus:border-amber-300 focus:ring-amber-100' : ''}`} 
+            />
+            <button className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-colors ${isDark ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10' : 'text-amber-500 hover:text-amber-600 hover:bg-amber-100'}`}>
+              <ArrowRight size={20} />
+            </button>
+          </div>
+        </div>
+      </GlassModal>
+
+    </div>
+  );
+};
+
+export default App;

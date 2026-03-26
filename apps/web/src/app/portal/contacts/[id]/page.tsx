@@ -33,6 +33,7 @@ import { ContactTagsEditor } from "@/app/components/contacts/ContactTagsEditor";
 import { ContactFinancialAnalysesSection } from "@/app/dashboard/contacts/[id]/ContactFinancialAnalysesSection";
 import { ClientFinancialSummaryBlock } from "./ClientFinancialSummaryBlock";
 import { ClientServiceBlock } from "./ClientServiceBlock";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { ContactPaymentSetupsSection } from "./ContactPaymentSetupsSection";
 import { ClientReferralSection } from "./ClientReferralSection";
 import { ClientTimeline } from "./ClientTimeline";
@@ -199,12 +200,13 @@ export default async function ContactDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <Link
+          <CreateActionButton
             href={`/portal/contacts/${id}/edit`}
-            className="flex items-center gap-2 px-5 py-2 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"
+            icon={Edit2}
+            className="min-h-[44px] px-5 py-2 text-xs font-black uppercase tracking-widest shadow-lg"
           >
-            <Edit2 size={14} /> Upravit
-          </Link>
+            Upravit
+          </CreateActionButton>
         </div>
       </header>
 

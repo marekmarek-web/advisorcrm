@@ -315,9 +315,14 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [company, setCompany] = useState(initial.tenantName);
   const [bio, setBio] = useState("");
   const [copied, setCopied] = useState(false);
-  const bookingLink = typeof window !== "undefined" ? `${window.location.origin}/portal/calendar` : "aidvisora.cz/rezervace";
+  /** Resolved on client only — avoids SSR/client mismatch (hydration) on the profil tab. */
+  const [bookingLink, setBookingLink] = useState("");
+  useEffect(() => {
+    setBookingLink(`${window.location.origin}/portal/calendar`);
+  }, []);
 
   const handleCopyLink = useCallback(() => {
+    if (!bookingLink) return;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(bookingLink);
       setCopied(true);
@@ -826,7 +831,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight">Rychlé tlačítko „+ Nový“</h2>
                     </div>
                     <p className="text-sm font-medium text-slate-500 pl-16">
-                      Vyberte položky a pořadí v menu „+ Nový“ v horní liště. Skryté položky se nezobrazí.
+                      Vyberte položky a pořadí v menu „+ Nový“ v horní liště a v postranním panelu (ikona blesku). Skryté položky se nezobrazí.
                     </p>
                   </div>
                   <div className="p-6 md:p-10 space-y-1 relative z-10 max-h-[60vh] overflow-y-auto">
@@ -1021,7 +1026,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-4 flex items-center gap-2">Váš rezervační odkaz</h3>
                 <p className="text-sm font-bold text-indigo-50 mb-4 leading-relaxed">Pošlete tento odkaz klientům pro naplánování schůzky.</p>
                 <div className="bg-white/10 border border-white/20 p-3 rounded-xl flex items-center justify-between gap-2 backdrop-blur-md mb-4 cursor-pointer hover:bg-white/20 transition-colors min-h-[44px]" onClick={handleCopyLink} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleCopyLink()}>
-                  <span className="text-xs font-medium truncate opacity-90">{bookingLink}</span>
+                  <span className="text-xs font-medium truncate opacity-90">
+                    {bookingLink || "Načítám odkaz…"}
+                  </span>
                   <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">{copied ? <Check size={14} className="text-emerald-300" /> : <Copy size={14} />}</div>
                 </div>
                 <Link href="/portal/calendar" className="text-xs font-black uppercase tracking-widest text-white hover:text-indigo-200 transition-colors flex items-center gap-1 min-h-[44px] inline-flex items-center">

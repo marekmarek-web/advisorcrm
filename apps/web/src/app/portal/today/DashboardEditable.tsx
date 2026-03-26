@@ -29,7 +29,7 @@ import {
   ChevronLeft,
   type LucideIcon,
 } from "lucide-react";
-import type { DashboardKpis } from "@/app/actions/dashboard";
+import type { DashboardKpis, TodayEvent } from "@/app/actions/dashboard";
 import type { ServiceRecommendationWithContact } from "@/app/actions/service-engine";
 import { getServiceCtaHref } from "@/lib/service-engine/cta";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
@@ -57,6 +57,7 @@ import {
   type WidgetColorId,
 } from "./dashboard-config";
 import { useDashboardCalendarDrawer } from "./use-dashboard-calendar-drawer";
+import clsx from "clsx";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { TodayInCalendarWidget } from "@/app/components/dashboard/TodayInCalendarWidget";
 
@@ -172,7 +173,7 @@ export function DashboardEditable({
   const router = useRouter();
   const [config, setConfig] = useState<DashboardConfig>({ order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] });
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const { open: drawerOpen, toggle: toggleCalendarDrawer } = useDashboardCalendarDrawer();
+  const { open: drawerOpen, setOpen: setCalendarDrawerOpen, toggle: toggleCalendarDrawer } = useDashboardCalendarDrawer();
   const [editOrder, setEditOrder] = useState<WidgetId[]>([]);
   const [editHidden, setEditHidden] = useState<Set<WidgetId>>(new Set());
   const [editWidgetColors, setEditWidgetColors] = useState<Partial<Record<WidgetId, WidgetColorId>>>({});
@@ -613,16 +614,22 @@ export function DashboardEditable({
   const greetingName = advisorName?.trim() || "poradce";
   const dateLabel = new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+  const formatEventTime = (e: TodayEvent) =>
+    new Date(e.startAt).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+
+  const agendaEmpty = kpis.todayEvents.length === 0 && kpis.tasksDueToday.length === 0;
+
   return (
-    <div
-      className={`flex-1 min-h-0 bg-[#f8fafc] text-slate-800 relative overflow-y-auto animate-[wp-fade-in_0.3s_ease] transition-[padding-right] duration-200 ease-out ${drawerOpen ? "md:pr-[380px]" : "md:pr-14"}`}
-    >
+    <div className="flex-1 min-h-0 bg-wp-bg text-wp-primary relative overflow-y-auto animate-[wp-fade-in_0.3s_ease] dark:text-slate-100">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap');
         .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
         .bg-dot-grid {
           background-image: radial-gradient(#cbd5e1 1px, transparent 0);
           background-size: 32px 32px;
+        }
+        .dark .bg-dot-grid {
+          background-image: radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 0);
         }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -633,7 +640,7 @@ export function DashboardEditable({
         .animate-slide-in-right { animation: slideInRight 0.25s ease-out; }
       `}</style>
 
-      <main className="max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 bg-dot-grid min-h-[calc(100vh-73px)]">
+      <main className="max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 bg-dot-grid min-h-[calc(100vh-73px)] text-slate-800 dark:text-slate-100">
 
         {/* 1. GREETING + TOP CONTROLS */}
         <div className="mb-10">
@@ -767,10 +774,10 @@ export function DashboardEditable({
                   onDrop={(e) => handleDrop(e, id)}
                   className={`${colSpan} ${dragClass} transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01]`}
                 >
-                  <div className="bg-white rounded-[32px] border border-slate-100 border-t-4 border-t-amber-500 p-6 sm:p-8 relative flex flex-col min-h-[280px]">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="font-bold text-amber-900 flex items-center gap-2">
-                        <CheckSquare size={18} className="text-amber-500" /> Moje úkoly
+                  <div className="relative flex min-h-[280px] flex-col rounded-[32px] border border-slate-100 border-t-4 border-t-amber-500 bg-white p-6 sm:p-8 dark:border-white/10 dark:bg-wp-surface">
+                    <div className="mb-6 flex items-center justify-between">
+                      <h3 className="flex items-center gap-2 text-base font-bold text-amber-900 dark:text-amber-100 md:text-lg">
+                        <CheckSquare size={20} className="text-amber-500" /> Moje úkoly
                       </h3>
                       <div className="flex items-center gap-1">
                         <Link href="/portal/tasks" className="p-2 text-amber-400 hover:text-amber-600 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center">
@@ -788,12 +795,11 @@ export function DashboardEditable({
                       </div>
                     </div>
                     {body}
-                    <Link
-                      href="/portal/tasks"
-                      className="mt-auto pt-4 inline-flex items-center gap-2 min-h-[44px] w-fit px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest text-white shadow-md shadow-indigo-900/20 transition-all hover:bg-aidv-dashboard-cta-hover active:scale-[0.98] bg-aidv-dashboard-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aidv-dashboard-cta-ring)] focus-visible:ring-offset-2"
-                    >
-                      Zobrazit všechny úkoly <ChevronRight size={14} />
-                    </Link>
+                    <div className="mt-auto flex w-full justify-center pt-4">
+                      <CreateActionButton href="/portal/tasks" icon={ChevronRight} className="shadow-md">
+                        Zobrazit všechny úkoly
+                      </CreateActionButton>
+                    </div>
                   </div>
                 </div>
               );
@@ -843,42 +849,108 @@ export function DashboardEditable({
 
       </main>
 
-      {/* Right-side panel: narrow strip (icon + arrow) when closed, expands to calendar + messages when open. No overlay, no blur. */}
-      <aside
-        className="fixed right-0 top-[73px] bottom-0 z-20 flex flex-col bg-aidv-surface-dark border-l border-[color:var(--aidv-border-on-dark)] transition-[width] duration-200 ease-out overflow-hidden shadow-[ -4px_0_24px_-12px_rgba(0,0,0,0.25) ]"
-        style={{ width: drawerOpen ? 380 : 56 }}
-      >
+      {drawerOpen && (
         <button
           type="button"
-          onClick={toggleCalendarDrawer}
-          className="flex items-center justify-center gap-1 w-14 h-14 shrink-0 border-b border-[color:var(--aidv-border-on-dark)] text-aidv-text-muted-on-dark hover:text-aidv-text-on-dark hover:bg-white/10 transition-colors min-h-[56px]"
-          aria-label={drawerOpen ? "Skrýt kalendář" : "Zobrazit kalendář"}
-        >
-          <Calendar size={20} />
-          {drawerOpen ? <ChevronLeft size={18} className="ml-0.5" /> : <ChevronRight size={18} className="ml-0.5" />}
-        </button>
-        {drawerOpen && (
-          <>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 hide-scrollbar">
-              <section className="space-y-3">
-                <h3 className="text-xs font-bold text-aidv-text-muted-on-dark uppercase tracking-wider">Kalendář</h3>
-                <CalendarWidget hideTitle onNewActivity={() => router.push("/portal/calendar?new=1")} variant="darkPanel" />
-              </section>
-              <section className="pt-4 border-t border-[color:var(--aidv-border-on-dark)]">
-                <MessengerPreview forDarkPanel />
-              </section>
-            </div>
-            <div className="border-t border-[color:var(--aidv-border-on-dark)] p-4 flex-shrink-0 bg-aidv-surface-elevated">
-              <CreateActionButton
-                type="button"
-                onClick={() => router.push("/portal/calendar?new=1")}
-                className="w-full min-h-[48px] py-3 shadow-lg"
-              >
-                Nová aktivita
-              </CreateActionButton>
-            </div>
-          </>
+          className="fixed inset-0 z-drawer-overlay bg-black/40 lg:hidden"
+          aria-label="Zavřít panel"
+          onClick={() => setCalendarDrawerOpen(false)}
+        />
+      )}
+
+      <button
+        type="button"
+        onClick={() => setCalendarDrawerOpen(true)}
+        className={clsx(
+          "fixed right-0 top-1/2 z-[202] flex min-h-[100px] min-w-[48px] -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-l-2xl border border-r-0 border-slate-200/90 bg-white/95 py-3 pl-2 pr-1 shadow-lg backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:border-white/12 dark:bg-aidv-surface-elevated/95",
+          drawerOpen && "pointer-events-none translate-x-full opacity-0",
         )}
+        aria-label="Otevřít kalendář, agendu a zprávy"
+      >
+        <Calendar size={20} className="text-indigo-600 dark:text-indigo-300" aria-hidden />
+        <ChevronLeft size={18} className="text-slate-500 dark:text-slate-300" aria-hidden />
+      </button>
+
+      <aside
+        className={clsx(
+          "fixed inset-y-0 right-0 z-drawer-panel flex w-full max-w-[min(100vw,420px)] flex-col border-l border-[color:var(--aidv-border-on-dark)] bg-aidv-surface-dark shadow-[ -4px_0_24px_-12px_rgba(0,0,0,0.25) ] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:max-w-[420px]",
+          drawerOpen ? "translate-x-0" : "translate-x-full pointer-events-none",
+        )}
+        aria-hidden={!drawerOpen}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--aidv-border-on-dark)] px-3 py-2 lg:px-4">
+          <span className="text-sm font-bold text-aidv-text-on-dark">Kalendář a zprávy</span>
+          <button
+            type="button"
+            onClick={() => setCalendarDrawerOpen(false)}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-aidv-text-muted-on-dark transition-colors hover:bg-white/10 hover:text-aidv-text-on-dark"
+            aria-label="Zavřít panel"
+          >
+            <X size={22} aria-hidden />
+          </button>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="hide-scrollbar flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-aidv-text-muted-on-dark">Kalendář</h3>
+              <CalendarWidget hideTitle onNewActivity={() => router.push("/portal/calendar?new=1")} variant="darkPanel" />
+            </section>
+
+            <section className="space-y-3 border-t border-[color:var(--aidv-border-on-dark)] pt-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-aidv-text-muted-on-dark">Agenda</h3>
+              {agendaEmpty ? (
+                <p className="text-sm text-aidv-text-muted-on-dark">Dnes nic naplánováno.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {kpis.todayEvents.map((ev) => (
+                    <li key={ev.id}>
+                      <Link
+                        href="/portal/calendar"
+                        className="block rounded-xl border border-[color:var(--aidv-border-on-dark)] bg-aidv-surface-elevated/50 px-3 py-2.5 transition-colors hover:bg-white/10"
+                      >
+                        <p className="text-xs font-bold text-aidv-text-muted-on-dark">{formatEventTime(ev)}</p>
+                        <p className="text-sm font-semibold text-aidv-text-on-dark">{ev.title}</p>
+                        {ev.contactName ? (
+                          <p className="mt-0.5 text-xs text-aidv-text-muted-on-dark">{ev.contactName}</p>
+                        ) : null}
+                      </Link>
+                    </li>
+                  ))}
+                  {kpis.tasksDueToday.map((t) => (
+                    <li key={t.id}>
+                      <Link
+                        href="/portal/tasks"
+                        className="block rounded-xl border border-[color:var(--aidv-border-on-dark)] bg-aidv-surface-elevated/50 px-3 py-2.5 transition-colors hover:bg-white/10"
+                      >
+                        <p className="text-xs font-bold uppercase tracking-wider text-amber-300/90">Úkol</p>
+                        <p className="text-sm font-semibold text-aidv-text-on-dark">{t.title}</p>
+                        {t.contactName ? (
+                          <p className="mt-0.5 text-xs text-aidv-text-muted-on-dark">{t.contactName}</p>
+                        ) : null}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="border-t border-[color:var(--aidv-border-on-dark)] pt-4">
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-aidv-text-muted-on-dark">Zprávy</h3>
+              <MessengerPreview forDarkPanel />
+            </section>
+          </div>
+
+          <div className="flex-shrink-0 border-t border-[color:var(--aidv-border-on-dark)] bg-aidv-surface-elevated p-4">
+            <CreateActionButton
+              type="button"
+              onClick={() => router.push("/portal/calendar?new=1")}
+              className="w-full min-h-[48px] py-3 shadow-lg"
+            >
+              Nová aktivita
+            </CreateActionButton>
+          </div>
+        </div>
       </aside>
 
       {/* Customize modal */}

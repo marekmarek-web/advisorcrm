@@ -117,6 +117,24 @@ function Modal({
   title: string;
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
@@ -781,6 +799,7 @@ export function PipelineBoard({
       <Modal open={createStageId !== null} onClose={() => setCreateStageId(null)} title="Nová příležitost">
         {createStageId && (
           <CreateForm
+            key={createStageId}
             stageId={createStageId}
             stages={localStages}
             contacts={contacts}
@@ -795,6 +814,7 @@ export function PipelineBoard({
       <Modal open={editOpp !== null} onClose={() => setEditOpp(null)} title="Upravit příležitost">
         {editOpp && (
           <EditForm
+            key={editOpp.id}
             opp={editOpp}
             stages={localStages}
             contacts={contacts}

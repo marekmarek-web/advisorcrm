@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   Home,
   LayoutGrid,
@@ -18,6 +19,9 @@ import {
   StickyNote,
   Bell,
   Palette,
+  Sun,
+  Moon,
+  Monitor,
   Settings,
   Network,
   ChevronLeft,
@@ -35,22 +39,13 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { getOpenTasksCount } from "@/app/actions/tasks";
 import { getUnreadConversationsCount } from "@/app/actions/messages";
+import { useQuickActionsItems } from "@/lib/quick-actions/useQuickActionsItems";
+import { QuickNewItemIcon } from "@/app/portal/quick-new-ui";
 
 export const PORTAL_SIDEBAR_WIDTH_PX = 280;
 export const PORTAL_SIDEBAR_COLLAPSED_PX = 80;
 
 const SIDEBAR_ORDER_KEY = "portal-sidebar-order";
-const SIDEBAR_THEME_KEY = "portal-sidebar-theme";
-type SidebarTheme = "white" | "gradient";
-
-function loadSidebarTheme(): SidebarTheme {
-  if (typeof window === "undefined") return "white";
-  try {
-    const v = localStorage.getItem(SIDEBAR_THEME_KEY);
-    if (v === "white" || v === "gradient") return v;
-  } catch {}
-  return "white";
-}
 
 interface NavItemConfig {
   href: string;
@@ -249,17 +244,17 @@ export function PortalSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const baseSections = useMemo(() => filterSectionsByRole(DEFAULT_SECTIONS, showTeamOverview), [showTeamOverview]);
   const [menuSections, setMenuSections] = useState<SectionConfig[]>(baseSections);
-  const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>("white");
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [zapOpen, setZapOpen] = useState(false);
+  const { items: quickActionItems, ready: quickActionsReady } = useQuickActionsItems();
 
   useEffect(() => {
-    setSidebarTheme(loadSidebarTheme());
+    setMounted(true);
   }, []);
-  const setTheme = useCallback((theme: SidebarTheme) => {
-    setSidebarTheme(theme);
-    try {
-      localStorage.setItem(SIDEBAR_THEME_KEY, theme);
-    } catch {}
-  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   useEffect(() => {
     const order = loadOrderFromStorage();
@@ -409,7 +404,7 @@ export function PortalSidebar({
           "fixed left-0 top-0 bottom-0 flex flex-col shrink-0 transition-[width,transform] duration-300 ease-in-out",
           "md:z-20 md:translate-x-0",
           mobileOpen ? "translate-x-0 z-drawer-panel pointer-events-auto" : "-translate-x-full z-drawer-panel pointer-events-none md:pointer-events-auto",
-          sidebarTheme === "gradient"
+          isDark
             ? "bg-gradient-to-br from-aidv-surface-dark via-aidv-surface-elevated to-[#101630] border-r border-[color:var(--aidv-border-on-dark)] shadow-[4px_0_24px_-12px_rgba(0,0,0,0.35)]"
             : "bg-white border-r border-slate-100 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
         ].join(" ")}
@@ -421,7 +416,7 @@ export function PortalSidebar({
         <div
           className={[
             "h-20 flex items-center justify-between px-5 flex-shrink-0",
-            sidebarTheme === "gradient" ? "border-b border-white/10" : "border-b border-slate-50",
+            isDark ? "border-b border-white/10" : "border-b border-slate-50",
           ].join(" ")}
         >
           <Link
@@ -435,7 +430,7 @@ export function PortalSidebar({
                 src="/Aidvisora logo A.png"
                 alt="Aidvisora"
                 className="h-10 w-10 object-contain object-center flex-shrink-0"
-                style={sidebarTheme === "gradient" ? { filter: "brightness(0) invert(1)" } : undefined}
+                style={isDark ? { filter: "brightness(0) invert(1)" } : undefined}
               />
             ) : (
               <img
@@ -443,7 +438,7 @@ export function PortalSidebar({
                 src="/logos/Aidvisora%20logo.png"
                 alt="Aidvisora"
                 className="h-16 max-h-16 w-auto max-w-full object-contain object-left flex-shrink-0"
-                style={sidebarTheme === "gradient" ? { filter: "brightness(0) invert(1)" } : undefined}
+                style={isDark ? { filter: "brightness(0) invert(1)" } : undefined}
               />
             )}
           </Link>
@@ -453,8 +448,14 @@ export function PortalSidebar({
                 type="button"
                 onClick={() => onCollapsedChange(!collapsed)}
                 className={`hidden md:flex w-7 h-7 items-center justify-center rounded-lg transition-colors
-                  ${sidebarTheme === "gradient" ? "text-white hover:bg-white/10" : "text-slate-400 hover:bg-slate-100"}
-                  ${collapsed ? "absolute -right-3.5 top-6 bg-white border border-slate-200 shadow-sm z-50" : ""}`}
+                  ${isDark ? "text-white hover:bg-white/10" : "text-slate-400 hover:bg-slate-100"}
+                  ${
+                    collapsed
+                      ? isDark
+                        ? "absolute -right-3.5 top-6 bg-aidv-surface-elevated border border-white/15 shadow-lg z-50"
+                        : "absolute -right-3.5 top-6 bg-white border border-slate-200 shadow-sm z-50"
+                      : ""
+                  }`}
                 aria-label={collapsed ? "Rozbalit panel" : "Sbalit panel"}
               >
                 {collapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={16} />}
@@ -462,7 +463,7 @@ export function PortalSidebar({
             )}
             <button
               onClick={() => setMobileOpen(false)}
-              className={`md:hidden p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${sidebarTheme === "gradient" ? "text-white hover:bg-white/10" : "text-slate-500 hover:bg-slate-100"}`}
+              className={`md:hidden p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${isDark ? "text-white hover:bg-white/10" : "text-slate-500 hover:bg-slate-100"}`}
               aria-label="Zavřít menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
@@ -476,14 +477,14 @@ export function PortalSidebar({
         {!collapsed && (
           <div className="px-5 py-4 flex-shrink-0">
             <div className="relative group">
-              <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400"}`} />
+              <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isDark ? "text-white" : "text-slate-400"}`} />
               <input
                 type="text"
                 placeholder="Hledat v menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-bold outline-none transition-all min-h-[44px] ${
-                  sidebarTheme === "gradient"
+                  isDark
                     ? "bg-white/10 border border-white/20 text-white placeholder:text-white/90 focus:bg-white/20 focus:ring-2 focus:ring-white/30 focus:border-white/40"
                     : "bg-slate-50 border border-slate-100 text-slate-700 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300"
                 }`}
@@ -501,25 +502,25 @@ export function PortalSidebar({
               className={`
                 ${groupIdx !== 0 ? "mt-2" : collapsed ? "mt-4" : ""}
                 ${group.specialBg && !collapsed
-                  ? sidebarTheme === "gradient"
+                  ? isDark
                     ? "bg-white/10 mx-3 py-3 rounded-2xl border border-white/10"
                     : "bg-gradient-to-b from-fuchsia-50/40 to-indigo-50/40 mx-3 py-3 rounded-2xl border border-indigo-100/50 shadow-sm"
                   : "px-3"}
-                ${group.specialBg && collapsed ? (sidebarTheme === "gradient" ? "bg-white/10 mx-2 py-2 rounded-2xl" : "bg-fuchsia-50/40 mx-2 py-2 rounded-2xl") : ""}
+                ${group.specialBg && collapsed ? (isDark ? "bg-white/10 mx-2 py-2 rounded-2xl" : "bg-fuchsia-50/40 mx-2 py-2 rounded-2xl") : ""}
               `}
             >
               {!collapsed && (
                 <div className="flex items-center px-3 mb-2 pt-1">
                   <h4 className={`text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5 ${
-                    group.specialBg ? (sidebarTheme === "gradient" ? "text-white" : "text-indigo-500") : sidebarTheme === "gradient" ? "text-white" : "text-slate-400"
+                    group.specialBg ? (isDark ? "text-white" : "text-indigo-500") : isDark ? "text-white" : "text-slate-400"
                   }`}>
-                    {group.specialBg && <Zap size={10} className={sidebarTheme === "gradient" ? "text-white shrink-0" : "text-amber-500 shrink-0"} />}
+                    {group.specialBg && <Zap size={10} className={isDark ? "text-white shrink-0" : "text-amber-500 shrink-0"} />}
                     {group.section}
                   </h4>
                 </div>
               )}
               {collapsed && groupIdx !== 0 && !group.specialBg && (
-                <div className={`w-8 h-px mx-auto mb-4 mt-2 ${sidebarTheme === "gradient" ? "bg-white/20" : "bg-slate-100"}`} aria-hidden />
+                <div className={`w-8 h-px mx-auto mb-4 mt-2 ${isDark ? "bg-white/20" : "bg-slate-100"}`} aria-hidden />
               )}
               <ul className="space-y-1">
                 {group.items.map((item, itemIdx) => {
@@ -547,7 +548,7 @@ export function PortalSidebar({
                           href={item.href}
                           className={`w-full flex items-center relative transition-all duration-300
                             ${collapsed ? "justify-center p-3 rounded-2xl min-h-[44px]" : "px-3 py-2.5 rounded-xl min-h-[44px]"}
-                            ${sidebarTheme === "gradient"
+                            ${isDark
                               ? isActive
                                 ? "bg-white/20 text-white shadow-lg"
                                 : "text-white hover:bg-white/10 border border-transparent hover:border-white/20"
@@ -560,17 +561,17 @@ export function PortalSidebar({
                           <div className="relative flex items-center justify-center shrink-0">
                             <Icon
                               size={18}
-                              className={`transition-colors ${isActive ? "text-white animate-spin-slow" : sidebarTheme === "gradient" ? "text-white animate-pulse-glow" : "text-fuchsia-500 animate-pulse-glow group-hover:text-fuchsia-600"}`}
+                              className={`transition-colors ${isActive ? "text-white animate-spin-slow" : isDark ? "text-white animate-pulse-glow" : "text-fuchsia-500 animate-pulse-glow group-hover:text-fuchsia-600"}`}
                               strokeWidth={isActive ? 2.5 : 2}
                             />
                           </div>
                           {!collapsed && (
-                            <span className={`ml-3 flex-1 text-left text-sm font-black tracking-wide ${isActive ? "text-white" : sidebarTheme === "gradient" ? "text-white" : "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600"}`}>
+                            <span className={`ml-3 flex-1 text-left text-sm font-black tracking-wide ${isActive ? "text-white" : isDark ? "text-white" : "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600"}`}>
                               {item.label}
                             </span>
                           )}
                           {!collapsed && (
-                            <GripVertical size={14} className={`hidden md:block ${sidebarTheme === "gradient" ? "text-white/30" : "text-fuchsia-200"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0`} />
+                            <GripVertical size={14} className={`hidden md:block ${isDark ? "text-white/30" : "text-fuchsia-200"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0`} />
                           )}
                         </Link>
                       </li>
@@ -591,7 +592,7 @@ export function PortalSidebar({
                         href={item.href}
                         className={`w-full flex items-center relative transition-all duration-200
                           ${collapsed ? "justify-center p-3 rounded-2xl min-h-[44px]" : "px-3 py-2.5 rounded-xl min-h-[44px]"}
-                          ${sidebarTheme === "gradient"
+                          ${isDark
                             ? isActive
                               ? "bg-white/20 text-white shadow-md"
                               : "text-white hover:bg-white/10"
@@ -604,31 +605,31 @@ export function PortalSidebar({
                         title={collapsed ? item.label : undefined}
                       >
                         {collapsed && isActive && (
-                          <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-full ${sidebarTheme === "gradient" ? "bg-white/60" : "bg-indigo-400"}`} aria-hidden />
+                          <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-full ${isDark ? "bg-white/60" : "bg-indigo-400"}`} aria-hidden />
                         )}
                         <div className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${!isActive && item.hoverAnim ? item.hoverAnim : ""}`}>
                           <Icon
                             size={18}
-                            className={`transition-colors ${isActive ? "text-white" : sidebarTheme === "gradient" ? "text-white" : "text-slate-500 group-hover:text-indigo-600"}`}
+                            className={`transition-colors ${isActive ? "text-white" : isDark ? "text-white" : "text-slate-500 group-hover:text-indigo-600"}`}
                             strokeWidth={isActive || item.isHighlighted ? 2.5 : 2}
                           />
                         </div>
                         {!collapsed && (
                           <span className={`ml-3 flex-1 text-left text-sm whitespace-nowrap tracking-wide ${
-                            isActive ? "text-white font-bold" : sidebarTheme === "gradient" ? "text-white font-semibold" : item.isHighlighted ? "font-bold text-slate-800" : "font-semibold"
+                            isActive ? "text-white font-bold" : isDark ? "text-white font-semibold" : item.isHighlighted ? "font-bold text-slate-800" : "font-semibold"
                           }`}>
                             {item.label}
                           </span>
                         )}
                         {!collapsed && badge != null && (
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded-full transition-colors mr-2 shrink-0 ${
-                            sidebarTheme === "gradient" ? "bg-white/20 text-white" : isActive ? "bg-white/20 text-white" : "bg-amber-100 text-amber-700 group-hover:bg-amber-200"
+                            isDark ? "bg-white/20 text-white" : isActive ? "bg-white/20 text-white" : "bg-amber-100 text-amber-700 group-hover:bg-amber-200"
                           }`}>
                             {badge > 99 ? "99+" : badge}
                           </span>
                         )}
                         {!collapsed && (
-                          <GripVertical size={14} className={`hidden md:block ${sidebarTheme === "gradient" ? "text-white/30" : "text-slate-300"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 ${badge == null ? "ml-auto" : ""}`} />
+                          <GripVertical size={14} className={`hidden md:block ${isDark ? "text-white/30" : "text-slate-300"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 ${badge == null ? "ml-auto" : ""}`} />
                         )}
                       </Link>
                     </li>
@@ -638,11 +639,11 @@ export function PortalSidebar({
             </div>
           ))}
           {isLocalhost && (
-            <div className={`px-3 mt-4 pt-4 border-t ${sidebarTheme === "gradient" ? "border-white/10" : "border-slate-100"}`}>
+            <div className={`px-3 mt-4 pt-4 border-t ${isDark ? "border-white/10" : "border-slate-100"}`}>
               <Link
                 href="/klientska-zona"
                 className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl min-h-[44px] transition-colors ${
-                  sidebarTheme === "gradient"
+                  isDark
                     ? "text-white/90 hover:bg-white/10"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
@@ -660,13 +661,13 @@ export function PortalSidebar({
 
         {/* Spodní blok – profil + přepínač palety; konzistentní šířka a zarovnání (90°) */}
         <div
-          className={`flex-shrink-0 border-t ${sidebarTheme === "gradient" ? "border-white/10 bg-white/5" : "border-slate-100 bg-slate-50/50"}`}
+          className={`flex-shrink-0 border-t ${isDark ? "border-white/10 bg-white/5" : "border-slate-100 bg-slate-50/50"}`}
         >
           {/* Footer – profil */}
           <div className="w-full px-5 py-4">
             <Link
               href="/portal/setup?tab=profil"
-              className={`flex items-center group cursor-pointer p-2 -m-2 rounded-xl transition-colors w-full max-w-full ${collapsed ? "justify-center" : "justify-between"} ${sidebarTheme === "gradient" ? "hover:bg-white/10" : "hover:bg-white"}`}
+              className={`flex items-center group cursor-pointer p-2 -m-2 rounded-xl transition-colors w-full max-w-full ${collapsed ? "justify-center" : "justify-between"} ${isDark ? "hover:bg-white/10" : "hover:bg-white"}`}
               title={collapsed ? (userName ?? userEmail ?? "Profil") : undefined}
             >
               <div className="flex items-center gap-3 overflow-hidden min-w-0">
@@ -675,59 +676,181 @@ export function PortalSidebar({
                 </div>
                 {!collapsed && (
                   <div className="min-w-0">
-                    <p className={`text-sm font-black truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-900"}`}>{userName ?? userEmail ?? "Profil"}</p>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400"}`}>AIDVISORA CRM V2.0</p>
+                    <p className={`text-sm font-black truncate ${isDark ? "text-white" : "text-slate-900"}`}>{userName ?? userEmail ?? "Profil"}</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${isDark ? "text-white/60" : "text-slate-400"}`}>AIDVISORA CRM V2.0</p>
                   </div>
                 )}
               </div>
-              {!collapsed && <MoreVertical size={16} className={`shrink-0 ${sidebarTheme === "gradient" ? "text-white" : "text-slate-400 group-hover:text-slate-700"}`} />}
+              {!collapsed && (
+                <MoreVertical size={16} className={`shrink-0 ${isDark ? "text-white/70 group-hover:text-white" : "text-slate-400 group-hover:text-slate-700"}`} />
+              )}
             </Link>
           </div>
 
-          {/* Přepínač palety – w-full, obsah vycentrovaný, bez scale na hover */}
+          {(paletteOpen || zapOpen) && (
+            <div
+              className="fixed inset-0 z-[45]"
+              aria-hidden
+              onClick={() => {
+                setPaletteOpen(false);
+                setZapOpen(false);
+              }}
+            />
+          )}
           <div className="w-full px-5 pb-4 flex justify-center">
             <div
-              className={`inline-flex gap-0.5 rounded-full p-1.5 shadow-lg ${
-                sidebarTheme === "gradient"
-                  ? "bg-black/20 backdrop-blur-md border border-white/10"
-                  : "bg-slate-100 border border-slate-200"
+              className={`relative inline-flex gap-0.5 rounded-full p-1.5 shadow-lg ${
+                isDark ? "bg-black/20 backdrop-blur-md border border-white/10" : "bg-slate-100 border border-slate-200"
               }`}
             >
-              <button
-                type="button"
-                onClick={() => setTheme("white")}
-                className={`p-2.5 rounded-full transition-colors duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                  sidebarTheme === "white"
-                    ? "bg-slate-200 text-slate-800 shadow-sm"
-                    : sidebarTheme === "gradient"
-                      ? "text-white hover:text-white hover:bg-white/10"
-                      : "text-slate-500 hover:bg-slate-200"
-                }`}
-                title="Bílá"
-                aria-label="Bílé pozadí"
-              >
-                <Palette size={20} strokeWidth={2} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme("gradient")}
-                className={`p-2.5 rounded-full transition-colors duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                  sidebarTheme === "gradient"
-                    ? "bg-white/20 text-white shadow-sm"
-                    : "text-slate-500 hover:bg-slate-200"
-                }`}
-                title="Barevný"
-                aria-label="Barevný gradient"
-              >
-                <Zap size={20} strokeWidth={2} />
-              </button>
+              <div className="relative z-[50]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaletteOpen((o) => !o);
+                    setZapOpen(false);
+                  }}
+                  className={`p-2.5 rounded-full transition-colors duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                    paletteOpen
+                      ? isDark
+                        ? "bg-white/20 text-white shadow-sm"
+                        : "bg-slate-200 text-slate-800 shadow-sm"
+                      : isDark
+                        ? "text-white hover:bg-white/10"
+                        : "text-slate-500 hover:bg-slate-200"
+                  }`}
+                  title="Motiv"
+                  aria-label="Motiv aplikace: světlý, tmavý nebo systém"
+                  aria-expanded={paletteOpen}
+                >
+                  <Palette size={20} strokeWidth={2} />
+                </button>
+                {paletteOpen && (
+                  <div
+                    role="menu"
+                    className={`absolute bottom-full left-1/2 z-[60] mb-2 w-52 -translate-x-1/2 rounded-2xl border py-1.5 shadow-xl ${
+                      isDark ? "border-white/10 bg-aidv-surface-elevated" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setTheme("light");
+                        setPaletteOpen(false);
+                      }}
+                      className={`mx-1 flex min-h-[44px] w-[calc(100%-8px)] items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${
+                        theme === "light"
+                          ? isDark
+                            ? "bg-white/15 text-white"
+                            : "bg-slate-100 text-slate-900"
+                          : isDark
+                            ? "text-white/90 hover:bg-white/10"
+                            : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <Sun size={18} aria-hidden /> Světlý
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setTheme("dark");
+                        setPaletteOpen(false);
+                      }}
+                      className={`mx-1 flex min-h-[44px] w-[calc(100%-8px)] items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${
+                        theme === "dark"
+                          ? isDark
+                            ? "bg-white/15 text-white"
+                            : "bg-slate-100 text-slate-900"
+                          : isDark
+                            ? "text-white/90 hover:bg-white/10"
+                            : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <Moon size={18} aria-hidden /> Tmavý
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setTheme("system");
+                        setPaletteOpen(false);
+                      }}
+                      className={`mx-1 flex min-h-[44px] w-[calc(100%-8px)] items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${
+                        theme === "system"
+                          ? isDark
+                            ? "bg-white/15 text-white"
+                            : "bg-slate-100 text-slate-900"
+                          : isDark
+                            ? "text-white/90 hover:bg-white/10"
+                            : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <Monitor size={18} aria-hidden /> Systém
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="relative z-[50]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZapOpen((o) => !o);
+                    setPaletteOpen(false);
+                  }}
+                  className={`p-2.5 rounded-full transition-colors duration-300 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                    zapOpen
+                      ? isDark
+                        ? "bg-white/20 text-white shadow-sm"
+                        : "bg-slate-200 text-slate-800 shadow-sm"
+                      : isDark
+                        ? "text-white hover:bg-white/10"
+                        : "text-slate-500 hover:bg-slate-200"
+                  }`}
+                  title="Rychlé akce"
+                  aria-label="Rychlé akce z postranního panelu"
+                  aria-expanded={zapOpen}
+                >
+                  <Zap size={20} strokeWidth={2} />
+                </button>
+                {zapOpen && (
+                  <div
+                    role="menu"
+                    className={`absolute bottom-full left-1/2 z-[60] mb-2 max-h-[min(70vh,380px)] w-60 -translate-x-1/2 overflow-y-auto rounded-2xl border py-2 shadow-xl ${
+                      isDark ? "border-white/10 bg-aidv-surface-elevated" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <p
+                      className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${isDark ? "text-white/50" : "text-slate-400"}`}
+                    >
+                      Rychlé akce
+                    </p>
+                    {quickActionsReady &&
+                      quickActionItems.map((item) => (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          role="menuitem"
+                          onClick={() => setZapOpen(false)}
+                          className={`group flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-sm font-medium ${
+                            isDark ? "text-white/90 hover:bg-white/10" : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <QuickNewItemIcon item={item} />
+                          {item.label}
+                        </Link>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {onResize && !collapsed && (
           <div
-            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hidden md:block hover:bg-slate-200 active:bg-slate-300 transition-colors"
+            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hidden md:block hover:bg-slate-200 active:bg-slate-300 transition-colors dark:hover:bg-white/15 dark:active:bg-white/25"
             onMouseDown={(e) => {
               e.preventDefault();
               if (!onResize) return;

@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { getContactsCount } from "@/app/actions/contacts";
 import { PortalShell } from "./PortalShell";
 import { MobilePortalApp } from "./mobile/MobilePortalApp";
+import { PortalThemeProvider } from "./PortalThemeProvider";
 import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
 import "@/styles/aidvisora-monday.css";
 import "@/styles/board.css";
@@ -61,7 +62,15 @@ export default async function PortalLayout({
     cookieStore,
   });
   if (mobileUiEnabled) {
-    return <MobilePortalApp showTeamOverview={showTeamOverview} />;
+    return (
+      <PortalThemeProvider>
+        <MobilePortalApp showTeamOverview={showTeamOverview} />
+      </PortalThemeProvider>
+    );
   }
-  return <PortalShell showTeamOverview={showTeamOverview}>{children}</PortalShell>;
+  return (
+    <PortalThemeProvider>
+      <PortalShell showTeamOverview={showTeamOverview}>{children}</PortalShell>
+    </PortalThemeProvider>
+  );
 }

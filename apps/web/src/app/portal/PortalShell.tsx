@@ -193,11 +193,11 @@ function PortalShellInner({
           onMobileDrawerClose={() => setSidebarDrawerOpen(false)}
         />
         <div className="flex flex-col flex-1 min-w-0" style={{ marginLeft: mainMarginPx, transition: "margin-left 200ms ease-in-out" }}>
-          <header className="wp-app-header shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6 bg-white/80 backdrop-blur-md border-b border-slate-100 shadow-sm sticky top-0 z-sticky-header px-3 sm:px-6 md:px-8 pb-1.5 md:pb-4 pt-[calc(var(--safe-area-top)+0.25rem)] sm:pt-[calc(var(--safe-area-top)+0.5rem)] md:pt-[calc(var(--safe-area-top)+1rem)]">
+          <header className="wp-app-header shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6 sticky top-0 z-sticky-header px-3 sm:px-6 md:px-8 pb-1.5 md:pb-4 pt-[calc(var(--safe-area-top)+0.25rem)] sm:pt-[calc(var(--safe-area-top)+0.5rem)] md:pt-[calc(var(--safe-area-top)+1rem)]">
             <button
               type="button"
               onClick={() => setSidebarDrawerOpen(true)}
-              className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
+              className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
               aria-label="Otevřít menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" viewBox="0 0 24 24">
@@ -215,7 +215,7 @@ function PortalShellInner({
                 <button
                   type="button"
                   onClick={() => setMobileSearchOpen(true)}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 shrink-0"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10 shrink-0"
                   aria-label="Hledat"
                 >
                   <Search size={22} />
@@ -228,7 +228,7 @@ function PortalShellInner({
               {showScanInQuickMenu ? (
                 <Link
                   href="/portal/scan"
-                  className="sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 active:scale-[0.98] transition-transform"
+                  className="sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 active:scale-[0.98] transition-transform"
                   aria-label="Skenovat dokument"
                 >
                   <ScanLine size={22} aria-hidden />
@@ -242,7 +242,7 @@ function PortalShellInner({
                 <button
                   type="button"
                   onClick={() => setOverflowOpen((o) => !o)}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
                   aria-label="Další akce"
                   aria-expanded={overflowOpen}
                 >
@@ -251,9 +251,9 @@ function PortalShellInner({
                 {overflowOpen && (
                   <>
                     <div className="fixed inset-0 z-overlay" aria-hidden onClick={() => setOverflowOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 z-dropdown w-56 py-1 bg-white border border-slate-200 rounded-xl shadow-xl">
-                      <div className="px-3 py-2 border-b border-slate-100">
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Další</span>
+                    <div className="absolute right-0 top-full mt-1 z-dropdown w-56 py-1 bg-wp-surface border border-wp-border rounded-xl shadow-xl dark:shadow-black/40">
+                      <div className="px-3 py-2 border-b border-wp-border">
+                        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Další</span>
                       </div>
                       <div className="py-1" onClick={() => setOverflowOpen(false)}>
                         <div className="flex items-center gap-2 px-3 py-2">
@@ -270,16 +270,21 @@ function PortalShellInner({
             </div>
           </header>
           <div className="flex-1 flex min-h-0 wp-app-content pb-[var(--safe-area-bottom)]">
-            <div className="wp-app-content-inner">
-              {children}
+            <div className="wp-app-content-inner !flex !flex-col !min-h-0 !p-0 !pt-0">
+              <div className="wp-app-main-surface flex flex-1 flex-col min-h-0">
+                {/* Odpovídá dřívějšímu wp-app-content-inner padding (16/20/12 px pod breakpointem). */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-4 md:px-5 md:pb-6 lg:px-4 lg:pb-5 lg:pt-3">
+                  {children}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Mobile search overlay: full-screen (search gets ref when open) */}
         {isMobile && mobileSearchOpen && (
-          <div className="fixed inset-0 z-modal bg-white flex flex-col">
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 shrink-0 min-h-[44px]">
+          <div className="fixed inset-0 z-modal bg-wp-bg flex flex-col">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-wp-border shrink-0 min-h-[44px]">
               <div className="flex-1 min-w-0">
                 <Suspense fallback={<div className="h-9 flex-1 bg-slate-100 rounded animate-pulse" />}>
                   <PortalHeaderSearch ref={headerSearchRef} />
@@ -288,7 +293,7 @@ function PortalShellInner({
               <button
                 type="button"
                 onClick={() => setMobileSearchOpen(false)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10"
                 aria-label="Zavřít vyhledávání"
               >
                 ×

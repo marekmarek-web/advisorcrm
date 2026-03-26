@@ -1,0 +1,204 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Landmark, 
+  Gift, 
+  Cake, 
+  ChevronRight, 
+  Send, 
+  CalendarHeart,
+  Sparkles
+} from 'lucide-react';
+
+const CalendarWidgetShowcase = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isBusyDay, setIsBusyDay] = useState(false);
+
+  useEffect(() => { setIsLoaded(true); }, []);
+
+  // --- DATA PRO UKÁZKU STAVŮ ---
+  const data = isBusyDay ? {
+    holiday: { active: true, title: 'Velikonoční pondělí', desc: 'Státní svátek' },
+    nameDay: { name: 'Emanuel', active: true },
+    birthdays: [
+      { id: 1, name: 'Marek Pospíšil', age: 35, init: 'MP', color: 'bg-orange-500' },
+      { id: 2, name: 'Petra Nová', age: 42, init: 'PN', color: 'bg-rose-500' }
+    ]
+  } : {
+    holiday: { active: false, title: 'Žádný', desc: '(běžný pracovní den)' },
+    nameDay: { name: 'Emanuel', active: true },
+    birthdays: []
+  };
+
+  return (
+    <div className={`min-h-screen bg-[#F8FAFC] custom-dots flex flex-col items-center justify-center p-6 font-inter transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+      
+      {/* --- INJECT CSS FOR PREMIUM BRANDING --- */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+        .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        
+        .custom-dots {
+          background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+          background-size: 32px 32px;
+          background-position: -16px -16px;
+        }
+        
+        .premium-card {
+          background: #ffffff;
+          border: 1px solid #E2E8F0;
+          border-radius: 32px;
+          box-shadow: 0 4px 24px -6px rgba(15, 23, 42, 0.03), 0 0 1px rgba(15, 23, 42, 0.04);
+          transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      `}} />
+
+      {/* Tlačítko pro přepínání stavů (pouze pro účely dema) */}
+      <div className="mb-10 bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2">
+        <button 
+          onClick={() => setIsBusyDay(false)}
+          className={`px-6 py-2.5 rounded-xl text-sm font-jakarta font-bold transition-all ${!isBusyDay ? 'bg-[#0B1021] text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+        >
+          Klidný den
+        </button>
+        <button 
+          onClick={() => setIsBusyDay(true)}
+          className={`px-6 py-2.5 rounded-xl text-sm font-jakarta font-bold transition-all flex items-center gap-2 ${isBusyDay ? 'bg-gradient-to-r from-[#5A4BFF] to-[#8075FF] text-white shadow-md shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50'}`}
+        >
+          <Sparkles size={16} /> Akční den
+        </button>
+      </div>
+
+      {/* --- SAMOTNÝ WIDGET --- */}
+      <div className="premium-card w-full max-w-[1100px] p-8 md:p-10 relative overflow-hidden">
+        
+        {/* Jemný horní gradientový akcent pro prémiový feel */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#5A4BFF] via-purple-400 to-emerald-400 opacity-80"></div>
+
+        {/* Hlavička widgetu */}
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-base md:text-lg font-jakarta font-extrabold text-[#0B1021] flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-[#5A4BFF]">
+              <CalendarHeart size={20} />
+            </div>
+            Dnes v kalendáři
+          </h2>
+          <button className="text-xs font-jakarta font-bold text-[#5A4BFF] uppercase tracking-widest hover:underline flex items-center gap-1">
+            Zobrazit kalendář <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* 3-sloupcový Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          
+          {/* 1. Státní svátek */}
+          <div className={`rounded-[24px] p-6 border transition-all duration-500 flex flex-col justify-center ${
+            data.holiday.active 
+              ? 'bg-rose-50 border-rose-100/80 shadow-[0_4px_20px_-4px_rgba(244,63,94,0.15)] scale-[1.02]' 
+              : 'bg-slate-50/50 border-slate-100 hover:bg-slate-50'
+          }`}>
+            <div className="flex items-center gap-4 mb-3">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                data.holiday.active ? 'bg-rose-500 text-white shadow-md shadow-rose-200' : 'bg-white text-slate-400 border border-slate-200/60 shadow-sm'
+              }`}>
+                <Landmark size={22} strokeWidth={data.holiday.active ? 2.5 : 2} />
+              </div>
+              <div>
+                <p className={`text-[10px] font-jakarta font-extrabold uppercase tracking-widest mb-0.5 ${data.holiday.active ? 'text-rose-500' : 'text-slate-400'}`}>
+                  Státní svátek
+                </p>
+                <p className={`font-jakarta font-bold text-lg leading-tight ${data.holiday.active ? 'text-rose-950' : 'text-[#0B1021]'}`}>
+                  {data.holiday.title}
+                </p>
+                <p className={`text-xs font-medium mt-0.5 ${data.holiday.active ? 'text-rose-700' : 'text-slate-500'}`}>
+                  {data.holiday.desc}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Svátek podle jmen */}
+          <div className="rounded-[24px] p-6 border border-slate-100 bg-white hover:border-indigo-100 hover:shadow-[0_8px_24px_-8px_rgba(90,75,255,0.15)] transition-all duration-300 flex flex-col justify-center group cursor-default">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#5A4BFF] flex items-center justify-center shrink-0 border border-indigo-100/50 group-hover:scale-110 group-hover:bg-[#5A4BFF] group-hover:text-white transition-all duration-300">
+                <Gift size={22} />
+              </div>
+              <div>
+                <p className="text-[10px] font-jakarta font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">
+                  Svátek slaví
+                </p>
+                <p className="font-jakarta font-bold text-2xl text-[#0B1021] tracking-tight">
+                  {data.nameDay.name}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Narozeniny u kontaktů */}
+          <div className={`rounded-[24px] p-6 border transition-all duration-500 flex flex-col justify-center relative overflow-hidden ${
+            data.birthdays.length > 0 
+              ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-orange-200/50 shadow-[0_8px_24px_-8px_rgba(249,115,22,0.2)]' 
+              : 'bg-slate-50/50 border-slate-100 border-dashed'
+          }`}>
+            
+            {/* Dekorativní ikona na pozadí, pokud jsou narozeniny */}
+            {data.birthdays.length > 0 && (
+              <Cake size={120} className="absolute -right-6 -bottom-6 text-orange-500/5 rotate-12 pointer-events-none" />
+            )}
+
+            <div className="relative z-10 flex items-start gap-4">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                data.birthdays.length > 0 ? 'bg-orange-500 text-white shadow-md shadow-orange-200' : 'bg-slate-100/50 text-slate-400'
+              }`}>
+                <Cake size={22} strokeWidth={data.birthdays.length > 0 ? 2.5 : 2} />
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className={`text-[10px] font-jakarta font-extrabold uppercase tracking-widest ${data.birthdays.length > 0 ? 'text-orange-600' : 'text-slate-400'}`}>
+                    Narozeniny klientů
+                  </p>
+                  {data.birthdays.length > 0 && (
+                    <span className="px-2 py-0.5 bg-orange-200/50 text-orange-700 text-[10px] font-black rounded-lg">
+                      {data.birthdays.length} KLIENTI
+                    </span>
+                  )}
+                </div>
+
+                {data.birthdays.length === 0 ? (
+                  <p className="text-sm font-medium text-slate-500 mt-1">
+                    Dnes nikdo z kontaktů nemá narozeniny.
+                  </p>
+                ) : (
+                  <div className="space-y-3 mt-3">
+                    {data.birthdays.map(bday => (
+                      <div key={bday.id} className="flex items-center justify-between group/bday">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-full ${bday.color} text-white flex items-center justify-center text-xs font-bold shadow-sm`}>
+                            {bday.init}
+                          </div>
+                          <div>
+                            <p className="font-jakarta font-bold text-sm text-[#0B1021] leading-none">{bday.name}</p>
+                            <p className="text-[11px] font-semibold text-orange-600 mt-0.5">{bday.age} let</p>
+                          </div>
+                        </div>
+                        {/* Tlačítko popřát, které se ukáže po najetí */}
+                        <button className="w-8 h-8 rounded-full bg-white border border-orange-200 text-orange-500 flex items-center justify-center hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all shadow-sm">
+                          <Send size={14} className="ml-0.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+export default CalendarWidgetShowcase;

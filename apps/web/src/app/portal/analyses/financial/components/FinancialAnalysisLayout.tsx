@@ -198,7 +198,11 @@ export function FinancialAnalysisLayout() {
         <FinancialAnalysisToolbar />
 
         <div className="min-h-[min(50vh,320px)] sm:min-h-[320px] flex-1 min-h-0 overflow-x-hidden">
-          {StepComponent && <StepComponent />}
+          {StepComponent ? (
+            <StepComponent
+              key={`${Boolean(data.includeCompany)}-${currentStep}-${StepComponent.name ?? "step"}`}
+            />
+          ) : null}
         </div>
 
         <div className="sticky bottom-0 z-[5] -mx-3 sm:mx-0 mt-4 sm:mt-8 pt-4 pb-2 sm:pb-0 sm:pt-8 border-t border-slate-200 bg-white/95 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4 px-1 sm:px-0">

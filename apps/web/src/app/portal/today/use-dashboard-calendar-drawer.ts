@@ -8,8 +8,8 @@ const STORAGE_OPEN = "aidvisora_dashboard_calendar_open";
 /** Tailwind 2xl – velký desktop: panel defaultně otevřený. */
 const WIDE_MEDIA = "(min-width: 1536px)";
 
-export const DASHBOARD_CALENDAR_DRAWER_OPEN_PX = 380;
-export const DASHBOARD_CALENDAR_DRAWER_COLLAPSED_PX = 56;
+/** Šířka pravého panelu (slide-over) v px – zarovnáno s UX sidecalendar v2 (~420). */
+export const DASHBOARD_CALENDAR_DRAWER_OPEN_PX = 420;
 
 function readUserToggled(): boolean {
   if (typeof window === "undefined") return false;

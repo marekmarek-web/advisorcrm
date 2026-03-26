@@ -3,7 +3,7 @@
  */
 
 import type { FinancialAnalysisData, ClientInfo, PartnerInfo, ChildEntry } from "./types";
-import { splitFullName, parseFaBirthDateToIso } from "@/app/portal/analyses/financial/components/faClientMapper";
+import { splitFullName, parseFaBirthDateToIso } from "@/lib/analyses/financial/faNameUtils";
 
 export type FaSyncPersonRole = "primary" | "partner" | "child";
 
