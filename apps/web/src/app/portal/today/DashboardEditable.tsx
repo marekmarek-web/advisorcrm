@@ -60,7 +60,7 @@ import {
   type WidgetColorId,
 } from "./dashboard-config";
 import { useDashboardCalendarDrawer } from "./use-dashboard-calendar-drawer";
-import { createActionButtonClassName } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 const STORAGE_KEY = "aidvisora_dashboard_widgets";
 
@@ -671,20 +671,22 @@ export function DashboardEditable({
               { icon: Calculator, label: "Kalkulačky", href: "/portal/calculators", variant: "secondary" as const },
               { icon: PieChart, label: "Finanční analýza", href: "/portal/analyses/financial", variant: "secondary" as const },
               { icon: Calendar, label: "Kalendář", href: "/portal/calendar", variant: "secondary" as const },
-            ] as { icon: LucideIcon; label: string; href: string; variant: "create" | "secondary" }[]).map((btn, i) => (
-              <Link
-                key={i}
-                href={btn.href}
-                className={
-                  btn.variant === "create"
-                    ? `${createActionButtonClassName} shadow-lg`
-                    : "flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm min-h-[44px]"
-                }
-              >
-                <btn.icon size={16} className={btn.variant === "create" ? "opacity-90" : "opacity-70"} />
-                {btn.label}
-              </Link>
-            ))}
+            ] as { icon: LucideIcon; label: string; href: string; variant: "create" | "secondary" }[]).map((btn, i) =>
+              btn.variant === "create" ? (
+                <CreateActionButton key={i} href={btn.href} icon={btn.icon} className="shadow-lg">
+                  {btn.label}
+                </CreateActionButton>
+              ) : (
+                <Link
+                  key={i}
+                  href={btn.href}
+                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition-all hover:border-indigo-200 hover:bg-slate-50 hover:text-indigo-600"
+                >
+                  <btn.icon size={16} className="opacity-70" />
+                  {btn.label}
+                </Link>
+              ),
+            )}
           </div>
         </div>
 
@@ -907,13 +909,13 @@ export function DashboardEditable({
               </section>
             </div>
             <div className="border-t border-[color:var(--aidv-border-on-dark)] p-4 flex-shrink-0 bg-aidv-surface-elevated">
-              <button
+              <CreateActionButton
                 type="button"
                 onClick={() => router.push("/portal/calendar?new=1")}
-                className={`${createActionButtonClassName} w-full min-h-[48px] py-3 uppercase tracking-widest shadow-lg`}
+                className="w-full min-h-[48px] py-3 shadow-lg"
               >
-                <Plus size={18} /> Nová aktivita
-              </button>
+                Nová aktivita
+              </CreateActionButton>
             </div>
           </>
         )}

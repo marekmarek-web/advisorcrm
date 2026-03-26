@@ -44,6 +44,7 @@ import {
 import { getNotificationBadgeCount } from "@/app/actions/notification-log";
 import { getUnreadConversationsCount } from "@/app/actions/messages";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
   BottomSheet,
   EmptyState,
@@ -955,9 +956,9 @@ export function MobilePortalClient({
                 Další
               </button>
             ) : (
-              <button type="button" onClick={onTaskSave} className="flex-1 min-h-[44px] rounded-xl bg-aidv-create text-white text-sm font-bold">
+              <CreateActionButton type="button" onClick={onTaskSave} className="min-h-[44px] flex-1" icon={null}>
                 Vytvořit
-              </button>
+              </CreateActionButton>
             )}
           </div>
         </StepWizard>
@@ -1032,9 +1033,9 @@ export function MobilePortalClient({
               className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
             />
           </div>
-          <button type="button" onClick={onOpportunityCreate} className="min-h-[44px] w-full rounded-xl bg-aidv-create text-white text-sm font-bold">
+          <CreateActionButton type="button" onClick={onOpportunityCreate} className="min-h-[44px] w-full" icon={null}>
             Vytvořit případ
-          </button>
+          </CreateActionButton>
         </div>
       </BottomSheet>
 

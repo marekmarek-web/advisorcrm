@@ -23,6 +23,7 @@ import {
   deleteStandaloneMap,
   duplicateStandaloneMap,
 } from "@/app/actions/mindmap";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 function formatUpdated(updatedAt: Date): string {
   const d = new Date(updatedAt);
@@ -191,15 +192,13 @@ export function MindmapListClient({
               Klientské a libovolné mapy. Přehled, vyhledávání a rychlý přístup k editoru.
             </p>
           </div>
-          <button
+          <CreateActionButton
             type="button"
             onClick={() => handleCreateStandaloneMap()}
-            disabled={creating}
-            className="flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3 bg-aidv-create text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-[0.98] min-h-[44px] disabled:opacity-50"
+            isLoading={creating}
           >
-            <Plus size={18} />
             {creating ? "Vytvářím…" : "Nová mapa"}
-          </button>
+          </CreateActionButton>
         </div>
 
         {/* Hlavní vyhledávání */}

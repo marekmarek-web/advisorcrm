@@ -17,6 +17,7 @@ import {
   getReferralRequestSignals,
 } from "@/app/actions/referral";
 import { createTask } from "@/app/actions/tasks";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import type { ReferralSummary, ReferralRequestSignalsResult } from "@/lib/referral/types";
 
 export function ClientReferralSection({ contactId }: { contactId: string }) {
@@ -162,15 +163,15 @@ export function ClientReferralSection({ contactId }: { contactId: string }) {
               <>
                 <p className="text-sm font-medium text-slate-800">{primarySignal.description}</p>
                 <div className="flex flex-wrap gap-2">
-                  <button
+                  <CreateActionButton
                     type="button"
                     onClick={handleCreateReferralTask}
-                    disabled={creatingTask}
-                    className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-aidv-create text-white text-sm font-bold shadow-sm hover:bg-aidv-create-hover transition-colors disabled:opacity-60"
+                    isLoading={creatingTask}
+                    icon={ListTodo}
+                    className="px-4 py-2.5 shadow-sm"
                   >
-                    <ListTodo size={16} />
                     {creatingTask ? "Vytvářím…" : "Vytvořit úkol: Požádat o doporučení"}
-                  </button>
+                  </CreateActionButton>
                   <Link
                     href={`/portal/calendar?contactId=${contactId}&newEvent=1`}
                     className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-slate-50 transition-colors"
@@ -255,15 +256,15 @@ export function ClientReferralSection({ contactId }: { contactId: string }) {
               <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-5 flex flex-col gap-3">
                 <p className="text-sm font-medium text-slate-800">{primarySignal.description}</p>
                 <div className="flex flex-wrap gap-2">
-                  <button
+                  <CreateActionButton
                     type="button"
                     onClick={handleCreateReferralTask}
-                    disabled={creatingTask}
-                    className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-aidv-create text-white text-sm font-bold shadow-sm hover:bg-aidv-create-hover transition-colors disabled:opacity-60"
+                    isLoading={creatingTask}
+                    icon={ListTodo}
+                    className="px-4 py-2.5 shadow-sm"
                   >
-                    <ListTodo size={16} />
                     {creatingTask ? "Vytvářím…" : "Vytvořit úkol"}
-                  </button>
+                  </CreateActionButton>
                   <Link
                     href={`/portal/calendar?contactId=${contactId}&newEvent=1`}
                     className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-white text-indigo-700 text-sm font-semibold shadow-sm hover:bg-indigo-50 transition-colors"

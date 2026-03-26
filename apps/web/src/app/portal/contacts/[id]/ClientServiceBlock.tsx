@@ -18,6 +18,7 @@ import {
 import type { ServiceRecommendation, ServiceStatus } from "@/lib/service-engine/types";
 import { SERVICE_STATUS_LABELS } from "@/lib/service-engine/types";
 import { getServiceCtaHref } from "@/lib/service-engine/cta";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 function statusBadgeClass(status: ServiceStatus["status"]): string {
   switch (status) {
@@ -226,13 +227,9 @@ export function ClientServiceBlock({ contactId }: { contactId: string }) {
                         </p>
                       )}
                     </div>
-                    <Link
-                      href={cta.href}
-                      className="shrink-0 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-aidv-create text-white text-sm font-bold shadow-sm hover:bg-aidv-create-hover transition-colors"
-                    >
+                    <CreateActionButton href={cta.href} icon={ChevronRight} className="shrink-0 px-4 py-2.5 shadow-sm">
                       {cta.label}
-                      <ChevronRight size={16} />
-                    </Link>
+                    </CreateActionButton>
                   </div>
                 </li>
               );

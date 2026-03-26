@@ -21,7 +21,7 @@ import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 import { SkeletonLine } from "@/app/components/Skeleton";
 import { SwipeTaskItem } from "@/app/components/SwipeTaskItem";
 import { CustomDropdown as CustomDropdownUI } from "@/app/components/ui/CustomDropdown";
-import { createActionButtonClassName } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import type { LucideIcon } from "lucide-react";
 import {
   CheckCircle2,
@@ -417,9 +417,9 @@ function TaskSettingsModal({ settings, onSave, onClose }: { settings: TaskSettin
           <button onClick={onClose} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors shadow-sm">
             Zrušit
           </button>
-          <button onClick={handleSave} className="px-8 py-2.5 bg-aidv-create hover:bg-aidv-create-hover text-white rounded-xl text-sm font-black tracking-wide shadow-xl shadow-slate-900/20 transition-all active:scale-95 flex items-center gap-2">
-            <Check size={16} /> Uložit
-          </button>
+          <CreateActionButton type="button" onClick={handleSave} icon={Check}>
+            Uložit
+          </CreateActionButton>
         </div>
 
       </div>
@@ -663,13 +663,14 @@ function NewTaskWizard({
               Další krok <ChevronRight size={16} />
             </button>
           ) : (
-            <button
+            <CreateActionButton
+              type="button"
               onClick={handleCreate}
-              disabled={submitting}
-              className="px-8 py-2.5 bg-aidv-create hover:bg-aidv-create-hover text-white rounded-xl text-sm font-black tracking-wide shadow-xl shadow-slate-900/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+              isLoading={submitting}
+              icon={Check}
             >
-              <Check size={16} /> {submitting ? "Vytvářím..." : "Vytvořit úkol"}
-            </button>
+              {submitting ? "Vytvářím..." : "Vytvořit úkol"}
+            </CreateActionButton>
           )}
         </div>
 
@@ -901,13 +902,9 @@ function TasksPageContent() {
               >
                 <Settings2 size={16} /> Nastavení
               </button>
-              <button
-                type="button"
-                onClick={() => setIsWizardOpen(true)}
-                className={`${createActionButtonClassName} shadow-lg shadow-indigo-900/20`}
-              >
-                <Plus size={16} strokeWidth={2.5} /> Nový úkol
-              </button>
+              <CreateActionButton type="button" onClick={() => setIsWizardOpen(true)}>
+                Nový úkol
+              </CreateActionButton>
             </div>
           </div>
 

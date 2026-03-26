@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Download, Upload, Phone, Mail, CheckSquare, ArrowRight, MessageSquare, Tags, UserCog } from "lucide-react";
+import { Download, Upload, Phone, Mail, CheckSquare, ArrowRight, MessageSquare, Tags, UserCog, UserPlus } from "lucide-react";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { NewClientWizard } from "@/app/components/aidvisora/NewClientWizard";
 import { useToast } from "@/app/components/Toast";
@@ -17,7 +17,7 @@ import {
 } from "@/app/components/list-page";
 import { SkeletonLine, SkeletonTableRow } from "@/app/components/Skeleton";
 import { exportContactsCsv, updateContactsLifecycle, addTagToContacts, type ContactRow } from "@/app/actions/contacts";
-import { createActionButtonClassNameCompact } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 const LIFECYCLE_TABS: { value: string; label: string }[] = [
   { value: "", label: "Všichni" },
@@ -225,10 +225,9 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
                 <Download size={16} />
                 <span className="hidden sm:inline">Exportovat CSV</span>
               </button>
-              <button type="button" onClick={() => setWizardOpen(true)} className={createActionButtonClassNameCompact}>
-                <Plus size={16} />
+              <CreateActionButton type="button" onClick={() => setWizardOpen(true)} icon={UserPlus}>
                 Nový klient
-              </button>
+              </CreateActionButton>
             </>
           }
         />

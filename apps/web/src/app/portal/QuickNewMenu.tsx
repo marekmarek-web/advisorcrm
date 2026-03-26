@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus } from "lucide-react";
 import { QuickActionsMenuContent } from "@/app/portal/quick-new-ui";
-import { dashboardPrimaryCtaClassNameNav } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 export function QuickNewMenu() {
   const [open, setOpen] = useState(false);
@@ -28,23 +27,21 @@ export function QuickNewMenu() {
 
   return (
     <div className="relative shrink-0" ref={ref}>
-      <button
+      <CreateActionButton
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`${dashboardPrimaryCtaClassNameNav} transition-all duration-200 ${
-          open ? "bg-aidv-dashboard-cta-hover shadow-lg scale-[0.98]" : ""
-        }`}
+        iconClassName={open ? "rotate-45 duration-200" : "duration-200"}
+        className={open ? "!bg-aidv-create-hover shadow-lg scale-[0.98] hover:!translate-y-0" : undefined}
         aria-expanded={open}
         aria-haspopup="true"
         aria-label="Nový – rychlé akce"
       >
-        <Plus size={18} strokeWidth={2.5} className={`shrink-0 transition-transform duration-200 ${open ? "rotate-45" : "group-hover:scale-110"}`} />
-        <span className="hidden sm:block">Nový</span>
-      </button>
+        <span className="hidden sm:inline">Nový</span>
+      </CreateActionButton>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl shadow-xl border border-slate-100 bg-white p-2"
+          className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl"
         >
           <QuickActionsMenuContent variant="dropdown" onClose={() => setOpen(false)} />
         </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { updateOpportunity } from "@/app/actions/pipeline";
 import type { OpportunityDetail } from "@/app/actions/pipeline";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 const SECTIONS: {
   key: string;
@@ -154,15 +155,9 @@ export function OpportunityCustomFieldsTab({
           </div>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={saving}
-        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-8 py-3.5 bg-aidv-create hover:bg-aidv-create-hover text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-50"
-      >
-        <Save size={16} aria-hidden />
+      <CreateActionButton type="button" onClick={handleSave} isLoading={saving} icon={Save}>
         {saving ? "Ukládám…" : "Uložit vlastní pole"}
-      </button>
+      </CreateActionButton>
     </div>
   );
 }

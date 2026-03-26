@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   BarChart2,
   Search,
-  Plus,
   Filter,
   FileText,
   FileCheck,
@@ -24,6 +23,7 @@ import {
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 import { setFinancialAnalysisStatus } from "@/app/actions/financial-analyses";
 import { formatUpdated, TABS, matchesTab, isCompleted, type TabId } from "./analyses-page-utils";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 export default function AnalysesPageClient({ analyses }: { analyses: FinancialAnalysisListItem[] }) {
   const router = useRouter();
@@ -97,13 +97,7 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
               Uložené analýzy, rozpracované koncepty a nástroje pro tvorbu doporučení.
             </p>
           </div>
-          <Link
-            href="/portal/analyses/financial"
-            className="flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3 bg-aidv-create text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-[0.98] min-h-[44px]"
-          >
-            <Plus size={18} />
-            Nová analýza
-          </Link>
+          <CreateActionButton href="/portal/analyses/financial">Nová analýza</CreateActionButton>
         </div>
 
         {/* Zvýrazněná CTA karta – Wizard */}
@@ -185,13 +179,7 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
             <p className="text-sm text-slate-500 mb-6">
               Vytvořte novou analýzu nebo otevřete analýzu z profilu klienta.
             </p>
-            <Link
-              href="/portal/analyses/financial"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-all"
-            >
-              <Plus size={16} />
-              Nová analýza
-            </Link>
+            <CreateActionButton href="/portal/analyses/financial">Nová analýza</CreateActionButton>
           </div>
         ) : filteredList.length === 0 ? (
           <div className="p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50">

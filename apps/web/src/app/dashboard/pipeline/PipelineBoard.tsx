@@ -33,8 +33,10 @@ import {
   Clock,
   Briefcase,
   Layers,
+  Save,
 } from "lucide-react";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { useToast } from "@/app/components/Toast";
 import { PIPELINE_COLUMN_THEMES as COLUMN_THEMES } from "@/lib/pipeline/column-themes";
 
@@ -261,13 +263,9 @@ function CreateForm({
         <button type="button" onClick={onDone} className="px-5 py-2.5 rounded-[var(--wp-radius-sm)] font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
           Zrušit
         </button>
-        <button
-          type="submit"
-          disabled={pending}
-          className="px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-aidv-create text-white hover:bg-aidv-create-hover shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-70"
-        >
+        <CreateActionButton type="submit" isLoading={pending} icon={Briefcase} className="rounded-[14px] px-6 py-2.5">
           {pending ? "Ukládám…" : "Vytvořit případ"}
-        </button>
+        </CreateActionButton>
       </div>
     </form>
   );
@@ -365,13 +363,9 @@ function EditForm({
         <button type="button" onClick={onDone} className="px-5 py-2.5 rounded-[var(--wp-radius-sm)] font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
           Zrušit
         </button>
-        <button
-          type="submit"
-          disabled={pending}
-          className="px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-aidv-create text-white hover:bg-aidv-create-hover shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-70"
-        >
+        <CreateActionButton type="submit" isLoading={pending} icon={Save} className="rounded-[14px] px-6 py-2.5">
           {pending ? "Ukládám…" : "Uložit změny"}
-        </button>
+        </CreateActionButton>
       </div>
     </form>
   );
@@ -617,13 +611,9 @@ export function PipelineBoard({
             >
               <Sparkles size={14} className="text-amber-500" /> AI Analýza pipeline
             </button>
-            <button
-              type="button"
-              onClick={() => setCreateStageId(localStages[0]?.id ?? null)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"
-            >
-              <Plus size={14} /> Nový obchod
-            </button>
+            <CreateActionButton type="button" onClick={() => setCreateStageId(localStages[0]?.id ?? null)} icon={Plus}>
+              Nový obchod
+            </CreateActionButton>
           </div>
         </div>
 

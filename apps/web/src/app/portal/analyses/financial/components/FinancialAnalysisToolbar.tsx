@@ -8,7 +8,7 @@ import { exportToFile } from "@/lib/analyses/financial/saveLoad";
 import { saveFinancialAnalysisDraft } from "@/app/actions/financial-analyses";
 import { Download, FolderOpen, PlusCircle, CloudUpload, List, UserPlus } from "lucide-react";
 
-import { createActionButtonClassName } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 export function FinancialAnalysisToolbar() {
   const router = useRouter();
@@ -133,15 +133,15 @@ export function FinancialAnalysisToolbar() {
           className="hidden"
         />
       </label>
-      <button
+      <CreateActionButton
         type="button"
         onClick={handleReset}
-        className={`${createActionButtonClassName} min-w-[44px] text-sm normal-case tracking-normal shadow-lg`}
+        className="min-w-[44px] shadow-lg"
         title="Začít nový plán"
+        icon={PlusCircle}
       >
-        <PlusCircle className="w-4 h-4" />
         <span className="hidden sm:inline">Nový plán</span>
-      </button>
+      </CreateActionButton>
     </div>
   );
 }

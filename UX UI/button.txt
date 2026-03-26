@@ -1,0 +1,154 @@
+"use client";
+
+import React, { useState } from 'react';
+import { Plus, UserPlus, Building2, Briefcase, CheckSquare, Sparkles } from 'lucide-react';
+
+// ============================================================================
+// 1. ZDE JE SAMOTNÁ REUSABLE KOMPONENTA (Tuto část si zkopíruj do projektu)
+// ============================================================================
+
+export const ActionButton = ({ 
+  children, 
+  icon: Icon = Plus, 
+  onClick, 
+  isLoading = false, 
+  className = "",
+  ...props 
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      disabled={isLoading}
+      className={`
+        relative inline-flex items-center justify-center gap-2 
+        px-6 py-3.5
+        bg-[#0f172a] text-white 
+        rounded-[14px]
+        text-xs font-black uppercase tracking-[0.15em]
+        shadow-lg shadow-slate-900/20
+        transition-all duration-300 ease-out
+        hover:bg-[#1e293b] hover:shadow-indigo-500/25 hover:-translate-y-0.5
+        active:scale-[0.96] active:translate-y-0 active:shadow-sm
+        disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:transform-none disabled:hover:shadow-slate-900/20
+        overflow-hidden group
+        ${className}
+      `}
+      {...props}
+    >
+      {/* Shine / Odlesk efekt na hover */}
+      <div className="absolute inset-0 -translate-x-[150%] group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 z-0 pointer-events-none"></div>
+      
+      {/* Obsah tlačítka */}
+      <div className="relative z-10 flex items-center gap-2.5">
+        {isLoading ? (
+          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0"></div>
+        ) : (
+          Icon && <Icon size={18} strokeWidth={2.5} className="shrink-0 transition-transform duration-300 group-hover:scale-110 group-active:scale-95" />
+        )}
+        <span className="mt-[1px]">{children}</span>
+      </div>
+    </button>
+  );
+};
+
+// ============================================================================
+// 2. SHOWCASE PROSTŘEDÍ (Pouze pro vizualizaci možností)
+// ============================================================================
+
+export default function ActionButtonShowcase() {
+  const [isSimulatingLoad, setIsSimulatingLoad] = useState(false);
+
+  const handleDemoClick = () => {
+    setIsSimulatingLoad(true);
+    setTimeout(() => {
+      setIsSimulatingLoad(false);
+    }, 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-800 p-8 md:p-16 flex flex-col items-center selection:bg-indigo-500 selection:text-white">
+      
+      {/* Definice animace pro odlesk (Vlož do svého global.css nebo tailwind.config.js) */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap');
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        @keyframes shimmer {
+          100% { transform: translateX(150%); }
+        }
+      `}</style>
+
+      <div className="w-full max-w-4xl bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+        
+        {/* Hlavička Showcase */}
+        <div className="p-10 border-b border-slate-100 bg-slate-50/50 text-center">
+          <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <Sparkles size={32} />
+          </div>
+          <h1 className="text-3xl font-display font-black text-slate-900 tracking-tight mb-2">
+            Ultimátní Action Button
+          </h1>
+          <p className="text-slate-500 font-medium max-w-lg mx-auto">
+            Sjednocená komponenta pro všechny primární akce v Aidvisora CRM.
+            Podporuje různé ikony, loading stavy a má plynulé hover animace.
+          </p>
+        </div>
+
+        <div className="p-10 space-y-12">
+          
+          {/* SEKCE 1: Základní použití (Podle screenshotů) */}
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b border-slate-100 pb-2">1. Výchozí použití (Dle zadání)</h3>
+            <div className="flex flex-wrap items-center gap-6 bg-slate-50 p-8 rounded-3xl border border-slate-100">
+              <ActionButton onClick={handleDemoClick}>
+                Nový úkol
+              </ActionButton>
+              
+              <ActionButton onClick={handleDemoClick}>
+                Nová domácnost
+              </ActionButton>
+            </div>
+          </div>
+
+          {/* SEKCE 2: Variace ikon */}
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b border-slate-100 pb-2">2. Různé ikony</h3>
+            <div className="flex flex-wrap items-center gap-6">
+              <ActionButton icon={UserPlus}>
+                Nový klient
+              </ActionButton>
+              
+              <ActionButton icon={Briefcase}>
+                Nový obchod
+              </ActionButton>
+
+              <ActionButton icon={Building2}>
+                Nová rodina
+              </ActionButton>
+            </div>
+          </div>
+
+          {/* SEKCE 3: Interaktivita (Loading State) */}
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b border-slate-100 pb-2">3. Interaktivita (Loading)</h3>
+            <div className="flex flex-wrap items-center gap-6">
+              <ActionButton 
+                onClick={handleDemoClick}
+                isLoading={isSimulatingLoad}
+                icon={CheckSquare}
+              >
+                {isSimulatingLoad ? 'Ukládám...' : 'Klikni pro uložení'}
+              </ActionButton>
+            </div>
+            <p className="text-xs text-slate-400 mt-3 font-medium">
+              Pokud předáte prop <code>isLoading={'{true}'}</code>, tlačítko se automaticky zneaktivní a zobrazí načítací animaci.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}

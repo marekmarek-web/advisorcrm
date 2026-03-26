@@ -3,7 +3,8 @@
 import { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Home, Plus, ChevronDown, ChevronUp, User, Baby, Filter } from "lucide-react";
+import { Home, Plus, ChevronDown, ChevronUp, User, Baby, Filter, Building2 } from "lucide-react";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { deleteHousehold } from "@/app/actions/households";
 import type { HouseholdRowWithMembers, HouseholdMemberSummary } from "@/app/actions/households";
 import {
@@ -116,14 +117,9 @@ export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] 
           totalCount={list.length}
           subtitle="Seskupení kontaktů a členů domácnosti."
           actions={
-            <button
-              type="button"
-              onClick={() => setShowWizard(true)}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-aidv-create text-white rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-md hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 shrink-0 min-h-[44px]"
-            >
-              <Plus size={16} />
+            <CreateActionButton type="button" onClick={() => setShowWizard(true)} icon={Building2}>
               Nová domácnost
-            </button>
+            </CreateActionButton>
           }
         />
 

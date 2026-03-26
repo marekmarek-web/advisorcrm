@@ -20,6 +20,7 @@ import {
 import { useAiAssistantDrawer } from "@/app/portal/AiAssistantDrawerContext";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { isLikelyPdfUpload } from "@/lib/security/file-signature";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import type { ProcessingStatus, ReviewStatus } from "@/lib/ai-review/types";
 
 type ReviewItem = {
@@ -512,12 +513,13 @@ export default function ContractReviewListPage() {
                             <span>Smazat</span>
                           </button>
                           {row.reviewStatus !== "applied" && (
-                            <Link
+                            <CreateActionButton
                               href={`/portal/contracts/review/${row.id}`}
-                              className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-aidv-create-hover transition-all active:scale-95"
+                              icon={ArrowRight}
+                              className="px-4 py-2 shadow-md"
                             >
-                              Provést revizi <ArrowRight size={14} />
-                            </Link>
+                              Provést revizi
+                            </CreateActionButton>
                           )}
                           {row.reviewStatus === "applied" && (
                             <Link

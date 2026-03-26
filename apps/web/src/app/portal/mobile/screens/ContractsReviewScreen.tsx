@@ -26,6 +26,7 @@ import {
   rejectContractReview,
   selectMatchedClient,
 } from "@/app/actions/contract-review";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
   BottomSheet,
   EmptyState,
@@ -435,14 +436,15 @@ function ReviewDetailPanel({
             </button>
           ) : null}
           {isApprovedOnly && !isApplied && hasResolvedClient ? (
-            <button
+            <CreateActionButton
               type="button"
               onClick={onApply}
               disabled={pending}
-              className="w-full min-h-[44px] rounded-xl bg-aidv-create text-white text-xs font-black uppercase tracking-wide"
+              className="min-h-[44px] w-full"
+              icon={null}
             >
               Zapsat do CRM
-            </button>
+            </CreateActionButton>
           ) : null}
         </div>
       </MobileCard>

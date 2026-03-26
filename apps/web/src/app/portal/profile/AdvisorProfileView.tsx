@@ -29,6 +29,7 @@ import {
 import { WorkspaceStripeBilling } from "@/app/components/billing/WorkspaceStripeBilling";
 import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
 import type { SupervisorOption } from "@/app/actions/auth";
 import {
@@ -368,14 +369,15 @@ export function AdvisorProfileView({
               Uloženo
             </p>
           )}
-          <button
+          <CreateActionButton
             type="button"
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 sm:px-6 py-2.5 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-60 disabled:pointer-events-none min-h-[44px]"
+            isLoading={saving}
+            icon={Save}
+            className="px-4 sm:px-6"
           >
-            <Save size={16} aria-hidden /> {saving ? "Ukládám…" : "Uložit změny"}
-          </button>
+            {saving ? "Ukládám…" : "Uložit změny"}
+          </CreateActionButton>
         </div>
       </header>
 

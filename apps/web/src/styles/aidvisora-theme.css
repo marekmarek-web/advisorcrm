@@ -38,9 +38,9 @@
   --aidv-accent-purple: #6d28d9;
   --aidv-accent-purple-soft: rgba(109, 40, 217, 0.35);
 
-  /* Primární create akce (+ Nový klient, úkol, zápis, aktivita…) */
-  --aidv-create-bg: #1a1c2e;
-  --aidv-create-bg-hover: #2a2d4a;
+  /* Primární create akce (+ Nový …) – shodně s UX UI/button.txt */
+  --aidv-create-bg: #0f172a;
+  --aidv-create-bg-hover: #1e293b;
 
   /* Dashboard / header CTA (AI „Otevřít asistenta“ rodina) */
   --aidv-dashboard-cta-bg: #4f46e5;

@@ -17,6 +17,7 @@ import {
   Trash2,
   FileText,
   CheckCircle2,
+  Check,
   X,
 } from "lucide-react";
 import {
@@ -29,7 +30,7 @@ import {
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { ContactRow } from "@/app/actions/contacts";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
-import { createActionButtonClassName } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 const BOARD_POSITIONS_KEY = "portal-notes-board-positions";
 
@@ -407,9 +408,9 @@ export function NotesVisionBoard({
           >
             <Sparkles size={16} className="text-amber-500" /> <span className="hidden sm:inline">{aiLoading ? "Zpracovávám…" : "AI Sumarizace"}</span><span className="sm:hidden">{aiLoading ? "…" : "AI"}</span>
           </button>
-          <button type="button" onClick={handleOpenNew} className={`${createActionButtonClassName} text-sm normal-case tracking-normal min-w-[44px]`}>
-            <Plus size={18} /> <span className="hidden sm:inline">Nový zápis</span>
-          </button>
+          <CreateActionButton type="button" onClick={handleOpenNew} className="min-w-[44px]">
+            <span className="hidden sm:inline">Nový zápis</span>
+          </CreateActionButton>
         </div>
       </div>
 
@@ -441,9 +442,9 @@ export function NotesVisionBoard({
               </div>
               <h2 className="text-lg font-bold text-slate-800 mb-2">Žádné zápisky</h2>
               <p className="text-slate-500 text-sm mb-6">Vytvořte zápisek nebo přepněte na Board.</p>
-              <button type="button" onClick={handleOpenNew} className={`${createActionButtonClassName} text-sm normal-case tracking-normal px-6 py-3`}>
-                <Plus size={20} /> Nový zápisek
-              </button>
+              <CreateActionButton type="button" onClick={handleOpenNew}>
+                Nový zápisek
+              </CreateActionButton>
             </div>
           ) : (
             <ul className="p-4 space-y-3">
@@ -503,13 +504,9 @@ export function NotesVisionBoard({
               <p className="text-slate-500 mb-8 leading-relaxed">
                 Všechny zápisky ze schůzek můžete mít zde jako karty a libovolně je přesouvat.
               </p>
-              <button
-                type="button"
-                onClick={handleOpenNew}
-                className={`${createActionButtonClassName} px-8 py-4 rounded-2xl text-base normal-case tracking-normal shadow-xl`}
-              >
-                <Plus size={24} /> Vytvořit první zápisek
-              </button>
+              <CreateActionButton type="button" onClick={handleOpenNew} className="px-8 py-4 shadow-xl">
+                Vytvořit první zápisek
+              </CreateActionButton>
             </div>
           </div>
         )}
@@ -760,14 +757,16 @@ export function NotesVisionBoard({
                   Zrušit
                 </button>
               )}
-              <button
+              <CreateActionButton
                 type="button"
                 onClick={handleSave}
-                disabled={!isFormValid || saving}
-                className={`flex-1 ${createActionButtonClassName} py-3.5 normal-case tracking-normal text-sm shadow-lg disabled:hover:translate-y-0`}
+                disabled={!isFormValid}
+                isLoading={saving}
+                icon={Check}
+                className="min-w-0 flex-1 shadow-lg"
               >
                 {saving ? "Ukládám…" : editingId ? "Uložit změny" : "Přidat na plátno"}
-              </button>
+              </CreateActionButton>
             </div>
           </div>
         </div>

@@ -21,6 +21,7 @@ import {
 } from "@/app/portal/calendar/event-categories";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 export interface EventFormData {
   title: string;
@@ -436,14 +437,15 @@ export function CalendarEventForm({
           >
             Zrušit
           </button>
-          <button
+          <CreateActionButton
             type="submit"
-            disabled={saving || !form.title.trim() || !form.startAt}
-            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-aidv-create text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
+            disabled={!form.title.trim() || !form.startAt}
+            isLoading={saving}
+            icon={Check}
+            className="min-h-[48px] min-w-0 flex-1 shadow-lg"
           >
-            <Check size={16} />
             {saving ? "Ukládám…" : initial.id ? "Uložit" : "Vytvořit"}
-          </button>
+          </CreateActionButton>
         </div>
       </form>
       </div>

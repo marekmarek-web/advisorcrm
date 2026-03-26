@@ -31,6 +31,7 @@ import {
   type SupervisorOption,
 } from "@/app/actions/auth";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { getDefaultQuickActionsConfig } from "@/lib/quick-actions";
 import { usePushNotifications } from "@/lib/push/usePushNotifications";
 import {
@@ -626,13 +627,9 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
               </div>
             </button>
           ))}
-          <button
-            type="button"
-            onClick={saveNotifications}
-            className="w-full min-h-[48px] rounded-xl bg-aidv-create text-white text-sm font-bold"
-          >
+          <CreateActionButton type="button" onClick={saveNotifications} className="min-h-[48px] w-full" icon={null}>
             Uložit preference
-          </button>
+          </CreateActionButton>
         </div>
       </BottomSheet>
 

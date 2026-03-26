@@ -31,6 +31,7 @@ import {
   type PortalNotificationRow,
 } from "@/app/actions/portal-notifications";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
   getMessages,
   getUnreadAdvisorMessagesForClientCount,
@@ -635,9 +636,9 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           />
           <input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="Jméno a příjmení" />
           <input type="date" value={newMemberBirthDate} onChange={(e) => setNewMemberBirthDate(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" />
-          <button type="button" onClick={addHouseholdMember} className="w-full min-h-[44px] rounded-xl bg-aidv-create text-white text-sm font-bold">
+          <CreateActionButton type="button" onClick={addHouseholdMember} className="min-h-[44px] w-full" icon={null}>
             Přidat člena
-          </button>
+          </CreateActionButton>
         </div>
       </BottomSheet>
 

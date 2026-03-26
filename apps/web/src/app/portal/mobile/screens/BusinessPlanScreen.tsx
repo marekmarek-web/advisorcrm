@@ -22,6 +22,7 @@ import {
   type PlanProgressResult,
   type PlanWithTargetsRow,
 } from "@/app/actions/business-plan";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { getCurrentPeriodNumbers } from "@/lib/business-plan/types";
 import {
   AIInsightCard,
@@ -589,13 +590,9 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
           >
             <Plus size={14} /> Přidat cíl
           </button>
-          <button
-            type="button"
-            onClick={saveVision}
-            className="w-full min-h-[48px] rounded-xl bg-aidv-create text-white text-sm font-bold"
-          >
+          <CreateActionButton type="button" onClick={saveVision} className="min-h-[48px] w-full" icon={null}>
             Uložit vizi
-          </button>
+          </CreateActionButton>
         </div>
       </BottomSheet>
     </>

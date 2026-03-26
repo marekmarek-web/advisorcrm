@@ -25,6 +25,7 @@ import { CalendarLeftPanel } from "@/app/portal/calendar/CalendarLeftPanel";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
 import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
 
 type ViewMode = "day" | "month" | "week" | "workweek";
@@ -320,15 +321,15 @@ function NewTaskModal({
               <ChevronRight size={16} />
             </button>
           ) : (
-            <button
+            <CreateActionButton
               type="button"
               onClick={handleSubmit}
-              disabled={saving || !title.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-aidv-create text-white text-sm font-bold rounded-xl hover:bg-aidv-create-hover disabled:opacity-50 transition-all shadow-lg"
+              disabled={!title.trim()}
+              isLoading={saving}
+              icon={Check}
             >
-              <Check size={16} />
               {saving ? "Vytvářím…" : "Vytvořit úkol"}
-            </button>
+            </CreateActionButton>
           )}
         </div>
       </div>
@@ -745,14 +746,14 @@ function EventFormModal({
             <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
               Zrušit
             </button>
-            <button
+            <CreateActionButton
               type="submit"
-              disabled={saving || !form.title.trim() || !form.startAt}
-              className="flex items-center gap-2 px-6 py-2.5 bg-aidv-create text-white text-sm font-bold rounded-xl hover:bg-aidv-create-hover disabled:opacity-50 transition-all shadow-lg"
+              disabled={!form.title.trim() || !form.startAt}
+              isLoading={saving}
+              icon={Check}
             >
-              <Check size={16} />
               {saving ? "Ukládám…" : initial.id ? "Uložit" : "Vytvořit"}
-            </button>
+            </CreateActionButton>
           </div>
         </form>
       </div>

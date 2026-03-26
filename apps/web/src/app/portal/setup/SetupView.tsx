@@ -43,6 +43,7 @@ import {
 } from "@/lib/quick-actions";
 import { WorkspaceStripeBilling } from "@/app/components/billing/WorkspaceStripeBilling";
 import { useToast } from "@/app/components/Toast";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
 
@@ -689,14 +690,14 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-slate-700 min-h-[44px]"
               />
             </div>
-            <button
+            <CreateActionButton
               type="button"
               onClick={handleGlobalSave}
               disabled={globalSaveDisabled}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none min-h-[44px]"
+              icon={Check}
             >
-              <Check size={16} /> Uložit změny
-            </button>
+              Uložit změny
+            </CreateActionButton>
           </div>
         </div>
 
@@ -906,14 +907,15 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                     )}
                   </div>
                   <div className="px-10 py-6 bg-slate-50/80 border-t border-slate-100 relative z-10">
-                    <button
+                    <CreateActionButton
                       type="button"
-                      disabled={quickSaving}
                       onClick={handleSaveQuickActions}
-                      className="flex items-center gap-2 px-10 py-3.5 bg-aidv-create text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 min-h-[44px]"
+                      isLoading={quickSaving}
+                      icon={Check}
+                      className="px-10 py-3.5"
                     >
-                      <Check size={18} /> {quickSaving ? "Ukládám…" : "Uložit"}
-                    </button>
+                      {quickSaving ? "Ukládám…" : "Uložit"}
+                    </CreateActionButton>
                   </div>
                 </div>
               </div>
@@ -1350,9 +1352,14 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 <button type="button" className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm hover:shadow-md hover:bg-slate-50 transition-all min-h-[44px]">
                   <Server size={16} /> Filtry
                 </button>
-                <button type="button" onClick={() => toast.showToast("Díky, návrhy integrací sbíráme průběžně.")} className="flex items-center gap-2 px-5 py-2.5 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]">
-                  <Check size={16} /> Navrhnout integraci
-                </button>
+                <CreateActionButton
+                  type="button"
+                  onClick={() => toast.showToast("Díky, návrhy integrací sbíráme průběžně.")}
+                  icon={Check}
+                  className="px-5 py-2.5"
+                >
+                  Navrhnout integraci
+                </CreateActionButton>
               </div>
             </div>
             <div className="flex flex-col lg:flex-row items-start gap-12">

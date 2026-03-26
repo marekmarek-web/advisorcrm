@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, BrainCircuit, Check, Loader2, X, Send } from "lucide-react";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import type { ExtractionDocument } from "@/lib/ai-review/types";
 
 type Props = {
@@ -103,20 +104,17 @@ export function AIReviewTopBar({
                     </button>
                   </>
                 ) : (
-                  <button
+                  <CreateActionButton
                     type="button"
                     onClick={onApprove}
                     disabled={!!actionLoading}
-                    className="flex items-center gap-2 px-4 md:px-6 py-2.5 min-h-[44px] md:min-h-0 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
+                    isLoading={Boolean(isApproving)}
+                    icon={Check}
+                    className="min-h-[44px] px-4 py-2.5 md:min-h-0 md:px-6"
                   >
-                    {isApproving ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Check size={16} />
-                    )}
                     <span className="hidden sm:inline">Schválit kontrolu</span>
                     <span className="sm:hidden">Schválit</span>
-                  </button>
+                  </CreateActionButton>
                 )}
               </>
             )}

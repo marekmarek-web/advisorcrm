@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 export function WizardFooter({
   onBack,
@@ -36,28 +37,37 @@ export function WizardFooter({
         {!isFirstStep && <ArrowLeft size={16} />}
         {isFirstStep ? "Zrušit" : "Zpět"}
       </button>
-      <button
-        type="button"
-        onClick={onPrimary}
-        disabled={primaryDisabled || primaryLoading}
-        className={`flex items-center gap-2 px-8 py-2.5 font-bold text-sm rounded-xl transition-all active:scale-95 disabled:opacity-70 min-h-[44px] ${
-          isLastStep
-            ? "bg-aidv-create text-white shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover"
-            : "bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700"
-        }`}
-      >
-        {primaryLoading ? (
-          <>
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Ukládám…
-          </>
-        ) : (
-          <>
-            {primaryLabel}
-            {isLastStep ? <Check size={16} /> : <ArrowRight size={16} />}
-          </>
-        )}
-      </button>
+      {isLastStep ? (
+        <CreateActionButton
+          type="button"
+          onClick={onPrimary}
+          disabled={primaryDisabled}
+          isLoading={primaryLoading}
+          icon={Check}
+          className="px-8 py-2.5"
+        >
+          {primaryLoading ? "Ukládám…" : primaryLabel}
+        </CreateActionButton>
+      ) : (
+        <button
+          type="button"
+          onClick={onPrimary}
+          disabled={primaryDisabled || primaryLoading}
+          className="flex min-h-[44px] items-center gap-2 rounded-xl bg-indigo-600 px-8 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-70"
+        >
+          {primaryLoading ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              Ukládám…
+            </>
+          ) : (
+            <>
+              {primaryLabel}
+              <ArrowRight size={16} />
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }

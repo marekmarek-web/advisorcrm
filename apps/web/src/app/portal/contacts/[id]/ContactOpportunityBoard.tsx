@@ -2,17 +2,21 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, CheckCircle2, LayoutList } from "lucide-react";
+import { Plus, CheckCircle2, LayoutList, Briefcase } from "lucide-react";
 import { getPipelineByContact } from "@/app/actions/pipeline";
 import { useContactTab } from "./ContactTabLayout";
 import type { StageWithOpportunities } from "@/app/actions/pipeline";
 import { PipelineBoard } from "@/app/dashboard/pipeline/PipelineBoard";
 import { PipelineBoardSkeleton } from "@/app/dashboard/pipeline/PipelineBoardSkeleton";
-import { createActionButtonClassName } from "@/lib/ui/button-presets";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
 type ContactOption = { id: string; firstName: string; lastName: string };
 
-const btnPrimaryClass = `${createActionButtonClassName} px-6 py-2.5 rounded-[var(--wp-radius-sm)] normal-case tracking-normal shadow-lg shadow-indigo-900/20 disabled:hover:translate-y-0`;
+const retryButtonClass =
+  "inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-slate-300 bg-white px-6 py-2.5 text-sm font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]";
+
+const secondaryLinkClass =
+  "inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-slate-300 bg-white px-6 py-2.5 text-sm font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 no-underline active:scale-[0.98]";
 
 export function ContactOpportunityBoard({
   contactId,
@@ -78,14 +82,14 @@ export function ContactOpportunityBoard({
         </p>
       </div>
       {!noStages && (
-        <button
+        <CreateActionButton
           type="button"
           onClick={() => firstStageId && setOpenCreateStageId(firstStageId)}
           disabled={!firstStageId || loading}
-          className={btnPrimaryClass}
+          icon={Briefcase}
         >
-          <Plus size={18} /> Nový obchod
-        </button>
+          Nový obchod
+        </CreateActionButton>
       )}
     </div>
   );
@@ -99,7 +103,7 @@ export function ContactOpportunityBoard({
         {!loading && loadError && (
           <div className="rounded-[var(--wp-radius-sm)] border-2 border-slate-200 bg-slate-50/50 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)]">
             <p className="text-slate-700 text-sm mb-4">{loadError}</p>
-            <button type="button" onClick={() => setRetry((r) => r + 1)} className={btnPrimaryClass}>
+            <button type="button" onClick={() => setRetry((r) => r + 1)} className={retryButtonClass}>
               Zkusit znovu
             </button>
           </div>
@@ -112,7 +116,7 @@ export function ContactOpportunityBoard({
             <p className="text-sm text-slate-500 text-center mb-4">
               Nastavte stupně pipeline v modulu Obchody.
             </p>
-            <Link href="/portal/pipeline" className={`${btnPrimaryClass} no-underline`}>
+            <Link href="/portal/pipeline" className={secondaryLinkClass}>
               Přejít do Obchodů
             </Link>
           </div>
@@ -125,14 +129,14 @@ export function ContactOpportunityBoard({
             <p className="text-sm text-slate-500 text-center mb-4">
               Vytvořte první obchod a přiřaďte ho do příslušného stupně.
             </p>
-            <button
+            <CreateActionButton
               type="button"
               onClick={() => firstStageId && setOpenCreateStageId(firstStageId)}
               disabled={!firstStageId}
-              className={btnPrimaryClass}
+              icon={Briefcase}
             >
-              <Plus size={18} /> Vytvořit první obchod
-            </button>
+              Vytvořit první obchod
+            </CreateActionButton>
             <p className="text-xs text-slate-400 mt-4 text-center">
               Později zde budete moci založit obchod z AI příležitosti.
             </p>

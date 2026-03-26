@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { useEffect, useMemo, useState } from "react";
 
 type Provider = "gmail" | "drive";
@@ -70,12 +71,9 @@ export function IntegrationConnectionGate({
         </p>
         {status?.error ? <p className="mt-2 text-sm text-amber-700">{status.error}</p> : null}
         <div className="mt-4 flex flex-wrap gap-3">
-          <a
-            href={connectHref}
-            className="min-h-[44px] rounded-xl bg-aidv-create px-4 py-2.5 text-sm font-bold text-white"
-          >
+          <CreateActionButton href={connectHref} nativeAnchor icon={null}>
             Připojit Google účet
-          </a>
+          </CreateActionButton>
           <Link
             href={`/portal/setup?tab=integrace&provider=${provider === "gmail" ? "gmail" : "google-drive"}`}
             className="min-h-[44px] rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700"

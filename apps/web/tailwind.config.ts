@@ -60,9 +60,15 @@ export default {
           "0%": { transform: "skewX(-20deg) translateX(-150%)" },
           "100%": { transform: "skewX(-20deg) translateX(150%)" },
         },
+        /** UX UI/button.txt – odlesk na primárním create tlačítku */
+        aidvCreateBtnShimmer: {
+          "0%": { transform: "skewX(12deg) translateX(-150%)" },
+          "100%": { transform: "skewX(12deg) translateX(150%)" },
+        },
       },
       animation: {
         shimmer: "shimmer 2.5s infinite",
+        "aidv-create-shimmer": "aidvCreateBtnShimmer 1.5s infinite",
       },
       zIndex: {
         sticky: "var(--z-sticky)",
