@@ -228,7 +228,7 @@ export function ClientServiceBlock({ contactId }: { contactId: string }) {
                     </div>
                     <Link
                       href={cta.href}
-                      className="shrink-0 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1a1c2e] text-white text-sm font-bold shadow-sm hover:bg-[#2a2d4a] transition-colors"
+                      className="shrink-0 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-aidv-create text-white text-sm font-bold shadow-sm hover:bg-aidv-create-hover transition-colors"
                     >
                       {cta.label}
                       <ChevronRight size={16} />

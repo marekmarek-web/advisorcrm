@@ -27,6 +27,26 @@
   --wp-message-box-border: #e9ebf0;
   --wp-button-bg: #1f1c24;
 
+  /* Aidvisora – hero navy / dark surfaces (sidebar, calendar panel, „Dnes“ karta) */
+  --aidv-hero-navy: #0a0f29;
+  --aidv-surface-dark: #0a0f29;
+  --aidv-surface-dark-elevated: #121a35;
+  --aidv-border-on-dark: rgba(255, 255, 255, 0.1);
+  --aidv-text-on-dark: #f8fafc;
+  --aidv-text-muted-on-dark: rgba(248, 250, 252, 0.68);
+  /* Sekundární accent (gradient stop), ne dominantní plocha */
+  --aidv-accent-purple: #6d28d9;
+  --aidv-accent-purple-soft: rgba(109, 40, 217, 0.35);
+
+  /* Primární create akce (+ Nový klient, úkol, zápis, aktivita…) */
+  --aidv-create-bg: #1a1c2e;
+  --aidv-create-bg-hover: #2a2d4a;
+
+  /* Dashboard / header CTA (AI „Otevřít asistenta“ rodina) */
+  --aidv-dashboard-cta-bg: #4f46e5;
+  --aidv-dashboard-cta-bg-hover: #4338ca;
+  --aidv-dashboard-cta-ring: rgba(99, 102, 241, 0.45);
+
   /* Calendar-specific (Calendar widget.txt) */
   --wp-cal-accent: #0073ea;
   --wp-cal-accent-light: rgba(0, 115, 234, 0.12);

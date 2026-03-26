@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { dashboardPrimaryCtaClassName } from "@/lib/ui/button-presets";
 
 export interface DashboardCardProps {
   title: string;
@@ -45,10 +46,7 @@ export function DashboardCard({
       <div className="px-6 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto min-h-0 flex flex-col">
         {children}
         {footerLink && (
-          <Link
-            href={footerLink}
-            className="mt-auto pt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-xs uppercase tracking-widest hover:bg-indigo-100 hover:border-indigo-300 transition-colors min-h-[44px] w-fit shrink-0"
-          >
+          <Link href={footerLink} className={`mt-auto pt-4 w-fit shrink-0 ${dashboardPrimaryCtaClassName}`}>
             {footerLabel} <ChevronRight size={14} />
           </Link>
         )}

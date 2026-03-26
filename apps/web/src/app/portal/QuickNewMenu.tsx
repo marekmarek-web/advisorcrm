@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus } from "lucide-react";
 import { QuickActionsMenuContent } from "@/app/portal/quick-new-ui";
+import { dashboardPrimaryCtaClassNameNav } from "@/lib/ui/button-presets";
 
 export function QuickNewMenu() {
   const [open, setOpen] = useState(false);
@@ -30,10 +31,8 @@ export function QuickNewMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`group flex items-center justify-center gap-2 min-h-[44px] min-w-[44px] px-4 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 ${
-          open
-            ? "bg-[#2a2d4a] text-white shadow-lg scale-[0.98]"
-            : "bg-[#1a1c2e] text-white hover:bg-[#2a2d4a] hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98]"
+        className={`${dashboardPrimaryCtaClassNameNav} transition-all duration-200 ${
+          open ? "bg-aidv-dashboard-cta-hover shadow-lg scale-[0.98]" : ""
         }`}
         aria-expanded={open}
         aria-haspopup="true"

@@ -21,7 +21,14 @@ import { useAiAssistantDrawer } from "@/app/portal/AiAssistantDrawerContext";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { isLikelyPdfUpload } from "@/lib/security/file-signature";
 
-type ProcessingStatus = "uploaded" | "processing" | "extracted" | "review_required" | "failed";
+type ProcessingStatus =
+  | "uploaded"
+  | "processing"
+  | "extracted"
+  | "review_required"
+  | "failed"
+  | "scan_pending_ocr"
+  | "blocked";
 type ReviewStatus = "pending" | "approved" | "rejected" | "applied";
 
 type ReviewItem = {
@@ -46,6 +53,8 @@ const PROCESSING_LABELS: Record<ProcessingStatus, string> = {
   extracted: "Extrahováno",
   review_required: "Vyžaduje kontrolu",
   failed: "Chyba",
+  scan_pending_ocr: "Čeká na OCR",
+  blocked: "Blokováno (kontrola)",
 };
 
 const REVIEW_LABELS: Record<ReviewStatus, string> = {
@@ -88,6 +97,22 @@ function getStatusConfig(
       text: "Chyba čtení",
       color: "text-rose-700 bg-rose-50 border-rose-200",
       dot: "bg-rose-500",
+    };
+  }
+  if (processingStatus === "scan_pending_ocr") {
+    return {
+      icon: <FileText size={16} />,
+      text: "Čeká na OCR",
+      color: "text-amber-800 bg-amber-50 border-amber-200",
+      dot: "bg-amber-500",
+    };
+  }
+  if (processingStatus === "blocked") {
+    return {
+      icon: <ShieldAlert size={16} />,
+      text: "Blokováno — zkontrolujte údaje",
+      color: "text-orange-800 bg-orange-50 border-orange-200",
+      dot: "bg-orange-500",
     };
   }
   if (reviewStatus === "applied") {
@@ -335,7 +360,15 @@ export default function ContractReviewListPage() {
               onChange={(id) => setProcessingFilter(id as ProcessingStatus | "")}
               options={[
                 { id: "", label: "Všechny stavy zpracování" },
-                ...(["uploaded", "processing", "extracted", "review_required", "failed"] as const).map((s) => ({
+                ...([
+                  "uploaded",
+                  "processing",
+                  "extracted",
+                  "review_required",
+                  "failed",
+                  "scan_pending_ocr",
+                  "blocked",
+                ] as const).map((s) => ({
                   id: s,
                   label: PROCESSING_LABELS[s],
                 })),
@@ -489,7 +522,7 @@ export default function ContractReviewListPage() {
                           {row.reviewStatus !== "applied" && (
                             <Link
                               href={`/portal/contracts/review/${row.id}`}
-                              className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-[#2a2d4a] transition-all active:scale-95"
+                              className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:bg-aidv-create-hover transition-all active:scale-95"
                             >
                               Provést revizi <ArrowRight size={14} />
                             </Link>

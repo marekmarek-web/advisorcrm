@@ -629,7 +629,7 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
           <button
             type="button"
             onClick={saveNotifications}
-            className="w-full min-h-[48px] rounded-xl bg-[#1a1c2e] text-white text-sm font-bold"
+            className="w-full min-h-[48px] rounded-xl bg-aidv-create text-white text-sm font-bold"
           >
             Uložit preference
           </button>

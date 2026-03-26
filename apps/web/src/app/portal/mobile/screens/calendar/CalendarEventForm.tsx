@@ -439,7 +439,7 @@ export function CalendarEventForm({
           <button
             type="submit"
             disabled={saving || !form.title.trim() || !form.startAt}
-            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#1a1c2e] text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
+            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-aidv-create text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
           >
             <Check size={16} />
             {saving ? "Ukládám…" : initial.id ? "Uložit" : "Vytvořit"}

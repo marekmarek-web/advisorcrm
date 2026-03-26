@@ -724,7 +724,7 @@ export function AiAssistantDrawer() {
                       <button
                         type="button"
                         onClick={() => handleOpenReview(m.reviewId!)}
-                        className="text-xs font-black px-4 py-2 rounded-xl bg-[#1a1c2e] text-white shadow-sm hover:bg-[#2a2d4a] transition-colors uppercase tracking-wider"
+                        className="text-xs font-black px-4 py-2 rounded-xl bg-aidv-create text-white shadow-sm hover:bg-aidv-create-hover transition-colors uppercase tracking-wider"
                       >
                         Otevřít review
                       </button>

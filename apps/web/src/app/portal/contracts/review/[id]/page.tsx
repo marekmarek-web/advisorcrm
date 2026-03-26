@@ -18,11 +18,21 @@ import type { ExtractionDocument } from "@/lib/ai-review/types";
 const PROCESSING_STEPS = [
   { key: "uploaded", label: "Soubor nahrán" },
   { key: "preprocessing", label: "Předpracování dokumentu" },
-  { key: "classifying", label: "Klasifikace smlouvy" },
-  { key: "extracting", label: "AI extrakce dat" },
-  { key: "matching", label: "Hledání klientů a smluv" },
+  { key: "classifying", label: "Rozpoznávám typ dokumentu" },
+  { key: "extracting", label: "Extrahuji data" },
+  { key: "validating", label: "Ověřuji výsledek" },
+  { key: "matching", label: "Navrhuji klienta a akce" },
   { key: "processing", label: "Zpracovávám…" },
 ] as const;
+
+function processingStepHintFromTrace(trace: unknown): string | undefined {
+  const t = trace as Record<string, unknown> | null | undefined;
+  if (!t || typeof t !== "object") return undefined;
+  if (typeof t.classifierDurationMs !== "number") return "classifying";
+  if (typeof t.extractionDurationMs !== "number") return "extracting";
+  if (typeof t.validationDurationMs !== "number") return "validating";
+  return "matching";
+}
 
 function ProcessingProgress({ stepHint }: { stepHint?: string }) {
   const [frame, setFrame] = useState(0);
@@ -52,15 +62,17 @@ function ProcessingProgress({ stepHint }: { stepHint?: string }) {
           uvidíte v detailu rozklad času (předzpracování vs. AI). Stránka se automaticky aktualizuje.
         </p>
       </div>
-      <div className="flex gap-2">
-        {PROCESSING_STEPS.slice(0, 5).map((s, i) => (
-          <div
-            key={s.key}
-            className={`h-1.5 rounded-full transition-all duration-700 ${
-              i <= (frame % 5) ? "w-8 bg-indigo-500" : "w-4 bg-slate-200"
-            }`}
-          />
-        ))}
+      <div className="flex flex-wrap justify-center gap-2 max-w-md">
+        {PROCESSING_STEPS.filter((s) => s.key !== "processing" && s.key !== "uploaded").map((s, i) => {
+          const steps = PROCESSING_STEPS.filter((x) => x.key !== "processing" && x.key !== "uploaded");
+          const active = i <= frame % steps.length;
+          return (
+            <div
+              key={s.key}
+              className={`h-1.5 rounded-full transition-all duration-700 ${active ? "w-8 bg-indigo-500" : "w-4 bg-slate-200"}`}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -80,6 +92,7 @@ export default function ContractReviewDetailPage() {
   const [pdfUrl, setPdfUrl] = useState("");
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [processingStepHint, setProcessingStepHint] = useState<string | undefined>();
+  const [scanRetryBusy, setScanRetryBusy] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const processingStartedRef = useRef(false);
 
@@ -132,6 +145,8 @@ export default function ContractReviewDetailPage() {
         const data = await res.json();
         const status: string = data.processingStatus ?? "";
         setProcessingStatus(status);
+        const hint = processingStepHintFromTrace(data.extractionTrace);
+        if (hint) setProcessingStepHint(hint);
         if (status !== "uploaded" && status !== "processing") {
           stopPolling();
           const mapped = mapApiToExtractionDocument(data, pdfUrl);
@@ -184,6 +199,20 @@ export default function ContractReviewDetailPage() {
       startPolling();
     }
   }, [processingStatus, triggerProcessing, startPolling]);
+
+  const handleRetryAfterScan = useCallback(async () => {
+    setScanRetryBusy(true);
+    try {
+      const res = await fetch(`/api/contracts/review/${id}/process`, { method: "POST" });
+      if (res.ok || res.status === 409) {
+        setProcessingStatus("processing");
+        setProcessingStepHint("preprocessing");
+        startPolling();
+      }
+    } finally {
+      setScanRetryBusy(false);
+    }
+  }, [id, startPolling]);
 
   useEffect(() => {
     return () => stopPolling();
@@ -325,6 +354,48 @@ export default function ContractReviewDetailPage() {
     return <ProcessingProgress stepHint={processingStepHint} />;
   }
 
+  if (processingStatus === "scan_pending_ocr") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 px-4 text-center max-w-lg mx-auto">
+        <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-2xl font-black">
+          OCR
+        </div>
+        <div>
+          <h1 className="text-xl font-black text-slate-900 mb-2">Dokument je uložen — čeká na OCR</h1>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Soubor vypadá jako sken nebo obrázek bez dostatečného textu pro AI Review. Zapněte Adobe / OCR pipeline v
+            nastavení, nebo nahrajte PDF s textovou vrstvou. Náhled souboru můžete použít hned.
+          </p>
+        </div>
+        {pdfUrl ? (
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm font-bold text-indigo-600 hover:text-indigo-800"
+          >
+            Otevřít náhled dokumentu
+          </a>
+        ) : null}
+        <button
+          type="button"
+          disabled={scanRetryBusy}
+          onClick={() => void handleRetryAfterScan()}
+          className="min-h-[44px] px-6 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"
+        >
+          {scanRetryBusy ? "Spouštím…" : "Zkusit zpracování znovu"}
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/portal/contracts/review")}
+          className="text-sm font-semibold text-slate-500"
+        >
+          Zpět na seznam
+        </button>
+      </div>
+    );
+  }
+
   if (loading && !doc) {
     return (
       <div className="flex items-center justify-center h-[80vh]">
@@ -355,18 +426,32 @@ export default function ContractReviewDetailPage() {
   }
 
   return (
-    <AIReviewExtractionShell
-      doc={doc}
-      onBack={handleBack}
-      onDiscard={handleDiscard}
-      onApprove={handleApprove}
-      onApproveAndApply={handleApproveAndApply}
-      onReject={handleReject}
-      onApply={handleApply}
-      onSelectClient={handleSelectClient}
-      onConfirmCreateNew={handleConfirmCreateNew}
-      isApproving={actionLoading === "approve"}
-      actionLoading={actionLoading}
-    />
+    <div className="flex flex-col gap-3">
+      {doc.processingStatus === "blocked" ? (
+        <div
+          role="status"
+          className="mx-4 md:mx-6 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-950"
+        >
+          <p className="font-bold mb-1">Platba / údaje vyžadují kontrolu</p>
+          <p className="text-orange-900/90 leading-relaxed">
+            Dokument je zpracovaný, ale kritická pole nejsou dostatečně jistá. Zkontrolujte extrahované hodnoty před
+            schválením; návrh platby do portálu se nevytvoří, dokud stav neodpovídá pravidlům kvality.
+          </p>
+        </div>
+      ) : null}
+      <AIReviewExtractionShell
+        doc={doc}
+        onBack={handleBack}
+        onDiscard={handleDiscard}
+        onApprove={handleApprove}
+        onApproveAndApply={handleApproveAndApply}
+        onReject={handleReject}
+        onApply={handleApply}
+        onSelectClient={handleSelectClient}
+        onConfirmCreateNew={handleConfirmCreateNew}
+        isApproving={actionLoading === "approve"}
+        actionLoading={actionLoading}
+      />
+    </div>
   );
 }

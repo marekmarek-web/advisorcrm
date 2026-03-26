@@ -48,7 +48,16 @@ function EventIcon({ eventType }: { eventType: string | null }) {
   }
 }
 
-export function CalendarWidget({ onNewActivity, hideTitle }: { onNewActivity?: () => void; hideTitle?: boolean }) {
+export function CalendarWidget({
+  onNewActivity,
+  hideTitle,
+  variant = "default",
+}: {
+  onNewActivity?: () => void;
+  hideTitle?: boolean;
+  /** Tmavý kontext (pravý panel nástěnky) – navy „Dnes“, agenda texty pro tmavé pozadí. */
+  variant?: "default" | "darkPanel";
+}) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventTypeColors, setEventTypeColors] = useState<Record<string, string>>({});
@@ -78,6 +87,7 @@ export function CalendarWidget({ onNewActivity, hideTitle }: { onNewActivity?: (
   useEffect(() => { load(); }, [load]);
 
   const todayFull = new Date().toLocaleDateString("cs-CZ", { month: "long", day: "numeric", year: "numeric" });
+  const isDark = variant === "darkPanel";
 
   return (
     <div className="space-y-8">
@@ -99,15 +109,34 @@ export function CalendarWidget({ onNewActivity, hideTitle }: { onNewActivity?: (
         </div>
       )}
 
-      {/* Karta dne – sidecalendar.txt: rounded-[28px], gradient, dekorace, tlačítko + */}
-      <div className="relative rounded-[28px] bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-800 p-6 text-white shadow-xl shadow-indigo-900/20 overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700" aria-hidden />
-        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 block mb-2 opacity-80">Dnes</span>
+      {/* Karta dne – navy + jemný fialový accent (Aidvisora tokeny) */}
+      <div
+        className={`relative rounded-[28px] p-6 text-white shadow-xl overflow-hidden group border ${
+          isDark
+            ? "bg-gradient-to-br from-aidv-surface-dark via-aidv-surface-elevated to-[#1a1f3d] border-[color:var(--aidv-border-on-dark)] shadow-black/30"
+            : "bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-800 border-transparent shadow-indigo-900/20"
+        }`}
+      >
+        <div
+          className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700 ${
+            isDark ? "bg-aidv-accent-purple/25" : "bg-white/10"
+          }`}
+          aria-hidden
+        />
+        <span
+          className={`text-[10px] font-black uppercase tracking-widest block mb-2 opacity-90 ${
+            isDark ? "text-aidv-text-muted-on-dark" : "text-indigo-200 opacity-80"
+          }`}
+        >
+          Dnes
+        </span>
         <h3 className="text-2xl font-black tracking-tight mb-6">{todayFull}</h3>
         <button
           type="button"
           onClick={onNewActivity}
-          className="absolute bottom-6 right-6 w-12 h-12 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all"
+          className={`absolute bottom-6 right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all ${
+            isDark ? "bg-white text-aidv-dashboard-cta" : "bg-white text-indigo-600"
+          }`}
           aria-label="Nová aktivita"
         >
           <Plus size={24} />
@@ -116,12 +145,22 @@ export function CalendarWidget({ onNewActivity, hideTitle }: { onNewActivity?: (
 
       {/* Agenda – timeline vlevo od kruhů (čára neprotíná ikony) */}
       <div>
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Agenda</h3>
-        <div className="space-y-4 relative pl-4 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-slate-100">
+        <h3
+          className={`text-xs font-black uppercase tracking-widest mb-4 ${
+            isDark ? "text-aidv-text-muted-on-dark" : "text-slate-400"
+          }`}
+        >
+          Agenda
+        </h3>
+        <div
+          className={`space-y-4 relative pl-4 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 ${
+            isDark ? "before:bg-white/15" : "before:bg-slate-100"
+          }`}
+        >
           {loading ? (
-            <p className="text-sm text-slate-500 pl-14">Načítám…</p>
+            <p className={`text-sm pl-14 ${isDark ? "text-aidv-text-muted-on-dark" : "text-slate-500"}`}>Načítám…</p>
           ) : events.length === 0 ? (
-            <p className="text-sm text-slate-500 pl-14">Žádné nadcházející události.</p>
+            <p className={`text-sm pl-14 ${isDark ? "text-aidv-text-muted-on-dark" : "text-slate-500"}`}>Žádné nadcházející události.</p>
           ) : (
             events.map((ev) => {
               const start = new Date(ev.startAt);

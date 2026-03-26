@@ -264,7 +264,7 @@ function CreateForm({
         <button
           type="submit"
           disabled={pending}
-          className="px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-[#1a1c2e] text-white hover:bg-[#2a2d4a] shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-70"
+          className="px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-aidv-create text-white hover:bg-aidv-create-hover shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-70"
         >
           {pending ? "Ukládám…" : "Vytvořit případ"}
         </button>
@@ -368,7 +368,7 @@ function EditForm({
         <button
           type="submit"
           disabled={pending}
-          className="px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-[#1a1c2e] text-white hover:bg-[#2a2d4a] shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-70"
+          className="px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-aidv-create text-white hover:bg-aidv-create-hover shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-70"
         >
           {pending ? "Ukládám…" : "Uložit změny"}
         </button>
@@ -620,7 +620,7 @@ export function PipelineBoard({
             <button
               type="button"
               onClick={() => setCreateStageId(localStages[0]?.id ?? null)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"
+              className="flex items-center gap-2 px-5 py-2.5 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"
             >
               <Plus size={14} /> Nový obchod
             </button>

@@ -42,7 +42,7 @@ export function WizardFooter({
         disabled={primaryDisabled || primaryLoading}
         className={`flex items-center gap-2 px-8 py-2.5 font-bold text-sm rounded-xl transition-all active:scale-95 disabled:opacity-70 min-h-[44px] ${
           isLastStep
-            ? "bg-[#1a1c2e] text-white shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a]"
+            ? "bg-aidv-create text-white shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover"
             : "bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700"
         }`}
       >

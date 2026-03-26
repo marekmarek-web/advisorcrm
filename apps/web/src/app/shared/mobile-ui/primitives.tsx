@@ -133,7 +133,7 @@ export function MobileBottomNav({
       onClick={centerFab.onClick}
       aria-label={centerFab.ariaLabel ?? "Nový – rychlé akce"}
       className={cx(
-        "rounded-full bg-[#1a1c2e] text-white shadow-lg shadow-indigo-950/20 flex items-center justify-center active:scale-95 transition-transform border-4 border-white shrink-0",
+        "rounded-full bg-aidv-create text-white shadow-lg shadow-indigo-950/20 flex items-center justify-center active:scale-95 transition-transform border-4 border-white shrink-0",
         deviceClass === "tablet" ? "w-12 h-12 -translate-y-1" : "w-14 h-14 -translate-y-2"
       )}
     >

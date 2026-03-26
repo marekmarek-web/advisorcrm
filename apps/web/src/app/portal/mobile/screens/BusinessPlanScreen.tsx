@@ -592,7 +592,7 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
           <button
             type="button"
             onClick={saveVision}
-            className="w-full min-h-[48px] rounded-xl bg-[#1a1c2e] text-white text-sm font-bold"
+            className="w-full min-h-[48px] rounded-xl bg-aidv-create text-white text-sm font-bold"
           >
             Uložit vizi
           </button>

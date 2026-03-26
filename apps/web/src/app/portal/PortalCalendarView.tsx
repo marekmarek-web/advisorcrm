@@ -324,7 +324,7 @@ function NewTaskModal({
               type="button"
               onClick={handleSubmit}
               disabled={saving || !title.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#1a1c2e] text-white text-sm font-bold rounded-xl hover:bg-[#2a2c3e] disabled:opacity-50 transition-all shadow-lg"
+              className="flex items-center gap-2 px-6 py-2.5 bg-aidv-create text-white text-sm font-bold rounded-xl hover:bg-aidv-create-hover disabled:opacity-50 transition-all shadow-lg"
             >
               <Check size={16} />
               {saving ? "Vytvářím…" : "Vytvořit úkol"}
@@ -748,7 +748,7 @@ function EventFormModal({
             <button
               type="submit"
               disabled={saving || !form.title.trim() || !form.startAt}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#1a1c2e] text-white text-sm font-bold rounded-xl hover:bg-[#2a2c3e] disabled:opacity-50 transition-all shadow-lg"
+              className="flex items-center gap-2 px-6 py-2.5 bg-aidv-create text-white text-sm font-bold rounded-xl hover:bg-aidv-create-hover disabled:opacity-50 transition-all shadow-lg"
             >
               <Check size={16} />
               {saving ? "Ukládám…" : initial.id ? "Uložit" : "Vytvořit"}

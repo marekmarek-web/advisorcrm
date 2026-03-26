@@ -107,7 +107,7 @@ export function AIReviewTopBar({
                     type="button"
                     onClick={onApprove}
                     disabled={!!actionLoading}
-                    className="flex items-center gap-2 px-4 md:px-6 py-2.5 min-h-[44px] md:min-h-0 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
+                    className="flex items-center gap-2 px-4 md:px-6 py-2.5 min-h-[44px] md:min-h-0 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
                   >
                     {isApproving ? (
                       <Loader2 size={16} className="animate-spin" />

@@ -201,7 +201,7 @@ export default async function ContactDetailPage({
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
             href={`/portal/contacts/${id}/edit`}
-            className="flex items-center gap-2 px-5 py-2 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"
+            className="flex items-center gap-2 px-5 py-2 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]"
           >
             <Edit2 size={14} /> Upravit
           </Link>
@@ -214,7 +214,7 @@ export default async function ContactDetailPage({
           <div className="flex flex-col xl:flex-row justify-between gap-6 xl:gap-8 z-10">
             <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6 min-w-0">
               <div className="relative shrink-0">
-                <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-slate-800 to-[#1a1c2e] flex items-center justify-center text-white font-black text-3xl shadow-xl shadow-slate-900/20 border-4 border-white overflow-hidden">
+                <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-slate-800 to-aidv-create flex items-center justify-center text-white font-black text-3xl shadow-xl shadow-slate-900/20 border-4 border-white overflow-hidden">
                   {contact.avatarUrl ? (
                     <img src={contact.avatarUrl} alt="" className="w-full h-full object-cover" />
                   ) : (

@@ -29,6 +29,7 @@ import {
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { ContactRow } from "@/app/actions/contacts";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { createActionButtonClassName } from "@/lib/ui/button-presets";
 
 const BOARD_POSITIONS_KEY = "portal-notes-board-positions";
 
@@ -406,11 +407,7 @@ export function NotesVisionBoard({
           >
             <Sparkles size={16} className="text-amber-500" /> <span className="hidden sm:inline">{aiLoading ? "Zpracovávám…" : "AI Sumarizace"}</span><span className="sm:hidden">{aiLoading ? "…" : "AI"}</span>
           </button>
-          <button
-            type="button"
-            onClick={handleOpenNew}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1a1c2e] text-white rounded-xl font-bold text-sm hover:bg-[#2a2d4a] shadow-lg transition-all active:scale-95 min-h-[44px] min-w-[44px]"
-          >
+          <button type="button" onClick={handleOpenNew} className={`${createActionButtonClassName} text-sm normal-case tracking-normal min-w-[44px]`}>
             <Plus size={18} /> <span className="hidden sm:inline">Nový zápis</span>
           </button>
         </div>
@@ -440,16 +437,11 @@ export function NotesVisionBoard({
           {filteredNotes.length === 0 ? (
             <div className="p-6 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-slate-100">
-                <FileText size={28} style={{ color: "var(--brand-main)" }} />
+                <FileText size={28} className="text-aidv-create" />
               </div>
               <h2 className="text-lg font-bold text-slate-800 mb-2">Žádné zápisky</h2>
               <p className="text-slate-500 text-sm mb-6">Vytvořte zápisek nebo přepněte na Board.</p>
-              <button
-                type="button"
-                onClick={handleOpenNew}
-                className="flex items-center gap-2 px-6 py-3 text-white rounded-xl font-bold shadow-lg"
-                style={{ backgroundColor: "var(--brand-main)" }}
-              >
+              <button type="button" onClick={handleOpenNew} className={`${createActionButtonClassName} text-sm normal-case tracking-normal px-6 py-3`}>
                 <Plus size={20} /> Nový zápisek
               </button>
             </div>
@@ -504,8 +496,8 @@ export function NotesVisionBoard({
         {notes.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-white/80 backdrop-blur-xl p-10 rounded-[32px] border border-slate-200 shadow-2xl flex flex-col items-center max-w-md text-center pointer-events-auto">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: "var(--wp-surface-hover)" }}>
-                <FileText size={40} style={{ color: "var(--brand-main)" }} />
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 bg-slate-100">
+                <FileText size={40} className="text-aidv-create" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800 mb-3">Plátno je prázdné</h2>
               <p className="text-slate-500 mb-8 leading-relaxed">
@@ -514,8 +506,7 @@ export function NotesVisionBoard({
               <button
                 type="button"
                 onClick={handleOpenNew}
-                className="flex items-center gap-2 px-8 py-4 text-white rounded-2xl font-bold text-lg shadow-lg transition-all active:scale-95"
-                style={{ backgroundColor: "var(--brand-main)" }}
+                className={`${createActionButtonClassName} px-8 py-4 rounded-2xl text-base normal-case tracking-normal shadow-xl`}
               >
                 <Plus size={24} /> Vytvořit první zápisek
               </button>
@@ -638,7 +629,7 @@ export function NotesVisionBoard({
               <button
                 type="button"
                 onClick={() => setAiSummary(null)}
-                className="px-5 py-2.5 bg-[#1a1c2e] text-white rounded-xl font-bold text-sm hover:bg-[#2a2d4a] transition-all"
+                className="px-5 py-2.5 rounded-xl font-bold text-sm border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all min-h-[44px]"
               >
                 Zavřít
               </button>
@@ -773,7 +764,7 @@ export function NotesVisionBoard({
                 type="button"
                 onClick={handleSave}
                 disabled={!isFormValid || saving}
-                className="flex-1 py-3.5 bg-[#1a1c2e] text-white rounded-xl font-bold shadow-lg hover:bg-[#2a2d4a] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex-1 ${createActionButtonClassName} py-3.5 normal-case tracking-normal text-sm shadow-lg disabled:hover:translate-y-0`}
               >
                 {saving ? "Ukládám…" : editingId ? "Uložit změny" : "Přidat na plátno"}
               </button>

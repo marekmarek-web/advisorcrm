@@ -28,7 +28,7 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-export function MessengerPreview({ embedded }: { embedded?: boolean }) {
+export function MessengerPreview({ embedded, forDarkPanel }: { embedded?: boolean; forDarkPanel?: boolean }) {
   const [conversations, setConversations] = useState<RecentConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,11 +42,19 @@ export function MessengerPreview({ embedded }: { embedded?: boolean }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const dark = !!forDarkPanel;
+
   return (
-    <div className={embedded ? "pt-0" : "pt-6 border-t border-slate-100"}>
+    <div className={embedded ? "pt-0" : dark ? "pt-0" : "pt-6 border-t border-slate-100"}>
       {!embedded && (
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Zprávy z portálu</h3>
+          <h3
+            className={`text-xs font-black uppercase tracking-widest ${
+              dark ? "text-aidv-text-muted-on-dark" : "text-slate-400"
+            }`}
+          >
+            Zprávy z portálu
+          </h3>
           {!loading && conversations.length > 0 && conversations.some((c) => c.unread) && (
             <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black flex items-center justify-center">
               {conversations.filter((c) => c.unread).length}
@@ -63,9 +71,9 @@ export function MessengerPreview({ embedded }: { embedded?: boolean }) {
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Načítám…</p>
+        <p className={`text-sm ${dark ? "text-aidv-text-muted-on-dark" : "text-slate-500"}`}>Načítám…</p>
       ) : conversations.length === 0 ? (
-        <p className="text-sm text-slate-500">Žádné nedávné zprávy.</p>
+        <p className={`text-sm ${dark ? "text-aidv-text-muted-on-dark" : "text-slate-500"}`}>Žádné nedávné zprávy.</p>
       ) : (
         <div className="space-y-3">
           {conversations.map((c) => (
@@ -99,7 +107,9 @@ export function MessengerPreview({ embedded }: { embedded?: boolean }) {
       {!embedded && (
         <Link
           href="/portal/contacts"
-          className="inline-block mt-3 text-xs font-semibold text-indigo-600 hover:underline"
+          className={`inline-block mt-3 text-xs font-semibold hover:underline ${
+            dark ? "text-indigo-300 hover:text-white" : "text-indigo-600"
+          }`}
         >
           Otevřít chat →
         </Link>

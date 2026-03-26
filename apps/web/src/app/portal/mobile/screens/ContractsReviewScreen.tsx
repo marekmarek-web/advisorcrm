@@ -439,7 +439,7 @@ function ReviewDetailPanel({
               type="button"
               onClick={onApply}
               disabled={pending}
-              className="w-full min-h-[44px] rounded-xl bg-[#1a1c2e] text-white text-xs font-black uppercase tracking-wide"
+              className="w-full min-h-[44px] rounded-xl bg-aidv-create text-white text-xs font-black uppercase tracking-wide"
             >
               Zapsat do CRM
             </button>

@@ -565,7 +565,7 @@ export function BusinessPlanView() {
         {isConfigured && viewMode === "my" && plan && progressResult && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500" key={periodType}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1 bg-gradient-to-br from-[#1a1c2e] to-indigo-950 rounded-[32px] p-6 md:p-8 text-white relative overflow-hidden shadow-xl shadow-indigo-900/10">
+              <div className="lg:col-span-1 bg-gradient-to-br from-aidv-create to-indigo-950 rounded-[32px] p-6 md:p-8 text-white relative overflow-hidden shadow-xl shadow-indigo-900/10">
                 <Compass className="absolute -top-6 -right-6 w-32 h-32 text-white/5 pointer-events-none" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300 mb-6 flex items-center gap-2 relative z-10">
                   <Flag size={14} /> Osobní vize a milníky
@@ -794,7 +794,7 @@ export function BusinessPlanView() {
             type="button"
             onClick={handleGenerateAiStrategy}
             disabled={!isConfigured || aiInsightLoading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1a1c2e] to-indigo-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-900/20 hover:scale-105 transition-transform disabled:opacity-70 min-h-[44px]"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-aidv-create to-indigo-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-900/20 hover:scale-105 transition-transform disabled:opacity-70 min-h-[44px]"
           >
             <Sparkles size={16} className="text-amber-400" /> Generovat AI Strategii
           </button>

@@ -119,7 +119,7 @@ export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] 
             <button
               type="button"
               onClick={() => setShowWizard(true)}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1a1c2e] text-white rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-md hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 shrink-0 min-h-[44px]"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-aidv-create text-white rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-md hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 shrink-0 min-h-[44px]"
             >
               <Plus size={16} />
               Nová domácnost

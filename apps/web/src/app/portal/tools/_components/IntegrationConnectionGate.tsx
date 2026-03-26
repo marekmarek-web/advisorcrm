@@ -72,7 +72,7 @@ export function IntegrationConnectionGate({
         <div className="mt-4 flex flex-wrap gap-3">
           <a
             href={connectHref}
-            className="min-h-[44px] rounded-xl bg-[#1a1c2e] px-4 py-2.5 text-sm font-bold text-white"
+            className="min-h-[44px] rounded-xl bg-aidv-create px-4 py-2.5 text-sm font-bold text-white"
           >
             Připojit Google účet
           </a>

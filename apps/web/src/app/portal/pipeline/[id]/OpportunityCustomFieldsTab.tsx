@@ -158,7 +158,7 @@ export function OpportunityCustomFieldsTab({
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-8 py-3.5 bg-[#1a1c2e] hover:bg-[#2a2d4a] text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-50"
+        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-8 py-3.5 bg-aidv-create hover:bg-aidv-create-hover text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-50"
       >
         <Save size={16} aria-hidden />
         {saving ? "Ukládám…" : "Uložit vlastní pole"}

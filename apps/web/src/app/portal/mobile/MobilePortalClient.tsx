@@ -955,7 +955,7 @@ export function MobilePortalClient({
                 Další
               </button>
             ) : (
-              <button type="button" onClick={onTaskSave} className="flex-1 min-h-[44px] rounded-xl bg-[#1a1c2e] text-white text-sm font-bold">
+              <button type="button" onClick={onTaskSave} className="flex-1 min-h-[44px] rounded-xl bg-aidv-create text-white text-sm font-bold">
                 Vytvořit
               </button>
             )}
@@ -1032,7 +1032,7 @@ export function MobilePortalClient({
               className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
             />
           </div>
-          <button type="button" onClick={onOpportunityCreate} className="min-h-[44px] w-full rounded-xl bg-[#1a1c2e] text-white text-sm font-bold">
+          <button type="button" onClick={onOpportunityCreate} className="min-h-[44px] w-full rounded-xl bg-aidv-create text-white text-sm font-bold">
             Vytvořit případ
           </button>
         </div>

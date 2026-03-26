@@ -8,11 +8,11 @@ import { useContactTab } from "./ContactTabLayout";
 import type { StageWithOpportunities } from "@/app/actions/pipeline";
 import { PipelineBoard } from "@/app/dashboard/pipeline/PipelineBoard";
 import { PipelineBoardSkeleton } from "@/app/dashboard/pipeline/PipelineBoardSkeleton";
+import { createActionButtonClassName } from "@/lib/ui/button-presets";
 
 type ContactOption = { id: string; firstName: string; lastName: string };
 
-const btnPrimaryClass =
-  "inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-[#1a1c2e] text-white hover:bg-[#2a2d4a] shadow-lg shadow-indigo-900/20 transition-all min-h-[44px] disabled:opacity-70 disabled:pointer-events-none";
+const btnPrimaryClass = `${createActionButtonClassName} px-6 py-2.5 rounded-[var(--wp-radius-sm)] normal-case tracking-normal shadow-lg shadow-indigo-900/20 disabled:hover:translate-y-0`;
 
 export function ContactOpportunityBoard({
   contactId,
@@ -112,10 +112,7 @@ export function ContactOpportunityBoard({
             <p className="text-sm text-slate-500 text-center mb-4">
               Nastavte stupně pipeline v modulu Obchody.
             </p>
-            <Link
-              href="/portal/pipeline"
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-[var(--wp-radius-sm)] font-bold bg-[#1a1c2e] text-white hover:bg-[#2a2d4a] shadow-lg shadow-indigo-900/20 transition-all min-h-[44px]"
-            >
+            <Link href="/portal/pipeline" className={`${btnPrimaryClass} no-underline`}>
               Přejít do Obchodů
             </Link>
           </div>

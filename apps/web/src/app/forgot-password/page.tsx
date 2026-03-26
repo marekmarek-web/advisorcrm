@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
       className="min-h-screen flex flex-col items-center justify-center px-4"
       style={{ background: "linear-gradient(60deg, #10121f 0%, #1a1c2e 100%)", fontFamily: "var(--wp-font)" }}
     >
-      <div className="w-full max-w-md p-10 rounded-[32px] border border-white/10 bg-[#1a1c2e]/70 shadow-2xl shadow-indigo-500/10 backdrop-blur-xl text-white">
+      <div className="w-full max-w-md p-10 rounded-[32px] border border-white/10 bg-aidv-create/70 shadow-2xl shadow-indigo-500/10 backdrop-blur-xl text-white">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-indigo-500 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30">
             <svg viewBox="0 0 40 40" className="w-8 h-8 text-white" fill="currentColor" aria-hidden>

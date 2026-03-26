@@ -2,7 +2,7 @@
 
 /**
  * List page header: h1 + count badge + subtitle left; actions right.
- * Matches Contacts pattern: text-2xl md:text-3xl font-bold, badge, text-sm text-slate-500, primary CTA bg-[#1a1c2e].
+ * Matches Contacts pattern: text-2xl md:text-3xl font-bold, badge, text-sm text-slate-500, primary CTA bg-aidv-create.
  */
 export function ListPageHeader({
   title,

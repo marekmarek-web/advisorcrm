@@ -410,7 +410,7 @@ export function PortalSidebar({
           "md:z-20 md:translate-x-0",
           mobileOpen ? "translate-x-0 z-drawer-panel pointer-events-auto" : "-translate-x-full z-drawer-panel pointer-events-none md:pointer-events-auto",
           sidebarTheme === "gradient"
-            ? "bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-800 border-r border-white/10 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.2)]"
+            ? "bg-gradient-to-br from-aidv-surface-dark via-aidv-surface-elevated to-[#101630] border-r border-[color:var(--aidv-border-on-dark)] shadow-[4px_0_24px_-12px_rgba(0,0,0,0.35)]"
             : "bg-white border-r border-slate-100 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
         ].join(" ")}
         style={{
@@ -670,7 +670,7 @@ export function PortalSidebar({
               title={collapsed ? (userName ?? userEmail ?? "Profil") : undefined}
             >
               <div className="flex items-center gap-3 overflow-hidden min-w-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-inner">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-aidv-dashboard-cta to-aidv-accent-purple flex items-center justify-center text-white font-black text-sm shrink-0 shadow-inner">
                   {getInitials(userName ?? userEmail ?? undefined)}
                 </div>
                 {!collapsed && (

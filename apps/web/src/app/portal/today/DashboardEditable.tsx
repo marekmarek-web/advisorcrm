@@ -59,6 +59,8 @@ import {
   type WidgetId,
   type WidgetColorId,
 } from "./dashboard-config";
+import { useDashboardCalendarDrawer } from "./use-dashboard-calendar-drawer";
+import { createActionButtonClassName } from "@/lib/ui/button-presets";
 
 const STORAGE_KEY = "aidvisora_dashboard_widgets";
 
@@ -172,7 +174,7 @@ export function DashboardEditable({
   const router = useRouter();
   const [config, setConfig] = useState<DashboardConfig>({ order: [...DEFAULT_DASHBOARD_ORDER], hidden: [] });
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { open: drawerOpen, toggle: toggleCalendarDrawer } = useDashboardCalendarDrawer();
   const [editOrder, setEditOrder] = useState<WidgetId[]>([]);
   const [editHidden, setEditHidden] = useState<Set<WidgetId>>(new Set());
   const [editWidgetColors, setEditWidgetColors] = useState<Partial<Record<WidgetId, WidgetColorId>>>({});
@@ -614,7 +616,9 @@ export function DashboardEditable({
   const dateLabel = new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="flex-1 min-h-0 bg-[#f8fafc] text-slate-800 relative overflow-y-auto animate-[wp-fade-in_0.3s_ease]">
+    <div
+      className={`flex-1 min-h-0 bg-[#f8fafc] text-slate-800 relative overflow-y-auto animate-[wp-fade-in_0.3s_ease] transition-[padding-right] duration-200 ease-out ${drawerOpen ? "md:pr-[380px]" : "md:pr-14"}`}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap');
         .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -642,7 +646,7 @@ export function DashboardEditable({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setDrawerOpen((v) => !v)}
+                onClick={toggleCalendarDrawer}
                 className="text-sm font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm min-h-[44px]"
               >
                 <Calendar size={16} /> {drawerOpen ? "Skrýt kalendář" : "Kalendář"}
@@ -660,20 +664,24 @@ export function DashboardEditable({
 
           <div className="flex flex-wrap items-center gap-3">
             {([
-              { icon: UserPlus, label: "Nový klient", href: "/portal/contacts?newClient=1" },
-              { icon: Calendar, label: "Nová schůzka", href: "/portal/calendar?new=1" },
-              { icon: CheckSquare, label: "Nový úkol", href: "/portal/tasks" },
-              { icon: Mail, label: "Napsat zprávu", href: "/portal/messages" },
-              { icon: Calculator, label: "Kalkulačky", href: "/portal/calculators" },
-              { icon: PieChart, label: "Finanční analýza", href: "/portal/analyses/financial" },
-              { icon: Calendar, label: "Kalendář", href: "/portal/calendar" },
-            ] as { icon: LucideIcon; label: string; href: string }[]).map((btn, i) => (
+              { icon: UserPlus, label: "Nový klient", href: "/portal/contacts?newClient=1", variant: "create" as const },
+              { icon: Calendar, label: "Nová schůzka", href: "/portal/calendar?new=1", variant: "create" as const },
+              { icon: CheckSquare, label: "Nový úkol", href: "/portal/tasks", variant: "create" as const },
+              { icon: Mail, label: "Napsat zprávu", href: "/portal/messages", variant: "secondary" as const },
+              { icon: Calculator, label: "Kalkulačky", href: "/portal/calculators", variant: "secondary" as const },
+              { icon: PieChart, label: "Finanční analýza", href: "/portal/analyses/financial", variant: "secondary" as const },
+              { icon: Calendar, label: "Kalendář", href: "/portal/calendar", variant: "secondary" as const },
+            ] as { icon: LucideIcon; label: string; href: string; variant: "create" | "secondary" }[]).map((btn, i) => (
               <Link
                 key={i}
                 href={btn.href}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm min-h-[44px]"
+                className={
+                  btn.variant === "create"
+                    ? `${createActionButtonClassName} shadow-lg`
+                    : "flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm min-h-[44px]"
+                }
               >
-                <btn.icon size={16} className="opacity-70" />
+                <btn.icon size={16} className={btn.variant === "create" ? "opacity-90" : "opacity-70"} />
                 {btn.label}
               </Link>
             ))}
@@ -820,7 +828,7 @@ export function DashboardEditable({
                     {body}
                     <Link
                       href="/portal/tasks"
-                      className="mt-auto pt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs uppercase tracking-widest hover:bg-amber-100 hover:border-amber-300 transition-colors min-h-[44px] w-fit"
+                      className="mt-auto pt-4 inline-flex items-center gap-2 min-h-[44px] w-fit px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest text-white shadow-md shadow-indigo-900/20 transition-all hover:bg-aidv-dashboard-cta-hover active:scale-[0.98] bg-aidv-dashboard-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aidv-dashboard-cta-ring)] focus-visible:ring-offset-2"
                     >
                       Zobrazit všechny úkoly <ChevronRight size={14} />
                     </Link>
@@ -875,13 +883,13 @@ export function DashboardEditable({
 
       {/* Right-side panel: narrow strip (icon + arrow) when closed, expands to calendar + messages when open. No overlay, no blur. */}
       <aside
-        className="fixed right-0 top-[73px] bottom-0 z-20 flex flex-col bg-white border-l border-slate-200 transition-[width] duration-200 ease-out overflow-hidden"
+        className="fixed right-0 top-[73px] bottom-0 z-20 flex flex-col bg-aidv-surface-dark border-l border-[color:var(--aidv-border-on-dark)] transition-[width] duration-200 ease-out overflow-hidden shadow-[ -4px_0_24px_-12px_rgba(0,0,0,0.25) ]"
         style={{ width: drawerOpen ? 380 : 56 }}
       >
         <button
           type="button"
-          onClick={() => setDrawerOpen((v) => !v)}
-          className="flex items-center justify-center gap-1 w-14 h-14 shrink-0 border-b border-slate-100 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors min-h-[56px]"
+          onClick={toggleCalendarDrawer}
+          className="flex items-center justify-center gap-1 w-14 h-14 shrink-0 border-b border-[color:var(--aidv-border-on-dark)] text-aidv-text-muted-on-dark hover:text-aidv-text-on-dark hover:bg-white/10 transition-colors min-h-[56px]"
           aria-label={drawerOpen ? "Skrýt kalendář" : "Zobrazit kalendář"}
         >
           <Calendar size={20} />
@@ -891,18 +899,18 @@ export function DashboardEditable({
           <>
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 hide-scrollbar">
               <section className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kalendář</h3>
-                <CalendarWidget hideTitle onNewActivity={() => router.push("/portal/calendar?new=1")} />
+                <h3 className="text-xs font-bold text-aidv-text-muted-on-dark uppercase tracking-wider">Kalendář</h3>
+                <CalendarWidget hideTitle onNewActivity={() => router.push("/portal/calendar?new=1")} variant="darkPanel" />
               </section>
-              <section className="pt-4 border-t border-slate-100">
-                <MessengerPreview />
+              <section className="pt-4 border-t border-[color:var(--aidv-border-on-dark)]">
+                <MessengerPreview forDarkPanel />
               </section>
             </div>
-            <div className="border-t border-slate-200 p-4 flex-shrink-0">
+            <div className="border-t border-[color:var(--aidv-border-on-dark)] p-4 flex-shrink-0 bg-aidv-surface-elevated">
               <button
                 type="button"
                 onClick={() => router.push("/portal/calendar?new=1")}
-                className="w-full min-h-[48px] py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+                className={`${createActionButtonClassName} w-full min-h-[48px] py-3 uppercase tracking-widest shadow-lg`}
               >
                 <Plus size={18} /> Nová aktivita
               </button>

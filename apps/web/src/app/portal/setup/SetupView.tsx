@@ -693,7 +693,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
               type="button"
               onClick={handleGlobalSave}
               disabled={globalSaveDisabled}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none min-h-[44px]"
+              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none min-h-[44px]"
             >
               <Check size={16} /> Uložit změny
             </button>
@@ -910,7 +910,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                       type="button"
                       disabled={quickSaving}
                       onClick={handleSaveQuickActions}
-                      className="flex items-center gap-2 px-10 py-3.5 bg-[#1a1c2e] text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 min-h-[44px]"
+                      className="flex items-center gap-2 px-10 py-3.5 bg-aidv-create text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 min-h-[44px]"
                     >
                       <Check size={18} /> {quickSaving ? "Ukládám…" : "Uložit"}
                     </button>
@@ -1213,7 +1213,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         {activeTab === "fakturace" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 animate-in fade-in duration-300">
             <div className="lg:col-span-1 space-y-6">
-              <div className="bg-gradient-to-br from-[#1a1c2e] to-slate-800 rounded-[24px] p-8 text-white shadow-xl">
+              <div className="bg-gradient-to-br from-aidv-create to-slate-800 rounded-[24px] p-8 text-white shadow-xl">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Aktuální tarif</h3>
                 <div className="flex flex-col gap-1 mb-6">
                   <span className="text-3xl sm:text-4xl font-black tracking-tight leading-tight break-words">
@@ -1314,7 +1314,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer ml-2 shrink-0">
                       <input type="checkbox" className="sr-only peer" checked={notifPrefs[notif.id] ?? true} onChange={() => handleNotifToggle(notif.id)} />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1a1c2e]" />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-aidv-create" />
                     </label>
                   </div>
                 ))}
@@ -1350,7 +1350,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 <button type="button" className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm hover:shadow-md hover:bg-slate-50 transition-all min-h-[44px]">
                   <Server size={16} /> Filtry
                 </button>
-                <button type="button" onClick={() => toast.showToast("Díky, návrhy integrací sbíráme průběžně.")} className="flex items-center gap-2 px-5 py-2.5 bg-[#1a1c2e] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]">
+                <button type="button" onClick={() => toast.showToast("Díky, návrhy integrací sbíráme průběžně.")} className="flex items-center gap-2 px-5 py-2.5 bg-aidv-create text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-95 min-h-[44px]">
                   <Check size={16} /> Navrhnout integraci
                 </button>
               </div>
@@ -1433,7 +1433,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                             onChange={handleToggleClick}
                             disabled={toggleDisabled}
                           />
-                          <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1a1c2e]" />
+                          <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-aidv-create" />
                         </label>
                       </div>
                       <div className="px-6 pb-6 flex-1">

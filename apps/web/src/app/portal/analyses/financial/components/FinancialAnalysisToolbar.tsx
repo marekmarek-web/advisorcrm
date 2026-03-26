@@ -8,6 +8,8 @@ import { exportToFile } from "@/lib/analyses/financial/saveLoad";
 import { saveFinancialAnalysisDraft } from "@/app/actions/financial-analyses";
 import { Download, FolderOpen, PlusCircle, CloudUpload, List, UserPlus } from "lucide-react";
 
+import { createActionButtonClassName } from "@/lib/ui/button-presets";
+
 export function FinancialAnalysisToolbar() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,7 +136,7 @@ export function FinancialAnalysisToolbar() {
       <button
         type="button"
         onClick={handleReset}
-        className="min-h-[44px] min-w-[44px] text-sm px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-2 font-semibold text-slate-700"
+        className={`${createActionButtonClassName} min-w-[44px] text-sm normal-case tracking-normal shadow-lg`}
         title="Začít nový plán"
       >
         <PlusCircle className="w-4 h-4" />

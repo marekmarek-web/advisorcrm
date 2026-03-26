@@ -166,7 +166,7 @@ export function ClientReferralSection({ contactId }: { contactId: string }) {
                     type="button"
                     onClick={handleCreateReferralTask}
                     disabled={creatingTask}
-                    className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1a1c2e] text-white text-sm font-bold shadow-sm hover:bg-[#2a2d4a] transition-colors disabled:opacity-60"
+                    className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-aidv-create text-white text-sm font-bold shadow-sm hover:bg-aidv-create-hover transition-colors disabled:opacity-60"
                   >
                     <ListTodo size={16} />
                     {creatingTask ? "Vytvářím…" : "Vytvořit úkol: Požádat o doporučení"}
@@ -259,7 +259,7 @@ export function ClientReferralSection({ contactId }: { contactId: string }) {
                     type="button"
                     onClick={handleCreateReferralTask}
                     disabled={creatingTask}
-                    className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1a1c2e] text-white text-sm font-bold shadow-sm hover:bg-[#2a2d4a] transition-colors disabled:opacity-60"
+                    className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-aidv-create text-white text-sm font-bold shadow-sm hover:bg-aidv-create-hover transition-colors disabled:opacity-60"
                   >
                     <ListTodo size={16} />
                     {creatingTask ? "Vytvářím…" : "Vytvořit úkol"}

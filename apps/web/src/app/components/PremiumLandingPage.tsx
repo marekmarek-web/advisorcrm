@@ -360,7 +360,7 @@ const InteractiveMindmap = () => {
               style={{ left: n.x, top: n.y }} 
               className={`absolute flex flex-col justify-center rounded-[20px] shadow-lg transition-shadow duration-200
                 ${dragging?.id === n.id ? 'shadow-2xl cursor-grabbing z-50 ring-2 ring-indigo-300' : 'cursor-grab z-10 hover:shadow-xl'}
-                ${isCore ? 'bg-[#1a1c2e] text-white w-48 py-4 px-5' : 
+                ${isCore ? 'bg-aidv-create text-white w-48 py-4 px-5' : 
                   isItem ? 'bg-white border-2 border-dashed border-slate-300 text-slate-800 w-44 py-3 px-4' : 
                   'bg-white border border-slate-200 text-slate-800 w-44 py-3 px-4'}
               `}

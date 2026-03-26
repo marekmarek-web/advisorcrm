@@ -85,7 +85,7 @@ export function DashboardAiAssistant() {
 
   if (loading && !summary) {
     return (
-      <div className="bg-gradient-to-br from-[#0a0f29] to-indigo-950 p-8 rounded-[32px] text-white min-h-[280px] flex items-center justify-center border border-slate-800">
+      <div className="bg-gradient-to-br from-aidv-surface-dark to-indigo-950 p-8 rounded-[32px] text-white min-h-[280px] flex items-center justify-center border border-slate-800">
         <div className="animate-pulse flex flex-col items-center gap-2">
           <Sparkles size={28} className="text-indigo-300" />
           <span className="text-sm text-indigo-200">Načítám…</span>
@@ -96,7 +96,7 @@ export function DashboardAiAssistant() {
 
   if (error) {
     return (
-      <div className="bg-gradient-to-br from-[#0a0f29] to-indigo-950 rounded-[32px] border border-slate-800 p-8 text-white min-h-[280px] flex flex-col justify-center">
+      <div className="bg-gradient-to-br from-aidv-surface-dark to-indigo-950 rounded-[32px] border border-slate-800 p-8 text-white min-h-[280px] flex flex-col justify-center">
         <p className="text-sm text-rose-300 mb-2">{error}</p>
         <button
           type="button"
@@ -113,7 +113,7 @@ export function DashboardAiAssistant() {
   const suggestedActions = summary?.suggestedActions ?? [];
 
   return (
-    <div className="bg-gradient-to-br from-[#0a0f29] to-indigo-950 rounded-[32px] p-8 text-white shadow-xl shadow-indigo-900/10 relative overflow-hidden flex flex-col justify-center min-h-[280px] group cursor-pointer border border-slate-800 hover:border-indigo-500/50 transition-colors">
+    <div className="bg-gradient-to-br from-aidv-surface-dark to-indigo-950 rounded-[32px] p-8 text-white shadow-xl shadow-indigo-900/10 relative overflow-hidden flex flex-col justify-center min-h-[280px] group cursor-pointer border border-slate-800 hover:border-indigo-500/50 transition-colors">
       <Sparkles className="absolute -top-6 -right-6 w-40 h-40 text-indigo-500/20 group-hover:rotate-12 transition-transform duration-700 pointer-events-none" aria-hidden />
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
 

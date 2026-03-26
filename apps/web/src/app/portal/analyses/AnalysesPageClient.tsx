@@ -99,7 +99,7 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
           </div>
           <Link
             href="/portal/analyses/financial"
-            className="flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3 bg-[#1a1c2e] text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 active:scale-[0.98] min-h-[44px]"
+            className="flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3 bg-aidv-create text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-aidv-create-hover transition-all hover:-translate-y-0.5 active:scale-[0.98] min-h-[44px]"
           >
             <Plus size={18} />
             Nová analýza

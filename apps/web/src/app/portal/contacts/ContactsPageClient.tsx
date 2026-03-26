@@ -17,6 +17,7 @@ import {
 } from "@/app/components/list-page";
 import { SkeletonLine, SkeletonTableRow } from "@/app/components/Skeleton";
 import { exportContactsCsv, updateContactsLifecycle, addTagToContacts, type ContactRow } from "@/app/actions/contacts";
+import { createActionButtonClassNameCompact } from "@/lib/ui/button-presets";
 
 const LIFECYCLE_TABS: { value: string; label: string }[] = [
   { value: "", label: "Všichni" },
@@ -224,11 +225,7 @@ export function ContactsPageClient({ list }: { list: ContactRow[] }) {
                 <Download size={16} />
                 <span className="hidden sm:inline">Exportovat CSV</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setWizardOpen(true)}
-                className="flex items-center gap-1.5 md:gap-2 px-4 md:px-5 py-2 md:py-2.5 bg-[#1a1c2e] text-white rounded-[var(--wp-radius-sm)] text-xs font-bold uppercase tracking-wide shadow-md hover:bg-[#2a2d4a] transition-all hover:-translate-y-0.5 disabled:opacity-50 min-h-[44px] md:min-h-0"
-              >
+              <button type="button" onClick={() => setWizardOpen(true)} className={createActionButtonClassNameCompact}>
                 <Plus size={16} />
                 Nový klient
               </button>

@@ -635,7 +635,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           />
           <input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="Jméno a příjmení" />
           <input type="date" value={newMemberBirthDate} onChange={(e) => setNewMemberBirthDate(e.target.value)} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" />
-          <button type="button" onClick={addHouseholdMember} className="w-full min-h-[44px] rounded-xl bg-[#1a1c2e] text-white text-sm font-bold">
+          <button type="button" onClick={addHouseholdMember} className="w-full min-h-[44px] rounded-xl bg-aidv-create text-white text-sm font-bold">
             Přidat člena
           </button>
         </div>
