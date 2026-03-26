@@ -100,8 +100,10 @@ export async function applyContractReview(
 
   try {
     await db.transaction(async (tx) => {
-      if (!effectiveContactId && createNewConfirmed) {
-        const createClientAction = draftActions.find((a) => a.type === "create_client");
+        if (!effectiveContactId && createNewConfirmed) {
+        const createClientAction = draftActions.find(
+          (a) => a.type === "create_client" || a.type === "create_new_client"
+        );
         if (createClientAction) {
           const existing = await findExistingContactId(tenantId, createClientAction.payload, tx as unknown as typeof db);
           if (existing) {
@@ -139,7 +141,12 @@ export async function applyContractReview(
       }
 
       for (const action of draftActions) {
-        if ((action.type === "create_contract" || action.type === "create_or_update_contract_record") && effectiveContactId) {
+        if (
+          (action.type === "create_contract" ||
+            action.type === "create_or_update_contract_record" ||
+            action.type === "create_or_update_contract_production") &&
+          effectiveContactId
+        ) {
           const contractNumber = (action.payload.contractNumber as string)?.trim() || null;
           const institutionName = (action.payload.institutionName as string)?.trim() || null;
           const segment = (action.payload.segment as string)?.trim() || "ZP";
@@ -190,7 +197,11 @@ export async function applyContractReview(
             })
             .returning({ id: tasks.id });
           if (inserted?.id) resultPayload.createdTaskId = inserted.id;
-        } else if (action.type === "create_payment_setup" || action.type === "create_payment") {
+        } else if (
+          action.type === "create_payment_setup" ||
+          action.type === "create_payment" ||
+          action.type === "create_payment_setup_for_portal"
+        ) {
           if (effectiveContactId) {
             const existingPay = await tx
               .select({ id: clientPaymentSetups.id })
@@ -300,7 +311,11 @@ export async function applyContractReview(
               .returning({ id: clientPaymentSetups.id });
             if (insertedPs?.id) resultPayload.createdPaymentSetupId = insertedPs.id;
           }
-        } else if (action.type === "draft_email" || action.type === "create_notification") {
+        } else if (
+          action.type === "draft_email" ||
+          action.type === "create_followup_email_draft" ||
+          action.type === "create_notification"
+        ) {
           // No DB write - these are UI-only suggestions
         }
       }

@@ -23,7 +23,7 @@
 
 ## Jak otestovat
 
-1. **Prostředí:** `apps/web/.env.local` z `.env.local.example` – vyplnit `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`.
+1. **Prostředí:** `apps/web/.env.local` zkopírovat z `apps/web/.env.example` – vyplnit `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`.
 2. **DB:** Z rootu `pnpm db:push`, pak `pnpm seed`.
 3. **Uživatel:** V Supabase Dashboard → Authentication vytvořit uživatele. Do tabulky `memberships` nastavit `user_id` na jeho User UID (nebo v `packages/db/src/seed.ts` nastavit `DEMO_USER_ID` na toto UID a znovu spustit seed).
 4. **Spuštění:** `pnpm dev` (nebo z `apps/web`: `npm run dev` / `npx next dev`).

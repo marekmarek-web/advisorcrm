@@ -25,7 +25,9 @@ export type ProcessingStatus =
   | "processing"
   | "extracted"
   | "review_required"
-  | "failed";
+  | "failed"
+  | "scan_pending_ocr"
+  | "blocked";
 
 export type BoundingBox = {
   x: number;
@@ -153,6 +155,8 @@ export type ExtractionDocument = {
     blockedReasons: string[];
     warnings: string[];
   };
+  /** Human-readable pipeline sub-step while status is processing (from API `processingStage`). */
+  processingStageLabel?: string;
   /** From GET review `pipelineInsights` — routing, preprocess, payment preview. */
   pipelineInsights?: {
     normalizedPipelineClassification?: string;

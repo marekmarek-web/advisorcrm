@@ -93,7 +93,7 @@ async function runPromptGeneration(params: {
 
   const result = await createResponseFromPrompt(
     { promptId, version, variables: params.variables },
-    { store: false }
+    { store: false, routing: { category: "copilot" } }
   );
 
   if (!result.ok) {

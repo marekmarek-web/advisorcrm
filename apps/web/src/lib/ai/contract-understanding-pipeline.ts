@@ -40,6 +40,9 @@ import {
   validatePaymentInstructionExtraction,
   type PaymentInstructionExtraction,
 } from "./payment-instruction-extraction";
+import { buildManualReviewStubEnvelope, buildScanOcrUnusableStubEnvelope } from "./ai-review-manual-stub";
+import { shouldSkipContractLlmExtractionForScanOcr } from "./scan-ocr-extraction-gate";
+import { runAiReviewV2Pipeline } from "./ai-review-pipeline-v2";
 
 export type PipelinePreprocessMeta = {
   adobePreprocessed?: boolean;
@@ -77,94 +80,6 @@ function mergePreprocessIntoTrace(trace: ExtractionTrace, meta?: PipelinePreproc
   if (meta.preprocessWarnings?.length) {
     trace.warnings = [...(trace.warnings ?? []), ...meta.preprocessWarnings];
   }
-}
-
-function buildManualReviewStubEnvelope(params: {
-  classification: ClassificationResult;
-  inputMode: string;
-  extractionMode: string;
-  pageCount?: number | null;
-  norm: PipelineNormalizedClassification;
-  route: ExtractionRoute;
-}): DocumentReviewEnvelope {
-  const { classification, inputMode, extractionMode, pageCount, norm, route } = params;
-  const scannedVsDigital =
-    inputMode === "text_pdf"
-      ? "digital"
-      : inputMode === "image_document" || inputMode === "scanned_pdf" || inputMode === "mixed_pdf"
-        ? "scanned"
-        : "unknown";
-  return {
-    documentClassification: {
-      primaryType: "unsupported_or_unknown",
-      subtype: classification.primaryType,
-      lifecycleStatus: "unknown",
-      documentIntent: "manual_review_required",
-      confidence: classification.confidence,
-      reasons: [
-        ...classification.reasons,
-        `original_primary:${classification.primaryType}`,
-        `normalized_pipeline:${norm}`,
-      ],
-    },
-    documentMeta: {
-      pageCount: pageCount ?? undefined,
-      scannedVsDigital,
-      overallConfidence: Math.max(0.12, Math.min(1, classification.confidence * 0.55)),
-      pipelineRoute: route,
-      normalizedPipelineClassification: norm,
-      rawPrimaryClassification: classification.primaryType,
-      extractionRoute: route,
-    },
-    parties: {},
-    productsOrObligations: [],
-    financialTerms: {},
-    serviceTerms: {},
-    extractedFields: {},
-    evidence: [],
-    candidateMatches: {
-      matchedClients: [],
-      matchedHouseholds: [],
-      matchedDeals: [],
-      matchedCompanies: [],
-      matchedContracts: [],
-      score: 0,
-      reason: "no_match",
-      ambiguityFlags: [],
-    },
-    sectionSensitivity: {},
-    relationshipInference: {
-      policyholderVsInsured: [],
-      childInsured: [],
-      intermediaryVsClient: [],
-      employerVsEmployee: [],
-      companyVsPerson: [],
-      bankOrLenderVsBorrower: [],
-    },
-    reviewWarnings: [
-      {
-        code: "manual_review_only",
-        message:
-          "Typ dokumentu není spolehlivě podporován pro automatickou extrakci. Ověřte obsah a doplňte údaje ručně.",
-        severity: "warning",
-      },
-    ],
-    suggestedActions: [],
-    sensitivityProfile: "standard_personal_data",
-    contentFlags: {
-      isFinalContract: false,
-      isProposalOnly: false,
-      containsPaymentInstructions: false,
-      containsClientData: false,
-      containsAdvisorData: false,
-      containsMultipleDocumentSections: false,
-    },
-    debug: {
-      originalClassification: classification,
-      inputMode,
-      extractionMode,
-    },
-  };
 }
 
 export type PipelineSuccess = {
@@ -206,6 +121,12 @@ export async function runContractUnderstandingPipeline(
   mimeType?: string | null,
   options?: ContractPipelineOptions
 ): Promise<PipelineResult> {
+  // V2 je výchozí (classifier → routing → extrakce). Vypnout jen explicitně pro diagnostiku staré pipeline.
+  const useAiReviewV2 = process.env.AI_REVIEW_USE_V2_PIPELINE !== "false";
+  if (useAiReviewV2) {
+    return runAiReviewV2Pipeline(fileUrl, mimeType, options);
+  }
+
   const { getPipelineVersionInfo } = await import("./pipeline-versioning");
   const versionInfo = getPipelineVersionInfo();
   const trace: ExtractionTrace = {
@@ -482,14 +403,56 @@ export async function runContractUnderstandingPipeline(
     };
   }
 
+  const documentTextHint = (options?.ruleBasedTextHint ?? "").trim();
+
+  // Rules-first: scan-like PDF without usable OCR text — skip LLM contract extraction (file + preview only).
+  if (
+    (extractionRoute === "contract_intake" || extractionRoute === "supporting_document") &&
+    shouldSkipContractLlmExtractionForScanOcr({
+      isScanFallback,
+      hintLength: documentTextHint.length,
+      preprocessStatus: options?.preprocessMeta?.preprocessStatus,
+      readabilityScore: options?.preprocessMeta?.readabilityScore,
+      textCoverageEstimate: textCov,
+    })
+  ) {
+    const stub = buildScanOcrUnusableStubEnvelope({
+      classification,
+      inputMode: inputModeResult.inputMode as string,
+      extractionMode: inputModeResult.extractionMode as string,
+      pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
+      norm: normPipeline,
+      route: extractionRoute,
+    });
+    stub.documentMeta.textCoverageEstimate = textCov;
+    stub.documentMeta.preprocessMode = options?.preprocessMeta?.preprocessMode;
+    stub.documentMeta.preprocessStatus = options?.preprocessMeta?.preprocessStatus;
+    trace.selectedSchema = "scan_ocr_unusable";
+    logPipelineEvent("branch_scan_ocr_skip", { hintLen: documentTextHint.length });
+    return {
+      ok: true,
+      processingStatus: "review_required",
+      extractedPayload: stub,
+      confidence: stub.documentClassification.confidence,
+      reasonsForReview: [...new Set([...allReasons, "scan_or_ocr_unusable"])],
+      inputMode: inputModeResult.inputMode,
+      extractionMode: inputModeResult.extractionMode,
+      detectedDocumentType: classification.primaryType,
+      extractionTrace: trace,
+      validationWarnings: stub.reviewWarnings,
+      fieldConfidenceMap: null,
+      classificationReasons: classification.reasons,
+    };
+  }
+
   // Step 3 & 4: Schema selection by document type (Plan 3 §4.6) — contract / supporting paths
   const documentType = classification.primaryType;
   const schemaDefinition = selectSchemaForType(documentType);
   trace.selectedSchema = documentType;
 
-  // Step 5: Structured extraction (text second pass when preprocess text is long enough — skips second PDF upload)
+  // Step 5: Structured extraction — either text-only (no PDF fallback) or single PDF pass.
   const extractionPrompt = buildExtractionPrompt(documentType, isScanFallback);
-  const hint = (options?.ruleBasedTextHint ?? "").trim();
+  const hint = documentTextHint;
   const minTextChars = 800;
   const readabilityOk =
     typeof options?.preprocessMeta?.readabilityScore === "number" &&
@@ -498,27 +461,22 @@ export async function runContractUnderstandingPipeline(
   const allowTextSecondPass =
     hint.length >= minTextChars && !isScanFallback && (isTextPdf || readabilityOk);
 
+  const extractionStarted = Date.now();
   let rawExtraction: string;
   try {
     if (allowTextSecondPass) {
       trace.extractionSecondPass = "text";
       const wrapped = wrapExtractionPromptWithDocumentText(extractionPrompt, hint);
-      try {
-        rawExtraction = await createResponse(wrapped);
-      } catch (textErr) {
-        trace.extractionSecondPass = "pdf";
-        trace.warnings = [
-          ...(trace.warnings ?? []),
-          "text_second_pass_failed_fallback_pdf",
-          textErr instanceof Error ? textErr.message : String(textErr),
-        ];
-        rawExtraction = await createResponseWithFile(fileUrl, extractionPrompt);
-      }
+      rawExtraction = await createResponse(wrapped, { routing: { category: "ai_review" } });
     } else {
       trace.extractionSecondPass = "pdf";
-      rawExtraction = await createResponseWithFile(fileUrl, extractionPrompt);
+      rawExtraction = await createResponseWithFile(fileUrl, extractionPrompt, {
+        routing: { category: "ai_review" },
+      });
     }
+    trace.extractionDurationMs = Date.now() - extractionStarted;
   } catch (e) {
+    trace.extractionDurationMs = Date.now() - extractionStarted;
     trace.failedStep = "structured_extraction";
     trace.warnings = [...(trace.warnings ?? []), e instanceof Error ? e.message : String(e)];
     if (isOpenAIRateLimitError(e)) {
@@ -543,8 +501,10 @@ export async function runContractUnderstandingPipeline(
 
   logPipelineEvent("contract_extraction_raw_ok", { documentType });
 
+  const valBlockStart = Date.now();
   const validated = validateExtractionByType(rawExtraction, documentType);
   if (!validated.ok) {
+    trace.validationDurationMs = Date.now() - valBlockStart;
     trace.failedStep = "structured_extraction";
     trace.warnings = [
       ...(trace.warnings ?? []),
@@ -669,7 +629,10 @@ export async function runContractUnderstandingPipeline(
     allReasons.push(...verification.reasonsForReview);
   }
 
+  trace.validationDurationMs = Date.now() - valBlockStart;
+
   // Step 7: Review decision (envelopeValidation computed in Step 6)
+  const rdStart = Date.now();
   const reviewDecision = decideReviewStatusWithReason({
     classificationConfidence: classification.confidence,
     extractionConfidence,
@@ -678,6 +641,7 @@ export async function runContractUnderstandingPipeline(
     inputMode: inputModeResult.inputMode,
     extractionFailed: false,
   });
+  trace.reviewDecisionDurationMs = Date.now() - rdStart;
   const processingStatus = reviewDecision.status;
 
   if (extractionConfidence < 0.7) {

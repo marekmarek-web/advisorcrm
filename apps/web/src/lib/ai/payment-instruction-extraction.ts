@@ -34,8 +34,9 @@ export const paymentInstructionExtractionSchema = z.object({
 
 export type PaymentInstructionExtraction = z.infer<typeof paymentInstructionExtractionSchema>;
 
-const PAYMENT_EXTRACTION_PROMPT = `Jsi asistent pro výpis platebních údajů z dokumentu (složenka, SIPO, pojistné, investice, trvalý příkaz).
-Vrať JEDINĚ platný JSON objekt (žádný markdown) s těmito poli (prázdné stringy pokud nejsou v dokumentu):
+const PAYMENT_EXTRACTION_PROMPT = `Výpis platebních údajů z dokumentu. Výstup = jediný platný JSON, žádný markdown, žádné vysvětlení mimo JSON.
+
+Pole (prázdné stringy pokud chybí):
 institutionName, productName, payerName, beneficiaryName, amount (číslo nebo text), currency, paymentFrequency,
 dueDay (den v měsíci), dueDate (datum), iban, accountNumber, bankCode, variableSymbol, constantSymbol, specificSymbol,
 reference, paymentNote, firstPaymentDate, paymentChannel, sourceDocumentType,
@@ -245,7 +246,9 @@ export async function extractPaymentInstructionsFromDocument(
   | { ok: false; error: string; errorCode?: string }
 > {
   try {
-    const raw = await createResponseWithFile(fileUrl, PAYMENT_EXTRACTION_PROMPT);
+    const raw = await createResponseWithFile(fileUrl, PAYMENT_EXTRACTION_PROMPT, {
+      routing: { category: "ai_review" },
+    });
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : raw;
     const parsed = JSON.parse(jsonStr) as unknown;

@@ -7,7 +7,11 @@ import type { AuditRequestContext } from "@/lib/audit";
 import { logAudit } from "@/lib/audit";
 import { updateContractReview } from "@/lib/ai/review-queue-repository";
 import { runContractUnderstandingPipeline } from "@/lib/ai/contract-understanding-pipeline";
-import { findClientCandidates, buildAllDraftActions } from "@/lib/ai/draft-actions";
+import {
+  findClientCandidates,
+  buildAllDraftActions,
+  applyAidvisorDraftCanonicalTypes,
+} from "@/lib/ai/draft-actions";
 import {
   findMatchedCompanies,
   findMatchedDeals,
@@ -17,6 +21,11 @@ import {
 } from "@/lib/ai/client-matching";
 import { logOpenAICall } from "@/lib/openai";
 import { preprocessForAiExtraction } from "@/lib/documents/processing/preprocess-for-ai";
+import { evaluateContractReviewScanGate } from "@/lib/contracts/contract-review-scan-gate";
+import {
+  isAiReviewLlmPostprocessEnabled,
+  runAiReviewClientMatchLlm,
+} from "@/lib/ai/ai-review-llm-postprocess";
 
 export type RunContractReviewProcessingParams = {
   id: string;
@@ -116,6 +125,56 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     })
   );
 
+  await updateContractReview(id, tenantId, {
+    processingStage: "document_recognized",
+  }).catch(() => {});
+
+  if (adobePreprocessResult) {
+    const gate = await evaluateContractReviewScanGate(preprocessedUrl, mimeType, {
+      markdownContent: adobePreprocessResult.markdownContent,
+      readabilityScore: adobePreprocessResult.readabilityScore,
+      preprocessStatus: adobePreprocessResult.preprocessStatus,
+      preprocessMode: adobePreprocessResult.preprocessMode,
+    });
+    if (gate.defer) {
+      await updateContractReview(id, tenantId, {
+        processingStatus: "scan_pending_ocr",
+        processingStage: null,
+        errorMessage: null,
+        extractionTrace: {
+          preprocessDurationMs,
+          preprocessStatus: preprocessMeta.preprocessStatus,
+          preprocessMode: preprocessMeta.preprocessMode,
+          scanPendingReason: gate.reason,
+          adobePreprocessed: adobePreprocessResult.preprocessed,
+          adobeJobIds: adobePreprocessResult.providerJobIds,
+          readabilityScore: adobePreprocessResult.readabilityScore,
+          ocrConfidenceEstimate: adobePreprocessResult.ocrConfidenceEstimate,
+        },
+      });
+      await logAudit({
+        tenantId,
+        userId,
+        action: "extraction_deferred_scan",
+        entityType: "contract_review",
+        entityId: id,
+        requestContext,
+        meta: { reason: gate.reason },
+      }).catch(() => {});
+      logOpenAICall({
+        endpoint: "contracts/process_pipeline",
+        model: "—",
+        latencyMs: Date.now() - processingStartedAtMs,
+        success: true,
+      });
+      return;
+    }
+  }
+
+  await updateContractReview(id, tenantId, {
+    processingStage: "extracting",
+  }).catch(() => {});
+
   const pipelineResult = await runContractUnderstandingPipeline(preprocessedUrl, mimeType, {
     ruleBasedTextHint: adobePreprocessResult?.markdownContent ?? null,
     preprocessMeta,
@@ -146,6 +205,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     };
     await updateContractReview(id, tenantId, {
       processingStatus: "failed",
+      processingStage: null,
       errorMessage: isRateLimit
         ? pipelineResult.errorMessage
         : pipelineResult.errorMessage + errDetail,
@@ -172,12 +232,38 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
 
   const data = pipelineResult.extractedPayload;
   const contractNumber = String(data.extractedFields.contractNumber?.value ?? "");
-  const draftActions = buildAllDraftActions(data);
+  const draftActions = applyAidvisorDraftCanonicalTypes(buildAllDraftActions(data), {
+    blockPortalPayment: pipelineResult.processingStatus === "blocked",
+  });
 
+  await updateContractReview(id, tenantId, {
+    processingStage: "matching_client",
+  }).catch(() => {});
+
+  const cmDbStarted = Date.now();
   const [clientMatchCandidates, matchedCompanies] = await Promise.all([
     findClientCandidates(data, { tenantId }),
     findMatchedCompanies(tenantId, data),
   ]);
+  const clientMatchDurationMs = Date.now() - cmDbStarted;
+
+  let llmClientMatchDurationMs: number | undefined;
+  let clientMatchLlm: Awaited<ReturnType<typeof runAiReviewClientMatchLlm>> | null = null;
+  if (isAiReviewLlmPostprocessEnabled()) {
+    const llmStarted = Date.now();
+    clientMatchLlm = await runAiReviewClientMatchLlm({
+      extractionPartiesJson: JSON.stringify(data.parties ?? {}),
+      dbCandidatesJson: JSON.stringify(
+        clientMatchCandidates.slice(0, 8).map((c) => ({
+          clientId: c.clientId,
+          displayName: c.displayName,
+          score: c.score,
+          reasons: c.reasons,
+        }))
+      ),
+    });
+    llmClientMatchDurationMs = Date.now() - llmStarted;
+  }
 
   const [matchedHouseholds, matchedDeals, matchedContracts] = await Promise.all([
     findMatchedHouseholds(tenantId, clientMatchCandidates),
@@ -222,10 +308,18 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     reasonsForReview.push("missing_existing_contract_match");
   }
 
+  await updateContractReview(id, tenantId, {
+    processingStage: "finalizing",
+  }).catch(() => {});
+
   const mergedTrace = {
     ...pipelineResult.extractionTrace,
     preprocessDurationMs,
     pipelineDurationMs,
+    clientMatchDurationMs,
+    llmClientMatchDurationMs,
+    totalPipelineDurationMs: Date.now() - processingStartedAtMs,
+    ...(clientMatchLlm?.ok ? { llmClientMatchText: clientMatchLlm.text.slice(0, 4000) } : {}),
     ...(adobePreprocessResult?.preprocessed
       ? {
           adobePreprocessed: true,
@@ -241,6 +335,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
 
   await updateContractReview(id, tenantId, {
     processingStatus: pipelineResult.processingStatus,
+    processingStage: null,
     extractedPayload: data,
     draftActions,
     clientMatchCandidates,

@@ -4,6 +4,8 @@ import {
   validateExtractionByType,
   buildExtractionPrompt,
   wrapExtractionPromptWithDocumentText,
+  selectExcerptForExtraction,
+  EXTRACTION_DOCUMENT_TEXT_MAX_CHARS,
   SECTION_CONFIDENCE_KEYS,
 } from "../extraction-schemas-by-type";
 import type { ContractDocumentType } from "../document-classification";
@@ -142,6 +144,22 @@ describe("extraction-schemas-by-type", () => {
       expect(out).toContain("<<<DOCUMENT_TEXT>>>");
       expect(out).toContain("<<<END_DOCUMENT_TEXT>>>");
       expect(out).toContain("Foo bar");
+    });
+  });
+
+  describe("selectExcerptForExtraction", () => {
+    it("returns full text when under max", () => {
+      const { text, truncated } = selectExcerptForExtraction("abc".repeat(100));
+      expect(truncated).toBe(false);
+      expect(text.length).toBe(300);
+    });
+
+    it("truncates long markdown with marker", () => {
+      const long = "x".repeat(EXTRACTION_DOCUMENT_TEXT_MAX_CHARS + 5000);
+      const { text, truncated } = selectExcerptForExtraction(long);
+      expect(truncated).toBe(true);
+      expect(text.length).toBeLessThanOrEqual(EXTRACTION_DOCUMENT_TEXT_MAX_CHARS + 400);
+      expect(text).toMatch(/zkrácen|vynechán/);
     });
   });
 

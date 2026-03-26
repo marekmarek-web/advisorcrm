@@ -30,11 +30,13 @@ CRM pro finanční poradce v ČR – MVP dle specifikace (domácnosti, pipeline,
 2. **Supabase**
    - Vytvořte projekt na [supabase.com](https://supabase.com).
    - V Settings → Database získejte connection string (URI, např. pro pooler).
-   - Do kořene projektu zkopírujte `.env.example` jako `.env` a vyplňte:
+   - **Next.js aplikace (`apps/web`):** zkopírujte `apps/web/.env.example` → `apps/web/.env.local` a vyplňte mimo jiné:
      - `NEXT_PUBLIC_SUPABASE_URL`
      - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
      - `SUPABASE_SERVICE_ROLE_KEY` (pro server)
-     - `DATABASE_URL` nebo `SUPABASE_DB_URL` (Postgres connection string pro Drizzle)
+     - `DATABASE_URL` (Postgres connection string pro Drizzle)
+     - `OPENAI_API_KEY` a případně `OPENAI_PROMPT_*` (viz šablona v souboru)
+   - V kořeni repa je zkrácený `.env.example` (legacy); plná šablona včetně OpenAI je v `apps/web/.env.example`.
    - **Registrace bez e-mailu:** Aplikace po registraci rovnou přesměruje do portálu. Pokud v Supabase máš zapnuté „Confirm email“, buď ho v **Authentication → Providers → Email** vypni, nebo nakonfiguruj vlastní SMTP (Supabase defaultní e-maily často nedorazí).
 
 3. **Databáze**

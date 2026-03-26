@@ -39,8 +39,8 @@ export type PipelineInsights = {
   pipelineDurationMs?: number;
   /** Celkem preprocess + pipeline (ms), pokud jsou obě známé. */
   totalProcessingDurationMs?: number;
-  /** Druhý krok extrakce: celé PDF vs text z preprocessu. */
-  extractionSecondPass?: "pdf" | "text";
+  /** Druhý krok extrakce: celé PDF vs text z preprocessu vs Prompt Builder nad textem. */
+  extractionSecondPass?: "pdf" | "text" | "prompt_text";
 };
 
 function maskIbanHint(iban: unknown): string | undefined {

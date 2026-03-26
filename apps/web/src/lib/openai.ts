@@ -1,8 +1,50 @@
 import OpenAI from "openai";
 import { withOpenAIRateLimitRetry } from "@/lib/openai-rate-limit";
 
-const defaultModel = "gpt-4o-mini";
+const defaultModel = "gpt-5-mini";
 const fallbackModel = "gpt-4o-mini";
+
+/** Low temperature for deterministic JSON-style outputs (AI Review). */
+const AI_REVIEW_TEMPERATURE = 0;
+
+type ResponsesCreateBody = {
+  model: string;
+  input?: unknown;
+  prompt?: unknown;
+  store: boolean;
+  temperature?: number;
+};
+
+/** Model routing for copilot vs AI Review (env overrides). */
+export type OpenAIModelRoutingCategory = "default" | "copilot" | "ai_review";
+
+export type OpenAICallRoutingOptions = {
+  category?: OpenAIModelRoutingCategory;
+};
+
+/**
+ * Resolves model: explicit options.model wins, then category-specific env, then OPENAI_MODEL, then default.
+ */
+export function resolveOpenAIModel(options?: {
+  explicit?: string | null;
+  category?: OpenAIModelRoutingCategory;
+}): string {
+  const ex = options?.explicit?.trim();
+  if (ex) return ex;
+  const fallback = process.env.OPENAI_MODEL?.trim() || defaultModel;
+  const cat = options?.category ?? "default";
+  if (cat === "copilot") {
+    return process.env.OPENAI_MODEL_COPILOT_DEFAULT?.trim() || fallback;
+  }
+  if (cat === "ai_review") {
+    return (
+      process.env.OPENAI_MODEL_AI_REVIEW_DEFAULT?.trim() ||
+      process.env.OPENAI_MODEL?.trim() ||
+      defaultModel
+    );
+  }
+  return fallback;
+}
 
 let clientInstance: OpenAI | null = null;
 
@@ -56,7 +98,7 @@ export function logOpenAICall(params: {
  */
 export async function createResponse(
   input: string,
-  options?: { model?: string; store?: boolean }
+  options?: { model?: string; store?: boolean; routing?: OpenAICallRoutingOptions }
 ): Promise<string> {
   const client = getClient();
   if (!client) {
@@ -65,34 +107,36 @@ export async function createResponse(
     );
   }
 
-  const primaryModel =
-    options?.model ??
-    process.env.OPENAI_MODEL ??
-    defaultModel;
+  const primaryModel = resolveOpenAIModel({
+    explicit: options?.model,
+    category: options?.routing?.category,
+  });
   const store = options?.store ?? false;
   const start = Date.now();
 
   let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
   let usedModel = primaryModel;
   try {
+    const createBody: ResponsesCreateBody = {
+      model: primaryModel,
+      input,
+      store,
+      ...(options?.routing?.category === "ai_review" ? { temperature: AI_REVIEW_TEMPERATURE } : {}),
+    };
     response = await withOpenAIRateLimitRetry(
-      () =>
-        client.responses.create({
-          model: primaryModel,
-          input,
-          store,
-        }),
+      () => client.responses.create(createBody as Parameters<OpenAI["responses"]["create"]>[0]),
       { label: "responses.create", maxAttempts: 6 }
     );
   } catch (err) {
     if (isModelError(err) && primaryModel !== fallbackModel) {
+      const fallbackBody: ResponsesCreateBody = {
+        model: fallbackModel,
+        input,
+        store,
+        ...(options?.routing?.category === "ai_review" ? { temperature: AI_REVIEW_TEMPERATURE } : {}),
+      };
       response = await withOpenAIRateLimitRetry(
-        () =>
-          client.responses.create({
-            model: fallbackModel,
-            input,
-            store,
-          }),
+        () => client.responses.create(fallbackBody as Parameters<OpenAI["responses"]["create"]>[0]),
         { label: "responses.create(fallback_model)", maxAttempts: 6 }
       );
       usedModel = fallbackModel;
@@ -147,7 +191,7 @@ export async function createResponse(
  */
 export async function createResponseSafe(
   input: string,
-  options?: { model?: string; store?: boolean }
+  options?: { model?: string; store?: boolean; routing?: OpenAICallRoutingOptions }
 ): Promise<CreateResponseResult> {
   try {
     const text = await createResponse(input, options);
@@ -194,7 +238,7 @@ export async function createResponseFromPrompt(
     version?: string | null;
     variables: Record<string, string>;
   },
-  options?: { model?: string; store?: boolean }
+  options?: { model?: string; store?: boolean; routing?: OpenAICallRoutingOptions }
 ): Promise<CreateResponseResult> {
   const client = getClient();
   if (!client) {
@@ -208,8 +252,10 @@ export async function createResponseFromPrompt(
     return { ok: false, error: "Prompt ID chybí." };
   }
 
-  const primaryModel =
-    options?.model ?? process.env.OPENAI_MODEL ?? defaultModel;
+  const primaryModel = resolveOpenAIModel({
+    explicit: options?.model,
+    category: options?.routing?.category,
+  });
   const store = options?.store ?? false;
   const start = Date.now();
 
@@ -222,11 +268,15 @@ export async function createResponseFromPrompt(
   }
 
   try {
-    const response = await client.responses.create({
+    const promptBody: ResponsesCreateBody = {
       model: primaryModel,
       prompt: promptPayload as Parameters<OpenAI["responses"]["create"]>[0]["prompt"],
       store,
-    });
+      ...(options?.routing?.category === "ai_review" ? { temperature: AI_REVIEW_TEMPERATURE } : {}),
+    };
+    const response = await client.responses.create(
+      promptBody as Parameters<OpenAI["responses"]["create"]>[0]
+    );
     const latencyMs = Date.now() - start;
     logOpenAICall({
       endpoint: "responses.create_prompt",
@@ -257,7 +307,7 @@ export async function createResponseFromPrompt(
 export async function createResponseWithFile(
   fileUrl: string,
   textPrompt: string,
-  options?: { model?: string; store?: boolean }
+  options?: { model?: string; store?: boolean; routing?: OpenAICallRoutingOptions }
 ): Promise<string> {
   const client = getClient();
   if (!client) {
@@ -266,10 +316,10 @@ export async function createResponseWithFile(
     );
   }
 
-  const primaryModel =
-    options?.model ??
-    process.env.OPENAI_MODEL ??
-    defaultModel;
+  const primaryModel = resolveOpenAIModel({
+    explicit: options?.model,
+    category: options?.routing?.category,
+  });
   const store = options?.store ?? false;
   const start = Date.now();
 
@@ -286,24 +336,26 @@ export async function createResponseWithFile(
   let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
   let usedModel = primaryModel;
   try {
+    const fileBody: ResponsesCreateBody = {
+      model: primaryModel,
+      input,
+      store,
+      ...(options?.routing?.category === "ai_review" ? { temperature: AI_REVIEW_TEMPERATURE } : {}),
+    };
     response = await withOpenAIRateLimitRetry(
-      () =>
-        client.responses.create({
-          model: primaryModel,
-          input,
-          store,
-        }),
+      () => client.responses.create(fileBody as Parameters<OpenAI["responses"]["create"]>[0]),
       { label: "responses.create_with_file", maxAttempts: 6 }
     );
   } catch (err) {
     if (isModelError(err) && primaryModel !== fallbackModel) {
+      const fileFallbackBody: ResponsesCreateBody = {
+        model: fallbackModel,
+        input,
+        store,
+        ...(options?.routing?.category === "ai_review" ? { temperature: AI_REVIEW_TEMPERATURE } : {}),
+      };
       response = await withOpenAIRateLimitRetry(
-        () =>
-          client.responses.create({
-            model: fallbackModel,
-            input,
-            store,
-          }),
+        () => client.responses.create(fileFallbackBody as Parameters<OpenAI["responses"]["create"]>[0]),
         { label: "responses.create_with_file(fallback_model)", maxAttempts: 6 }
       );
       usedModel = fallbackModel;

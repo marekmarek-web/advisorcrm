@@ -66,7 +66,7 @@ export type ExtractionTrace = {
   /** OpenAI pipeline duration after preprocess (ms). */
   pipelineDurationMs?: number;
   /** Structured extraction: full PDF vs text-only second pass (faster when safe). */
-  extractionSecondPass?: "pdf" | "text";
+  extractionSecondPass?: "pdf" | "text" | "prompt_text";
   preprocessMode?: string;
   preprocessStatus?: string;
   /** 0–1 text / OCR coverage heuristic (Adobe + input mode). */
@@ -80,6 +80,22 @@ export type ExtractionTrace = {
   promptVersion?: string;
   schemaVersion?: string;
   classifierVersion?: string;
+  /** AI Review v2 */
+  aiReviewPipeline?: string;
+  aiClassifierJson?: Record<string, unknown>;
+  aiReviewRouterOutcome?: string;
+  aiReviewRouterReasonCodes?: string[];
+  aiReviewExtractionPromptKey?: string;
+  classifierDurationMs?: number;
+  extractionDurationMs?: number;
+  validationDurationMs?: number;
+  reviewDecisionDurationMs?: number;
+  clientMatchDurationMs?: number;
+  llmReviewDecisionText?: string;
+  llmClientMatchText?: string;
+  llmClientMatchDurationMs?: number;
+  scanPendingReason?: string;
+  totalPipelineDurationMs?: number;
 };
 
 /** Validation warning item. */
@@ -97,6 +113,7 @@ export type ContractReviewRow = {
   mimeType: string | null;
   sizeBytes: number | null;
   processingStatus: ContractProcessingStatus;
+  processingStage: string | null;
   errorMessage: string | null;
   extractedPayload: unknown;
   clientMatchCandidates: unknown;
@@ -262,6 +279,7 @@ const listReviewColumns = {
   mimeType: contractUploadReviews.mimeType,
   sizeBytes: contractUploadReviews.sizeBytes,
   processingStatus: contractUploadReviews.processingStatus,
+  processingStage: contractUploadReviews.processingStage,
   errorMessage: contractUploadReviews.errorMessage,
   extractedPayload: contractUploadReviews.extractedPayload,
   clientMatchCandidates: contractUploadReviews.clientMatchCandidates,
@@ -347,6 +365,7 @@ export async function listContractReviews(
       const base = r as ContractReviewRow;
       return {
         ...base,
+        processingStage: base.processingStage ?? null,
         detectedDocumentSubtype: base.detectedDocumentSubtype ?? null,
         lifecycleStatus: base.lifecycleStatus ?? null,
         documentIntent: null,
@@ -363,6 +382,7 @@ export async function updateContractReview(
   tenantId: string,
   update: {
     processingStatus?: ContractProcessingStatus;
+    processingStage?: string | null;
     errorMessage?: string | null;
     extractedPayload?: unknown;
     clientMatchCandidates?: unknown;

@@ -56,20 +56,50 @@ export function buildExtractionPrompt(
   return buildSchemaPrompt(definition, isScanFallback);
 }
 
-const MAX_DOCUMENT_TEXT_CHARS = 120_000;
+/** Target max chars sent to extraction LLM (full doc rarely needed). */
+export const EXTRACTION_DOCUMENT_TEXT_MAX_CHARS = 28_000;
+const HEAD_FRACTION = 0.72;
+
+export type ExcerptForExtractionOptions = {
+  maxChars?: number;
+  headFraction?: number;
+};
+
+/**
+ * Prefer the leading portion of markdown/OCR text (most contracts put key fields early).
+ * Optionally keep a short tail for signatures / payment blocks.
+ */
+export function selectExcerptForExtraction(
+  documentMarkdown: string,
+  options?: ExcerptForExtractionOptions
+): { text: string; truncated: boolean } {
+  const maxChars = options?.maxChars ?? EXTRACTION_DOCUMENT_TEXT_MAX_CHARS;
+  const headFrac = options?.headFraction ?? HEAD_FRACTION;
+  const trimmed = documentMarkdown.trim();
+  if (trimmed.length <= maxChars) {
+    return { text: trimmed, truncated: false };
+  }
+  const headLen = Math.floor(maxChars * headFrac);
+  const tailLen = Math.max(0, maxChars - headLen - 80);
+  const head = trimmed.slice(0, headLen);
+  const tail = tailLen > 0 ? trimmed.slice(-tailLen) : "";
+  const glue = tail ? "\n\n[… střed dokumentu vynechán …]\n\n" : "\n\n[… dokument zkrácen …]\n";
+  return {
+    text: `${head}${glue}${tail}`.slice(0, maxChars + 200),
+    truncated: true,
+  };
+}
 
 /**
  * Second-pass extraction from preprocess markdown/OCR text (no second PDF upload to the model).
  */
 export function wrapExtractionPromptWithDocumentText(
   extractionPrompt: string,
-  documentMarkdown: string
+  documentMarkdown: string,
+  excerptOptions?: ExcerptForExtractionOptions
 ): string {
-  const trimmed = documentMarkdown.trim();
-  const body =
-    trimmed.length > MAX_DOCUMENT_TEXT_CHARS
-      ? `${trimmed.slice(0, MAX_DOCUMENT_TEXT_CHARS)}\n\n[… dokument zkrácen kvůli limitu délky …]`
-      : trimmed;
+  const { text: body, truncated } = selectExcerptForExtraction(documentMarkdown, excerptOptions);
+  const suffix = truncated ? "\n\n[Text byl zkrácen pro extrakci — preferuj údaje z uvedených částí.]" : "";
   return `${extractionPrompt}
 
 ---
@@ -77,7 +107,7 @@ export function wrapExtractionPromptWithDocumentText(
 Níže je text dokumentu (převod z PDF / OCR). Extrahuj údaje výhradně z tohoto textu. Chybějící pole označ podle pravidel výše (missing / unknown).
 
 <<<DOCUMENT_TEXT>>>
-${body}
+${body}${suffix}
 <<<END_DOCUMENT_TEXT>>>
 `;
 }

@@ -19,6 +19,7 @@ export function serializeContractReviewDetailResponse(
     mimeType: row.mimeType,
     sizeBytes: row.sizeBytes,
     processingStatus: row.processingStatus,
+    processingStage: row.processingStage ?? undefined,
     errorMessage: row.errorMessage,
     extractedPayload: safePayload,
     clientMatchCandidates: row.clientMatchCandidates,
@@ -69,12 +70,36 @@ export function serializeContractReviewDetailResponse(
       const t = row.extractionTrace ?? {};
       const pre = typeof t.preprocessDurationMs === "number" ? t.preprocessDurationMs : undefined;
       const pipe = typeof t.pipelineDurationMs === "number" ? t.pipelineDurationMs : undefined;
-      if (pre == null && pipe == null && t.extractionSecondPass == null) return undefined;
+      const cls = typeof t.classifierDurationMs === "number" ? t.classifierDurationMs : undefined;
+      const ext = typeof t.extractionDurationMs === "number" ? t.extractionDurationMs : undefined;
+      const val = typeof t.validationDurationMs === "number" ? t.validationDurationMs : undefined;
+      const rd = typeof t.reviewDecisionDurationMs === "number" ? t.reviewDecisionDurationMs : undefined;
+      const cm = typeof t.clientMatchDurationMs === "number" ? t.clientMatchDurationMs : undefined;
+      const total = typeof t.totalPipelineDurationMs === "number" ? t.totalPipelineDurationMs : undefined;
+      if (
+        pre == null &&
+        pipe == null &&
+        t.extractionSecondPass == null &&
+        cls == null &&
+        ext == null &&
+        val == null &&
+        rd == null &&
+        cm == null &&
+        total == null
+      ) {
+        return undefined;
+      }
       return {
         preprocessDurationMs: pre,
         pipelineDurationMs: pipe,
         totalMs: pre != null && pipe != null ? pre + pipe : undefined,
         extractionSecondPass: t.extractionSecondPass,
+        classifierDurationMs: cls,
+        extractionDurationMs: ext,
+        validationDurationMs: val,
+        reviewDecisionDurationMs: rd,
+        clientMatchDurationMs: cm,
+        totalPipelineDurationMs: total,
       };
     })(),
     applyGate: evaluateApplyReadiness(row),

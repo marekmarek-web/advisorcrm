@@ -7,7 +7,11 @@ export type ContractProcessingStatus =
   | "processing"
   | "extracted"
   | "review_required"
-  | "failed";
+  | "failed"
+  /** Scan-like document waiting for Adobe/OCR; AI Review extraction not run. */
+  | "scan_pending_ocr"
+  /** e.g. payment extraction missing critical fields — no portal apply until resolved. */
+  | "blocked";
 
 /** Review queue status. */
 export type ContractReviewStatus = "pending" | "approved" | "rejected" | "applied";
@@ -24,6 +28,8 @@ export const contractUploadReviews = pgTable("contract_upload_reviews", {
   mimeType: text("mime_type"),
   sizeBytes: bigint("size_bytes", { mode: "number" }),
   processingStatus: text("processing_status").notNull().$type<ContractProcessingStatus>(),
+  /** Sub-step while processing (UI progress); cleared when done. */
+  processingStage: text("processing_stage"),
   errorMessage: text("error_message"),
   extractedPayload: jsonb("extracted_payload"),
   clientMatchCandidates: jsonb("client_match_candidates"),

@@ -1,0 +1,2 @@
+-- AI Review: scan_pending_ocr and blocked are new processing_status values (text column; no DB constraint change required).
+-- This migration documents the rollout; existing rows unchanged.

@@ -7,6 +7,8 @@ export type ValidationWarning = {
   code: string;
   message: string;
   field?: string;
+  /** Present on document-envelope / payment warnings from specialized validators. */
+  severity?: "info" | "warning" | "critical";
 };
 
 export type ValidationResult = {

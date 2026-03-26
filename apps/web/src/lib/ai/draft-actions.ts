@@ -1,5 +1,5 @@
 import type { ExtractedContractSchema } from "./extraction-schemas";
-import type { DraftActionBase } from "./review-queue";
+import type { DraftActionBase, DraftActionType } from "./review-queue";
 import type { DocumentReviewEnvelope } from "./document-review-types";
 import { resolveDocumentSchema } from "./document-schema-router";
 import {
@@ -511,5 +511,49 @@ export function buildAllDraftActions(
     actions.push(buildPaymentSetupDraft(maybeEnvelope));
   }
 
+  if (maybeEnvelope.documentClassification.lifecycleStatus === "final_contract") {
+    actions.push({
+      type: "create_or_update_business_plan_item",
+      label: "Navrhnout položku business plánu (kontrola)",
+      payload: {
+        productName: fieldValue(maybeEnvelope, "productName"),
+        documentType: maybeEnvelope.documentClassification.primaryType,
+      },
+    });
+    actions.push({
+      type: "create_or_update_pipeline_deal",
+      label: "Navrhnout obchod v pipeline (kontrola)",
+      payload: {
+        title: fieldValue(maybeEnvelope, "productName") || "Obchod ze smlouvy",
+        lifecycleStatus: maybeEnvelope.documentClassification.lifecycleStatus,
+      },
+    });
+  }
+
   return dedupeActions(actions);
+}
+
+/** Canonical Aidvisor draft type names + optional removal of portal payment drafts when blocked. */
+export function applyAidvisorDraftCanonicalTypes(
+  actions: DraftActionBase[],
+  opts?: { blockPortalPayment?: boolean }
+): DraftActionBase[] {
+  const block = opts?.blockPortalPayment === true;
+  const mapped = actions.map((a) => {
+    let t: DraftActionType = a.type;
+    if (t === "create_or_update_contract_record") t = "create_or_update_contract_production";
+    if (t === "create_client") t = "create_new_client";
+    if (t === "link_client") t = "link_existing_client";
+    if (t === "create_payment_setup") t = "create_payment_setup_for_portal";
+    if (t === "draft_email") t = "create_followup_email_draft";
+    if (t === a.type) return a;
+    return { ...a, type: t };
+  });
+  if (!block) return mapped;
+  return mapped.filter(
+    (a) =>
+      a.type !== "create_payment_setup" &&
+      a.type !== "create_payment" &&
+      a.type !== "create_payment_setup_for_portal"
+  );
 }

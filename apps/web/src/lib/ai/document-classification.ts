@@ -21,21 +21,20 @@ const classificationResponseSchema = z.object({
   lifecycleStatus: z.enum(DOCUMENT_LIFECYCLE_STATUSES).optional(),
   documentIntent: z.enum(DOCUMENT_INTENTS).optional(),
   confidence: z.number().min(0).max(1),
-  reasons: z.array(z.string()),
+  reasons: z.array(z.string().max(120)).max(3).optional(),
 });
 
-const CLASSIFICATION_PROMPT = `Urči klasifikaci finančního dokumentu.
-Vrať JEDINĚ platný JSON objekt (žádný markdown, žádný úvod) s poli:
-- primaryType: jedna z hodnot ${PRIMARY_DOCUMENT_TYPES.map((t) => `"${t}"`).join(", ")}
-- subtype: co nejkonkrétnější produkt/instituce varianta (např. "generali_bel_mondo"), jinak "unknown"
-- lifecycleStatus: jedna z hodnot ${DOCUMENT_LIFECYCLE_STATUSES.map((t) => `"${t}"`).join(", ")}
-- documentIntent: jedna z hodnot ${DOCUMENT_INTENTS.map((t) => `"${t}"`).join(", ")}
-- confidence: číslo 0–1
-- reasons: krátké důvody (pole stringů)
+const CLASSIFICATION_PROMPT = `Urči typ finančního dokumentu. Výstup = jediný platný JSON. Žádný markdown, žádný text mimo JSON.
 
-Rozhoduj podle nadpisů, institucí, sekcí, klíčových frází, tabulek a kontextových patternů.
-Nikdy neoznač offer/proposal jako final_contract bez explicitního důkazu.
-Všechny textové hodnoty (reasons apod.) piš VŽDY česky.`;
+Povinné:
+- primaryType: jedna z ${PRIMARY_DOCUMENT_TYPES.map((t) => `"${t}"`).join(", ")}
+- subtype: instituce/produkt hint nebo "unknown"
+- confidence: 0–1
+
+Volitelné (jen pokud jsi jistý): lifecycleStatus z ${DOCUMENT_LIFECYCLE_STATUSES.map((t) => `"${t}"`).join(", ")}, documentIntent z ${DOCUMENT_INTENTS.map((t) => `"${t}"`).join(", ")}
+- reasons: max 3 krátké české tagy; jinak vynech nebo []
+
+Rozhoduj podle nadpisů a klíčových frází. Nikdy neoznač návrh jako final_contract bez důkazu.`;
 
 export function normalizeClassification(raw: Partial<ClassificationResult>): ClassificationResult {
   const primaryType = (raw.primaryType ?? "unsupported_or_unknown") as ContractDocumentType;
@@ -51,7 +50,7 @@ export function normalizeClassification(raw: Partial<ClassificationResult>): Cla
         lifecycleStatus,
       }),
     confidence: typeof raw.confidence === "number" ? Math.max(0, Math.min(1, raw.confidence)) : 0,
-    reasons: Array.isArray(raw.reasons) ? raw.reasons : [],
+    reasons: Array.isArray(raw.reasons) && raw.reasons.length ? raw.reasons : [],
   };
 }
 
@@ -101,12 +100,18 @@ export function parseClassificationResponse(raw: string): ClassificationResult {
       lifecycleStatus: "unknown",
     });
   }
-  return normalizeClassification(result.data);
+  const norm = normalizeClassification({
+    ...result.data,
+    reasons: result.data.reasons?.length ? result.data.reasons : [],
+  });
+  return norm;
 }
 
 export async function classifyContractDocument(
   fileUrl: string
 ): Promise<ClassificationResult> {
-  const raw = await createResponseWithFile(fileUrl, CLASSIFICATION_PROMPT);
+  const raw = await createResponseWithFile(fileUrl, CLASSIFICATION_PROMPT, {
+    routing: { category: "ai_review" },
+  });
   return parseClassificationResponse(raw);
 }

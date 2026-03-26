@@ -44,6 +44,13 @@ export interface ClientMatchCandidate {
 }
 
 export type DraftActionType =
+  | "link_existing_client"
+  | "create_new_client"
+  | "create_or_update_contract_production"
+  | "create_or_update_business_plan_item"
+  | "create_or_update_pipeline_deal"
+  | "create_payment_setup_for_portal"
+  | "create_followup_email_draft"
   | "create_client"
   | "create_contract"
   | "create_task"

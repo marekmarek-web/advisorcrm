@@ -30,18 +30,12 @@ const responseSchema = z.object({
   qualityIssues: z.array(z.string()).optional(),
 });
 
-const DETECTION_PROMPT = `Prohlédni přiložený dokument. Urči, zda jde o:
-- text_pdf: PDF s výběrovým textem (textová vrstva)
-- scanned_pdf: naskenované PDF (obrázky stránek, bez textové vrstvy)
-- mixed_pdf: PDF obsahující kombinaci textu a obrázků/scanů
-- image_document: obrázek (JPG, PNG, HEIC apod.)
-- unsupported: nelze určit nebo nepodporovaný formát
+const DETECTION_PROMPT = `Urči režim dokumentu. Výstup = jediný platný JSON, žádný markdown ani komentáře.
 
-Pokud je dokument šikmo, má špatný kontrast, je částečně oříznutý, nebo jinak nečitelný, zapiš to do qualityIssues.
+Hodnoty inputMode: text_pdf | scanned_pdf | mixed_pdf | image_document | unsupported
 
-Vrať JEDINĚ platný JSON objekt (žádný markdown):
-{ "inputMode": "...", "confidence": 0-1, "reason": "krátký důvod", "pageCount": N, "qualityIssues": ["..."] }.
-Všechny textové hodnoty (reason, qualityIssues apod.) piš VŽDY česky.`;
+JSON: {"inputMode":"...","confidence":0-1,"reason":"krátký důvod cs","pageCount":N,"qualityIssues":["..."]}
+Texty piš česky.`;
 
 const ALLOWED_MIMES = new Set([
   "application/pdf",
@@ -89,7 +83,9 @@ export async function detectInputMode(
   }
 
   try {
-    const raw = await createResponseWithFile(fileUrl, DETECTION_PROMPT);
+    const raw = await createResponseWithFile(fileUrl, DETECTION_PROMPT, {
+      routing: { category: "ai_review" },
+    });
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : raw;
     const parsed = JSON.parse(jsonStr) as unknown;

@@ -26,7 +26,7 @@ V `.env.local` (nebo na Vercel / hostingu) nastavte:
 | `GOOGLE_CALENDAR_CLIENT_SECRET` | OAuth 2.0 Client Secret |
 | `INTEGRATIONS_ENCRYPTION_KEY` | Klíč pro šifrování tokenů (32 B hex = 64 znaků, nebo alespoň 32 znaků). Vygenerovat: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
-Vzor je v `apps/web/.env.local.example`.
+Vzor je v `apps/web/.env.example` (lokálně zkopírovat do `.env.local`).
 
 ### 3. Databáze
 

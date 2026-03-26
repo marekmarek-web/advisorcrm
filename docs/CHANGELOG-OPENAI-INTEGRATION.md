@@ -9,7 +9,7 @@
 - **apps/web/src/lib/ai/extraction-schemas.ts** – Zod schémata pro kontakt a placeholder pro smlouvu, `validateContactExtraction()` s řízenou chybou při nevalidním výstupu.
 - **apps/web/src/lib/ai/upload-pipeline.ts** – Rozhraní a stub pro upload smluv (metadata, storage, TODO na plný flow a PDF jako input_file).
 - **apps/web/src/lib/ai/review-queue.ts** – Typy pro frontu revizí: `ConfidenceScore`, `NeedsHumanReview`, `ExtractedClientMatchCandidate`, `DraftActionBase`, `ReviewQueueItem`.
-- **apps/web/.env.local.example** – Doplněno `OPENAI_API_KEY=` a `OPENAI_MODEL=gpt-5-mini` (bez konkrétních hodnot).
+- **apps/web/.env.example** (dříve `.env.local.example`) – šablona včetně `OPENAI_API_KEY=` a modelů.
 - **package.json (apps/web)** – Přidána závislost `zod`.
 
 ## Hotovo
@@ -23,7 +23,7 @@
 - Upload pipeline: rozhraní a stub (metadata, storage service, TODO).
 - Review queue: návrhové typy a datové struktury.
 - Logging: model, latence, success/failure, endpoint; bez API klíče a bez celých dokumentů.
-- Env: příklad v `.env.local.example`.
+- Env: příklad v `apps/web/.env.example` → lokálně `.env.local`.
 
 ## Připraveno pro další fázi
 

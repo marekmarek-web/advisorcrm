@@ -31,7 +31,7 @@ describe("document-classification", () => {
       const result = parseClassificationResponse(raw);
       expect(result.primaryType).toBe("unsupported_or_unknown");
       expect(result.confidence).toBe(0);
-      expect(result.reasons[0]).toContain("Parse error");
+      expect(result.reasons[0]).toMatch(/Chyba parsování|Parse error/i);
     });
 
     it("extracts JSON from markdown-wrapped response", () => {
@@ -53,6 +53,17 @@ describe("document-classification", () => {
         expect(result.primaryType).toBe(docType);
       }
     });
+
+    it("accepts JSON without reasons (slim classifier)", () => {
+      const raw = JSON.stringify({
+        primaryType: "life_insurance_proposal",
+        subtype: "unknown",
+        confidence: 0.77,
+      });
+      const result = parseClassificationResponse(raw);
+      expect(result.primaryType).toBe("life_insurance_proposal");
+      expect(result.reasons).toEqual([]);
+    });
   });
 
   describe("classifyContractDocument", () => {
@@ -71,7 +82,8 @@ describe("document-classification", () => {
       expect(result.confidence).toBe(0.75);
       expect(openai.createResponseWithFile).toHaveBeenCalledWith(
         "https://example.com/file.pdf",
-        expect.any(String)
+        expect.any(String),
+        { routing: { category: "ai_review" } }
       );
     });
   });

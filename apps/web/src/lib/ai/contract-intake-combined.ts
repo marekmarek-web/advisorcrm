@@ -34,43 +34,31 @@ const ALLOWED_MIMES = new Set([
 const combinedSchema = z.object({
   inputMode: z.enum(INPUT_MODES),
   inputConfidence: z.number().min(0).max(1).optional(),
-  inputReason: z.string().optional(),
+  inputReason: z.string().max(200).optional(),
   primaryType: z.enum(PRIMARY_DOCUMENT_TYPES),
-  subtype: z.string().optional(),
+  subtype: z.string().max(120).optional(),
   lifecycleStatus: z.enum(DOCUMENT_LIFECYCLE_STATUSES).optional(),
   documentIntent: z.enum(DOCUMENT_INTENTS).optional(),
   classificationConfidence: z.number().min(0).max(1),
-  reasons: z.array(z.string()),
+  /** Max 3 short tags; omit if unsure (server derives lifecycle/intent from primaryType). */
+  reasons: z.array(z.string().max(120)).max(3).optional(),
 });
 
-const COMBINED_PROMPT = `Prohlédni přiložený dokument a vrať JEDINĚ platný JSON objekt (žádný markdown, žádný úvod).
+const COMBINED_PROMPT = `Prohlédni přiložený dokument. Výstup = jediný platný JSON objekt. Žádný markdown, žádný text mimo JSON, žádné odstavce vysvětlení.
 
-Část A — režim dokumentu (inputMode):
-- text_pdf: PDF s výběrovým textem (textová vrstva)
-- scanned_pdf: naskenované PDF (stránky jako obrázky)
-- mixed_pdf: PDF obsahující kombinaci textu a obrázků/scanů
-- image_document: obrázek (JPG/PNG/HEIC apod.)
-- unsupported: nelze určit nebo nepodporovaný formát
+Část A — inputMode (režim):
+text_pdf | scanned_pdf | mixed_pdf | image_document | unsupported
 
-Část B — klasifikace dokumentu:
-- primaryType: jedna z hodnot ${PRIMARY_DOCUMENT_TYPES.map((t) => `"${t}"`).join(", ")}
-- subtype: krátký produkt/instituce hint (např. "generali_bel_mondo"), jinak "unknown"
-- lifecycleStatus: jedna z hodnot ${DOCUMENT_LIFECYCLE_STATUSES.map((t) => `"${t}"`).join(", ")}
-- documentIntent: jedna z hodnot ${DOCUMENT_INTENTS.map((t) => `"${t}"`).join(", ")}
+Část B — rozcestník (jen routing, neextrahuj celá pole smlouvy):
+- primaryType: přesně jedna z ${PRIMARY_DOCUMENT_TYPES.map((t) => `"${t}"`).join(", ")}
+- subtype: krátký hint instituce/produktu nebo "unknown"
+- classificationConfidence: 0–1
+- Volitelně (jen pokud jsi jistý): lifecycleStatus z ${DOCUMENT_LIFECYCLE_STATUSES.map((t) => `"${t}"`).join(", ")}, documentIntent z ${DOCUMENT_INTENTS.map((t) => `"${t}"`).join(", ")}
+- reasons: nejvýše 3 krátké české tagy (např. "hlavička Allianz"); jinak [] nebo vynech
+- inputConfidence, inputReason (max věta)
 
-JSON tvar:
-{
-  "inputMode": "...",
-  "inputConfidence": 0-1,
-  "inputReason": "krátký důvod pro režim",
-  "primaryType": "...",
-  "subtype": "...",
-  "lifecycleStatus": "...",
-  "documentIntent": "...",
-  "classificationConfidence": 0-1,
-  "reasons": ["krátké důvody pro typ dokumentu"]
-}
-Všechny textové hodnoty (reasons, inputReason apod.) piš VŽDY česky.`;
+Příklad tvaru:
+{"inputMode":"text_pdf","inputConfidence":0.9,"primaryType":"life_insurance_contract","subtype":"unknown","classificationConfidence":0.85,"reasons":["smlouva životní"]}`;
 
 function mimeBlockedResult(mimeType: string): {
   input: InputModeResult;
@@ -107,7 +95,9 @@ export async function runCombinedContractIntake(
   }
 
   try {
-    const raw = await createResponseWithFile(fileUrl, COMBINED_PROMPT);
+    const raw = await createResponseWithFile(fileUrl, COMBINED_PROMPT, {
+      routing: { category: "ai_review" },
+    });
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : raw;
     let parsedUnknown: unknown;
@@ -141,7 +131,7 @@ export async function runCombinedContractIntake(
       lifecycleStatus: d.lifecycleStatus,
       documentIntent: d.documentIntent,
       confidence: d.classificationConfidence,
-      reasons: d.reasons.length ? d.reasons : ["Klasifikace z kombinovaného kroku"],
+      reasons: d.reasons?.length ? d.reasons : ["Klasifikace (kombinovaný krok)"],
     });
     return { input, classification };
   } catch {

@@ -62,7 +62,12 @@ export async function POST(
     if (review.processingStatus === "processing") {
       return NextResponse.json({ error: "Zpracování již probíhá.", code: "ALREADY_PROCESSING" }, { status: 409 });
     }
-    if (review.processingStatus !== "uploaded" && review.processingStatus !== "failed") {
+    const canRestart =
+      review.processingStatus === "uploaded" ||
+      review.processingStatus === "failed" ||
+      review.processingStatus === "scan_pending_ocr" ||
+      review.processingStatus === "blocked";
+    if (!canRestart) {
       return NextResponse.json(
         { error: "Nelze spustit znovu — dokument je již zpracován.", code: "ALREADY_DONE" },
         { status: 409 }

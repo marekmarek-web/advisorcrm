@@ -15,7 +15,7 @@ Checklist for **Supabase**, **Vercel**, and related services before production t
 - [ ] **Pro** is required for **more than 2 cron jobs** (this app defines several under `apps/web/src/app/api/cron/`).
 - [ ] Long-running crons (e.g. `maxDuration` up to 300s) need a plan that allows that duration; verify in the Vercel project **Functions** settings.
 - [ ] Set **`CRON_SECRET`** in production and ensure cron routes validate it.
-- [ ] Set all required env vars (Supabase URL/keys, `DATABASE_URL`, Stripe, Resend, Sentry DSNs, etc.) — see `apps/web/.env.local.example`.
+- [ ] Set all required env vars (Supabase URL/keys, `DATABASE_URL`, Stripe, Resend, Sentry DSNs, etc.) — see `apps/web/.env.example` (copy to `apps/web/.env.local` locally).
 
 ## Security & GDPR
 
@@ -34,9 +34,9 @@ Without a real **`google-services.json`**, Firebase is not initialized on the de
 
 **Required once per Firebase project (manual):**
 
-1. In [Firebase Console](https://console.firebase.google.com), open your project and add an **Android** app whose package name matches the app: **`cz.aidvisora.app`** (see `apps/web/android/app/build.gradle` `applicationId`).
-2. Download **`google-services.json`** from Firebase.
-3. Copy it to **`apps/web/android/app/google-services.json`** (not committed; contains API keys). A shape reference lives at `apps/web/android/app/google-services.json.example`.
+1. In [Firebase Console](https://console.firebase.google.com), open your project and add an **Android** app whose package name **must match** `applicationId` in Gradle: **`cz.aidvisora.app`** (`apps/web/android/app/build.gradle`).
+2. Download **`google-services.json`** from Firebase for that Android app.
+3. Copy it to **`apps/web/android/app/google-services.json`** only (not `apps/web/` root; not committed; contains API keys). A shape reference lives at `apps/web/android/app/google-services.json.example`.
 4. Rebuild the Android app (`npx cap sync android` then Android Studio / Gradle).
 
 The JS hook `usePushNotifications` wraps native bridge calls in **try/catch** so recoverable failures surface as UI error state instead of breaking the listener setup; **fatal native crashes still require a valid `google-services.json`.**

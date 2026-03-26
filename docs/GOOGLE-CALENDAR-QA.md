@@ -33,7 +33,7 @@
 - Calendar API volání pouze z API routes; frontend volá jen `/api/calendar/*`.
 
 ### 8. Environment variables
-- V `.env.local.example` opraveny redirect URI pro Google OAuth na `/api/calendar/oauth/callback`.
+- V `apps/web/.env.example` jsou vzorové redirect URI pro Google OAuth (lokálně v `.env.local`).
 - Potřebné proměnné: `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `INTEGRATIONS_ENCRYPTION_KEY`.
 
 ### 9. Typing

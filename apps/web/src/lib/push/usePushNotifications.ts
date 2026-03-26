@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Capacitor push bridge: native `PushNotifications.register()` can throw or crash the process if
+ * Firebase is not initialized (missing `apps/web/android/app/google-services.json`). See
+ * docs/PLATFORM_SETUP.md — Android Firebase section.
+ */
 import { Capacitor } from "@capacitor/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PushNotifications, type Token, type PushNotificationSchema, type ActionPerformed } from "@capacitor/push-notifications";
@@ -113,10 +118,13 @@ export function usePushNotifications(options: UsePushNotificationsOptions = {}) 
     try {
       await PushNotifications.register();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Push registrace selhala.";
+      const raw = e instanceof Error ? e.message : String(e);
+      const message =
+        /firebase|FirebaseApp|not initialized/i.test(raw)
+          ? "Push nelze aktivovat (Firebase není inicializovaný). Na Androidu přidejte google-services.json podle docs/PLATFORM_SETUP.md."
+          : raw || "Push registrace selhala.";
       setError(message);
       console.error("[push] register failed", e);
-      // Keep registrationRequestedRef true so the "granted" effect does not retry in a tight loop
     }
   }, [isSupported]);
 
@@ -128,45 +136,61 @@ export function usePushNotifications(options: UsePushNotificationsOptions = {}) 
     const handles: Array<{ remove: () => void | Promise<void> }> = [];
 
     const setupListeners = async () => {
-      try {
-        const [
-          onRegistration,
-          onRegistrationError,
-          onNotificationReceived,
-          onNotificationAction,
-        ] = await Promise.all([
-          PushNotifications.addListener("registration", (newToken: Token) => {
-            const tokenValue = newToken.value;
-            setToken(tokenValue);
-            setError(null);
-            localStorage.setItem(PUSH_TOKEN_STORAGE_KEY, tokenValue);
-            void registerTokenOnBackend(tokenValue, platform);
-          }),
-          PushNotifications.addListener("registrationError", (registrationError) => {
-            setError(registrationError.error);
-          }),
-          PushNotifications.addListener("pushNotificationReceived", (notification) => {
-            onReceivedRef.current?.(notification);
-          }),
-          PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-            onActionRef.current?.(action);
-          }),
-        ]);
-
-        if (cancelled) {
-          await Promise.all(
-            [onRegistration, onRegistrationError, onNotificationReceived, onNotificationAction].map((h) =>
-              typeof h.remove === "function" ? Promise.resolve(h.remove()) : Promise.resolve()
-            )
-          );
-          return;
+      async function addListenerSafe<T extends { remove: () => void | Promise<void> }>(
+        label: string,
+        add: () => Promise<T>
+      ): Promise<T | null> {
+        try {
+          return await add();
+        } catch (e) {
+          console.error(`[push] addListener(${label}) failed`, e);
+          return null;
         }
-
-        handles.push(onRegistration, onRegistrationError, onNotificationReceived, onNotificationAction);
-      } catch (e) {
-        console.error("[push] addListener setup failed", e);
-        setError(e instanceof Error ? e.message : "Push plugin není k dispozici.");
       }
+
+      const onRegistration = await addListenerSafe("registration", () =>
+        PushNotifications.addListener("registration", (newToken: Token) => {
+          const tokenValue = newToken.value;
+          setToken(tokenValue);
+          setError(null);
+          localStorage.setItem(PUSH_TOKEN_STORAGE_KEY, tokenValue);
+          void registerTokenOnBackend(tokenValue, platform);
+        })
+      );
+
+      const onRegistrationError = await addListenerSafe("registrationError", () =>
+        PushNotifications.addListener("registrationError", (registrationError) => {
+          setError(registrationError.error);
+        })
+      );
+
+      const onNotificationReceived = await addListenerSafe("pushNotificationReceived", () =>
+        PushNotifications.addListener("pushNotificationReceived", (notification) => {
+          onReceivedRef.current?.(notification);
+        })
+      );
+
+      const onNotificationAction = await addListenerSafe("pushNotificationActionPerformed", () =>
+        PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+          onActionRef.current?.(action);
+        })
+      );
+
+      const registered = [onRegistration, onRegistrationError, onNotificationReceived, onNotificationAction].filter(
+        Boolean
+      ) as Array<{ remove: () => void | Promise<void> }>;
+
+      if (cancelled) {
+        await Promise.all(registered.map((h) => Promise.resolve(h.remove())));
+        return;
+      }
+
+      if (registered.length === 0) {
+        setError("Push plugin není k dispozici nebo se nepodařilo navázat posluchače.");
+        return;
+      }
+
+      handles.push(...registered);
     };
 
     void setupListeners();

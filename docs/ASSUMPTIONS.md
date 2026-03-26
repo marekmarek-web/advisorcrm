@@ -58,7 +58,7 @@ Dokument zachycuje výchozí rozhodnutí pro věci, které v zadání nejsou exp
 
 ### Jak otestovat MVP (lokálně)
 
-1. **Env:** Zkopírovat `apps/web/.env.local.example` do `apps/web/.env.local`, vyplnit `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` (connection string z Supabase → Settings → Database).
+1. **Env:** Zkopírovat `apps/web/.env.example` do `apps/web/.env.local`, vyplnit `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` (connection string z Supabase → Settings → Database).
 2. **DB:** V rootu projektu: `pnpm db:push` (nebo `pnpm --filter db push`) pro aplikaci schématu; `pnpm seed` (nebo `pnpm --filter db seed`) pro demo data.
 3. **První uživatel:** V Supabase Dashboard → Authentication vytvořit uživatele (email + heslo). Zkopírovat jeho UUID (Authentication → Users → User UID). V databázi upravit tabulku `memberships`: nastavit sloupec `user_id` na toto UUID pro jeden řádek (např. ten s `tenant_id` demo tenanta). Alternativa: upravit `packages/db/src/seed.ts` a nastavit `DEMO_USER_ID` na UUID vytvořeného uživatele a znovu spustit seed (insert s onConflictDoNothing nepřepíše existující membership).
 4. **Spuštění:** `pnpm dev` (spustí `apps/web`).

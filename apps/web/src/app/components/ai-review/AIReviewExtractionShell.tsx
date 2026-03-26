@@ -138,7 +138,10 @@ export function AIReviewExtractionShell({
   const hasData = doc.groups.length > 0;
   const isPending = doc.reviewStatus === "pending" || !doc.reviewStatus;
   const canApproveReject =
-    isPending && (doc.processingStatus === "extracted" || doc.processingStatus === "review_required");
+    isPending &&
+    (doc.processingStatus === "extracted" ||
+      doc.processingStatus === "review_required" ||
+      doc.processingStatus === "blocked");
   const isApproved = doc.reviewStatus === "approved";
   const hasResolvedClient = !!doc.matchedClientId || doc.createNewClientConfirmed === "true";
   const canApply = isApproved && hasResolvedClient && !doc.isApplied;
@@ -263,9 +266,21 @@ export function AIReviewExtractionShell({
       {/* Processing state */}
       {isProcessing && (
         <div className="bg-blue-50 border-b border-blue-200 px-6 py-4">
-          <div className="max-w-5xl mx-auto flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-            <p className="text-sm font-bold text-blue-900">Dokument se zpracovává…</p>
+          <div className="max-w-5xl mx-auto flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+            <div className="flex items-center gap-3 min-h-[44px]">
+              <div
+                className="w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin shrink-0"
+                aria-hidden
+              />
+              <p className="text-sm font-bold text-blue-900">
+                {doc.processingStageLabel ?? "Dokument se zpracovává…"}
+              </p>
+            </div>
+            {doc.processingStageLabel ? (
+              <p className="text-xs text-blue-800 sm:ml-8 pl-0 sm:pl-0">
+                Analýza může trvat řádově sekundy až desítky sekund.
+              </p>
+            ) : null}
           </div>
         </div>
       )}

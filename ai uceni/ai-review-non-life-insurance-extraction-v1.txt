@@ -1,0 +1,21 @@
+pmpt_69c54a5c3eec8197975f122a235665980fb0d324ce24c5c6
+
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const response = await openai.responses.create({
+  prompt: {
+    "id": "pmpt_69c54a5c3eec8197975f122a235665980fb0d324ce24c5c6",
+    "version": "1",
+    "variables": {
+      "filename": "example filename",
+      "adobe_signals": "example adobe_signals",
+      "classification_reasons": "example classification_reasons",
+      "extracted_text": "example extracted_text"
+    }
+  }
+});
+

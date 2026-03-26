@@ -21,13 +21,16 @@ export type ContractReviewActionResult =
 function canApproveOrReject(processingStatus: string): boolean {
   return (
     processingStatus === "extracted" ||
-    processingStatus === "review_required"
+    processingStatus === "review_required" ||
+    processingStatus === "blocked"
   );
 }
 
 function canApply(processingStatus: string, reviewStatus: string | null): boolean {
   return (
-    (processingStatus === "extracted" || processingStatus === "review_required") &&
+    (processingStatus === "extracted" ||
+      processingStatus === "review_required" ||
+      processingStatus === "blocked") &&
     reviewStatus === "approved"
   );
 }

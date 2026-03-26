@@ -14,8 +14,16 @@ import { buildHumanSummary, buildHumanErrorMessage } from "@/lib/ai/document-mes
 import { getReasonMessage } from "@/lib/ai/reason-codes";
 import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
 import type { InputMode } from "@/lib/ai/input-mode-detection";
+import { formatAiClassifierForAdvisor } from "./czech-labels";
 
 type ApiReviewDetail = Record<string, unknown>;
+
+const PROCESSING_STAGE_LABELS_CS: Record<string, string> = {
+  document_recognized: "Dokument rozpoznán",
+  extracting: "Extrahuji klienta a smlouvu",
+  matching_client: "Ověřuji platby a páruji klienta",
+  finalizing: "Připravuji návrhy akcí",
+};
 
 const SECTION_LABELS: Record<string, string> = {
   contract: "Smlouva",
@@ -385,6 +393,11 @@ export function mapApiToExtractionDocument(
   const fieldConfidenceMap = detail.fieldConfidenceMap as Record<string, number> | undefined;
   const processingStatus = (detail.processingStatus as string) ?? "uploaded";
   const reviewStatus = (detail.reviewStatus as string) ?? "pending";
+  const processingStage = detail.processingStage as string | undefined;
+  const processingStageLabel =
+    processingStage && PROCESSING_STAGE_LABELS_CS[processingStage]
+      ? PROCESSING_STAGE_LABELS_CS[processingStage]
+      : undefined;
 
   const groups = Object.keys(extracted).length > 0
     ? flattenPayload(extracted, fieldConfidenceMap, confidence)
@@ -400,8 +413,14 @@ export function mapApiToExtractionDocument(
   const insights = detail.pipelineInsights as ExtractionDocument["pipelineInsights"] | undefined;
   const norm = insights?.normalizedPipelineClassification;
   const baseType = (detail.detectedDocumentType as string) ?? "Neznámý typ";
-  const documentTypeLabel =
-    norm && norm !== baseType ? `${baseType} · ${norm}` : baseType;
+  const trace = detail.extractionTrace as Record<string, unknown> | undefined;
+  const aiRaw = trace?.aiClassifierJson as Record<string, string> | undefined;
+  let documentTypeLabel = baseType;
+  if (aiRaw && (aiRaw.documentType || aiRaw.productFamily)) {
+    documentTypeLabel = formatAiClassifierForAdvisor(aiRaw);
+  } else if (norm && norm !== baseType) {
+    documentTypeLabel = `${baseType} · ${norm}`;
+  }
 
   return {
     id: detail.id as string,
@@ -415,6 +434,7 @@ export function mapApiToExtractionDocument(
     globalConfidence: Math.round(confidence * 100),
     reviewStatus: reviewStatus as ReviewStatus,
     processingStatus: processingStatus as ProcessingStatus,
+    processingStageLabel,
     extractionProvider: "internal",
     uploadSource: "upload",
     lastProcessedAt: detail.updatedAt
