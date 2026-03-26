@@ -63,7 +63,7 @@ export function TodayInCalendarWidget({
         .ticw-font { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
       `}</style>
       <div
-        className="ticw-font w-full max-w-[1100px] rounded-[32px] border border-[#E2E8F0] bg-white p-8 shadow-[0_4px_24px_-6px_rgba(15,23,42,0.03),0_0_1px_rgba(15,23,42,0.04)] transition-all duration-[400ms] md:p-10 relative overflow-hidden"
+        className="ticw-font w-full rounded-[32px] border border-[#E2E8F0] bg-white p-8 shadow-[0_4px_24px_-6px_rgba(15,23,42,0.03),0_0_1px_rgba(15,23,42,0.04)] transition-all duration-[400ms] md:p-10 relative overflow-hidden"
       >
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#5A4BFF] via-purple-400 to-emerald-400 opacity-80" />
 
@@ -84,7 +84,7 @@ export function TodayInCalendarWidget({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Státní svátek */}
           <div
             className={`rounded-[24px] p-6 border transition-all duration-500 flex flex-col justify-center ${
