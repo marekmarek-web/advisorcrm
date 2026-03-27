@@ -331,6 +331,7 @@ export function NewClientWizard({
                     options={LIFECYCLE_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
                     placeholder="—"
                     icon={User}
+                    buttonClassName="!bg-[color:var(--wp-surface-muted)] !border-[color:var(--wp-surface-card-border)]"
                   />
                 </div>
                 <div>
@@ -347,6 +348,7 @@ export function NewClientWizard({
                     ]}
                     placeholder="—"
                     icon={Flag}
+                    buttonClassName="!bg-[color:var(--wp-surface-muted)] !border-[color:var(--wp-surface-card-border)]"
                   />
                 </div>
                 <div>
@@ -366,6 +368,7 @@ export function NewClientWizard({
                     options={[{ id: "", label: "— žádný" }, ...contacts.map((c) => ({ id: c.id, label: c.label }))]}
                     placeholder="— žádný"
                     icon={User}
+                    buttonClassName="!bg-[color:var(--wp-surface-muted)] !border-[color:var(--wp-surface-card-border)]"
                   />
                 </div>
                 <WizardTipBlock>

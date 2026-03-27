@@ -84,12 +84,15 @@ export function DashboardAiAssistant() {
     }
   };
 
+  const cardShell =
+    "group relative flex min-h-[280px] cursor-pointer flex-col justify-center overflow-hidden rounded-[32px] border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/10 to-indigo-500/5 p-8 text-[color:var(--wp-text)] transition-colors hover:border-fuchsia-500/30 dark:border-fuchsia-400/20 dark:from-fuchsia-500/12 dark:to-indigo-500/8";
+
   if (loading && !summary) {
     return (
-      <div className="flex min-h-[280px] items-center justify-center rounded-[32px] border border-white/10 bg-gradient-to-br from-aidv-surface-dark to-indigo-950 p-8 text-white">
-        <div className="animate-pulse flex flex-col items-center gap-2">
-          <AiAssistantBrandIcon size={28} className="opacity-80" />
-          <span className="text-sm text-indigo-200">Načítám…</span>
+      <div className={`${cardShell} items-center justify-center`}>
+        <div className="animate-pulse flex flex-col items-center gap-3">
+          <AiAssistantBrandIcon size={40} className="opacity-25" />
+          <span className="text-sm font-medium text-[color:var(--wp-text-secondary)]">Načítám…</span>
         </div>
       </div>
     );
@@ -97,12 +100,12 @@ export function DashboardAiAssistant() {
 
   if (error) {
     return (
-      <div className="flex min-h-[280px] flex-col justify-center rounded-[32px] border border-white/10 bg-gradient-to-br from-aidv-surface-dark to-indigo-950 p-8 text-white">
-        <p className="text-sm text-rose-300 mb-2">{error}</p>
+      <div className={cardShell}>
+        <p className="text-sm text-rose-600 dark:text-rose-400 mb-2">{error}</p>
         <button
           type="button"
           onClick={loadSummary}
-          className="text-sm font-medium text-indigo-300 hover:text-indigo-100 hover:underline"
+          className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
         >
           Zkusit znovu
         </button>
@@ -114,27 +117,22 @@ export function DashboardAiAssistant() {
   const suggestedActions = summary?.suggestedActions ?? [];
 
   return (
-    <div className="group relative flex min-h-[280px] cursor-pointer flex-col justify-center overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-aidv-surface-dark to-indigo-950 p-8 text-white shadow-lg shadow-black/25 transition-colors hover:border-indigo-500/50">
+    <div className={cardShell}>
       <span
-        className="absolute -top-6 -right-6 flex h-40 w-40 items-center justify-center overflow-visible pointer-events-none transition-transform duration-700 will-change-transform group-hover:rotate-12"
+        className="pointer-events-none absolute -right-8 -top-8 flex h-44 w-44 items-center justify-center overflow-visible opacity-[0.12] transition-transform duration-700 will-change-transform group-hover:rotate-6 dark:opacity-[0.18]"
         aria-hidden
       >
-        <AiAssistantBrandIcon
-          size={160}
-          className="h-full max-h-[160px] w-full max-w-[160px] object-contain opacity-[0.18]"
-        />
+        <AiAssistantBrandIcon size={176} className="h-full max-h-[176px] w-full max-w-[176px] object-contain" />
       </span>
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.06] pointer-events-none dark:opacity-[0.08]" aria-hidden />
 
-      <div className="relative z-10 flex flex-col flex-1 min-h-0">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white p-1.5 shadow-sm">
-            <AiAssistantBrandIcon size={28} className="max-h-full max-w-full" />
-          </div>
-          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-200">AI Asistent</h2>
-        </div>
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <h2 className="mb-6 text-xs font-black uppercase tracking-[0.2em] text-[color:var(--wp-text-muted)]">AI Asistent</h2>
 
-        <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 leading-tight max-w-lg" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <h3
+          className="mb-6 max-w-lg text-xl font-bold leading-tight text-[color:var(--wp-text)] sm:text-2xl"
+          style={{ fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif" }}
+        >
           {summary?.assistantSummaryText ?? "Načítám…"}
         </h3>
 
@@ -152,39 +150,39 @@ export function DashboardAiAssistant() {
                         ? `/portal/contacts/${u.entityId}`
                         : "#"
                 }
-                className="flex items-center justify-between w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-left text-sm border border-white/10 transition-colors"
+                className="flex w-full items-center justify-between rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 px-4 py-2.5 text-left text-sm text-[color:var(--wp-text)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
               >
-                <span className="truncate flex-1">{u.title}</span>
-                <ArrowRight size={14} className="shrink-0 ml-2 text-indigo-300" />
+                <span className="flex-1 truncate">{u.title}</span>
+                <ArrowRight size={14} className="ml-2 shrink-0 text-[color:var(--wp-text-tertiary)]" />
               </Link>
             ))}
           </div>
         )}
 
         {suggestedActions.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-5">
+          <div className="mb-5 flex flex-wrap gap-2">
             {suggestedActions.slice(0, 4).map((a, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => handleAction(a)}
-                className="text-xs px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-indigo-100 transition-colors"
+                className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 px-3 py-2 text-xs font-bold text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
               >
                 {a.label.length > 28 ? a.label.slice(0, 26) + "…" : a.label}
               </button>
             ))}
           </div>
         )}
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="mb-5 flex flex-wrap gap-2">
           <Link
             href="/portal/team-overview"
-            className="text-xs px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-indigo-100 transition-colors min-h-[44px] inline-flex items-center"
+            className="inline-flex min-h-[44px] items-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 px-3 py-2 text-xs font-bold text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
           >
             AI playbook týmu
           </Link>
           <Link
             href="/portal/business-plan"
-            className="text-xs px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-indigo-100 transition-colors min-h-[44px] inline-flex items-center"
+            className="inline-flex min-h-[44px] items-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 px-3 py-2 text-xs font-bold text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
           >
             AI guidance plánu
           </Link>
@@ -194,9 +192,10 @@ export function DashboardAiAssistant() {
           <button
             type="button"
             onClick={() => setAiDrawerOpen(true)}
-            className="flex min-h-[44px] w-full items-center justify-center gap-3 rounded-xl border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-bold tracking-wide text-white transition-colors hover:bg-white/15 sm:inline-flex sm:w-auto"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] px-6 py-3.5 text-sm font-bold tracking-wide text-[color:var(--wp-text)] transition-colors hover:bg-[color:var(--wp-surface-muted)] sm:inline-flex sm:w-auto"
           >
-            Otevřít asistenta <ArrowRight size={16} className="shrink-0 transition-transform group-hover:translate-x-1" />
+            Otevřít asistenta
+            <ArrowRight size={16} className="ml-2 shrink-0 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
       </div>

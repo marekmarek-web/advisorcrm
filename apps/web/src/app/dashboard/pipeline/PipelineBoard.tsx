@@ -679,12 +679,12 @@ export function PipelineBoard({
                           <h3 className={`font-bold text-[14px] uppercase tracking-wide ${theme.textColor}`}>
                             {stageNameWithoutNumber}
                           </h3>
-                          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-secondary)] opacity-90">
+                          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-secondary)] opacity-95 dark:text-[color:var(--wp-text)] dark:opacity-90">
                             {subtitle ?? ""}
                           </p>
                         </div>
                       </div>
-                      <div className={`rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/90 px-3 py-1 text-[13px] font-black shadow-sm ${theme.textColor}`}>
+                      <div className={`rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/90 px-3 py-1 text-[13px] font-black shadow-sm dark:bg-[color:var(--wp-surface-inset)]/90 dark:text-[color:var(--wp-text)] ${theme.textColor}`}>
                         {stage.opportunities.length}
                       </div>
                     </div>

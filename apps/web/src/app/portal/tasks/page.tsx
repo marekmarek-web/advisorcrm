@@ -37,7 +37,6 @@ import {
   Plus,
   Search,
   CheckSquare,
-  Target,
   Settings2,
   CalendarDays,
   ChevronRight,
@@ -1038,7 +1037,11 @@ function TasksPageContent() {
                         </button>
                         <div className="flex-1 min-w-0 w-full">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
-                            {overdue && <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 shadow-sm"><AlertCircle size={10} /> Po termínu</span>}
+                            {overdue && (
+                              <span className="flex items-center gap-1 rounded border border-rose-300/50 bg-rose-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-rose-800 shadow-none dark:border-rose-400/35 dark:bg-rose-950/55 dark:text-rose-200">
+                                <AlertCircle size={10} className="text-rose-600 dark:text-rose-300" /> Po termínu
+                              </span>
+                            )}
                             <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]">Úkol</span>
                           </div>
                           <h3 className={`font-bold text-[15px] mb-1.5 transition-all leading-tight ${isCompleted ? "text-[color:var(--wp-text-tertiary)] line-through" : "text-[color:var(--wp-text)] group-hover:text-indigo-600"}`}>{task.title}</h3>
@@ -1048,7 +1051,16 @@ function TasksPageContent() {
                                 <User size={12} className="text-[color:var(--wp-text-tertiary)]" /> {task.contactName}
                               </Link>
                             ) : null}
-                            <span className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${overdue ? "text-rose-600 bg-rose-50" : "text-[color:var(--wp-text-secondary)]"}`}><CalendarDays size={12} className={overdue ? "text-rose-500" : "text-[color:var(--wp-text-tertiary)]"} /> {formatDate(task.dueDate)}</span>
+                            <span
+                              className={`flex items-center gap-1.5 rounded-md px-2 py-1 ${
+                                overdue
+                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
+                                  : "text-[color:var(--wp-text-secondary)]"
+                              }`}
+                            >
+                              <CalendarDays size={12} className={overdue ? "text-rose-600 dark:text-rose-300" : "text-[color:var(--wp-text-tertiary)]"} />{" "}
+                              {formatDate(task.dueDate)}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity w-full sm:w-auto border-t sm:border-none border-[color:var(--wp-surface-card-border)] pt-3 sm:pt-0 mt-2 sm:mt-0">
@@ -1084,7 +1096,9 @@ function TasksPageContent() {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">V tomto výběru</h3>
-                <Target size={18} className="text-indigo-400" />
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/25 bg-white/10 p-1">
+                  <AiAssistantBrandIcon size={20} className="max-h-full max-w-full opacity-95" />
+                </span>
               </div>
               <div className="mb-8">
                 <div className="flex items-end gap-3 mb-1">

@@ -33,6 +33,7 @@ import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 
 const BOARD_POSITIONS_KEY = "portal-notes-board-positions";
+const MOBILE_TAB_KEY = "portal-notes-mobile-tab";
 
 const DOMAINS = [
   { value: "hypo", label: "Hypotéka" },
@@ -147,7 +148,7 @@ function NotesVisionBoardInner({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [maxZIndex, setMaxZIndex] = useState(10);
   const [isMobile, setIsMobile] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"feed" | "board">("feed");
+  const [mobileTab, setMobileTab] = useState<"feed" | "board">("board");
   const boardRef = useRef<HTMLDivElement>(null);
   const deepLinkHandled = useRef(false);
 
@@ -157,6 +158,24 @@ function NotesVisionBoardInner({
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(MOBILE_TAB_KEY);
+      if (v === "feed" || v === "board") setMobileTab(v);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const setMobileTabPersist = useCallback((t: "feed" | "board") => {
+    setMobileTab(t);
+    try {
+      localStorage.setItem(MOBILE_TAB_KEY, t);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const defaultForm = {
@@ -408,11 +427,12 @@ function NotesVisionBoardInner({
                 setAiLoading(false);
               }
             }}
-            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-500/12 to-indigo-500/10 px-2 py-2 text-xs font-bold text-[color:var(--wp-text)] transition-all hover:border-fuchsia-500/40 hover:from-fuchsia-500/18 disabled:opacity-50 md:px-3 md:text-sm"
+            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/10 to-indigo-500/5 px-2 py-2 text-xs font-bold text-[color:var(--wp-text)] shadow-sm transition-all hover:border-fuchsia-500/35 hover:from-fuchsia-500/14 disabled:opacity-50 md:px-3 md:text-sm"
           >
-            <AiAssistantBrandIcon size={18} className="shrink-0" />
-            <span className="hidden sm:inline">{aiLoading ? "Zpracovávám…" : "Sumarizace"}</span>
-            <span className="sm:hidden">{aiLoading ? "…" : "AI"}</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[color:var(--wp-surface-card-border)] bg-white">
+              <AiAssistantBrandIcon size={18} className="max-h-full max-w-full" />
+            </span>
+            <span className="font-black tracking-wide">{aiLoading ? "Zpracovávám…" : "Sumarizace"}</span>
           </button>
           <CreateActionButton type="button" onClick={handleOpenNew} className="min-w-[44px]">
             <span className="hidden sm:inline">Nový zápis</span>
@@ -424,14 +444,14 @@ function NotesVisionBoardInner({
         <div className="mx-4 mt-3 flex shrink-0 rounded-lg border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] p-1">
           <button
             type="button"
-            onClick={() => setMobileTab("feed")}
+            onClick={() => setMobileTabPersist("feed")}
             className={`min-h-[44px] flex-1 rounded-md py-2.5 text-sm font-bold transition-all ${mobileTab === "feed" ? "bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] shadow-sm" : "text-[color:var(--wp-text-secondary)]"}`}
           >
             Zápisky
           </button>
           <button
             type="button"
-            onClick={() => setMobileTab("board")}
+            onClick={() => setMobileTabPersist("board")}
             className={`min-h-[44px] flex-1 rounded-md py-2.5 text-sm font-bold transition-all ${mobileTab === "board" ? "bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] shadow-sm" : "text-[color:var(--wp-text-secondary)]"}`}
           >
             Board
@@ -496,8 +516,8 @@ function NotesVisionBoardInner({
 
       <main
         ref={boardRef}
-        className={`relative min-h-0 flex-1 cursor-crosshair overflow-auto notes-dot-grid md:min-h-[min(560px,72vh)] ${
-          isMobile && mobileTab === "board" ? "mx-4 max-h-[55vh] rounded-xl border border-[color:var(--wp-surface-card-border)]" : ""
+        className={`relative flex-1 min-h-[min(420px,58dvh)] cursor-crosshair overflow-auto notes-dot-grid md:min-h-[min(560px,72vh)] ${
+          isMobile && mobileTab === "board" ? "mx-4 max-h-[min(70dvh,520px)] rounded-xl border border-[color:var(--wp-surface-card-border)]" : ""
         } ${isMobile && mobileTab === "feed" ? "hidden" : ""}`}
       >
         {notes.length === 0 && (
@@ -614,11 +634,11 @@ function NotesVisionBoardInner({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--wp-overlay-scrim)] p-4 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-[color:var(--wp-surface-card)] rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden border border-[color:var(--wp-surface-card-border)]">
             <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] px-6 py-4">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-[color:var(--wp-text)]">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white">
-                  <AiAssistantBrandIcon size={22} className="max-h-full max-w-full" />
+              <h2 className="flex min-w-0 items-center gap-3 text-lg font-bold text-[color:var(--wp-text)]">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white shadow-sm">
+                  <AiAssistantBrandIcon size={24} className="max-h-full max-w-full" />
                 </span>
-                Sumarizace
+                <span className="truncate font-black tracking-tight">Sumarizace</span>
               </h2>
               <button
                 type="button"

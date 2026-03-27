@@ -84,7 +84,7 @@ export function InvestmentCalculatorPage() {
             onSelect={setProfileIndex}
           />
           <p className="mt-3 text-sm font-medium text-[color:var(--wp-text-secondary)]">
-            Strategie: <span className="text-[#0d1f4e] font-bold">{profile.name}</span>{" "}
+            Strategie: <span className="font-bold text-[color:var(--wp-text)]">{profile.name}</span>{" "}
             <span className="text-[color:var(--wp-text-tertiary)]">({profile.rate} % p.a.)</span>
           </p>
         </div>

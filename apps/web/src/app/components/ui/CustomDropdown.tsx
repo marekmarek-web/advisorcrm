@@ -15,6 +15,8 @@ export interface CustomDropdownProps {
   variant?: "input" | "button";
   /** Světlý chrome i při tmavém portálu (např. zápisky). */
   lightIsland?: boolean;
+  /** Přimíchá se k trigger tlačítku (např. wizard / toolbar). */
+  buttonClassName?: string;
 }
 
 export function CustomDropdown({
@@ -26,6 +28,7 @@ export function CustomDropdown({
   direction = "down",
   variant = "input",
   lightIsland = false,
+  buttonClassName = "",
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const selected = options.find((o) => o.id === value);
@@ -34,12 +37,14 @@ export function CustomDropdown({
   const isInput = variant === "input";
 
   const buttonClasses = isInput
-    ? `w-full px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-between min-h-[44px] border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] hover:border-[color:var(--wp-header-input-focus-border)] focus:bg-[color:var(--wp-surface-card)] focus:ring-2 focus:ring-[color:var(--wp-header-input-focus-ring)] focus:border-[color:var(--wp-header-input-focus-border)] ${isPlaceholder ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-input-text)]"}`
+    ? `w-full px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-between min-h-[44px] border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] hover:border-[color:var(--wp-header-input-focus-border)] focus:bg-[color:var(--wp-surface-card)] focus:ring-2 focus:ring-[color:var(--wp-header-input-focus-ring)] focus:border-[color:var(--wp-header-input-focus-border)] ${isPlaceholder ? "text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text)]"}`
     : `flex min-h-[44px] items-center gap-2 rounded-xl border border-indigo-200/80 bg-indigo-500/10 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-sm transition-all hover:bg-indigo-500/15 active:scale-95${
         lightIsland
           ? ""
           : " dark:border-indigo-500/35 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25"
       }`;
+
+  const triggerClass = `${buttonClasses}${buttonClassName ? ` ${buttonClassName}` : ""}`;
 
   return (
     <div className="relative">
@@ -52,7 +57,7 @@ export function CustomDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={buttonClasses}
+        className={triggerClass}
       >
         {isInput ? (
           <div className="flex items-center gap-3 truncate min-w-0">
@@ -109,7 +114,7 @@ export function CustomDropdown({
                       ? lightIsland
                         ? "bg-indigo-500/10 text-indigo-600"
                         : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
-                      : "text-[color:var(--wp-text-secondary)]"
+                      : "text-[color:var(--wp-text)]"
                   }
                 `}
               >

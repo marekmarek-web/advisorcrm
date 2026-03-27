@@ -237,7 +237,7 @@ export function StepSummary() {
         </div>
         <div className="bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-xl p-6 shadow-sm">
           <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Cíle celkem</span>
-          <div className="text-lg font-bold text-indigo-700 mt-1">{formatCzk(totalGoals)}</div>
+          <div className="mt-1 text-lg font-bold text-indigo-700 dark:text-indigo-300">{formatCzk(totalGoals)}</div>
         </div>
         <div className="bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-xl p-6 shadow-sm">
           <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Projekce portfolia (FV)</span>

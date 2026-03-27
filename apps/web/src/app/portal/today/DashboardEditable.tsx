@@ -52,7 +52,6 @@ import {
 } from "./dashboard-config";
 import { useDashboardCalendarDrawer } from "./use-dashboard-calendar-drawer";
 import { DashboardCalendarSidePanel } from "./DashboardCalendarSidePanel";
-import type { DashboardAgendaTimelineRow } from "./dashboard-agenda-types";
 import clsx from "clsx";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { TodayInCalendarWidget } from "@/app/components/dashboard/TodayInCalendarWidget";
@@ -609,7 +608,7 @@ export function DashboardEditable({
   const greetingName = advisorName?.trim() || "poradce";
   const dateLabel = new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  const agendaEmpty = kpis.todayEvents.length === 0 && kpis.tasksDueToday.length === 0;
+  const agendaEmpty = kpis.sidePanelAgendaTimeline.length === 0;
 
   const sidePanelTodayLabel = useMemo(
     () =>
@@ -621,35 +620,12 @@ export function DashboardEditable({
     []
   );
 
-  const agendaTimelineRows = useMemo((): DashboardAgendaTimelineRow[] => {
-    const rows: DashboardAgendaTimelineRow[] = [];
-    for (const ev of kpis.todayEvents) {
-      rows.push({
-        id: `ev-${ev.id}`,
-        kind: "event",
-        time: new Date(ev.startAt).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }),
-        title: ev.title,
-        sub: ev.contactName ?? undefined,
-      });
-    }
-    for (const t of kpis.tasksDueToday) {
-      rows.push({
-        id: `task-${t.id}`,
-        kind: "task",
-        time: "Úkol",
-        title: t.title,
-        sub: t.contactName ?? undefined,
-      });
-    }
-    return rows;
-  }, [kpis.todayEvents, kpis.tasksDueToday]);
-
   return (
     <div
       className={clsx(
         "relative flex-1 min-h-0 overflow-y-auto bg-transparent text-[color:var(--wp-text)] animate-[wp-fade-in_0.3s_ease]",
         "transition-[margin-right] duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
-        drawerOpen && "lg:mr-[420px]",
+        drawerOpen && "lg:mr-[440px]",
       )}
     >
       <style>{`
@@ -876,7 +852,7 @@ export function DashboardEditable({
         onOpen={() => setCalendarDrawerOpen(true)}
         onClose={() => setCalendarDrawerOpen(false)}
         agendaEmpty={agendaEmpty}
-        agendaTimelineRows={agendaTimelineRows}
+        agendaTimelineRows={kpis.sidePanelAgendaTimeline}
         sidePanelTodayLabel={sidePanelTodayLabel}
       />
 

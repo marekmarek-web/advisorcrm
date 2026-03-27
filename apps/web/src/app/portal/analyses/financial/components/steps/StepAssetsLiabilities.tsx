@@ -74,7 +74,7 @@ export function StepAssetsLiabilities() {
             <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Pasiva</span>
             <span className="text-lg font-bold text-red-600">{formatCzk(totalLiabilities)}</span>
           </div>
-          <div className={`px-4 py-2 rounded-lg text-sm font-bold ${netWorthVal >= 0 ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]" : "bg-red-50 text-red-700"}`}>
+          <div className={`rounded-lg px-4 py-2 text-sm font-bold ${netWorthVal >= 0 ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]" : "bg-red-50 text-red-700 dark:bg-red-950/45 dark:text-red-200"}`}>
             Čisté jmění: {formatCzk(netWorthVal)}
           </div>
         </div>
@@ -108,7 +108,7 @@ export function StepAssetsLiabilities() {
                       className="w-32 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm"
                     />
                     <span className="text-[color:var(--wp-text-secondary)] text-sm">Kč</span>
-                    <button type="button" onClick={() => removeRealEstateItem(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => removeRealEstateItem(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
@@ -134,7 +134,7 @@ export function StepAssetsLiabilities() {
                     <input type="number" value={item.value || ""} onChange={(e) => updateAssetInvestment(item.id, { value: parseFloat(e.target.value) || 0 })} placeholder="0" className="w-28 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm" />
                     <span className="text-[color:var(--wp-text-secondary)] text-sm">Kč</span>
                     <input type="text" value={item.note ?? ""} onChange={(e) => updateAssetInvestment(item.id, { note: e.target.value })} placeholder="Poznámka" className="flex-1 min-w-0 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm" />
-                    <button type="button" onClick={() => removeAssetInvestment(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => removeAssetInvestment(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
@@ -157,7 +157,7 @@ export function StepAssetsLiabilities() {
                     <input type="number" value={item.value || ""} onChange={(e) => updateAssetPension(item.id, { value: parseFloat(e.target.value) || 0 })} placeholder="0" className="w-28 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm" />
                     <span className="text-[color:var(--wp-text-secondary)] text-sm">Kč</span>
                     <input type="text" value={item.note ?? ""} onChange={(e) => updateAssetPension(item.id, { note: e.target.value })} placeholder="Poznámka / detail" className="flex-1 min-w-0 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm" />
-                    <button type="button" onClick={() => removeAssetPension(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => removeAssetPension(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
@@ -222,7 +222,7 @@ export function StepAssetsLiabilities() {
                     <span className="text-[color:var(--wp-text-secondary)] text-sm flex items-center">Kč</span>
                     <input type="number" value={Number(loan.rate) || ""} onChange={(e) => updateLoan(loan.id, { rate: parseFloat(e.target.value) || 0 })} placeholder="Sazba %" className="w-20 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm" />
                     <input type="number" value={Number(loan.pay) || ""} onChange={(e) => updateLoan(loan.id, { pay: parseFloat(e.target.value) || 0 })} placeholder="Splátka" className="w-24 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm" />
-                    <button type="button" onClick={() => removeLoan(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => removeLoan(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
                   </div>
                   );
                 })}

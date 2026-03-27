@@ -163,7 +163,7 @@ export function StepBenefitsRisks() {
             </div>
 
             {(benefits.dps || benefits.dip) && (
-              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-950/40">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"

@@ -65,7 +65,7 @@ export function PortalFeedbackLauncher({ variant = "desktop" }: { variant?: "des
         type="button"
         onClick={() => setOpen(true)}
         title="Nahlásit bug nebo návrh"
-        className={`fixed ${positionClass} flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full border-2 border-slate-300 bg-slate-200 text-slate-800 shadow-md transition-all hover:bg-slate-100 hover:border-slate-400 active:scale-95 dark:border-slate-500 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500 dark:hover:border-slate-400`}
+        className={`fixed ${positionClass} flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full border-2 border-slate-300 bg-slate-200 text-slate-800 shadow-md transition-all hover:bg-slate-100 hover:border-slate-400 active:scale-95 dark:border-slate-400 dark:bg-slate-500 dark:text-white dark:hover:bg-slate-400 dark:hover:border-slate-300`}
         aria-label="Zpětná vazba"
       >
         <Bug size={22} className="text-slate-800 dark:text-white" strokeWidth={2.25} />

@@ -5,4 +5,8 @@ export type DashboardAgendaTimelineRow = {
   time: string;
   title: string;
   sub?: string;
+  /** Krátké datum v češtině (např. „2. 4.“). */
+  dateShort: string;
+  /** „dnes“, „zítra“, „za N dní“. */
+  relativeLabel: string;
 };

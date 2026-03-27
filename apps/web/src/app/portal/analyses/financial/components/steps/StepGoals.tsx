@@ -249,7 +249,7 @@ export function StepGoals() {
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button type="button" onClick={() => { handleEdit(g); setChartGoalId(g.id); }} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] rounded-lg" aria-label="Upravit"><Pencil className="w-4 h-4" /></button>
-                    <button type="button" onClick={() => removeGoal(g.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => removeGoal(g.id)} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400" aria-label="Odebrat"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </li>
               ))}

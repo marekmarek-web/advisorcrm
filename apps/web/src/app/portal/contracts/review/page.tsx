@@ -88,7 +88,8 @@ function getStatusConfig(
     return {
       icon: <AlertCircle size={16} />,
       text: "Chyba čtení",
-      color: "text-rose-700 bg-rose-50 border-rose-200",
+      color:
+        "text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-100 dark:bg-rose-950/45 dark:border-rose-500/35",
       dot: "bg-rose-500",
     };
   }
@@ -96,7 +97,8 @@ function getStatusConfig(
     return {
       icon: <FileText size={16} />,
       text: "Čeká na OCR",
-      color: "text-amber-800 bg-amber-50 border-amber-200",
+      color:
+        "text-amber-800 bg-amber-50 border-amber-200 dark:text-amber-100 dark:bg-amber-950/40 dark:border-amber-500/35",
       dot: "bg-amber-500",
     };
   }
@@ -104,7 +106,8 @@ function getStatusConfig(
     return {
       icon: <ShieldAlert size={16} />,
       text: "Blokováno — zkontrolujte údaje",
-      color: "text-orange-800 bg-orange-50 border-orange-200",
+      color:
+        "text-orange-800 bg-orange-50 border-orange-200 dark:text-orange-100 dark:bg-orange-950/40 dark:border-orange-500/35",
       dot: "bg-orange-500",
     };
   }
@@ -112,7 +115,8 @@ function getStatusConfig(
     return {
       icon: <CheckCircle2 size={16} />,
       text: "Aplikováno v CRM",
-      color: "text-emerald-700 bg-emerald-50 border-emerald-200",
+      color:
+        "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-500/35",
       dot: "bg-emerald-500",
     };
   }
@@ -120,14 +124,16 @@ function getStatusConfig(
     return {
       icon: <RefreshCw size={16} className="animate-spin" />,
       text: "Zpracovává se",
-      color: "text-blue-600 bg-blue-50 border-blue-200",
+      color:
+        "text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-100 dark:bg-blue-950/45 dark:border-blue-500/35",
       dot: "bg-blue-500 animate-pulse",
     };
   }
   return {
     icon: <ShieldAlert size={16} />,
     text: "Vyžaduje revizi",
-    color: "text-amber-700 bg-amber-50 border-amber-200",
+    color:
+      "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-100 dark:bg-amber-950/40 dark:border-amber-500/35",
     dot: "bg-amber-500",
   };
 }
@@ -269,7 +275,9 @@ export default function ContractReviewListPage() {
           onDragOver={handleDragOver}
           onClick={() => !uploading && fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-[32px] p-8 md:p-10 bg-[color:var(--wp-surface-card)] text-center cursor-pointer transition-all ${
-            uploading ? "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 cursor-wait" : "border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/20"
+            uploading
+              ? "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 cursor-wait"
+              : "border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/20 dark:border-[color:var(--wp-border-strong)] dark:hover:border-indigo-400/40 dark:hover:bg-indigo-950/25"
           }`}
         >
           <input
@@ -279,7 +287,7 @@ export default function ContractReviewListPage() {
             className="hidden"
             onChange={handleUpload}
           />
-          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 mx-auto mb-4">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-300">
             {uploading ? (
               <RefreshCw size={32} className="animate-spin" strokeWidth={1.5} />
             ) : (
@@ -307,8 +315,8 @@ export default function ContractReviewListPage() {
 
         {/* Error state - reference */}
         {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 text-rose-700">
+          <div className="flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/35 dark:bg-rose-950/35">
+            <div className="flex items-center gap-3 text-rose-700 dark:text-rose-100">
               <AlertCircle size={20} className="shrink-0" />
               <span className="font-bold text-sm">{error}</span>
             </div>
@@ -406,13 +414,9 @@ export default function ContractReviewListPage() {
                 <p className="text-[color:var(--wp-text-secondary)] font-medium mb-4">
                   Žádné položky. Nahrajte smlouvu v AI asistentovi nebo výše.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setAiDrawerOpen(true)}
-                  className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors"
-                >
+                <CreateActionButton type="button" onClick={() => setAiDrawerOpen(true)} className="!normal-case !tracking-normal px-4 py-2.5 text-sm">
                   Otevřít AI asistenta
-                </button>
+                </CreateActionButton>
               </div>
             ) : (
               <div className="flex flex-col">
@@ -464,7 +468,7 @@ export default function ContractReviewListPage() {
                                 <AiAssistantBrandIcon size={12} /> Extrahovaná data
                               </span>
                               {row.confidence != null && (
-                                <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md">
+                                <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-200">
                                   Jistota {Math.round(row.confidence * 100)}%
                                 </span>
                               )}
@@ -474,7 +478,9 @@ export default function ContractReviewListPage() {
                                 <div
                                   key={idx}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-2 ${
-                                    chip.alert ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-[color:var(--wp-surface-card)] border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)]"
+                                    chip.alert
+                                      ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-100"
+                                      : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)]"
                                   }`}
                                 >
                                   <span className="text-[color:var(--wp-text-tertiary)] font-medium">{chip.label}:</span>

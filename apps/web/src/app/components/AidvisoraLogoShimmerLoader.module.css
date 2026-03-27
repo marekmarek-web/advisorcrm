@@ -41,9 +41,18 @@
   mix-blend-mode: soft-light;
 }
 
-/* Tmavý motiv: bez animovaného lesku – jen statické logo */
+/* Tmavý motiv: jemný lesk (nízký kontrast), ne světlý pruh */
 :global(html.dark) .shimmer {
-  display: none;
+  display: block;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.07) 50%,
+    transparent 62%
+  );
+  background-size: 220% 100%;
+  mix-blend-mode: soft-light;
+  animation: aidvLogoShimmer 2.4s ease-in-out infinite;
 }
 
 @keyframes aidvLogoShimmer {

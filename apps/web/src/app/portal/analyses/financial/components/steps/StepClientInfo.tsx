@@ -118,7 +118,7 @@ export function StepClientInfo() {
           <h2 className="text-2xl sm:text-3xl font-bold text-[color:var(--wp-text)]">Osobní údaje</h2>
           <p className="text-[color:var(--wp-text-secondary)] mt-1">Základní údaje pro výpočet finančního plánu.</p>
         </div>
-        <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800 dark:bg-blue-950/45 dark:text-blue-100">
           <User className="w-4 h-4" />
           Klient & Rodina
         </div>
@@ -150,7 +150,7 @@ export function StepClientInfo() {
             </div>
             <div className="md:col-span-1">
               <label className="block text-sm font-semibold text-[color:var(--wp-text-secondary)] mb-1">Věk</label>
-              <div className="w-full px-2 py-3 bg-[color:var(--wp-surface-muted)] text-blue-800 font-bold text-center rounded-xl text-sm">
+              <div className="w-full rounded-xl bg-[color:var(--wp-surface-muted)] px-2 py-3 text-center text-sm font-bold text-blue-800 dark:text-blue-200">
                 {age != null ? `${age} let` : "—"}
               </div>
             </div>
@@ -272,7 +272,7 @@ export function StepClientInfo() {
           <label htmlFor="has-partner" className="text-[color:var(--wp-text-secondary)] font-bold cursor-pointer select-none">Přidat partnera / partnerku</label>
         </div>
 
-        <div className="bg-amber-50/80 p-4 rounded-xl border border-amber-200 flex items-center gap-3">
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-500/30 dark:bg-amber-950/40">
           <input
             type="checkbox"
             id="include-company"
@@ -287,7 +287,7 @@ export function StepClientInfo() {
 
         {client.hasPartner && (
           <div className="bg-[color:var(--wp-surface-muted)] p-6 rounded-2xl border border-[color:var(--wp-surface-card-border)]">
-            <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-widest mb-4">Partner</h3>
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-widest text-indigo-800 dark:text-indigo-200">Partner</h3>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="md:col-span-4">
                 <label className="block text-sm font-semibold text-[color:var(--wp-text-secondary)] mb-1">Jméno partnera</label>
@@ -311,7 +311,7 @@ export function StepClientInfo() {
               </div>
               <div className="md:col-span-1">
                 <label className="block text-sm font-semibold text-[color:var(--wp-text-secondary)] mb-1">Věk</label>
-                <div className="w-full px-2 py-3 bg-[color:var(--wp-surface-muted)] text-blue-800 font-bold text-center rounded-xl text-sm">
+                <div className="w-full rounded-xl bg-[color:var(--wp-surface-muted)] px-2 py-3 text-center text-sm font-bold text-blue-800 dark:text-blue-200">
                   {partnerAge != null ? `${partnerAge} let` : "—"}
                 </div>
               </div>
@@ -371,7 +371,7 @@ export function StepClientInfo() {
             <button
               type="button"
               onClick={() => addChild()}
-              className="min-h-[44px] text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-200 flex items-center gap-1"
+              className="flex min-h-[44px] items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-600 transition-colors hover:text-indigo-800 dark:border-indigo-500/35 dark:bg-indigo-950/50 dark:text-indigo-200 dark:hover:text-indigo-100"
             >
               <PlusCircle className="w-4 h-4" />
               Přidat dítě
@@ -420,7 +420,7 @@ export function StepClientInfo() {
                   <button
                     type="button"
                     onClick={() => removeChild(child.id)}
-                    className="min-h-[44px] px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-semibold"
+                    className="min-h-[44px] rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400"
                   >
                     Odebrat
                   </button>

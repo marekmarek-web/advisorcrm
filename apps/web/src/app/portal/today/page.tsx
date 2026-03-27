@@ -39,6 +39,7 @@ const FALLBACK_KPIS = {
   czPublicHolidayToday: null,
   czNameDaysToday: [],
   birthdaysToday: [],
+  sidePanelAgendaTimeline: [],
 } as Awaited<ReturnType<typeof getDashboardKpis>>;
 
 async function DashboardLoaded({

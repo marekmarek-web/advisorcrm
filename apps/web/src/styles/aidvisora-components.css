@@ -459,6 +459,7 @@
   overflow-y: auto;
   color: var(--wp-text);
   background-color: var(--wp-main-scroll-bg);
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
 /*

@@ -103,7 +103,7 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
       >
       <div className="p-6 pb-4 flex items-start justify-between">
         <div className="flex gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200 dark:shadow-md dark:shadow-black/50">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200 dark:shadow-sm dark:shadow-black/25">
             <Tag className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -217,7 +217,7 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
         <button
           type="button"
           onClick={handleSave}
-          className="flex min-h-[44px] items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-3 font-bold text-white shadow-xl shadow-indigo-100 transition-all hover:-translate-y-0.5 hover:shadow-indigo-200 active:translate-y-0 dark:shadow-lg dark:shadow-black/50 dark:hover:shadow-indigo-950/40"
+          className="flex min-h-[44px] items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-3 font-bold text-white shadow-xl shadow-indigo-100 transition-all hover:-translate-y-0.5 hover:shadow-indigo-200 active:translate-y-0 dark:shadow-md dark:shadow-black/35 dark:hover:shadow-lg dark:hover:shadow-black/45"
         >
           <Check size={20} strokeWidth={3} />
           Uložit změny

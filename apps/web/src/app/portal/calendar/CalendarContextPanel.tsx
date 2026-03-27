@@ -284,7 +284,7 @@ export function CalendarContextPanel({
           <div className="mb-2 flex items-center gap-2">
             <Zap size={14} className="shrink-0 text-fuchsia-600 dark:text-fuchsia-300" />
             <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text)] dark:text-fuchsia-200/90">
-              Jak na to
+              Nástroje poradce
             </span>
           </div>
           <p className="mb-3 text-xs font-medium leading-relaxed text-[color:var(--wp-text-secondary)]">

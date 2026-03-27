@@ -183,7 +183,7 @@ export function StepCredits() {
                     <div className="text-sm text-[color:var(--wp-text-secondary)]">{formatCzk(item.amount)} · {item.termYears} let · {item.estimatedRate.toFixed(1)} %</div>
                     <div className="text-sm font-bold text-indigo-700 mt-1">Splátka {formatCzk(item.estimatedMonthly)}/měs.</div>
                   </div>
-                  <button type="button" onClick={() => removeCreditWish(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg shrink-0" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => removeCreditWish(item.id)} className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400" aria-label="Odebrat"><Trash2 className="h-4 w-4" /></button>
                 </li>
               ))}
             </ul>

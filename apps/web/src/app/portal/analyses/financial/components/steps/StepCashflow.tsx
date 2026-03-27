@@ -99,7 +99,7 @@ export function StepCashflow() {
             <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Výdaje</span>
             <span className="text-lg font-bold text-red-600">{formatCzk(totalExp)}</span>
           </div>
-          <div className={`px-4 py-2 rounded-lg text-sm font-bold ${surplusVal >= 0 ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]" : "bg-red-50 text-red-700"}`}>
+          <div className={`rounded-lg px-4 py-2 text-sm font-bold ${surplusVal >= 0 ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]" : "bg-red-50 text-red-700 dark:bg-red-950/45 dark:text-red-200"}`}>
             Bilance: {formatCzk(surplusVal)}
           </div>
         </div>
@@ -107,8 +107,8 @@ export function StepCashflow() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="bg-[color:var(--wp-surface-muted)] p-6 rounded-2xl border border-[color:var(--wp-surface-card-border)]">
-          <h3 className="text-blue-800 font-bold mb-6 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800"><ArrowDown className="w-4 h-4" /></div>
+          <h3 className="mb-6 flex items-center gap-2 font-bold text-blue-800 dark:text-blue-200">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200"><ArrowDown className="h-4 w-4" /></div>
             Příjmy (měsíčně)
           </h3>
           <div className="space-y-4">
@@ -201,7 +201,7 @@ export function StepCashflow() {
                       className="w-28 px-3 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm"
                     />
                     <span className="text-[color:var(--wp-text-secondary)] text-sm">Kč</span>
-                    <button type="button" onClick={() => removeIncomeOther(item.id)} className="min-h-[44px] text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg text-sm font-semibold">Odebrat</button>
+                    <button type="button" onClick={() => removeIncomeOther(item.id)} className="min-h-[44px] rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400">Odebrat</button>
                   </div>
                 ))}
               </div>
@@ -266,7 +266,7 @@ export function StepCashflow() {
                       className="w-24 px-2 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm"
                     />
                     <span className="text-[color:var(--wp-text-secondary)] text-sm">Kč</span>
-                    <button type="button" onClick={() => removeExpenseInsuranceItem(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg" aria-label="Odebrat"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => removeExpenseInsuranceItem(item.id)} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400" aria-label="Odebrat"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>
@@ -298,7 +298,7 @@ export function StepCashflow() {
                       className="w-28 px-3 py-2 border border-[color:var(--wp-surface-card-border)] rounded-lg text-sm"
                     />
                     <span className="text-[color:var(--wp-text-secondary)] text-sm">Kč</span>
-                    <button type="button" onClick={() => removeExpenseOther(item.id)} className="min-h-[44px] text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg text-sm font-semibold">Odebrat</button>
+                    <button type="button" onClick={() => removeExpenseOther(item.id)} className="min-h-[44px] rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400">Odebrat</button>
                   </div>
                 ))}
               </div>
@@ -323,14 +323,14 @@ export function StepCashflow() {
         </div>
         <div className="text-center md:text-right border-t md:border-t-0 border-[color:var(--wp-surface-card-border)] pt-4 md:pt-0">
           <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider">Volné cashflow (Surplus)</span>
-          <div className="text-2xl font-bold text-blue-800">{formatCzk(surplusVal)}</div>
+          <div className="text-2xl font-bold text-blue-800 dark:text-blue-200">{formatCzk(surplusVal)}</div>
         </div>
       </div>
 
       {includeCompany && (
-        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-6 mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center"><Building2 className="w-4 h-4 text-amber-700" /></div>
+        <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50/80 p-6 dark:border-amber-500/30 dark:bg-amber-950/40">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50"><Building2 className="h-4 w-4 text-amber-700 dark:text-amber-200" /></div>
             <h3 className="text-xl font-bold text-[color:var(--wp-text)]">Finance firmy</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -340,20 +340,20 @@ export function StepCashflow() {
             <InputAmount label="Úvěry / Leasingy – měsíční splátka (Kč)" value={cf.loanPayment ?? 0} onChange={(v) => setCompanyFinance({ loanPayment: v })} id="cf-loan" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-[color:var(--wp-surface-card)] rounded-xl p-4 border border-amber-100">
-              <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Roční tržby</span>
+            <div className="rounded-xl border border-amber-100 bg-[color:var(--wp-surface-card)] p-4 dark:border-amber-500/25">
+              <span className="block text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">Roční tržby</span>
               <span className="text-lg font-bold text-[color:var(--wp-text)]">{formatCzk(cf.revenue ?? 0)}</span>
             </div>
-            <div className="bg-[color:var(--wp-surface-card)] rounded-xl p-4 border border-amber-100">
-              <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Roční zisk</span>
+            <div className="rounded-xl border border-amber-100 bg-[color:var(--wp-surface-card)] p-4 dark:border-amber-500/25">
+              <span className="block text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">Roční zisk</span>
               <span className="text-lg font-bold text-[color:var(--wp-text)]">{formatCzk(cf.profit ?? 0)}</span>
             </div>
-            <div className="bg-[color:var(--wp-surface-card)] rounded-xl p-4 border border-amber-100">
-              <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Cash runway</span>
+            <div className="rounded-xl border border-amber-100 bg-[color:var(--wp-surface-card)] p-4 dark:border-amber-500/25">
+              <span className="block text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">Cash runway</span>
               <span className="text-lg font-bold text-[color:var(--wp-text)]">{runway != null ? `${runway.toFixed(1)} měs.` : "—"}</span>
             </div>
-            <div className="bg-[color:var(--wp-surface-card)] rounded-xl p-4 border border-amber-100">
-              <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Dluhová služba</span>
+            <div className="rounded-xl border border-amber-100 bg-[color:var(--wp-surface-card)] p-4 dark:border-amber-500/25">
+              <span className="block text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">Dluhová služba</span>
               <span className="text-lg font-bold text-[color:var(--wp-text)]">{formatCzk(cf.loanPayment ?? 0)}</span>
             </div>
           </div>
@@ -362,7 +362,7 @@ export function StepCashflow() {
 
       <div className="bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-2xl p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center"><Shield className="w-4 h-4 text-indigo-500" /></div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 dark:bg-indigo-950/50"><Shield className="h-4 w-4 text-indigo-500 dark:text-indigo-300" /></div>
           <h3 className="text-xl font-bold text-[color:var(--wp-text)]">Finanční rezerva</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

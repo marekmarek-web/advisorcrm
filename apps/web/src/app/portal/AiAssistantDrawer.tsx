@@ -434,8 +434,8 @@ export function AiAssistantDrawer() {
         <div className="shrink-0 px-4 py-4 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-12 h-12 rounded-[20px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200 flex-shrink-0 p-2">
-                <AiAssistantBrandIcon size={28} className="w-full h-full max-w-[28px] max-h-[28px]" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-white p-2 shadow-sm dark:bg-white">
+                <AiAssistantBrandIcon size={28} className="max-h-full max-w-full" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl font-black text-[color:var(--wp-text)] tracking-tight">AI asistent</h2>

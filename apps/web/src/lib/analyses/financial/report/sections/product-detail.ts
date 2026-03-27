@@ -3,6 +3,21 @@ import { esc, fmtCzk, fmtMonthly, fmtBigCzk, fmtPct, investmentLabel, investment
 import { FUND_DETAILS, FUND_LOGOS } from '../../constants';
 import type { InvestmentEntry, FundDetail } from '../../types';
 
+/** Max. `topN` řádků + jeden součet „Ostatní“ (tisk — méně přelévání na 2. stranu). */
+function collapseWeightRows(
+  items: Array<{ name: string; weight: number }>,
+  topN: number,
+  othersLabel: string,
+): Array<{ name: string; weight: number }> {
+  if (!items || items.length === 0) return [];
+  const sorted = [...items].sort((a, b) => b.weight - a.weight);
+  if (sorted.length <= topN) return sorted;
+  const top = sorted.slice(0, topN);
+  const rest = sorted.slice(topN);
+  const otherW = rest.reduce((s, x) => s + x.weight, 0);
+  return [...top, { name: othersLabel, weight: Math.round(otherW * 100) / 100 }];
+}
+
 function renderStatGrid(detail: FundDetail): string {
   const cells: [string, string][] = [
     ['Riziko (SRI)', detail.riskSRI ?? '—'],
@@ -27,9 +42,9 @@ function renderBars(items: Array<{ name: string; weight: number }>, title: strin
 
 function renderHoldings(detail: FundDetail): string {
   if (!detail.topHoldings || detail.topHoldings.length === 0) return '';
-  return `<div class="bar-section">
+  return `<div class="bar-section top-holdings-section">
     <div class="bar-section-title">TOP ${detail.topHoldings.length} pozic${detail.top10WeightPercent ? ` (${fmtPct(detail.top10WeightPercent, 1)} portfolia)` : ''}</div>
-    ${detail.topHoldings.map((h) => `<div class="bar-row"><span class="bar-row-name">${esc(h.name)}</span><div class="bar-track"><div class="bar-fill" style="width:${(h.weight / (detail.topHoldings![0]!.weight || 1)) * 100}%;background:var(--navy-800,#112238)"></div></div><span class="bar-pct">${fmtPct(h.weight, 2)}</span></div>`).join('')}
+    ${detail.topHoldings.map((h) => `<div class="bar-row holding-row"><span class="bar-row-name">${esc(h.name)}</span><div class="bar-track"><div class="bar-fill" style="width:${(h.weight / (detail.topHoldings![0]!.weight || 1)) * 100}%;background:var(--navy-800,#112238)"></div></div><span class="bar-pct">${fmtPct(h.weight, 2)}</span></div>`).join('')}
   </div>`;
 }
 
@@ -104,8 +119,8 @@ export function renderProductDetails(ctx: SectionCtx): string {
         ${detail.heroImage ? `<div class="product-hero-image-wrap"><img src="${esc(detail.heroImage)}" alt="${esc(name)}" class="product-hero-image" onerror="this.parentElement&&this.parentElement.remove()"></div>` : ''}
         ${detail.galleryImages ? renderGallery(detail.galleryImages, detail.galleryType === 'logo') : ''}
         ${renderStatGrid(detail)}
-        ${detail.countries ? renderBars(detail.countries, 'Zastoupení', theme) : ''}
-        ${detail.sectors ? renderBars(detail.sectors, 'Sektory', theme) : ''}
+        ${detail.countries ? renderBars(collapseWeightRows(detail.countries, 3, 'Ostatní'), 'Zastoupení', theme) : ''}
+        ${detail.sectors ? renderBars(collapseWeightRows(detail.sectors, 3, 'Ostatní'), 'Sektory', theme) : ''}
         ${renderHoldings(detail)}
         ${detail.benefits ? renderBenefits(detail.benefits) : ''}
       </div>

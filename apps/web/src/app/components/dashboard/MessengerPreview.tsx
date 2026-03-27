@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { getRecentConversations, type RecentConversation } from "@/app/actions/messages";
 
 function timeAgo(date: Date): string {
@@ -28,7 +29,33 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-export function MessengerPreview({ embedded, forDarkPanel }: { embedded?: boolean; forDarkPanel?: boolean }) {
+const SIDE_PANEL_GRADIENTS = [
+  "from-emerald-400 to-emerald-600",
+  "from-orange-400 to-rose-500",
+  "from-indigo-400 to-purple-600",
+  "from-sky-400 to-blue-600",
+  "from-violet-400 to-fuchsia-600",
+  "from-amber-400 to-orange-500",
+] as const;
+
+function sidePanelGradientClass(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  return SIDE_PANEL_GRADIENTS[Math.abs(hash) % SIDE_PANEL_GRADIENTS.length];
+}
+
+type MessengerPreviewProps = {
+  embedded?: boolean;
+  forDarkPanel?: boolean;
+  /** Viz UX sidecalendar v2 — gradient avatary, unread tečka, odkaz do zpráv. */
+  variant?: "default" | "sidePanelV2";
+};
+
+export function MessengerPreview({
+  embedded,
+  forDarkPanel,
+  variant = "default",
+}: MessengerPreviewProps) {
   const [conversations, setConversations] = useState<RecentConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,14 +67,85 @@ export function MessengerPreview({ embedded, forDarkPanel }: { embedded?: boolea
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (variant === "sidePanelV2") {
+    return (
+      <div className="pt-0">
+        <h3 className="font-display mb-4 ml-1 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[color:var(--wp-text-tertiary)]">
+          Zprávy z portálu
+        </h3>
+        {loading ? (
+          <p className="text-sm text-[color:var(--wp-text-secondary)]">Načítám…</p>
+        ) : conversations.length === 0 ? (
+          <p className="text-sm text-[color:var(--wp-text-secondary)]">Žádné nedávné zprávy.</p>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {conversations.map((c) => (
+                <Link
+                  key={c.contactId}
+                  href={`/portal/messages?contact=${encodeURIComponent(c.contactId)}`}
+                  className="relative flex cursor-pointer gap-4 rounded-2xl border border-[color:var(--wp-sc-card-border)] bg-[color:var(--wp-sc-card-bg)] p-4 text-inherit shadow-sm backdrop-blur-md transition-colors hover:border-indigo-200 hover:bg-[color:var(--wp-message-box-hover)] hover:shadow-md dark:hover:border-indigo-500/30 no-underline"
+                >
+                  {c.unread ? (
+                    <div
+                      className="absolute top-1/2 -left-1.5 h-3 w-3 -translate-y-1/2 animate-pulse rounded-full bg-indigo-500 shadow-md shadow-indigo-300 dark:shadow-[0_0_10px_rgba(99,102,241,0.8)]"
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${sidePanelGradientClass(c.contactName)} text-sm font-bold text-white shadow-lg`}
+                  >
+                    {getInitials(c.contactName)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <h4
+                        className={`truncate text-sm font-bold ${
+                          c.unread ? "text-[color:var(--wp-text)]" : "text-[color:var(--wp-text-secondary)]"
+                        }`}
+                      >
+                        {c.contactName}
+                      </h4>
+                      <span className="shrink-0 text-[10px] font-bold uppercase text-[color:var(--wp-text-tertiary)]">
+                        {timeAgo(c.lastMessageAt)}
+                      </span>
+                    </div>
+                    <p
+                      className={`truncate text-xs ${
+                        c.unread
+                          ? "font-semibold text-indigo-600 dark:text-indigo-300"
+                          : "text-[color:var(--wp-text-secondary)]"
+                      }`}
+                    >
+                      {c.senderType === "advisor" ? "Vy: " : ""}
+                      {c.lastMessage}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <Link
+              href="/portal/messages"
+              className="group mt-4 ml-1 flex items-center gap-2 text-xs font-bold text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              Otevřít chat <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" aria-hidden />
+            </Link>
+          </>
+        )}
+      </div>
+    );
+  }
 
   const dark = !!forDarkPanel;
 
   return (
     <div className={embedded ? "pt-0" : dark ? "pt-0" : "pt-6 border-t border-[color:var(--wp-surface-card-border)]"}>
       {!embedded && (
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h3
             className={`text-xs font-black uppercase tracking-widest ${
               dark ? "text-aidv-text-muted-on-dark" : "text-[color:var(--wp-text-tertiary)]"
@@ -56,15 +154,15 @@ export function MessengerPreview({ embedded, forDarkPanel }: { embedded?: boolea
             Zprávy z portálu
           </h3>
           {!loading && conversations.length > 0 && conversations.some((c) => c.unread) && (
-            <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black flex items-center justify-center">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-[10px] font-black text-rose-600">
               {conversations.filter((c) => c.unread).length}
             </span>
           )}
         </div>
       )}
       {embedded && !loading && conversations.length > 0 && conversations.some((c) => c.unread) && (
-        <div className="flex justify-end mb-2">
-          <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black flex items-center justify-center">
+        <div className="mb-2 flex justify-end">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-[10px] font-black text-rose-600">
             {conversations.filter((c) => c.unread).length}
           </span>
         </div>
@@ -73,7 +171,9 @@ export function MessengerPreview({ embedded, forDarkPanel }: { embedded?: boolea
       {loading ? (
         <p className={`text-sm ${dark ? "text-aidv-text-muted-on-dark" : "text-[color:var(--wp-text-secondary)]"}`}>Načítám…</p>
       ) : conversations.length === 0 ? (
-        <p className={`text-sm ${dark ? "text-aidv-text-muted-on-dark" : "text-[color:var(--wp-text-secondary)]"}`}>Žádné nedávné zprávy.</p>
+        <p className={`text-sm ${dark ? "text-aidv-text-muted-on-dark" : "text-[color:var(--wp-text-secondary)]"}`}>
+          Žádné nedávné zprávy.
+        </p>
       ) : (
         <div className="space-y-3">
           {conversations.map((c) => (
@@ -136,7 +236,7 @@ export function MessengerPreview({ embedded, forDarkPanel }: { embedded?: boolea
       {!embedded && (
         <Link
           href="/portal/contacts"
-          className={`inline-block mt-3 text-xs font-semibold hover:underline ${
+          className={`mt-3 inline-block text-xs font-semibold hover:underline ${
             dark ? "text-indigo-300 hover:text-white" : "text-indigo-600"
           }`}
         >
@@ -144,10 +244,7 @@ export function MessengerPreview({ embedded, forDarkPanel }: { embedded?: boolea
         </Link>
       )}
       {embedded && (
-        <Link
-          href="/portal/contacts"
-          className="inline-block mt-3 text-xs font-semibold text-indigo-600 hover:underline"
-        >
+        <Link href="/portal/contacts" className="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:underline">
           Všechny zprávy →
         </Link>
       )}

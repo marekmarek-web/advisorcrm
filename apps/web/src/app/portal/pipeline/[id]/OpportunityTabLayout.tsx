@@ -70,14 +70,14 @@ export function OpportunityTabLayout({
             onClick={() => setTab(id)}
             className={`min-h-[44px] px-4 sm:px-6 py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap touch-manipulation ${
               activeId === id
-                ? "text-indigo-600"
-                : "text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text)]"
+                ? "text-indigo-600 dark:text-indigo-300"
+                : "text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text)] dark:text-[color:var(--wp-text-secondary)] dark:hover:text-[color:var(--wp-text)]"
             }`}
           >
             {TAB_LABELS[id]}
             {activeId === id ? (
               <span
-                className="absolute bottom-0 left-0 w-full h-[3px] bg-indigo-600 rounded-t-md"
+                className="absolute bottom-0 left-0 w-full h-[3px] rounded-t-md bg-indigo-600 dark:bg-indigo-400"
                 aria-hidden
               />
             ) : null}

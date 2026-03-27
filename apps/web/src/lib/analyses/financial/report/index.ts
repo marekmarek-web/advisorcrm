@@ -11,7 +11,9 @@ import { renderGoals } from './sections/goals';
 import { renderPortfolio } from './sections/portfolio';
 import { renderProductDetails } from './sections/product-detail';
 import { renderProjection } from './sections/projection';
+import { renderInvestmentBacktest } from './sections/investment-backtest';
 import { renderInsurance } from './sections/insurance';
+import { renderPrintAdvisorChrome, buildBacktestPresetsForHtml, computeReportMonthlyDeposit } from './print-and-interactive';
 import { renderCompanySnapshot } from './sections/company-snapshot';
 import { renderCompanyInsurance } from './sections/company-insurance';
 import { renderCompanyPortfolio } from './sections/company-portfolio';
@@ -67,6 +69,9 @@ export function buildPremiumReportHTML(
   sections.push(renderGoals(ctx));
   sections.push(renderPortfolio(ctx));
   sections.push(renderProductDetails(ctx));
+  const monthlyForBacktest = computeReportMonthlyDeposit(data);
+  const backtestJson = buildBacktestPresetsForHtml(monthlyForBacktest);
+  sections.push(renderInvestmentBacktest(ctx, backtestJson, monthlyForBacktest));
   sections.push(renderProjection(ctx));
   sections.push(renderInsurance(ctx));
 
@@ -81,6 +86,7 @@ export function buildPremiumReportHTML(
   sections.push(renderSignatures(ctx));
 
   const sidebar = renderSidebar(ctx);
+  const printChrome = renderPrintAdvisorChrome(branding);
   const themeCSS = getThemeCSS(theme);
   const themeFonts = getThemeFonts(theme);
 
@@ -94,6 +100,7 @@ export function buildPremiumReportHTML(
   <style>${themeCSS}</style>
 </head>
 <body>
+  ${printChrome}
   ${sidebar}
   <main class="main">
     ${sections.join('\n')}

@@ -109,6 +109,7 @@ const PROJECTION_INTERACTIVE_JS = `
     if(lblM)lblM.textContent=monthly.toLocaleString('cs-CZ')+' Kč/měs.';
     if(lblY)lblY.textContent=years+' let';
     if(lblR)lblR.textContent=(rate*100).toFixed(1).replace('.',',')+' % p.a.';
+    if(horEl)horEl.textContent=years+' let';
     draw(monthly,lump,years,rate,fv);
   }
   if(monthlyEl){monthlyEl.min=0;monthlyEl.max=Math.max(50000,init.monthlyTotal*2||5000);monthlyEl.step=100;monthlyEl.value=String(init.monthlyTotal);}

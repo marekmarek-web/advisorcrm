@@ -14,7 +14,10 @@ import {
   CheckCircle2, 
   AlignLeft,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Sun,
+  Moon,
+  Menu
 } from 'lucide-react';
 
 // --- MOCK DATA ---
@@ -58,7 +61,7 @@ const App = () => {
     textPrimary: 'text-white',
     textSecondary: 'text-slate-400',
     textTertiary: 'text-slate-500',
-    sidebar: 'bg-[#0F1528]/80 border-white/5 shadow-[-30px_0_60px_rgba(0,0,0,0.6)]',
+    sidebar: 'bg-[#0F1528]/80 border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]',
     card: 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10',
     btnGhost: 'text-slate-500 hover:text-white hover:bg-white/10',
     btnPrimary: 'bg-white text-[#0B0F19] hover:bg-indigo-50 hover:shadow-[0_0_20px_rgba(255,255,255,0.4)]',
@@ -78,7 +81,7 @@ const App = () => {
     textPrimary: 'text-slate-900',
     textSecondary: 'text-slate-500',
     textTertiary: 'text-slate-400',
-    sidebar: 'bg-white/80 border-white shadow-[-30px_0_60px_rgba(0,0,0,0.05)]',
+    sidebar: 'bg-white/80 border-white shadow-[0_20px_60px_rgba(0,0,0,0.06)]',
     card: 'bg-white/60 border-white shadow-sm hover:bg-white hover:shadow-md hover:-translate-y-0.5',
     btnGhost: 'text-slate-400 hover:text-slate-700 hover:bg-slate-100/50',
     btnPrimary: 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5',
@@ -147,8 +150,8 @@ const App = () => {
       `}} />
 
       {/* --- FAKE MAIN APP AREA --- */}
-      {/* Dynamicky se roztahuje nebo zmenšuje podle toho, zda je sidebar otevřený (mr-[420px]) */}
-      <div className={`flex-1 ${t.appBg} relative h-screen overflow-hidden flex flex-col transition-all duration-[800ms] smooth-spring ${isSidebarOpen ? 'mr-[420px]' : 'mr-0'}`}>
+      {/* Dynamicky se roztahuje nebo zmenšuje podle toho, zda je sidebar otevřený (mr-[440px] kvůli marginu) */}
+      <div className={`flex-1 ${t.appBg} relative h-screen overflow-hidden flex flex-col transition-all duration-[800ms] smooth-spring ${isSidebarOpen ? 'mr-[440px]' : 'mr-0'}`}>
         
         <div className={`absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[120px] transition-colors duration-700 ${isDark ? 'bg-indigo-600/10' : 'bg-indigo-400/20'}`}></div>
         <div className={`flex-1 flex flex-col items-center justify-center text-center transition-opacity duration-700 ${isDark ? 'opacity-30' : 'opacity-50'}`}>
@@ -157,7 +160,7 @@ const App = () => {
           <p className={`text-lg ${t.textSecondary}`}>Hlavní pracovní plocha</p>
         </div>
 
-        {/* Vysouvací úchyt (Pull tab) na pravém okraji */}
+        {/* Vysouvací úchyt (Pull tab) na pravém okraji, když je panel skrytý */}
         <button 
           onClick={() => setIsSidebarOpen(true)}
           className={`fixed right-0 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center justify-center w-10 h-32 rounded-l-2xl border-y border-l transition-all duration-[800ms] smooth-spring backdrop-blur-xl group cursor-pointer overflow-hidden ${
@@ -174,13 +177,14 @@ const App = () => {
 
       </div>
 
-      {/* --- SIDEBAR 2030 (Sliding Panel) --- */}
-      <aside className={`w-[420px] h-screen fixed right-0 top-0 flex flex-col z-30 backdrop-blur-3xl transition-transform duration-[800ms] smooth-spring border-l ${
-        isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+      {/* --- FLOATING SIDEBAR 2030 --- */}
+      {/* Nyní je to plovoucí zaoblený blok (right-5, top-5, bottom-5, rounded-[32px]) místo fixed k okrajům */}
+      <aside className={`w-[420px] fixed right-5 top-5 bottom-5 flex flex-col z-30 backdrop-blur-3xl transition-all duration-[800ms] smooth-spring border rounded-[32px] overflow-hidden ${
+        isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0 pointer-events-none'
       } ${t.sidebar}`}>
         
         {/* Top Header */}
-        <div className="px-8 py-6 flex items-center justify-between">
+        <div className="px-8 py-6 flex items-center justify-between relative z-10">
           <div className="flex gap-3">
             <button className={`transition-colors rounded-xl p-2 ${t.btnGhost}`} title="Kalendář (Plná verze)">
               <CalendarIcon size={20} />
@@ -194,10 +198,20 @@ const App = () => {
               <ChevronRight size={20} />
             </button>
           </div>
+          
+          {/* Theme switcher zachován pro rychlé ukázky, ale designově zjemněn */}
+          <button 
+            onClick={() => setIsDark(!isDark)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${isDark ? 'bg-white/10 border-white/10 text-amber-300 hover:bg-white/20' : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50 shadow-sm'}`}
+            title="Přepnout režim"
+          >
+            {isDark ? <Moon size={16} /> : <Sun size={16} />}
+            <span className="text-xs font-jakarta font-bold">{isDark ? 'Dark' : 'Light'}</span>
+          </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-8 pb-32 space-y-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-8 pb-32 space-y-10 relative z-10">
           
           {/* 1. KALENDÁŘ SECTION */}
           <section>
@@ -295,7 +309,7 @@ const App = () => {
         </div>
 
         {/* --- STICKY FOOTER --- */}
-        <div className={`absolute bottom-0 left-0 right-0 p-8 pt-0 bg-gradient-to-t ${isDark ? 'from-[#0B0F19] via-[#0B0F19]' : 'from-[#FAFAFC] via-[#FAFAFC]'} to-transparent pointer-events-none transition-colors duration-700`}>
+        <div className={`absolute bottom-0 left-0 right-0 p-8 pt-0 bg-gradient-to-t ${isDark ? 'from-[#0B0F19] via-[#0B0F19]/90' : 'from-white via-white/90'} to-transparent pointer-events-none transition-colors duration-700 z-20`}>
           
           {/* Floating Actions Buttons */}
           <div className="flex flex-col items-end gap-3 pointer-events-auto">

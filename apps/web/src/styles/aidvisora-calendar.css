@@ -1259,11 +1259,17 @@
   color: var(--wp-text-muted);
 }
 
-/* ── Dark theme: jemnější mřížka, bez „světlých“ pruhů ve dnech ── */
+/* ── Dark theme: kalendář bez světlého „bloku“, mřížka hodiny velmi jemná ── */
+html.dark .wp-cal-container {
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--wp-surface-card-border) 90%, transparent);
+}
+
 html.dark .wp-cal-modern-grid {
   background-image: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--wp-text-muted) 28%, transparent) 1px,
+    rgba(255, 255, 255, 0.045) 1px,
     transparent 1px
   );
   background-size: 100% 60px;

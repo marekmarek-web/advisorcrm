@@ -126,7 +126,7 @@ export function QuickEventForm({
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
         <div className="p-6 space-y-6 overflow-y-auto">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {ACTIVITY_TYPES.map((type) => {
               const Icon = type.icon;
               const isActive = form.eventType === type.id;
@@ -137,12 +137,27 @@ export function QuickEventForm({
                   key={type.id}
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, eventType: type.id }))}
-                  className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-2 py-2.5 text-center text-xs font-bold transition-colors sm:text-sm ${
-                    useInlineColor ? "border-gray-300 text-gray-800" : isActive ? type.color : "border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
+                  className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-2 py-2.5 text-center text-xs font-bold shadow-none ring-0 transition-colors sm:text-sm ${
+                    useInlineColor
+                      ? "border-[color:var(--wp-border-strong)] text-[color:var(--wp-text)]"
+                      : isActive
+                        ? type.color
+                        : "border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
                   }`}
                   style={useInlineColor ? { backgroundColor: customColor, borderColor: customColor } : undefined}
                 >
-                  <Icon size={16} className={useInlineColor ? "text-gray-800" : isActive && type.id !== "schuzka" ? "" : isActive ? "text-white/80" : "text-[color:var(--wp-text-tertiary)]"} />
+                  <Icon
+                    size={16}
+                    className={
+                      useInlineColor
+                        ? "text-[color:var(--wp-text)]"
+                        : isActive && type.id !== "schuzka"
+                          ? ""
+                          : isActive
+                            ? "text-white/80"
+                            : "text-[color:var(--wp-text-tertiary)]"
+                    }
+                  />
                   {type.label}
                 </button>
               );

@@ -40,20 +40,20 @@ function getEntityKindStyle(kind: ClientMapItem["entityKind"]): { bg: string; te
   switch (kind) {
     case "Klient":
       return {
-        bg: "bg-emerald-100 text-emerald-700 border-emerald-200",
-        text: "text-emerald-700",
+        bg: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:border-emerald-500/30 dark:bg-emerald-950/45 dark:text-emerald-200",
+        text: "text-emerald-700 dark:text-emerald-200",
         icon: <User size={16} />,
       };
     case "Domácnost":
       return {
-        bg: "bg-indigo-100 text-indigo-700 border-indigo-200",
-        text: "text-indigo-700",
+        bg: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:border-indigo-500/30 dark:bg-indigo-950/45 dark:text-indigo-200",
+        text: "text-indigo-700 dark:text-indigo-200",
         icon: <Users size={16} />,
       };
     case "Klient (Podnikatel)":
       return {
-        bg: "bg-blue-100 text-blue-700 border-blue-200",
-        text: "text-blue-700",
+        bg: "bg-blue-100 text-blue-700 border-blue-200 dark:border-blue-500/30 dark:bg-blue-950/45 dark:text-blue-200",
+        text: "text-blue-700 dark:text-blue-200",
         icon: <Briefcase size={16} />,
       };
     default:
@@ -172,6 +172,11 @@ export function MindmapListClient({
             linear-gradient(to bottom, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
           background-size: 40px 40px;
         }
+        html.dark .mindmap-hub-bg {
+          background-image:
+            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
@@ -220,7 +225,7 @@ export function MindmapListClient({
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-700 text-sm flex items-center justify-between">
+          <div className="mb-6 flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-500/35 dark:bg-rose-950/40 dark:text-rose-200">
             {error}
             <button type="button" onClick={() => setError(null)} className="font-bold hover:underline">
               Zavřít
@@ -257,7 +262,7 @@ export function MindmapListClient({
                           {style.icon}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-[color:var(--wp-text)] group-hover:text-indigo-600 transition-colors truncate">
+                          <h3 className="truncate font-bold text-[color:var(--wp-text)] transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
                             {m.entityName}
                           </h3>
                           <p className="text-xs font-bold text-[color:var(--wp-text-secondary)] uppercase tracking-wider mt-0.5">
@@ -271,7 +276,7 @@ export function MindmapListClient({
                           <span className="text-xs font-medium text-[color:var(--wp-text-secondary)]">
                             {formatUpdated(m.updatedAt)}
                           </span>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] text-xs font-bold uppercase tracking-wider group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
+                          <span className="inline-flex items-center gap-1.5 rounded-xl bg-[color:var(--wp-surface-muted)] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)] transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-700 dark:group-hover:bg-indigo-950/50 dark:group-hover:text-indigo-200">
                             <ArrowRight size={14} />
                             Otevřít
                           </span>
@@ -339,7 +344,7 @@ export function MindmapListClient({
                   <li key={m.id} className="group">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 hover:bg-[color:var(--wp-surface-muted)]/80 transition-all duration-200">
                       <Link href={`/portal/mindmap/${m.id}`} className="min-w-0 flex-1">
-                        <h3 className="font-bold text-[color:var(--wp-text)] group-hover:text-indigo-600 transition-colors truncate">
+                        <h3 className="truncate font-bold text-[color:var(--wp-text)] transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
                           {m.name}
                         </h3>
                         <p className="text-xs font-medium text-[color:var(--wp-text-secondary)] mt-0.5">
@@ -350,7 +355,7 @@ export function MindmapListClient({
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Link
                           href={`/portal/mindmap/${m.id}`}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] text-xs font-bold uppercase tracking-wider hover:bg-indigo-100 hover:text-indigo-700 transition-colors min-h-[44px]"
+                          className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[color:var(--wp-surface-muted)] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)] transition-colors hover:bg-indigo-100 hover:text-indigo-700 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-200"
                         >
                           <ArrowRight size={14} />
                           Otevřít
@@ -372,7 +377,7 @@ export function MindmapListClient({
                                 aria-hidden
                                 onClick={() => setOpenMenuId(null)}
                               />
-                              <div className="absolute right-0 top-full mt-1 z-20 py-1 w-48 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-xl shadow-lg">
+                              <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] py-1 shadow-lg dark:shadow-black/40">
                                 <Link
                                   href={`/portal/mindmap/${m.id}`}
                                   className="flex items-center gap-2 px-3 py-2 text-sm text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] rounded-lg"
@@ -403,7 +408,7 @@ export function MindmapListClient({
                                   type="button"
                                   onClick={() => handleDelete(m.id)}
                                   disabled={deletingId === m.id}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-700 hover:bg-rose-50 rounded-lg disabled:opacity-50"
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-950/45"
                                 >
                                   <Trash2 size={14} />
                                   Smazat

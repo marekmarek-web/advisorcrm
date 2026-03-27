@@ -83,10 +83,12 @@ const BACKTEST_SCRIPT = `
 `;
 
 /** Interaktivní historická simulace (stejná data jako investiční kalkulačka). */
-export function renderInvestmentBacktest(ctx: SectionCtx, presetsJson: string): string {
-  const { data } = ctx;
+export function renderInvestmentBacktest(
+  ctx: SectionCtx,
+  presetsJson: string,
+  monthlyDeposit: number,
+): string {
   const num = nextSection(ctx.sectionCounter);
-  const monthly = JSON.parse(presetsJson).monthly as number;
 
   return `<section class="page fa-backtest-section" id="investice-backtest">
   <div class="page-bar"></div>
@@ -94,7 +96,7 @@ export function renderInvestmentBacktest(ctx: SectionCtx, presetsJson: string): 
     <div class="sec-header">
       <div class="sec-number">${num} — Investice</div>
       <div class="sec-title">Simulace historického vývoje</div>
-      <div class="sec-desc">Pravidelná měsíční investice <strong>${esc(fmtMonthly(monthly))}</strong> podle stejného modelu jako v kalkulačce v portálu. Vyberte rok začátku — křivky se přepočítají.</div>
+      <div class="sec-desc">Pravidelná měsíční investice <strong>${esc(fmtMonthly(monthlyDeposit))}</strong> podle stejného modelu jako v kalkulačce v portálu. Vyberte rok začátku — křivky se přepočítají.</div>
     </div>
     <div class="fa-interactive-only fa-backtest-controls">
       <label class="fa-backtest-label" for="fa-backtest-year">Rok začátku simulace</label>
@@ -103,7 +105,7 @@ export function renderInvestmentBacktest(ctx: SectionCtx, presetsJson: string): 
     <div class="fa-backtest-chart-wrap">
       <canvas id="fa-backtest-canvas" width="900" height="320" aria-label="Graf historické simulace"></canvas>
     </div>
-    <p class="sec-desc fa-interactive-note">Vyžaduje připojení k internetu (Chart.js z CDN). Pro plnou interaktivitu otevřete také <strong>Kalkulačky → Investiční kalkulačky</strong> v Aidvisoře.</p>
+    <p class="sec-desc fa-interactive-note fa-interactive-only">Vyžaduje připojení k internetu (Chart.js z CDN). Pro plnou interaktivitu otevřete také <strong>Kalkulačky → Investiční kalkulačky</strong> v Aidvisoře.</p>
     <script type="application/json" id="fa-backtest-presets">${presetsJson}</script>
   </div>
 </section>

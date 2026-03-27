@@ -3,6 +3,8 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { getCzPublicHolidayLabel, getPragueCalendarParts } from "@/lib/calendar/cz-public-holidays";
 import { getCzNameDaysForDate } from "@/lib/calendar/cz-name-days";
+import { czechAgendaDateShort, czechRelativeAgendaDay, ymdToUtcNoonMs } from "@/lib/dashboard/side-panel-agenda-labels";
+import type { DashboardAgendaTimelineRow } from "@/app/portal/today/dashboard-agenda-types";
 import { db } from "db";
 import { events, tasks, opportunities, contacts, contracts, activityLog, opportunityStages } from "db";
 import { eq, and, gte, lt, isNull, isNotNull, asc, desc, sql, inArray } from "db";
@@ -36,6 +38,8 @@ export type DashboardKpis = {
   czNameDaysToday: string[];
   /** Kontakty s narozeninami dnes (MM-DD v Europe/Prague). */
   birthdaysToday: Array<{ id: string; firstName: string; lastName: string; age: number }>;
+  /** Události a úkoly pro postranní panel (dnes až +14 dní, seřazeno). */
+  sidePanelAgendaTimeline: DashboardAgendaTimelineRow[];
 };
 
 export async function getDashboardKpis(): Promise<DashboardKpis> {
@@ -55,6 +59,11 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
   const in30days = new Date(today);
   in30days.setDate(in30days.getDate() + 30);
   const in30daysStr = in30days.toISOString().slice(0, 10);
+  const in14days = new Date(today);
+  in14days.setDate(in14days.getDate() + 14);
+  const in14daysStr = in14days.toISOString().slice(0, 10);
+  const agendaEndExclusive = new Date(today);
+  agendaEndExclusive.setDate(agendaEndExclusive.getDate() + 15);
 
   const [
     meetingsList,
@@ -69,6 +78,8 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     opportunitiesStep3And4List,
     recentActivityList,
     birthdaysTodayList,
+    upcomingEventsPanelList,
+    upcomingTasksPanelList,
   ] = await Promise.all([
     db
       .select({
@@ -254,6 +265,46 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
       )
       .orderBy(asc(contacts.lastName), asc(contacts.firstName))
       .limit(25),
+    db
+      .select({
+        id: events.id,
+        title: events.title,
+        startAt: events.startAt,
+        contactFirstName: contacts.firstName,
+        contactLastName: contacts.lastName,
+      })
+      .from(events)
+      .leftJoin(contacts, eq(events.contactId, contacts.id))
+      .where(
+        and(
+          eq(events.tenantId, auth.tenantId),
+          gte(events.startAt, today),
+          lt(events.startAt, agendaEndExclusive)
+        )
+      )
+      .orderBy(asc(events.startAt))
+      .limit(20),
+    db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        dueDate: tasks.dueDate,
+        contactFirstName: contacts.firstName,
+        contactLastName: contacts.lastName,
+      })
+      .from(tasks)
+      .leftJoin(contacts, eq(tasks.contactId, contacts.id))
+      .where(
+        and(
+          eq(tasks.tenantId, auth.tenantId),
+          isNull(tasks.completedAt),
+          isNotNull(tasks.dueDate),
+          sql`${tasks.dueDate}::date >= ${todayStr}::date`,
+          sql`${tasks.dueDate}::date <= ${in14daysStr}::date`
+        )
+      )
+      .orderBy(asc(tasks.dueDate))
+      .limit(20),
   ]);
 
   const todayEvents: TodayEvent[] = meetingsList.map((e) => ({
@@ -337,6 +388,50 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     };
   });
 
+  const agendaCandidates: { sort: number; row: DashboardAgendaTimelineRow }[] = [];
+  for (const e of upcomingEventsPanelList) {
+    const ymd = getPragueCalendarParts(new Date(e.startAt)).ymd;
+    const contactName =
+      e.contactFirstName && e.contactLastName ? `${e.contactFirstName} ${e.contactLastName}` : null;
+    agendaCandidates.push({
+      sort: new Date(e.startAt).getTime(),
+      row: {
+        id: `ev-${e.id}`,
+        kind: "event",
+        time: new Date(e.startAt).toLocaleTimeString("cs-CZ", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/Prague",
+        }),
+        title: e.title,
+        sub: contactName ?? undefined,
+        dateShort: czechAgendaDateShort(ymd),
+        relativeLabel: czechRelativeAgendaDay(ymd, pragueToday.ymd),
+      },
+    });
+  }
+  for (const t of upcomingTasksPanelList) {
+    const raw = t.dueDate!;
+    const ymd = raw.length >= 10 ? raw.slice(0, 10) : raw;
+    const contactName =
+      t.contactFirstName && t.contactLastName ? `${t.contactFirstName} ${t.contactLastName}` : null;
+    const base = ymdToUtcNoonMs(ymd);
+    agendaCandidates.push({
+      sort: Number.isFinite(base) ? base + 18 * 3600000 : Date.now(),
+      row: {
+        id: `task-${t.id}`,
+        kind: "task",
+        time: "Úkol",
+        title: t.title,
+        sub: contactName ?? undefined,
+        dateShort: czechAgendaDateShort(ymd),
+        relativeLabel: czechRelativeAgendaDay(ymd, pragueToday.ymd),
+      },
+    });
+  }
+  agendaCandidates.sort((a, b) => a.sort - b.sort);
+  const sidePanelAgendaTimeline = agendaCandidates.slice(0, 15).map((c) => c.row);
+
   return {
     meetingsToday: meetingsList.length,
     tasksOpen: tasksList.length,
@@ -353,5 +448,6 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     czPublicHolidayToday,
     czNameDaysToday,
     birthdaysToday,
+    sidePanelAgendaTimeline,
   };
 }

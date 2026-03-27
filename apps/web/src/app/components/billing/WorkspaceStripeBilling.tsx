@@ -191,17 +191,17 @@ export function WorkspaceStripeBilling({
         </div>
       ) : null}
       {billingQuery === "success" ? (
-        <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+        <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-200">
           Platba proběhla. Stav předplatného se během chvile aktualizuje po potvrzení ze Stripe.
         </p>
       ) : null}
       {billingQuery === "cancel" ? (
-        <p className="text-sm text-amber-900 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+        <p className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">
           Checkout byl zrušen. Můžete to zkusit znovu kdykoli.
         </p>
       ) : null}
       {billingError ? (
-        <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{billingError}</p>
+        <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-200">{billingError}</p>
       ) : null}
       {trialDays > 0 && billing.checkoutAvailable ? (
         <p className="max-w-xl text-sm text-[color:var(--wp-text-secondary)]">
@@ -259,7 +259,7 @@ export function WorkspaceStripeBilling({
                   : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)] disabled:opacity-40"
               }`}
             >
-              Ročně <span className="text-emerald-600 font-black">−20 %</span>
+              Ročně <span className="font-black text-emerald-600 dark:text-emerald-400">−20 %</span>
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
