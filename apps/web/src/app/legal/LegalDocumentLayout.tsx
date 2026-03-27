@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import {
   LEGAL_ADDRESS_LINE,
   LEGAL_COMPANY_NAME,
+  LEGAL_DIC_PENDING_NOTE,
   LEGAL_EFFECTIVE_CS,
-  LEGAL_ICO_DIC_NOTE,
+  LEGAL_ICO,
   LEGAL_PODPORA_EMAIL,
   LEGAL_PRICING_HREF,
   LEGAL_SUPPORT_EMAIL,
@@ -40,7 +41,9 @@ export function LegalDocumentLayout(props: {
         <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-200">
           <p className="font-semibold text-gray-900 dark:text-white">{LEGAL_COMPANY_NAME}</p>
           <p className="mt-1">{LEGAL_ADDRESS_LINE}</p>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">{LEGAL_ICO_DIC_NOTE}</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            IČO: {LEGAL_ICO}. {LEGAL_DIC_PENDING_NOTE}
+          </p>
           <p className="mt-3">
             Právní a privacy kontakt:{" "}
             <a className="text-blue-600 underline dark:text-blue-400" href={`mailto:${LEGAL_SUPPORT_EMAIL}`}>

@@ -97,6 +97,7 @@ import { NotesMobileScreen } from "./screens/NotesMobileScreen";
 import { ColdContactsMobileScreen } from "./screens/ColdContactsMobileScreen";
 import type { RoleName } from "@/shared/rolePermissions";
 import ScanPage from "../scan/page";
+import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 
 function RouteLoadingSkeleton() {
   return (
@@ -724,6 +725,26 @@ export function MobilePortalClient({
         />
       );
     if (onAiRoute) return <AiAssistantChatScreen />;
+    if (onScanRoute && !isPortalMultiPageScanEnabled()) {
+      return (
+        <MobileScreen>
+          <MobileSection title="Dokumenty">
+            <MobileCard className="p-4">
+              <p className="text-sm text-[color:var(--wp-text-secondary)] leading-relaxed">
+                Vícestránkový sken dokumentů je v této instalaci vypnutý. Nahrajte PDF nebo obrázek v sekci Dokumenty (tlačítko + nebo záložka Dokumenty).
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push("/portal/documents")}
+                className="mt-4 min-h-[48px] w-full rounded-xl bg-blue-600 px-4 text-sm font-bold text-white active:scale-[0.99] transition-transform"
+              >
+                Otevřít dokumenty
+              </button>
+            </MobileCard>
+          </MobileSection>
+        </MobileScreen>
+      );
+    }
     if (onScanRoute) return <ScanPage />;
     if (onDocumentsRoute) return <DocumentsHubScreen deviceClass={deviceClass} />;
     if (onProductionRoute) return <ProductionScreen deviceClass={deviceClass} />;

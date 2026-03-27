@@ -1847,7 +1847,11 @@ export default function PremiumLandingPage() {
                 <li><a href="#klientska-zona" className="hover:text-white transition-colors">Klientská zóna</a></li>
                 <li><Link href="/prihlaseni" className="hover:text-white transition-colors">Portál Aidvisora</Link></li>
                 <li><a href="#ai-asistent" className="hover:text-white transition-colors">AI Asistent</a></li>
-                <li><a href="#cenik" className="hover:text-white transition-colors">Ceník a tarify</a></li>
+                <li>
+                  <Link href="/#cenik" className="hover:text-white transition-colors">
+                    Ceník a tarify
+                  </Link>
+                </li>
                 <li><a href="#integrace" className="hover:text-white transition-colors">Integrace</a></li>
               </ul>
             </div>
@@ -1857,6 +1861,16 @@ export default function PremiumLandingPage() {
                <ul className="space-y-4 text-sm">
                 <li><Link href="/terms" className="hover:text-white transition-colors">Obchodní podmínky</Link></li>
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Zásady ochrany (GDPR)</Link></li>
+                <li>
+                  <Link href="/legal/zpracovatelska-smlouva" className="hover:text-white transition-colors">
+                    Zpracovatelská smlouva (DPA)
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/legal/ai-disclaimer" className="hover:text-white transition-colors">
+                    AI režim a disclaimer
+                  </Link>
+                </li>
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Nastavení Cookies</Link></li>
                 <li>
                   <a href="mailto:podpora@aidvisora.cz?subject=Onboarding%20a%20podpora" className="hover:text-white transition-colors">

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireClientZoneAuth } from "@/lib/auth/require-auth";
 import { getPortalNotificationsUnreadCount } from "@/app/actions/portal-notifications";
 import { getAssignedAdvisorForClient } from "@/app/actions/client-dashboard";
 import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
@@ -20,13 +20,10 @@ export default async function ClientZoneLayout({
 }) {
   let auth;
   try {
-    auth = await requireAuth();
+    auth = await requireClientZoneAuth();
   } catch (e) {
     if (isRedirectError(e)) throw e;
     redirect("/prihlaseni?error=auth_error");
-  }
-  if (auth.roleName !== "Client") {
-    redirect("/portal");
   }
 
   let unreadNotificationsCount = 0;

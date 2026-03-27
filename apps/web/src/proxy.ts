@@ -152,7 +152,11 @@ export async function proxy(request: NextRequest) {
   }
   if (request.nextUrl.pathname === "/prihlaseni" && user) {
     const errorParam = request.nextUrl.searchParams.get("error");
-    if (errorParam === "auth_error" || errorParam === "database_error") {
+    if (
+      errorParam === "auth_error" ||
+      errorParam === "database_error" ||
+      errorParam === "client_no_access"
+    ) {
       return NextResponse.next({ request });
     }
     const url = request.nextUrl.clone();

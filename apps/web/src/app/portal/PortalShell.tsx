@@ -161,6 +161,10 @@ function PortalShellInner({
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
 
+  const closeMobileSidebarDrawer = useCallback(() => {
+    setSidebarDrawerOpen(false);
+  }, [setSidebarDrawerOpen]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -205,7 +209,7 @@ function PortalShellInner({
           onCollapsedChange={handleSidebarCollapsed}
           onMount={initSidebarState}
           mobileDrawerOpen={sidebarDrawerOpen}
-          onMobileDrawerClose={() => setSidebarDrawerOpen(false)}
+          onMobileDrawerClose={closeMobileSidebarDrawer}
         />
         <div
           className="relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col pb-[var(--safe-area-bottom)] max-md:min-h-0 md:my-5 md:mr-5"

@@ -13,9 +13,15 @@ export default function PortalError({
     (error.message?.includes("omitted in production") ||
       error.message?.includes("digest") ||
       !error.message);
-  const displayMessage = isGenericProdMessage
-    ? "Došlo k chybě na serveru. Zkuste obnovit stránku nebo se vrátit na úvod."
-    : (error.message || "Nastala neočekávaná chyba.");
+  const isServerRenderProd =
+    isProd &&
+    (error.message?.includes("Server Components") ||
+      error.message?.includes("server components"));
+  const displayMessage = isServerRenderProd
+    ? "Načtení portálu selhalo — často jde o nesoulad databáze s nasazenou verzí (např. chybějící migrace u tabulky dokumentů). Zkuste znovu; pokud to trvá, spusťte SQL migrace podle provozní příručky (documents_schema_sync) nebo kontaktujte správce."
+    : isGenericProdMessage
+      ? "Došlo k chybě na serveru. Zkuste obnovit stránku nebo se vrátit na úvod."
+      : (error.message || "Nastala neočekávaná chyba.");
 
   return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -32,6 +38,12 @@ export default function PortalError({
           >
             Zkusit znovu
           </button>
+          <a
+            href="/portal/today"
+            className="rounded-[6px] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] hover:bg-[color:var(--wp-surface-card-border)]"
+          >
+            Přehled portálu
+          </a>
           <a href="/" className="rounded-[6px] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] hover:bg-[color:var(--wp-surface-card-border)]">
             Úvodní stránka
           </a>

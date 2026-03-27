@@ -8,6 +8,7 @@ import {
   type CaptureTier,
   getCaptureFormFactorForScan,
 } from "./capture-capabilities";
+import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 
 function readFormFactor(): CaptureFormFactor {
   if (typeof window === "undefined") return "mobile";
@@ -34,8 +35,9 @@ export function useCaptureCapabilities() {
     return formFactor === "mobile" ? "web_mobile" : "web_desktop";
   }, [isNative, formFactor]);
 
-  const supportsMultiPageScan = tier === "native_capacitor" || tier === "web_mobile";
-  const showScanInQuickMenu = tier !== "web_desktop";
+  const portalScanOn = isPortalMultiPageScanEnabled();
+  const supportsMultiPageScan = portalScanOn && (tier === "native_capacitor" || tier === "web_mobile");
+  const showScanInQuickMenu = portalScanOn && tier !== "web_desktop";
   const useNativeCameraPlugin = tier === "native_capacitor";
   /** Mobile web: show full source sheet (scan, camera, gallery, file). Desktop web: file only from sheet. */
   const useExpandedUploadSheet = tier !== "web_desktop";

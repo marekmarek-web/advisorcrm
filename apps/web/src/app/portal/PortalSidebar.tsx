@@ -296,10 +296,15 @@ export function PortalSidebar({
   }, []);
 
   useEffect(() => { onMount?.(); }, [onMount]);
+
+  /** Parent often passes an inline `() => setOpen(false)`; must not be a hook dep or every re-render closes the drawer. */
+  const onMobileDrawerCloseRef = useRef(onMobileDrawerClose);
+  onMobileDrawerCloseRef.current = onMobileDrawerClose;
+
   useEffect(() => {
-    if (isControlled) onMobileDrawerClose?.();
+    if (isControlled) onMobileDrawerCloseRef.current?.();
     else setInternalMobileOpen(false);
-  }, [pathname, isControlled, onMobileDrawerClose]);
+  }, [pathname, isControlled]);
 
   useEffect(() => {
     getOpenTasksCount().then(setOpenTasksCount).catch(() => setOpenTasksCount(0));

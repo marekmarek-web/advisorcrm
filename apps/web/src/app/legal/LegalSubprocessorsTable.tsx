@@ -43,10 +43,11 @@ export function LegalSubprocessorsTable() {
         Přehled vybraných subdodavatelů (zkrácený)
       </h2>
       <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-        Primární smluvní vztah k uživatelům platformy je veden z České republiky. Níže jsou uvedeni
-        typičtí subdodavatelé infrastruktury a služeb používaných v aktuální architektuře. Úplný nebo
-        aktualizovaný seznam může být součástí zpracovatelské smlouvy nebo interní dokumentace;
-        tato tabulka slouží jako orientační přehled ke dni {LEGAL_EFFECTIVE_CS}.
+        Primární smluvní vztah k uživatelům platformy a sídlo poskytovatele jsou v České republice.
+        Níže jsou uvedeni typičtí subdodavatelé infrastruktury a služeb používaných v aktuální
+        architektuře (část z nich může zpracovávat data mimo ČR v souladu se smlouvami a zárukami dle
+        GDPR). Úplný nebo aktualizovaný seznam může být součástí zpracovatelské smlouvy nebo interní
+        dokumentace; tato tabulka slouží jako orientační přehled ke dni {LEGAL_EFFECTIVE_CS}.
       </p>
       <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
         <table className="min-w-full text-left text-sm">

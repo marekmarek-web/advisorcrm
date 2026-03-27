@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { createClient } from "@/lib/supabase/client";
-import { acceptClientInvitation } from "@/app/actions/auth";
+import { acceptClientInvitation, ensureClientPortalAccess } from "@/app/actions/auth";
 
 export type LoginRole = "advisor" | "client";
 
@@ -20,6 +20,9 @@ export function getInitialLoginMessage(errorParam: string | null): string {
   if (errorParam === "otp_expired") return "Odkaz z e-mailu vypršel. Přihlaste se heslem nebo zaregistrujte se znovu.";
   if (errorParam === "database_error") return "Problém s připojením k databázi. Zkuste to za chvíli znovu.";
   if (errorParam === "auth_error") return "Přihlášení se nezdařilo. Zkontrolujte údaje nebo to zkuste znovu po chvíli.";
+  if (errorParam === "client_no_access") {
+    return "Účet nemá přiřazený klientský přístup. Požádejte svého poradce o pozvánku (e-mail s odkazem) nebo použijte odkaz z pozvánky.";
+  }
   try {
     return decodeURIComponent(errorParam);
   } catch {
@@ -61,6 +64,21 @@ export function useAidvisoraLogin() {
 
   useEffect(() => {
     if (token) setRole("client");
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    void fetch(`/api/invite/metadata?token=${encodeURIComponent(token)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { ok?: boolean; email?: string } | null) => {
+        if (cancelled || !data?.ok || typeof data.email !== "string") return;
+        setEmail(data.email);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   useEffect(() => {
@@ -114,12 +132,18 @@ export function useAidvisoraLogin() {
 
       if (role === "client") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        setIsLoading(false);
         if (error) {
+          setIsLoading(false);
           setMessage(error.message);
           return;
         }
-        window.location.href = `/register/complete?next=${encodeURIComponent(clientNextPath)}`;
+        const access = await ensureClientPortalAccess();
+        setIsLoading(false);
+        if (!access.ok) {
+          setMessage(access.error);
+          return;
+        }
+        window.location.href = clientNextPath;
         return;
       }
 

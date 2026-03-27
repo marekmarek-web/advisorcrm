@@ -13,7 +13,7 @@ const INTRO_IMPORTANT =
   "Důležité: Tento text je připraven jako praktický základ pro Aidvisoru nastavenou jako SaaS/ICT nástroj pro finanční poradce. Není koncipován jako poskytování finančního poradenství ze strany poskytovatele platformy. Před spuštěním do ostrého provozu je vhodná lokální právní kontrola zejména ve vztahu k použitým funkcím AI, billingu, reklamacím a identifikačním údajům poskytovatele.";
 
 const PRIVACY_CONTROLLER =
-  "Správcem osobních údajů pro účely tohoto dokumentu je Aidvisora s.r.o., se sídlem Vraňany 6, 277 07 Mlčechvosty, Česká republika. IČO a DIČ budou doplněny po zápisu společnosti v obchodním rejstříku.";
+  "Správcem osobních údajů pro účely tohoto dokumentu je Aidvisora s.r.o., se sídlem Vraňany 6, 277 07 Mlčechvosty, Česká republika, IČO 05474434. DIČ bude uvedeno po přidělení.";
 
 const TERMS_CHANGES_EXTRA =
   "U podstatných změn těchto obchodních podmínek poskytovatel obvykle zveřejní nové znění na webu s uvedením data účinnosti a současně o změně informuje registrované uživatele e-mailem uvedeným u účtu a/nebo oznámením v aplikaci, a to s přiměřenou lhůtou před účinností (obvykle nejméně 14 dní u změn, které zákazníka podstatně dotýkají), pokud tak stanoví právní předpisy nebo smluvní ujednání. Pokračováním v užívání služby po účinnosti změny může být vyjádřen souhlas tam, kde to pro daný typ změny dává smysl a neodporuje to právním předpisům.";

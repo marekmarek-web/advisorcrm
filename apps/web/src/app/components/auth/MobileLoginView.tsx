@@ -302,30 +302,36 @@ export function MobileLoginView({ login }: { login: AidvisoraLoginState }) {
               )}
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 opacity-40">
-                <div className="h-[1px] bg-white flex-1" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white">Nebo</span>
-                <div className="h-[1px] bg-white flex-1" />
-              </div>
+            {!token ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 opacity-40">
+                  <div className="h-[1px] bg-white flex-1" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Nebo</span>
+                  <div className="h-[1px] bg-white flex-1" />
+                </div>
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleOAuthSignIn("apple")}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[48px] bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 rounded-[16px] text-white font-bold text-sm transition-colors active:scale-[0.98]"
-                >
-                  <AppleIcon /> Apple
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOAuthSignIn("google")}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[48px] bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 rounded-[16px] text-white font-bold text-sm transition-colors active:scale-[0.98]"
-                >
-                  <GoogleIcon /> Google
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleOAuthSignIn("apple")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[48px] bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 rounded-[16px] text-white font-bold text-sm transition-colors active:scale-[0.98]"
+                  >
+                    <AppleIcon /> Apple
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOAuthSignIn("google")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[48px] bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 rounded-[16px] text-white font-bold text-sm transition-colors active:scale-[0.98]"
+                  >
+                    <GoogleIcon /> Google
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-center text-[11px] font-medium text-slate-500 leading-relaxed px-2 pt-2">
+                Pro dokončení pozvánky použijte e-mail a heslo. OAuth zde není k dispozici.
+              </p>
+            )}
 
             {!isClient ? (
               <div className="text-center pt-4">

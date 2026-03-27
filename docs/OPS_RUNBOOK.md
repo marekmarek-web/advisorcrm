@@ -44,6 +44,29 @@ Ověření ručně z terminálu:
    - `packages/db/migrations/pre-launch-document-types.sql`
 3. **Run**. Pokud už část první migrace proběhla, můžeš spustit jen chybějící řádky (např. jen `ALTER TABLE contacts ...` a pak `CREATE UNIQUE INDEX ...`).
 
+#### Tabulka `documents` (portal upload, sken, quick-upload)
+
+Po každém deployi, který mění dokumentová API nebo Drizzle schéma `documents`, ověř v produkci sloupce. Pokud upload padá na `column … does not exist`, spusť migrace v tomto pořadí (všechny používají `IF NOT EXISTS`, opakované spuštění je bezpečné):
+
+1. `packages/db/migrations/add-document-upload-source.sql` — `upload_source` (legacy jednosouborová migrace)
+2. `packages/db/migrations/ensure_documents_list_columns.sql` — sloupce pro seznam dokumentů
+3. `packages/db/drizzle/0011_documents_sensitive.sql` — `sensitive`
+4. `packages/db/drizzle/0016_document_processing.sql` — processing sloupce + `document_processing_jobs` *(přeskočitelné, pokud bod 5 už proběhl celý)*
+5. **`packages/db/migrations/documents_schema_sync_2026.sql`** — **doplní všechny chybějící sloupce** vůči `packages/db/src/schema/documents.ts` včetně `source_channel`, `document_fingerprint`, `business_status`, JSON polí pro pipeline atd., a zajistí tabulku/indexy pro `document_processing_jobs`.
+
+Pro nový projekt nebo jednorázový „catch-up“ často stačí jen spustit bod **5** (pokud základní tabulka `documents` už existuje). Ověření:
+
+```sql
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'documents'
+ORDER BY ordinal_position;
+```
+
+Lokálně / po nasazení SQL ověřte z kořene repa (`DATABASE_URL` musí mířit na stejnou DB):
+
+`pnpm db:verify-documents-schema`
+
 ### 2) Env proměnné na Vercelu
 
 **Lokální `.env.local` se na Vercel nepřenáší** – každou proměnnou, kterou máš v `apps/web/.env.local` a kterou aplikace v produkci potřebuje, musíš znovu zadat v dashboardu (nebo `vercel env add`). U Adobe PDF Services viz tabulku **Document Processing (Adobe PDF Services)** níže.

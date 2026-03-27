@@ -31,8 +31,20 @@ export function LandingFooter({ activeTheme: _activeTheme }: LandingFooterProps)
           />
         </Link>
         <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-4" aria-label="Patička">
+          <Link href="/terms" className={linkClass}>
+            Obchodní podmínky
+          </Link>
           <Link href="/privacy" className={linkClass}>
-            GDPR
+            Ochrana údajů
+          </Link>
+          <Link href="/legal/zpracovatelska-smlouva" className={linkClass}>
+            DPA
+          </Link>
+          <Link href="/legal/ai-disclaimer" className={linkClass}>
+            AI disclaimer
+          </Link>
+          <Link href="/#cenik" className={linkClass}>
+            Ceník
           </Link>
           <Link href="/" className={linkClass}>
             Zpět na úvod

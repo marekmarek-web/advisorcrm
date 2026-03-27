@@ -23,6 +23,7 @@ import { getPlatform } from "@/lib/capacitor/platform";
 import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 import { useScanCapture, type ScanPage } from "@/lib/scan/useScanCapture";
 import { useFileUpload } from "@/lib/upload/useFileUpload";
+import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 
 type ScanStep = "mode" | "quick" | "capture" | "metadata" | "preview";
 
@@ -58,7 +59,13 @@ function ScanThumbnail({ file, alt }: { file: File; alt: string }) {
     return <div className="h-24 w-24 animate-pulse rounded-lg bg-[color:var(--wp-surface-muted)]" aria-hidden />;
   }
 
-  return <img src={url} alt={alt} className="h-24 w-24 rounded-lg border border-[color:var(--wp-surface-card-border)] object-cover" />;
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="h-24 w-24 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] object-contain"
+    />
+  );
 }
 
 function QualityBadge({ quality }: { quality?: ScanPage["quality"] }) {
@@ -187,6 +194,7 @@ export default function ScanPage() {
   const [quickDocId, setQuickDocId] = useState<string | null>(null);
   const [quickProcessingStatus, setQuickProcessingStatus] = useState<string | null>(null);
   const [quickProcessingStage, setQuickProcessingStage] = useState<string | null>(null);
+  const [iosPdfEmbedUnreliable, setIosPdfEmbedUnreliable] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -229,6 +237,15 @@ export default function ScanPage() {
       window.clearInterval(id);
     };
   }, [quickDocId]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = navigator.userAgent || "";
+    const iOSDevice = /iPad|iPhone|iPod/.test(ua);
+    const iPadDesktopMode = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+    const webKitSafariFamily = /WebKit/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPT\/|OPR\//.test(ua);
+    setIosPdfEmbedUnreliable((iOSDevice || iPadDesktopMode) && webKitSafariFamily);
+  }, []);
 
   const tags = useMemo(() => {
     const nextTags: string[] = [];
@@ -339,6 +356,33 @@ export default function ScanPage() {
     setPreparedPdf(null);
     setStep("metadata");
   };
+
+  if (!isPortalMultiPageScanEnabled()) {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-8 pt-8 sm:px-6">
+        <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5">
+          <h1 className="text-lg font-semibold text-[color:var(--wp-text)]">Sken dokumentu</h1>
+          <p className="mt-2 text-sm text-[color:var(--wp-text-secondary)]">
+            Vícestránkový sken je v této instalaci vypnutý. Nahrajte PDF nebo obrázek v sekci Dokumenty.
+          </p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/portal/documents"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white"
+            >
+              Otevřít dokumenty
+            </Link>
+            <Link
+              href="/portal/today"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[color:var(--wp-border-strong)] px-4 text-sm font-semibold text-[color:var(--wp-text-secondary)]"
+            >
+              Zpět na přehled
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!supportsMultiPageScan) {
     return (
@@ -740,16 +784,35 @@ export default function ScanPage() {
         </div>
 
         {pdfPreviewUrl ? (
-          <div className="space-y-2">
-            <div className="w-full overflow-hidden rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]">
-              <iframe
-                title="Náhled PDF před nahráním"
-                src={`${pdfPreviewUrl}#toolbar=0&navpanes=0&view=FitH`}
-                className="block min-h-[55vh] w-full border-0 bg-[color:var(--wp-surface-card)] sm:min-h-[65vh]"
-              />
-            </div>
+          <div className="space-y-3">
+            <a
+              href={pdfPreviewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white"
+            >
+              Otevřít náhled PDF (doporučeno — celá stránka, správné měřítko)
+            </a>
+
+            {iosPdfEmbedUnreliable ? (
+              <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-3 text-sm text-[color:var(--wp-text-secondary)]">
+                V Safari se vložený náhled PDF z blob adresy často špatně přibližuje. Pro kontrolu dokumentu použijte
+                modré tlačítko výše — otevře soubor v systémovém prohlížeči se správným zobrazením celé stránky.
+              </div>
+            ) : (
+              <div className="w-full overflow-hidden rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]">
+                <div className="relative mx-auto aspect-[210/297] max-h-[min(75vh,900px)] w-full max-w-2xl">
+                  <iframe
+                    title="Náhled PDF před nahráním"
+                    src={`${pdfPreviewUrl}#toolbar=0&navpanes=0&view=Fit`}
+                    className="absolute left-0 top-0 h-full w-full border-0 bg-[color:var(--wp-surface-card)]"
+                  />
+                </div>
+              </div>
+            )}
+
             <p className="text-xs text-[color:var(--wp-text-secondary)]">
-              Pokud se PDF v rámečku nezobrazí (Safari), otevřete ho v novém okně nebo systémovým prohlížečem PDF.
+              Pokud se náhled v rámečku špatně ořízne, vždy použijte otevření v novém okně (tlačítko nahoře).
             </p>
             <a
               href={pdfPreviewUrl}
@@ -757,7 +820,7 @@ export default function ScanPage() {
               rel="noreferrer"
               className="inline-flex min-h-[44px] items-center text-sm font-semibold text-blue-700 underline-offset-2 hover:underline"
             >
-              Otevřít PDF v novém okně / systému
+              Otevřít znovu v novém okně
             </a>
           </div>
         ) : (

@@ -119,6 +119,82 @@ async function requireAuthUncached(): Promise<AuthContext> {
 /** Deduped within one RSC/request — layout + page + parallel server calls share one resolution. */
 export const requireAuth = cache(requireAuthUncached);
 
+/**
+ * Klientský portál (/client): nikdy nesměřovat na /register/complete (vytvoření poradenského workspace).
+ * Bez membership → přihlášení s vysvětlením místo auto-provision.
+ */
+async function requireClientZoneAuthUncached(): Promise<AuthContext> {
+  if (isDemoMode()) {
+    const headersList = await headers();
+    if (headersList.get("x-demo-client-zone") === "1") {
+      try {
+        const demoContactId =
+          process.env.DEMO_CLIENT_CONTACT_ID?.trim() ||
+          (await getDemoClientContactId(DEMO_TENANT_ID));
+        if (demoContactId) {
+          return {
+            userId: DEMO_USER_ID,
+            tenantId: DEMO_TENANT_ID,
+            roleId: DEMO_ROLE_CLIENT_ID,
+            roleName: "Client" as RoleName,
+            contactId: demoContactId,
+          };
+        }
+      } catch {
+        // fall through
+      }
+    }
+    const devUserId =
+      process.env.NEXT_PUBLIC_DEV_CONTRACTS_USER_ID ?? process.env.DEV_CONTRACTS_USER_ID;
+    const allowDevBypass =
+      process.env.NODE_ENV === "development" &&
+      process.env.VERCEL_ENV !== "production" &&
+      devUserId?.trim();
+    if (allowDevBypass) {
+      try {
+        const uid = devUserId!.trim();
+        const m = await getCachedMembership(uid);
+        if (m?.roleName === "Client" && m.contactId) {
+          return {
+            userId: uid,
+            tenantId: m.tenantId,
+            roleId: m.roleId,
+            roleName: m.roleName as RoleName,
+            contactId: m.contactId ?? null,
+          };
+        }
+      } catch {
+        // fall through
+      }
+    }
+    redirect("/portal");
+  }
+
+  const user = await getCachedSupabaseUser();
+  if (!user) {
+    redirect("/prihlaseni?error=auth_error");
+  }
+  const m = await getCachedMembership(user.id);
+  if (!m) {
+    redirect("/prihlaseni?error=client_no_access");
+  }
+  if ((m.roleName as string) !== "Client") {
+    redirect("/portal");
+  }
+  if (!m.contactId) {
+    redirect("/prihlaseni?error=auth_error");
+  }
+  return {
+    userId: user.id,
+    tenantId: m.tenantId,
+    roleId: m.roleId,
+    roleName: m.roleName as RoleName,
+    contactId: m.contactId ?? null,
+  };
+}
+
+export const requireClientZoneAuth = cache(requireClientZoneAuthUncached);
+
 /** For Server Actions: pass auth from form/action; in RSC use requireAuth() and pass tenantId to client. */
 async function requireAuthInActionUncached(): Promise<AuthContext> {
   if (isDemoMode()) {

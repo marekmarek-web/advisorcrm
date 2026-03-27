@@ -329,19 +329,30 @@ export function WebLoginView({ login }: { login: AidvisoraLoginState }) {
               </button>
             </form>
 
-            <div className="mt-8 mb-6 flex items-center gap-4 opacity-50">
-              <div className="h-[1px] bg-white flex-1" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-white">Nebo</span>
-              <div className="h-[1px] bg-white flex-1" />
-            </div>
+            {!token && (
+              <>
+                <div className="mt-8 mb-6 flex items-center gap-4 opacity-50">
+                  <div className="h-[1px] bg-white flex-1" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Nebo</span>
+                  <div className="h-[1px] bg-white flex-1" />
+                </div>
 
-            <button
-              type="button"
-              onClick={() => handleOAuthSignIn("google")}
-              className="w-full flex items-center justify-center gap-3 py-3.5 min-h-[48px] bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-white font-bold text-sm transition-colors shadow-sm"
-            >
-              <GoogleIcon /> Pokračovat s Google
-            </button>
+                <button
+                  type="button"
+                  onClick={() => handleOAuthSignIn("google")}
+                  className="w-full flex items-center justify-center gap-3 py-3.5 min-h-[48px] bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-white font-bold text-sm transition-colors shadow-sm"
+                >
+                  <GoogleIcon /> Pokračovat s Google
+                </button>
+              </>
+            )}
+
+            {token && (
+              <p className="mt-6 text-center text-xs font-medium text-slate-400 leading-relaxed">
+                Pro dokončení pozvánky použijte e-mail a heslo (stejný e-mail jako v pozvánce). Přihlášení přes Google zde
+                není k dispozici.
+              </p>
+            )}
 
             {role === "advisor" && (
               <p className="mt-8 text-center text-sm font-medium text-slate-400">
