@@ -65,6 +65,14 @@ export type SetupInitial = {
   roleName: string;
   tenantName: string;
   billing?: WorkspaceBillingSnapshot;
+  /** Telefon z advisor_preferences (fakturační / osobní). */
+  phone?: string;
+  ico?: string;
+  correspondenceAddress?: string;
+  /** Název sítě z metadata (jen pokud už máme correspondence_address; jinak undefined → výchozí tenantName). */
+  networkCompany?: string;
+  publicRole?: string;
+  bio?: string;
 };
 
 function parseFullName(full: string | null): { firstName: string; lastName: string } {
@@ -209,9 +217,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const parsed = parseFullName(initial.fullName);
   const [firstName, setFirstName] = useState(parsed.firstName);
   const [lastName, setLastName] = useState(parsed.lastName);
-  const [phone, setPhone] = useState("");
-  const [ico, setIco] = useState("");
-  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState(initial.phone ?? "");
+  const [ico, setIco] = useState(initial.ico ?? "");
+  const [address, setAddress] = useState(initial.correspondenceAddress ?? "");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -255,27 +263,15 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     }
   }, []);
 
-  const personalDirty = useMemo(() => {
+  const osobniDirty = useMemo(() => {
     const full = [firstName, lastName].filter(Boolean).join(" ").trim() || null;
-    const orig = initial.fullName?.trim() || "";
-    return full !== orig;
-  }, [firstName, lastName, initial.fullName]);
-
-  const handleSaveProfile = useCallback(async () => {
-    setProfileError(null);
-    setProfileSaved(false);
-    setProfileSaving(true);
-    try {
-      const fullName = [firstName, lastName].filter(Boolean).join(" ").trim() || "";
-      await updatePortalProfile(fullName, { phone, ico, company: address });
-      setProfileSaved(true);
-      toast.showToast("Údaje uloženy");
-    } catch (e) {
-      setProfileError(e instanceof Error ? e.message : "Uložení selhalo.");
-    } finally {
-      setProfileSaving(false);
-    }
-  }, [firstName, lastName, phone, ico, address, toast]);
+    const origName = initial.fullName?.trim() || "";
+    const nameDirty = (full || "") !== origName;
+    const phoneDirty = (phone.trim() || "") !== (initial.phone?.trim() ?? "");
+    const icoDirty = (ico.trim() || "") !== (initial.ico?.trim() ?? "");
+    const addrDirty = (address.trim() || "") !== (initial.correspondenceAddress?.trim() ?? "");
+    return nameDirty || phoneDirty || icoDirty || addrDirty;
+  }, [firstName, lastName, initial.fullName, initial.phone, initial.ico, initial.correspondenceAddress, phone, ico, address]);
 
   const handleUpdatePassword = useCallback(
     async (e: React.FormEvent) => {
@@ -311,9 +307,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   );
 
   // --- Profil poradce (public name, booking link)
-  const [publicRole, setPublicRole] = useState("");
-  const [company, setCompany] = useState(initial.tenantName);
-  const [bio, setBio] = useState("");
+  const [publicRole, setPublicRole] = useState(initial.publicRole ?? "");
+  const [company, setCompany] = useState(initial.networkCompany ?? initial.tenantName);
+  const [bio, setBio] = useState(initial.bio ?? "");
   const [copied, setCopied] = useState(false);
   /** Resolved on client only — avoids SSR/client mismatch (hydration) on the profil tab. */
   const [bookingLink, setBookingLink] = useState("");
@@ -670,21 +666,56 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     listTenantMembers().then(setTeamMembers).catch(() => setTeamMembers([]));
   }, []);
 
-  const globalSaveDisabled = !personalDirty || profileSaving;
+  const companyBaseline = (initial.networkCompany ?? initial.tenantName).trim();
+  const profilDirty = useMemo(() => {
+    const roleDirty = (publicRole.trim() || "") !== (initial.publicRole?.trim() ?? "");
+    const bioDirty = (bio.trim() || "") !== (initial.bio?.trim() ?? "");
+    const companyDirty = company.trim() !== companyBaseline;
+    return roleDirty || bioDirty || companyDirty;
+  }, [publicRole, bio, company, companyBaseline, initial.publicRole, initial.bio]);
+
+  const settingsDirty = osobniDirty || profilDirty;
+
+  const handleSaveProfile = useCallback(async () => {
+    setProfileError(null);
+    setProfileSaved(false);
+    setProfileSaving(true);
+    try {
+      const fullName = [firstName, lastName].filter(Boolean).join(" ").trim() || "";
+      await updatePortalProfile(fullName, {
+        phone: phone.trim(),
+        ico: ico.trim(),
+        company: company.trim(),
+        correspondenceAddress: address.trim(),
+        bio: bio.trim(),
+        publicRole: publicRole.trim(),
+      });
+      setProfileSaved(true);
+      toast.showToast("Údaje uloženy");
+      router.refresh();
+    } catch (e) {
+      setProfileError(e instanceof Error ? e.message : "Uložení selhalo.");
+    } finally {
+      setProfileSaving(false);
+    }
+  }, [firstName, lastName, phone, ico, address, company, bio, publicRole, toast, router]);
+
+  const globalSaveDisabled = !settingsDirty || profileSaving;
   const handleGlobalSave = useCallback(() => {
-    if (activeTab === "osobni" && personalDirty) handleSaveProfile();
-  }, [activeTab, personalDirty, handleSaveProfile]);
+    if (!settingsDirty || profileSaving) return;
+    void handleSaveProfile();
+  }, [settingsDirty, profileSaving, handleSaveProfile]);
 
   const initials = [firstName, lastName].map((s) => s?.[0]).filter(Boolean).join("").toUpperCase() || "?";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[color:var(--wp-text)] pb-12 md:pb-20">
+    <div className="min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-12 text-[color:var(--wp-text)] md:pb-20">
       <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
 
       <main className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 pt-6 md:pt-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <h1 className="text-2xl sm:text-3xl font-black text-[color:var(--wp-text)] tracking-tight">Nastavení účtu</h1>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
             <div className="relative max-w-xl w-full sm:w-64 md:w-80">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--wp-text-tertiary)] pointer-events-none" />
               <input
@@ -695,37 +726,52 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 className="w-full pl-10 pr-4 py-2.5 bg-[color:var(--wp-surface-muted)]/80 border border-[color:var(--wp-surface-card-border)] rounded-xl text-sm font-medium outline-none focus:bg-[color:var(--wp-surface-card)] focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-[color:var(--wp-text-secondary)] min-h-[44px]"
               />
             </div>
-            <CreateActionButton
-              type="button"
-              onClick={handleGlobalSave}
-              disabled={globalSaveDisabled}
-              icon={Check}
-            >
-              Uložit změny
-            </CreateActionButton>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:shrink-0">
+              {profileError && (
+                <p className="text-xs text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 order-first sm:order-none max-w-md" role="alert">
+                  {profileError}
+                </p>
+              )}
+              {profileSaved && (
+                <p className="text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 order-first sm:order-none" role="status">
+                  Uloženo
+                </p>
+              )}
+              <CreateActionButton
+                type="button"
+                onClick={handleGlobalSave}
+                disabled={globalSaveDisabled}
+                isLoading={profileSaving}
+                icon={Check}
+              >
+                {profileSaving ? "Ukládám…" : "Uložit změny"}
+              </CreateActionButton>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 sm:gap-8 border-b border-[color:var(--wp-surface-card-border)] px-2 overflow-x-auto hide-scrollbar mb-8">
-          {TABS.map((tab) => {
-            const visible = isTabVisible(tab.id);
-            if (!visible) return null;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-4 pt-1 text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap min-h-[44px] flex items-end
-                  ${activeTab === tab.id ? "text-indigo-600" : "text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text)]"}
-                `}
-              >
-                {tab.label}
-                {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-0 w-full h-[3px] bg-indigo-600 rounded-t-full" aria-hidden />
-                )}
-              </button>
-            );
-          })}
+        <div className="mb-8 overflow-x-auto rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 hide-scrollbar">
+          <div className="flex items-center gap-4 border-b border-[color:var(--wp-surface-card-border)] sm:gap-8">
+            {TABS.map((tab) => {
+              const visible = isTabVisible(tab.id);
+              if (!visible) return null;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative flex min-h-[44px] items-end whitespace-nowrap pb-4 pt-1 text-sm font-black uppercase tracking-widest transition-all
+                    ${activeTab === tab.id ? "text-indigo-600 dark:text-indigo-400" : "text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text)]"}
+                  `}
+                >
+                  {tab.label}
+                  {activeTab === tab.id && (
+                    <div className="absolute bottom-0 left-0 h-[3px] w-full rounded-t-full bg-indigo-600 dark:bg-indigo-500" aria-hidden />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Tab: Osobní údaje */}

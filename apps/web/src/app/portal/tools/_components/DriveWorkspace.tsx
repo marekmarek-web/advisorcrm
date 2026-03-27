@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useTheme } from "next-themes";
 import { DriveUploadDialog } from "./DriveUploadDialog";
 import { IntegrationConnectionGate } from "./IntegrationConnectionGate";
 import { isDrivePreviewSupportedInApp } from "@/lib/integrations/drive-preview-strategy";
@@ -313,6 +314,8 @@ function ShareDialog({ fileName, onClose, onShare }: {
    MAIN COMPONENT
    ================================================================ */
 export function DriveWorkspace() {
+  const { resolvedTheme } = useTheme();
+  const driveDark = resolvedTheme === "dark";
   const [q, setQ] = useState("");
   const [folderId, setFolderId] = useState<string | undefined>(undefined);
   const [files, setFiles] = useState<DriveFile[]>([]);

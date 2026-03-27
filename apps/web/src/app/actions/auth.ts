@@ -91,10 +91,18 @@ export async function acceptClientInvitation(token: string, gdprConsent?: boolea
 }
 
 /** Aktualizuje jméno přihlášeného uživatele v Supabase Auth (user_metadata.full_name) a v user_profiles.
- *  Extra fields (phone, ico, company, bio) are stored in user_metadata and advisor_preferences. */
+ *  Extra fields (phone, ico, company, bio, correspondence_address) are stored in user_metadata and advisor_preferences.
+ *  `company` = název sítě/společnosti (profil); `correspondence_address` = sídlo / korespondenční adresa (osobní údaje). */
 export async function updatePortalProfile(
   fullName: string,
-  extra?: { phone?: string; ico?: string; company?: string; bio?: string; publicRole?: string },
+  extra?: {
+    phone?: string;
+    ico?: string;
+    company?: string;
+    bio?: string;
+    publicRole?: string;
+    correspondenceAddress?: string;
+  },
   supervisorUserId?: string | null,
 ): Promise<void> {
   const auth = await requireAuthInAction();
@@ -104,6 +112,9 @@ export async function updatePortalProfile(
   if (extra?.company !== undefined) metaUpdate.company = extra.company.trim() || null;
   if (extra?.bio !== undefined) metaUpdate.bio = extra.bio.trim() || null;
   if (extra?.publicRole !== undefined) metaUpdate.public_role = extra.publicRole.trim() || null;
+  if (extra?.correspondenceAddress !== undefined) {
+    metaUpdate.correspondence_address = extra.correspondenceAddress.trim() || null;
+  }
   const { error } = await supabase.auth.updateUser({ data: metaUpdate });
   if (error) throw new Error(error.message);
   const {
