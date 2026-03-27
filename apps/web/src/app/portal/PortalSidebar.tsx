@@ -40,8 +40,6 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { getOpenTasksCount } from "@/app/actions/tasks";
 import { getUnreadConversationsCount } from "@/app/actions/messages";
-import { useQuickActionsItems } from "@/lib/quick-actions/useQuickActionsItems";
-import { QuickNewItemIcon } from "@/app/portal/quick-new-ui";
 import clsx from "clsx";
 
 /** Zarovnáno s main banner txt (expanded 300px, collapsed 88px). */
@@ -250,9 +248,7 @@ export function PortalSidebar({
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [zapOpen, setZapOpen] = useState(false);
   const [sunSpinKey, setSunSpinKey] = useState(0);
-  const { items: quickActionItems, ready: quickActionsReady } = useQuickActionsItems();
 
   useEffect(() => {
     setMounted(true);
@@ -712,29 +708,27 @@ export function PortalSidebar({
           </div>
 
           <div className="relative z-[60] w-full px-5 pb-4 flex justify-center">
-            {(paletteOpen || zapOpen) && (
+            {paletteOpen && (
               <div
                 className="fixed inset-0 z-[30] bg-black/25 backdrop-blur-[2px] md:bg-black/20 pointer-events-auto"
                 aria-hidden
                 onClick={() => {
                   setPaletteOpen(false);
-                  setZapOpen(false);
                 }}
               />
             )}
             <div
-              className={`relative z-[50] inline-flex w-full max-w-[280px] gap-0.5 rounded-[20px] p-1.5 shadow-lg ${
+              className={`relative z-[50] flex w-full max-w-[280px] justify-center rounded-[20px] p-1.5 shadow-lg ${
                 isDark ? "bg-[#060918]/80 backdrop-blur-md border border-white/10" : "bg-wp-surface-muted border border-wp-surface-card-border"
               }`}
             >
-              <div className="relative flex min-w-0 flex-1">
+              <div className="relative flex min-w-0 w-full max-w-[140px] justify-center">
                 <button
                   type="button"
                   onClick={() => {
                     setPaletteOpen((o) => !o);
-                    setZapOpen(false);
                   }}
-                  className={`p-2.5 rounded-[14px] transition-colors duration-300 min-h-[44px] min-w-0 flex flex-1 items-center justify-center ${
+                  className={`p-2.5 rounded-[14px] transition-colors duration-300 min-h-[44px] min-w-[44px] w-full flex flex-1 items-center justify-center ${
                     paletteOpen
                       ? isDark
                         ? "bg-[color:var(--wp-surface-card)]/20 text-white shadow-sm"
@@ -844,58 +838,6 @@ export function PortalSidebar({
                         Systém
                       </button>
                     </div>
-                  </div>
-                )}
-              </div>
-              <div
-                className={`mx-0.5 h-6 w-px shrink-0 self-center ${isDark ? "bg-[color:var(--wp-surface-card)]/10" : "bg-wp-surface-card-border"}`}
-                aria-hidden
-              />
-              <div className="relative flex min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setZapOpen((o) => !o);
-                    setPaletteOpen(false);
-                  }}
-                  className={`p-2.5 rounded-[14px] transition-colors duration-300 min-h-[44px] min-w-0 w-full flex flex-1 items-center justify-center ${
-                    zapOpen
-                      ? isDark
-                        ? "bg-[color:var(--wp-surface-card)]/20 text-white shadow-sm"
-                        : "bg-wp-surface-raised text-wp-text shadow-sm"
-                      : isDark
-                        ? "text-white hover:bg-[color:var(--wp-surface-card)]/10"
-                        : "text-wp-text-tertiary hover:bg-wp-surface-raised"
-                  }`}
-                  title="Rychlé akce"
-                  aria-label="Rychlé akce z postranního panelu"
-                  aria-expanded={zapOpen}
-                >
-                  <Zap size={20} strokeWidth={2} />
-                </button>
-                {zapOpen && (
-                  <div
-                    role="menu"
-                    className={`absolute bottom-full left-1/2 z-[100] mb-2 max-h-[min(70vh,380px)] w-60 -translate-x-1/2 overflow-y-auto rounded-[24px] border border-[color:var(--wp-theme-popover-border)] bg-[color:var(--wp-theme-popover-bg)] py-2 shadow-2xl backdrop-blur-2xl pointer-events-auto`}
-                  >
-                    <p
-                      className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${isDark ? "text-white/50" : "text-[color:var(--wp-text-tertiary)]"}`}
-                    >
-                      Rychlé akce
-                    </p>
-                    {quickActionsReady &&
-                      quickActionItems.map((item) => (
-                        <Link
-                          key={item.id}
-                          href={item.href}
-                          role="menuitem"
-                          onClick={() => setZapOpen(false)}
-                          className="group flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-sm font-medium text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)] dark:text-white/90 dark:hover:bg-[color:var(--wp-surface-card)]/10"
-                        >
-                          <QuickNewItemIcon item={item} />
-                          {item.label}
-                        </Link>
-                      ))}
                   </div>
                 )}
               </div>
