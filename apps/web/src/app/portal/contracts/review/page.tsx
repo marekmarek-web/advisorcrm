@@ -464,8 +464,11 @@ export default function ContractReviewListPage() {
                         ) : (
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-1">
-                                <AiAssistantBrandIcon size={12} /> Extrahovaná data
+                              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-400 dark:text-indigo-300">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white p-0.5 shadow-sm dark:bg-white">
+                                  <AiAssistantBrandIcon size={12} className="max-h-full max-w-full" />
+                                </span>
+                                Extrahovaná data
                               </span>
                               {row.confidence != null && (
                                 <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-200">
