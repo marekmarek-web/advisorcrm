@@ -111,6 +111,9 @@ async function updateJob(
 
 function resolveSourceChannel(uploadSource: string | null): DocumentSourceChannel {
   switch (uploadSource) {
+    case "web_quick":
+    case "mobile_quick":
+      return "portal_quick_upload";
     case "mobile_camera": return "mobile_camera";
     case "mobile_gallery": return "mobile_gallery";
     case "mobile_file": return "mobile_file";

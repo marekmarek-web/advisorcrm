@@ -33,6 +33,8 @@ type UploadSource =
   | "mobile_share"
   | "mobile_scan"
   | "web_scan"
+  | "web_quick"
+  | "mobile_quick"
   | "ai_drawer"
   | "backoffice_import";
 type UploadResponseBody =
@@ -56,6 +58,8 @@ function parseUploadSource(value: FormDataEntryValue | null): UploadSource {
     raw === "mobile_share" ||
     raw === "mobile_scan" ||
     raw === "web_scan" ||
+    raw === "web_quick" ||
+    raw === "mobile_quick" ||
     raw === "ai_drawer" ||
     raw === "backoffice_import"
   ) {
@@ -180,6 +184,8 @@ export async function POST(request: Request) {
       mobile_share: "mobile_share",
       mobile_scan: "mobile_scan",
       web_scan: "web_scan",
+      web_quick: "portal_quick_upload",
+      mobile_quick: "portal_quick_upload",
     };
     const sourceChannel: DocumentSourceChannel = sourceChannelMap[uploadSource] ?? "web_upload";
 

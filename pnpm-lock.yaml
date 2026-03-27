@@ -152,6 +152,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       stripe:
         specifier: ^20.4.1
         version: 20.4.1(@types/node@20.19.35)
@@ -219,9 +222,6 @@ importers:
       postcss:
         specifier: ^8.4.49
         version: 8.5.8
-      sharp:
-        specifier: ^0.34.5
-        version: 0.34.5
       tailwindcss:
         specifier: ^3.4.15
         version: 3.4.19(tsx@4.21.0)

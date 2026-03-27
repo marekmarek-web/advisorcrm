@@ -24,7 +24,11 @@ import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 import { useScanCapture, type ScanPage } from "@/lib/scan/useScanCapture";
 import { useFileUpload } from "@/lib/upload/useFileUpload";
 
-type ScanStep = "capture" | "metadata" | "preview";
+type ScanStep = "mode" | "quick" | "capture" | "metadata" | "preview";
+
+async function triggerDocumentBackgroundProcessing(documentId: string): Promise<void> {
+  await fetch(`/api/documents/${documentId}/process`, { method: "POST", credentials: "same-origin" });
+}
 
 function buildPageLevelCaptureWarnings(scanPages: ScanPage[]): string[] {
   const out: string[] = [];
@@ -165,7 +169,7 @@ export default function ScanPage() {
     didManualRotate,
   } = useScanCapture();
   const { uploadFile, progress } = useFileUpload();
-  const [step, setStep] = useState<ScanStep>("capture");
+  const [step, setStep] = useState<ScanStep>("mode");
   const [selectedContact, setSelectedContact] = useState<ContactPickerValue | null>(null);
   const [documentType, setDocumentType] = useState("");
   const [note, setNote] = useState("");
@@ -175,6 +179,14 @@ export default function ScanPage() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [preparedPdf, setPreparedPdf] = useState<File | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+
+  const [quickFiles, setQuickFiles] = useState<File[]>([]);
+  const [quickName, setQuickName] = useState("");
+  const [quickError, setQuickError] = useState<string | null>(null);
+  const [quickUploading, setQuickUploading] = useState(false);
+  const [quickDocId, setQuickDocId] = useState<string | null>(null);
+  const [quickProcessingStatus, setQuickProcessingStatus] = useState<string | null>(null);
+  const [quickProcessingStage, setQuickProcessingStage] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -192,6 +204,31 @@ export default function ScanPage() {
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
     };
   }, [pdfPreviewUrl]);
+
+  useEffect(() => {
+    if (!quickDocId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/documents/${quickDocId}/process`, { credentials: "same-origin" });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          processingStatus?: string | null;
+          processingStage?: string | null;
+        };
+        setQuickProcessingStatus(data.processingStatus ?? null);
+        setQuickProcessingStage(data.processingStage ?? null);
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    const id = window.setInterval(poll, 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [quickDocId]);
 
   const tags = useMemo(() => {
     const nextTags: string[] = [];
@@ -266,7 +303,7 @@ export default function ScanPage() {
         tier === "native_capacitor" && (platform === "ios" || platform === "android") ? platform : undefined;
       const captureQualityWarnings = buildPageLevelCaptureWarnings(scanPages);
 
-      await uploadFile(preparedPdf, {
+      const uploadResponse = await uploadFile(preparedPdf, {
         contactId: selectedContact.id,
         name: docName,
         tags,
@@ -278,6 +315,11 @@ export default function ScanPage() {
         manualCropApplied: false,
         rotationAdjusted: didManualRotate,
       });
+
+      const docId = uploadResponse.documentId ?? uploadResponse.id;
+      if (docId) {
+        void triggerDocumentBackgroundProcessing(docId).catch(() => {});
+      }
 
       setUploadState("done");
     } catch (err) {
@@ -326,9 +368,232 @@ export default function ScanPage() {
     );
   }
 
+  if (step === "mode") {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-8 pt-4 sm:px-6">
+        <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4">
+          <h1 className="text-lg font-semibold text-[color:var(--wp-text)]">Nahrát dokument</h1>
+          <p className="mt-1 text-sm text-[color:var(--wp-text-secondary)]">
+            Zvolte, zda chcete kvalitní sken v aplikaci, nebo rychlé nahrání souborů.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setStep("capture")}
+          className="flex w-full flex-col gap-1 rounded-2xl border-2 border-blue-500 bg-blue-50/80 p-4 text-left transition hover:bg-blue-50"
+        >
+          <span className="text-base font-semibold text-blue-950">Skenovat dokument</span>
+          <span className="text-sm text-blue-900/90">
+            V mobilní aplikaci systémový skener (ořez, perspektiva). Úprava stran, náhled PDF, nahrání do Aidvisory.
+            Po uložení spustíme přípravu textu na pozadí (OCR a extrakce), pokud je zapnutá.
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setQuickError(null);
+            setQuickFiles([]);
+            setQuickDocId(null);
+            setQuickProcessingStatus(null);
+            setQuickProcessingStage(null);
+            setStep("quick");
+          }}
+          className="flex w-full flex-col gap-1 rounded-2xl border border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] p-4 text-left transition hover:bg-[color:var(--wp-surface-muted)]"
+        >
+          <span className="text-base font-semibold text-[color:var(--wp-text)]">Rychlé nahrání</span>
+          <span className="text-sm text-[color:var(--wp-text-secondary)]">
+            Vyberte fotky nebo jedno PDF — soubor je hned v dokumentech. Z více fotek složíme PDF na serveru. Následně
+            proběhne zpracování na pozadí (textová vrstva a data pro AI). Nejrychlejší cesta, bez skenovacího průvodce.
+          </span>
+        </button>
+
+        <Link
+          href="/portal/today"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[color:var(--wp-border-strong)] px-4 text-sm font-semibold text-[color:var(--wp-text-secondary)]"
+        >
+          Zpět
+        </Link>
+      </div>
+    );
+  }
+
+  if (step === "quick") {
+    const processingLabel = (() => {
+      const s = quickProcessingStatus ?? "queued";
+      if (s === "completed") return "Zpracování dokončeno";
+      if (s === "failed" || s === "preprocessing_failed") return "Zpracování selhalo";
+      if (s === "skipped") return "Zpracování přeskočeno (vypnuto nebo nepodporováno)";
+      if (s === "processing" || s === "preprocessing_running")
+        return `Probíhá zpracování${quickProcessingStage && quickProcessingStage !== "none" ? ` · ${quickProcessingStage}` : ""}…`;
+      return "Ve frontě na zpracování…";
+    })();
+
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-8 pt-4 sm:px-6">
+        <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4">
+          <h1 className="text-lg font-semibold text-[color:var(--wp-text)]">Rychlé nahrání</h1>
+          <p className="mt-1 text-sm text-[color:var(--wp-text-secondary)]">
+            Jedno PDF nebo více fotek (max. 20). PDF z fotek vytvoříme na serveru. Stav zpracování textu sledujte níže.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setQuickDocId(null);
+            setQuickProcessingStatus(null);
+            setStep("mode");
+          }}
+          className="inline-flex min-h-[44px] w-fit items-center text-sm font-semibold text-[color:var(--wp-text-secondary)] underline-offset-2 hover:underline"
+        >
+          Zpět na výběr
+        </button>
+
+        {!quickDocId ? (
+          <>
+            <ContactPicker value={selectedContact} onChange={setSelectedContact} />
+
+            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3">
+              <label className="mb-2 block text-sm font-medium text-[color:var(--wp-text-secondary)]" htmlFor="quick-doc-name">
+                Název dokumentu (volitelné)
+              </label>
+              <input
+                id="quick-doc-name"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder="Např. smlouva, faktura"
+                className="h-11 w-full rounded-lg border border-[color:var(--wp-border-strong)] px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+
+            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3">
+              <label className="mb-2 block text-sm font-medium text-[color:var(--wp-text-secondary)]" htmlFor="quick-files">
+                Soubory
+              </label>
+              <input
+                id="quick-files"
+                type="file"
+                multiple
+                accept="image/*,.pdf,application/pdf"
+                className="min-h-[44px] w-full text-sm text-[color:var(--wp-text)]"
+                onChange={(e) => {
+                  const list = e.target.files ? Array.from(e.target.files) : [];
+                  setQuickFiles(list);
+                  setQuickError(null);
+                }}
+              />
+              {quickFiles.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-xs text-[color:var(--wp-text-secondary)]">
+                  {quickFiles.map((f, i) => (
+                    <li key={`${f.name}-${i}`}>
+                      {f.name} · {formatSize(f.size)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
+            {quickError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{quickError}</div>
+            ) : null}
+
+            <button
+              type="button"
+              disabled={quickUploading}
+              onClick={() => {
+                void (async () => {
+                  if (!selectedContact?.id) {
+                    setQuickError("Vyberte klienta.");
+                    return;
+                  }
+                  if (quickFiles.length === 0) {
+                    setQuickError("Vyberte alespoň jeden soubor.");
+                    return;
+                  }
+                  setQuickUploading(true);
+                  setQuickError(null);
+                  try {
+                    const fd = new FormData();
+                    for (const f of quickFiles) {
+                      fd.append("files", f);
+                    }
+                    fd.set("contactId", selectedContact.id);
+                    if (quickName.trim()) fd.set("name", quickName.trim());
+                    fd.set("uploadSource", tier === "native_capacitor" ? "mobile_quick" : "web_quick");
+                    const res = await fetch("/api/documents/quick-upload", {
+                      method: "POST",
+                      body: fd,
+                      credentials: "same-origin",
+                    });
+                    const data = (await res.json()) as { error?: string; documentId?: string; id?: string };
+                    if (!res.ok) {
+                      setQuickError(data.error ?? "Nahrání selhalo.");
+                      return;
+                    }
+                    const id = data.documentId ?? data.id;
+                    if (id) setQuickDocId(id);
+                  } catch {
+                    setQuickError("Nahrání selhalo.");
+                  } finally {
+                    setQuickUploading(false);
+                  }
+                })();
+              }}
+              className="min-h-[48px] w-full rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {quickUploading ? "Nahrávám…" : "Nahrát"}
+            </button>
+          </>
+        ) : (
+          <div className="space-y-3 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-4">
+            <p className="text-sm font-medium text-[color:var(--wp-text)]">Dokument je uložený.</p>
+            <p className="text-sm text-[color:var(--wp-text-secondary)]">
+              <strong>Stav zpracování:</strong> {processingLabel}
+            </p>
+            <p className="text-xs text-[color:var(--wp-text-secondary)]">
+              Úplný stav uvidíte u přílohy u klienta v sekci dokumentů. Obnovení stránky tady ukončí sledování — dokument v
+              systému zůstane.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Link
+                href={selectedContact ? `/portal/contacts/${selectedContact.id}` : "/portal/documents"}
+                className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white"
+              >
+                Otevřít klienta / dokumenty
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickDocId(null);
+                  setQuickFiles([]);
+                  setQuickName("");
+                  setQuickProcessingStatus(null);
+                  setQuickProcessingStage(null);
+                  setStep("mode");
+                }}
+                className="min-h-[44px] flex-1 rounded-lg border border-[color:var(--wp-border-strong)] px-4 text-sm font-semibold text-[color:var(--wp-text-secondary)]"
+              >
+                Nahrát další
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (step === "capture") {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-8 pt-4 sm:px-6">
+        <button
+          type="button"
+          onClick={() => setStep("mode")}
+          className="inline-flex w-fit min-h-[44px] items-center text-sm font-semibold text-[color:var(--wp-text-secondary)] underline-offset-2 hover:underline"
+        >
+          Zpět na výběr
+        </button>
         <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4">
           <h1 className="text-lg font-semibold text-[color:var(--wp-text)]">Skenovat dokument</h1>
           <p className="mt-1 text-sm text-[color:var(--wp-text-secondary)]">
@@ -547,21 +812,27 @@ export default function ScanPage() {
               </button>
             ) : null}
             {uploadState === "done" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setPdfPreviewUrl((prev) => {
-                    if (prev) URL.revokeObjectURL(prev);
-                    return null;
-                  });
-                  setPreparedPdf(null);
-                  clearPages();
-                  router.push(selectedContact ? `/portal/contacts/${selectedContact.id}` : "/portal/today");
-                }}
-                className="min-h-[44px] flex-1 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700"
-              >
-                Otevřít klienta
-              </button>
+              <>
+                <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  Na pozadí běží příprava textu (OCR a data pro AI), pokud je zpracování v projektu zapnuté. Stav uvidíte u
+                  dokumentu u klienta.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPdfPreviewUrl((prev) => {
+                      if (prev) URL.revokeObjectURL(prev);
+                      return null;
+                    });
+                    setPreparedPdf(null);
+                    clearPages();
+                    router.push(selectedContact ? `/portal/contacts/${selectedContact.id}` : "/portal/today");
+                  }}
+                  className="min-h-[44px] flex-1 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700"
+                >
+                  Otevřít klienta
+                </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -665,6 +936,23 @@ export default function ScanPage() {
             className="min-h-[44px] flex-1 rounded-lg border border-[color:var(--wp-border-strong)] px-4 text-sm font-semibold text-[color:var(--wp-text-secondary)] disabled:opacity-50"
           >
             Zpět na focení
+          </button>
+          <button
+            type="button"
+            disabled={isUploading || isBuildingPdf}
+            onClick={() => {
+              setUploadState("idle");
+              setUploadError(null);
+              setPdfPreviewUrl((prev) => {
+                if (prev) URL.revokeObjectURL(prev);
+                return null;
+              });
+              setPreparedPdf(null);
+              setStep("mode");
+            }}
+            className="min-h-[44px] flex-1 rounded-lg border border-[color:var(--wp-border-strong)] px-4 text-sm font-semibold text-[color:var(--wp-text-secondary)] disabled:opacity-50"
+          >
+            Změnit způsob nahrání
           </button>
 
           {uploadState === "error" ? (

@@ -32,6 +32,7 @@ export type DocumentAiInputSource = "markdown" | "extract" | "ocr_text" | "nativ
 export type DocumentSourceChannel =
   | "web_upload"
   | "web_scan"
+  | "portal_quick_upload"
   | "ai_drawer"
   | "mobile_camera"
   | "mobile_gallery"

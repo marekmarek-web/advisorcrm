@@ -11,6 +11,8 @@ export type UploadSource =
   | "mobile_share"
   | "mobile_scan"
   | "web_scan"
+  | "web_quick"
+  | "mobile_quick"
   | "ai_drawer"
   | "backoffice_import";
 export type UploadState = "idle" | "selected" | "uploading" | "done" | "error";
