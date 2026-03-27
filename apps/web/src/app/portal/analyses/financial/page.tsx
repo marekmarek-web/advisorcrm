@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useFinancialAnalysisStore } from "@/lib/analyses/financial/store";
-import { loadFromStorage, clearStorage } from "@/lib/analyses/financial/saveLoad";
+import { loadFromStorage, clearStorage, hasPersistableFinancialDraft } from "@/lib/analyses/financial/saveLoad";
 import { FinancialAnalysisLayout } from "./components/FinancialAnalysisLayout";
 import { getFinancialAnalysis } from "@/app/actions/financial-analyses";
 
@@ -21,14 +21,7 @@ function hasSignificantLocalDraft(): boolean {
   try {
     const loaded = loadFromStorage();
     if (!loaded) return false;
-    if (loaded.currentStep > 1) return true;
-    const data = loaded.data;
-    return Boolean(
-      data.client?.name?.trim()
-        || data.notes?.trim()
-        || data.clientId
-        || data.householdId
-    );
+    return hasPersistableFinancialDraft(loaded.data, loaded.currentStep);
   } catch {
     return false;
   }

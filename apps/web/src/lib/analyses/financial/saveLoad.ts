@@ -268,3 +268,14 @@ export function clearStorage(): void {
     // ignore
   }
 }
+
+/** True when the wizard has enough content to create/update a server draft (avoids empty rows). */
+export function hasPersistableFinancialDraft(data: FinancialAnalysisData, currentStep: number): boolean {
+  if (currentStep > 1) return true;
+  return Boolean(
+    data.client?.name?.trim()
+      || data.notes?.trim()
+      || data.clientId
+      || data.householdId
+  );
+}

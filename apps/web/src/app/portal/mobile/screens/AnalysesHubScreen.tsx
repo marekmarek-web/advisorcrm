@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import {
+  deleteFinancialAnalysisPermanently,
   getFinancialAnalysis,
   listFinancialAnalyses,
   saveFinancialAnalysisDraft,
@@ -142,16 +143,23 @@ function AnalysisDetailPanel({
   detailId,
   item,
   onSetStatus,
+  onPermanentDelete,
   pending,
 }: {
   detailId: string;
   item: FinancialAnalysisListItem | undefined;
   onSetStatus: (s: FinancialAnalysisStatus) => void;
+  onPermanentDelete: (id: string) => void;
   pending: boolean;
 }) {
   const [payload, setPayload] = useState<{ currentStep?: number; data?: Record<string, unknown> } | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [permanentDeleteStep, setPermanentDeleteStep] = useState<"idle" | "confirm">("idle");
+
+  useEffect(() => {
+    setPermanentDeleteStep("idle");
+  }, [detailId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -329,6 +337,46 @@ function AnalysisDetailPanel({
           </button>
         </div>
       </MobileCard>
+
+      <MobileCard className="p-3.5 border border-rose-200/80 bg-rose-50/30">
+        <p className="text-[10px] font-black uppercase tracking-widest text-rose-800/90 mb-2.5">
+          Nebezpečná zóna
+        </p>
+        {permanentDeleteStep === "idle" ? (
+          <button
+            type="button"
+            onClick={() => setPermanentDeleteStep("confirm")}
+            disabled={pending}
+            className="w-full min-h-[44px] rounded-xl border border-rose-300 bg-[color:var(--wp-surface-card)] text-rose-800 text-sm font-bold hover:bg-rose-100 transition-colors disabled:opacity-50"
+          >
+            Smazat
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm font-bold text-rose-900">
+              Opravdu trvale smazat tuto analýzu? Akci nelze vrátit zpět.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPermanentDeleteStep("idle")}
+                disabled={pending}
+                className="min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] text-sm font-bold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-50"
+              >
+                Ne
+              </button>
+              <button
+                type="button"
+                onClick={() => onPermanentDelete(detailId)}
+                disabled={pending}
+                className="min-h-[44px] rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-500 disabled:opacity-50"
+              >
+                Ano, smazat
+              </button>
+            </div>
+          </div>
+        )}
+      </MobileCard>
     </div>
   );
 }
@@ -406,6 +454,22 @@ export function AnalysesHubScreen({
         reload();
       } catch (e) {
         setError(humanizeAdvisorActionError(e, "Aktualizace statusu selhala."));
+      }
+    });
+  }
+
+  function handlePermanentDelete(id: string) {
+    startTransition(async () => {
+      try {
+        await deleteFinancialAnalysisPermanently(id);
+        if (detailId === id) {
+          setDetailId(null);
+          setDetailOpen(false);
+        }
+        reload();
+        showToast("Analýza byla trvale smazána.", "success");
+      } catch (e) {
+        setError(humanizeAdvisorActionError(e, "Trvalé smazání analýzy selhalo."));
       }
     });
   }
@@ -494,6 +558,7 @@ export function AnalysesHubScreen({
                 detailId={detailId}
                 item={selectedItem}
                 onSetStatus={handleSetStatus}
+                onPermanentDelete={handlePermanentDelete}
                 pending={pending}
               />
             ) : (
@@ -526,6 +591,7 @@ export function AnalysesHubScreen({
               detailId={detailId}
               item={selectedItem}
               onSetStatus={handleSetStatus}
+              onPermanentDelete={handlePermanentDelete}
               pending={pending}
             />
           ) : (

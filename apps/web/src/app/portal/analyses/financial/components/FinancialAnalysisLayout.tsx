@@ -6,6 +6,7 @@ import { createTask } from "@/app/actions/tasks";
 import { createMeetingNote } from "@/app/actions/meeting-notes";
 import { FinancialAnalysisStepper } from "./FinancialAnalysisStepper";
 import { FinancialAnalysisToolbar } from "./FinancialAnalysisToolbar";
+import { FinancialAnalysisAutoSave } from "./FinancialAnalysisAutoSave";
 import { StepClientInfo } from "./steps/StepClientInfo";
 import { StepCashflow } from "./steps/StepCashflow";
 import { StepAssetsLiabilities } from "./steps/StepAssetsLiabilities";
@@ -182,6 +183,7 @@ export function FinancialAnalysisLayout() {
 
   return (
     <div className="flex-grow flex flex-col items-center pt-4 sm:pt-6 pb-[max(6rem,env(safe-area-inset-bottom))] sm:pb-20 px-3 sm:px-4 min-h-0">
+      <FinancialAnalysisAutoSave />
       <section className="w-full max-w-4xl mb-4 sm:mb-6 text-center px-1">
         <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-[color:var(--wp-text)] tracking-tight">
           Finanční analýza

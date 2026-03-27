@@ -27,6 +27,25 @@ export type FinancialAnalysisRow = {
 
 const FINANCIAL_WIZARD_TOTAL_STEPS = 8;
 
+function financialAnalysisListDisplayName(type: string, payload: Record<string, unknown>): string {
+  const data = payload.data as { client?: { name?: string }; notes?: string | null } | undefined;
+  const personal = typeof data?.client?.name === "string" ? data.client.name.trim() : "";
+  if (personal) return personal;
+  if (type === "company") {
+    const co = payload.company as { name?: string } | undefined;
+    const cn = typeof co?.name === "string" ? co.name.trim() : "";
+    if (cn) return cn;
+  }
+  const notes = typeof data?.notes === "string" ? data.notes.trim() : "";
+  if (notes) return notes.length > 72 ? `${notes.slice(0, 69)}…` : notes;
+  return "Analýza bez názvu";
+}
+
+function financialAnalysisTypeLabel(type: string): string {
+  if (type === "company") return "Firemní analýza";
+  return "Komplexní finanční analýza";
+}
+
 export type FinancialAnalysisListItem = {
   id: string;
   status: string;
@@ -92,7 +111,7 @@ export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem
         typeof r.payload === "string"
           ? (() => { try { return JSON.parse(r.payload as string); } catch { return {}; } })()
           : (r.payload ?? {});
-      const clientName = payload?.data?.client?.name ?? null;
+      const clientName = financialAnalysisListDisplayName(r.type, payload as Record<string, unknown>);
       const currentStep = Number(payload?.currentStep) || 0;
       const progress =
         r.status === "draft" || r.status === "archived"
@@ -112,7 +131,7 @@ export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem
         linkedCompanyId: r.linkedCompanyId ?? null,
         lastRefreshedFromSharedAt: r.lastRefreshedFromSharedAt ?? null,
         progress,
-        analysisTypeLabel: "Komplexní finanční analýza",
+        analysisTypeLabel: financialAnalysisTypeLabel(r.type),
       } as FinancialAnalysisListItem;
     });
   } catch (err) {
@@ -224,11 +243,19 @@ export async function saveFinancialAnalysisDraft(params: {
     };
     if (contactId !== undefined) updateSet.contactId = contactId ?? null;
     if (householdId !== undefined) updateSet.householdId = householdId ?? null;
-    await db
+    const [updated] = await db
       .update(financialAnalyses)
       .set(updateSet as typeof financialAnalyses.$inferInsert)
-      .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, id)));
-    return id;
+      .where(
+        and(
+          eq(financialAnalyses.tenantId, auth.tenantId),
+          eq(financialAnalyses.id, id),
+          eq(financialAnalyses.type, "financial")
+        )
+      )
+      .returning({ id: financialAnalyses.id });
+    if (!updated?.id) throw new Error("Analýzu se nepodařilo uložit.");
+    return updated.id;
   }
   const [row] = await db
     .insert(financialAnalyses)
@@ -245,6 +272,21 @@ export async function saveFinancialAnalysisDraft(params: {
     .returning({ id: financialAnalyses.id });
   if (!row?.id) throw new Error("Failed to create analysis");
   return row.id;
+}
+
+/** Odstraní záznam z databáze (včetně navázaných řádků dle FK cascade / set null). */
+export async function deleteFinancialAnalysisPermanently(id: string): Promise<void> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  const [row] = await db
+    .select({ id: financialAnalyses.id })
+    .from(financialAnalyses)
+    .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, id)))
+    .limit(1);
+  if (!row) throw new Error("Analýza nenalezena.");
+  await db
+    .delete(financialAnalyses)
+    .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, id)));
 }
 
 export async function setFinancialAnalysisStatus(

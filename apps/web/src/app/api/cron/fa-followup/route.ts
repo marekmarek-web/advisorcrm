@@ -7,6 +7,7 @@ export const maxDuration = 60;
 
 const IN_PROGRESS_DAYS = 14;
 const WAITING_SIGNATURE_DAYS = 7;
+/** Reminder threshold only — `financial_analyses` rows are never deleted by this cron. */
 const DRAFT_DAYS = 30;
 
 export async function GET(request: Request) {
