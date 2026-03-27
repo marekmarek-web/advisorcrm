@@ -320,10 +320,10 @@ function PortalShellInner({
             type="button"
             onClick={() => setAiDrawerOpen(true)}
             title="AI asistent"
-            className="fixed z-floating-ai flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200 transition-all duration-200 hover:scale-105 hover:shadow-indigo-300/50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 active:scale-95 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] md:bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:right-[max(1.5rem,env(safe-area-inset-right,0px))]"
+            className="fixed z-floating-ai flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] shadow-md shadow-black/10 transition-all duration-200 hover:bg-[color:var(--wp-surface-muted)] hover:border-[color:var(--wp-border-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--wp-text-tertiary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--wp-main-scroll-bg)] active:scale-95 dark:shadow-black/40 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] md:bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:right-[max(1.5rem,env(safe-area-inset-right,0px))]"
             aria-label="Otevřít AI asistenta"
           >
-            <AiAssistantBrandIcon size={26} className="drop-shadow-sm" />
+            <AiAssistantBrandIcon size={26} className="dark:brightness-0 dark:invert" />
           </button>
         )}
 

@@ -21,7 +21,7 @@ export default async function NotesPage({
   }
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col bg-[color:var(--wp-main-scroll-bg)]">
+    <div className="portal-notes-board-light flex min-h-0 w-full min-h-[calc(100dvh-11rem)] flex-1 flex-col bg-[color:var(--wp-main-scroll-bg)]">
       <NotesVisionBoard
         initialNotes={notes}
         contacts={contactsList}

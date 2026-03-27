@@ -15,6 +15,8 @@ const FALLBACK_BRANDING = {
   authorName: "Poradce",
   footerLine: "Privátní finanční plánování",
   logoUrl: null as string | null,
+  phone: null as string | null,
+  website: null as string | null,
 };
 
 async function embedLocalImages(html: string): Promise<string> {

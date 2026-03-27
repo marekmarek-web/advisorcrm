@@ -114,12 +114,12 @@ export function InvestmentCalculatorPage() {
         {/* Charts */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
-            <h3 className="text-base font-bold text-[#0d1f4e] mb-1">Projekce vývoje</h3>
+            <h3 className="mb-1 text-base font-bold text-[color:var(--wp-text)]">Projekce vývoje</h3>
             <p className="text-xs text-[color:var(--wp-text-secondary)] mb-4">Odhadovaný vývoj hodnoty investice v čase.</p>
             <InvestmentGrowthChart data={growthChartData} />
           </div>
           <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
-            <h3 className="text-base font-bold text-[#0d1f4e] mb-1">Složení portfolia</h3>
+            <h3 className="mb-1 text-base font-bold text-[color:var(--wp-text)]">Složení portfolia</h3>
             <p className="text-xs text-[color:var(--wp-text-secondary)] mb-4">Rozdělení strategie podle tříd aktiv.</p>
             <InvestmentAllocationChart data={allocationChartData} />
           </div>

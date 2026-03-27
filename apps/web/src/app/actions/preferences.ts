@@ -16,6 +16,8 @@ export type AdvisorReportBranding = {
   authorName: string;
   footerLine: string;
   logoUrl: string | null;
+  phone: string | null;
+  website: string | null;
 };
 
 export type QuickActionsConfig = {
@@ -199,12 +201,14 @@ export async function getAdvisorReportBranding(): Promise<AdvisorReportBranding>
     ].filter(Boolean);
     const footerLine = parts.length > 0 ? parts.join(" | ") : PDF_REPORT_FOOTER_FALLBACK;
 
-    return { authorName, footerLine, logoUrl };
+    return { authorName, footerLine, logoUrl, phone: phone || null, website: website || null };
   } catch {
     return {
       authorName: PDF_REPORT_AUTHOR_FALLBACK,
       footerLine: PDF_REPORT_FOOTER_FALLBACK,
       logoUrl: null,
+      phone: null,
+      website: null,
     };
   }
 }

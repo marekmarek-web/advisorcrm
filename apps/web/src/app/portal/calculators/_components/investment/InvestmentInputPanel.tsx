@@ -108,7 +108,7 @@ export function InvestmentInputPanel({
         <div className="flex justify-between items-center mb-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">Doba investice</span>
           <div className="flex items-baseline gap-1">
-            <span className="font-bold text-[1.2rem] text-[#0d1f4e]">{years}</span>
+            <span className="text-[1.2rem] font-bold text-[color:var(--wp-text)]">{years}</span>
             <span className="text-xs font-semibold text-[color:var(--wp-text-tertiary)]">let</span>
           </div>
         </div>

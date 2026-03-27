@@ -37,7 +37,7 @@ export function NotesMobileScreen() {
   }
 
   return (
-    <div className="-mx-4 -mt-4 flex flex-col flex-1 min-h-[60vh] w-full">
+    <div className="portal-notes-board-light -mx-4 -mt-4 flex min-h-[60vh] w-full flex-1 flex-col">
       <NotesVisionBoard
         initialNotes={notes}
         contacts={contacts}

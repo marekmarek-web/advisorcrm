@@ -114,7 +114,7 @@ export function DashboardAiAssistant() {
   const suggestedActions = summary?.suggestedActions ?? [];
 
   return (
-    <div className="group relative flex min-h-[280px] cursor-pointer flex-col justify-center overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-aidv-surface-dark to-indigo-950 p-8 text-white shadow-xl shadow-indigo-900/10 transition-colors hover:border-indigo-500/50">
+    <div className="group relative flex min-h-[280px] cursor-pointer flex-col justify-center overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-aidv-surface-dark to-indigo-950 p-8 text-white shadow-lg shadow-black/25 transition-colors hover:border-indigo-500/50">
       <span
         className="absolute -top-6 -right-6 flex h-40 w-40 items-center justify-center overflow-visible pointer-events-none transition-transform duration-700 will-change-transform group-hover:rotate-12"
         aria-hidden
@@ -128,8 +128,8 @@ export function DashboardAiAssistant() {
 
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 p-1.5">
-            <AiAssistantBrandIcon size={28} className="max-w-full max-h-full" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white p-1.5 shadow-sm">
+            <AiAssistantBrandIcon size={28} className="max-h-full max-w-full" />
           </div>
           <h2 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-200">AI Asistent</h2>
         </div>
@@ -194,9 +194,9 @@ export function DashboardAiAssistant() {
           <button
             type="button"
             onClick={() => setAiDrawerOpen(true)}
-            className="flex items-center justify-between w-full sm:w-auto sm:inline-flex px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 transition-colors rounded-xl text-sm font-bold tracking-wide border border-indigo-500 shadow-lg shadow-indigo-500/30 gap-3 min-h-[44px]"
+            className="flex min-h-[44px] w-full items-center justify-center gap-3 rounded-xl border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-bold tracking-wide text-white transition-colors hover:bg-white/15 sm:inline-flex sm:w-auto"
           >
-            <AiAssistantBrandIcon size={18} /> Otevřít asistenta <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+            Otevřít asistenta <ArrowRight size={16} className="shrink-0 transition-transform group-hover:translate-x-1" />
           </button>
         </div>
       </div>

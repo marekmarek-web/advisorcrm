@@ -69,14 +69,14 @@ export function ContactSearchInput({
           onFocus={() => setOpen(true)}
           disabled={disabled}
           placeholder={placeholder}
-          className={`w-full px-3 py-2.5 pr-8 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 ${className}`}
+          className={`w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2.5 pr-8 text-sm font-medium text-[color:var(--wp-text)] outline-none placeholder:text-[color:var(--wp-text-tertiary)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/25 ${className}`}
           autoComplete="off"
         />
         {value && (
           <button
             type="button"
             onClick={() => { onChange(""); setInputValue(""); setOpen(false); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-surface-card)] hover:text-[color:var(--wp-text)]"
             aria-label="Zrušit výběr"
           >
             <X size={14} />
@@ -84,7 +84,7 @@ export function ContactSearchInput({
         )}
       </div>
       {showDropdown && (
-        <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1">
+        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] py-1 shadow-lg">
           {filtered.slice(0, 50).map((c) => (
             <li key={c.id}>
               <button
@@ -94,14 +94,14 @@ export function ContactSearchInput({
                   setInputValue(`${c.firstName ?? ""} ${c.lastName ?? ""}`.trim());
                   setOpen(false);
                 }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                className="w-full px-3 py-2 text-left text-sm text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)] focus:bg-[color:var(--wp-surface-muted)] focus:outline-none"
               >
                 {c.firstName} {c.lastName}
-                {c.email && <span className="text-slate-400 text-xs ml-1">({c.email})</span>}
+                {c.email && <span className="ml-1 text-xs text-[color:var(--wp-text-tertiary)]">({c.email})</span>}
               </button>
             </li>
           ))}
-          {filtered.length > 50 && <li className="px-3 py-2 text-xs text-slate-400">Zobrazeno max. 50 výsledků</li>}
+          {filtered.length > 50 && <li className="px-3 py-2 text-xs text-[color:var(--wp-text-tertiary)]">Zobrazeno max. 50 výsledků</li>}
         </ul>
       )}
     </div>

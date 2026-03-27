@@ -1258,3 +1258,25 @@
   background: rgba(100, 116, 139, 0.1);
   color: var(--wp-text-muted);
 }
+
+/* ── Dark theme: jemnější mřížka, bez „světlých“ pruhů ve dnech ── */
+html.dark .wp-cal-modern-grid {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wp-text-muted) 28%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 100% 60px;
+}
+
+html.dark .wp-cal-striped-past {
+  background-color: color-mix(in srgb, var(--wp-surface-muted) 55%, transparent);
+  background-image: none;
+  opacity: 0.85;
+}
+
+html.dark .wp-cal-past-hour-today {
+  background: color-mix(in srgb, var(--wp-surface-muted) 45%, transparent);
+  background-image: none;
+  opacity: 0.55;
+}

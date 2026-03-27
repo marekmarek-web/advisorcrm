@@ -451,6 +451,8 @@
 
 /* Scrollovatelný obsah – tečky na plátně (.wp-portal-canvas-dots), zde bez duplicity */
 .wp-portal-main-scroll {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;

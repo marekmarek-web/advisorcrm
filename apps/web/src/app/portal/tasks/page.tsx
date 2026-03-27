@@ -22,6 +22,7 @@ import { SkeletonLine } from "@/app/components/Skeleton";
 import { SwipeTaskItem } from "@/app/components/SwipeTaskItem";
 import { CustomDropdown as CustomDropdownUI } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
+import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import type { LucideIcon } from "lucide-react";
 import {
   CheckCircle2,
@@ -1107,15 +1108,27 @@ function TasksPageContent() {
 
           <div className="bg-[color:var(--wp-surface-card)] rounded-[32px] border border-[color:var(--wp-surface-card-border)] p-6 shadow-sm relative group overflow-hidden">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100"><Sparkles size={20} /></div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white dark:bg-white">
+                <AiAssistantBrandIcon size={22} className="max-h-full max-w-full" />
+              </div>
               <h3 className="font-black text-sm uppercase tracking-widest text-[color:var(--wp-text)]">AI Priority</h3>
             </div>
             <div className="space-y-4">
               {overdueTask ? (
-                <div className="bg-rose-50/50 p-4 rounded-2xl border border-rose-100/50 text-sm">
-                  <p className="font-bold text-rose-900 mb-1 flex items-center gap-2"><AlertCircle size={14} className="text-rose-500" /> Zpožděné úkoly</p>
-                  <p className="text-rose-700/80 mb-3 text-xs leading-relaxed font-medium">&ldquo;{overdueTask.title}&rdquo;{overdueTask.contactName ? ` pro klienta ${overdueTask.contactName}` : ""} mělo proběhnout {formatDate(overdueTask.dueDate)}.</p>
-                  <button onClick={() => handleMoveToToday(overdueTask.id)} className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-[color:var(--wp-surface-card)] px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-100 transition-all w-full">Přesunout na dnešek</button>
+                <div className="rounded-2xl border border-rose-200/80 bg-rose-50/60 p-4 text-sm dark:border-rose-500/35 dark:bg-rose-950/40">
+                  <p className="mb-1 flex items-center gap-2 font-bold text-rose-900 dark:text-rose-100">
+                    <AlertCircle size={14} className="shrink-0 text-rose-600 dark:text-rose-300" /> Zpožděné úkoly
+                  </p>
+                  <p className="mb-3 text-xs font-medium leading-relaxed text-rose-800 dark:text-rose-200/90">
+                    &ldquo;{overdueTask.title}&rdquo;{overdueTask.contactName ? ` pro klienta ${overdueTask.contactName}` : ""} mělo proběhnout {formatDate(overdueTask.dueDate)}.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleMoveToToday(overdueTask.id)}
+                    className="w-full rounded-lg border border-rose-200 bg-[color:var(--wp-surface-card)] px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-rose-700 transition-all hover:bg-rose-100 dark:border-rose-400/40 dark:bg-rose-950/50 dark:text-rose-100 dark:hover:bg-rose-900/60"
+                  >
+                    Přesunout na dnešek
+                  </button>
                 </div>
               ) : (
                 <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50 text-sm">

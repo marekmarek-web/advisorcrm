@@ -7,6 +7,10 @@ export interface ReportBranding {
   advisorRole?: string;
   companyName?: string;
   logoUrl?: string;
+  /** Tel. z profilu poradce — tisk/PDF (sidebar se při tisku skrývá). */
+  advisorPhone?: string;
+  /** Web z profilu poradce — tisk/PDF. */
+  advisorWebsite?: string;
 }
 
 export interface BuildPremiumReportOptions {

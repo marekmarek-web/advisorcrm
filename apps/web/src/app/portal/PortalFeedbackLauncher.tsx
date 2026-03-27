@@ -65,10 +65,10 @@ export function PortalFeedbackLauncher({ variant = "desktop" }: { variant?: "des
         type="button"
         onClick={() => setOpen(true)}
         title="Nahlásit bug nebo návrh"
-        className={`fixed ${positionClass} min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center bg-[color:var(--wp-surface-card)] border-2 border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] shadow-md hover:bg-[color:var(--wp-surface-muted)] hover:border-indigo-300 active:scale-95 transition-all`}
+        className={`fixed ${positionClass} flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full border-2 border-slate-300 bg-slate-200 text-slate-800 shadow-md transition-all hover:bg-slate-100 hover:border-slate-400 active:scale-95 dark:border-slate-500 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500 dark:hover:border-slate-400`}
         aria-label="Zpětná vazba"
       >
-        <Bug size={22} className="text-indigo-600" />
+        <Bug size={22} className="text-slate-800 dark:text-white" strokeWidth={2.25} />
       </button>
 
       {open ? (

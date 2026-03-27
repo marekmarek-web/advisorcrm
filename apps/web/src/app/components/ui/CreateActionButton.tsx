@@ -35,7 +35,7 @@ export type CreateActionButtonProps = ButtonProps | LinkProps;
 function ShimmerLayer() {
   return (
     <div
-      className="absolute inset-0 z-0 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-aidv-create-shimmer"
+      className="absolute inset-0 z-0 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-aidv-create-shimmer dark:via-white/[0.05]"
       aria-hidden
     />
   );

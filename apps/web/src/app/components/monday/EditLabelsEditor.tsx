@@ -103,8 +103,8 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
       >
       <div className="p-6 pb-4 flex items-start justify-between">
         <div className="flex gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-            <Tag className="text-white w-6 h-6" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200 dark:shadow-md dark:shadow-black/50">
+            <Tag className="h-6 w-6 text-white" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-[color:var(--wp-text)]">Upravit štítky</h2>
@@ -217,7 +217,7 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
         <button
           type="button"
           onClick={handleSave}
-          className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:shadow-indigo-200 hover:-translate-y-0.5 active:translate-y-0 transition-all min-h-[44px]"
+          className="flex min-h-[44px] items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-3 font-bold text-white shadow-xl shadow-indigo-100 transition-all hover:-translate-y-0.5 hover:shadow-indigo-200 active:translate-y-0 dark:shadow-lg dark:shadow-black/50 dark:hover:shadow-indigo-950/40"
         >
           <Check size={20} strokeWidth={3} />
           Uložit změny

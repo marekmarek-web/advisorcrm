@@ -12,7 +12,6 @@ import {
   Home,
   TrendingUp,
   Shield,
-  Sparkles,
   Edit2,
   Trash2,
   FileText,
@@ -31,6 +30,7 @@ import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { ContactRow } from "@/app/actions/contacts";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
+import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 
 const BOARD_POSITIONS_KEY = "portal-notes-board-positions";
 
@@ -368,7 +368,7 @@ function NotesVisionBoardInner({
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--wp-main-scroll-bg)] font-sans">
+    <div className="portal-notes-board-light flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[color:var(--wp-main-scroll-bg)] font-sans">
       <style>{`
         .notes-dot-grid {
           background-image: radial-gradient(var(--wp-canvas-dot-color) 1.5px, transparent 0);
@@ -385,7 +385,7 @@ function NotesVisionBoardInner({
 
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/90 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--wp-surface-muted)] text-indigo-600 dark:text-indigo-300">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--wp-surface-muted)] text-indigo-600">
             <FileText size={20} />
           </div>
           <div className="min-w-0">
@@ -408,9 +408,11 @@ function NotesVisionBoardInner({
                 setAiLoading(false);
               }
             }}
-            className="flex items-center gap-2 px-2 py-2 md:px-3 bg-amber-50 text-amber-700 border border-amber-200 active:shadow-md rounded-xl text-xs md:text-sm font-bold transition-all disabled:opacity-50 min-h-[44px]"
+            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-500/12 to-indigo-500/10 px-2 py-2 text-xs font-bold text-[color:var(--wp-text)] transition-all hover:border-fuchsia-500/40 hover:from-fuchsia-500/18 disabled:opacity-50 md:px-3 md:text-sm"
           >
-            <Sparkles size={16} className="text-amber-500" /> <span className="hidden sm:inline">{aiLoading ? "Zpracovávám…" : "AI Sumarizace"}</span><span className="sm:hidden">{aiLoading ? "…" : "AI"}</span>
+            <AiAssistantBrandIcon size={18} className="shrink-0" />
+            <span className="hidden sm:inline">{aiLoading ? "Zpracovávám…" : "Sumarizace"}</span>
+            <span className="sm:hidden">{aiLoading ? "…" : "AI"}</span>
           </button>
           <CreateActionButton type="button" onClick={handleOpenNew} className="min-w-[44px]">
             <span className="hidden sm:inline">Nový zápis</span>
@@ -494,8 +496,8 @@ function NotesVisionBoardInner({
 
       <main
         ref={boardRef}
-        className={`flex-1 relative overflow-auto notes-dot-grid cursor-crosshair min-h-0 ${
-          isMobile && mobileTab === "board" ? "max-h-[55vh] rounded-xl mx-4 border border-[color:var(--wp-surface-card-border)]" : ""
+        className={`relative min-h-0 flex-1 cursor-crosshair overflow-auto notes-dot-grid md:min-h-[min(560px,72vh)] ${
+          isMobile && mobileTab === "board" ? "mx-4 max-h-[55vh] rounded-xl border border-[color:var(--wp-surface-card-border)]" : ""
         } ${isMobile && mobileTab === "feed" ? "hidden" : ""}`}
       >
         {notes.length === 0 && (
@@ -611,9 +613,12 @@ function NotesVisionBoardInner({
       {aiSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--wp-overlay-scrim)] p-4 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-[color:var(--wp-surface-card)] rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden border border-[color:var(--wp-surface-card-border)]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[color:var(--wp-surface-card-border)]">
-              <h2 className="font-bold text-lg text-[color:var(--wp-text)] flex items-center gap-2">
-                <Sparkles size={18} className="text-amber-500" /> AI Sumarizace
+            <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] px-6 py-4">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-[color:var(--wp-text)]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white">
+                  <AiAssistantBrandIcon size={22} className="max-h-full max-w-full" />
+                </span>
+                Sumarizace
               </h2>
               <button
                 type="button"
@@ -678,6 +683,7 @@ function NotesVisionBoardInner({
                     options={contactOptions.map((c) => ({ id: c.value, label: c.label }))}
                     placeholder="Vybrat klienta"
                     icon={User}
+                    lightIsland
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -781,7 +787,7 @@ function NotesVisionBoardInner({
 
 function NotesBoardSuspenseFallback() {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--wp-main-scroll-bg)] font-sans">
+    <div className="portal-notes-board-light flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[color:var(--wp-main-scroll-bg)] font-sans">
       <div className="flex h-14 shrink-0 animate-pulse items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4" />
       <div className="notes-dot-grid m-4 min-h-[200px] flex-1 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-inset)]/40 animate-pulse" />
       <style>{`

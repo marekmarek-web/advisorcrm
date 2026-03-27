@@ -246,13 +246,13 @@ export default function ContractReviewListPage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-[#f8fafc]">
+    <div className="flex min-h-0 flex-1 flex-col bg-[color:var(--wp-main-scroll-bg)]">
       <div className="max-w-[1200px] mx-auto w-full p-6 md:p-8 space-y-6">
         {/* Header - reference style */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200 flex-shrink-0 p-2.5">
-              <AiAssistantBrandIcon size={36} className="max-w-full max-h-full" />
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-white p-2.5 dark:bg-white">
+              <AiAssistantBrandIcon size={36} className="max-h-full max-w-full" />
             </div>
             <div>
               <h1 className="text-3xl font-black text-[color:var(--wp-text)] tracking-tight mb-1">Review smluv</h1>

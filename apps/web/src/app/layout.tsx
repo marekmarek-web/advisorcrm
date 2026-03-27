@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Source_Sans_3 } from "next/font/google";
+import { Source_Sans_3, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import "../styles/aidvisora-theme.css";
 import "../styles/aidvisora-components.css";
@@ -11,6 +11,14 @@ const sourceSans = Source_Sans_3({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "600", "700"],
   variable: "--font-primary",
+  display: "swap",
+  preload: true,
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-jakarta",
   display: "swap",
   preload: true,
 });
@@ -64,7 +72,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="cs" suppressHydrationWarning>
-      <body className={sourceSans.className}>
+      <body className={`${sourceSans.className} ${plusJakarta.variable}`}>
         <TooltipBlurListener />
         <NativeOAuthDeepLinkBridge />
         {children}

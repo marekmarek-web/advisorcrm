@@ -164,7 +164,7 @@ export function MindmapListClient({
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-20">
+    <div className="min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-20">
       <style>{`
         .mindmap-hub-bg {
           background-image:

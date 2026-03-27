@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useMemo, useEffect } from "react";
+import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
 import type { BacktestChartSeriesItem } from "@/lib/calculators/investment/investment.charts";
@@ -67,6 +68,8 @@ export function InvestmentBacktestChart({
   startYear,
   onStartYearChange,
 }: InvestmentBacktestChartProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const fullSeriesRef = useRef(series);
 
   useEffect(() => {
@@ -78,6 +81,9 @@ export function InvestmentBacktestChart({
       const d = new Date(ts);
       return `${CZECH_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
     };
+
+    const labelColor = isDark ? "#e2e8f0" : "#64748b";
+    const gridColor = isDark ? "#334155" : "#f1f5f9";
 
     return {
       chart: {
@@ -97,7 +103,7 @@ export function InvestmentBacktestChart({
       },
       dataLabels: { enabled: false },
       grid: {
-        borderColor: "#f1f5f9",
+        borderColor: gridColor,
         strokeDashArray: 3,
         xaxis: { lines: { show: true } },
       },
@@ -106,7 +112,7 @@ export function InvestmentBacktestChart({
         tooltip: { enabled: false },
         axisBorder: { show: false },
         axisTicks: { show: false },
-        labels: { style: { colors: "#94a3b8" } },
+        labels: { style: { colors: labelColor } },
       },
       yaxis: {
         labels: {
@@ -116,11 +122,19 @@ export function InvestmentBacktestChart({
               : val >= 1_000
                 ? `${(val / 1_000).toFixed(0)}k`
                 : String(val),
-          style: { colors: "#94a3b8" },
+          style: { colors: labelColor },
+        },
+      },
+      legend: {
+        position: "top",
+        horizontalAlign: "right",
+        labels: { colors: labelColor },
+        onItemClick: {
+          toggleDataSeries: true,
         },
       },
       tooltip: {
-        theme: "light",
+        theme: isDark ? "dark" : "light",
         shared: true,
         intersect: false,
         custom: function (opts: Parameters<ReturnType<typeof buildCustomTooltip>>[0]) {
@@ -134,13 +148,6 @@ export function InvestmentBacktestChart({
           )(opts);
         },
       },
-      legend: {
-        position: "top",
-        horizontalAlign: "right",
-        onItemClick: {
-          toggleDataSeries: true,
-        },
-      },
       markers: { size: 0 },
       annotations: {
         xaxis: [
@@ -151,7 +158,7 @@ export function InvestmentBacktestChart({
         ],
       },
     };
-  }, []);
+  }, [isDark]);
 
   const apexSeries = useMemo(
     () =>
@@ -168,7 +175,7 @@ export function InvestmentBacktestChart({
       <div className="flex flex-col gap-4 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/70 p-4 sm:p-5">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
-            <h3 className="flex items-center gap-3 text-xl font-bold text-[#0a0f29] md:text-2xl">
+            <h3 className="flex items-center gap-3 text-xl font-bold text-[color:var(--wp-text)] md:text-2xl">
               <svg className="w-7 h-7 text-indigo-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
               </svg>
@@ -176,12 +183,12 @@ export function InvestmentBacktestChart({
             </h3>
             <p className="mt-2 text-sm text-[color:var(--wp-text-secondary)] sm:text-base">
               Jak by dopadla vaše investice{" "}
-              <span className="font-bold text-[#0B3A7A]">{monthlyFormatted}</span>{" "}
+              <span className="font-bold text-indigo-600 dark:text-indigo-300">{monthlyFormatted}</span>{" "}
               měsíčně, kdybyste začali v roce{" "}
-              <span className="font-bold text-[#0B3A7A]">{startYear}</span>?
+              <span className="font-bold text-indigo-600 dark:text-indigo-300">{startYear}</span>?
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-green-100 bg-green-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-green-700">
+          <div className="flex items-center gap-2 rounded-full border border-green-200/80 bg-green-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-green-800 dark:border-emerald-500/35 dark:bg-emerald-950/50 dark:text-emerald-200">
             <span className="h-2 w-2 rounded-full bg-green-500" />
             Reálná tržní data 1995–2024
           </div>
@@ -202,7 +209,7 @@ export function InvestmentBacktestChart({
           <span className="text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">
             Posunout v čase (Start investice)
           </span>
-          <span className="rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 text-base font-bold text-[#0a0f29]">
+          <span className="rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 text-base font-bold text-[color:var(--wp-text)]">
             Rok {startYear}
           </span>
         </div>

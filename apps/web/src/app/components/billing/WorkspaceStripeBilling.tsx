@@ -186,8 +186,8 @@ export function WorkspaceStripeBilling({
     <div className={`space-y-4 ${className}`.trim()}>
       {showTitle ? (
         <div className="flex items-center gap-3">
-          <CreditCard size={24} className="text-slate-400 shrink-0" />
-          <h3 className="text-base font-black text-slate-900">Předplatné Aidvisora</h3>
+          <CreditCard size={24} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
+          <h3 className="text-base font-black text-[color:var(--wp-text)]">Předplatné Aidvisora</h3>
         </div>
       ) : null}
       {billingQuery === "success" ? (
@@ -204,25 +204,25 @@ export function WorkspaceStripeBilling({
         <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{billingError}</p>
       ) : null}
       {trialDays > 0 && billing.checkoutAvailable ? (
-        <p className="text-sm text-slate-600 max-w-xl">
-          <span className="font-semibold text-slate-800">{trialDays} dní zdarma</span>, poté pravidelné účtování
+        <p className="max-w-xl text-sm text-[color:var(--wp-text-secondary)]">
+          <span className="font-semibold text-[color:var(--wp-text)]">{trialDays} dní zdarma</span>, poté pravidelné účtování
           podle zvoleného tarifu ve Stripe.
         </p>
       ) : null}
-      <dl className="grid gap-2 text-sm text-slate-600 max-w-xl">
+      <dl className="grid max-w-xl gap-2 text-sm text-[color:var(--wp-text-secondary)]">
         <div className="flex flex-wrap gap-x-2">
-          <dt className="font-semibold text-slate-700">Stav</dt>
+          <dt className="font-semibold text-[color:var(--wp-text)]">Stav</dt>
           <dd>{billing.subscriptionStatus ?? "—"}</dd>
         </div>
         {billing.plan ? (
           <div className="flex flex-wrap gap-x-2">
-            <dt className="font-semibold text-slate-700">Plán</dt>
+            <dt className="font-semibold text-[color:var(--wp-text)]">Plán</dt>
             <dd>{billing.plan}</dd>
           </div>
         ) : null}
         {billing.currentPeriodEnd ? (
           <div className="flex flex-wrap gap-x-2">
-            <dt className="font-semibold text-slate-700">Aktuální období do</dt>
+            <dt className="font-semibold text-[color:var(--wp-text)]">Aktuální období do</dt>
             <dd>
               {new Date(billing.currentPeriodEnd).toLocaleDateString("cs-CZ", {
                 day: "numeric",
@@ -236,15 +236,15 @@ export function WorkspaceStripeBilling({
 
       {usePicker && cat ? (
         <div className="space-y-4 max-w-2xl">
-          <div className="flex flex-wrap gap-2 p-1 bg-slate-100 rounded-xl">
+          <div className="flex flex-wrap gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-1">
             <button
               type="button"
               onClick={() => setInterval("month")}
               disabled={!cat.tiers.some((r) => r.month)}
-              className={`flex-1 min-h-[44px] px-4 rounded-lg text-sm font-bold transition-colors ${
+              className={`min-h-[44px] flex-1 rounded-lg px-4 text-sm font-bold transition-colors ${
                 interval === "month"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 disabled:opacity-40"
+                  ? "bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] shadow-sm"
+                  : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)] disabled:opacity-40"
               }`}
             >
               Měsíčně
@@ -253,10 +253,10 @@ export function WorkspaceStripeBilling({
               type="button"
               onClick={() => setInterval("year")}
               disabled={!cat.tiers.some((r) => r.year)}
-              className={`flex-1 min-h-[44px] px-4 rounded-lg text-sm font-bold transition-colors ${
+              className={`min-h-[44px] flex-1 rounded-lg px-4 text-sm font-bold transition-colors ${
                 interval === "year"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 disabled:opacity-40"
+                  ? "bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] shadow-sm"
+                  : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)] disabled:opacity-40"
               }`}
             >
               Ročně <span className="text-emerald-600 font-black">−20 %</span>
@@ -275,19 +275,19 @@ export function WorkspaceStripeBilling({
                   type="button"
                   disabled={!ok}
                   onClick={() => ok && setTier(row.tier)}
-                  className={`text-left rounded-2xl border p-4 min-h-[44px] transition-colors ${
+                  className={`min-h-[44px] rounded-2xl border p-4 text-left transition-colors ${
                     selected
-                      ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20"
+                      ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20 dark:bg-indigo-950/35 dark:ring-indigo-400/25"
                       : ok
-                        ? "border-slate-200 bg-white hover:border-slate-300"
-                        : "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                        ? "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] hover:border-[color:var(--wp-border-strong)]"
+                        : "cursor-not-allowed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] opacity-50"
                   }`}
                 >
-                  <div className="font-black text-slate-900">{copy.title}</div>
-                  <div className="text-lg font-black text-indigo-700 mt-1">
+                  <div className="font-black text-[color:var(--wp-text)]">{copy.title}</div>
+                  <div className="mt-1 text-lg font-black text-indigo-600 dark:text-indigo-300">
                     {kc.toLocaleString("cs-CZ")} {suffix}
                   </div>
-                  <p className="text-xs text-slate-500 mt-2 leading-snug">{copy.blurb}</p>
+                  <p className="mt-2 text-xs leading-snug text-[color:var(--wp-text-secondary)]">{copy.blurb}</p>
                 </button>
               );
             })}
@@ -296,7 +296,7 @@ export function WorkspaceStripeBilling({
       ) : null}
 
       {!billing.canManage ? (
-        <p className="text-sm text-slate-500 max-w-xl">
+        <p className="max-w-xl text-sm text-[color:var(--wp-text-secondary)]">
           Předplatné může spravovat administrátor nebo ředitel workspace.
         </p>
       ) : (
@@ -312,11 +312,11 @@ export function WorkspaceStripeBilling({
               {billingAction === "checkout" ? "Přesměrování…" : "Zahájit předplatné"}
             </button>
           ) : (
-            <p className="text-sm text-slate-500 self-center max-w-md">
+            <p className="max-w-md self-center text-sm text-[color:var(--wp-text-secondary)]">
               Nové předplatné není nakonfigurováno: nastavte{" "}
-              <code className="text-xs bg-slate-100 px-1 rounded">STRIPE_SECRET_KEY</code> a buď šest proměnných{" "}
-              <code className="text-xs bg-slate-100 px-1 rounded">STRIPE_PRICE_*_*</code>, nebo legacy{" "}
-              <code className="text-xs bg-slate-100 px-1 rounded">STRIPE_PRICE_ID</code>.
+              <code className="rounded bg-[color:var(--wp-surface-muted)] px-1 text-xs text-[color:var(--wp-text)]">STRIPE_SECRET_KEY</code> a buď šest proměnných{" "}
+              <code className="rounded bg-[color:var(--wp-surface-muted)] px-1 text-xs text-[color:var(--wp-text)]">STRIPE_PRICE_*_*</code>, nebo legacy{" "}
+              <code className="rounded bg-[color:var(--wp-surface-muted)] px-1 text-xs text-[color:var(--wp-text)]">STRIPE_PRICE_ID</code>.
             </p>
           )}
           {billing.portalAvailable ? (
@@ -324,12 +324,12 @@ export function WorkspaceStripeBilling({
               type="button"
               onClick={() => void openStripePortal()}
               disabled={billingAction !== null}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors min-h-[44px] disabled:opacity-60"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-5 py-2.5 text-sm font-bold text-[color:var(--wp-text)] transition-colors hover:bg-[color:var(--wp-surface-card)] disabled:opacity-60"
             >
               Spravovat platby a faktury
             </button>
           ) : billing.stripeCustomerId ? null : (
-            <p className="text-sm text-slate-500 self-center">
+            <p className="self-center text-sm text-[color:var(--wp-text-secondary)]">
               Customer Portal je dostupný po prvním dokončeném předplatném.
             </p>
           )}

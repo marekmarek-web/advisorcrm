@@ -56,7 +56,6 @@ import type { DashboardAgendaTimelineRow } from "./dashboard-agenda-types";
 import clsx from "clsx";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { TodayInCalendarWidget } from "@/app/components/dashboard/TodayInCalendarWidget";
-import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 
 const STORAGE_KEY = "aidvisora_dashboard_widgets";
 
@@ -770,7 +769,7 @@ export function DashboardEditable({
                   key={id}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, id)}
-                  className={`group/dash-ai ${colSpan} ${dragClass} transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01]`}
+                  className={`${colSpan} ${dragClass} transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01]`}
                 >
                   <div className="relative">
                     <span
@@ -780,10 +779,7 @@ export function DashboardEditable({
                       className="absolute top-4 right-4 z-10 inline-flex min-h-[44px] min-w-[44px] shrink-0 cursor-grab items-center justify-center rounded-lg bg-white/10 p-2 transition-colors hover:bg-white/20 active:cursor-grabbing"
                       aria-label="Chytit a přesunout widget"
                     >
-                      <AiAssistantBrandIcon
-                        size={22}
-                        className="opacity-90 transition-transform duration-700 group-hover/dash-ai:rotate-12"
-                      />
+                      <GripVertical size={16} className="text-indigo-200" />
                     </span>
                     <DashboardAiAssistant />
                   </div>

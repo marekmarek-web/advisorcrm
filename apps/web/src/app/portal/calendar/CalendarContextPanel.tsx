@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Calendar as CalendarIcon, Clock, MapPin, Video, User, X, Edit2, Trash2, Sparkles, ArrowRight } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, MapPin, Video, User, X, Edit2, Trash2, Zap, ArrowRight } from "lucide-react";
 import type { EventRow } from "@/app/actions/events";
 import type { TaskRow } from "@/app/actions/tasks";
 import { getEventCategory } from "./event-categories";
@@ -280,12 +280,14 @@ export function CalendarContextPanel({
         )}
       </div>
       <div className="flex-1 p-6 overflow-y-auto wp-cal-hide-scrollbar space-y-4 bg-[color:var(--wp-surface-muted)]/30">
-        <div className="bg-gradient-to-b from-amber-50 to-orange-50/30 p-4 rounded-2xl border border-amber-100 shadow-sm mt-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={14} className="text-amber-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-800">Jak na to</span>
+        <div className="mt-2 rounded-2xl border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/12 to-indigo-500/8 p-4 dark:border-fuchsia-400/25 dark:from-fuchsia-500/18 dark:to-indigo-500/12">
+          <div className="mb-2 flex items-center gap-2">
+            <Zap size={14} className="shrink-0 text-fuchsia-600 dark:text-fuchsia-300" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text)] dark:text-fuchsia-200/90">
+              Jak na to
+            </span>
           </div>
-          <p className="text-xs font-medium text-amber-900/80 leading-relaxed mb-3">
+          <p className="mb-3 text-xs font-medium leading-relaxed text-[color:var(--wp-text-secondary)]">
             Klikněte na libovolnou událost v mřížce vlevo – zde se zobrazí detail a můžete ji upravit, označit jako hotovou nebo vytvořit návazný úkol.
           </p>
         </div>
@@ -304,7 +306,7 @@ export function CalendarContextPanel({
                   <button
                     type="button"
                     onClick={() => onToggleTask(task)}
-                    className="w-5 h-5 rounded border-2 border-[color:var(--wp-border-strong)] flex items-center justify-center shrink-0 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-[color:var(--wp-text-tertiary)] bg-[color:var(--wp-surface-card)] transition-colors hover:border-indigo-400 hover:bg-[color:var(--wp-surface-muted)] dark:border-white/35 dark:bg-[color:var(--wp-surface-muted)]/80"
                     style={task.completedAt ? { background: "var(--wp-success)", borderColor: "var(--wp-success)" } : {}}
                     aria-label={task.completedAt ? "Znovu otevřít" : "Splnit"}
                   >

@@ -1027,6 +1027,8 @@ export interface PdfReportBranding {
   authorName: string;
   footerLine: string;
   logoUrl?: string | null;
+  phone?: string | null;
+  website?: string | null;
 }
 
 export interface BuildReportHTMLOptions {
@@ -1162,6 +1164,8 @@ export function buildReportHTML(data: FinancialAnalysisData, options?: BuildRepo
       advisorName: options.branding.authorName,
       advisorRole: options.branding.footerLine,
       logoUrl: options.branding.logoUrl ?? undefined,
+      advisorPhone: options.branding.phone?.trim() || undefined,
+      advisorWebsite: options.branding.website?.trim() || undefined,
     } : undefined,
     includeCompany: data.includeCompany,
   });

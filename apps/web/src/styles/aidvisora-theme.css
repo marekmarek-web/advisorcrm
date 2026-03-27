@@ -304,7 +304,7 @@
   --wp-surface: #12182b;
   --wp-border: rgba(255, 255, 255, 0.1);
   --wp-text: #f1f5f9;
-  --wp-text-muted: #94a3b8;
+  --wp-text-muted: #aeb8ca;
   --wp-primary: #f8fafc;
   --wp-primary-hover: #e2e8f0;
   --wp-link: #e2e8f0;
@@ -337,7 +337,8 @@
   --wp-main-panel-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
   --wp-main-panel-backdrop-blur: 0px;
   --wp-main-scroll-bg: var(--wp-content-canvas-bg);
-  --wp-canvas-dot-color: rgba(255, 255, 255, 0.015);
+  /* Dostatečný kontrast pro plátna (zápisky, mindmap) – ne PDF/HTML reporty */
+  --wp-canvas-dot-color: rgba(255, 255, 255, 0.07);
   --wp-skeleton-bg: rgba(255, 255, 255, 0.1);
   --wp-scrollbar-thumb: rgba(255, 255, 255, 0.18);
   --wp-scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
@@ -426,6 +427,36 @@
   --border: 222 30% 18%;
   --input: 222 30% 18%;
   --ring: 224 76% 55%;
+}
+
+/**
+ * Zápisky (vision board): vždy světlý vzhled i při html.dark – stejné barvy jako :root light tokeny.
+ * Nepoužívat u PDF/HTML reportů.
+ */
+.portal-notes-board-light {
+  color-scheme: light;
+  --wp-main-scroll-bg: #fafafc;
+  --wp-canvas-dot-color: rgba(0, 0, 0, 0.055);
+  --wp-surface-card: #ffffff;
+  --wp-surface-card-border: #e2e8f0;
+  --wp-surface-raised: #f8fafc;
+  --wp-surface-inset: #f1f5f9;
+  --wp-surface-muted: #eef2f7;
+  --wp-text: #1f1c2e;
+  --wp-text-muted: #4a4a4a;
+  --wp-text-secondary: #475569;
+  --wp-text-tertiary: #64748b;
+  --wp-border: #e9ebf0;
+  --wp-border-strong: #cbd5e1;
+  --wp-overlay-scrim: rgba(15, 23, 42, 0.45);
+  --wp-input-bg: #f8fafc;
+  --wp-input-border: #e2e8f0;
+  --wp-input-text: #1f1c2e;
+  --wp-icon-default: #64748b;
+  --wp-header-input-focus-border: rgba(99, 102, 241, 0.55);
+  --wp-header-input-focus-ring: rgba(99, 102, 241, 0.1);
+  --wp-dropdown-surface: rgba(255, 255, 255, 0.95);
+  --wp-dropdown-border: #e2e8f0;
 }
 
 /* ── Portal kalkulačky: sdílený range slider (light + html.dark) ── */

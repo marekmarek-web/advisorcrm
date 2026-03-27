@@ -405,6 +405,7 @@ export function PortalSidebar({
       <aside
         className={[
           "fixed z-drawer-panel flex flex-col shrink-0 transition-[width,transform] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "font-[family-name:var(--font-jakarta),ui-sans-serif,system-ui,sans-serif]",
           "bg-[color:var(--wp-sidebar-card-bg)] backdrop-blur-3xl",
           "max-md:left-0 max-md:top-0 max-md:bottom-0 max-md:border-r max-md:border-[color:var(--wp-sidebar-card-border)] max-md:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)]",
           "md:left-5 md:top-5 md:bottom-5 md:h-auto md:rounded-[32px] md:border md:border-[color:var(--wp-sidebar-card-border)] md:shadow-[var(--wp-sidebar-card-shadow)]",
@@ -575,7 +576,7 @@ export function PortalSidebar({
                           title={collapsed ? item.label : undefined}
                         >
                           <div className="relative flex items-center justify-center shrink-0">
-                            <AiAssistantBrandIcon size={18} />
+                            <AiAssistantBrandIcon size={18} className="dark:brightness-0 dark:invert" />
                           </div>
                           {!collapsed && (
                             <span className={`ml-3 flex-1 text-left text-sm font-black tracking-wide ${isActive ? "text-white" : isDark ? "text-white" : "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600"}`}>
@@ -651,7 +652,7 @@ export function PortalSidebar({
                           <span
                             className={`text-[10px] font-black px-2 py-0.5 rounded-full transition-colors mr-2 shrink-0 ${
                               isDark
-                                ? "bg-[color:var(--wp-surface-card)]/20 text-white"
+                                ? "bg-white/15 text-white ring-1 ring-white/25"
                                 : isActive
                                   ? "bg-[color:var(--wp-nav-active-text)]/12 text-[color:var(--wp-nav-active-text)] ring-1 ring-[color:var(--wp-nav-active-border)]/40"
                                   : "bg-amber-100 text-amber-700 group-hover:bg-amber-200"
