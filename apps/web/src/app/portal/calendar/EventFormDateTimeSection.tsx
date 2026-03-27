@@ -4,8 +4,6 @@ import { useMemo, useState, useEffect } from "react";
 import { Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { formatDateLocal } from "./date-utils";
 
-const MINUTES_15 = [0, 15, 30, 45] as const;
-
 const MONTH_NAMES = [
   "Leden", "Únor", "Březen", "Duben", "Květen", "Červen",
   "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec",
@@ -38,6 +36,20 @@ function parseLocalDateTime(iso: string): { date: string; hour: number; minute: 
 
 function composeLocalDateTime(date: string, hour: number, minute: number): string {
   return `${date}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function parseTimeInputValue(v: string): { hour: number; minute: number } | null {
+  const [h, m] = (v || "").split(":");
+  let hour = Number(h);
+  let minute = Number(m);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  hour = Math.min(23, Math.max(0, hour));
+  minute = Math.round(minute / 15) * 15;
+  if (minute >= 60) {
+    minute = 0;
+    hour = Math.min(23, hour + 1);
+  }
+  return { hour, minute };
 }
 
 function formatPrimaryLine(startIso: string, endIso: string, allDay: boolean): string {
@@ -210,8 +222,6 @@ export function EventFormDateTimeSection({
   const startP = useMemo(() => parseLocalDateTime(startAt), [startAt]);
   const endP = useMemo(() => parseLocalDateTime(endAt || startAt), [endAt, startAt]);
 
-  const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => i), []);
-
   const primary = useMemo(
     () => formatPrimaryLine(startAt || composeLocalDateTime(startP.date, startP.hour, startP.minute), endAt, allDay),
     [startAt, endAt, allDay, startP.date, startP.hour, startP.minute],
@@ -299,39 +309,21 @@ export function EventFormDateTimeSection({
                       }}
                     />
                   )}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
-                        Hodina
-                      </label>
-                      <select
-                        value={startP.hour}
-                        onChange={(e) => setStartParts(startP.date, Number(e.target.value), startP.minute)}
-                        className={`${eInputClass} mt-1`}
-                      >
-                        {hours.map((h) => (
-                          <option key={h} value={h}>
-                            {String(h).padStart(2, "0")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
-                        Minuty
-                      </label>
-                      <select
-                        value={startP.minute}
-                        onChange={(e) => setStartParts(startP.date, startP.hour, Number(e.target.value))}
-                        className={`${eInputClass} mt-1`}
-                      >
-                        {MINUTES_15.map((m) => (
-                          <option key={m} value={m}>
-                            {String(m).padStart(2, "0")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
+                      Čas (po 15 min)
+                    </label>
+                    <input
+                      type="time"
+                      step={900}
+                      value={`${String(startP.hour).padStart(2, "0")}:${String(startP.minute).padStart(2, "0")}`}
+                      onChange={(e) => {
+                        const p = parseTimeInputValue(e.target.value);
+                        if (!p) return;
+                        setStartParts(startP.date, p.hour, p.minute);
+                      }}
+                      className={`${eInputClass} mt-1 min-h-[44px] font-mono tabular-nums`}
+                    />
                   </div>
                 </div>
 
@@ -358,39 +350,21 @@ export function EventFormDateTimeSection({
                       }}
                     />
                   )}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
-                        Hodina
-                      </label>
-                      <select
-                        value={endP.hour}
-                        onChange={(e) => setEndParts(endP.date, Number(e.target.value), endP.minute)}
-                        className={`${eInputClass} mt-1`}
-                      >
-                        {hours.map((h) => (
-                          <option key={h} value={h}>
-                            {String(h).padStart(2, "0")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
-                        Minuty
-                      </label>
-                      <select
-                        value={endP.minute}
-                        onChange={(e) => setEndParts(endP.date, endP.hour, Number(e.target.value))}
-                        className={`${eInputClass} mt-1`}
-                      >
-                        {MINUTES_15.map((m) => (
-                          <option key={m} value={m}>
-                            {String(m).padStart(2, "0")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
+                      Čas (po 15 min)
+                    </label>
+                    <input
+                      type="time"
+                      step={900}
+                      value={`${String(endP.hour).padStart(2, "0")}:${String(endP.minute).padStart(2, "0")}`}
+                      onChange={(e) => {
+                        const p = parseTimeInputValue(e.target.value);
+                        if (!p) return;
+                        setEndParts(endP.date, p.hour, p.minute);
+                      }}
+                      className={`${eInputClass} mt-1 min-h-[44px] font-mono tabular-nums`}
+                    />
                   </div>
                 </div>
               </div>

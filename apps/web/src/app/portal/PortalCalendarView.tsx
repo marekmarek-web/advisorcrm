@@ -21,6 +21,7 @@ import { formatDateLocal, formatDateTimeLocal, localDateTimeInputToUtcIso } from
 import { getEventCategory } from "@/app/portal/calendar/event-categories";
 import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
 import { EventFormDateTimeSection } from "@/app/portal/calendar/EventFormDateTimeSection";
+import { EVENT_FORM_PRIMARY_TYPE_ORDER } from "@/app/portal/calendar/event-form-primary-types";
 import { CalendarContextPanel } from "@/app/portal/calendar/CalendarContextPanel";
 import { CalendarLeftPanel } from "@/app/portal/calendar/CalendarLeftPanel";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
@@ -535,8 +536,6 @@ function EventDetailPopover({
 }
 
 /* ────────── Event Form Modal (premium design) ────────── */
-const EVENT_FORM_TYPE_ORDER = ["schuzka", "telefonat", "kafe", "mail", "ukol", "servis"] as const;
-
 const EVENT_PILL_STYLES: Record<string, { active: string; inactive: string }> = {
   schuzka:   { active: "bg-indigo-600 text-white shadow-lg shadow-indigo-200",  inactive: "bg-indigo-50 text-indigo-600 hover:bg-indigo-100" },
   telefonat: { active: "bg-rose-500 text-white shadow-lg shadow-rose-200",      inactive: "bg-rose-50 text-rose-500 hover:bg-rose-100" },
@@ -585,7 +584,7 @@ function EventFormModal({
   const { keyboardInset } = useKeyboardAware();
 
   const typePills = useMemo(() => {
-    const ids: string[] = [...EVENT_FORM_TYPE_ORDER];
+    const ids: string[] = [...EVENT_FORM_PRIMARY_TYPE_ORDER];
     if (form.eventType && !ids.includes(form.eventType)) ids.push(form.eventType);
     return ids
       .map((id) => CALENDAR_EVENT_CATEGORIES.find((t) => t.id === id))
@@ -637,8 +636,8 @@ function EventFormModal({
             className="flex-1 overflow-y-auto px-8 py-6 space-y-6"
             style={keyboardInset ? { paddingBottom: `${keyboardInset}px` } : undefined}
           >
-            {/* Typ aktivity: mřížka 3×2, bez horizontálního scrollu */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* Typ aktivity: stejná mřížka jako mobilní formulář (2 sl. telefon, 3 desktop) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {typePills.map((t) => {
                 const isActive = form.eventType === t.id;
                 const ps = EVENT_PILL_STYLES[t.id] ?? {

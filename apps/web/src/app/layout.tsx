@@ -33,11 +33,8 @@ export const metadata: Metadata = {
   description:
     "CRM, klientská zóna a workflow pro finanční poradce. Klienti, dokumenty, schůzky a úkoly na jednom místě — méně administrativy, více přehledu.",
   icons: {
-    icon: [
-      { url: "/favicon.png", sizes: "512x512", type: "image/png" },
-      { url: "/icons/icon-192.webp", sizes: "192x192", type: "image/webp" },
-      { url: "/icons/icon-512.webp", sizes: "512x512", type: "image/webp" },
-    ],
+    /** Tab favicon: PNG only so browsers do not pick legacy WebP tiles with baked-in padding. */
+    icon: [{ url: "/favicon.png", sizes: "512x512", type: "image/png" }],
     apple: "/apple-touch-icon.png",
   },
   openGraph: {

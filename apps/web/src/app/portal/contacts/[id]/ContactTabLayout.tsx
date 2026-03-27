@@ -50,6 +50,8 @@ export function ContactTabLayout({
     window.history.replaceState(null, "", `#${id}`);
   }, []);
 
+  const activeTab = tabs.find((t) => t.id === activeId);
+
   return (
     <ContactTabContext.Provider value={activeId}>
       <div className="wp-contact-v2-tabs">
@@ -74,14 +76,11 @@ export function ContactTabLayout({
         ))}
       </nav>
       <div className="pt-6 pb-8">
-        {tabs.map((tab) => {
-          if (tab.id !== activeId) return null;
-          return (
-            <Suspense key={tab.id} fallback={<TabSkeleton />}>
-              {tab.content}
-            </Suspense>
-          );
-        })}
+        {activeTab ? (
+          <Suspense key={activeTab.id} fallback={<TabSkeleton />}>
+            {activeTab.content}
+          </Suspense>
+        ) : null}
       </div>
     </div>
     </ContactTabContext.Provider>

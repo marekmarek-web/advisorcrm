@@ -111,7 +111,31 @@ export async function exportContactsCsv(): Promise<string> {
   return [header, ...lines].join("\r\n");
 }
 
-export async function getContact(id: string): Promise<ContactRow | null> {
+/** RSC-safe: never call toISOString on Invalid Date (RangeError). */
+function gdprConsentToIsoOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  const d = value instanceof Date ? value : new Date(value as string);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** Drizzle `date` / string sloupce občas dorazí jako Date — sjednotit na YYYY-MM-DD nebo null. */
+function dateLikeToOptionalYmd(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  }
+  const s = String(value);
+  return s || null;
+}
+
+function normalizeTagsForRsc(value: unknown): string[] | null {
+  if (value == null) return null;
+  if (!Array.isArray(value)) return null;
+  if (value.length === 0) return null;
+  return value.map((t) => String(t));
+}
+
+async function loadContact(id: string): Promise<ContactRow | null> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
   const rows = await db
@@ -145,22 +169,48 @@ export async function getContact(id: string): Promise<ContactRow | null> {
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  const gdprIso =
-    row.gdprConsentAt != null ? new Date(row.gdprConsentAt as unknown as Date).toISOString() : null;
-  const base = { ...row, gdprConsentAt: gdprIso };
+
+  let referralContactName: string | null = null;
   if (row.referralContactId) {
     const [refContact] = await db
       .select({ firstName: contacts.firstName, lastName: contacts.lastName })
       .from(contacts)
-      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, row.referralContactId!)))
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, row.referralContactId)))
       .limit(1);
-    return {
-      ...base,
-      referralContactName: refContact ? `${refContact.firstName} ${refContact.lastName}` : null,
-    };
+    referralContactName = refContact ? `${refContact.firstName} ${refContact.lastName}` : null;
   }
-  return { ...base, referralContactName: null };
+
+  // Explicitní plain object — žádný spread z driveru (Date / neočekávané typy) přes RSC.
+  return {
+    id: row.id,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email,
+    phone: row.phone,
+    title: row.title,
+    referralSource: row.referralSource,
+    referralContactId: row.referralContactId,
+    referralContactName,
+    birthDate: dateLikeToOptionalYmd(row.birthDate),
+    personalId: row.personalId,
+    street: row.street,
+    city: row.city,
+    zip: row.zip,
+    tags: normalizeTagsForRsc(row.tags),
+    lifecycleStage: row.lifecycleStage,
+    leadSource: row.leadSource,
+    leadSourceUrl: row.leadSourceUrl,
+    priority: row.priority,
+    avatarUrl: row.avatarUrl,
+    serviceCycleMonths: row.serviceCycleMonths,
+    lastServiceDate: dateLikeToOptionalYmd(row.lastServiceDate),
+    nextServiceDue: dateLikeToOptionalYmd(row.nextServiceDue),
+    gdprConsentAt: gdprConsentToIsoOrNull(row.gdprConsentAt),
+  };
 }
+
+/** Dedup v rámci jednoho requestu; vrací výhradně JSON-kompatibilní ContactRow pro RSC. */
+export const getContact = cache(loadContact);
 
 export async function createContact(form: {
   firstName: string;

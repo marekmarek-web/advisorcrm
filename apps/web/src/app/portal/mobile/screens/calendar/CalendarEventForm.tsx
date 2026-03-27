@@ -20,6 +20,7 @@ import {
 } from "@/app/portal/calendar/event-categories";
 import { formatDateLocal, formatDateTimeLocal } from "@/app/portal/calendar/date-utils";
 import { EventFormDateTimeSection } from "@/app/portal/calendar/EventFormDateTimeSection";
+import { EVENT_FORM_PRIMARY_TYPE_ORDER } from "@/app/portal/calendar/event-form-primary-types";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
@@ -68,13 +69,14 @@ const EVENT_PILL_STYLES: Record<string, { active: string; inactive: string }> = 
   kafe:      { active: "bg-amber-500 text-white shadow-lg shadow-amber-200",    inactive: "bg-amber-50 text-amber-600" },
   mail:      { active: "bg-purple-600 text-white shadow-lg shadow-purple-200",  inactive: "bg-purple-50 text-purple-600" },
   ukol:      { active: "bg-emerald-600 text-white shadow-lg shadow-emerald-200", inactive: "bg-emerald-50 text-emerald-600" },
+  servis:    { active: "bg-teal-600 text-white shadow-lg shadow-teal-200",       inactive: "bg-teal-50 text-teal-700" },
   priorita:  { active: "bg-red-600 text-white shadow-lg shadow-red-200",        inactive: "bg-red-50 text-red-600" },
 };
 
-const PRIMARY_TYPES = ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"];
+const PRIMARY_TYPE_IDS = new Set<string>(EVENT_FORM_PRIMARY_TYPE_ORDER);
 
 const SECONDARY_TYPES: EventCategoryId[] = CALENDAR_EVENT_CATEGORIES.filter(
-  (t) => !PRIMARY_TYPES.includes(t.id),
+  (t) => !PRIMARY_TYPE_IDS.has(t.id),
 ).map((t) => t.id);
 
 export type OpportunityOption = { id: string; title: string; contactId: string | null };
@@ -185,8 +187,10 @@ export function CalendarEventForm({
           className="flex-1 space-y-5 overflow-y-auto px-4 py-5"
           style={keyboardInset ? { paddingBottom: `${keyboardInset + 80}px` } : undefined}
         >
-          <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
-            {CALENDAR_EVENT_CATEGORIES.filter((t) => PRIMARY_TYPES.includes(t.id)).map((t) => {
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {EVENT_FORM_PRIMARY_TYPE_ORDER.map((id) => {
+              const t = CALENDAR_EVENT_CATEGORIES.find((c) => c.id === id);
+              if (!t) return null;
               const isActive = form.eventType === t.id;
               const ps = EVENT_PILL_STYLES[t.id] ?? {
                 active: "bg-[color:var(--wp-text-secondary)] text-white shadow-lg dark:bg-[color:var(--wp-text-tertiary)]",
@@ -203,12 +207,12 @@ export function CalendarEventForm({
                       reminderMinutes: t.id === "ukol" || t.id === "priorita" ? 15 : 30,
                     }))
                   }
-                  className={`flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-[0.97] ${
+                  className={`flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center text-xs font-bold transition-all active:scale-[0.97] sm:flex-row sm:text-sm ${
                     isActive ? ps.active : ps.inactive
                   }`}
                 >
-                  <span className="text-base">{t.icon}</span>
-                  {t.label}
+                  <span className="text-base leading-none">{t.icon}</span>
+                  <span className="leading-tight">{t.label}</span>
                 </button>
               );
             })}

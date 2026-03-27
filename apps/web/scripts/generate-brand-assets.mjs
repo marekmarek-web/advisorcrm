@@ -19,7 +19,7 @@ const publicDir = path.join(webRoot, "public");
 
 const black = { r: 0, g: 0, b: 0, alpha: 1 };
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
-/** White letterboxing after trim so non-square marks still look correct in tab / iOS. */
+/** Opaque pad for iOS home screen (Apple recommends non-transparent for touch icon). */
 const webIconBg = { r: 255, g: 255, b: 255, alpha: 1 };
 /**
  * Source file has generous padding; trim removes it so the mark fills favicon / native sizes.
@@ -77,7 +77,7 @@ async function main() {
     .resize(favFill, favFill, { fit: "inside", withoutEnlargement: false })
     .toBuffer();
   await sharp({
-    create: { width: 512, height: 512, channels: 4, background: webIconBg },
+    create: { width: 512, height: 512, channels: 4, background: transparent },
   })
     .composite([{ input: favLogoBuf, gravity: "center" }])
     .png()
