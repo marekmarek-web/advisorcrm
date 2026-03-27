@@ -67,22 +67,11 @@ import {
   Toast,
   useToast,
 } from "@/app/shared/mobile-ui/primitives";
-import { HouseholdDetailScreen } from "./screens/HouseholdDetailScreen";
-import { ContractsReviewScreen } from "./screens/ContractsReviewScreen";
-import { AnalysesHubScreen } from "./screens/AnalysesHubScreen";
-import { CalculatorsHubScreen } from "./screens/CalculatorsHubScreen";
-import { BusinessPlanScreen } from "./screens/BusinessPlanScreen";
-import { TeamOverviewScreen } from "./screens/TeamOverviewScreen";
-import { SettingsProfileScreen } from "./screens/SettingsProfileScreen";
-import { NotificationsInboxScreen } from "./screens/NotificationsInboxScreen";
 import { notifyRouteForWebview, notifyWebviewReady } from "@/app/shared/mobile-ui/webview-bridge";
 import { useDeviceClass } from "@/lib/ui/useDeviceClass";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { TasksScreen } from "./screens/TasksScreen";
 import { ContactsScreen } from "./screens/ContactsScreen";
-import { AiAssistantChatScreen } from "./screens/AiAssistantChatScreen";
-import { DocumentsHubScreen } from "./screens/DocumentsHubScreen";
-import { ProductionScreen } from "./screens/ProductionScreen";
 import { MobileSideDrawer } from "@/app/shared/mobile-ui/MobileSideDrawer";
 import { MobileGlobalSearchOverlay } from "./MobileGlobalSearchOverlay";
 import { MobileShellErrorBoundary } from "@/app/shared/mobile-ui/MobileShellErrorBoundary";
@@ -91,12 +80,7 @@ import { PortalFeedbackLauncher } from "@/app/portal/PortalFeedbackLauncher";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 import { QuickNewMobileSheet } from "./QuickNewMobileSheet";
-import { HouseholdsListMobileScreen } from "./screens/HouseholdsListMobileScreen";
-import { MessagesMobileScreen } from "./screens/MessagesMobileScreen";
-import { NotesMobileScreen } from "./screens/NotesMobileScreen";
-import { ColdContactsMobileScreen } from "./screens/ColdContactsMobileScreen";
 import type { RoleName } from "@/shared/rolePermissions";
-import ScanPage from "../scan/page";
 import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 
 function RouteLoadingSkeleton() {
@@ -133,6 +117,69 @@ const PipelineScreen = dynamic(
 );
 const ActionCenterScreen = dynamic(
   () => import("./screens/ActionCenterScreen").then((m) => m.ActionCenterScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const ScanPage = dynamic(() => import("../scan/page"), {
+  loading: () => <RouteLoadingSkeleton />,
+});
+const HouseholdDetailScreen = dynamic(
+  () => import("./screens/HouseholdDetailScreen").then((m) => m.HouseholdDetailScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const ContractsReviewScreen = dynamic(
+  () => import("./screens/ContractsReviewScreen").then((m) => m.ContractsReviewScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const AnalysesHubScreen = dynamic(
+  () => import("./screens/AnalysesHubScreen").then((m) => m.AnalysesHubScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const CalculatorsHubScreen = dynamic(
+  () => import("./screens/CalculatorsHubScreen").then((m) => m.CalculatorsHubScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const BusinessPlanScreen = dynamic(
+  () => import("./screens/BusinessPlanScreen").then((m) => m.BusinessPlanScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const TeamOverviewScreen = dynamic(
+  () => import("./screens/TeamOverviewScreen").then((m) => m.TeamOverviewScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const SettingsProfileScreen = dynamic(
+  () => import("./screens/SettingsProfileScreen").then((m) => m.SettingsProfileScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const NotificationsInboxScreen = dynamic(
+  () => import("./screens/NotificationsInboxScreen").then((m) => m.NotificationsInboxScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const AiAssistantChatScreen = dynamic(
+  () => import("./screens/AiAssistantChatScreen").then((m) => m.AiAssistantChatScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const DocumentsHubScreen = dynamic(
+  () => import("./screens/DocumentsHubScreen").then((m) => m.DocumentsHubScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const ProductionScreen = dynamic(
+  () => import("./screens/ProductionScreen").then((m) => m.ProductionScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const HouseholdsListMobileScreen = dynamic(
+  () => import("./screens/HouseholdsListMobileScreen").then((m) => m.HouseholdsListMobileScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const MessagesMobileScreen = dynamic(
+  () => import("./screens/MessagesMobileScreen").then((m) => m.MessagesMobileScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const NotesMobileScreen = dynamic(
+  () => import("./screens/NotesMobileScreen").then((m) => m.NotesMobileScreen),
+  { loading: () => <RouteLoadingSkeleton /> },
+);
+const ColdContactsMobileScreen = dynamic(
+  () => import("./screens/ColdContactsMobileScreen").then((m) => m.ColdContactsMobileScreen),
   { loading: () => <RouteLoadingSkeleton /> },
 );
 

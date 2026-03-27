@@ -13,15 +13,18 @@ type UploadSourceSheetProps = {
 };
 
 export function UploadSourceSheet({ open, onClose, onSelect }: UploadSourceSheetProps) {
-  const { useExpandedUploadSheet } = useCaptureCapabilities();
-  const options = useExpandedUploadSheet
+  const { useExpandedUploadSheet, supportsMultiPageScan } = useCaptureCapabilities();
+  const expanded = useExpandedUploadSheet
     ? [
-        { id: "scan" as const, label: "Skenovat dokument", icon: ScanLine },
+        ...(supportsMultiPageScan
+          ? [{ id: "scan" as const, label: "Skenovat dokument", icon: ScanLine }]
+          : []),
         { id: "camera" as const, label: "Vyfotit dokument", icon: Camera },
         { id: "gallery" as const, label: "Vybrat z galerie", icon: Images },
         { id: "file" as const, label: "Vybrat soubor", icon: FileUp },
       ]
     : [{ id: "file" as const, label: "Vybrat soubor", icon: FileUp }];
+  const options = expanded;
 
   return (
     <BaseModal open={open} onClose={onClose} title="Zdroj dokumentu" maxWidth="sm" mobileVariant="sheet">

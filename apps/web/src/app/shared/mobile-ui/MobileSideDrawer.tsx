@@ -27,6 +27,7 @@ import {
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { hasPermission, type RoleName } from "@/shared/rolePermissions";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
+import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -97,7 +98,7 @@ function buildSections(showTeamOverview: boolean, roleName: RoleName): DrawerSec
     ...(hasPermission(roleName, "documents:read")
       ? [{ href: "/portal/documents", label: "Dokumenty", Icon: FileText } as DrawerNavItem]
       : []),
-    ...(hasPermission(roleName, "documents:read")
+    ...(hasPermission(roleName, "documents:read") && isPortalMultiPageScanEnabled()
       ? [{ href: "/portal/scan", label: "Skenovat dokument", Icon: ScanLine } as DrawerNavItem]
       : []),
     ...(hasPermission(roleName, "contacts:write")
@@ -170,7 +171,7 @@ export function MobileSideDrawer({
     () => buildSections(showTeamOverview, roleName),
     [showTeamOverview, roleName]
   );
-  const showDrawerScanShortcut = hasPermission(roleName, "documents:read");
+  const showDrawerScanShortcut = hasPermission(roleName, "documents:read") && isPortalMultiPageScanEnabled();
 
   useEffect(() => {
     if (!open) return;

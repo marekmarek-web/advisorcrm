@@ -8,6 +8,7 @@ import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 import { useDocumentCapture } from "@/lib/upload/useDocumentCapture";
 import { type UploadSource, useFileUpload } from "@/lib/upload/useFileUpload";
 import { UploadSourceSheet, type UploadSourceOption } from "./UploadSourceSheet";
+import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 
 type ContractOption = {
@@ -116,6 +117,10 @@ export function DocumentUploadZone({
     }
 
     if (source === "scan") {
+      if (!isPortalMultiPageScanEnabled()) {
+        setCaptureError("Vícestránkový sken je vypnutý. Vyberte soubor nebo foto.");
+        return;
+      }
       const query = contactId ? `?contactId=${encodeURIComponent(contactId)}` : "";
       router.push(`/portal/scan${query}`);
       return;
