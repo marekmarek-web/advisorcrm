@@ -336,16 +336,17 @@ function EditForm({
   }
 
   const inputClass =
-    "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-[var(--wp-radius-sm)] text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all";
+    "w-full rounded-[var(--wp-radius-sm)] border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-4 py-2.5 text-sm text-[color:var(--wp-input-text)] outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25";
+  const labelClass = "mb-1.5 ml-1 block text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Název případu *</label>
+        <label className={labelClass}>Název případu *</label>
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} required />
       </div>
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Typ případu</label>
+        <label className={labelClass}>Typ případu</label>
         <CustomDropdown
           value={caseType}
           onChange={setCaseType}
@@ -355,7 +356,7 @@ function EditForm({
         />
       </div>
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Klient / Kontakt</label>
+        <label className={labelClass}>Klient / Kontakt</label>
         <CustomDropdown
           value={contactId}
           onChange={setContactId}
@@ -366,21 +367,21 @@ function EditForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Hodnota (Kč)</label>
+          <label className={labelClass}>Hodnota (Kč)</label>
           <input type="number" step="0.01" value={expectedValue} onChange={(e) => setExpectedValue(e.target.value)} className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Oček. uzavření</label>
+          <label className={labelClass}>Oček. uzavření</label>
           <input type="date" value={expectedCloseDate} onChange={(e) => setExpectedCloseDate(e.target.value)} className={inputClass} />
         </div>
       </div>
       {formError && (
-        <p className="rounded-[var(--wp-radius-sm)] border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="rounded-[var(--wp-radius-sm)] border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
           {formError}
         </p>
       )}
-      <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
-        <button type="button" onClick={onDone} className="px-5 py-2.5 rounded-[var(--wp-radius-sm)] font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
+      <div className="mt-2 flex justify-end gap-3 border-t border-[color:var(--wp-surface-card-border)] pt-4">
+        <button type="button" onClick={onDone} className="rounded-[var(--wp-radius-sm)] px-5 py-2.5 font-semibold text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)]">
           Zrušit
         </button>
         <CreateActionButton type="submit" isLoading={pending} icon={Save} className="rounded-[14px] px-6 py-2.5">
@@ -555,8 +556,8 @@ export function PipelineBoard({
         .font-pipeline-display { font-family: 'Plus Jakarta Sans', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { width: 4px; }
         .hide-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .hide-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .hide-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background-color: var(--wp-scrollbar-thumb); border-radius: 10px; }
+        .hide-scrollbar::-webkit-scrollbar-thumb:hover { background-color: var(--wp-scrollbar-thumb-hover); }
       `}</style>
 
       <ConfirmDeleteModal
@@ -567,37 +568,37 @@ export function PipelineBoard({
         loading={deletePending}
       />
 
-      <div className="font-pipeline-sans text-slate-800 flex flex-col flex-1 min-h-0">
+      <div className="font-pipeline-sans flex min-h-0 flex-1 flex-col text-[color:var(--wp-text)]">
         {/* Local header (v2): Obchodní Pipeline, metadata, Všechny filtry */}
         {showLocalHeader && (
-          <div className="px-0 py-4 flex flex-wrap justify-between items-center gap-3 sm:gap-4 border-b border-slate-100 flex-shrink-0 z-10 bg-white rounded-t-xl">
+          <div className="z-10 flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-t-xl border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-0 py-4 sm:gap-4">
             <div>
-              <h1 className="font-pipeline-display text-2xl font-black text-slate-900 leading-tight mb-1">Obchodní Pipeline</h1>
-              <div className="flex items-center gap-3 text-sm font-medium text-slate-500 mt-1 flex-wrap">
-                <span>Potenciál: <strong className="text-slate-800 font-bold">{new Intl.NumberFormat("cs-CZ", { style: "currency", currency: "CZK", maximumFractionDigits: 0 }).format(totalPotential)}</strong></span>
-                <span className="text-slate-300 hidden sm:inline">|</span>
-                <span className="text-rose-500 flex items-center gap-1 font-bold"><AlertCircle size={14} /> 2 úkoly k řešení</span>
+              <h1 className="font-pipeline-display mb-1 text-2xl font-black leading-tight text-[color:var(--wp-text)]">Obchodní Pipeline</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm font-medium text-[color:var(--wp-text-secondary)]">
+                <span>Potenciál: <strong className="font-bold text-[color:var(--wp-text)]">{new Intl.NumberFormat("cs-CZ", { style: "currency", currency: "CZK", maximumFractionDigits: 0 }).format(totalPotential)}</strong></span>
+                <span className="hidden text-[color:var(--wp-border-strong)] sm:inline">|</span>
+                <span className="flex items-center gap-1 font-bold text-rose-500 dark:text-rose-400"><AlertCircle size={14} /> 2 úkoly k řešení</span>
               </div>
             </div>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setFilterPopoverOpen((o) => !o)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-all min-h-[44px]"
+                className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-2.5 text-sm font-bold text-[color:var(--wp-text-secondary)] shadow-sm transition-all hover:bg-[color:var(--wp-surface-raised)]"
               >
                 <Filter size={16} /> Všechny filtry
               </button>
               {filterPopoverOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setFilterPopoverOpen(false)} aria-hidden />
-                  <div className="absolute right-0 top-full mt-2 z-20 py-2 px-3 bg-white border border-slate-200 rounded-xl shadow-lg min-w-[180px]">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">Typ případu</p>
+                  <div className="absolute right-0 top-full z-20 mt-2 min-w-[180px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 shadow-lg">
+                    <p className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Typ případu</p>
                     {[{ v: "all", l: "Vše" }, ...CASE_TYPES.map((t) => ({ v: t.value, l: t.label }))].map((f) => (
                       <button
                         key={f.v}
                         type="button"
                         onClick={() => { setFilterType(f.v); setFilterPopoverOpen(false); }}
-                        className={`block w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${filterType === f.v ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"}`}
+                        className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-bold transition-all ${filterType === f.v ? "bg-[color:var(--wp-nav-active-bg)] text-[color:var(--wp-nav-active-text)]" : "text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"}`}
                       >
                         {f.l}
                       </button>
@@ -610,24 +611,24 @@ export function PipelineBoard({
         )}
 
         {/* Toolbar: search, AI, Nový obchod (v2 style) */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 py-3 flex-shrink-0">
-          <div className="relative group max-w-md w-full">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search size={16} className="text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+        <div className="flex flex-shrink-0 flex-col items-stretch justify-between gap-3 py-3 sm:flex-row sm:items-center">
+          <div className="group relative w-full max-w-md">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+              <Search size={16} className="text-[color:var(--wp-text-tertiary)] transition-colors group-focus-within:text-indigo-500" />
             </div>
             <input
               type="text"
               placeholder="Rychlé hledání obchodu (jméno, telefon)..."
               value={pipelineSearch}
               onChange={(e) => setPipelineSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700 placeholder:text-slate-400 placeholder:font-medium min-h-[44px]"
+              className="min-h-[44px] w-full rounded-xl border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] py-2.5 pl-11 pr-4 text-sm font-bold text-[color:var(--wp-input-text)] outline-none transition-all placeholder:font-medium placeholder:text-[color:var(--wp-text-tertiary)] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25"
             />
           </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center gap-3">
             <button
               type="button"
               onClick={() => toast.showToast("AI analýza pipeline bude brzy k dispozici.")}
-              className="flex items-center gap-2 px-3 py-2 text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-xl text-xs font-bold transition-colors min-h-[44px]"
+              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-500/25 dark:text-amber-200"
             >
               <Sparkles size={14} className="text-amber-500" /> AI Analýza pipeline
             </button>
@@ -650,7 +651,7 @@ export function PipelineBoard({
                 return (
                   <div
                     key={stage.id}
-                    className={`flex flex-col h-[480px] bg-slate-50/60 rounded-[24px] border transition-all duration-300 overflow-hidden ${isDropTarget ? "border-indigo-400 shadow-md ring-4 ring-indigo-50" : "border-slate-200/70 shadow-sm hover:border-slate-300"}`}
+                    className={`flex h-[480px] flex-col overflow-hidden rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 transition-all duration-300 dark:bg-[color:var(--wp-surface-inset)]/60 ${isDropTarget ? "border-indigo-400 shadow-md ring-4 ring-indigo-500/25 dark:ring-indigo-500/20" : "shadow-sm hover:border-[color:var(--wp-border-strong)]"}`}
                     onDragOver={(e) => handleColumnDragOver(e, stage.id)}
                     onDragLeave={handleColumnDragLeave}
                     onDrop={(e) => handleColumnDrop(e, stage.id)}
@@ -664,21 +665,21 @@ export function PipelineBoard({
                           <h3 className={`font-bold text-[14px] uppercase tracking-wide ${theme.textColor}`}>
                             {stageNameWithoutNumber}
                           </h3>
-                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mt-0.5 text-slate-600">
+                          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-secondary)] opacity-90">
                             {subtitle ?? ""}
                           </p>
                         </div>
                       </div>
-                      <div className={`px-3 py-1 rounded-lg bg-white/80 text-[13px] font-black shadow-sm border border-white ${theme.textColor}`}>
+                      <div className={`rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/90 px-3 py-1 text-[13px] font-black shadow-sm ${theme.textColor}`}>
                         {stage.opportunities.length}
                       </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto hide-scrollbar p-4 flex flex-col gap-4">
                       {stage.opportunities.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-[16px] bg-white/50 p-6 m-2 opacity-60 min-h-[120px]">
-                          <CheckCircle2 size={32} className="text-slate-300 mb-2" />
-                          <p className="text-xs font-bold text-center uppercase tracking-widest">Žádné obchody</p>
+                        <div className="m-2 flex min-h-[120px] flex-1 flex-col items-center justify-center rounded-[16px] border-2 border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/40 p-6 text-[color:var(--wp-text-tertiary)]">
+                          <CheckCircle2 size={32} className="mb-2 opacity-60" />
+                          <p className="text-center text-xs font-bold uppercase tracking-widest">Žádné obchody</p>
                         </div>
                       ) : (
                         stage.opportunities.map((opp) => {
@@ -696,9 +697,9 @@ export function PipelineBoard({
                               onDragStart={(e) => handleCardDragStart(e, opp.id, stage.id)}
                               onDragEnd={handleCardDragEnd}
                               onClick={() => { if (!isMenuOpen) router.push(`/portal/pipeline/${opp.id}`); }}
-                              className={`bg-white rounded-[20px] p-4 border border-slate-200 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-lg hover:border-indigo-300 hover:-translate-y-0.5 transition-all duration-200 cursor-grab active:cursor-grabbing group flex flex-col relative shrink-0 ${theme.accent} border-b-[3px] ${isDragging ? "opacity-40 scale-95" : ""}`}
+                              className={`group relative flex shrink-0 cursor-grab flex-col rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-lg active:cursor-grabbing dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.45)] ${theme.accent} border-b-[3px] ${isDragging ? "scale-95 opacity-40" : ""}`}
                             >
-                              <div className="absolute left-1 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                              <div className="pointer-events-none absolute left-1 top-1/2 -translate-y-1/2 text-[color:var(--wp-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100">
                                 <GripVertical size={14} />
                               </div>
 
@@ -706,17 +707,17 @@ export function PipelineBoard({
                                 <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-black tracking-wide uppercase border ${product.color}`}>
                                   {product.icon} {product.label}
                                 </div>
-                                <div className="font-bold text-sm text-slate-800 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                <div className="rounded border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-2 py-0.5 text-sm font-bold text-[color:var(--wp-text)]">
                                   {formatValue(opp.expectedValue, undefined)}
                                 </div>
                               </div>
 
                               <div className="mb-3 pl-2">
-                                <h4 className="font-pipeline-display font-bold text-slate-900 leading-snug mb-1 group-hover:text-indigo-600 transition-colors text-[15px]">
+                                <h4 className="font-pipeline-display mb-1 text-[15px] font-bold leading-snug text-[color:var(--wp-text)] transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400">
                                   {opp.title}
                                 </h4>
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                                  <User size={12} className="text-slate-400" /> {opp.contactName || "Bez kontaktu"}
+                                <div className="flex items-center gap-1.5 text-xs font-semibold text-[color:var(--wp-text-secondary)]">
+                                  <User size={12} className="text-[color:var(--wp-text-tertiary)]" /> {opp.contactName || "Bez kontaktu"}
                                 </div>
                               </div>
 
@@ -727,14 +728,14 @@ export function PipelineBoard({
                                 </div>
                               )}
 
-                              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex flex-col gap-2 mt-auto ml-2">
+                              <div className="ml-2 mt-auto flex flex-col gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/80 p-2.5">
                                 <div className="flex items-start gap-2">
-                                  <CheckCircle2 size={14} className="text-slate-400 shrink-0 mt-0.5" />
-                                  <span className="text-[12px] font-semibold text-slate-700 leading-snug">
+                                  <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[color:var(--wp-text-tertiary)]" />
+                                  <span className="text-[12px] font-semibold leading-snug text-[color:var(--wp-text-secondary)]">
                                     Otevřít detail
                                   </span>
                                 </div>
-                                <div className="flex justify-between items-center pt-2 border-t border-slate-200/60">
+                                <div className="flex items-center justify-between border-t border-[color:var(--wp-surface-card-border)] pt-2">
                                   <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${urgency.class}`}>
                                     {isTodayOrYesterday ? <Clock size={10} /> : <CalendarClock size={10} />}
                                     {dateShort}
@@ -742,15 +743,15 @@ export function PipelineBoard({
                                   <div className="flex gap-1">
                                     {opp.contactId && (
                                       <>
-                                        <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => e.stopPropagation()} className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-200 transition-colors" title="Zavolat"><Phone size={12} /></Link>
-                                        <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => e.stopPropagation()} className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition-colors" title="Napsat e-mail"><Mail size={12} /></Link>
+                                        <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => e.stopPropagation()} className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-emerald-500/15 hover:text-emerald-600 dark:hover:text-emerald-400" title="Zavolat"><Phone size={12} /></Link>
+                                        <Link href={`/portal/contacts/${opp.contactId}`} onClick={(e) => e.stopPropagation()} className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400" title="Napsat e-mail"><Mail size={12} /></Link>
                                       </>
                                     )}
-                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditOpp(opp); }} className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 transition-colors" title="Upravit"><Edit2 size={12} /></button>
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditOpp(opp); }} className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]" title="Upravit"><Edit2 size={12} /></button>
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); setOpenMenuOppId(isMenuOpen ? null : opp.id); }}
-                                      className="w-6 h-6 rounded-md bg-white flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 transition-colors"
+                                      className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
                                       title="Možnosti"
                                     >
                                       <MoreHorizontal size={12} />
