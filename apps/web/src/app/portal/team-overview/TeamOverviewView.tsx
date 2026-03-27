@@ -33,6 +33,7 @@ import type { AiActionType } from "@/lib/ai/actions/action-suggestions";
 import { SkeletonBlock } from "@/app/components/Skeleton";
 import { TeamCalendarModal, TeamCalendarButtons } from "./TeamCalendarModal";
 import clsx from "clsx";
+import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 
@@ -659,7 +660,7 @@ export function TeamOverviewView({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-lg font-semibold text-[color:var(--wp-text)] flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-violet-500" />
-                AI shrnutí týmu
+                Interní AI shrnutí týmu
               </h2>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -682,6 +683,7 @@ export function TeamOverviewView({
                 </button>
               </div>
             </div>
+            <AdvisorAiOutputNotice variant="compact" className="mb-3" />
             {aiError && (
               <p className="mb-3 text-sm text-rose-600" role="alert">{aiError}</p>
             )}
@@ -708,7 +710,7 @@ export function TeamOverviewView({
                 )}
               </>
             ) : !aiLoading ? (
-              <p className="text-[color:var(--wp-text-secondary)] text-sm">Načtěte uložené shrnutí nebo klikněte na „Generovat shrnutí“, aby AI na základě metrik a upozornění vytvořilo manažerské shrnutí.</p>
+              <p className="text-[color:var(--wp-text-secondary)] text-sm">Načtěte uložené shrnutí nebo klikněte na „Generovat shrnutí“ — vznikne informativní manažerský podklad z metrik a upozornění, nikoli rada vůči klientům.</p>
             ) : null}
           </div>
         </section>

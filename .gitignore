@@ -11,6 +11,9 @@ dist
 client_secret*.json
 # Firebase Android config (API keys); keep under android/app/ per docs
 apps/web/google-services.json
+# Playwright / local E2E artifacts
+apps/web/test-results/
+
 *.log
 .DS_Store
 .vercel

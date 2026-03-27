@@ -173,7 +173,7 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
               </span>
             </div>
             <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">
-              Uložené analýzy, rozpracované koncepty a nástroje pro tvorbu doporučení.
+              Uložené analýzy, rozpracované koncepty a nástroje pro interní podklady poradce.
             </p>
           </div>
           <CreateActionButton href="/portal/analyses/financial">Nová analýza</CreateActionButton>

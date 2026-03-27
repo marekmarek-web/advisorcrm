@@ -141,8 +141,8 @@ describe("resolveAiReviewExtractionRoute", () => {
     });
   });
 
-  it("mortgage contract falls back to loan extraction when mortgage prompt missing", () => {
-    withEnv({ OPENAI_PROMPT_AI_REVIEW_MORTGAGE_EXTRACTION_ID: undefined }, () => {
+  it("mortgage contract always uses loan contract extraction (unified Prompt Builder)", () => {
+    withEnv({ OPENAI_PROMPT_AI_REVIEW_MORTGAGE_EXTRACTION_ID: "pmpt_mortgage_legacy" }, () => {
       const r = resolveAiReviewExtractionRoute({
         ...base,
         documentType: "contract",

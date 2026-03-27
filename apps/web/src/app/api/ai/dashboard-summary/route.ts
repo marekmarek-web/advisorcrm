@@ -33,7 +33,7 @@ function buildFallbackSummary(
   if (reviewCount > 0) parts.push(`${reviewCount} smluv ke kontrole`);
   if (urgentCount > 0 && parts.length === 0) parts.push(`${urgentCount} prioritních položek`);
   if (parts.length === 0) return "Dnes nemáte urgentní položky. Prohlédněte si kalendář nebo úkoly.";
-  return `Máte ${parts.join(", ")}. Doporučujeme nejdříve vyřešit ${overdueCount > 0 ? "zpožděné úkoly" : reviewCount > 0 ? "review smluv" : "dnešní agendu"}.`;
+  return `Máte ${parts.join(", ")}. Interní návrh priority: nejdříve vyřešit ${overdueCount > 0 ? "zpožděné úkoly" : reviewCount > 0 ? "review smluv" : "dnešní agendu"}.`;
 }
 
 const USER_ID_HEADER = "x-user-id";

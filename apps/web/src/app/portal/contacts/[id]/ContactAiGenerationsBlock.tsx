@@ -13,6 +13,7 @@ import {
 } from "@/app/actions/ai-generations";
 import type { AiOrchestratedOutput } from "@/lib/ai/orchestration";
 import { AiActionMenu } from "@/app/components/ai/AiActionMenu";
+import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 
 type InitialData = {
   clientSummary: ClientGenerationItem | null;
@@ -27,17 +28,17 @@ type Props = {
 
 const SECTION_CONFIG = {
   clientSummary: {
-    title: "AI shrnutí klienta",
+    title: "Informativní shrnutí klienta (AI, interní)",
     action: generateClientSummaryAction,
     key: "clientSummary" as const,
   },
   clientOpportunities: {
-    title: "AI příležitosti",
+    title: "Interní podněty z dat CRM (AI)",
     action: generateClientOpportunitiesAction,
     key: "clientOpportunities" as const,
   },
   nextBestAction: {
-    title: "Next best action",
+    title: "Návrh dalšího kroku v CRM (AI, interní)",
     action: generateNextBestActionAction,
     key: "nextBestAction" as const,
   },
@@ -163,10 +164,11 @@ export function ContactAiGenerationsBlock({ contactId, initialGenerations }: Pro
         <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-100">
           <Zap size={16} className="text-indigo-600" aria-hidden />
         </div>
-        <h2 className="text-lg font-bold text-[color:var(--wp-text)]">AI analýza</h2>
+        <h2 className="text-lg font-bold text-[color:var(--wp-text)]">AI interní podklady</h2>
       </div>
+      <AdvisorAiOutputNotice className="mb-4" variant="compact" />
       <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4">
-        Shrnutí klienta, příležitosti a doporučený další krok na základě dat v CRM.
+        Informativní shrnutí a návrhy administrativních kroků výhradně pro práci poradce v CRM — nejde o radu klientovi.
       </p>
       <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3">
         <div className="flex items-center justify-between gap-2">

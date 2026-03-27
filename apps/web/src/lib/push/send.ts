@@ -63,16 +63,24 @@ function buildMessage(token: string, event: PushEventPayload) {
   };
 }
 
-export async function sendPushToUser(eventInput: PushEventPayload): Promise<void> {
+/** Result for cron / callers that must know whether FCM actually delivered. */
+export type PushToUserResult = {
+  sent: number;
+  failed: number;
+  /** True when payload invalid, missing FCM_SERVICE_ACCOUNT_JSON, or token fetch failed — no HTTP calls made. */
+  skipped: boolean;
+};
+
+export async function sendPushToUser(eventInput: PushEventPayload): Promise<PushToUserResult> {
   const eventParsed = PushEventPayloadSchema.safeParse(eventInput);
-  if (!eventParsed.success) return;
+  if (!eventParsed.success) return { sent: 0, failed: 0, skipped: true };
   const event = eventParsed.data;
 
   const account = getServiceAccount();
-  if (!account) return;
+  if (!account) return { sent: 0, failed: 0, skipped: true };
 
   const accessToken = await getAccessToken(account);
-  if (!accessToken) return;
+  if (!accessToken) return { sent: 0, failed: 0, skipped: true };
 
   const devices = await db
     .select({
@@ -88,6 +96,13 @@ export async function sendPushToUser(eventInput: PushEventPayload): Promise<void
         isNull(userDevices.revokedAt)
       )
     );
+
+  if (devices.length === 0) {
+    return { sent: 0, failed: 0, skipped: false };
+  }
+
+  let sent = 0;
+  let failed = 0;
 
   for (const device of devices) {
     let finalStatus = "failed";
@@ -141,7 +156,12 @@ export async function sendPushToUser(eventInput: PushEventPayload): Promise<void
         attempts: attempts + 1,
       },
     });
+
+    if (finalStatus === "sent") sent += 1;
+    else failed += 1;
   }
+
+  return { sent, failed, skipped: false };
 }
 
 export async function sendPushForPortalNotification(params: {

@@ -13,7 +13,12 @@ import {
   type EventRow,
 } from "@/app/actions/events";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
-import { formatDateLocal, formatDateTimeLocal, localDateTimeInputToUtcIso } from "@/app/portal/calendar/date-utils";
+import {
+  DEFAULT_EVENT_DURATION_MS,
+  formatDateLocal,
+  formatDateTimeLocal,
+  localDateTimeInputToUtcIso,
+} from "@/app/portal/calendar/date-utils";
 import {
   DEFAULT_SETTINGS,
   saveCalendarSettings,
@@ -305,7 +310,7 @@ export function CalendarScreen({
       if (!canWriteCalendar) return;
       const date = new Date(`${dateStr}T00:00:00`);
       date.setHours(hour, 0, 0, 0);
-      const end = new Date(date.getTime() + 60 * 60 * 1000);
+      const end = new Date(date.getTime() + DEFAULT_EVENT_DURATION_MS);
       setFormInitial({
         ...EMPTY_FORM,
         startAt: formatDateTimeLocal(date),

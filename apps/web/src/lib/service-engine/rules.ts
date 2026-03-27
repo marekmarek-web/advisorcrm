@@ -80,7 +80,7 @@ export function computeServiceRecommendations(
         title: overdue ? "Servis po termínu" : "Servis brzy due",
         explanation: overdue
           ? `Příští servis byl ${due}. Naplánujte servisní schůzku.`
-          : `Příští servis ${due}. Doporučujeme naplánovat schůzku.`,
+          : `Příští servis ${due}. Interní upozornění: zvažte naplánování servisní schůzky.`,
         recommendedAction: "Naplánovat schůzku",
         recommendedActionType: "schedule_meeting",
         dueDate: due,
@@ -177,7 +177,7 @@ export function computeServiceRecommendations(
       title: primaryAnalysis ? "Rozpracovaná finanční analýza" : "Chybí finanční analýza",
       explanation: primaryAnalysis
         ? "Dokončete nebo aktualizujte finanční analýzu."
-        : "Doporučujeme vytvořit finanční analýzu pro klienta.",
+        : "Chybí nebo není dokončená finanční analýza v evidenci — oblast k doplnění podle úvahy poradce.",
       recommendedAction: primaryAnalysis ? "Aktualizovat analýzu" : "Otevřít analýzu",
       recommendedActionType: primaryAnalysis ? "update_analysis" : "open_analysis",
       dueDate: null,
@@ -194,7 +194,7 @@ export function computeServiceRecommendations(
       priority: "medium",
       urgency: "no_deadline",
       title: "Zastaralá finanční analýza",
-      explanation: `Analýza nebyla aktualizována přes ${SERVICE_ENGINE_CONSTANTS.ANALYSIS_STALE_MONTHS} měsíců. Doporučujeme revizi.`,
+      explanation: `Analýza nebyla aktualizována přes ${SERVICE_ENGINE_CONSTANTS.ANALYSIS_STALE_MONTHS} měsíců. Zvažte revizi v CRM.`,
       recommendedAction: "Aktualizovat analýzu",
       recommendedActionType: "update_analysis",
       dueDate: null,
@@ -221,7 +221,7 @@ export function computeServiceRecommendations(
         priority: "medium",
         urgency: "due_soon",
         title: "Follow-up po uzavření obchodu",
-        explanation: `Obchod „${latestClosed.title}“ byl uzavřen. Doporučujeme následný kontakt.`,
+        explanation: `Obchod „${latestClosed.title}“ byl uzavřen. Oblast k ověření: následný kontakt s klientem.`,
         recommendedAction: "Vytvořit follow-up",
         recommendedActionType: "create_followup",
         dueDate: toDateStr(closedAt),

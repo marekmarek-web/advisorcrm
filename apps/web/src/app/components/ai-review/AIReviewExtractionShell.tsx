@@ -23,6 +23,7 @@ import type {
 } from "@/lib/ai-review/types";
 import { AIReviewTopBar } from "./AIReviewTopBar";
 import { ExtractionLeftPanel } from "./ExtractionLeftPanel";
+import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 
 const PDFViewerPanel = dynamic(
   () => import("./PDFViewerPanel").then((m) => m.PDFViewerPanel),
@@ -247,6 +248,12 @@ export function AIReviewExtractionShell({
         actionLoading={actionLoading}
       />
 
+      <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 md:px-6">
+        <div className="max-w-5xl mx-auto">
+          <AdvisorAiOutputNotice />
+        </div>
+      </div>
+
       {isApproved && !doc.isApplied && hasResolvedClient && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-6 py-3">
           <div className="max-w-5xl mx-auto flex items-start gap-3">
@@ -406,7 +413,7 @@ export function AIReviewExtractionShell({
             {doc.pipelineInsights.preprocessStatus === "failed" ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Adobe preprocessing selhal — pipeline pokračovala na originálním PDF. Výsledek může být méně přesný;
-                doporučujeme porovnat s originálem.
+                porovnejte prosím extrakci s originálem dokumentu.
               </div>
             ) : null}
             {typeof doc.pipelineInsights.textCoverageEstimate === "number" &&

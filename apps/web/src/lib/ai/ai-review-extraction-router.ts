@@ -225,9 +225,6 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
   }
   if (fam === "mortgage") {
     if (dt === "contract") {
-      if (getAiReviewPromptId("mortgageExtraction")) {
-        return { outcome: "extract", promptKey: "mortgageExtraction", reasonCodes: ["mortgage_dedicated"] };
-      }
       return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: ["mortgage_via_loan"] };
     }
     if (dt === "amendment") {

@@ -3,29 +3,40 @@
  * Disabled by default — enable with AI_REVIEW_LLM_POSTPROCESS=true.
  */
 
-import { createResponseFromPrompt } from "@/lib/openai";
+import { createAiReviewResponseFromPrompt } from "@/lib/openai";
+import { capAiReviewPromptString } from "./ai-review-prompt-variables";
+import { getAiReviewPromptId, getAiReviewPromptVersion } from "./prompt-model-registry";
+
+export type { AiReviewClientMatchKind } from "./ai-review-client-match-parse";
+export { parseAiReviewClientMatchKind } from "./ai-review-client-match-parse";
 
 export function isAiReviewLlmPostprocessEnabled(): boolean {
   return process.env.AI_REVIEW_LLM_POSTPROCESS === "true";
 }
-import { getAiReviewPromptId, getAiReviewPromptVersion } from "./prompt-model-registry";
 
 export async function runAiReviewDecisionLlm(params: {
-  classificationJson: string;
-  extractionSummaryJson: string;
-  validationSummaryJson: string;
+  normalizedDocumentType: string;
+  extractionPayloadJson: string;
+  validationWarningsJson: string;
+  sectionConfidenceSummaryJson: string;
+  inputMode: string;
+  preprocessWarningsJson: string;
 }): Promise<{ ok: true; text: string; durationMs: number } | { ok: false; durationMs: number }> {
   const started = Date.now();
   const promptId = getAiReviewPromptId("reviewDecision");
   if (!promptId) return { ok: false, durationMs: Date.now() - started };
-  const res = await createResponseFromPrompt(
+  const res = await createAiReviewResponseFromPrompt(
     {
+      promptKey: "reviewDecision",
       promptId,
       version: getAiReviewPromptVersion("reviewDecision"),
       variables: {
-        classification_json: params.classificationJson,
-        extraction_summary_json: params.extractionSummaryJson,
-        validation_summary_json: params.validationSummaryJson,
+        normalized_document_type: params.normalizedDocumentType.trim() || "unknown",
+        extraction_payload: capAiReviewPromptString(params.extractionPayloadJson),
+        validation_warnings: params.validationWarningsJson.trim() || "[]",
+        section_confidence_summary: params.sectionConfidenceSummaryJson.trim() || "{}",
+        input_mode: params.inputMode.trim() || "unknown",
+        preprocess_warnings: params.preprocessWarningsJson.trim() || "[]",
       },
     },
     { store: false, routing: { category: "ai_review", maxOutputTokens: 6144 } }
@@ -42,13 +53,18 @@ export async function runAiReviewClientMatchLlm(params: {
   const started = Date.now();
   const promptId = getAiReviewPromptId("clientMatch");
   if (!promptId) return { ok: false, durationMs: Date.now() - started };
-  const res = await createResponseFromPrompt(
+  const parties = capAiReviewPromptString(params.extractionPartiesJson);
+  const dbs = capAiReviewPromptString(params.dbCandidatesJson);
+  const res = await createAiReviewResponseFromPrompt(
     {
+      promptKey: "clientMatch",
       promptId,
       version: getAiReviewPromptVersion("clientMatch"),
       variables: {
-        extraction_parties_json: params.extractionPartiesJson,
-        db_candidates_json: params.dbCandidatesJson,
+        extracted_client_payload: parties,
+        existing_client_candidates: dbs,
+        extraction_parties_json: parties,
+        db_candidates_json: dbs,
       },
     },
     { store: false, routing: { category: "ai_review", maxOutputTokens: 6144 } }

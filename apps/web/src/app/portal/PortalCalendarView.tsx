@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, MoreVertical, X, RefreshCw, MapPin, Link2, AlignLeft, User, Briefcase, Bell, Check, Info, Flag, CheckSquare, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, X, RefreshCw, MapPin, Link2, AlignLeft, User, Briefcase, Bell, Check, Info, Flag, CheckSquare, Calendar } from "lucide-react";
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
@@ -17,7 +17,14 @@ import {
   saveCalendarSettings,
   type CalendarSettings,
 } from "@/app/portal/calendar/calendar-settings";
-import { formatDateLocal, formatDateTimeLocal, localDateTimeInputToUtcIso } from "@/app/portal/calendar/date-utils";
+import {
+  addMsToLocalDateTime,
+  DEFAULT_EVENT_DURATION_MS,
+  formatDateLocal,
+  formatDateTimeLocal,
+  formatTimeQuarterHourDisplay,
+  localDateTimeInputToUtcIso,
+} from "@/app/portal/calendar/date-utils";
 import { getEventCategory } from "@/app/portal/calendar/event-categories";
 import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
 import { EventFormDateTimeSection } from "@/app/portal/calendar/EventFormDateTimeSection";
@@ -66,7 +73,7 @@ function formatMonthYear(date: Date): string {
 }
 
 function formatTime(d: Date): string {
-  return d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+  return formatTimeQuarterHourDisplay(d);
 }
 
 interface EventFormData {
@@ -376,6 +383,7 @@ function EventDetailPopup({
   const dateLine = event.allDay
     ? `${start.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" })} · Celý den`
     : `${start.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" })} · ${formatTime(start)}–${end ? formatTime(end) : "?"}`;
+  const dateLineCaption = event.allDay ? "" : "Čas zobrazen po čtvrthodinách";
   const contact = event.contactId ? contacts.find((c) => c.id === event.contactId) : null;
   const mailtoHref = (() => {
     const subject = encodeURIComponent(event.title);
@@ -393,36 +401,37 @@ function EventDetailPopup({
         className="bg-[color:var(--wp-surface-muted)] rounded-2xl shadow-xl border border-[color:var(--wp-surface-card-border)] w-full max-w-md overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-end gap-0.5 px-3 pt-3 pb-1">
-          <button type="button" onClick={onEdit} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] transition-colors" aria-label="Upravit" title="Upravit">
-            <Edit2 size={18} />
-          </button>
-          <button type="button" onClick={onDelete} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] hover:text-rose-600 transition-colors" aria-label="Smazat" title="Smazat">
-            <Trash2 size={18} />
-          </button>
-          <a href={mailtoHref} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] transition-colors" aria-label="Poslat e-mailem" title="Poslat e-mailem">
-            <Mail size={18} />
-          </a>
-          <button type="button" className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-surface-card)] transition-colors" aria-label="Další" title="Další">
-            <MoreVertical size={18} />
-          </button>
-          <button type="button" onClick={onClose} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-surface-card)] transition-colors" aria-label="Zavřít">
-            <X size={18} />
-          </button>
+        <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2 border-b border-[color:var(--wp-surface-card-border)]">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1">Aktivita</p>
+            <h2 className="text-lg font-black text-[color:var(--wp-text)] leading-snug break-words">{event.title}</h2>
+            <p className="text-xs font-bold text-[color:var(--wp-text-secondary)] mt-1.5 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 bg-[color:var(--wp-surface-muted)]" style={{ borderLeft: `3px solid ${typeInfo.color}` }}>
+                {typeInfo.icon} {typeInfo.label}
+              </span>
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button type="button" onClick={onEdit} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors" aria-label="Upravit" title="Upravit">
+              <Edit2 size={18} />
+            </button>
+            <button type="button" onClick={onDelete} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] hover:text-rose-600 transition-colors" aria-label="Smazat" title="Smazat">
+              <Trash2 size={18} />
+            </button>
+            <a href={mailtoHref} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] transition-colors" aria-label="Poslat e-mailem" title="Poslat e-mailem">
+              <Mail size={18} />
+            </a>
+            <button type="button" onClick={onClose} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-surface-card)] transition-colors" aria-label="Zavřít">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className="px-5 pb-6 pt-1 space-y-4">
-          <div className="flex items-start gap-3">
-            <span
-              className="mt-1 size-3.5 shrink-0 rounded-sm shadow-sm ring-1 ring-black/5"
-              style={{ backgroundColor: typeInfo.color }}
-              aria-hidden
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-[color:var(--wp-text-tertiary)] mb-0.5">{typeInfo.label}</p>
-              <h2 className="text-xl font-bold text-[color:var(--wp-text)] leading-snug break-words">{event.title}</h2>
-              <p className="text-sm text-[color:var(--wp-text-secondary)] mt-2">{dateLine}</p>
-            </div>
+        <div className="px-5 pb-6 pt-4 space-y-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1">Kdy</p>
+            <p className="text-sm font-bold text-[color:var(--wp-text)]">{dateLine}</p>
+            {dateLineCaption ? <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-1">{dateLineCaption}</p> : null}
           </div>
 
           <div className="flex items-start gap-3 text-sm text-[color:var(--wp-text-secondary)]">
@@ -471,70 +480,6 @@ function EventDetailPopup({
   );
 }
 
-/* ────────── Event Detail Popover ────────── */
-function EventDetailPopover({
-  event,
-  onEdit,
-  onQuickEdit,
-  onClose,
-}: {
-  event: EventRow;
-  onEdit: () => void;
-  onQuickEdit?: () => void;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const typeInfo = getEventCategory(event.eventType);
-  const start = new Date(event.startAt);
-  const end = event.endAt ? new Date(event.endAt) : null;
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [onClose]);
-
-  return (
-    <div ref={ref} className="wp-cal-detail" onClick={(e) => e.stopPropagation()}>
-      <h2>{event.title}</h2>
-      <p>
-        {start.toLocaleDateString("cs-CZ", { day: "numeric", month: "long" })}
-        {end ? ` – ${end.toLocaleDateString("cs-CZ", { day: "numeric", month: "long" })}` : ""}
-        {" · "}
-        {formatTime(start)}
-        {end ? ` – ${formatTime(end)}` : ""}
-      </p>
-      {event.contactName && <p style={{ fontWeight: 600 }}>👤 {event.contactName}</p>}
-      {event.location && <p>📍 {event.location}</p>}
-      <div className="wp-cal-detail-type" style={{ background: typeInfo.color + "18", color: typeInfo.color }}>
-        <span>{typeInfo.icon}</span> {typeInfo.label}
-      </div>
-      <div className="wp-cal-detail-actions">
-        <button type="button" className="wp-btn wp-btn-primary" style={{ fontSize: 12, padding: "4px 12px", background: "var(--wp-cal-accent)", borderColor: "var(--wp-cal-accent)" }} onClick={onEdit}>
-          Upravit
-        </button>
-        {onQuickEdit && (
-          <button type="button" className="wp-btn wp-btn-ghost" style={{ fontSize: 12, padding: "4px 12px" }} onClick={onQuickEdit}>
-            Rychlá úprava
-          </button>
-        )}
-        <button type="button" className="wp-btn wp-btn-ghost" style={{ fontSize: 12, padding: "4px 12px" }} onClick={onClose}>
-          Zavřít
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /* ────────── Event Form Modal (premium design) ────────── */
 const EVENT_PILL_STYLES: Record<string, { active: string; inactive: string }> = {
   schuzka:   { active: "bg-indigo-600 text-white shadow-lg shadow-indigo-200",  inactive: "bg-indigo-50 text-indigo-600 hover:bg-indigo-100" },
@@ -569,11 +514,11 @@ function EventFormModal({
     if (!initial.startAt) {
       const now = new Date();
       now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
-      const end = new Date(now.getTime() + 60 * 60 * 1000);
+      const startStr = formatDateTimeLocal(now);
       return {
         ...initial,
-        startAt: formatDateTimeLocal(now),
-        endAt: formatDateTimeLocal(end),
+        startAt: startStr,
+        endAt: addMsToLocalDateTime(startStr, DEFAULT_EVENT_DURATION_MS),
       };
     }
     return initial;
@@ -869,7 +814,12 @@ export function PortalCalendarView() {
   useEffect(() => {
     if (searchParams.get("new") === "1") {
       const todayStr = formatDate(new Date());
-      setModal({ ...EMPTY_FORM, startAt: `${todayStr}T09:00`, endAt: `${todayStr}T10:00` });
+      const startNew = `${todayStr}T09:00`;
+      setModal({
+        ...EMPTY_FORM,
+        startAt: startNew,
+        endAt: addMsToLocalDateTime(startNew, DEFAULT_EVENT_DURATION_MS),
+      });
       window.history.replaceState(null, "", "/portal/calendar");
     }
   }, [searchParams]);
@@ -1115,7 +1065,7 @@ export function PortalCalendarView() {
       const ev = events.find((e) => e.id === eventId);
       if (!ev || ev.allDay) return;
       const oldStart = new Date(ev.startAt);
-      const oldEnd = ev.endAt ? new Date(ev.endAt) : new Date(oldStart.getTime() + 60 * 60 * 1000);
+      const oldEnd = ev.endAt ? new Date(ev.endAt) : new Date(oldStart.getTime() + DEFAULT_EVENT_DURATION_MS);
       const durationMs = oldEnd.getTime() - oldStart.getTime();
       const [yy, mm, dd] = targetDateStr.split("-").map(Number);
       const newStart = new Date(yy, mm - 1, dd, Math.floor(startMinutesFromMidnight / 60), startMinutesFromMidnight % 60, 0, 0);
@@ -1155,8 +1105,25 @@ export function PortalCalendarView() {
 
   function openNew(dateStr: string, hour?: number) {
     const h = hour ?? 9;
-    setModal({ ...EMPTY_FORM, startAt: `${dateStr}T${String(h).padStart(2, "0")}:00`, endAt: `${dateStr}T${String(Math.min(h + 1, 23)).padStart(2, "0")}:00` });
+    const startLocal = `${dateStr}T${String(h).padStart(2, "0")}:00`;
+    setModal({
+      ...EMPTY_FORM,
+      startAt: startLocal,
+      endAt: addMsToLocalDateTime(startLocal, DEFAULT_EVENT_DURATION_MS),
+    });
   }
+
+  const openEventDetailFromGrid = useCallback(
+    (ev: EventRow) => {
+      if (detailEvent?.id === ev.id) {
+        setDetailEvent(null);
+        return;
+      }
+      setDetailEvent(ev);
+      setContextPanelCollapsed(false);
+    },
+    [detailEvent],
+  );
 
   function openEdit(ev: EventRow) {
     const start = new Date(ev.startAt);
@@ -1407,7 +1374,10 @@ export function PortalCalendarView() {
                             return (
                               <div
                                 key={ev.id}
-                                onClick={(e) => { e.stopPropagation(); setDetailEvent(detailEvent?.id === ev.id ? null : ev); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEventDetailFromGrid(ev);
+                                }}
                                 className={`px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded border truncate hover:shadow-sm transition-shadow ${useInlineColor ? "text-gray-800 border-gray-300" : typeInfo.tailwindClass}`}
                                 style={useInlineColor ? { backgroundColor: customColor, borderColor: customColor } : undefined}
                               >
@@ -1435,7 +1405,7 @@ export function PortalCalendarView() {
                   firstDayOfWeek={settings.firstDayOfWeek}
                   timeColWidth={isMobile ? 48 : timeColWidth}
                   onSlotClick={(dateStr, hour) => openNew(dateStr, hour)}
-                  onEventClick={(ev) => setDetailEvent(detailEvent?.id === ev.id ? null : ev)}
+                  onEventClick={openEventDetailFromGrid}
                   onDaySelect={setSelectedDate}
                   selectedEventId={detailEvent?.id ?? null}
                   isMobile={isMobile}
@@ -1453,7 +1423,7 @@ export function PortalCalendarView() {
 
           {!contextPanelCollapsed && (
             <CalendarContextPanel
-              selectedEvent={null}
+              selectedEvent={detailEvent}
               selectedDate={selectedDate}
               dayEvents={eventsByDate.get(selectedDate) ?? []}
               dayTasks={dayTasks}
@@ -1470,13 +1440,14 @@ export function PortalCalendarView() {
               onRefresh={() => { loadEvents(); loadDayTasks(selectedDate); }}
               collapsed={false}
               onToggleCollapsed={() => setContextPanelCollapsed(true)}
+              onCloseSelectedEvent={() => setDetailEvent(null)}
               isMobile={isMobile}
             />
           )}
         </div>
       </div>
 
-      {detailEvent && (
+      {detailEvent && (isMobile || contextPanelCollapsed) && (
         <EventDetailPopup
           event={detailEvent}
           contacts={contacts}

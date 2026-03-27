@@ -6,16 +6,34 @@ import { getMembership } from "@/lib/auth/get-membership";
 import { provisionWorkspaceIfNeeded } from "@/lib/auth/ensure-workspace";
 import type { EnsureMembershipResult } from "@/lib/auth/ensure-workspace";
 import { db } from "db";
-import { tenants, roles, memberships, clientContacts, clientInvitations, contacts, userProfiles, advisorPreferences } from "db";
-import { eq, and, ne, gt, inArray } from "db";
+import {
+  tenants,
+  roles,
+  memberships,
+  clientContacts,
+  clientInvitations,
+  contacts,
+  userProfiles,
+  advisorPreferences,
+} from "db";
+import { eq, and, ne, gt, inArray, isNull } from "db";
+import { sendEmail } from "@/lib/email/send-email";
+import { clientPortalInviteTemplate } from "@/lib/email/templates";
+import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
 
 /** Po prvním přihlášení (OAuth nebo signup) vytvoří workspace a uživatele jako Admin, pokud ještě nemá membership. */
 export async function ensureMembership(): Promise<EnsureMembershipResult> {
   return provisionWorkspaceIfNeeded();
 }
 
-/** Vytvoří pozvánku do Client Zone a vrátí odkaz. E-mail se odešle v EPIC 7 (Resend). */
-export async function sendClientZoneInvitation(contactId: string): Promise<{ ok: true; inviteLink: string } | { ok: false; error: string }> {
+const INVITE_EXPIRY_DAYS = 7;
+
+export type SendClientZoneInvitationResult =
+  | { ok: true; inviteLink: string; emailSent: boolean; emailError?: string }
+  | { ok: false; error: string };
+
+/** Vytvoří pozvánku do Client Zone, odešle e-mail (Resend při RESEND_API_KEY) a vrátí odkaz. */
+export async function sendClientZoneInvitation(contactId: string): Promise<SendClientZoneInvitationResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -24,25 +42,91 @@ export async function sendClientZoneInvitation(contactId: string): Promise<{ ok:
   const membership = await getMembership(user.id);
   if (!membership || membership.roleName === "Client") return { ok: false, error: "Forbidden" };
   const [contact] = await db
-    .select({ id: contacts.id, email: contacts.email, tenantId: contacts.tenantId } as any)
+    .select({
+      id: contacts.id,
+      email: contacts.email,
+      tenantId: contacts.tenantId,
+      firstName: contacts.firstName,
+    } as any)
     .from(contacts as any)
     .where(and(eq(contacts.tenantId, membership.tenantId), eq(contacts.id, contactId)) as any)
     .limit(1);
   if (!contact) return { ok: false, error: "Kontakt nenalezen" };
   if (!contact.email) return { ok: false, error: "U kontaktu chybí e-mail" };
+
+  await db
+    .update(clientInvitations as any)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(clientInvitations.tenantId, contact.tenantId),
+        eq(clientInvitations.contactId, contact.id),
+        isNull(clientInvitations.acceptedAt),
+        isNull(clientInvitations.revokedAt),
+      ) as any,
+    );
+
   const token = crypto.randomUUID().replace(/-/g, "");
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-  await db.insert(clientInvitations as any).values({
-    tenantId: contact.tenantId,
-    contactId: contact.id,
-    email: contact.email,
-    token,
-    expiresAt,
-  });
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+  const [inserted] = await db
+    .insert(clientInvitations as any)
+    .values({
+      tenantId: contact.tenantId,
+      contactId: contact.id,
+      email: contact.email.trim(),
+      token,
+      expiresAt,
+      invitedByUserId: user.id,
+    })
+    .returning({ id: clientInvitations.id } as any);
+
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
   const inviteLink = `${baseUrl}/register?token=${token}`;
-  return { ok: true, inviteLink };
+
+  const [tenantRow] = await db
+    .select({ name: tenants.name, notificationEmail: tenants.notificationEmail } as any)
+    .from(tenants as any)
+    .where(eq(tenants.id, contact.tenantId))
+    .limit(1);
+
+  const { subject, html } = clientPortalInviteTemplate({
+    registerUrl: inviteLink,
+    contactFirstName: contact.firstName?.trim() ?? "",
+    tenantName: tenantRow?.name ?? undefined,
+    expiresInDays: INVITE_EXPIRY_DAYS,
+    gdprUrl: `${baseUrl}/gdpr`,
+    termsUrl: `${baseUrl}/terms`,
+  });
+
+  const replyTo = resolveResendReplyTo(tenantRow?.notificationEmail ?? undefined);
+  const sendResult = await sendEmail({
+    to: contact.email.trim(),
+    subject,
+    html,
+    replyTo,
+  });
+
+  if (inserted?.id) {
+    if (sendResult.ok) {
+      await db
+        .update(clientInvitations as any)
+        .set({ emailSentAt: new Date(), lastEmailError: null })
+        .where(eq(clientInvitations.id, inserted.id) as any);
+    } else {
+      await db
+        .update(clientInvitations as any)
+        .set({ lastEmailError: sendResult.error ?? "send failed" })
+        .where(eq(clientInvitations.id, inserted.id) as any);
+    }
+  }
+
+  return {
+    ok: true,
+    inviteLink,
+    emailSent: sendResult.ok,
+    emailError: sendResult.ok ? undefined : sendResult.error,
+  };
 }
 
 /** Po registraci klienta (email + token) propojí user_id → contact_id a vytvoří membership Client. gdprConsent: uloží souhlas s GDPR u kontaktu. */
@@ -55,7 +139,13 @@ export async function acceptClientInvitation(token: string, gdprConsent?: boolea
   const [inv] = await db
     .select()
     .from(clientInvitations as any)
-    .where(and(eq(clientInvitations.token, token), gt(clientInvitations.expiresAt, new Date())) as any)
+    .where(
+      and(
+        eq(clientInvitations.token, token),
+        gt(clientInvitations.expiresAt, new Date()),
+        isNull(clientInvitations.revokedAt),
+      ) as any,
+    )
     .limit(1);
   if (!inv) return { ok: false, error: "Pozvánka neexistuje nebo vypršela" };
   if (inv.acceptedAt) return { ok: false, error: "Pozvánka již byla využita" };
@@ -88,6 +178,22 @@ export async function acceptClientInvitation(token: string, gdprConsent?: boolea
       .where(eq(contacts.id, inv.contactId) as any);
   }
   return { ok: true };
+}
+
+/** Po přihlášení do klientské zóny bez pozvánky: ověří existující roli Client. */
+export async function ensureClientPortalAccess(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Nejste přihlášeni." };
+  const m = await getMembership(user.id);
+  if (m?.roleName === "Client") return { ok: true };
+  return {
+    ok: false,
+    error:
+      "Účet nemá přiřazený klientský přístup. Požádejte svého poradce o pozvánku do klientské zóny (e-mail s odkazem).",
+  };
 }
 
 /** Aktualizuje jméno přihlášeného uživatele v Supabase Auth (user_metadata.full_name) a v user_profiles.

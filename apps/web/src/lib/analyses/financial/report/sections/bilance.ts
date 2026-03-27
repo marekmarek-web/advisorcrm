@@ -133,7 +133,7 @@ export function renderBilance(ctx: SectionCtx): string {
       <div class="card has-top-border-green card-padded">
         <div class="card-title">Měsíční přebytek</div>
         <div class="kpi-value ${netCashflow >= 0 ? 'c-pos' : 'c-neg'}" style="margin:8px 0">${netCashflow >= 0 ? '+' : '−'}${fmtMonthly(Math.abs(netCashflow))}</div>
-        <div style="font-size:12px;color:var(--stone-400,#8c959f)">${netCashflow >= 0 ? 'Máte prostor pro investice a spoření.' : 'Výdaje převyšují příjmy — doporučujeme revizi.'}</div>
+        <div style="font-size:12px;color:var(--stone-400,#8c959f)">${netCashflow >= 0 ? 'Máte prostor pro investice a spoření.' : 'Výdaje převyšují příjmy — oblast k revizi v rámci posouzení poradcem.'}</div>
       </div>
     </div>
   </div>

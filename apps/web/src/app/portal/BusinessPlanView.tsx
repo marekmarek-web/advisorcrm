@@ -480,7 +480,7 @@ export function BusinessPlanView() {
               Zatím nemáš nastavený business plán
             </h2>
             <p className="text-[color:var(--wp-text-secondary)] font-medium text-center max-w-md leading-relaxed mb-8">
-              Nastav svou osobní vizi, definuj cíle produkce a AI ti automaticky vypočítá potřebné aktivity a schůzky na každý den.
+              Nastav svou osobní vizi a cíle produkce — plán zobrazí přehled aktivit a schůzek z dat CRM (interní plánování, ne rada klientovi).
             </p>
             <button
               type="button"
@@ -498,7 +498,7 @@ export function BusinessPlanView() {
               Plán pro {plan.periodLabel} existuje, ale nejsou vyplněné cíle
             </h2>
             <p className="text-[color:var(--wp-text-secondary)] font-medium text-center max-w-md mb-8">
-              Doplněním cílů uvidíš plnění a doporučené akce.
+              Doplněním cílů uvidíš plnění a interní návrhy aktivit v plánu.
             </p>
             <button
               type="button"
@@ -738,9 +738,9 @@ export function BusinessPlanView() {
                     <Sparkles size={20} />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-amber-800 mb-1">AI Business Coach</h4>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-amber-800 mb-1">Interní AI přehled</h4>
                     <p className="text-sm font-medium text-amber-900/80 leading-relaxed">
-                      {aiInsightLoading ? "Generuji doporučení…" : aiInsight || progressResult.recommendations[0]?.description || "Nastav cíle a načti data z CRM. AI ti pak připraví osobní doporučení."}
+                      {aiInsightLoading ? "Generuji informativní podklad…" : aiInsight || progressResult.recommendations[0]?.description || "Nastav cíle a načti data z CRM — poté můžeš vygenerovat informativní interní přehled (ne rada klientovi)."}
                     </p>
                   </div>
                 </div>
@@ -798,7 +798,7 @@ export function BusinessPlanView() {
             disabled={!isConfigured || aiInsightLoading}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-aidv-create to-indigo-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-900/20 hover:scale-105 transition-transform disabled:opacity-70 min-h-[44px]"
           >
-            <Sparkles size={16} className="text-amber-400" /> Generovat AI Strategii
+            <Sparkles size={16} className="text-amber-400" /> Vygenerovat interní AI přehled
           </button>
         </div>
       </main>

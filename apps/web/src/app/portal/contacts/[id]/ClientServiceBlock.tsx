@@ -188,7 +188,7 @@ export function ClientServiceBlock({ contactId }: { contactId: string }) {
         {!hasNoData && status.status === "missing" && activeRecs.length === 0 && status.lastServiceDate && (
           <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-5 flex flex-col gap-3">
             <p className="text-sm text-[color:var(--wp-text-secondary)]">
-              Doporučujeme doplnit datum příštího servisu.
+              Chybí datum příštího servisu v evidenci — zvažte doplnění.
             </p>
             <Link
               href={`/portal/contacts/${contactId}/edit`}

@@ -19,6 +19,8 @@ const serverSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   NEXT_PUBLIC_SKIP_AUTH: z.enum(["true", "false", ""]).optional(),
+  /** When "true", hides client portal AI help (nav-only chat). */
+  NEXT_PUBLIC_DISABLE_CLIENT_PORTAL_AI: z.enum(["true", "false", ""]).optional(),
 });
 
 function validateEnv() {

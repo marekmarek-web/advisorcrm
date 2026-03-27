@@ -21,7 +21,8 @@
     "db:push": "pnpm --filter db push",
     "db:studio": "pnpm --filter db studio",
     "seed": "pnpm --filter db seed",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "compliance:copy-check": "node scripts/compliance-copy-check.mjs"
   },
   "dependencies": {
     "postgres": "^3.4.4"

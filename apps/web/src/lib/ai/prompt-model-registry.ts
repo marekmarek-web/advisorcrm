@@ -1,6 +1,11 @@
 /**
  * Central prompt + model policy registry for copilot and AI Review.
  * Prompt IDs come from env (OpenAI Prompt Builder pmpt_*).
+ *
+ * Deploy sync (Vercel / production):
+ * - For every key in `AI_REVIEW_PROMPT_KEYS`, set the corresponding `AI_REVIEW_REGISTRY[*].envKey` (and optional version env).
+ * - Prompt Builder template variable names must match `AI_REVIEW_PROMPT_REQUIRED_VARS` in `ai-review-prompt-variables.ts`
+ *   (plus any legacy aliases documented there).
  */
 
 export type PromptRegistryCategory = "copilot" | "ai_review" | "future_scan";

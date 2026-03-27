@@ -33,18 +33,18 @@ function buildCoachingSummary(detail: TeamMemberDetail): string[] {
   }
   if (m) {
     if (m.daysWithoutActivity >= 7 && !detail.alerts.some((a) => a.type === "no_activity")) {
-      bullets.push(`${m.daysWithoutActivity} dní bez aktivity – doporučujeme pravidelný záznam v CRM.`);
+      bullets.push(`${m.daysWithoutActivity} dní bez aktivity – interní tip: zvažte pravidelný záznam v CRM.`);
     }
     if (m.meetingsThisPeriod === 0 && m.unitsThisPeriod === 0) {
-      bullets.push("Zatím žádné schůzky ani jednotky v tomto období – vhodné naplánovat schůzky a follow-up.");
+      bullets.push("Zatím žádné schůzky ani jednotky v tomto období – oblast k ověření vedením: naplánovat schůzky a follow-up.");
     }
     if (m.tasksOpen > 10) {
-      bullets.push("Vysoký počet otevřených úkolů – doporučujeme priorizaci a uzavírání starých položek.");
+      bullets.push("Vysoký počet otevřených úkolů – interní upozornění: zvažte priorizaci a uzavření starých položek.");
     }
   }
   if (detail.adaptation) {
     if (detail.adaptation.adaptationStatus === "Rizikový") {
-      bullets.push(`Nováček v riziku (${detail.adaptation.adaptationScore} % adaptace) – doporučujeme intenzivnější podporu a check-in.`);
+      bullets.push(`Nováček v riziku (${detail.adaptation.adaptationScore} % adaptace) – interní tip: zvažte intenzivnější podporu a check-in.`);
     } else if (detail.adaptation.adaptationStatus === "V adaptaci" && detail.adaptation.warnings.length > 0) {
       bullets.push(`Adaptace: ${detail.adaptation.warnings.join("; ")}.`);
     }

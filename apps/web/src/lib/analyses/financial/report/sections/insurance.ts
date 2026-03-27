@@ -75,7 +75,7 @@ function renderPersonInsurance(ctx: SectionCtx, p: PersonData): string {
     <div class="sec-header">
       <div class="sec-number">${num} — Zajištění</div>
       <div class="sec-title">Zajištění — ${esc(p.name)}</div>
-      <div class="sec-desc">Doporučená struktura pojištění na základě příjmu, závazků a životní situace.</div>
+      <div class="sec-desc">Orientační model krytí z příjmu, závazků a životní situace — interní podklad pro poradce.</div>
     </div>
 
     <div class="ins-person-header">
@@ -87,7 +87,7 @@ function renderPersonInsurance(ctx: SectionCtx, p: PersonData): string {
     </div>
 
     <div class="tbl-wrap" style="margin-bottom:var(--s5,20px)">
-      <div class="tbl-cap"><span class="tbl-cap-title">Doporučené krytí</span></div>
+      <div class="tbl-cap"><span class="tbl-cap-title">Modelované krytí (orientační)</span></div>
       <table class="dt">
         <thead><tr><th>Riziko</th><th>Popis</th><th class="r">Výše</th></tr></thead>
         <tbody>
@@ -125,7 +125,7 @@ function renderPersonInsurance(ctx: SectionCtx, p: PersonData): string {
       <div class="ins-detail-card">
         <div class="ins-detail-title">Smrt</div>
         <div class="ins-line"><span class="ins-line-name">Krytí závazků</span><span class="ins-line-val">${fmtCzk(p.death.coverage)}</span></div>
-        <div class="ins-line sum"><span class="ins-line-name">Doporučená pojistka</span><span class="ins-line-val c-gold">${fmtCzk(p.death.coverage)}</span></div>
+        <div class="ins-line sum"><span class="ins-line-name">Modelovaná pojistná částka</span><span class="ins-line-val c-gold">${fmtCzk(p.death.coverage)}</span></div>
       </div>
     </div>
 
@@ -154,12 +154,12 @@ function renderChildrenInsurance(
   <div class="page-inner">
     <div class="sec-header">
       <div class="sec-number">${num} — Zajištění dětí</div>
-      <div class="sec-title">Doporučení pro děti</div>
-      <div class="sec-desc">Doporučené pojistné krytí pro ochranu zdraví a budoucnosti vašich dětí.</div>
+      <div class="sec-title">Zajištění dětí — orientační model</div>
+      <div class="sec-desc">Modelované pojistné krytí pro přehled — k finálnímu nastavení výhradně podle úvahy poradce.</div>
     </div>
 
     <div class="tbl-wrap">
-      <div class="tbl-cap"><span class="tbl-cap-title">Doporučené krytí dětí</span></div>
+      <div class="tbl-cap"><span class="tbl-cap-title">Modelované krytí dětí (orientační)</span></div>
       <table class="dt">
         <thead><tr><th>Jméno</th><th>Věk</th><th class="r">Invalidita</th><th class="r">Trvalé následky</th><th class="r">Denní dávka</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -169,7 +169,7 @@ function renderChildrenInsurance(
     <div class="callout info">
       <span class="callout-icon">👶</span>
       <div><strong>Dětské pojištění</strong>
-      Doporučujeme pojistit děti proti trvalým následkům úrazu, invaliditě a hospitalizaci. Pojistné je zpravidla velmi nízké a poskytuje významnou finanční ochranu.</div>
+      Běžně se zvažuje krytí dětí vůči trvalým následkům úrazu, invaliditě a hospitalizaci — posouzení a výběr produktu je v kompetenci poradce; text je informativní.</div>
     </div>
   </div>
 </section>`;

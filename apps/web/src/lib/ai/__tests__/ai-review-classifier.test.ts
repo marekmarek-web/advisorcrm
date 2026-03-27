@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { buildDocClassifierPromptVariables, runAiReviewClassifier } from "../ai-review-classifier";
 
 vi.mock("@/lib/openai", () => ({
-  createResponseFromPrompt: vi.fn(),
+  createAiReviewResponseFromPrompt: vi.fn(),
   createResponseWithFile: vi.fn(),
 }));
 
@@ -69,9 +69,9 @@ describe("runAiReviewClassifier prompt path", () => {
     vi.clearAllMocks();
   });
 
-  it("passes six variables to createResponseFromPrompt when prompt id set and excerpt long enough", async () => {
+  it("passes six variables via createAiReviewResponseFromPrompt when prompt id set and excerpt long enough", async () => {
     const openai = await import("@/lib/openai");
-    vi.mocked(openai.createResponseFromPrompt).mockResolvedValueOnce({ ok: true, text: classifierJson });
+    vi.mocked(openai.createAiReviewResponseFromPrompt).mockResolvedValueOnce({ ok: true, text: classifierJson });
     vi.mocked(openai.createResponseWithFile).mockRejectedValueOnce(new Error("should not call file path"));
 
     const excerpt = "c".repeat(500);
@@ -93,8 +93,9 @@ describe("runAiReviewClassifier prompt path", () => {
       else process.env.OPENAI_PROMPT_AI_REVIEW_DOC_CLASSIFIER_ID = prevId;
     }
 
-    expect(openai.createResponseFromPrompt).toHaveBeenCalledTimes(1);
-    const call = vi.mocked(openai.createResponseFromPrompt).mock.calls[0][0];
+    expect(openai.createAiReviewResponseFromPrompt).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(openai.createAiReviewResponseFromPrompt).mock.calls[0][0];
+    expect(call.promptKey).toBe("docClassifierV2");
     expect(call.variables).toMatchObject({
       filename: "doc.pdf",
       page_count: "3",

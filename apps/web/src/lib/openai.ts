@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import { withOpenAIRateLimitRetry } from "@/lib/openai-rate-limit";
 import { buildAiReviewResponsesCreateExtras } from "./openai-ai-review-params";
+import { findMissingAiReviewPromptVariables } from "./ai/ai-review-prompt-variables";
+import type { AiReviewPromptKey } from "./ai/prompt-model-registry";
 
 const defaultModel = "gpt-5-mini";
 const fallbackModel = "gpt-4o-mini";
@@ -311,6 +313,77 @@ export async function createResponseFromPrompt(
     });
     return { ok: false, error: message, code: (err as { code?: string })?.code };
   }
+}
+
+/** Centralized AI Review Prompt Builder step log (no variable values / PII). */
+export function logAiReviewPromptStep(payload: {
+  promptKey: AiReviewPromptKey;
+  phase: "preflight" | "complete";
+  ok: boolean;
+  missing?: string[];
+  variableKeys: string[];
+  durationMs?: number;
+  openaiError?: string;
+}): void {
+  console.info(
+    "[ai-review-prompt]",
+    JSON.stringify({
+      promptKey: payload.promptKey,
+      phase: payload.phase,
+      ok: payload.ok,
+      ...(payload.missing?.length ? { missing: payload.missing } : {}),
+      variableKeys: payload.variableKeys,
+      ...(typeof payload.durationMs === "number" ? { durationMs: payload.durationMs } : {}),
+      ...(payload.openaiError ? { openaiError: payload.openaiError.slice(0, 200) } : {}),
+    })
+  );
+}
+
+/**
+ * Prompt Builder call for AI Review with required-variable validation (avoids OpenAI 400 missing vars).
+ */
+export async function createAiReviewResponseFromPrompt(
+  params: {
+    promptKey: AiReviewPromptKey;
+    promptId: string;
+    version?: string | null;
+    variables: Record<string, string>;
+  },
+  options?: { model?: string; store?: boolean; routing?: OpenAICallRoutingOptions }
+): Promise<CreateResponseResult> {
+  const started = Date.now();
+  const keys = Object.keys(params.variables);
+  const missing = findMissingAiReviewPromptVariables(params.promptKey, params.variables);
+  logAiReviewPromptStep({
+    promptKey: params.promptKey,
+    phase: "preflight",
+    ok: missing.length === 0,
+    ...(missing.length ? { missing } : {}),
+    variableKeys: keys,
+  });
+  if (missing.length) {
+    return {
+      ok: false,
+      error: `MISSING_PROMPT_VARS:${params.promptKey}:${missing.join(",")}`,
+    };
+  }
+  const res = await createResponseFromPrompt(
+    {
+      promptId: params.promptId,
+      version: params.version,
+      variables: params.variables,
+    },
+    options
+  );
+  logAiReviewPromptStep({
+    promptKey: params.promptKey,
+    phase: "complete",
+    ok: res.ok,
+    variableKeys: keys,
+    durationMs: Date.now() - started,
+    ...(!res.ok ? { openaiError: res.error } : {}),
+  });
+  return res;
 }
 
 /**

@@ -418,9 +418,9 @@ export function BusinessPlanScreen({ deviceClass = "phone" }: { deviceClass?: De
         </MobileSection>
       ) : null}
 
-      {/* AI recommendations */}
+      {/* Interní AI přehled */}
       {(progressResult?.recommendations ?? []).length > 0 ? (
-        <MobileSection title="AI doporučení">
+        <MobileSection title="Interní AI přehled">
           {progressResult!.recommendations.slice(0, 2).map((rec, i) => (
             <AIInsightCard
               key={i}

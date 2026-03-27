@@ -19,6 +19,30 @@ export function formatDateTimeLocal(d: Date): string {
   return `${y}-${m}-${day}T${h}:${min}`;
 }
 
+/** Výchozí délka nové časované aktivity (30 min). */
+export const DEFAULT_EVENT_DURATION_MS = 30 * 60 * 1000;
+
+/** Přičte ms k hodnotě `YYYY-MM-DDTHH:mm` v lokálním čase. */
+export function addMsToLocalDateTime(naiveLocal: string, ms: number): string {
+  const d = new Date(naiveLocal.trim());
+  if (Number.isNaN(d.getTime())) return naiveLocal;
+  return formatDateTimeLocal(new Date(d.getTime() + ms));
+}
+
+/** Zobrazení času po čtvrthodinách (jen UI; nemění uložený okamžik). */
+export function formatTimeQuarterHourDisplay(d: Date): string {
+  const x = new Date(d.getTime());
+  let h = x.getHours();
+  let m = x.getMinutes();
+  m = Math.round(m / 15) * 15;
+  if (m >= 60) {
+    m = 0;
+    h = Math.min(23, h + 1);
+  }
+  x.setHours(h, m, 0, 0);
+  return x.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+}
+
 /**
  * Pouze v prohlížeči: `datetime-local` bez časové zóny → jednoznačné UTC ISO pro server actions.
  * Na serveru Node parsuje `YYYY-MM-DDTHH:mm` jako UTC a posune čas o pásmo uživatele.

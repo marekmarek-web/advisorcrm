@@ -3,7 +3,7 @@
 import { useMemo, useCallback, useRef } from "react";
 import { Plus, User } from "lucide-react";
 import type { EventRow } from "@/app/actions/events";
-import { formatDateLocal } from "./date-utils";
+import { DEFAULT_EVENT_DURATION_MS, formatDateLocal } from "./date-utils";
 import { getEventStyle } from "./event-categories";
 import { CurrentTimeLine } from "./CurrentTimeLine";
 
@@ -115,7 +115,7 @@ export function WeekDayGrid({
       const moved = findEventById(id);
       if (!moved || moved.allDay) return;
       const s = new Date(moved.startAt);
-      const en = moved.endAt ? new Date(moved.endAt) : new Date(s.getTime() + 60 * 60 * 1000);
+      const en = moved.endAt ? new Date(moved.endAt) : new Date(s.getTime() + DEFAULT_EVENT_DURATION_MS);
       const durMin = Math.max(15, Math.ceil((en.getTime() - s.getTime()) / 60000 / 15) * 15);
 
       const col = e.currentTarget as HTMLElement;
@@ -231,9 +231,9 @@ export function WeekDayGrid({
                 {/* Event blocks – kalendar.txt style with Tailwind */}
                 {dayEvents.map((ev) => {
                   const start = new Date(ev.startAt);
-                  const end = ev.endAt ? new Date(ev.endAt) : new Date(start.getTime() + 60 * 60 * 1000);
-                  const dayStart = new Date(ev.startAt);
-                  dayStart.setHours(startHour, 0, 0, 0);
+                  const end = ev.endAt ? new Date(ev.endAt) : new Date(start.getTime() + DEFAULT_EVENT_DURATION_MS);
+                  const [yy, mm, dd] = ds.split("-").map(Number);
+                  const dayStart = new Date(yy, mm - 1, dd, startHour, 0, 0, 0);
                   const topMin = (start.getTime() - dayStart.getTime()) / (60 * 1000);
                   const durationMin = (end.getTime() - start.getTime()) / (60 * 1000);
                   const topPx = topMin * (pixelsPerHour / 60);

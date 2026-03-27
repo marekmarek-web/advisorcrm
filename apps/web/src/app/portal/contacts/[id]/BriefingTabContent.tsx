@@ -14,6 +14,7 @@ import {
 import clsx from "clsx";
 import { AiActionMenu } from "@/app/components/ai/AiActionMenu";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 
 type Props = { contactId: string };
 
@@ -100,10 +101,10 @@ export function BriefingTabContent({ contactId }: Props) {
           <div>
             <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
               <Sparkles size={20} className="text-indigo-500" />
-              AI briefing (prompt)
+              Interní AI briefing (prompt)
             </h2>
             <p className="text-sm text-[color:var(--wp-text-secondary)] mt-0.5">
-              Vygeneruje přípravu na schůzku z dat v CRM pomocí nakonfigurovaného OpenAI promptu.
+              Informativní podklad pro poradce z dat v CRM (OpenAI prompt) — nejde o doporučení klientovi.
             </p>
           </div>
           <button
@@ -121,6 +122,7 @@ export function BriefingTabContent({ contactId }: Props) {
           </button>
         </div>
         <div className="p-6">
+          <AdvisorAiOutputNotice variant="compact" className="mb-4" />
           {briefingError && (
             <p className="text-sm text-rose-600 mb-3" role="alert">
               {briefingError}
@@ -149,13 +151,14 @@ export function BriefingTabContent({ contactId }: Props) {
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)] flex items-center gap-2">
             <FileText size={20} className="text-indigo-500" />
-            AI follow-up (prompt)
+            Interní AI follow-up (prompt)
           </h2>
           <p className="text-sm text-[color:var(--wp-text-secondary)] mt-0.5">
-            Vygeneruje shrnutí a další kroky z poznámek ze schůzky pomocí nakonfigurovaného OpenAI promptu.
+            Informativní shrnutí a návrh interních kroků z poznámek ze schůzky — výhradně pro poradce.
           </p>
         </div>
         <div className="p-6 space-y-4">
+          <AdvisorAiOutputNotice variant="compact" />
           <AiFollowUpForm
             contactId={contactId}
             meetingNoteId={meetingNoteId}
@@ -174,7 +177,7 @@ export function BriefingTabContent({ contactId }: Props) {
       <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
           <h2 className="text-lg font-black text-[color:var(--wp-text)]">Po schůzce</h2>
-          <p className="text-sm text-[color:var(--wp-text-secondary)] mt-0.5">Shrnutí a návrhy dalších kroků ze zápisků nebo poznámek.</p>
+          <p className="text-sm text-[color:var(--wp-text-secondary)] mt-0.5">Informativní shrnutí a návrh interních kroků ze zápisků — pro práci poradce.</p>
         </div>
         <div className="p-6">
           <PostMeetingSummaryPanel

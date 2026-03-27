@@ -90,6 +90,18 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
     blocked.push("PROPOSAL_NOT_FINAL");
   }
 
+  const payload = row.extractedPayload as Record<string, unknown> | null | undefined;
+  const docClass = payload?.documentClassification as Record<string, unknown> | undefined;
+  const lifecycle = typeof docClass?.lifecycleStatus === "string" ? docClass.lifecycleStatus : "";
+  if (
+    lifecycle === "proposal" ||
+    lifecycle === "modelation" ||
+    lifecycle === "offer" ||
+    lifecycle === "illustration"
+  ) {
+    blocked.push("NON_FINAL_LIFECYCLE");
+  }
+
   if (UNSUPPORTED_FOR_DIRECT_APPLY.has(normalizedType) || UNSUPPORTED_FOR_DIRECT_APPLY.has(docType)) {
     blocked.push("UNSUPPORTED_DOCUMENT_TYPE");
   }
@@ -128,6 +140,10 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
     candidates.length > 1
   ) {
     blocked.push("AMBIGUOUS_CLIENT_MATCH");
+  }
+
+  if (trace?.llmClientMatchKind === "ambiguous") {
+    blocked.push("LLM_CLIENT_MATCH_AMBIGUOUS");
   }
 
   const extractionRoute = trace?.extractionRoute;

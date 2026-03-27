@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { perfLog } from "@/lib/perf-log";
 import { db } from "db";
-import { tenants, roles, memberships, opportunityStages } from "db";
+import { tenants, roles, memberships, opportunityStages, clientInvitations } from "db";
+import { sql, isNull, gt, and } from "db";
 
 export type EnsureMembershipResult =
   | { ok: true; redirectTo: string }
@@ -68,6 +69,33 @@ export async function provisionWorkspaceIfNeeded(): Promise<EnsureMembershipResu
       perfLog("ensureMembership", t0);
       return { ok: true, redirectTo };
     }
+
+    const emailNorm = user.email?.trim().toLowerCase();
+    if (emailNorm) {
+      const pendingRows = await db
+        .select({ token: clientInvitations.token })
+        .from(clientInvitations as any)
+        .where(
+          and(
+            sql`lower(trim(${clientInvitations.email})) = ${emailNorm}`,
+            isNull(clientInvitations.acceptedAt),
+            isNull(clientInvitations.revokedAt),
+            gt(clientInvitations.expiresAt, new Date()),
+          ) as any,
+        )
+        .limit(1);
+      const pending = pendingRows[0];
+      if (pending?.token) {
+        perfLog("ensureMembership", t0);
+        return {
+          ok: false,
+          error:
+            "Pro tento e-mail čeká pozvánka do klientské zóny. Dokončete aktivaci pomocí odkazu z e-mailu nebo znovu otevřete pozvánku od poradce.",
+          redirectTo: `/prihlaseni?register=1&token=${encodeURIComponent(pending.token)}`,
+        };
+      }
+    }
+
     const email = user.email ?? "";
     const slug =
       email.replace(/@.*/, "").replace(/[^a-z0-9]/gi, "-").toLowerCase().slice(0, 20) || "workspace";

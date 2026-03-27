@@ -1,0 +1,278 @@
+[
+  {
+    "type": "p",
+    "text": "Informační dokument poskytovatele pro uživatele webu, zákazníky a osoby využívající klientský portál. Draft připravený pro český trh na základě oficiálních veřejných zdrojů a zadaného provozního modelu Aidvisora."
+  },
+  {
+    "type": "p",
+    "text": "Důležité: Tento text je připraven jako praktický základ pro Aidvisoru nastavenou jako SaaS/ICT nástroj pro finanční poradce. Není koncipován jako poskytování finančního poradenství ze strany poskytovatele platformy. Před spuštěním do ostrého provozu je vhodná lokální právní kontrola zejména ve vztahu k použitým funkcím AI, billingu, reklamacím a identifikačním údajům poskytovatele."
+  },
+  {
+    "type": "h1",
+    "text": "1. Kdo osobní údaje zpracovává"
+  },
+  {
+    "type": "p",
+    "text": "Správcem osobních údajů pro účely tohoto dokumentu je Aidvisora s.r.o., se sídlem Vraňany 6, 277 07 Mlčechvosty, Česká republika. IČO a DIČ budou doplněny po zápisu společnosti v obchodním rejstříku."
+  },
+  {
+    "type": "p",
+    "text": "Tento dokument vysvětluje, jak poskytovatel zpracovává osobní údaje ve vlastním postavení správce. Neřeší všechny situace, kdy poskytovatel vystupuje pouze jako zpracovatel pro své zákazníky; ty jsou popsány níže a upraveny ve zpracovatelské smlouvě."
+  },
+  {
+    "type": "h1",
+    "text": "2. Kdy vystupujeme jako správce a kdy jako zpracovatel"
+  },
+  {
+    "type": "p",
+    "text": "Jako správce zpracováváme zejména údaje související s provozem našeho webu a služby, registrací účtu, fakturací, komunikací se zákazníky, zákaznickou podporou, bezpečností služby, vyřizováním právních nároků a plněním zákonných povinností."
+  },
+  {
+    "type": "p",
+    "text": "Jako zpracovatel naopak zpravidla vystupujeme u údajů, které do platformy Aidvisora vkládá náš zákazník ve vztahu ke svým klientům, potenciálním klientům, dokumentům, platebním přehledům, zápiskům, workflow a klientskému portálu."
+  },
+  {
+    "type": "p",
+    "text": "Pokud jste klientem finančního poradce a vaše údaje byly vloženy do platformy vaším poradcem, je primárním správcem vašich údajů tento poradce. V takovém případě se se žádostí týkající se práv subjektu údajů obraťte nejprve na něj."
+  },
+  {
+    "type": "h1",
+    "text": "3. Jaké údaje zpracováváme jako správce"
+  },
+  {
+    "type": "li",
+    "text": "• identifikační a kontaktní údaje zákazníků a jejich uživatelů;"
+  },
+  {
+    "type": "li",
+    "text": "• údaje o objednávce, tarifu, fakturaci a platbách;"
+  },
+  {
+    "type": "li",
+    "text": "• komunikační údaje obsažené v e-mailech, formulářích, support requestech a obchodní komunikaci;"
+  },
+  {
+    "type": "li",
+    "text": "• technické údaje o používání služby, zabezpečení účtu a provozní logy;"
+  },
+  {
+    "type": "li",
+    "text": "• údaje nezbytné pro plnění zákonných povinností, účetnictví a obranu právních nároků."
+  },
+  {
+    "type": "h1",
+    "text": "4. Účely a právní základy zpracování"
+  },
+  {
+    "type": "p",
+    "text": "Účel"
+  },
+  {
+    "type": "p",
+    "text": "Právní základ"
+  },
+  {
+    "type": "p",
+    "text": "Běžná retenční logika"
+  },
+  {
+    "type": "p",
+    "text": "zřízení a správa účtu, poskytování služby"
+  },
+  {
+    "type": "p",
+    "text": "plnění smlouvy a kroky před uzavřením smlouvy"
+  },
+  {
+    "type": "p",
+    "text": "po dobu trvání služby a přiměřenou dobu po ukončení"
+  },
+  {
+    "type": "p",
+    "text": "fakturace, účetnictví a daňové povinnosti"
+  },
+  {
+    "type": "p",
+    "text": "splnění právní povinnosti"
+  },
+  {
+    "type": "p",
+    "text": "po zákonem vyžadovanou dobu"
+  },
+  {
+    "type": "p",
+    "text": "zákaznická podpora a provoz komunikace"
+  },
+  {
+    "type": "p",
+    "text": "plnění smlouvy a oprávněný zájem na řádném provozu"
+  },
+  {
+    "type": "p",
+    "text": "po dobu potřebnou k vyřízení požadavku a ochraně práv"
+  },
+  {
+    "type": "p",
+    "text": "bezpečnost, prevence zneužití a interní logování"
+  },
+  {
+    "type": "p",
+    "text": "oprávněný zájem na bezpečnosti služby"
+  },
+  {
+    "type": "p",
+    "text": "po dobu přiměřenou povaze logu a riziku"
+  },
+  {
+    "type": "p",
+    "text": "vymáhání a obrana právních nároků"
+  },
+  {
+    "type": "p",
+    "text": "oprávněný zájem"
+  },
+  {
+    "type": "p",
+    "text": "po dobu trvání relevantních nároků"
+  },
+  {
+    "type": "p",
+    "text": "marketing vůči podnikatelům v dovoleném rozsahu"
+  },
+  {
+    "type": "p",
+    "text": "oprávněný zájem nebo souhlas, vyžaduje-li se"
+  },
+  {
+    "type": "p",
+    "text": "do odhlášení nebo zániku důvodu"
+  },
+  {
+    "type": "p",
+    "text": "Pokud zpracováváme osobní údaje jménem zákazníka jako zpracovatel, řídíme se jeho pokyny a právním základem, který nese odpovědnost zajistit zákazník."
+  },
+  {
+    "type": "h1",
+    "text": "5. AI funkce a dokumentové zpracování"
+  },
+  {
+    "type": "p",
+    "text": "Pokud zákazník využívá funkce AI, mohou být vybrané dokumenty, texty nebo metadata technicky zpracovány za účelem interních informativních výstupů, jako je extrakce, sumarizace, třídění nebo vytvoření draftu interního úkolu."
+  },
+  {
+    "type": "p",
+    "text": "Tyto AI výstupy nejsou určeny jako přímé doporučení koncovým klientům. V roli správce zpracováváme pro vlastní účely pouze údaje potřebné k provozu účtu, bezpečnosti, logování a zákaznické podpoře; samotný obsah klientských dokumentů je typicky zpracováván jménem našeho zákazníka jako zpracovatele."
+  },
+  {
+    "type": "p",
+    "text": "Praktický doplněk: U produkčního nasazení je vhodné v administraci i ve veřejné dokumentaci uvést, zda jsou AI funkce aktivní, jaké kategorie dokumentů se přes ně zpracovávají a jaké regionální nastavení je použito u poskytovatele AI API."
+  },
+  {
+    "type": "h1",
+    "text": "6. Příjemci a kategorie zpracovatelů"
+  },
+  {
+    "type": "p",
+    "text": "Osobní údaje můžeme zpřístupnit našim smluvním partnerům, kteří pro nás zajišťují části provozu služby, například cloudovou infrastrukturu, hosting, databázové služby, e-mailové a notifikační služby, analytické či bezpečnostní nástroje, AI API nebo poskytovatele zákaznické podpory."
+  },
+  {
+    "type": "p",
+    "text": "Tyto subjekty zavazujeme k odpovídající důvěrnosti a ochraně dat. Aktuální klíčové kategorie poskytovatelů odpovídají architektuře služby, typicky cloud databázi a storage, aplikačnímu hostingu a poskytovateli AI API."
+  },
+  {
+    "type": "p",
+    "text": "Konkrétní seznam klíčových subprocesorů pro data zpracovávaná jménem zákazníka je obsažen ve zpracovatelské smlouvě nebo v její příloze."
+  },
+  {
+    "type": "h1",
+    "text": "7. Předání do třetích zemí"
+  },
+  {
+    "type": "p",
+    "text": "Osobní údaje nepředáváme mimo Evropský hospodářský prostor bez odpovídajícího právního základu a vhodných záruk."
+  },
+  {
+    "type": "p",
+    "text": "Pokud je v souvislosti s infrastrukturou nebo AI API použit poskytovatel s možným mezinárodním přenosem, přijmeme odpovídající mechanismus podle použitelných právních předpisů, například rozhodnutí o odpovídající ochraně nebo standardní smluvní doložky."
+  },
+  {
+    "type": "p",
+    "text": "Je-li pro konkrétní službu dostupné evropské regionální nastavení, usilujeme o jeho použití přiměřeně provoznímu modelu služby."
+  },
+  {
+    "type": "h1",
+    "text": "8. Doba uchování"
+  },
+  {
+    "type": "li",
+    "text": "• Údaje o účtu a smluvním vztahu uchováváme po dobu trvání služby a poté po dobu potřebnou pro řešení nároků, auditní stopu a plnění zákonných povinností."
+  },
+  {
+    "type": "li",
+    "text": "• Účetní a daňové doklady uchováváme po dobu vyžadovanou právními předpisy."
+  },
+  {
+    "type": "li",
+    "text": "• Support a bezpečnostní logy uchováváme po dobu odpovídající jejich účelu, povaze incidentů a potřebě ochrany systému."
+  },
+  {
+    "type": "li",
+    "text": "• Údaje, které zpracováváme jménem zákazníka, uchováváme podle pokynů zákazníka a podle zpracovatelské smlouvy."
+  },
+  {
+    "type": "h1",
+    "text": "9. Vaše práva"
+  },
+  {
+    "type": "p",
+    "text": "Jako subjekt údajů máte zejména právo na přístup k osobním údajům, právo na opravu, výmaz, omezení zpracování, přenositelnost, námitku proti zpracování založenému na oprávněném zájmu a právo podat stížnost u Úřadu pro ochranu osobních údajů."
+  },
+  {
+    "type": "p",
+    "text": "Pokud však naše role není role správce, ale pouze zpracovatele pro našeho zákazníka, je nutné uplatnit tato práva primárně vůči příslušnému zákazníkovi jako správci."
+  },
+  {
+    "type": "p",
+    "text": "Pro uplatnění práv nás můžete kontaktovat na e-mailu support@aidvisora.cz nebo podpora@aidvisora.cz. Před vyřízením žádosti si můžeme ověřit vaši totožnost přiměřeným způsobem."
+  },
+  {
+    "type": "h1",
+    "text": "10. Zabezpečení"
+  },
+  {
+    "type": "p",
+    "text": "Přijímáme přiměřená technická a organizační opatření s cílem chránit osobní údaje před neoprávněným přístupem, ztrátou, zničením, změnou nebo jiným zneužitím."
+  },
+  {
+    "type": "p",
+    "text": "Bezpečnostní opatření pravidelně přehodnocujeme s ohledem na rizika, povahu služby a vývoj technologií. Přesto nelze zaručit absolutní bezpečnost žádného internetového řešení."
+  },
+  {
+    "type": "h1",
+    "text": "11. Změny tohoto dokumentu"
+  },
+  {
+    "type": "p",
+    "text": "Tento dokument můžeme přiměřeně aktualizovat zejména při změně služby, právních požadavků, subprocesorů nebo používaných technologií."
+  },
+  {
+    "type": "p",
+    "text": "Aktuální verzi zveřejníme na webu nebo jiným vhodným způsobem zpřístupníme v rámci služby."
+  },
+  {
+    "type": "h1",
+    "text": "12. Kontaktní údaje"
+  },
+  {
+    "type": "p",
+    "text": "Identifikační údaje správce a kontakty pro právní a privacy agendu jsou uvedeny v záhlaví této stránky."
+  },
+  {
+    "type": "p",
+    "text": "Kontaktní e-maily pro privacy agendu: support@aidvisora.cz nebo podpora@aidvisora.cz."
+  },
+  {
+    "type": "p",
+    "text": "Datum účinnosti dokumentu: 27. 3. 2026."
+  }
+]

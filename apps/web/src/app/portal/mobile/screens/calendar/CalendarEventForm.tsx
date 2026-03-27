@@ -18,7 +18,11 @@ import {
   EVENT_STATUSES,
   type EventCategoryId,
 } from "@/app/portal/calendar/event-categories";
-import { formatDateLocal, formatDateTimeLocal } from "@/app/portal/calendar/date-utils";
+import {
+  DEFAULT_EVENT_DURATION_MS,
+  formatDateLocal,
+  formatDateTimeLocal,
+} from "@/app/portal/calendar/date-utils";
 import { EventFormDateTimeSection } from "@/app/portal/calendar/EventFormDateTimeSection";
 import { EVENT_FORM_PRIMARY_TYPE_ORDER } from "@/app/portal/calendar/event-form-primary-types";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
@@ -104,7 +108,7 @@ export function CalendarEventForm({
     if (!initial.startAt) {
       const now = new Date();
       now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
-      const end = new Date(now.getTime() + 60 * 60 * 1000);
+      const end = new Date(now.getTime() + DEFAULT_EVENT_DURATION_MS);
       return {
         ...initial,
         startAt: formatDateTimeLocal(now),

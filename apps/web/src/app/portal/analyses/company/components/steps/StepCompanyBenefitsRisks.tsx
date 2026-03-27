@@ -259,7 +259,7 @@ export function StepCompanyBenefitsRisks() {
           </label>
         </div>
         <div className="mt-4 p-3 bg-[color:var(--wp-surface-muted)] rounded-lg border border-[color:var(--wp-surface-card-border)] space-y-1 text-sm">
-          <p className="text-[color:var(--wp-text-secondary)]"><strong>Doporučené zajištění:</strong> smrt {fmt(Math.round(insRec.recDeath))} Kč, invalidita {fmt(Math.round(insRec.recInv))} Kč, PN {insRec.recSickPerDay} Kč/den</p>
+          <p className="text-[color:var(--wp-text-secondary)]"><strong>Modelované zajištění (orientační):</strong> smrt {fmt(Math.round(insRec.recDeath))} Kč, invalidita {fmt(Math.round(insRec.recInv))} Kč, PN {insRec.recSickPerDay} Kč/den</p>
           {insRec.invGap.gap > 0 && (
             <p className="text-amber-700">Gap invalidita: {fmt(Math.round(insRec.invGap.gap))} Kč</p>
           )}
@@ -267,7 +267,7 @@ export function StepCompanyBenefitsRisks() {
             <p className="text-amber-700">OSVČ: zvažte nemocenské pojištění.</p>
           )}
           <p className="text-[color:var(--wp-text-secondary)]">
-            {(insRec.belowDeath || insRec.belowInv || insRec.belowSick) && "Aktuální hodnoty pod doporučením."}
+            {(insRec.belowDeath || insRec.belowInv || insRec.belowSick) && "Aktuální hodnoty pod modelem — oblast k ověření poradcem."}
           </p>
         </div>
       </section>

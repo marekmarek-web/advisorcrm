@@ -94,6 +94,10 @@ export type ExtractionTrace = {
   llmReviewDecisionText?: string;
   llmClientMatchText?: string;
   llmClientMatchDurationMs?: number;
+  /** Parsed from optional client-match LLM (guardrails). */
+  llmClientMatchKind?: string;
+  /** Classifier v2: false → skip automatic structured extraction (review path). */
+  supportedForDirectExtraction?: boolean;
   scanPendingReason?: string;
   totalPipelineDurationMs?: number;
 };

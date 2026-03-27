@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, use, useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -33,7 +33,6 @@ import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses
 import type { ProductionSummary } from "@/app/actions/production";
 import { migrateLocalStorageKey } from "@/lib/storage/migrate-weplan-local-storage";
 import { DashboardCard } from "@/app/components/dashboard/DashboardCard";
-import { DashboardMiniNotes } from "./DashboardMiniNotes";
 import { DashboardSecondaryResolver } from "./DashboardSecondaryResolver";
 
 const pulseBar = "min-h-[120px] animate-pulse rounded-2xl bg-[color:var(--wp-surface-muted)]/80";
@@ -56,6 +55,11 @@ const DashboardCalendarSidePanel = dynamic(
 const TodayInCalendarWidget = dynamic(
   () => import("@/app/components/dashboard/TodayInCalendarWidget").then((m) => m.TodayInCalendarWidget),
   { ssr: false, loading: () => <div className={`mb-8 ${pulseBar}`} /> },
+);
+
+const DashboardMiniNotes = dynamic(
+  () => import("./DashboardMiniNotes").then((m) => m.DashboardMiniNotes),
+  { loading: () => <div className={`min-h-[140px] ${pulseBar}`} /> },
 );
 import type { BusinessPlanWidgetData, DashboardSecondaryBundle } from "./dashboard-secondary-types";
 import {
@@ -183,7 +187,7 @@ function DashboardBentoSkeleton({ visibleOrder }: { visibleOrder: WidgetId[] }) 
 
 type DashboardEditableProps =
   | {
-      kpis: DashboardKpis;
+      kpis: DashboardKpis | Promise<DashboardKpis>;
       advisorName?: string | null;
       secondaryDataPromise: Promise<DashboardSecondaryBundle>;
     }
@@ -200,7 +204,13 @@ type DashboardEditableProps =
     };
 
 export function DashboardEditable(props: DashboardEditableProps) {
-  const { kpis, advisorName = null } = props;
+  const kpiInput = props.kpis;
+  const kpisPromise = useMemo(
+    () => (kpiInput instanceof Promise ? kpiInput : Promise.resolve(kpiInput)),
+    [kpiInput],
+  );
+  const kpis = use(kpisPromise);
+  const { advisorName = null } = props;
   const isStreamingSecondary =
     "secondaryDataPromise" in props && props.secondaryDataPromise != null;
   const inlineSecondary: DashboardSecondaryBundle | undefined = !isStreamingSecondary
@@ -862,7 +872,7 @@ export function DashboardEditable(props: DashboardEditableProps) {
               { icon: CheckSquare, label: "Nový úkol", href: "/portal/tasks", variant: "create" as const },
             ] as { icon: LucideIcon; label: string; href: string; variant: "create" | "secondary" }[]).map((btn, i) =>
               btn.variant === "create" ? (
-                <CreateActionButton key={i} href={btn.href} icon={btn.icon} className="shadow-lg">
+                <CreateActionButton key={i} href={btn.href} icon={btn.icon}>
                   {btn.label}
                 </CreateActionButton>
               ) : (

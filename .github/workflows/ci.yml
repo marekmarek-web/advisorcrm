@@ -31,6 +31,10 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install
         run: cd ../.. && pnpm install --frozen-lockfile
+      - name: Compliance copy check (advisory)
+        working-directory: .
+        run: pnpm compliance:copy-check
+        continue-on-error: true
       - name: Unit tests
         run: pnpm test
       - name: Build

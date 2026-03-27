@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, X, Check } from "lucide-react";
+import { Bell, Calendar, X, Check } from "lucide-react";
 import { StepWizard } from "@/app/shared/mobile-ui/primitives";
 import type { CalendarSettings, CalendarPresetId, CalendarFontSize } from "@/app/portal/calendar/calendar-settings";
 import { getPresetSettings, ensureAccentLight } from "@/app/portal/calendar/calendar-settings";
 import { CALENDAR_EVENT_CATEGORIES } from "@/app/portal/calendar/event-categories";
+import {
+  getCalendarReminderChannelPrefs,
+  updateCalendarReminderChannelPrefs,
+} from "@/app/actions/calendar-reminder-prefs";
 
 const PRESET_OPTIONS: { id: CalendarPresetId; label: string }[] = [
   { id: "default", label: "Aidvisora výchozí" },
@@ -32,6 +36,9 @@ const EVENT_COLOR_PALETTE = [
   "#f43f5e", "#10b981", "#64748b", "#818cf8", "#0ea5e9",
 ];
 
+/** Fullscreen mobilní průvodce: 1 vzhled, 2 čísla/čára, 3 připomenutí, 4 barvy typů */
+const MOBILE_STEPPER_TOTAL_STEPS = 4;
+
 export interface CalendarSettingsModalProps {
   open: boolean;
   onClose: () => void;
@@ -39,7 +46,7 @@ export interface CalendarSettingsModalProps {
   onSave: (settings: CalendarSettings) => void;
   /** Fullscreen stepper-friendly layout for mobile portal. */
   layout?: "center" | "fullscreen";
-  /** When true with fullscreen layout, show 3-step wizard (mobile calendar). */
+  /** When true with fullscreen layout, show 4-step wizard (mobile calendar). */
   stepper?: boolean;
 }
 
@@ -53,6 +60,8 @@ export function CalendarSettingsModal({
 }: CalendarSettingsModalProps) {
   const [form, setForm] = useState<CalendarSettings>({ ...initialSettings });
   const [step, setStep] = useState(1);
+  const [reminderPushEnabled, setReminderPushEnabled] = useState(true);
+  const [reminderEmailEnabled, setReminderEmailEnabled] = useState(true);
 
   useEffect(() => {
     if (open) setForm({ ...initialSettings });
@@ -60,6 +69,16 @@ export function CalendarSettingsModal({
 
   useEffect(() => {
     if (open) setStep(1);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    getCalendarReminderChannelPrefs()
+      .then((p) => {
+        setReminderPushEnabled(p.pushEnabled);
+        setReminderEmailEnabled(p.emailEnabled);
+      })
+      .catch(() => {});
   }, [open]);
 
   const handlePresetChange = (presetId: CalendarPresetId) => {
@@ -78,8 +97,8 @@ export function CalendarSettingsModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const inStepper = layout === "fullscreen" && stepper;
-    if (inStepper && step < 3) {
-      setStep((s) => Math.min(3, s + 1));
+    if (inStepper && step < MOBILE_STEPPER_TOTAL_STEPS) {
+      setStep((s) => Math.min(MOBILE_STEPPER_TOTAL_STEPS, s + 1));
       return;
     }
     const toSave: CalendarSettings = {
@@ -94,7 +113,7 @@ export function CalendarSettingsModal({
 
   const fullscreen = layout === "fullscreen";
   const showStepper = fullscreen && stepper;
-  const totalSteps = 3;
+  const totalSteps = MOBILE_STEPPER_TOTAL_STEPS;
 
   return (
     <div
@@ -159,9 +178,17 @@ export function CalendarSettingsModal({
           <div className="p-6 sm:p-8 overflow-y-auto cal-settings-scroll space-y-10 flex-1">
             {showStepper ? (
               <StepWizard step={step} total={totalSteps}>
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                  Krok {step} / {totalSteps}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Krok {step} / {totalSteps}
+                  </p>
+                  <p className="text-sm font-bold text-slate-700">
+                    {step === 1 && "Vzhled kalendáře"}
+                    {step === 2 && "Čísla, písmo a čára času"}
+                    {step === 3 && "Připomenutí aktivit"}
+                    {step === 4 && "Barvy typů událostí"}
+                  </p>
+                </div>
               </StepWizard>
             ) : null}
 
@@ -300,8 +327,53 @@ export function CalendarSettingsModal({
               </div>
             </div>
 
-            {/* Barvy typu udalosti */}
-            <div className={`space-y-4 pt-2 ${showStepper && step !== 3 ? "hidden" : ""}`}>
+            {/* Připomenutí — kanály (push / e-mail); v mobilním průvodci vlastní krok 3 */}
+            <div className={`space-y-4 border-b border-slate-200 pb-8 mb-2 ${showStepper && step !== 3 ? "hidden" : ""}`}>
+              <div className="flex items-start gap-2">
+                <Bell className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" aria-hidden />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Připomenutí k aktivitám</h3>
+                  <p className="text-xs font-medium text-slate-500 mt-1">
+                    Kam posílat upozornění v čase připomenutí (push do aplikace a e-mail).
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={reminderPushEnabled}
+                  onChange={async (e) => {
+                    const v = e.target.checked;
+                    setReminderPushEnabled(v);
+                    const r = await updateCalendarReminderChannelPrefs({ pushEnabled: v });
+                    if (!r.ok) setReminderPushEnabled(!v);
+                  }}
+                  className="cal-settings-check"
+                />
+                <span className={`text-sm transition-colors ${reminderPushEnabled ? "font-bold text-slate-800" : "font-medium text-slate-600 group-hover:text-slate-800"}`}>
+                  Push do aplikace
+                </span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={reminderEmailEnabled}
+                  onChange={async (e) => {
+                    const v = e.target.checked;
+                    setReminderEmailEnabled(v);
+                    const r = await updateCalendarReminderChannelPrefs({ emailEnabled: v });
+                    if (!r.ok) setReminderEmailEnabled(!v);
+                  }}
+                  className="cal-settings-check"
+                />
+                <span className={`text-sm transition-colors ${reminderEmailEnabled ? "font-bold text-slate-800" : "font-medium text-slate-600 group-hover:text-slate-800"}`}>
+                  E-mail
+                </span>
+              </label>
+            </div>
+
+            {/* Barvy typu udalosti — v mobilním průvodci krok 4 */}
+            <div className={`space-y-4 pt-2 ${showStepper && step !== 4 ? "hidden" : ""}`}>
               <div>
                 <h3 className="text-sm font-bold text-slate-800">Barvy typů událostí</h3>
                 <p className="text-xs font-medium text-slate-500 mt-1">Vyberte barvu z palety. Klik na stejnou barvu zruší výběr (výchozí barva typu).</p>

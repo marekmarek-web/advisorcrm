@@ -1,0 +1,402 @@
+[
+  {
+    "type": "p",
+    "text": "Dohoda mezi správcem a zpracovatelem podle čl. 28 GDPR pro provoz SaaS platformy. Draft připravený pro český trh na základě oficiálních veřejných zdrojů a zadaného provozního modelu Aidvisora."
+  },
+  {
+    "type": "p",
+    "text": "Důležité: Tento text je připraven jako praktický základ pro Aidvisoru nastavenou jako SaaS/ICT nástroj pro finanční poradce. Není koncipován jako poskytování finančního poradenství ze strany poskytovatele platformy. Před spuštěním do ostrého provozu je vhodná lokální právní kontrola zejména ve vztahu k použitým funkcím AI, billingu, reklamacím a identifikačním údajům poskytovatele."
+  },
+  {
+    "type": "h1",
+    "text": "1. Smluvní strany"
+  },
+  {
+    "type": "p",
+    "text": "Tato zpracovatelská smlouva je uzavírána mezi zákazníkem jako správcem osobních údajů a poskytovatelem služby Aidvisora jako zpracovatelem osobních údajů."
+  },
+  {
+    "type": "p",
+    "text": "Správcem je zákazník, který určuje účely a prostředky zpracování osobních údajů svých klientů, potenciálních klientů, zaměstnanců, spolupracovníků nebo jiných osob v rámci své podnikatelské činnosti."
+  },
+  {
+    "type": "h1",
+    "text": "2. Předmět, povaha a trvání zpracování"
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel se zavazuje zpracovávat osobní údaje pro správce v rozsahu nezbytném k poskytování služby Aidvisora, zejména cloudového CRM, správy dokumentů, klientského portálu, interní evidence, workflow, exportů, notifikací a případně funkcí AI, pokud je správce využívá."
+  },
+  {
+    "type": "p",
+    "text": "Povahou zpracování je zejména ukládání, organizování, strukturování, vyhledávání, zobrazování, zpřístupňování oprávněným osobám správce, zálohování, omezené technické přenosy, vytváření interních informativních výstupů, a další operace nezbytné pro poskytování služby."
+  },
+  {
+    "type": "p",
+    "text": "Zpracování trvá po dobu poskytování služby a dále po dobu, po kterou je zpracovatel oprávněn nebo povinen údaje uchovávat podle smlouvy, právních předpisů nebo legitimních bezpečnostních požadavků, zejména za účelem řešení incidentů, obrany právních nároků nebo splnění archivních povinností."
+  },
+  {
+    "type": "h1",
+    "text": "3. Kategorie subjektů údajů a druhy osobních údajů"
+  },
+  {
+    "type": "p",
+    "text": "Subjekty údajů mohou zahrnovat zejména:"
+  },
+  {
+    "type": "li",
+    "text": "• klienty a potenciální klienty správce;"
+  },
+  {
+    "type": "li",
+    "text": "• osoby jednající za klienty právnické osoby;"
+  },
+  {
+    "type": "li",
+    "text": "• uživatele účtu správce a členy jeho týmu;"
+  },
+  {
+    "type": "li",
+    "text": "• další osoby, jejichž údaje správce v souladu s právními předpisy do služby vloží."
+  },
+  {
+    "type": "p",
+    "text": "Druhy osobních údajů mohou zahrnovat zejména:"
+  },
+  {
+    "type": "li",
+    "text": "• identifikační a kontaktní údaje;"
+  },
+  {
+    "type": "li",
+    "text": "• údaje o smlouvách, produktech, platbách, účtech, příjmech, výdajích a jiné finanční údaje;"
+  },
+  {
+    "type": "li",
+    "text": "• údaje z dokumentů, výpisů, interních poznámek a komunikace;"
+  },
+  {
+    "type": "li",
+    "text": "• technické a provozní údaje spojené s užíváním služby;"
+  },
+  {
+    "type": "li",
+    "text": "• v odůvodněných případech i zvláštní kategorie osobních údajů, pokud je správce do služby vloží a má pro takové zpracování odpovídající právní titul."
+  },
+  {
+    "type": "p",
+    "text": "Poznámka: V oblasti životního a zdravotně souvisejícího pojištění mohou dokumenty obsahovat údaje o zdravotním stavu. Správce odpovídá za to, že takové údaje do služby vkládá pouze na základě odpovídajícího právního titulu a v rozsahu nutném pro svou činnost."
+  },
+  {
+    "type": "h1",
+    "text": "4. Pokyny správce"
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel zpracovává osobní údaje pouze na základě dokumentovaných pokynů správce, obsažených v této smlouvě, v hlavní smluvní dokumentaci, v nastavení služby, v jednotlivých pokynech správce nebo v jednáních, která jsou nezbytná pro řádné poskytování služby."
+  },
+  {
+    "type": "p",
+    "text": "Pokud se zpracovatel domnívá, že určitý pokyn správce porušuje právní předpisy na ochranu osobních údajů, bez zbytečného odkladu na to správce upozorní."
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel není povinen plnit pokyn, který je zjevně protiprávní, technicky neproveditelný nebo by vyžadoval nepřiměřené náklady mimo rozsah sjednané služby; o takové skutečnosti správce vhodně informuje."
+  },
+  {
+    "type": "h1",
+    "text": "5. Důvěrnost a pověřené osoby"
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel zajistí, aby osoby oprávněné zpracovávat osobní údaje byly vázány povinností mlčenlivosti, ať již smluvní, zákonnou nebo jinak odpovídajícím závazkem."
+  },
+  {
+    "type": "p",
+    "text": "Přístup k osobním údajům budou mít pouze osoby, které jej potřebují pro plnění konkrétních úkolů souvisejících s poskytováním služby a které byly odpovídajícím způsobem proškoleny nebo instruovány."
+  },
+  {
+    "type": "h1",
+    "text": "6. Bezpečnost zpracování"
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel přijme a udržuje přiměřená technická a organizační opatření odpovídající rizikům spojeným se zpracováním, zejména s ohledem na povahu zpracovávaných údajů, rozsah služby, pravděpodobnost a závažnost možných dopadů na fyzické osoby."
+  },
+  {
+    "type": "li",
+    "text": "• řízení přístupů, autentizace a správa rolí;"
+  },
+  {
+    "type": "li",
+    "text": "• šifrování nebo jiné ochranné mechanismy přenosu a ukládání, jsou-li vhodné a dostupné;"
+  },
+  {
+    "type": "li",
+    "text": "• zajištění důvěrnosti, integrity, dostupnosti a odolnosti systémů a služeb;"
+  },
+  {
+    "type": "li",
+    "text": "• zálohování a obnovu dostupnosti dat po incidentu;"
+  },
+  {
+    "type": "li",
+    "text": "• evidenci incidentů a interní bezpečnostní procesy;"
+  },
+  {
+    "type": "li",
+    "text": "• pravidelné vyhodnocování a přiměřené testování účinnosti přijatých opatření."
+  },
+  {
+    "type": "p",
+    "text": "Podrobnější bezpečnostní opatření jsou uvedena v příloze č. 1 této zpracovatelské smlouvy."
+  },
+  {
+    "type": "p",
+    "text": "Správce bere na vědomí, že absolutní bezpečnost nelze zaručit a že bezpečnost je společnou odpovědností smluvních stran, včetně správného nastavení uživatelských oprávnění, práce s hesly a interních procesů správce."
+  },
+  {
+    "type": "h1",
+    "text": "7. Zapojení dalších zpracovatelů"
+  },
+  {
+    "type": "p",
+    "text": "Správce uděluje zpracovateli obecné povolení zapojit další zpracovatele, pokud je to potřebné k poskytování služby. Zpracovatel bude správce přiměřeným způsobem informovat o zamýšlených změnách dalších zpracovatelů tak, aby správce mohl proti změně vznést odůvodněnou námitku."
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel se zavazuje uložit každému dalšímu zpracovateli povinnosti v oblasti ochrany osobních údajů alespoň v rozsahu odpovídajícím této smlouvě."
+  },
+  {
+    "type": "p",
+    "text": "Ke dni tohoto draftu mohou být do zpracování zapojeni zejména tito další zpracovatelé nebo poskytovatelé infrastruktury:"
+  },
+  {
+    "type": "p",
+    "text": "Subjekt"
+  },
+  {
+    "type": "p",
+    "text": "Služba"
+  },
+  {
+    "type": "p",
+    "text": "Lokalita"
+  },
+  {
+    "type": "p",
+    "text": "Poznámka"
+  },
+  {
+    "type": "p",
+    "text": "Supabase"
+  },
+  {
+    "type": "p",
+    "text": "cloud databáze a storage"
+  },
+  {
+    "type": "p",
+    "text": "EU projekt / dle nastavení"
+  },
+  {
+    "type": "p",
+    "text": "produkční ukládání aplikace"
+  },
+  {
+    "type": "p",
+    "text": "OpenAI"
+  },
+  {
+    "type": "p",
+    "text": "AI API a zpracování promptů/výstupů"
+  },
+  {
+    "type": "p",
+    "text": "dle nastavení projektu; preferována Evropa, je-li dostupná"
+  },
+  {
+    "type": "p",
+    "text": "pouze pro funkce AI aktivované správcem"
+  },
+  {
+    "type": "p",
+    "text": "Vercel"
+  },
+  {
+    "type": "p",
+    "text": "hosting a aplikační vrstva"
+  },
+  {
+    "type": "p",
+    "text": "dle nasazení projektu"
+  },
+  {
+    "type": "p",
+    "text": "frontend a provoz aplikace"
+  },
+  {
+    "type": "p",
+    "text": "Doplnění: Před spuštěním doplň finální seznam subprocesorů, odkazy na jejich security/privacy dokumentaci, region nasazení a interní postup oznamování změn."
+  },
+  {
+    "type": "h1",
+    "text": "8. Předávání osobních údajů mimo EHP"
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel nepředá osobní údaje do třetí země ani mezinárodní organizaci, pokud pro takové předání neexistuje odpovídající právní titul a přiměřené záruky podle použitelných právních předpisů."
+  },
+  {
+    "type": "p",
+    "text": "Pokud jsou v rámci funkcí AI, podpory, logování nebo infrastruktury použity služby s možným prvkem mezinárodního přenosu, zpracovatel zajistí použití vhodného mechanismu, například rozhodnutí o odpovídající ochraně, standardních smluvních doložek nebo jiných přípustných záruk."
+  },
+  {
+    "type": "p",
+    "text": "Je-li dostupné regionální nastavení v rámci EHP nebo Evropy, zpracovatel usiluje o jeho využití pro produkční zpracování odpovídající povaze služby a smluvnímu nastavení."
+  },
+  {
+    "type": "h1",
+    "text": "9. Součinnost vůči správci"
+  },
+  {
+    "type": "li",
+    "text": "• Zpracovatel poskytne správci přiměřenou součinnost při vyřizování práv subjektů údajů, pokud takové žádosti nemůže správce obsloužit sám prostřednictvím funkce služby."
+  },
+  {
+    "type": "li",
+    "text": "• Zpracovatel poskytne správci přiměřenou součinnost při posuzování incidentů, bezpečnostních opatření, posouzení vlivu na ochranu osobních údajů a případné předchozí konzultaci s dozorovým úřadem, pokud je to s ohledem na povahu zpracování relevantní."
+  },
+  {
+    "type": "li",
+    "text": "• Pokud zpracovatel obdrží žádost subjektu údajů nebo orgánu veřejné moci týkající se údajů, které zpracovává jménem správce, bez zbytečného odkladu o tom správce informuje, pokud mu v tom nebrání právní předpis."
+  },
+  {
+    "type": "h1",
+    "text": "10. Bezpečnostní incidenty"
+  },
+  {
+    "type": "p",
+    "text": "Zjistí-li zpracovatel porušení zabezpečení osobních údajů, které se týká údajů zpracovávaných pro správce, oznámí tuto skutečnost správci bez zbytečného odkladu po zjištění incidentu."
+  },
+  {
+    "type": "p",
+    "text": "Oznámení bude v přiměřeném rozsahu obsahovat alespoň popis povahy incidentu, dotčené kategorie údajů, dotčené systémy, pravděpodobné důsledky a přijatá nebo navrhovaná opatření, pokud jsou v daném okamžiku známá."
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel nenese odpovědnost za incident způsobený výlučně jednáním správce, jeho uživatelů, koncových klientů správce nebo třetích osob mimo sféru vlivu zpracovatele."
+  },
+  {
+    "type": "h1",
+    "text": "11. Audit a prokazování souladu"
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel na rozumnou žádost správce poskytne informace nezbytné k prokázání souladu s touto smlouvou."
+  },
+  {
+    "type": "p",
+    "text": "Pokud správce požaduje audit nebo inspekci, uskuteční se po předchozí dohodě, v přiměřeném rozsahu, za zachování důvěrnosti a bezpečnosti ostatních zákazníků a systémů, a na náklady správce, nevyplývá-li audit z prokazatelného porušení povinností zpracovatelem."
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel může namísto individuálního auditu poskytnout vhodné zprávy, certifikace, bezpečnostní dotazníky nebo jinou obdobnou dokumentaci, pokud tím přiměřeně prokáže plnění svých povinností."
+  },
+  {
+    "type": "h1",
+    "text": "12. Vrácení a výmaz údajů po skončení služby"
+  },
+  {
+    "type": "p",
+    "text": "Po skončení poskytování služby umožní zpracovatel správci po přiměřenou dobu export dat nebo jiný technicky rozumný způsob převzetí údajů, pokud to odpovídá povaze služby a placenému tarifu."
+  },
+  {
+    "type": "p",
+    "text": "Po uplynutí této doby zpracovatel osobní údaje vymaže nebo anonymizuje, není-li povinen je dále uchovávat podle právního předpisu, oprávněného bezpečnostního režimu, interních logovacích povinností nebo z důvodu ochrany svých právních nároků."
+  },
+  {
+    "type": "p",
+    "text": "Zálohy a bezpečnostní kopie mohou být vymazány v rámci běžného retenčního cyklu, pokud nejsou dále aktivně používány."
+  },
+  {
+    "type": "h1",
+    "text": "13. Odpovědnost"
+  },
+  {
+    "type": "p",
+    "text": "Každá strana odpovídá za porušení svých vlastních povinností podle právních předpisů a této smlouvy."
+  },
+  {
+    "type": "p",
+    "text": "Zpracovatel neodpovídá za zákonnost pokynů správce, za právní titul správce ke zpracování osobních údajů, za informační povinnosti správce ani za komunikaci správce se subjekty údajů."
+  },
+  {
+    "type": "p",
+    "text": "Tím nejsou dotčena práva třetích osob ani odpovědnost, kterou nelze podle kogentních právních předpisů vyloučit nebo omezit."
+  },
+  {
+    "type": "h1",
+    "text": "14. Závěrečná ustanovení"
+  },
+  {
+    "type": "p",
+    "text": "Tato zpracovatelská smlouva tvoří nedílnou součást smluvní dokumentace ke službě Aidvisora."
+  },
+  {
+    "type": "p",
+    "text": "V případě rozporu má tato zpracovatelská smlouva přednost v otázkách zpracování osobních údajů před obecnými ustanoveními obchodních podmínek."
+  },
+  {
+    "type": "p",
+    "text": "Tato smlouva nabývá účinnosti dnem uzavření hlavní smlouvy nebo dnem aktivace služby, podle toho, co nastane dříve."
+  },
+  {
+    "type": "h1",
+    "text": "Příloha č. 1 - Bezpečnostní a organizační opatření"
+  },
+  {
+    "type": "li",
+    "text": "• řízení identit a přístupů, včetně role-based access, zásady minimálních oprávnění a interního schvalování přístupů;"
+  },
+  {
+    "type": "li",
+    "text": "• přenos dat přes zabezpečené protokoly a ochrana autentizačních údajů;"
+  },
+  {
+    "type": "li",
+    "text": "• logování bezpečnostně relevantních operací v přiměřeném rozsahu;"
+  },
+  {
+    "type": "li",
+    "text": "• segmentace prostředí, oddělení produkčního a vývojového prostředí, kde je to vhodné;"
+  },
+  {
+    "type": "li",
+    "text": "• zálohy a proces obnovy po incidentu;"
+  },
+  {
+    "type": "li",
+    "text": "• interní procesy pro řešení bezpečnostních incidentů a eskalaci;"
+  },
+  {
+    "type": "li",
+    "text": "• omezení přístupu zaměstnanců a spolupracovníků k produkčním datům pouze na nutný rozsah;"
+  },
+  {
+    "type": "li",
+    "text": "• průběžná správa aktualizací a záplat v rozsahu odpovídajícím architektuře služby;"
+  },
+  {
+    "type": "li",
+    "text": "• procesy pro hodnocení a výběr klíčových poskytovatelů infrastruktury a subprocesorů;"
+  },
+  {
+    "type": "li",
+    "text": "• dokumentace a přiměřené testování opatření podle vývoje rizik a služby."
+  },
+  {
+    "type": "p",
+    "text": "K provoznímu doplnění: Je vhodné doplnit interní bezpečnostní přílohu mimo veřejné smluvní dokumenty: skutečné retenční lhůty, MFA politiku, incident response kontakty, zálohovací okna, RTO/RPO, přehled subprocesorů a regionální nastavení u poskytovatele AI API."
+  }
+]

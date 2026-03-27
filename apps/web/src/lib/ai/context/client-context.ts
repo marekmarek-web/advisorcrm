@@ -294,7 +294,7 @@ export async function renderClientAiPromptVariables(raw: ClientAiContextRaw): Pr
           fin.reserveOk
             ? "Rezerva: splněna."
             : `Rezerva: nesplněna (chybí cca ${formatCurrency(fin.reserveGap)}).`,
-          `Doporučené oblasti: ${recommendedAreas.join(", ") || "vyžaduje doplnění vstupních dat."}`,
+          `Oblasti k prověření v analýze: ${recommendedAreas.join(", ") || "vyžaduje doplnění vstupních dat."}`,
         ]
           .filter(Boolean)
           .join("\n")
@@ -371,8 +371,8 @@ export async function renderClientAiPromptVariables(raw: ClientAiContextRaw): Pr
       ? `Poslední servis: ${svc.lastServiceDate}${svc.daysSinceLastService != null ? ` (před ${svc.daysSinceLastService} dny)` : ""}${svc.noContactRisk ? " [!] Klient dlouho bez kontaktu" : ""}`
       : "[!] Poslední servisní schůzka není k dispozici.",
     svc.nextServiceDue
-      ? `Doporučená další servisní schůzka: ${svc.nextServiceDue}${svc.daysUntilNextService != null ? ` (za ${svc.daysUntilNextService} dní)` : ""}${svc.isOverdue ? " [!] overdue servisní revize" : ""}`
-      : "[!] Doporučený další servis není stanoven.",
+      ? `Plánovaná další servisní schůzka (evidence): ${svc.nextServiceDue}${svc.daysUntilNextService != null ? ` (za ${svc.daysUntilNextService} dní)` : ""}${svc.isOverdue ? " [!] overdue servisní revize" : ""}`
+      : "[!] Další servis není v evidenci stanoven.",
     svc.serviceCycleMonths ? `Cyklus: ${svc.serviceCycleMonths} měsíců` : "",
     svc.upcomingAnniversaries.length
       ? `Blížící se výročí: ${svc.upcomingAnniversaries

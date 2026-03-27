@@ -195,11 +195,51 @@ export function reminderBeforeDeadlineTemplate(params: {
       Blíží se termín <strong>${params.deadlineType}</strong> pro <strong>${params.contactName}</strong>:
       <strong>${params.deadlineDate}</strong>.
     </p>
-    <p style="font-size: 14px;">Doporučujeme podniknout kroky co nejdříve.</p>
+    <p style="font-size: 14px;">Termín se blíží — zkontrolujte prosím stav v aplikaci.</p>
     ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
     ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
   `);
   return { subject: `Připomínka: ${params.deadlineType} – ${params.contactName}`, html };
+}
+
+/** Pozvánka do klientské zóny (odkaz na registraci / přihlášení s tokenem). */
+export function clientPortalInviteTemplate(params: {
+  registerUrl: string;
+  contactFirstName: string;
+  tenantName?: string;
+  expiresInDays: number;
+  gdprUrl: string;
+  termsUrl: string;
+}) {
+  const who = params.tenantName?.trim() ? params.tenantName.trim() : "váš poradce";
+  const html = layout(`
+    <h2 style="font-size: 16px; margin: 0 0 12px;">Přístup do klientské zóny</h2>
+    <p style="font-size: 14px; line-height: 1.5;">
+      Dobrý den${params.contactFirstName ? `, ${params.contactFirstName}` : ""},
+    </p>
+    <p style="font-size: 14px; line-height: 1.5;">
+      ${who} vám zpřístupnil(a) klientskou zónu v aplikaci Aidvisora — přehled smluv, dokumentů a zpráv na jednom místě.
+    </p>
+    <p style="font-size: 14px; line-height: 1.5;">
+      Účet si založíte nebo přihlásíte kliknutím na tlačítko níže. Odkaz je platný přibližně <strong>${params.expiresInDays}</strong> dní.
+    </p>
+    <p style="margin: 20px 0;">
+      <a href="${params.registerUrl}" style="display: inline-block; padding: 12px 20px; background: #0073ea; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">Otevřít klientskou zónu</a>
+    </p>
+    <p style="font-size: 12px; line-height: 1.5; color: #676879;">
+      Pokud tlačítko nefunguje, zkopírujte odkaz do prohlížeče:<br />
+      <span style="word-break: break-all;">${params.registerUrl}</span>
+    </p>
+    <p style="font-size: 12px; line-height: 1.5; color: #676879; margin-top: 16px;">
+      <a href="${params.gdprUrl}" style="color: #0073ea;">Zásady zpracování osobních údajů</a>
+      ·
+      <a href="${params.termsUrl}" style="color: #0073ea;">Obchodní podmínky</a>
+    </p>
+  `);
+  return {
+    subject: "Přístup do klientské zóny Aidvisora",
+    html,
+  };
 }
 
 export function internalSummaryTemplate(params: {

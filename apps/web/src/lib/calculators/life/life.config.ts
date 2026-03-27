@@ -30,7 +30,7 @@ export const LIFE_FAQ: FaqItem[] = [
       "Kalkulačka životního pojištění slouží k orientačnímu výpočtu, jaké pojistné krytí by mohlo dávat smysl vzhledem k vašemu příjmu, výdajům a závazkům. Pomáhá ujasnit si, na jaká rizika má smysl se zaměřit a v jakém rozsahu.",
   },
   {
-    question: "Jak kalkulačka životního pojištění počítá doporučené částky?",
+    question: "Jak kalkulačka životního pojištění počítá modelované částky?",
     answer:
       "Výpočet vychází z několika základních vstupů – zejména z výše příjmu, délky ekonomické aktivity, závazků (například hypotéky) a finančních rezerv. Cílem není přesná nabídka, ale realistický odhad potřebného krytí.",
   },
@@ -45,7 +45,7 @@ export const LIFE_FAQ: FaqItem[] = [
       "Kalkulačka se zaměřuje především na klíčová rizika, jako je smrt, invalidita a pracovní neschopnost. Právě tato rizika mají největší dopad na příjem a finanční stabilitu domácnosti.",
   },
   {
-    question: "Pro koho je kalkulačka životního pojištění vhodná?",
+    question: "Kdo typicky využívá kalkulačku životního pojištění?",
     answer:
       "Kalkulačka je vhodná pro jednotlivce, rodiny i živnostníky, kteří chtějí získat základní přehled o tom, zda je jejich zajištění dostatečné. Nejčastěji ji využívají lidé s rodinou, hypotékou nebo nepravidelným příjmem.",
   },

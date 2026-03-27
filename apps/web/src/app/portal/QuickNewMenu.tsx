@@ -33,8 +33,8 @@ export function QuickNewMenu() {
         onClick={() => setOpen((v) => !v)}
         iconClassName={open ? "rotate-45 duration-200" : "duration-200"}
         className={clsx(
-          "shadow-lg",
-          open && "ring-2 ring-indigo-500 ring-offset-2 ring-offset-[color:var(--wp-portal-header-bg)] scale-[0.98]",
+          open &&
+            "ring-2 ring-indigo-500 ring-offset-2 ring-offset-[color:var(--wp-portal-header-bg)] scale-[0.98] dark:ring-indigo-400",
         )}
         aria-expanded={open}
         aria-haspopup="true"

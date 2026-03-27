@@ -18,6 +18,7 @@ import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import { ClientZoneExportButton } from "./ClientZoneExportButton";
 import { NewRequestModal } from "./NewRequestModal";
 import { AiSupportButton } from "./AiSupportButton";
+import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 
 type QuickStats = {
   assetsUnderManagement: number;
@@ -358,7 +359,7 @@ export function ClientDashboardLayout({
         </Link>
       </div>
 
-      <AiSupportButton />
+      {!isClientPortalAiDisabled() ? <AiSupportButton /> : null}
       <NewRequestModal
         open={requestModalOpen}
         onClose={() => setRequestModalOpen(false)}

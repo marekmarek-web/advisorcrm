@@ -113,4 +113,8 @@ export const clientInvitations = pgTable("client_invitations", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  invitedByUserId: text("invited_by_user_id"),
+  emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
+  lastEmailError: text("last_email_error"),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });

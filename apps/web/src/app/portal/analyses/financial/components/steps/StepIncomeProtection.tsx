@@ -160,7 +160,7 @@ export function StepIncomeProtection() {
           Zajištění
         </h2>
         <p className="text-[color:var(--wp-text-secondary)] mt-1">
-          Doporučené krytí a navržené řešení pojištění pro každého člena analýzy.
+          Orientační model krytí a výpočet zajištění pro každého člena analýzy (interní podklad pro poradce).
         </p>
       </div>
 
@@ -174,7 +174,7 @@ export function StepIncomeProtection() {
             className="w-5 h-5 rounded border-[color:var(--wp-border-strong)] text-indigo-500 focus:ring-indigo-400"
           />
           <span className="text-sm font-semibold text-[color:var(--wp-text-secondary)]">
-            Použít poloviční doporučení na invaliditu (volba poradce)
+            Použít poloviční model invalidity (volba poradce)
           </span>
         </label>
       </div>
@@ -224,9 +224,9 @@ export function StepIncomeProtection() {
             </div>
 
             <div className="p-4 sm:p-6 space-y-6">
-              {/* Doporučené zajištění (read-only) – ordered: Smrt, Invalidita, TN, PN */}
+              {/* Modelované zajištění (read-only) – ordered: Smrt, Invalidita, TN, PN */}
               <div className="bg-[color:var(--wp-surface-muted)] rounded-xl p-4 border border-[color:var(--wp-surface-card-border)]">
-                <h4 className="text-sm font-bold text-[color:var(--wp-text-secondary)] mb-3">Doporučené krytí</h4>
+                <h4 className="text-sm font-bold text-[color:var(--wp-text-secondary)] mb-3">Modelované krytí (orientační)</h4>
                 {person.personKey === "client" && ins.netIncome > 0 && (
                   <ul className="text-sm text-[color:var(--wp-text-secondary)] space-y-1">
                     <li>Smrt: {ins.death.individual ? "individuálně" : formatCzk(ins.death.coverage)}</li>
@@ -257,7 +257,7 @@ export function StepIncomeProtection() {
                 {((person.personKey === "client" && ins.netIncome === 0) ||
                   (person.personKey === "partner" && !ins.partnerInsurance) ||
                   (person.personKey.startsWith("child_") && ins.childInsurance.length === 0)) && (
-                  <p className="text-sm text-[color:var(--wp-text-secondary)]">Zadejte příjmy v kroku Cashflow pro doporučení.</p>
+                  <p className="text-sm text-[color:var(--wp-text-secondary)]">Zadejte příjmy v kroku Cashflow pro výpočet modelu.</p>
                 )}
               </div>
 

@@ -1,5 +1,9 @@
 /**
- * Decides whether contract AI Review should defer to scan_pending_ocr (no LLM extraction).
+ * Decides whether **contract review** uploads should defer to `scan_pending_ocr` (no LLM extraction).
+ *
+ * Scope: `contract_upload_reviews` + `runContractReviewProcessing` only. The general `documents` table
+ * uses separate upload/processing paths and does not invoke this gate or the AI Review pipeline.
+ * When deferred, processing stops before `runContractUnderstandingPipeline` until OCR improves text.
  */
 
 import { detectInputMode } from "@/lib/ai/input-mode-detection";

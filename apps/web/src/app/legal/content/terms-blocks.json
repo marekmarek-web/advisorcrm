@@ -1,0 +1,326 @@
+[
+  {
+    "type": "p",
+    "text": "B2B podmínky pro SaaS platformu určenou finančním poradcům a jejich organizacím. Draft připravený pro český trh na základě oficiálních veřejných zdrojů a zadaného provozního modelu Aidvisora."
+  },
+  {
+    "type": "p",
+    "text": "Důležité: Tento text je připraven jako praktický základ pro Aidvisoru nastavenou jako SaaS/ICT nástroj pro finanční poradce. Není koncipován jako poskytování finančního poradenství ze strany poskytovatele platformy. Před spuštěním do ostrého provozu je vhodná lokální právní kontrola zejména ve vztahu k použitým funkcím AI, billingu, reklamacím a identifikačním údajům poskytovatele."
+  },
+  {
+    "type": "h1",
+    "text": "1. Smluvní strany a výklad"
+  },
+  {
+    "type": "p",
+    "text": "Tyto obchodní podmínky upravují smluvní vztah mezi poskytovatelem služby Aidvisora jako provozovatelem softwarové platformy a zákazníkem jako podnikatelem, zejména finančním poradcem, samostatným zprostředkovatelem, vázaným zástupcem, obchodní společností nebo jinou osobou využívající platformu při své podnikatelské činnosti."
+  },
+  {
+    "type": "p",
+    "text": "Zákazníkem je osoba, která uzavře smlouvu o poskytování služby, zřídí uživatelský účet nebo začne službu využívat v souvislosti se svým podnikáním."
+  },
+  {
+    "type": "p",
+    "text": "Pojmem „Služba“ se rozumí cloudová SaaS platforma Aidvisora, včetně jejích modulů CRM, interní evidence klientů, správy dokumentů, klientského portálu, workflow a funkcí založených na umělé inteligenci, pokud jsou v daném tarifu aktivovány."
+  },
+  {
+    "type": "p",
+    "text": "Pojmem „Koncový klient“ se rozumí klient zákazníka, kterému zákazník zpřístupní klientský portál nebo jeho část."
+  },
+  {
+    "type": "h1",
+    "text": "2. Povaha služby"
+  },
+  {
+    "type": "p",
+    "text": "Aidvisora je technologický software a interní pracovní nástroj. Poskytovatel neposkytuje prostřednictvím služby finanční poradenství, investiční poradenství, pojišťovací doporučení, doporučení úvěrových produktů ani jinou regulovanou odbornou službu vůči koncovým klientům zákazníka."
+  },
+  {
+    "type": "li",
+    "text": "• Služba je určena k evidenci, organizaci, ukládání, vyhledávání a internímu informativnímu zpracování dat a dokumentů."
+  },
+  {
+    "type": "li",
+    "text": "• Funkce AI slouží pouze k extrakci, sumarizaci, třídění, označení nesrovnalostí, vytváření draftů interních úkolů a dalším podpůrným administrativním činnostem."
+  },
+  {
+    "type": "li",
+    "text": "• Každý výstup AI je pouze informativním interním podkladem pro zákazníka a vždy podléhá lidskému přezkumu a samostatnému odbornému posouzení zákazníka."
+  },
+  {
+    "type": "li",
+    "text": "• Koncovým klientům zákazníka se nezpřístupňují interní AI výstupy ani personalizovaná doporučení generovaná poskytovatelem."
+  },
+  {
+    "type": "p",
+    "text": "Compliance formulace: V marketingu, UI i exportech je vhodné držet jazyk typu „informativní souhrn“, „interní podklad pro poradce“, „potenciální nesrovnalosti“ nebo „oblast k ověření poradcem“. Nedoporučuje se používat formulace typu „doporučujeme“, „nejlepší produkt“, „optimální řešení“, „vhodné pro klienta“ apod."
+  },
+  {
+    "type": "h1",
+    "text": "3. Uzavření smlouvy a vznik účtu"
+  },
+  {
+    "type": "p",
+    "text": "Smluvní vztah vzniká potvrzením objednávky, aktivací placeného či zkušebního tarifu, akceptací těchto obchodních podmínek při registraci nebo jiným prokazatelným zpřístupněním služby zákazníkovi."
+  },
+  {
+    "type": "p",
+    "text": "Zákazník je povinen uvádět pravdivé a aktuální údaje. Účet je nepřenosný, nestanoví-li poskytovatel písemně jinak."
+  },
+  {
+    "type": "p",
+    "text": "Zákazník odpovídá za správu přístupových údajů, nastavení rolí a oprávnění uživatelů, bezpečné používání účtů a za veškeré úkony učiněné z jeho účtu, pokud neprokáže zneužití nezaviněné jeho stranou."
+  },
+  {
+    "type": "h1",
+    "text": "4. Licence a oprávnění užívání"
+  },
+  {
+    "type": "p",
+    "text": "Poskytovatel uděluje zákazníkovi po dobu trvání smluvního vztahu nevýhradní, nepřevoditelné, územně neomezené oprávnění užívat službu v rozsahu odpovídajícím zvolenému tarifu a počtu licencovaných uživatelů."
+  },
+  {
+    "type": "p",
+    "text": "Bez předchozího písemného souhlasu poskytovatele zákazník nesmí službu dále prodávat, pronajímat, podlicencovat, zpřístupňovat třetím osobám mimo svou organizaci, dekompilovat ji, obcházet technická omezení ani vytvářet odvozené konkurenční řešení z neveřejných částí služby."
+  },
+  {
+    "type": "p",
+    "text": "Zákazník je oprávněn zpřístupnit klientský portál svým koncovým klientům pouze v rozsahu a za podmínek stanovených službou a svou vlastní smluvní dokumentací vůči těmto klientům."
+  },
+  {
+    "type": "h1",
+    "text": "5. Tarify, cena a platební podmínky"
+  },
+  {
+    "type": "p",
+    "text": "Cena služby se řídí aktuálním ceníkem nebo individuální nabídkou potvrzenou mezi stranami. Není-li výslovně uvedeno jinak, ceny jsou uvedeny bez DPH."
+  },
+  {
+    "type": "li",
+    "text": "• Tarif může být měsíční, roční nebo individuální."
+  },
+  {
+    "type": "li",
+    "text": "• Cena může být stanovena za uživatele, za organizaci, za počet aktivních klientských záznamů, za objem využití nebo kombinovaně."
+  },
+  {
+    "type": "li",
+    "text": "• Poskytovatel je oprávněn v přiměřeném rozsahu měnit ceník pro další fakturační období; změnu oznámí zákazníkovi předem."
+  },
+  {
+    "type": "li",
+    "text": "• Při prodlení s úhradou může poskytovatel po předchozím upozornění službu omezit nebo pozastavit."
+  },
+  {
+    "type": "p",
+    "text": "Pokud je aktivováno automatické obnovení předplatného, předplatné se po skončení sjednaného období automaticky obnoví na stejné období, ledaže jej zákazník včas zruší v administraci účtu nebo jiným podporovaným způsobem."
+  },
+  {
+    "type": "h1",
+    "text": "6. Funkce AI a interní informativní výstupy"
+  },
+  {
+    "type": "p",
+    "text": "Funkce založené na umělé inteligenci mohou pracovat s dokumenty, texty, nahranými poznámkami a dalšími daty vloženými zákazníkem, a to za účelem interního zpracování podkladů."
+  },
+  {
+    "type": "li",
+    "text": "1. AI výstupy nejsou právní radou, daňovým doporučením, investičním doporučením, pojišťovacím doporučením, úvěrovým doporučením ani jiným závazným odborným stanoviskem."
+  },
+  {
+    "type": "li",
+    "text": "2. Zákazník je povinen každý AI výstup přezkoumat, ověřit jeho věcnou správnost a rozhodnout, zda a jak jej použije."
+  },
+  {
+    "type": "p",
+    "text": "3. Poskytovatel neodpovídá za rozhodnutí zákazníka přijatá na základě AI výstupu, pokud z těchto podkladů zákazník vytváří vlastní poradenství, doporučení, nabídky nebo komunikaci vůči koncovému klientovi."
+  },
+  {
+    "type": "p",
+    "text": "4. Zákazník nesmí prezentovat službu ani její AI výstupy jako přímé doporučení poskytovatele koncovému klientovi."
+  },
+  {
+    "type": "p",
+    "text": "5. Zákazník nesmí používat službu pro automatizované rozhodování bez odpovídajícího lidského přezkumu tam, kde by takové použití mohlo zasáhnout do práv nebo oprávněných zájmů fyzických osob."
+  },
+  {
+    "type": "h1",
+    "text": "7. Povinnosti zákazníka"
+  },
+  {
+    "type": "li",
+    "text": "• Zákazník odpovídá za to, že je oprávněn data a dokumenty do služby vkládat, že má odpovídající právní titul ke zpracování osobních údajů a že při používání služby dodržuje veškeré právní předpisy a profesní pravidla, která se na jeho činnost vztahují."
+  },
+  {
+    "type": "li",
+    "text": "• Zákazník odpovídá za obsah nahraných dokumentů, správnost a zákonnost údajů, které do služby vloží nebo prostřednictvím služby zpřístupní koncovým klientům."
+  },
+  {
+    "type": "li",
+    "text": "• Pokud zákazník působí v regulovaném sektoru finančního trhu, odpovídá za vlastní oprávnění k výkonu činnosti, za komunikaci s klientem a za splnění povinností vůči dohledu, spotřebitelům a profesním pravidlům."
+  },
+  {
+    "type": "li",
+    "text": "• Zákazník nesmí službu používat způsobem, který by z ní činil nelegální doporučovací engine, scoringový nástroj bez lidského přezkumu nebo jiný nástroj v rozporu s použitelnými předpisy."
+  },
+  {
+    "type": "h1",
+    "text": "8. Klientský portál"
+  },
+  {
+    "type": "p",
+    "text": "Klientský portál je doplňková část služby určená pro zpřístupnění vybraných informací koncovým klientům zákazníka, typicky dokumentů, platebních přehledů, generických kalkulaček, požadavků na servis nebo stavu administrativního zpracování."
+  },
+  {
+    "type": "p",
+    "text": "Za obsah zpřístupněný koncovým klientům odpovídá zákazník. Poskytovatel nezajišťuje smluvní vztah mezi zákazníkem a jeho koncovým klientem a nevstupuje do role poskytovatele finanční služby vůči koncovému klientovi."
+  },
+  {
+    "type": "p",
+    "text": "Zákazník je povinen mít vůči koncovým klientům vlastní dokumentaci, zejména informační texty a případně vlastní smluvní či souhlasové mechanismy tam, kde je potřebuje."
+  },
+  {
+    "type": "h1",
+    "text": "9. Dostupnost, údržba a podpora"
+  },
+  {
+    "type": "p",
+    "text": "Poskytovatel vyvíjí přiměřené úsilí, aby byla služba dostupná a bezpečná. Nezaručuje však nepřetržitou ani bezchybnou dostupnost."
+  },
+  {
+    "type": "li",
+    "text": "• Poskytovatel může provádět plánovanou údržbu, aktualizace, bezpečnostní zásahy nebo změny integračních vazeb."
+  },
+  {
+    "type": "li",
+    "text": "• Poskytovatel může měnit funkce služby, pokud tím podstatně nesníží sjednanou užitnou hodnotu placeného tarifu bez rozumného náhradního řešení."
+  },
+  {
+    "type": "li",
+    "text": "• Podpora je poskytována v rozsahu podle tarifu nebo individuální dohody."
+  },
+  {
+    "type": "h1",
+    "text": "10. Osobní údaje, důvěrnost a bezpečnost"
+  },
+  {
+    "type": "p",
+    "text": "Strany berou na vědomí, že v rámci služby může docházet ke zpracování osobních údajů, včetně finančních údajů a případně zvláštních kategorií údajů, pokud je zákazník do služby vloží."
+  },
+  {
+    "type": "p",
+    "text": "Ve vztahu k datům vloženým zákazníkem do CRM, správy dokumentů a klientského portálu vystupuje zákazník zpravidla jako správce a poskytovatel jako zpracovatel. Podrobnosti upravuje samostatná zpracovatelská smlouva nebo odpovídající článek smluvní dokumentace."
+  },
+  {
+    "type": "p",
+    "text": "Ve vztahu k údajům o registraci zákazníka, fakturaci, správě účtu, podpoře, bezpečnostním logům a provozu webu vystupuje poskytovatel jako samostatný správce."
+  },
+  {
+    "type": "p",
+    "text": "Obě strany jsou povinny zachovávat mlčenlivost o důvěrných informacích získaných při plnění smlouvy. Za důvěrné se nepovažují informace veřejně známé, informace oprávněně získané od třetí osoby ani informace, jejichž zpřístupnění vyžaduje právní předpis nebo závazné rozhodnutí orgánu veřejné moci."
+  },
+  {
+    "type": "h1",
+    "text": "11. Duševní vlastnictví"
+  },
+  {
+    "type": "p",
+    "text": "Veškerá práva k softwaru, databázím, rozhraním, know-how, dokumentaci, designu a dalším částem služby náleží poskytovateli nebo jeho licenčním partnerům, s výjimkou obsahu vloženého zákazníkem."
+  },
+  {
+    "type": "p",
+    "text": "Zákazník si ponechává práva ke svému obsahu. Vkládá-li do služby obsah, poskytuje poskytovateli v nezbytném rozsahu oprávnění tento obsah technicky zpracovávat, ukládat, indexovat, zálohovat, přenášet a zobrazovat za účelem poskytování služby."
+  },
+  {
+    "type": "h1",
+    "text": "12. Omezení odpovědnosti"
+  },
+  {
+    "type": "p",
+    "text": "Poskytovatel odpovídá za škodu způsobenou porušením svých povinností pouze v rozsahu stanoveném právními předpisy a těmito obchodními podmínkami."
+  },
+  {
+    "type": "li",
+    "text": "• V maximálním rozsahu dovoleném právními předpisy poskytovatel neodpovídá za nepřímou újmu, ušlý zisk, ztrátu obchodní příležitosti, ztrátu očekávaných úspor, ztrátu dobré pověsti ani následné škody vzniklé používáním služby."
+  },
+  {
+    "type": "li",
+    "text": "• Poskytovatel neodpovídá za obsah vložený zákazníkem, za právní titul k jeho zpracování ani za odborné výstupy, komunikaci či doporučení, která zákazník na základě interních podkladů vytvoří pro své klienty."
+  },
+  {
+    "type": "li",
+    "text": "• Celková souhrnná odpovědnost poskytovatele vůči zákazníkovi za jeden kalendářní rok nepřesáhne částku odpovídající plněním uhrazeným zákazníkem za posledních 12 měsíců před vznikem nároku, ledaže kogentní právní předpis stanoví jinak."
+  },
+  {
+    "type": "li",
+    "text": "• Tím není dotčena odpovědnost, kterou nelze podle kogentních právních předpisů vyloučit nebo omezit."
+  },
+  {
+    "type": "h1",
+    "text": "13. Pozastavení, omezení a ukončení služby"
+  },
+  {
+    "type": "p",
+    "text": "Poskytovatel může dočasně omezit nebo pozastavit službu, pokud je to nezbytné z důvodu bezpečnosti, údržby, prevence zneužití, porušení smlouvy nebo prodlení zákazníka s úhradou."
+  },
+  {
+    "type": "p",
+    "text": "Každá strana může smluvní vztah ukončit způsobem odpovídajícím sjednanému tarifu. U předplatných na dobu určitou se služba poskytuje po sjednané období, není-li výslovně dohodnuto jinak."
+  },
+  {
+    "type": "p",
+    "text": "Po ukončení smlouvy poskytovatel umožní zákazníkovi po přiměřenou dobu export dat nebo jiný rozumný postup ukončení, odpovídá-li to technickým možnostem služby, zvolenému tarifu a podmínkám zpracování dat."
+  },
+  {
+    "type": "p",
+    "text": "Poskytovatel může smlouvu vypovědět s okamžitou účinností při podstatném porušení smlouvy zákazníkem, zejména při závažném porušení právních předpisů, zneužití služby, porušení pravidel bezpečnosti nebo neoprávněném nakládání s osobními údaji."
+  },
+  {
+    "type": "h1",
+    "text": "14. Změny obchodních podmínek"
+  },
+  {
+    "type": "p",
+    "text": "Poskytovatel může tyto obchodní podmínky přiměřeně měnit zejména při změně služby, právních předpisů, bezpečnostních požadavků, cenového modelu nebo technického řešení."
+  },
+  {
+    "type": "p",
+    "text": "O změně podmínek poskytovatel zákazníka informuje předem vhodným způsobem, zejména e-mailem nebo oznámením v aplikaci. Pokud zákazník se změnou nesouhlasí a změna se ho podstatně dotýká, může smluvní vztah ukončit ke dni účinnosti změny, není-li mezi stranami dohodnuto jinak."
+  },
+  {
+    "type": "p",
+    "text": "U podstatných změn těchto obchodních podmínek poskytovatel obvykle zveřejní nové znění na webu s uvedením data účinnosti a současně o změně informuje registrované uživatele e-mailem uvedeným u účtu a/nebo oznámením v aplikaci, a to s přiměřenou lhůtou před účinností (obvykle nejméně 14 dní u změn, které zákazníka podstatně dotýkají), pokud tak stanoví právní předpisy nebo smluvní ujednání. Pokračováním v užívání služby po účinnosti změny může být vyjádřen souhlas tam, kde to pro daný typ změny dává smysl a neodporuje to právním předpisům."
+  },
+  {
+    "type": "h1",
+    "text": "15. Rozhodné právo a řešení sporů"
+  },
+  {
+    "type": "p",
+    "text": "Tyto obchodní podmínky a smluvní vztah mezi stranami se řídí právem České republiky."
+  },
+  {
+    "type": "p",
+    "text": "Strany se zavazují usilovat nejprve o smírné vyřešení sporů. Není-li to možné, budou spory řešeny věcně a místně příslušnými soudy České republiky."
+  },
+  {
+    "type": "p",
+    "text": "Pokud zákazník vstupuje do vztahu jako podnikatel, ustanovení o ochraně spotřebitele se nepoužijí, nestanoví-li právní předpis výslovně jinak."
+  },
+  {
+    "type": "h1",
+    "text": "16. Závěrečná ustanovení"
+  },
+  {
+    "type": "p",
+    "text": "Pokud je některé ustanovení těchto obchodních podmínek neplatné nebo neúčinné, nemá to vliv na platnost a účinnost ostatních ustanovení. Strany takové ustanovení nahradí ustanovením, které co nejlépe odpovídá jeho původnímu účelu."
+  },
+  {
+    "type": "p",
+    "text": "V otázkách výslovně neupravených se smluvní vztah řídí obecně závaznými právními předpisy."
+  },
+  {
+    "type": "p",
+    "text": "Tyto obchodní podmínky nabývají účinnosti dnem 27. 3. 2026."
+  }
+]

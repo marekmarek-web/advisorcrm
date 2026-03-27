@@ -866,7 +866,7 @@ export function TeamMemberCard({
 }
 
 export function AIInsightCard({
-  title = "AI insight",
+  title = "Interní přehled (AI)",
   insight,
   action,
 }: {

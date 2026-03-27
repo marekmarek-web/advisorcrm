@@ -6,6 +6,7 @@ import { getPortalNotificationsForClient } from "@/app/actions/portal-notificati
 import { getUnreadAdvisorMessagesForClientCount } from "@/app/actions/messages";
 import { getDocumentsForClient } from "@/app/actions/documents";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { CLIENT_PORTAL_AI_SYSTEM_PROMPT_CS } from "@/lib/ai/compliance-prompt-suffix";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,9 @@ function buildClientContextSummary(params: {
 export async function POST(request: Request) {
   const start = Date.now();
   try {
+    if (process.env.NEXT_PUBLIC_DISABLE_CLIENT_PORTAL_AI === "true") {
+      return NextResponse.json({ error: "Tato funkce je vypnutá." }, { status: 403 });
+    }
     const auth = await requireAuthInAction();
     if (auth.roleName !== "Client" || !auth.contactId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -62,9 +66,7 @@ export async function POST(request: Request) {
       documentCount: documents.length,
     });
 
-    const systemPrompt =
-      "Jsi AI asistent klientského portálu finančního poradenství. Odpovídej česky, stručně, s jasnými kroky. Navrhni max 3 akce. Bez právních nebo investičních závazných doporučení.";
-    const fullPrompt = `${systemPrompt}\n\nStav klienta:\n${context}\n\nDotaz klienta: ${message}\n\nOdpověď asistenta:`;
+    const fullPrompt = `${CLIENT_PORTAL_AI_SYSTEM_PROMPT_CS}\n\nStav v portálu (jen počty, bez rad):\n${context}\n\nDotaz uživatele: ${message}\n\nOdpověď (pouze nápověda k aplikaci, bez finančního poradenství):`;
     const ai = await createResponseSafe(fullPrompt);
 
     if (!ai.ok) {

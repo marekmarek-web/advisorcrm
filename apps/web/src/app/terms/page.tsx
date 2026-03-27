@@ -27,8 +27,11 @@ export default function TermsPage() {
         </p>
         <h2 className="text-lg font-semibold mt-6">4. Omezení odpovědnosti</h2>
         <p>
-          Výpočty, kalkulace a doporučení v platformě mají orientační charakter a nepředstavují finanční poradenství ve
-          smyslu zákona. Uživatel odpovídá za správnost dat, která do systému zadává.
+          Aidvisora je technický nástroj (SaaS) pro finanční poradce. Poskytovatel neposkytuje klientům koncových
+          uživatelů finanční, investiční ani pojistné poradenství. Výpočty a kalkulace v aplikaci mají výhradně
+          ilustrativní a informativní charakter a nenahrazují posouzení poradce. Obsah generovaný umělou inteligencí
+          v prostředí pro poradce je interní podklad; není určen jako doporučení předávané klientovi. Uživatel
+          odpovídá za správnost dat, která do systému zadává, a za komunikaci se svými klienty.
         </p>
         <h2 className="text-lg font-semibold mt-6">5. Platnost</h2>
         <p>

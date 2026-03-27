@@ -110,7 +110,7 @@ function SortablePageCard({
       </div>
       {hasError ? (
         <div className="mt-1 text-center text-[10px] text-amber-700">
-          Nízká kvalita – doporučujeme přefotit
+          Nízká kvalita — přefoťte prosím znovu
         </div>
       ) : null}
       <div className="mt-2 flex gap-1.5">
@@ -674,7 +674,7 @@ export default function ScanPage() {
         <div className="sticky bottom-0 z-10 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/95 p-3 backdrop-blur">
           {hasQualityIssues ? (
             <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
-              Některé strany mají nízkou kvalitu. Doporučujeme je přefotit pro lepší rozpoznání textu.
+              Některé strany mají nízkou kvalitu. Přefoťte je prosím znovu pro lepší rozpoznání textu.
             </div>
           ) : null}
           <div className="flex flex-col gap-2">

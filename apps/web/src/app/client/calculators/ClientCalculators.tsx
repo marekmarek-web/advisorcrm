@@ -78,7 +78,8 @@ export function ClientCalculators() {
           Finanční kalkulačky
         </h2>
         <p className="text-sm font-medium text-slate-500 mt-2">
-          Orientační výpočty pro rychlou představu. Přesný návrh řešení připraví poradce.
+          Orientační výpočty pro ilustraci — nejde o návrh konkrétního produktu ani radu. Individuální posouzení řeší
+          výhradně váš poradce.
         </p>
       </div>
 

@@ -15,7 +15,7 @@ export function renderDirectorInsurance(ctx: SectionCtx): string {
     <div class="sec-header">
       <div class="sec-number gold">${num} — Zajištění jednatele</div>
       <div class="sec-title">Pojištění jednatele</div>
-      <div class="sec-desc">Doporučená ochrana klíčové osoby firmy — jednatele / majitele.</div>
+      <div class="sec-desc">Orientační přehled ochrany klíčové osoby firmy — jednatele / majitele (vstup pro posouzení poradcem).</div>
     </div>
 
     <div class="ins-person-header">
@@ -27,7 +27,7 @@ export function renderDirectorInsurance(ctx: SectionCtx): string {
     </div>
 
     <div class="tbl-wrap" style="margin-bottom:var(--s5,20px)">
-      <div class="tbl-cap"><span class="tbl-cap-title">Doporučené krytí jednatele</span></div>
+      <div class="tbl-cap"><span class="tbl-cap-title">Modelované krytí jednatele (orientační)</span></div>
       <table class="dt">
         <thead><tr><th>Riziko</th><th>Popis</th><th class="r">Výše</th></tr></thead>
         <tbody>
@@ -70,7 +70,7 @@ export function renderDirectorInsurance(ctx: SectionCtx): string {
     <div class="callout warn" style="margin-top:var(--s5,20px)">
       <span class="callout-icon">⚠️</span>
       <div><strong>Key-man riziko</strong>
-      Výpadek jednatele představuje významné riziko pro kontinuitu podnikání. Doporučujeme sjednat key-man pojištění jako nákladovou položku firmy.</div>
+      Výpadek jednatele představuje významné riziko pro kontinuitu podnikání. Key-man pojištění jako nákladová položka firmy je běžná varianta k posouzení poradcem — nejde o automatický návrh produktu.</div>
     </div>
   </div>
 </section>`;

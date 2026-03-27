@@ -72,5 +72,5 @@ export function buildDeterministicSummary(items: PriorityItem[]): string {
   const topItem = items[0];
   const topAction = topItem.recommendedAction ?? topItem.description;
 
-  return `Máte ${parts.join(", ")} položek. Doporučujeme: ${topAction}.`;
+  return `Máte ${parts.join(", ")} položek. Interní priorita: ${topAction}.`;
 }

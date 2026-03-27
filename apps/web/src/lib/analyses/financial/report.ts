@@ -1103,7 +1103,7 @@ function renderCompanyPDFSection(
         <div class="box"><span class="lbl">Dluhová služba</span><div class="val" style="color: #1f1c2e;">${formatCzk(cf.loanPayment ?? 0)}</div></div>
       </div>
       <div class="interpretation">
-        <p><strong>Doporučení:</strong> ${riskCount >= 4 ? 'Firma má dobré pokrytí rizik.' : riskCount >= 2 ? 'Doporučujeme doplnit další kategorie pojištění firmy.' : 'Zvažte rozšíření firemního pojištění (majetek, odpovědnost, přerušení provozu).'}</p>
+        <p><strong>Shrnutí (orientační):</strong> ${riskCount >= 4 ? 'Firma má dobré pokrytí rizik.' : riskCount >= 2 ? 'Oblast k prověření: doplnění kategorií firemního pojištění.' : 'Zvažte rozšíření firemního pojištění (majetek, odpovědnost, přerušení provozu) — podle úvahy poradce.'}</p>
       </div>
     </div>
     <div class="pdf-section" style="margin-top: 8mm;">
@@ -1146,7 +1146,7 @@ function renderCompanyPDFSection(
     </div>
     <div class="pdf-section" style="margin-top: 8mm;">
       <div class="h2">Zajištění příjmů (jednatel)</div>
-      <p style="font-size: 10pt; color: #1f1c2e;">Pro doporučení pojištění jednatele viz sekci „Zajištění příjmů“ v osobní části analýzy.</p>
+      <p style="font-size: 10pt; color: #1f1c2e;">Model zajištění jednatele viz sekci „Zajištění příjmů“ v osobní části analýzy.</p>
     </div></div>
     ${renderPdfFooter(footerLine)}
   </section>
@@ -1203,7 +1203,7 @@ function _legacyBuildReportHTML(data: FinancialAnalysisData, options?: BuildRepo
   let netWorthText = 'Vaše čisté jmění je kladné, což značí zdravý finanční základ.';
   if (netWorthVal < 0) netWorthText = 'Záporné čisté jmění je často způsobeno hypotékou na začátku splácení. Důležité je, že hodnota nemovitosti v čase roste a dluh klesá.';
   let reserveText = `Rezerva pokrývá cca ${reserveMonths} měsíců výdajů.`;
-  if (reserveCash < 3 * monthlyExp) reserveText += ' Doporučujeme navýšit rezervu alespoň na 3-6 měsíců výdajů.';
+  if (reserveCash < 3 * monthlyExp) reserveText += ' Oblast k prověření: navýšení rezervy směrem k 3–6 měsícům výdajů.';
   else reserveText += ' Výše rezervy je dostatečná.';
 
   let maxAsset = 0;
@@ -1221,7 +1221,7 @@ function _legacyBuildReportHTML(data: FinancialAnalysisData, options?: BuildRepo
     maxAssetName = 'Hotovost';
   }
   let balanceComment = `Největší položkou v majetku jsou ${maxAssetName}. `;
-  if ((liabilities.loans || 0) > 0) balanceComment += 'Pozor na spotřebitelské úvěry, doporučujeme prioritně doplatit.';
+  if ((liabilities.loans || 0) > 0) balanceComment += 'Pozor na spotřebitelské úvěry — typicky priorita splácení podle posouzení poradce.';
   else balanceComment += 'Zadlužení je pod kontrolou.';
 
   return `

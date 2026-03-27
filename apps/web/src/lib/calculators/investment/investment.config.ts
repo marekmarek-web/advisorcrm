@@ -122,7 +122,7 @@ export const INVESTMENT_FAQ: FaqItem[] = [
   {
     question: "Je kalkulačka vhodná pro dlouhodobé investování?",
     answer:
-      "Ano, výpočty modelují dlouhé časové horizonty (3–30 let), což je v souladu s doporučeními pro efektivní investování do diverzifikovaných portfolií.",
+      "Ano, výpočty modelují dlouhé časové horizonty (3–30 let), typické pro ilustraci dlouhodobého spoření — nejde o návrh konkrétní investice.",
   },
   {
     question: "Mohu výsledek konzultovat s Vámi?",

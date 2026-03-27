@@ -1,0 +1,206 @@
+[
+  {
+    "type": "p",
+    "text": "Interní smluvní a produktová příloha pro nastavení Aidvisora mimo doporučovací režim. Draft připravený pro český trh na základě oficiálních veřejných zdrojů a zadaného provozního modelu Aidvisora."
+  },
+  {
+    "type": "p",
+    "text": "Důležité: Tento text je připraven jako praktický základ pro Aidvisoru nastavenou jako SaaS/ICT nástroj pro finanční poradce. Není koncipován jako poskytování finančního poradenství ze strany poskytovatele platformy. Před spuštěním do ostrého provozu je vhodná lokální právní kontrola zejména ve vztahu k použitým funkcím AI, billingu, reklamacím a identifikačním údajům poskytovatele."
+  },
+  {
+    "type": "h1",
+    "text": "1. Účel této přílohy"
+  },
+  {
+    "type": "p",
+    "text": "Tato příloha popisuje závazný význam AI funkcí služby Aidvisora a slouží jako výkladová a provozní příloha k obchodním podmínkám, interní dokumentaci a produktovým textům."
+  },
+  {
+    "type": "p",
+    "text": "Jejím cílem je udržet Aidvisoru v roli technologického nástroje a zabránit tomu, aby AI funkce byly prezentovány nebo používány jako přímé doporučování finančních produktů klientům."
+  },
+  {
+    "type": "h1",
+    "text": "2. Povolený význam AI funkcí"
+  },
+  {
+    "type": "li",
+    "text": "• extrakce údajů z dokumentů, fotografií a formulářů;"
+  },
+  {
+    "type": "li",
+    "text": "• interní sumarizace a přehledy pro poradce;"
+  },
+  {
+    "type": "li",
+    "text": "• označení chybějících údajů a potenciálních nesrovnalostí;"
+  },
+  {
+    "type": "li",
+    "text": "• třídění dokumentů, zakládání do CRM a návrhy interních úkolů;"
+  },
+  {
+    "type": "li",
+    "text": "• pomocné interní textové drafty, poznámky a workflow."
+  },
+  {
+    "type": "h1",
+    "text": "3. Nepovolený význam AI funkcí"
+  },
+  {
+    "type": "li",
+    "text": "• doporučení konkrétního finančního produktu, pojištění, investice nebo úvěru klientovi;"
+  },
+  {
+    "type": "li",
+    "text": "• určení nejvhodnějšího řešení pro konkrétního klienta;"
+  },
+  {
+    "type": "li",
+    "text": "• automatické vyhodnocení vhodnosti produktu pro klienta bez lidského přezkumu;"
+  },
+  {
+    "type": "li",
+    "text": "• automatizované rozhodování, které by nahrazovalo odborné posouzení poradce;"
+  },
+  {
+    "type": "li",
+    "text": "• scoring nebo profilování klienta pro účely kreditního rozhodnutí, pricingu nebo obdobného rozhodování, pokud by taková funkce podléhala přísnějšímu regulatornímu režimu."
+  },
+  {
+    "type": "h1",
+    "text": "4. Závazný disclaimer do smluv a aplikace"
+  },
+  {
+    "type": "p",
+    "text": "Ilustrativní znění: Výstupy funkcí AI v rámci služby Aidvisora slouží pouze jako interní informativní podklad pro finančního poradce nebo jiného oprávněného uživatele. Nejde o finanční, investiční, pojišťovací, úvěrové ani právní doporučení poskytované koncovému klientovi. Každý výstup AI musí být přezkoumán a odborně posouzen odpovědnou fyzickou osobou na straně zákazníka."
+  },
+  {
+    "type": "p",
+    "text": "Toto znění lze použít v aplikaci, obchodních podmínkách, onboarding flow, exportech a v produktové dokumentaci. V klientském portálu se interní AI výstupy koncovému klientovi nezobrazují, ledaže by šlo pouze o neutrální administrativní informaci bez prvku doporučení."
+  },
+  {
+    "type": "h1",
+    "text": "5. Zakázané formulace v UI, marketingu a exportech"
+  },
+  {
+    "type": "li",
+    "text": "• doporučujeme"
+  },
+  {
+    "type": "li",
+    "text": "• nejlepší produkt"
+  },
+  {
+    "type": "li",
+    "text": "• optimální řešení pro klienta"
+  },
+  {
+    "type": "li",
+    "text": "• vhodné pro klienta"
+  },
+  {
+    "type": "li",
+    "text": "• AI poradce"
+  },
+  {
+    "type": "li",
+    "text": "• automatické doporučení"
+  },
+  {
+    "type": "li",
+    "text": "• nejvýhodnější nabídka"
+  },
+  {
+    "type": "li",
+    "text": "• produkt ranking pro klienta"
+  },
+  {
+    "type": "li",
+    "text": "• scoring klienta"
+  },
+  {
+    "type": "li",
+    "text": "• AI rozhodla"
+  },
+  {
+    "type": "h1",
+    "text": "6. Preferované bezpečné formulace"
+  },
+  {
+    "type": "li",
+    "text": "• informativní souhrn"
+  },
+  {
+    "type": "li",
+    "text": "• interní podklad pro poradce"
+  },
+  {
+    "type": "li",
+    "text": "• zjištěné skutečnosti"
+  },
+  {
+    "type": "li",
+    "text": "• potenciální nesrovnalosti"
+  },
+  {
+    "type": "li",
+    "text": "• oblasti k ověření"
+  },
+  {
+    "type": "li",
+    "text": "• draft interního úkolu"
+  },
+  {
+    "type": "li",
+    "text": "• administrativní a analytická podpora"
+  },
+  {
+    "type": "li",
+    "text": "• návrh evidence do CRM"
+  },
+  {
+    "type": "h1",
+    "text": "7. Povinnosti zákazníka při používání AI"
+  },
+  {
+    "type": "li",
+    "text": "• každý AI výstup ověřit a případně opravit před jeho dalším použitím;"
+  },
+  {
+    "type": "li",
+    "text": "• nepředávat AI výstup klientovi jako přímé doporučení poskytovatele;"
+  },
+  {
+    "type": "li",
+    "text": "• nepoužívat AI k plně automatizovanému rozhodování bez adekvátního lidského přezkumu;"
+  },
+  {
+    "type": "li",
+    "text": "• zajistit, že použití AI odpovídá vlastnímu regulatornímu režimu zákazníka a jeho profesním povinnostem."
+  },
+  {
+    "type": "h1",
+    "text": "8. Implementační checklist"
+  },
+  {
+    "type": "li",
+    "text": "• zkontrolovat názvy tlačítek, komponent, prázdných stavů, tooltipů a exportů;"
+  },
+  {
+    "type": "li",
+    "text": "• přejmenovat výstupy AI na informativní a interní wording;"
+  },
+  {
+    "type": "li",
+    "text": "• zajistit, aby klientský portál nezobrazoval AI doporučení;"
+  },
+  {
+    "type": "li",
+    "text": "• doplnit disclaimer do relevantních částí aplikace a dokumentace;"
+  },
+  {
+    "type": "li",
+    "text": "• udržovat oddělení mezi interním CRM a klientským portálem."
+  }
+]

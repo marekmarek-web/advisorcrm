@@ -5,7 +5,7 @@ import { Zap, ArrowUpRight } from "lucide-react";
 
 /**
  * Placeholder karta „AI Analýza“ dle specu klienti dash v2.
- * Později lze napojit na reálná doporučení / AI.
+ * Placeholder; lze napojit na interní AI podklady pro poradce.
  */
 export function ContactAiAnalysisCard() {
   return (
@@ -16,11 +16,11 @@ export function ContactAiAnalysisCard() {
           <Zap size={16} className="text-amber-400" aria-hidden />
         </div>
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">
-          AI Analýza
+          Interní AI podklady
         </h3>
       </div>
       <p className="text-sm font-bold leading-relaxed mb-6 text-indigo-50 relative z-10">
-        Doporučení a příležitosti pro klienta se zobrazí po napojení na analytický modul.
+        Informativní shrnutí a interní podněty z analytického modulu se zobrazí po napojení — nejde o radu určenou klientovi.
       </p>
       <Link
         href="#obchody"

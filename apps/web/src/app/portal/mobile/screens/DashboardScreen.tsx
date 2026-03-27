@@ -155,7 +155,7 @@ function AiAssistantWidget() {
           ))}
         </>
       ) : (
-        <p className="text-sm text-indigo-200">Vaše denní doporučení se načítají…</p>
+        <p className="text-sm text-indigo-200">Načítám interní podněty pro dnešek…</p>
       )}
 
       <Link

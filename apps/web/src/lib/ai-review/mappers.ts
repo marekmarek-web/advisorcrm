@@ -10,13 +10,20 @@ import type {
   ClientMatchCandidate,
   DraftAction,
 } from "./types";
-import { buildHumanSummary, buildHumanErrorMessage } from "@/lib/ai/document-messages";
+import { buildHumanSummary, buildHumanErrorMessage, getDocumentTypeLabel } from "@/lib/ai/document-messages";
 import { getReasonMessage } from "@/lib/ai/reason-codes";
 import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
 import type { InputMode } from "@/lib/ai/input-mode-detection";
 import { formatAiClassifierForAdvisor } from "./czech-labels";
 
 type ApiReviewDetail = Record<string, unknown>;
+
+function humanPrimaryTypeHeading(raw: string): string {
+  if (!raw || raw === "Neznámý typ") return raw;
+  const phrase = getDocumentTypeLabel(raw as PrimaryDocumentType);
+  if (!phrase) return raw.replace(/_/g, " ");
+  return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+}
 
 const PROCESSING_STAGE_LABELS_CS: Record<string, string> = {
   document_recognized: "Dokument rozpoznán",
@@ -177,7 +184,7 @@ function flattenPayload(
           message: status === "error"
             ? "Údaj nebyl nalezen nebo chybí v dokumentu."
             : status === "warning"
-              ? "Nižší jistota čtení. Doporučujeme ověřit s originálem."
+              ? "Nižší jistota čtení. Ověřte prosím oproti originálu dokumentu."
               : undefined,
           sourceType: "ai",
           isConfirmed: false,
@@ -208,7 +215,7 @@ function flattenPayload(
         message: status === "error"
           ? "Údaj nebyl nalezen nebo chybí v dokumentu."
           : status === "warning"
-            ? "Nižší jistota čtení. Doporučujeme ověřit s originálem."
+            ? "Nižší jistota čtení. Ověřte prosím oproti originálu dokumentu."
             : undefined,
         sourceType: "ai",
         isConfirmed: false,
@@ -279,7 +286,7 @@ function buildRecommendations(
       type: "warning",
       severity: "high",
       title: `Chybí: ${f.label}`,
-      description: `Údaj „${f.label}" nebyl nalezen v dokumentu. Doporučujeme ověřit s klientem.`,
+      description: `Údaj „${f.label}" nebyl nalezen v dokumentu. Ověřte prosím s klientem nebo v evidenci.`,
       linkedFieldIds: [f.id],
       actionState: "pending",
       dismissed: false,
@@ -415,11 +422,11 @@ export function mapApiToExtractionDocument(
   const baseType = (detail.detectedDocumentType as string) ?? "Neznámý typ";
   const trace = detail.extractionTrace as Record<string, unknown> | undefined;
   const aiRaw = trace?.aiClassifierJson as Record<string, string> | undefined;
-  let documentTypeLabel = baseType;
+  let documentTypeLabel = humanPrimaryTypeHeading(baseType);
   if (aiRaw && (aiRaw.documentType || aiRaw.productFamily)) {
     documentTypeLabel = formatAiClassifierForAdvisor(aiRaw);
   } else if (norm && norm !== baseType) {
-    documentTypeLabel = `${baseType} · ${norm}`;
+    documentTypeLabel = `${humanPrimaryTypeHeading(baseType)} · ${norm}`;
   }
 
   return {

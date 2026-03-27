@@ -38,7 +38,7 @@ export const MOCK_EXTRACTION: ExtractionDocument = {
       severity: "high",
       title: "Chybí obmyšlená osoba",
       description:
-        "V případě smrti pojistníka spadne pojistné plnění do dědického řízení. Doporučujeme doplnit obmyšlenou osobu.",
+        "V případě smrti pojistníka spadne pojistné plnění do dědického řízení. Oblast k ověření: doplnění obmyšlené osoby v dokumentu.",
       linkedFieldIds: ["obmyslena"],
       linkedPage: 2,
       actionState: "pending",
@@ -51,7 +51,7 @@ export const MOCK_EXTRACTION: ExtractionDocument = {
       severity: "high",
       title: "Pojistná částka nepokrývá hypotéku",
       description:
-        "Pojistná částka na smrt (2.5M Kč) nepokrývá zůstatek stávající hypotéky klienta (4.2M Kč). Doporučujeme navrhnout navýšení.",
+        "Pojistná částka na smrt (2.5M Kč) nepokrývá zůstatek stávající hypotéky klienta (4.2M Kč). Potenciální nesoulad — zvažte revizi s klientem.",
       linkedFieldIds: ["smrt"],
       linkedPage: 1,
       actionState: "pending",
@@ -300,7 +300,7 @@ export const MOCK_EXTRACTION: ExtractionDocument = {
       severity: "medium",
       title: "Naplánovat servisní schůzku",
       description:
-        "Na základě nalezených mezer v krytí doporučujeme naplánovat servisní schůzku s klientem k revizi jeho pojistného portfolia.",
+        "Nalezené mezery v krytí — interní návrh: naplánovat servisní schůzku k revizi portfolia (rozhodnutí poradce).",
       linkedFieldIds: [],
       actionState: "pending",
       dismissed: false,
@@ -312,7 +312,7 @@ export const MOCK_EXTRACTION: ExtractionDocument = {
       severity: "low",
       title: "Srovnání s existujícími smlouvami",
       description:
-        "Klient Jan Novák má v CRM další 2 aktivní smlouvy. Doporučujeme porovnat krytí a identifikovat případné duplicity nebo mezery.",
+        "Klient Jan Novák má v CRM další 2 aktivní smlouvy. Interní úkol: porovnat krytí a zkontrolovat duplicity nebo mezery.",
       linkedFieldIds: [],
       actionState: "pending",
       dismissed: false,

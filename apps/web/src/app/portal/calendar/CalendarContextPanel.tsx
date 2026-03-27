@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Calendar as CalendarIcon, Clock, MapPin, Video, User, X, Edit2, Trash2, Zap, ArrowRight } from "lucide-react";
+import { Bell, Calendar as CalendarIcon, Clock, MapPin, Video, User, X, Edit2, Trash2, Zap, ArrowRight } from "lucide-react";
 import type { EventRow } from "@/app/actions/events";
 import type { TaskRow } from "@/app/actions/tasks";
 import { getEventCategory } from "./event-categories";
+import { formatTimeQuarterHourDisplay } from "./date-utils";
 import { PreMeetingBriefPanel } from "@/app/components/meeting-briefing/PreMeetingBriefPanel";
 import clsx from "clsx";
 import { CalendarEventAiActions } from "./CalendarEventAiActions";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 
 function formatTime(d: Date): string {
-  return d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+  return formatTimeQuarterHourDisplay(d);
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -80,6 +81,8 @@ export interface CalendarContextPanelProps {
   onAddTask?: (dateStr: string) => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /** Zavře detail vybrané události (např. návrat na agendu v panelu). */
+  onCloseSelectedEvent?: () => void;
   isMobile?: boolean;
 }
 
@@ -97,6 +100,7 @@ export function CalendarContextPanel({
   onToggleTask,
   onAddTask,
   onToggleCollapsed,
+  onCloseSelectedEvent,
   isMobile = false,
 }: CalendarContextPanelProps) {
   const freeSlots = useMemo(
@@ -119,7 +123,13 @@ export function CalendarContextPanel({
     const start = new Date(selectedEvent.startAt);
     const end = selectedEvent.endAt ? new Date(selectedEvent.endAt) : null;
     const timeStr = `${formatTime(start)}${end ? ` – ${formatTime(end)}` : ""}`;
-    const dateStrFormatted = selectedEvent.startAt ? new Date(selectedEvent.startAt).toISOString().slice(0, 10) : selectedDate;
+    const dateLongLabel = start.toLocaleDateString("cs-CZ", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const typeCat = getEventCategory(selectedEvent.eventType);
     const hasVideoLink = selectedEvent.meetingLink && (selectedEvent.eventType === "telefonat" || selectedEvent.meetingLink.includes("meet") || selectedEvent.meetingLink.includes("zoom"));
 
     return (
@@ -131,18 +141,30 @@ export function CalendarContextPanel({
         {wrapMobile(
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-5 py-4 border-b border-[color:var(--wp-surface-card-border)] flex items-start justify-between bg-[color:var(--wp-surface-muted)]/50">
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1.5">
-                <CalendarIcon size={12} /> {dateStrFormatted}
+                <CalendarIcon size={12} /> Datum
               </div>
-              <h2 className="text-lg font-black text-[color:var(--wp-text)] leading-tight">{selectedEvent.title}</h2>
+              <p className="text-xs font-bold text-[color:var(--wp-text-secondary)] mb-2">{dateLongLabel}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-wide bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]"
+                  style={{ borderLeft: `3px solid ${typeCat.color}` }}
+                >
+                  {typeCat.icon} {typeCat.label}
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-[color:var(--wp-text)] leading-tight break-words">{selectedEvent.title}</h2>
             </div>
-            {onToggleCollapsed && (
+            {(onCloseSelectedEvent || onToggleCollapsed) && (
               <button
                 type="button"
-                onClick={onToggleCollapsed}
+                onClick={() => {
+                  onCloseSelectedEvent?.();
+                  if (!onCloseSelectedEvent) onToggleCollapsed?.();
+                }}
                 className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text)] rounded-md transition-colors shadow-sm shrink-0"
-                aria-label="Zavřít panel"
+                aria-label={onCloseSelectedEvent ? "Zavřít detail události" : "Zavřít panel"}
               >
                 <X size={14} />
               </button>
@@ -158,8 +180,22 @@ export function CalendarContextPanel({
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Čas</p>
                   <p className="text-sm font-bold text-[color:var(--wp-text)]">{timeStr}</p>
+                  <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-0.5">Zobrazeno po čtvrthodinách</p>
                 </div>
               </div>
+              {selectedEvent.reminderAt && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[color:var(--wp-surface-muted)] flex items-center justify-center text-[color:var(--wp-text-secondary)] shrink-0">
+                    <Bell size={14} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Připomenutí</p>
+                    <p className="text-sm font-bold text-[color:var(--wp-text)]">
+                      {new Date(selectedEvent.reminderAt).toLocaleString("cs-CZ", { dateStyle: "medium", timeStyle: "short" })}
+                    </p>
+                  </div>
+                </div>
+              )}
               {selectedEvent.location && (
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[color:var(--wp-surface-muted)] flex items-center justify-center text-[color:var(--wp-text-secondary)] shrink-0">

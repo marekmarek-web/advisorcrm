@@ -13,7 +13,10 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chat, setChat] = useState<ChatItem[]>([
-    { role: "assistant", text: "Ahoj, jsem AI podpora. Pomohu s dalším krokem v klientském portálu." },
+    {
+      role: "assistant",
+      text: "Ahoj, jsem nápověda k tomuto portálu. Pomůžu najít sekce, nahrát dokument nebo napsat poradci — neřeším investice, pojištění ani úvěry; to patří vašemu poradci.",
+    },
   ]);
   const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([
     { id: "openMessages", label: "Napsat poradci", href: "/client/messages" },
@@ -36,7 +39,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "AI odpověď se nepodařilo načíst.");
+        setError(data.error ?? "Odpověď se nepodařilo načíst.");
         return;
       }
       setChat((prev) => [...prev, { role: "assistant", text: String(data.message ?? "") }]);
@@ -60,7 +63,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
         );
       }
     } catch {
-      setError("AI odpověď se nepodařilo načíst.");
+      setError("Odpověď se nepodařilo načíst.");
     } finally {
       setLoading(false);
     }
@@ -75,7 +78,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
         >
           <span className="bg-white rounded-full px-5 min-h-[44px] py-2.5 flex items-center justify-center gap-2">
             <Sparkles size={16} className="text-purple-500" />
-            <span className="font-black text-slate-800 text-sm tracking-wide">AI Podpora</span>
+            <span className="font-black text-slate-800 text-sm tracking-wide">Nápověda k portálu</span>
           </span>
         </button>
       ) : (
@@ -83,16 +86,20 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-purple-500" />
-              <h3 className="font-black text-slate-900 text-sm">AI Podpora</h3>
+              <h3 className="font-black text-slate-900 text-sm">Nápověda k portálu</h3>
             </div>
             <button
               onClick={() => setOpen(false)}
               className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"
-              aria-label="Zavřít AI panel"
+              aria-label="Zavřít panel nápovědy"
             >
               <X size={15} />
             </button>
           </div>
+          <p className="text-[11px] leading-snug text-slate-600 border-l-2 border-indigo-300 pl-2.5 mb-3">
+            Odpovědi jsou pouze informativní a týkají se ovládání portálu. Nejde o finanční, investiční ani pojistnou radu —
+            ty řeší výhradně váš poradce.
+          </p>
           <div className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 mb-3">
             {chat.map((item, idx) => (
               <div
@@ -112,7 +119,7 @@ export function AiSupportButton({ anchorClassName = "bottom-5 right-5" }: { anch
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Napište dotaz..."
+              placeholder="Dotaz k portálu…"
               className="flex-1 min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
             />
             <button

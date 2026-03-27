@@ -9,6 +9,7 @@ import { db } from "db";
 import { events, contacts, tasks } from "db";
 import { eq, and, gte, lt, asc, desc, sql } from "db";
 import { logActivity } from "./activity";
+import { DEFAULT_EVENT_DURATION_MS } from "@/app/portal/calendar/date-utils";
 
 function instantMs(v: string | Date | null | undefined): number | null {
   if (v == null || v === "") return null;
@@ -258,7 +259,7 @@ export async function createEvent(form: {
     assignee = form.assignedTo;
   }
   const startAt = new Date(form.startAt);
-  const endAt = form.endAt ? new Date(form.endAt) : new Date(startAt.getTime() + 60 * 60 * 1000);
+  const endAt = form.endAt ? new Date(form.endAt) : new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
   let googleEventId: string | null = null;
   let googleCalendarId: string | null = null;
   try {
@@ -356,7 +357,7 @@ export async function updateEvent(
       if (form.location != null) patch.location = form.location.trim() || undefined;
       if (form.startAt != null || form.endAt != null || form.allDay != null) {
         const startAt = form.startAt ? new Date(form.startAt) : null;
-        const endAt = form.endAt ? new Date(form.endAt) : startAt ? new Date(startAt.getTime() + 60 * 60 * 1000) : null;
+        const endAt = form.endAt ? new Date(form.endAt) : startAt ? new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS) : null;
         const allDay = form.allDay ?? false;
         if (startAt && endAt) {
           if (allDay) {
@@ -436,7 +437,7 @@ export async function createFollowUp(
 
     if (type === "event") {
       const startAt = form.startAt ? new Date(form.startAt) : new Date();
-      const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+      const endAt = new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
       const [row] = await db
         .insert(events)
         .values({

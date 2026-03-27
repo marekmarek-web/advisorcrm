@@ -40,7 +40,7 @@ export type CreateActionButtonProps = ButtonProps | LinkProps;
 function ShimmerLayer() {
   return (
     <div
-      className="absolute inset-0 z-0 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-aidv-create-shimmer dark:via-white/[0.04] dark:from-transparent dark:to-transparent"
+      className="absolute inset-0 z-0 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-aidv-create-shimmer dark:via-slate-900/[0.07] dark:from-transparent dark:to-transparent"
       aria-hidden
     />
   );
@@ -61,7 +61,7 @@ function InnerContent({
     <div className="relative z-10 flex items-center gap-2.5">
       {isLoading ? (
         <div
-          className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/30 border-t-white"
+          className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-slate-300/80 dark:border-t-[color:var(--aidv-create-on-dark-text)]"
           aria-hidden
         />
       ) : (

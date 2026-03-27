@@ -25,6 +25,9 @@ import {
   Eye,
 } from "lucide-react";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
+import { getDocumentTypeLabel } from "@/lib/ai/document-messages";
+import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
+import { formatAiClassifierForAdvisor } from "@/lib/ai-review/czech-labels";
 import type {
   ExtractionDocument,
   ExtractedGroup,
@@ -45,6 +48,21 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 function getIcon(name: string) {
   return ICON_MAP[name] ?? FileText;
+}
+
+/** Čitelný typ dokumentu: classifier labely, jinak mapa primárního typu, jinak původní řetězec z API. */
+function documentTypeDisplayLine(doc: ExtractionDocument): string {
+  const aiRaw = doc.extractionTrace?.aiClassifierJson as Record<string, string> | undefined;
+  if (aiRaw && (aiRaw.documentType || aiRaw.productFamily)) {
+    return formatAiClassifierForAdvisor(aiRaw);
+  }
+  const label = doc.documentType?.trim() ?? "";
+  if (!label) return "Neurčeno";
+  if (/[·•]/.test(label) || /[áčďéěíňóřšťúůýž]/i.test(label)) {
+    return label;
+  }
+  const phrase = getDocumentTypeLabel(label as PrimaryDocumentType);
+  return phrase.charAt(0).toUpperCase() + phrase.slice(1);
 }
 
 /* ─── Confidence Badge ──────────────────────────────────────────── */
@@ -124,7 +142,7 @@ const SECTIONS = [
   { id: "recommendations", label: "AI akce" },
   { id: "diagnostics", label: "Diagnostika" },
   { id: "data", label: "Data" },
-  { id: "extra", label: "Doporučení" },
+  { id: "extra", label: "Další podněty" },
 ] as const;
 
 function SectionNav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
@@ -209,7 +227,7 @@ function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
             {doc.fileName}
           </h1>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-[color:var(--wp-text-secondary)] mt-1">
-            <span className="text-indigo-600">{doc.documentType}</span>
+            <span className="text-indigo-600">{documentTypeDisplayLine(doc)}</span>
             <span className="h-1 w-1 rounded-full bg-[color:var(--wp-text-tertiary)]" />
             <span className="flex items-center gap-1">
               <User size={12} /> {doc.clientName}
@@ -369,7 +387,7 @@ function AIRecommendationsCard({
         {dismissed.length > 0 && (
           <div className="mt-3 pt-3 border-t border-indigo-100">
             <p className="text-[10px] font-bold text-indigo-400 mb-2">
-              {dismissed.length} zahozených doporučení
+              {dismissed.length} zahozených návrhů
             </p>
             {dismissed.map((rec) => (
               <div
@@ -737,7 +755,7 @@ function ExtraRecommendationsCard({
     <div className="bg-gradient-to-br from-emerald-50/50 to-blue-50/30 rounded-[20px] border border-emerald-100 shadow-sm p-5 md:p-6">
       <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-800 mb-4 flex items-center gap-2">
         <TrendingUp size={16} className="text-emerald-500" />
-        Další doporučení od AI
+        Další interní podněty od AI
       </h3>
       <div className="space-y-3">
         {visible.map((rec) => (

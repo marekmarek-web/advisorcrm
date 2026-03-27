@@ -38,7 +38,7 @@ export function renderSignatures(ctx: SectionCtx): string {
     </div>
 
     <div class="legal">
-      <strong>Právní upozornění:</strong> Tento dokument slouží výhradně jako informační podklad pro rozhodování klienta a nepředstavuje investiční doporučení ve smyslu zákona č. 256/2004 Sb. Veškeré projekce budoucích výnosů jsou pouze odhadem a nezaručují skutečné výsledky. Minulá výkonnost investičních nástrojů není zárukou budoucích výnosů. Hodnota investice může kolísat a investor může získat zpět méně, než investoval. Před realizací jakéhokoli investičního rozhodnutí doporučujeme konzultaci s licencovaným investičním poradcem. Údaje o pojištění jsou orientační kalkulací a skutečné pojistné podmínky stanovuje pojišťovna.
+      <strong>Právní upozornění:</strong> Tento dokument slouží výhradně jako informační podklad pro rozhodování klienta a nepředstavuje investiční doporučení ve smyslu zákona č. 256/2004 Sb. Veškeré projekce budoucích výnosů jsou pouze odhadem a nezaručují skutečné výsledky. Minulá výkonnost investičních nástrojů není zárukou budoucích výnosů. Hodnota investice může kolísat a investor může získat zpět méně, než investoval. Před realizací investičního rozhodnutí je vhodné zvážit konzultaci s licencovaným investičním poradcem. Údaje o pojištění jsou orientační kalkulací a skutečné pojistné podmínky stanovuje pojišťovna.
       <br><br>
       © ${new Date().getFullYear()} Aidvisora — Privátní finanční plánování. Všechna práva vyhrazena.
     </div>

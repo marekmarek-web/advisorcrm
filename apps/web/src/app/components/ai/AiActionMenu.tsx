@@ -38,10 +38,10 @@ function deriveDefaultTitle(outputText: string, actionType: AiActionType): strin
     .find((line) => line.length > 0);
   const base = firstLine ? firstLine.replace(/^[-*\d.\s]+/, "").slice(0, 120) : "";
   if (base) return base;
-  if (actionType === "task") return "AI doporučený úkol";
-  if (actionType === "meeting") return "AI doporučená schůzka";
-  if (actionType === "deal") return "AI doporučený obchod";
-  return "AI servisní akce";
+  if (actionType === "task") return "Návrh úkolu z AI (interní)";
+  if (actionType === "meeting") return "Návrh schůzky z AI (interní)";
+  if (actionType === "deal") return "Návrh obchodu z AI (interní)";
+  return "Návrh servisní akce z AI (interní)";
 }
 
 function entityLink(entityType: "task" | "event" | "opportunity"): string {

@@ -23,7 +23,7 @@ export function buildPensionPdfSections(state: PensionState, result: PensionResu
       rows: [
         { label: "Odhadovaný státní důchod", value: formatCurrencyCs(result.estimatedPension) },
         { label: "Měsíční mezera k cíli", value: formatCurrencyCs(result.monthlyGap) },
-        { label: "Doporučená měsíční investice", value: formatCurrencyCs(result.monthlyInvestment) },
+        { label: "Modelovaná měsíční úloha (orientační)", value: formatCurrencyCs(result.monthlyInvestment) },
         { label: "Cílový kapitál", value: formatCurrencyCs(result.targetCapital) },
       ],
     },

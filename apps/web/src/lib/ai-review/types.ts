@@ -141,7 +141,12 @@ export type ExtractionDocument = {
   createNewClientConfirmed?: string;
   isApplied: boolean;
   applyResultPayload?: ApplyResultPayload;
-  extractionTrace?: { failedStep?: string; warnings?: string[] };
+  extractionTrace?: {
+    failedStep?: string;
+    warnings?: string[];
+    /** AI Review v2 classifier raw JSON (for advisor-facing labels). */
+    aiClassifierJson?: Record<string, unknown>;
+  };
   validationWarnings?: Array<{ code?: string; message: string; field?: string }>;
   classificationReasons?: string[];
   fieldConfidenceMap?: Record<string, number>;

@@ -20,6 +20,7 @@ import clsx from "clsx";
 import { getPreMeetingBrief } from "@/app/actions/pre-meeting-brief";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 import type { PreMeetingBrief } from "@/lib/meeting-briefing/types";
+import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 
 type Props = {
   contactId: string;
@@ -76,7 +77,7 @@ export function PreMeetingBriefPanel({ contactId, eventId, compact = false }: Pr
     brief.productsSummary.length === 0 &&
     brief.analysisStatus === "missing";
 
-  const block = (title: string, icon: React.ReactNode, children: React.ReactNode, badge?: "doporučení" | "návrh") => (
+  const block = (title: string, icon: React.ReactNode, children: React.ReactNode, badge?: "interní" | "návrh") => (
     <section className="rounded-xl border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] p-4">
       <div className="flex items-center gap-2 mb-2">
         <div className="w-8 h-8 rounded-lg bg-[color:var(--wp-surface)] border border-[color:var(--wp-border)] flex items-center justify-center text-[color:var(--wp-text-muted)]">
@@ -100,6 +101,7 @@ export function PreMeetingBriefPanel({ contactId, eventId, compact = false }: Pr
           <Sparkles size={16} className="text-indigo-500" />
           <span className="text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-muted)]">Příprava na schůzku</span>
         </div>
+        <AdvisorAiOutputNotice variant="compact" />
         <p className="text-sm text-[color:var(--wp-text)]">{brief.executiveSummary}</p>
         {brief.suggestedMainGoal && (
           <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
@@ -133,6 +135,8 @@ export function PreMeetingBriefPanel({ contactId, eventId, compact = false }: Pr
           </span>
         )}
       </div>
+
+      <AdvisorAiOutputNotice variant="compact" />
 
       {hasLittleData && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-950/35 p-4">
@@ -224,7 +228,7 @@ export function PreMeetingBriefPanel({ contactId, eventId, compact = false }: Pr
 
       {brief.topAiOpportunities.length > 0 &&
         block(
-          "Doporučené příležitosti",
+          "Interní podněty k prověření (AI)",
           <Sparkles size={16} />,
           <ul className="list-disc pl-4 space-y-1">
             {brief.topAiOpportunities.map((o, i) => (
@@ -233,12 +237,12 @@ export function PreMeetingBriefPanel({ contactId, eventId, compact = false }: Pr
               </li>
             ))}
           </ul>,
-          "doporučení"
+          "interní"
         )}
 
       {brief.suggestedAgenda.length > 0 && (
         block(
-          "Doporučená agenda",
+          "Návrh agendy (interní)",
           <Target size={16} />,
           <ol className="list-decimal pl-4 space-y-1">
             {brief.suggestedAgenda.map((a, i) => (

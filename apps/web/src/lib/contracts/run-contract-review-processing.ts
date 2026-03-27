@@ -25,6 +25,7 @@ import { preprocessForAiExtraction } from "@/lib/documents/processing/preprocess
 import { evaluateContractReviewScanGate } from "@/lib/contracts/contract-review-scan-gate";
 import {
   isAiReviewLlmPostprocessEnabled,
+  parseAiReviewClientMatchKind,
   runAiReviewClientMatchLlm,
 } from "@/lib/ai/ai-review-llm-postprocess";
 
@@ -267,6 +268,10 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     llmClientMatchDurationMs = Date.now() - llmStarted;
   }
 
+  const llmClientMatchKind = clientMatchLlm?.ok
+    ? parseAiReviewClientMatchKind(clientMatchLlm.text)
+    : null;
+
   const [matchedHouseholds, matchedDeals, matchedContracts] = await Promise.all([
     findMatchedHouseholds(tenantId, clientMatchCandidates),
     findMatchedDeals(tenantId, clientMatchCandidates, contractNumber),
@@ -303,6 +308,9 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   if (isMatchingAmbiguous(clientMatchCandidates)) {
     reasonsForReview.push("ambiguous_client_match");
   }
+  if (llmClientMatchKind === "ambiguous") {
+    reasonsForReview.push("llm_client_match_ambiguous");
+  }
   if (
     data.documentClassification.documentIntent === "modifies_existing_product" &&
     matchedContracts.length === 0
@@ -320,6 +328,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     pipelineDurationMs,
     clientMatchDurationMs,
     llmClientMatchDurationMs,
+    ...(llmClientMatchKind ? { llmClientMatchKind } : {}),
     totalPipelineDurationMs: Date.now() - processingStartedAtMs,
     ...(clientMatchLlm?.ok ? { llmClientMatchText: clientMatchLlm.text.slice(0, 4000) } : {}),
     ...(adobePreprocessResult?.preprocessed

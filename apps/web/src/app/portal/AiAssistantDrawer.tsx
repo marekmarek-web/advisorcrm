@@ -28,6 +28,7 @@ import {
 import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { isLikelyPdfUpload } from "@/lib/security/file-signature";
+import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 
 type DraftAction = { type: string; label: string; payload: Record<string, unknown> };
 type ClientCandidate = { clientId: string; displayName?: string };
@@ -81,7 +82,7 @@ function formatUploadSuccessMessage(detail: {
     const parts = [...missing, ...reasons];
     lines.push(`Chybějící / k ověření: ${parts.join(", ")}.`);
   }
-  lines.push("Doporučené akce:");
+  lines.push("Možné další kroky v CRM (interní):");
   return lines.join("\n");
 }
 
@@ -428,7 +429,7 @@ export function AiAssistantDrawer() {
       <div
         className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 md:w-full md:max-w-[420px] z-[101] flex flex-col bg-[color:var(--wp-surface-card)] shadow-[-4px_0_24px_rgba(0,0,0,0.12)]"
         role="dialog"
-        aria-label="AI asistent"
+        aria-label="Interní AI podpora pro CRM"
       >
         {/* Header - reference style */}
         <div className="shrink-0 px-4 py-4 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80">
@@ -438,9 +439,9 @@ export function AiAssistantDrawer() {
                 <AiAssistantBrandIcon size={28} className="max-h-full max-w-full" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl font-black text-[color:var(--wp-text)] tracking-tight">AI asistent</h2>
+                <h2 className="text-xl font-black text-[color:var(--wp-text)] tracking-tight">Interní AI asistent</h2>
                 <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-0.5">
-                  Nahrajte smlouvu nebo se zeptejte. Pomůžu s revizí a CRM.
+                  Extrakce smluv a administrativní nápověda v CRM — výhradně pro poradce.
                 </p>
               </div>
             </div>
@@ -453,6 +454,10 @@ export function AiAssistantDrawer() {
               <X size={22} />
             </button>
           </div>
+        </div>
+
+        <div className="shrink-0 px-4 pt-2">
+          <AdvisorAiOutputNotice variant="compact" />
         </div>
 
         {/* Quick actions */}
@@ -472,7 +477,7 @@ export function AiAssistantDrawer() {
             className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-sm font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap"
           >
             <MessageCircle size={18} className="text-indigo-500" />
-            Zeptat se AI
+            Dotaz na interní asistenta
           </button>
           <button
             type="button"

@@ -2,8 +2,8 @@
  * AI Review pipeline v2: classifier → routing matrix → Prompt Builder / legacy extraction → validation.
  */
 
-import { createResponse, createResponseFromPrompt, createResponseWithFile } from "@/lib/openai";
-import { detectInputMode } from "./input-mode-detection";
+import { createResponse, createAiReviewResponseFromPrompt, createResponseWithFile } from "@/lib/openai";
+import { detectInputMode, type InputModeResult } from "./input-mode-detection";
 import type { ClassificationResult } from "./document-classification";
 import {
   buildExtractionPrompt,
@@ -44,6 +44,7 @@ import { resolveAiReviewExtractionRoute } from "./ai-review-extraction-router";
 import { mapAiClassifierToClassificationResult } from "./ai-review-type-mapper";
 import { getAiReviewPromptId, getAiReviewPromptVersion, type AiReviewPromptKey } from "./prompt-model-registry";
 import { isAiReviewLlmPostprocessEnabled, runAiReviewDecisionLlm } from "./ai-review-llm-postprocess";
+import { buildAiReviewExtractionPromptVariables, capAiReviewPromptString } from "./ai-review-prompt-variables";
 import type {
   ContractPipelineOptions,
   PipelinePreprocessMeta,
@@ -85,10 +86,30 @@ function logPipelineEvent(phase: string, payload: Record<string, unknown>): void
   console.info(`[ai-review-v2] ${phase}`, JSON.stringify(payload));
 }
 
+/** Saves one OpenAI file call when preprocess already proves a text-heavy PDF. */
+function tryInferInputModeFromPreprocess(
+  meta: PipelinePreprocessMeta | null | undefined,
+  hintLength: number
+): InputModeResult | null {
+  if (process.env.AI_REVIEW_SKIP_INPUT_MODE_WHEN_PREPROCESS_OK !== "true") return null;
+  if (hintLength < 800) return null;
+  if (typeof meta?.readabilityScore !== "number" || meta.readabilityScore < 68) return null;
+  return {
+    inputMode: "text_pdf",
+    confidence: 0.85,
+    extractionMode: "text",
+    ocrRequired: false,
+    pageCount: meta.pageCountEstimate ?? undefined,
+    qualityWarnings: [],
+    extractionWarnings: ["input_mode_inferred_from_preprocess"],
+  };
+}
+
 async function tryExtractPaymentWithPrompt(
   fileUrl: string,
   mimeType: string | null | undefined,
-  documentText: string
+  documentText: string,
+  ctx: { classificationReasons: string[]; adobeSignals: string; filename: string }
 ): Promise<
   | { ok: true; data: PaymentInstructionExtraction; raw: string }
   | { ok: false; error: string; errorCode?: string }
@@ -97,13 +118,18 @@ async function tryExtractPaymentWithPrompt(
   if (!promptId) {
     return extractPaymentInstructionsFromDocument(fileUrl, mimeType);
   }
-  const res = await createResponseFromPrompt(
+  const variables = buildAiReviewExtractionPromptVariables({
+    documentText,
+    classificationReasons: ctx.classificationReasons,
+    adobeSignals: ctx.adobeSignals,
+    filename: ctx.filename,
+  });
+  const res = await createAiReviewResponseFromPrompt(
     {
+      promptKey: "paymentInstructionsExtraction",
       promptId,
       version: getAiReviewPromptVersion("paymentInstructionsExtraction"),
-      variables: {
-        document_text: selectExcerptForExtraction(documentText).text,
-      },
+      variables,
     },
     { store: false, routing: { category: "ai_review" } }
   );
@@ -336,9 +362,17 @@ export async function runAiReviewV2Pipeline(
   const allReasons: string[] = [];
   mergePreprocessIntoTrace(trace, options?.preprocessMeta ?? null);
 
+  const hint = (options?.ruleBasedTextHint ?? "").trim();
+  const inferredInputMode = tryInferInputModeFromPreprocess(options?.preprocessMeta ?? null, hint.length);
+
   let inputModeResult: Awaited<ReturnType<typeof detectInputMode>>;
   try {
-    inputModeResult = await detectInputMode(fileUrl, mimeType);
+    if (inferredInputMode) {
+      inputModeResult = inferredInputMode;
+      trace.warnings = [...(trace.warnings ?? []), "skipped_detect_input_mode_preprocess_ok"];
+    } else {
+      inputModeResult = await detectInputMode(fileUrl, mimeType);
+    }
   } catch (e) {
     trace.failedStep = "detect_input_mode";
     if (isOpenAIRateLimitError(e)) {
@@ -367,7 +401,6 @@ export async function runAiReviewV2Pipeline(
     inputModeResult.pageCount ?? options?.preprocessMeta?.pageCountEstimate ?? trace.pageCount;
   trace.warnings = [...(trace.warnings ?? []), ...inputModeResult.extractionWarnings];
 
-  const hint = (options?.ruleBasedTextHint ?? "").trim();
   const classifierPageCount =
     inputModeResult.pageCount ?? options?.preprocessMeta?.pageCountEstimate ?? trace.pageCount ?? null;
   const clsRes = await runAiReviewClassifier({
@@ -403,6 +436,7 @@ export async function runAiReviewV2Pipeline(
 
   const ai = clsRes.data;
   trace.aiClassifierJson = ai as unknown as Record<string, unknown>;
+  trace.supportedForDirectExtraction = ai.supportedForDirectExtraction !== false;
   const classification = mapAiClassifierToClassificationResult(ai);
   trace.documentType = classification.primaryType;
   trace.classificationConfidence = classification.confidence;
@@ -502,6 +536,39 @@ export async function runAiReviewV2Pipeline(
 
   const promptKey = router.promptKey as AiReviewPromptKey;
 
+  if (ai.supportedForDirectExtraction === false && promptKey !== "paymentInstructionsExtraction") {
+    const stub = buildManualReviewStubEnvelope({
+      classification,
+      inputMode: inputModeResult.inputMode as string,
+      extractionMode: inputModeResult.extractionMode as string,
+      pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
+      norm: normPipeline,
+      route: extractionRoute,
+    });
+    stub.documentMeta.textCoverageEstimate = textCov;
+    stub.reviewWarnings.push({
+      code: "not_supported_for_direct_extraction",
+      message:
+        "Klasifikátor označil dokument jako nevhodný pro plnou automatickou extrakci — zpracujte ručně nebo upravte vstup.",
+      severity: "warning",
+    });
+    trace.selectedSchema = "direct_extraction_unsupported";
+    return {
+      ok: true,
+      processingStatus: "review_required",
+      extractedPayload: stub,
+      confidence: classification.confidence * 0.55,
+      reasonsForReview: [...new Set([...allReasons, "direct_extraction_unsupported"])],
+      inputMode: inputModeResult.inputMode,
+      extractionMode: inputModeResult.extractionMode,
+      detectedDocumentType: classification.primaryType,
+      extractionTrace: trace,
+      validationWarnings: stub.reviewWarnings as ValidationWarning[],
+      fieldConfidenceMap: null,
+      classificationReasons: classification.reasons,
+    };
+  }
+
   const modeEarly = inputModeResult.extractionMode as string;
   const isScanFallbackEarly = modeEarly === "vision_fallback" || modeEarly === "ocr_enhanced";
   if (
@@ -546,7 +613,11 @@ export async function runAiReviewV2Pipeline(
   if (promptKey === "paymentInstructionsExtraction") {
     trace.selectedSchema = "payment_instruction_dedicated_v2";
     const extStart = Date.now();
-    const payRes = await tryExtractPaymentWithPrompt(fileUrl, mimeType, hint);
+    const payRes = await tryExtractPaymentWithPrompt(fileUrl, mimeType, hint, {
+      classificationReasons: classification.reasons,
+      adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
+      filename: options?.sourceFileName?.trim() || "unknown",
+    });
     trace.extractionDurationMs = Date.now() - extStart;
 
     if (!payRes.ok) {
@@ -661,14 +732,18 @@ export async function runAiReviewV2Pipeline(
   try {
     if (extractionPromptId && hint.length >= 400) {
       trace.extractionSecondPass = "prompt_text";
-      const pr = await createResponseFromPrompt(
+      const extractionVariables = buildAiReviewExtractionPromptVariables({
+        documentText: hint,
+        classificationReasons: classification.reasons,
+        adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
+        filename: options?.sourceFileName?.trim() || "unknown",
+      });
+      const pr = await createAiReviewResponseFromPrompt(
         {
+          promptKey,
           promptId: extractionPromptId,
           version: extractionVersion,
-          variables: {
-            document_text: selectExcerptForExtraction(hint).text,
-            classification_json: JSON.stringify(ai),
-          },
+          variables: extractionVariables,
         },
         { store: false, routing: { category: "ai_review" } }
       );
@@ -751,15 +826,26 @@ export async function runAiReviewV2Pipeline(
 
   const rdStart = Date.now();
   if (isAiReviewLlmPostprocessEnabled()) {
-    const extractionSummary = {
-      primaryType: validated.data.documentClassification?.primaryType,
+    const extractionSlim = {
+      documentClassification: validated.data.documentClassification,
+      documentMeta: {
+        overallConfidence: validated.data.documentMeta?.overallConfidence,
+        normalizedPipelineClassification: validated.data.documentMeta?.normalizedPipelineClassification,
+      },
+      parties: validated.data.parties,
+      extractedFieldKeys: Object.keys(validated.data.extractedFields ?? {}),
+    };
+    const sectionSummary = {
       overallConfidence: validated.data.documentMeta?.overallConfidence,
-      fieldCount: Object.keys(validated.data.extractedFields ?? {}).length,
+      extractedFieldCount: Object.keys(validated.data.extractedFields ?? {}).length,
     };
     const llmRd = await runAiReviewDecisionLlm({
-      classificationJson: JSON.stringify(classification),
-      extractionSummaryJson: JSON.stringify(extractionSummary),
-      validationSummaryJson: JSON.stringify({ valid: true, note: "post_parse" }),
+      normalizedDocumentType: String(normPipeline),
+      extractionPayloadJson: capAiReviewPromptString(JSON.stringify(extractionSlim)),
+      validationWarningsJson: "[]",
+      sectionConfidenceSummaryJson: JSON.stringify(sectionSummary),
+      inputMode: String(inputModeResult.inputMode),
+      preprocessWarningsJson: JSON.stringify(trace.warnings ?? []),
     });
     if (llmRd.ok) {
       trace.llmReviewDecisionText = llmRd.text.slice(0, 4000);

@@ -83,7 +83,7 @@ describe("document-classification", () => {
       expect(openai.createResponseWithFile).toHaveBeenCalledWith(
         "https://example.com/file.pdf",
         expect.any(String),
-        { routing: { category: "ai_review" } }
+        expect.objectContaining({ routing: expect.objectContaining({ category: "ai_review" }) })
       );
     });
   });

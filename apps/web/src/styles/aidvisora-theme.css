@@ -406,6 +406,12 @@
 
   --aidv-create-bg: #1e293b;
   --aidv-create-bg-hover: #334155;
+  /* Primární create CTA v tmavém motivu: světlý panel (kontrast na tmavém plátně / headeru) */
+  --aidv-create-on-dark-bg: #f1f5f9;
+  --aidv-create-on-dark-bg-hover: #e2e8f0;
+  --aidv-create-on-dark-text: #0f172a;
+  --aidv-create-on-dark-border: rgba(15, 23, 42, 0.14);
+  --aidv-create-on-dark-border-hover: rgba(15, 23, 42, 0.22);
   --aidv-dashboard-cta-bg: #4f46e5;
   --aidv-dashboard-cta-bg-hover: #6366f1;
   --aidv-dashboard-cta-ring: rgba(129, 140, 248, 0.45);

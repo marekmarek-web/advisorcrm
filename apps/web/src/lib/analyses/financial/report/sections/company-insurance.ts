@@ -100,8 +100,8 @@ export function renderCompanyInsurance(ctx: SectionCtx): string {
       <span class="callout-icon">${categories.some((c) => c.status === 'bad') ? '⚠️' : '✓'}</span>
       <div><strong>${categories.some((c) => c.status === 'bad') ? 'Identifikována rizika' : 'Všechna rizika zajištěna'}</strong>
       ${categories.some((c) => c.status === 'bad')
-    ? `Nezajištěné oblasti: ${categories.filter((c) => c.status === 'bad').map((c) => c.name).join(', ')}. Doporučujeme neprodleně řešit.`
-    : 'Vaše firma má pokryta všechna hlavní rizika. Doporučujeme pravidelnou revizi.'}</div>
+    ? `Nezajištěné oblasti: ${categories.filter((c) => c.status === 'bad').map((c) => c.name).join(', ')}. Oblast k posouzení poradcem.`
+    : 'Vaše firma má pokryta všechna hlavní rizika. Zvažte pravidelnou revizi v rámci evidence.'}</div>
     </div>
   </div>
 </section>`;

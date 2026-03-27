@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createResponseSafe, logOpenAICall } from "@/lib/openai";
+import { ADVISOR_AI_INTERNAL_SCOPE_CS } from "@/lib/ai/compliance-prompt-suffix";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ function buildFallbackInsight(
   meetingsTarget: number
 ): string {
   if (productionTarget <= 0 && meetingsTarget <= 0) {
-    return "Nastav cíle produkce a schůzek. AI ti pak připraví osobní doporučení.";
+    return "Nastav cíle produkce a schůzek — poté můžeš vygenerovat informativní interní přehled aktivity.";
   }
   const pctProd = productionTarget > 0 ? Math.round((productionActual / productionTarget) * 100) : 0;
   const pctMeet = meetingsTarget > 0 ? Math.round((meetingsActual / meetingsTarget) * 100) : 0;
@@ -64,8 +65,8 @@ export async function POST(request: Request) {
         .map((r: { title?: string; description?: string }) => `${r.title ?? ""}: ${r.description ?? ""}`)
         .filter(Boolean)
         .join(". ");
-      const context = `Období: ${periodLabel}. Cíle: produkce ${productionTarget} Kč, schůzky ${meetingsTarget}. Skutečnost: produkce ${productionActual} Kč, schůzky ${meetingsActual}. ${recText ? `Doporučení: ${recText}` : ""}`;
-      const prompt = `Jsi AI Business Coach pro finančního poradce. Stručně (1–2 věty, max 200 znaků) shrň, na co se zaměřit v tomto období. Kontext: ${context}. Odpověz pouze textem, bez odrážek, v češtině.`;
+      const context = `Období: ${periodLabel}. Cíle: produkce ${productionTarget} Kč, schůzky ${meetingsTarget}. Skutečnost: produkce ${productionActual} Kč, schůzky ${meetingsActual}. ${recText ? `Poznámky z plánu: ${recText}` : ""}`;
+      const prompt = `Jsi interní analytický nástroj pro poradce (ne rada klientovi). Stručně (1–2 věty, max 200 znaků) shrň oblasti k prověření v práci poradce v tomto období. Kontext: ${context}. Odpověz pouze textem, bez odrážek, v češtině.\n\n${ADVISOR_AI_INTERNAL_SCOPE_CS}`;
       const result = await createResponseSafe(prompt);
       if (result.ok) {
         insight = result.text.slice(0, 400).trim();

@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { getCzPublicHolidayLabel, getPragueCalendarParts } from "@/lib/calendar/cz-public-holidays";
 import { getCzNameDaysForDate } from "@/lib/calendar/cz-name-days";
@@ -42,7 +43,7 @@ export type DashboardKpis = {
   sidePanelAgendaTimeline: DashboardAgendaTimelineRow[];
 };
 
-export async function getDashboardKpis(): Promise<DashboardKpis> {
+async function loadDashboardKpis(): Promise<DashboardKpis> {
   const auth = await requireAuthInAction();
   const pragueToday = getPragueCalendarParts();
   const czPublicHolidayToday = getCzPublicHolidayLabel(pragueToday.year, pragueToday.month, pragueToday.day);
@@ -451,3 +452,6 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     sidePanelAgendaTimeline,
   };
 }
+
+/** Jedna instance dotazu na KPI v rámci RSC requestu (nástěnka, mobilní loader, …). */
+export const getDashboardKpis = cache(loadDashboardKpis);

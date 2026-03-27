@@ -9,11 +9,11 @@ export const maxDuration = 60;
 const GRACE_PAST_MIN = 120;
 
 /**
- * Kalendářní připomenutí pro poradce: push (FCM) + volitelně e-mail (Resend).
- * Spouštět z Vercel Cron každých pár minut.
+ * Kalendářní připomenutí: in-app (advisor_notifications) + push (FCM) + volitelně e-mail (Resend).
+ * `reminder_notified_at` se nastaví jen po úspěchu alespoň jednoho kanálu — jinak se připomenutí zkusí znovu.
  *
- * E-mail: vypnout nastavením `EVENT_REMINDER_EMAIL=0` (push zůstane, pokud je FCM).
- * Vyžaduje migraci `reminder_notified_at` na `events`.
+ * Globálně vypnout e-mail: `EVENT_REMINDER_EMAIL=0`.
+ * Per uživatel: `user_profiles.calendar_reminder_*_enabled` (po migraci).
  */
 export async function GET(request: Request) {
   const denied = cronAuthResponse(request);
@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   const { db, events, userProfiles, tenants, eq, and, isNull, lte, gte, or, ne, isNotNull } =
     await import("db");
   const { sendPushToUser } = await import("@/lib/push/send");
+  const { emitNotification } = await import("@/lib/execution/notification-center");
 
   const now = new Date();
   const notBefore = new Date(now.getTime() - GRACE_PAST_MIN * 60_000);
@@ -35,6 +36,8 @@ export async function GET(request: Request) {
       assignedTo: events.assignedTo,
       advisorEmail: userProfiles.email,
       tenantNotificationEmail: tenants.notificationEmail,
+      reminderPushEnabled: userProfiles.calendarReminderPushEnabled,
+      reminderEmailEnabled: userProfiles.calendarReminderEmailEnabled,
     })
     .from(events)
     .innerJoin(tenants, eq(events.tenantId, tenants.id))
@@ -51,13 +54,21 @@ export async function GET(request: Request) {
     )
     .limit(200);
 
-  const emailEnabled = process.env.EVENT_REMINDER_EMAIL?.trim() !== "0";
+  const globalEmailOff = process.env.EVENT_REMINDER_EMAIL?.trim() === "0";
   const resendKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
 
-  let processed = 0;
+  let scanned = rows.length;
+  let markedNotified = 0;
+  let skippedNoChannel = 0;
+  let inAppEmitted = 0;
+  let pushSent = 0;
   let emailsSent = 0;
+  const errors: string[] = [];
 
   for (const row of rows) {
     const startLabel = new Date(row.startAt).toLocaleString("cs-CZ", {
@@ -65,17 +76,56 @@ export async function GET(request: Request) {
       timeStyle: "short",
     });
     const titleShort = row.title.length > 80 ? `${row.title.slice(0, 77)}…` : row.title;
+    const uid = row.assignedTo!;
 
-    await sendPushToUser({
-      type: "REMINDER_DUE",
-      title: `Připomenutí: ${titleShort}`,
-      body: `Začátek: ${startLabel}`,
-      tenantId: row.tenantId,
-      userId: row.assignedTo!,
-      data: { eventId: row.id, surface: "calendar" },
-    });
+    const userWantsPush = row.reminderPushEnabled !== false;
+    const userWantsEmail = row.reminderEmailEnabled !== false;
+    const allowEmail = !globalEmailOff && userWantsEmail;
 
-    if (emailEnabled && resendKey && row.advisorEmail?.trim()) {
+    let inAppOk = false;
+    try {
+      const notif = await emitNotification({
+        tenantId: row.tenantId,
+        type: "reminder_due",
+        title: `Připomenutí: ${titleShort}`,
+        body: `Začátek: ${startLabel}`,
+        severity: "info",
+        targetUserId: uid,
+        channels: ["in_app"],
+        relatedEntityType: "calendar_event",
+        relatedEntityId: row.id,
+        groupKey: `calendar_reminder:${row.id}`,
+      });
+      if (notif) {
+        inAppOk = true;
+        inAppEmitted += 1;
+      }
+    } catch (e) {
+      errors.push(`in_app ${row.id}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    let pushDelivered = false;
+    if (userWantsPush) {
+      try {
+        const pushResult = await sendPushToUser({
+          type: "REMINDER_DUE",
+          title: `Připomenutí: ${titleShort}`,
+          body: `Začátek: ${startLabel}`,
+          tenantId: row.tenantId,
+          userId: uid,
+          data: { eventId: row.id, surface: "calendar" },
+        });
+        if (pushResult.sent > 0) {
+          pushDelivered = true;
+          pushSent += pushResult.sent;
+        }
+      } catch (e) {
+        errors.push(`push ${row.id}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    let emailDelivered = false;
+    if (allowEmail && resendKey && row.advisorEmail?.trim()) {
       const replyTo = row.tenantNotificationEmail?.trim() || resolveResendReplyTo();
       try {
         const { Resend } = await import("resend");
@@ -87,21 +137,37 @@ export async function GET(request: Request) {
           html: `<p>Blíží se vaše aktivita v kalendáři.</p><p><strong>${escapeHtml(row.title)}</strong></p><p>Začátek: ${escapeHtml(startLabel)}</p><p><a href="${baseUrl}/portal/calendar">Otevřít kalendář</a></p>`,
           ...(replyTo ? { replyTo } : {}),
         });
-        if (!error) emailsSent += 1;
-      } catch {
-        // e-mail není kritický
+        if (!error) {
+          emailDelivered = true;
+          emailsSent += 1;
+        }
+      } catch (e) {
+        errors.push(`email ${row.id}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
 
-    await db
-      .update(events)
-      .set({ reminderNotifiedAt: new Date(), updatedAt: new Date() })
-      .where(eq(events.id, row.id));
-
-    processed += 1;
+    const delivered = inAppOk || pushDelivered || emailDelivered;
+    if (delivered) {
+      await db
+        .update(events)
+        .set({ reminderNotifiedAt: new Date(), updatedAt: new Date() })
+        .where(eq(events.id, row.id));
+      markedNotified += 1;
+    } else {
+      skippedNoChannel += 1;
+    }
   }
 
-  return NextResponse.json({ ok: true, processed, emailsSent });
+  return NextResponse.json({
+    ok: true,
+    scanned,
+    markedNotified,
+    skippedNoChannel,
+    inAppEmitted,
+    pushSent,
+    emailsSent,
+    ...(errors.length ? { errors: errors.slice(0, 20) } : {}),
+  });
 }
 
 function escapeHtml(s: string): string {

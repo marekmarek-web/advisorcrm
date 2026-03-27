@@ -6,7 +6,11 @@ import type { ContactRow } from "@/app/actions/contacts";
 import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 import clsx from "clsx";
-import { formatDateTimeLocal } from "@/app/portal/calendar/date-utils";
+import {
+  addMsToLocalDateTime,
+  DEFAULT_EVENT_DURATION_MS,
+  formatDateTimeLocal,
+} from "@/app/portal/calendar/date-utils";
 import { EventFormDateTimeSection } from "@/app/portal/calendar/EventFormDateTimeSection";
 
 function CheckSquare({ size, className }: { size: number; className?: string }) {
@@ -77,7 +81,10 @@ export function QuickEventForm({
     ...DEFAULT_VALUES,
     ...initialValues,
     startAt: initialValues?.startAt ?? initialStart,
-    endAt: initialValues?.endAt ?? initialEnd ?? addHour(initialStart),
+    endAt:
+      initialValues?.endAt ??
+      initialEnd ??
+      addMsToLocalDateTime(initialStart, DEFAULT_EVENT_DURATION_MS),
     eventType: initialValues?.eventType ?? "schuzka",
     title: initialValues?.title ?? "",
     contactId: initialValues?.contactId ?? "",
@@ -239,8 +246,3 @@ export function QuickEventForm({
   );
 }
 
-function addHour(iso: string): string {
-  const d = new Date(iso);
-  d.setHours(d.getHours() + 1);
-  return formatDateTimeLocal(d);
-}

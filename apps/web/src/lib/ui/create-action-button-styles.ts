@@ -1,7 +1,8 @@
 import clsx from "clsx";
 
 /**
- * Společný povrch primárních CTA (světlý `bg-aidv-create`, tmavý stejný gradient jako „Nástroje poradce“).
+ * Společný povrch primárních CTA: světlý motiv `bg-aidv-create` + bílý text;
+ * tmavý motiv světlý panel z tokenů `--aidv-create-on-dark-*` (čitelnost na tmavém UI).
  * Bez velikosti/typografie – pro skládání vlastních tlačítek.
  */
 /** Společný gradient + hover/disabled/focus – bez paddingu (ikony, kompaktní CTA). */
@@ -9,16 +10,21 @@ export const portalPrimaryGradientBaseClassName = clsx(
   "relative inline-flex items-center justify-center gap-2",
   "text-white",
   "bg-aidv-create shadow-lg shadow-slate-900/20",
-  "dark:!bg-[linear-gradient(180deg,rgba(217,70,239,0.26)_0%,rgba(99,102,241,0.16)_100%)]",
-  "dark:border dark:border-fuchsia-500/30 dark:shadow-inner dark:shadow-black/30 dark:shadow-md",
+  "dark:!bg-[color:var(--aidv-create-on-dark-bg)]",
+  "dark:!text-[color:var(--aidv-create-on-dark-text)]",
+  "dark:border dark:border-[color:var(--aidv-create-on-dark-border)]",
+  "dark:shadow-lg dark:shadow-black/35",
   "transition-all duration-300 ease-out",
   "hover:bg-aidv-create-hover hover:shadow-indigo-500/25 hover:-translate-y-0.5",
-  "dark:hover:!bg-[linear-gradient(180deg,rgba(217,70,239,0.34)_0%,rgba(99,102,241,0.22)_100%)]",
-  "dark:hover:border-fuchsia-400/40 dark:hover:shadow-lg dark:hover:shadow-black/45",
+  "dark:hover:!bg-[color:var(--aidv-create-on-dark-bg-hover)]",
+  "dark:hover:border-[color:var(--aidv-create-on-dark-border-hover)]",
+  "dark:hover:shadow-xl dark:hover:shadow-black/45",
   "active:scale-[0.96] active:translate-y-0 active:shadow-sm",
   "disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-slate-900/20",
+  "dark:disabled:hover:shadow-black/25",
   "overflow-hidden group",
-  "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 dark:focus-visible:ring-fuchsia-400/50",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400",
+  "dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[color:var(--wp-bg)]",
 );
 
 /**

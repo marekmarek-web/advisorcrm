@@ -62,6 +62,7 @@ import {
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
 import { AiSupportButton } from "@/app/client/AiSupportButton";
+import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 import type { ClientMobileInitialData } from "./client-mobile-initial-data";
 
 type TabId = "home" | "messages" | "documents" | "requests" | "menu";
@@ -658,7 +659,9 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
 
       <MobileBottomNav items={navItems} activeId={tab} onSelect={(id) => navigate(id as TabId)} />
 
-      <AiSupportButton anchorClassName="bottom-[calc(168px+var(--safe-area-bottom,0px))] right-4 max-[380px]:right-3" />
+      {!isClientPortalAiDisabled() ? (
+        <AiSupportButton anchorClassName="bottom-[calc(168px+var(--safe-area-bottom,0px))] right-4 max-[380px]:right-3" />
+      ) : null}
     </MobileAppShell>
   );
 }

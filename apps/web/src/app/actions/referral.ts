@@ -201,7 +201,7 @@ export async function getReferralRequestSignals(
   const isClient =
     contact.lifecycleStage === "client" || (hasContract.length > 0);
   if (!isClient) {
-    return { signals: [], suppressReason: "Referral doporučujeme pouze u klientů." };
+    return { signals: [], suppressReason: "Signály pro žádost o referral (nový kontakt) jsou jen u klientů." };
   }
 
   // Recently asked: open task with referral-like title in last N months
@@ -248,7 +248,7 @@ export async function getReferralRequestSignals(
     signals.push({
       type: "won_deal_recent",
       label: REFERRAL_REQUEST_SIGNAL_LABELS.won_deal_recent,
-      description: "Obchod byl nedávno uzavřen – vhodný moment požádat o doporučení.",
+      description: "Obchod byl nedávno uzavřen — typický čas na žádost o referral (nový kontakt).",
     });
   }
 
@@ -275,7 +275,7 @@ export async function getReferralRequestSignals(
     signals.push({
       type: "meeting_recent",
       label: REFERRAL_REQUEST_SIGNAL_LABELS.meeting_recent,
-      description: "Měli jste nedávno schůzku – můžete využít k požádání o doporučení.",
+      description: "Nedávná schůzka — můžete využít k žádosti o referral (nový kontakt).",
     });
   }
 
@@ -288,7 +288,7 @@ export async function getReferralRequestSignals(
       signals.push({
         type: "service_current",
         label: REFERRAL_REQUEST_SIGNAL_LABELS.service_current,
-        description: "Servis je v pořádku – vhodný čas na požádání o doporučení.",
+        description: "Servis je v pořádku — typický čas na žádost o referral (nový kontakt).",
       });
     }
   }
@@ -317,7 +317,7 @@ export async function getReferralRequestSignals(
       signals.push({
         type: "contract_anniversary_soon",
         label: REFERRAL_REQUEST_SIGNAL_LABELS.contract_anniversary_soon,
-        description: "Blíží se výročí smlouvy – vhodný moment pro doporučení.",
+        description: "Blíží se výročí smlouvy — typický čas na žádost o referral (nový kontakt).",
       });
     }
   }
@@ -361,7 +361,7 @@ export async function getReferralRequestSignals(
       signals.push({
         type: "long_relationship_recent_activity",
         label: REFERRAL_REQUEST_SIGNAL_LABELS.long_relationship_recent_activity,
-        description: "Dlouhodobý vztah a nedávná aktivita – vhodný čas na doporučení.",
+        description: "Dlouhodobý vztah a nedávná aktivita — typický čas na žádost o referral (nový kontakt).",
       });
     }
   }

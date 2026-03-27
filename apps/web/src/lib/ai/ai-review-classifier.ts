@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import { createResponseFromPrompt, createResponseWithFile } from "@/lib/openai";
+import { createAiReviewResponseFromPrompt, createResponseWithFile } from "@/lib/openai";
 import { selectExcerptForExtraction } from "./extraction-schemas-by-type";
 import { getAiReviewPromptId, getAiReviewPromptVersion } from "./prompt-model-registry";
 
@@ -21,6 +21,8 @@ export const aiClassifierOutputSchema = z.object({
   productSubtypeLabel: z.string().optional(),
   businessIntentLabel: z.string().optional(),
   documentTypeUncertain: z.boolean().optional(),
+  /** When false, pipeline should not run full structured contract extraction (manual / review path). */
+  supportedForDirectExtraction: z.boolean().optional().default(true),
 });
 
 export type AiClassifierOutput = z.infer<typeof aiClassifierOutputSchema>;
@@ -28,7 +30,7 @@ export type AiClassifierOutput = z.infer<typeof aiClassifierOutputSchema>;
 const CLASSIFIER_FILE_PROMPT = `Finanční dokument (ČR). Výstup = jediný platný JSON, žádný markdown, žádný text mimo JSON.
 
 Povinná pole: documentType, productFamily, productSubtype, businessIntent, recommendedRoute (snake_case EN), confidence (0–1), warnings (krátké stringy, cs).
-Volitelně: reasons, documentTypeLabel, productFamilyLabel, productSubtypeLabel, businessIntentLabel (cs), documentTypeUncertain (boolean).`;
+Volitelně: reasons, documentTypeLabel, productFamilyLabel, productSubtypeLabel, businessIntentLabel (cs), documentTypeUncertain (boolean), supportedForDirectExtraction (boolean, default true — false když dokument není vhodný pro plnou automatickou extrakci).`;
 
 function parseClassifierJson(raw: string): AiClassifierOutput {
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -137,8 +139,9 @@ export async function runAiReviewClassifier(params: {
         source_channel: variables.source_channel,
         fallbacks_applied: fallbacksApplied,
       });
-      const res = await createResponseFromPrompt(
+      const res = await createAiReviewResponseFromPrompt(
         {
+          promptKey: "docClassifierV2",
           promptId,
           version,
           variables,

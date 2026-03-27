@@ -25,6 +25,10 @@ export default function PrivacyPage() {
           zajištění bezpečnosti, evidence dokumentů v rámci oprávnění a plnění právních povinností. Právní základem je
           plnění smlouvy, oprávněný zájem (bezpečnost, zlepšování služby) nebo souhlas, pokud je vyžadován.
         </p>
+        <p>
+          Funkce založené na umělé inteligenci v prostředí pro poradce slouží jako interní podpora a informativní
+          podklady; nejsou určeny jako automatické doporučení finančních produktů klientům koncových uživatelů.
+        </p>
 
         <h2 className="text-lg font-semibold mt-6">4. Doba uchovávání</h2>
         <p>

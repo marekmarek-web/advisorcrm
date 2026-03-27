@@ -7,7 +7,7 @@ export type CalendarSettingsWizardProps = Omit<CalendarSettingsModalProps, "layo
   deviceClass?: DeviceClass;
 };
 
-/** Mobile: fullscreen + 3-step wizard. Tablet/desktop: centered modal (single scroll). */
+/** Mobile: fullscreen + 4-step wizard. Tablet/desktop: centered modal (single scroll). */
 export function CalendarSettingsWizard({ deviceClass = "phone", ...rest }: CalendarSettingsWizardProps) {
   const large = deviceClass === "tablet" || deviceClass === "desktop";
   return (

@@ -58,8 +58,9 @@ function ProcessingProgress({ stepHint }: { stepHint?: string }) {
           {dots}
         </p>
         <p className="text-sm text-[color:var(--wp-text-secondary)] font-medium max-w-md">
-          AI čte dokument a extrahuje data. U delších PDF nebo se skenem to může trvat i 1–2 minuty. Po dokončení
-          uvidíte v detailu rozklad času (předzpracování vs. AI). Stránka se automaticky aktualizuje.
+          AI čte dokument a extrahuje data. Doba závisí na délce souboru a kvalitě textu — typicky desítky sekund až
+          několik minut u velkých skenů. Po dokončení uvidíte v detailu rozklad času (předzpracování vs. AI). Stránka
+          se automaticky aktualizuje.
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2 max-w-md">
