@@ -898,9 +898,9 @@ export function DashboardEditable({
               appearance: none;
               width: 22px;
               height: 22px;
-              border: 2px solid #cbd5e1;
+              border: 2px solid var(--wp-input-border);
               border-radius: 6px;
-              background-color: white;
+              background-color: var(--wp-input-bg);
               cursor: pointer;
               position: relative;
               transition: all 0.2s ease;

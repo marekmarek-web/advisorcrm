@@ -459,6 +459,20 @@
   background-color: var(--wp-main-scroll-bg);
 }
 
+/*
+ * DOM source světlejší/„šedé“ plochy za board gridem (grep na bg-white nestačí):
+ * .wp-projects-section měla vlastní background: var(--wp-surface) přes scroll canvas.
+ * Monday .board-shell používá var(--bg-app) (#f6f8fc v :root) – u BoardTable v portálu zrušit.
+ */
+.wp-portal-main-scroll .board-shell {
+  background: transparent;
+}
+
+.dark .wp-portal-main-scroll .wp-projects-section {
+  background: transparent;
+  box-shadow: none;
+}
+
 /* Vyhledávání v hlavičce panelu (headerInput) */
 .wp-portal-header-search-wrap {
   position: relative;

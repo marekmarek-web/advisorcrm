@@ -185,7 +185,7 @@ function PortalShellInner({
   }, [hasSharedFiles, pathname, router]);
 
   return (
-    <div className="wp-portal-canvas monday-board-wrap relative flex h-[100dvh] min-h-0 flex-row overflow-hidden">
+    <div className="wp-portal-canvas relative flex h-[100dvh] min-h-0 flex-row overflow-hidden">
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
         <div
           className="wp-portal-blob absolute left-[5%] top-[10%] h-[min(800px,90vw)] w-[min(800px,90vw)] bg-[var(--wp-portal-blob-1)] transition-colors duration-700 ease-out"

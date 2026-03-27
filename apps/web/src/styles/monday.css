@@ -1,43 +1,12 @@
 /**
  * Monday.com-style design tokens and utilities.
  * No heavy shadows, no gradients, no card layouts.
+ *
+ * --monday-* tokeny definuje aidvisora-theme.css (alias na --wp-*).
+ * Tady je nedefinujeme: portal/layout načítá tento soubor PO root layoutu
+ * a starý :root blok přepisoval --monday-bg na #f6f7fb → světlé pozadí
+ * na .wp-portal-canvas.monday-board-wrap i v dark (grep na bg-white nic nenašel).
  */
-
-:root {
-  /* Background & surface */
-  --monday-bg: #f6f7fb;
-  --monday-surface: #ffffff;
-  --monday-border: #e6e9ef;
-
-  /* Text */
-  --monday-text: #323338;
-  --monday-text-muted: #676879;
-
-  /* Primary action */
-  --monday-blue: #0073ea;
-
-  /* Row hover */
-  --monday-row-hover: #f0f3ff;
-
-  /* Radius */
-  --monday-radius: 8px;
-  --monday-pill-radius: 9999px;
-
-  /* Shadow (max) */
-  --monday-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-
-  /* Typography */
-  --monday-font-size: 13px;
-  --monday-font-size-sm: 12px;
-  --monday-line-height: 1.4;
-
-  /* Spacing (jednotné pro board a panely) */
-  --monday-spacing-xs: 4px;
-  --monday-spacing-sm: 8px;
-  --monday-spacing-md: 12px;
-  --monday-spacing-lg: 16px;
-  --monday-spacing-xl: 20px;
-}
 
 /* Status label colors (Monday-like) */
 :root {

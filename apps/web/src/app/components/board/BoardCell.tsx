@@ -46,12 +46,12 @@ export function BoardCell({
             onClick={(e) => e.stopPropagation()}
             className="shrink-0 mr-2 cursor-pointer"
           />
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center mr-2 shrink-0">
-            <User size={13} className="text-slate-500" />
+          <div className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700">
+            <User size={13} className="text-slate-500 dark:text-slate-200" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             {item.contactId && item.contactName ? (
-              <span className="text-[14px] font-medium truncate block">{item.contactName}</span>
+              <span className="block truncate text-[14px] font-medium text-[color:var(--wp-text)]">{item.contactName}</span>
             ) : (
               <CellText
                 value={String(item.name ?? "")}
