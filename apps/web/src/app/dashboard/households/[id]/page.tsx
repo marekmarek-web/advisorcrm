@@ -16,28 +16,28 @@ export default async function HouseholdDetailPage({
       <h1 className="text-2xl font-bold" style={{ color: "var(--brand-dark)" }}>
         {household.name}
       </h1>
-      <div className="rounded-xl border border-[var(--brand-border)] bg-white overflow-hidden shadow-sm">
-        <h2 className="p-3 border-b border-slate-100 font-semibold text-slate-700">Členové</h2>
+      <div className="overflow-hidden rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
+        <h2 className="border-b border-[color:var(--wp-surface-card-border)] p-3 font-semibold text-[color:var(--wp-text)]">Členové</h2>
         {household.members.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">Žádní členové.</p>
+          <p className="p-6 text-sm text-[color:var(--wp-text-tertiary)]">Žádní členové.</p>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">Jméno</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">E-mail</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">Role</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600" />
+              <tr className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]">
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">Jméno</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">E-mail</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">Role</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]" />
               </tr>
             </thead>
             <tbody>
               {household.members.map((m) => (
-                <tr key={m.id} className="border-b border-slate-100">
-                  <td className="p-3">
+                <tr key={m.id} className="border-b border-[color:var(--wp-border)]">
+                  <td className="p-3 text-[color:var(--wp-text)]">
                     {m.firstName} {m.lastName}
                   </td>
-                  <td className="p-3 text-slate-600">{m.email ?? "—"}</td>
-                  <td className="p-3 text-slate-600">{m.role ?? "—"}</td>
+                  <td className="p-3 text-[color:var(--wp-text-secondary)]">{m.email ?? "—"}</td>
+                  <td className="p-3 text-[color:var(--wp-text-secondary)]">{m.role ?? "—"}</td>
                   <td className="p-3">
                     <Link href={`/dashboard/contacts/${m.contactId}`} className="text-sm" style={{ color: "var(--brand-main)" }}>
                       Kontakt

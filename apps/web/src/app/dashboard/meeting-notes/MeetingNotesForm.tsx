@@ -112,12 +112,12 @@ export function MeetingNotesForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-xl border border-monday-border bg-white p-6 shadow-sm space-y-4 max-w-lg">
-      <h3 className="font-semibold text-slate-800">
+    <form onSubmit={onSubmit} className="max-w-lg space-y-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 shadow-sm">
+      <h3 className="font-semibold text-[color:var(--wp-text)]">
         {editingNote ? "Upravit zápisek" : "Nový zápisek"}
       </h3>
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Kontakt (volitelný)</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Kontakt (volitelný)</label>
         <CustomDropdown
           value={contactId}
           onChange={setContactId}
@@ -128,7 +128,7 @@ export function MeetingNotesForm({
       </div>
       {!editingNote && (
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Šablona</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Šablona</label>
           <CustomDropdown
             value={templateId}
             onChange={setTemplateId}
@@ -139,17 +139,17 @@ export function MeetingNotesForm({
         </div>
       )}
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Datum schůzky *</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Datum schůzky *</label>
         <input
           type="datetime-local"
           value={meetingAt}
           onChange={(e) => setMeetingAt(e.target.value)}
           required
-          className="w-full rounded-lg border border-monday-border px-3 py-2"
+          className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Doména</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Doména</label>
         <CustomDropdown
           value={domain}
           onChange={setDomain}
@@ -163,53 +163,53 @@ export function MeetingNotesForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Čas</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Čas</label>
         <input
           type="text"
           value={cas}
           onChange={(e) => setCas(e.target.value)}
           placeholder="např. 10:00–11:00"
-          className="w-full rounded-lg border border-monday-border px-3 py-2"
+          className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Účastníci</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Účastníci</label>
         <input
           type="text"
           value={ucastnici}
           onChange={(e) => setUcastnici(e.target.value)}
           placeholder="jména účastníků schůzky"
-          className="w-full rounded-lg border border-monday-border px-3 py-2"
+          className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Obsah</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Obsah</label>
         <textarea
           value={obsah}
           onChange={(e) => setObsah(e.target.value)}
           rows={3}
           placeholder="co se na schůzce probíralo"
-          className="w-full rounded-lg border border-monday-border px-3 py-2"
+          className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučení</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Doporučení</label>
         <textarea
           value={doporuceni}
           onChange={(e) => setDoporuceni(e.target.value)}
           rows={2}
           placeholder="doporučení pro klienta"
-          className="w-full rounded-lg border border-monday-border px-3 py-2"
+          className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-600 mb-1">Další kroky</label>
+        <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Další kroky</label>
         <textarea
           value={dalsiKroky}
           onChange={(e) => setDalsiKroky(e.target.value)}
           rows={2}
           placeholder="co dál"
-          className="w-full rounded-lg border border-monday-border px-3 py-2"
+          className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
         />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -229,7 +229,7 @@ export function MeetingNotesForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg px-4 py-2 text-sm font-semibold border border-monday-border text-slate-600 hover:bg-slate-50"
+            className="rounded-lg border border-[color:var(--wp-border)] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
           >
             Zrušit
           </button>

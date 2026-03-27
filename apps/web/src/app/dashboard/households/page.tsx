@@ -9,24 +9,24 @@ export default async function HouseholdsPage() {
       <h1 className="text-2xl font-bold" style={{ color: "var(--brand-dark)" }}>
         Domácnosti
       </h1>
-      <p className="text-slate-600">Domácnosti a vazba kontaktů.</p>
-      <div className="rounded-xl border border-[var(--brand-border)] bg-white overflow-hidden shadow-sm">
+      <p className="text-[color:var(--wp-text-secondary)]">Domácnosti a vazba kontaktů.</p>
+      <div className="overflow-hidden rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
         {list.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">Zatím žádné domácnosti.</p>
+          <p className="p-6 text-sm text-[color:var(--wp-text-tertiary)]">Zatím žádné domácnosti.</p>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[var(--brand-border)] bg-slate-50">
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">Název</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">Počet členů</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600" />
+              <tr className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]">
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">Název</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">Počet členů</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]" />
               </tr>
             </thead>
             <tbody>
               {list.map((h) => (
-                <tr key={h.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="p-3 font-medium">{h.name}</td>
-                  <td className="p-3 text-slate-600">{h.memberCount}</td>
+                <tr key={h.id} className="border-b border-[color:var(--wp-border)] hover:bg-[color:var(--wp-surface-muted)]">
+                  <td className="p-3 font-medium text-[color:var(--wp-text)]">{h.name}</td>
+                  <td className="p-3 text-[color:var(--wp-text-secondary)]">{h.memberCount}</td>
                   <td className="p-3">
                     <Link href={`/dashboard/households/${h.id}`} className="text-sm font-medium" style={{ color: "var(--brand-main)" }}>
                       Detail

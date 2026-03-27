@@ -54,33 +54,33 @@ export default function NewContactPage() {
       <h1 className="text-2xl font-bold" style={{ color: "var(--brand-dark)" }}>
         Nový kontakt
       </h1>
-      <form onSubmit={onSubmit} className="max-w-md space-y-4 rounded-xl border border-[var(--brand-border)] bg-white p-6 shadow-sm">
+      <form onSubmit={onSubmit} className="max-w-md space-y-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 shadow-sm">
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Jméno *</label>
-          <input name="firstName" required className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" placeholder="Jan" />
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Jméno *</label>
+          <input name="firstName" required className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]" placeholder="Jan" />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Příjmení *</label>
-          <input name="lastName" required className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" placeholder="Novák" />
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Příjmení *</label>
+          <input name="lastName" required className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]" placeholder="Novák" />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">E-mail</label>
-          <input name="email" type="email" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" placeholder="jan@example.cz" />
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">E-mail</label>
+          <input name="email" type="email" className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]" placeholder="jan@example.cz" />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Telefon</label>
-          <input name="phone" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" placeholder="+420 …" />
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Telefon</label>
+          <input name="phone" className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]" placeholder="+420 …" />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Titul</label>
-          <input name="title" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" placeholder="Ing." />
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Titul</label>
+          <input name="title" className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]" placeholder="Ing." />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučil / zdroj</label>
-          <input name="referralSource" className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2" placeholder="např. web, doporučení" />
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Doporučil / zdroj</label>
+          <input name="referralSource" className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]" placeholder="např. web, doporučení" />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Priorita</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Priorita</label>
           <CustomDropdown
             value={priority}
             onChange={setPriority}
@@ -96,7 +96,7 @@ export default function NewContactPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučen od (kontakt)</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Doporučen od (kontakt)</label>
           <CustomDropdown
             value={referralContactId}
             onChange={setReferralContactId}
@@ -115,7 +115,7 @@ export default function NewContactPage() {
           >
             {loading ? "Ukládám…" : "Uložit"}
           </button>
-          <Link href="/dashboard/contacts" className="rounded-lg px-4 py-2 text-sm font-semibold border border-slate-300 text-slate-600 hover:bg-slate-50">
+          <Link href="/dashboard/contacts" className="rounded-lg border border-[color:var(--wp-border-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]">
             Zrušit
           </Link>
         </div>

@@ -14,7 +14,7 @@ export default async function MeetingNotesPage() {
       <h1 className="text-2xl font-bold" style={{ color: "var(--brand-dark)" }}>
         Zápisky ze schůzek
       </h1>
-      <p className="text-slate-600">Strukturované zápisky dle šablon (hypo / invest / pojist).</p>
+      <p className="text-[color:var(--wp-text-secondary)]">Strukturované zápisky dle šablon (hypo / invest / pojist).</p>
       <MeetingNotesListClient
         initialNotes={notes}
         templates={templates}

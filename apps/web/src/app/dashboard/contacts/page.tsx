@@ -19,29 +19,29 @@ export default async function ContactsPage() {
           + Přidat kontakt
         </Link>
       </div>
-      <p className="text-slate-600">Seznam kontaktů.</p>
+      <p className="text-[color:var(--wp-text-secondary)]">Seznam kontaktů.</p>
       <CsvImportForm />
-      <div className="rounded-xl border border-[var(--brand-border)] bg-white overflow-hidden shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
         {list.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">Zatím žádné kontakty.</p>
+          <p className="p-6 text-sm text-[color:var(--wp-text-tertiary)]">Zatím žádné kontakty.</p>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[var(--brand-border)] bg-slate-50">
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">Jméno</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">E-mail</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600">Telefon</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-600" />
+              <tr className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]">
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">Jméno</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">E-mail</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]">Telefon</th>
+                <th className="p-3 text-left text-sm font-semibold text-[color:var(--wp-text-secondary)]" />
               </tr>
             </thead>
             <tbody>
               {list.map((c) => (
-                <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="p-3">
+                <tr key={c.id} className="border-b border-[color:var(--wp-border)] hover:bg-[color:var(--wp-surface-muted)]">
+                  <td className="p-3 text-[color:var(--wp-text)]">
                     {c.firstName} {c.lastName}
                   </td>
-                  <td className="p-3 text-slate-600">{c.email ?? "—"}</td>
-                  <td className="p-3 text-slate-600">{c.phone ?? "—"}</td>
+                  <td className="p-3 text-[color:var(--wp-text-secondary)]">{c.email ?? "—"}</td>
+                  <td className="p-3 text-[color:var(--wp-text-secondary)]">{c.phone ?? "—"}</td>
                   <td className="p-3">
                     <Link
                       href={`/dashboard/contacts/${c.id}`}

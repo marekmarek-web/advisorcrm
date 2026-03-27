@@ -56,24 +56,24 @@ export function MeetingNotesListClient({
         onSaved={handleSaved}
         onCancel={() => setEditingNote(null)}
       />
-      <div className="rounded-xl border border-[var(--brand-border)] bg-white overflow-hidden shadow-sm">
-        <h2 className="p-3 border-b border-slate-100 font-semibold text-slate-700">
+      <div className="overflow-hidden rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
+        <h2 className="border-b border-[color:var(--wp-surface-card-border)] p-3 font-semibold text-[color:var(--wp-text)]">
           Poslední zápisky
         </h2>
         {notes.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">Zatím žádné zápisky.</p>
+          <p className="p-6 text-sm text-[color:var(--wp-text-tertiary)]">Zatím žádné zápisky.</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-[color:var(--wp-border)]">
             {notes.map((n) => (
-              <li key={n.id} className="p-3 flex justify-between items-center">
-                <span className="text-sm">
+              <li key={n.id} className="flex items-center justify-between p-3">
+                <span className="text-sm text-[color:var(--wp-text)]">
                   {new Date(n.meetingAt).toLocaleDateString("cs-CZ")} – {n.contactName} ({n.domain})
                 </span>
                 <span className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => handleEdit(n.id)}
-                    className="text-xs font-medium px-2 py-0.5 rounded border border-[var(--brand-border)] hover:bg-slate-50"
+                    className="rounded border border-[color:var(--wp-surface-card-border)] px-2 py-0.5 text-xs font-medium hover:bg-[color:var(--wp-surface-muted)]"
                     style={{ color: "var(--brand-main)" }}
                   >
                     Upravit

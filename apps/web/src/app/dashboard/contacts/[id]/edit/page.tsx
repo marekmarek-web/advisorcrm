@@ -102,67 +102,67 @@ export default function EditContactPage() {
       <h1 className="text-2xl font-bold" style={{ color: "var(--brand-dark)" }}>
         Upravit kontakt
       </h1>
-      <form onSubmit={onSubmit} className="max-w-md space-y-4 rounded-xl border border-[var(--brand-border)] bg-white p-6 shadow-sm">
+      <form onSubmit={onSubmit} className="max-w-md space-y-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 shadow-sm">
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Jméno *</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Jméno *</label>
           <input
             value={form.firstName}
             onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
             name="firstName"
             required
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Příjmení *</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Příjmení *</label>
           <input
             value={form.lastName}
             onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
             name="lastName"
             required
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">E-mail</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">E-mail</label>
           <input
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             name="email"
             type="email"
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Telefon</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Telefon</label>
           <input
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
             name="phone"
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Titul</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Titul</label>
           <input
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             name="title"
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučil / zdroj</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Doporučil / zdroj</label>
           <input
             value={form.referralSource}
             onChange={(e) => setForm((f) => ({ ...f, referralSource: e.target.value }))}
             name="referralSource"
             placeholder="např. web, doporučení"
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Priorita</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Priorita</label>
           <CustomDropdown
             value={form.priority}
             onChange={(id) => setForm((f) => ({ ...f, priority: id }))}
@@ -178,7 +178,7 @@ export default function EditContactPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Servisní cyklus (měsíce)</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Servisní cyklus (měsíce)</label>
           <CustomDropdown
             value={form.serviceCycleMonths}
             onChange={(id) => setForm((f) => ({ ...f, serviceCycleMonths: id }))}
@@ -193,25 +193,25 @@ export default function EditContactPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Poslední servis (datum)</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Poslední servis (datum)</label>
           <input
             type="date"
             value={form.lastServiceDate}
             onChange={(e) => setForm((f) => ({ ...f, lastServiceDate: e.target.value }))}
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Příští servis (datum)</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Příští servis (datum)</label>
           <input
             type="date"
             value={form.nextServiceDue}
             onChange={(e) => setForm((f) => ({ ...f, nextServiceDue: e.target.value }))}
-            className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2"
+            className="w-full rounded-lg border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] px-3 py-2 text-[color:var(--wp-input-text)]"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1">Doporučen od (kontakt)</label>
+          <label className="mb-1 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Doporučen od (kontakt)</label>
           <CustomDropdown
             value={form.referralContactId}
             onChange={(id) => setForm((f) => ({ ...f, referralContactId: id }))}
@@ -230,7 +230,7 @@ export default function EditContactPage() {
           >
             {loading ? "Ukládám…" : "Uložit"}
           </button>
-          <Link href={`/dashboard/contacts/${id}`} className="rounded-lg px-4 py-2 text-sm font-semibold border border-slate-300 text-slate-600 hover:bg-slate-50">
+          <Link href={`/dashboard/contacts/${id}`} className="rounded-lg border border-[color:var(--wp-border-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]">
             Zrušit
           </Link>
         </div>
