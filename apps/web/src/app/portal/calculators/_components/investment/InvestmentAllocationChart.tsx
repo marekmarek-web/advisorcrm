@@ -60,7 +60,7 @@ export function InvestmentAllocationChart({ data }: InvestmentAllocationChartPro
               />
               <span className="text-sm font-bold text-[color:var(--wp-text-secondary)]">{label}</span>
             </div>
-            <span className="font-bold text-[#0a0f29]">{data.values[i]} %</span>
+            <span className="font-bold tabular-nums text-[color:var(--wp-text)]">{data.values[i]} %</span>
           </div>
         ))}
       </div>

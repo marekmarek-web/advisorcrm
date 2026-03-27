@@ -27,12 +27,13 @@ function buildCustomTooltip(
   fullSeries: BacktestChartSeriesItem[],
   formatValue: (v: number) => string,
   formatDate: (ts: number) => string,
+  isDark: boolean,
 ) {
   return function customTooltip(opts: {
     dataPointIndex: number;
     w: { globals: { series: (number | null)[][]; initialSeries: { data: [number, number][] }[] } };
   }) {
-    const { dataPointIndex, w } = opts;
+    const { dataPointIndex } = opts;
     if (dataPointIndex == null || !fullSeries.length) return "";
 
     const firstSeriesData = fullSeries[0]?.data ?? [];
@@ -50,13 +51,18 @@ function buildCustomTooltip(
         if (val == null) return "";
         return `<div style="display:flex;align-items:center;gap:6px;margin:4px 0">
           <span style="width:10px;height:10px;border-radius:50%;background:${color}"></span>
-          <span>${s.name}: ${formatValue(val)}</span>
+          <span style="color:${isDark ? "#e2e8f0" : "#0f172a"}">${s.name}: ${formatValue(val)}</span>
         </div>`;
       })
       .filter(Boolean);
 
-    return `<div style="padding:8px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);min-width:180px">
-      <div style="font-weight:600;color:#0f172a;margin-bottom:8px">${dateStr}</div>
+    const bg = isDark ? "#1e293b" : "#fff";
+    const border = isDark ? "#334155" : "#e2e8f0";
+    const titleColor = isDark ? "#f1f5f9" : "#0f172a";
+    const shadow = isDark ? "0 8px 24px rgba(0,0,0,0.45)" : "0 4px 12px rgba(0,0,0,0.08)";
+
+    return `<div style="padding:8px 12px;background:${bg};border:1px solid ${border};border-radius:8px;box-shadow:${shadow};min-width:180px">
+      <div style="font-weight:600;color:${titleColor};margin-bottom:8px">${dateStr}</div>
       ${rows.join("")}
     </div>`;
   };
@@ -134,7 +140,7 @@ export function InvestmentBacktestChart({
         },
       },
       tooltip: {
-        theme: isDark ? "dark" : "light",
+        theme: undefined,
         shared: true,
         intersect: false,
         custom: function (opts: Parameters<ReturnType<typeof buildCustomTooltip>>[0]) {
@@ -145,6 +151,7 @@ export function InvestmentBacktestChart({
               const d = new Date(ts);
               return `${CZECH_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
             },
+            isDark,
           )(opts);
         },
       },

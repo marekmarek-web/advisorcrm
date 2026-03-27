@@ -1122,7 +1122,7 @@ export function PortalCalendarView() {
   const toolbarWeekNum = mode !== "month" ? getWeekNumber(rangeStart) : null;
 
   return (
-    <div className="flex flex-col min-h-0 h-full pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#f1f5f9]">
+    <div className="flex h-full min-h-0 flex-col bg-[color:var(--wp-main-scroll-bg)] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div
         className={`wp-cal-container wp-cal-container--today-${settings.todayStyle} wp-cal-container--font-${settings.fontSize} flex flex-col flex-1 min-h-0`}
         style={cssVarsFromSettings(settings)}
@@ -1203,9 +1203,14 @@ export function PortalCalendarView() {
                 <button type="button" onClick={handleCalendarSync} disabled={calendarSyncLoading} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-[color:var(--wp-surface-muted)] hover:bg-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-95 min-h-[44px] sm:min-h-0 disabled:opacity-60" title="Synchronizovat s Google Kalendářem">
                   <RefreshCw size={16} className={calendarSyncLoading ? "animate-spin" : ""} /> {calendarSyncLoading ? "Sync…" : "Sync s Google"}
                 </button>
-                <button type="button" onClick={() => openNew(todayStr)} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs sm:text-sm font-bold hover:bg-indigo-700 shadow-sm transition-all active:scale-95 min-h-[44px] sm:min-h-0">
-                  <Plus size={16} /> Vytvořit
-                </button>
+                <CreateActionButton
+                  type="button"
+                  onClick={() => openNew(todayStr)}
+                  icon={Plus}
+                  className="!min-h-[44px] !rounded-lg !px-2.5 !py-1.5 !text-[11px] sm:!min-h-0 sm:!px-3 sm:!text-sm"
+                >
+                  Vytvořit
+                </CreateActionButton>
                 <button type="button" onClick={() => setSettingsOpen(true)} className="p-1.5 rounded-lg text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-surface-muted)] sm:block hidden" aria-label="Nastavení">
                   <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066 0-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 2.31.49 2.31 1.066 0 1.552-2.308 2.6-4.342 2.6-2.034 0-4.341-1.048-4.341-2.6 0-.576.767-2.006 2.314-1.066 1.53.94 2.573 1.066 2.573-1.066z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </button>

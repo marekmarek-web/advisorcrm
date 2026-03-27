@@ -47,7 +47,9 @@ export default async function ContactDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  let contact: Awaited<ReturnType<typeof getContact>> = null;
+  const contact = await getContact(id);
+  if (!contact) notFound();
+
   let household: Awaited<ReturnType<typeof getHouseholdForContact>> = null;
   let latestGenerations: Awaited<ReturnType<typeof getLatestClientGenerations>> = {
     clientSummary: null,
@@ -55,15 +57,13 @@ export default async function ContactDetailPage({
     nextBestAction: null,
   };
   try {
-    [contact, household, latestGenerations] = await Promise.all([
-      getContact(id),
+    [household, latestGenerations] = await Promise.all([
       getHouseholdForContact(id),
       getLatestClientGenerations(id),
     ]);
   } catch {
-    notFound();
+    /* Sekundární data – stránka klienta zůstane, chybějící bloky se doplní prázdně */
   }
-  if (!contact) notFound();
 
   const overviewContent = (
     <div className="space-y-8">
@@ -179,7 +179,7 @@ export default async function ContactDetailPage({
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Kontakt";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[color:var(--wp-text)] pb-20">
+    <div className="min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-20 text-[color:var(--wp-text)]">
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>

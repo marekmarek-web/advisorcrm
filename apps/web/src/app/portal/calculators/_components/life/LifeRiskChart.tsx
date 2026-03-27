@@ -32,7 +32,7 @@ export function LifeRiskChart({ chartData }: LifeRiskChartProps) {
                 style={{ height: `${chybiHeight}%` }}
               >
                 {item.chybi > 0 && (
-                  <span className="absolute left-1/2 -top-6 -translate-x-1/2 whitespace-nowrap text-xs font-bold text-[#0a0f29] opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="absolute left-1/2 -top-6 z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-1.5 py-0.5 text-xs font-bold text-[color:var(--wp-text)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
                     {formatCurrency(item.chybi)} Kč
                   </span>
                 )}
@@ -57,7 +57,7 @@ export function LifeRiskChart({ chartData }: LifeRiskChartProps) {
           <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--wp-surface-card-border)]" />
           Krytí od státu
         </span>
-        <span className="inline-flex items-center gap-2 font-semibold text-indigo-600">
+        <span className="inline-flex items-center gap-2 font-semibold text-indigo-600 dark:text-indigo-300">
           <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
           Finanční mezera
         </span>

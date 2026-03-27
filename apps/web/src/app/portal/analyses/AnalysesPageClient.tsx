@@ -41,9 +41,19 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
     switch (status) {
       case "completed":
       case "exported":
-        return { label: "Hotovo", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: <CheckCircle2 size={12} /> };
+        return {
+          label: "Hotovo",
+          color:
+            "bg-emerald-100 text-emerald-800 border-emerald-200 dark:border-emerald-500/35 dark:bg-emerald-950/50 dark:text-emerald-200",
+          icon: <CheckCircle2 size={12} />,
+        };
       case "review":
-        return { label: "Ke schválení", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <Clock size={12} /> };
+        return {
+          label: "Ke schválení",
+          color:
+            "bg-amber-100 text-amber-900 border-amber-200 dark:border-amber-500/35 dark:bg-amber-950/45 dark:text-amber-100",
+          icon: <Clock size={12} />,
+        };
       case "draft":
       case "archived":
         return { label: "Koncept", color: "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] border-[color:var(--wp-surface-card-border)]", icon: <FileEdit size={12} /> };
@@ -91,7 +101,7 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-20">
+    <div className="min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-20">
       {permanentDeleteTarget ? (
         <div
           className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/50"
@@ -143,6 +153,11 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
         }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        html.dark .hub-bg {
+          background-image:
+            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        }
       `}</style>
 
       <main className="max-w-[1200px] mx-auto p-4 sm:p-6 md:p-8 hub-bg min-h-[calc(100vh-73px)]">
@@ -169,9 +184,9 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
           href="/portal/analyses/financial"
           className="block bg-[color:var(--wp-surface-card)] rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 md:p-8 border border-[color:var(--wp-surface-card-border)] shadow-sm hover:shadow-lg hover:border-indigo-100 transition-all duration-300 mb-10 sm:mb-12 group relative overflow-hidden"
         >
-          <div className="absolute -right-10 -bottom-10 w-40 sm:w-48 h-40 sm:h-48 bg-indigo-50 rounded-full blur-3xl group-hover:bg-indigo-100 transition-colors pointer-events-none" />
+          <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-indigo-50 blur-3xl transition-colors group-hover:bg-indigo-100 dark:bg-indigo-950/50 dark:group-hover:bg-indigo-900/40 sm:h-48 sm:w-48" />
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 relative z-10">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-300 shadow-inner">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 shadow-inner transition-transform duration-300 group-hover:scale-105 dark:bg-indigo-950/60 dark:text-indigo-300 sm:h-16 sm:w-16">
               <BarChart2 size={28} className="sm:w-8 sm:h-8" />
             </div>
             <div className="flex-1 text-center sm:text-left">

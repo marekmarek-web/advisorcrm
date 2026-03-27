@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTheme } from "next-themes";
+import clsx from "clsx";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 import { formatCurrency, formatRate } from "@/lib/calculators/mortgage/formatters";
 import type { BankOffer } from "@/lib/calculators/mortgage/mortgage.types";
@@ -101,9 +103,12 @@ function BankOfferCard({
   isLowestMonthly: boolean;
   onRequestOffer?: (bankName: string) => void;
 }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const [logoError, setLogoError] = useState(false);
   const showLogo = offer.bank.logoUrl && !logoError;
   const initials = getInitials(offer.bank.name);
+  const brandBox = FALLBACK_BRAND_STYLES[offer.bank.id] ?? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]";
 
   return (
     <div
@@ -130,9 +135,10 @@ function BankOfferCard({
 
       <div className="flex items-center gap-3 mb-4">
         <div
-          className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shadow-sm shrink-0 overflow-hidden border border-[color:var(--wp-surface-card-border)] ${
-            FALLBACK_BRAND_STYLES[offer.bank.id] ?? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]"
-          }`}
+          className={clsx(
+            "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--wp-surface-card-border)] text-sm font-black shadow-sm",
+            isDark ? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)]" : brandBox,
+          )}
         >
           {showLogo ? (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -150,7 +156,7 @@ function BankOfferCard({
           <h4 className="font-black text-[color:var(--wp-text)] text-sm leading-tight truncate">
             {offer.bank.name}
           </h4>
-          <span className="text-xs font-bold text-indigo-600">
+          <span className="text-xs font-bold text-indigo-600 dark:text-indigo-300">
             {formatRate(offer.rate)} p.a.
           </span>
           {offer.apr != null ? (

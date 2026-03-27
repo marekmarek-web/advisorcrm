@@ -575,8 +575,8 @@ export function PortalSidebar({
                           `}
                           title={collapsed ? item.label : undefined}
                         >
-                          <div className="relative flex items-center justify-center shrink-0">
-                            <AiAssistantBrandIcon size={18} className="dark:brightness-0 dark:invert" />
+                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm dark:shadow-black/40">
+                            <AiAssistantBrandIcon size={18} className="max-h-full max-w-full" />
                           </div>
                           {!collapsed && (
                             <span className={`ml-3 flex-1 text-left text-sm font-black tracking-wide ${isActive ? "text-white" : isDark ? "text-white" : "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600"}`}>
