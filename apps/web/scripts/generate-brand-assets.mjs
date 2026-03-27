@@ -1,5 +1,6 @@
 /**
- * Builds Capacitor `assets/*` and web icons from repo root `logos/Aidvisora favicon.png`.
+ * Native (Capacitor Android/iOS): `logos/Aidvisora logo A.png` → assets/icon*.png + splash.
+ * Web favicon / apple-touch (prohlížeč): `logos/Aidvisora favicon.png` pokud existuje, jinak stejný jako native.
  */
 import { mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -10,7 +11,8 @@ import sharp from "sharp";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.join(__dirname, "..");
 const monorepoRoot = path.join(webRoot, "..", "..");
-const sourcePath = path.join(monorepoRoot, "logos", "Aidvisora favicon.png");
+const nativeLogoPath = path.join(monorepoRoot, "logos", "Aidvisora logo A.png");
+const webFaviconPath = path.join(monorepoRoot, "logos", "Aidvisora favicon.png");
 const assetsDir = path.join(webRoot, "assets");
 const publicDir = path.join(webRoot, "public");
 
@@ -18,8 +20,8 @@ const black = { r: 0, g: 0, b: 0, alpha: 1 };
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
 
 async function main() {
-  if (!existsSync(sourcePath)) {
-    console.error("Missing source image:", sourcePath);
+  if (!existsSync(nativeLogoPath)) {
+    console.error("Missing native app logo:", nativeLogoPath);
     process.exit(1);
   }
 
@@ -27,7 +29,7 @@ async function main() {
 
   const iconSize = 1024;
   const logoMax = 900;
-  const logoBuf = await sharp(sourcePath)
+  const logoBuf = await sharp(nativeLogoPath)
     .resize(logoMax, logoMax, { fit: "inside", withoutEnlargement: true })
     .toBuffer();
 
@@ -44,7 +46,7 @@ async function main() {
 
   const splashSize = 2732;
   const splashSide = Math.round(splashSize * 0.35);
-  const splashLogoBuf = await sharp(sourcePath)
+  const splashLogoBuf = await sharp(nativeLogoPath)
     .resize(splashSide, splashSide, { fit: "inside", withoutEnlargement: true })
     .toBuffer();
 
@@ -57,12 +59,21 @@ async function main() {
 
   await sharp(path.join(assetsDir, "splash.png")).png().toFile(path.join(assetsDir, "splash-dark.png"));
 
-  await sharp(path.join(assetsDir, "icon-only.png")).resize(512, 512).png().toFile(path.join(publicDir, "favicon.png"));
+  const webSrc = existsSync(webFaviconPath) ? webFaviconPath : path.join(assetsDir, "icon-only.png");
+  await sharp(webSrc)
+    .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+    .png()
+    .toFile(path.join(publicDir, "favicon.png"));
 
-  await sharp(path.join(assetsDir, "icon-only.png")).resize(180, 180).png().toFile(path.join(publicDir, "apple-touch-icon.png"));
+  await sharp(webSrc)
+    .resize(180, 180, { fit: "inside", withoutEnlargement: true })
+    .png()
+    .toFile(path.join(publicDir, "apple-touch-icon.png"));
 
   console.log(
-    "Wrote assets/icon.png, icon-only.png, splash*.png, public/favicon.png, public/apple-touch-icon.png (run pnpm cap:assets for WebP + native icons)",
+    "Wrote assets from native logo, public favicon from",
+    existsSync(webFaviconPath) ? "Aidvisora favicon.png" : "native icon",
+    "(run pnpm cap:assets for WebP + Android/iOS icons)",
   );
 }
 

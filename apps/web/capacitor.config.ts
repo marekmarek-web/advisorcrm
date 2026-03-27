@@ -22,7 +22,7 @@ const config: CapacitorConfig = {
     captureInput: true,
     webContentsDebuggingEnabled: process.env.NODE_ENV !== "production",
   },
-  // TODO(phase-2): configure branded icons/splash/status bar plugin settings.
+  // Ikony / splash: `pnpm cap:assets` (zdroj native loga `logos/Aidvisora logo A.png` v generate-brand-assets.mjs).
 };
 
 export default config;
