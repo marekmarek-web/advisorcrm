@@ -77,15 +77,15 @@ export function InvestmentCalculatorPage() {
         </div>
 
         {/* Strategy switcher */}
-        <div className="rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
+        <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
           <InvestmentStrategySwitcher
             profiles={INVESTMENT_PROFILES}
             activeIndex={profileIndex}
             onSelect={setProfileIndex}
           />
-          <p className="mt-3 text-sm font-medium text-[#475569]">
+          <p className="mt-3 text-sm font-medium text-[color:var(--wp-text-secondary)]">
             Strategie: <span className="text-[#0d1f4e] font-bold">{profile.name}</span>{" "}
-            <span className="text-[#94a3b8]">({profile.rate} % p.a.)</span>
+            <span className="text-[color:var(--wp-text-tertiary)]">({profile.rate} % p.a.)</span>
           </p>
         </div>
 
@@ -113,20 +113,20 @@ export function InvestmentCalculatorPage() {
 
         {/* Charts */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
+          <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
             <h3 className="text-base font-bold text-[#0d1f4e] mb-1">Projekce vývoje</h3>
-            <p className="text-xs text-[#475569] mb-4">Odhadovaný vývoj hodnoty investice v čase.</p>
+            <p className="text-xs text-[color:var(--wp-text-secondary)] mb-4">Odhadovaný vývoj hodnoty investice v čase.</p>
             <InvestmentGrowthChart data={growthChartData} />
           </div>
-          <div className="rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
+          <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
             <h3 className="text-base font-bold text-[#0d1f4e] mb-1">Složení portfolia</h3>
-            <p className="text-xs text-[#475569] mb-4">Rozdělení strategie podle tříd aktiv.</p>
+            <p className="text-xs text-[color:var(--wp-text-secondary)] mb-4">Rozdělení strategie podle tříd aktiv.</p>
             <InvestmentAllocationChart data={allocationChartData} />
           </div>
         </div>
 
         {/* Backtest */}
-        <div className="rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
+        <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
           <InvestmentBacktestChart
             series={backtestSeries}
             monthlyFormatted={formatCurrency(monthly)}

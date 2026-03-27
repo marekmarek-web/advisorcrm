@@ -47,7 +47,7 @@ export function LifeCalculatorPage() {
 
         {/* Risk chart */}
         <div className="hidden md:block">
-          <div className="rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
+          <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6">
             <h3 className="text-base font-bold text-[#0d1f4e] mb-1">Analýza rizika (měsíční bilance)</h3>
             <p className="text-xs text-[#475569] mb-4">
               Propad příjmů v případě nemoci nebo invalidity a částka, kterou je třeba dokrýt.

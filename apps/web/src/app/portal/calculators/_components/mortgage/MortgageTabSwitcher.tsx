@@ -22,7 +22,7 @@ export function MortgageTabSwitcher({
         className={`min-h-[40px] min-w-[44px] px-4 sm:px-5 py-2 rounded-full border-[1.5px] font-medium text-xs sm:text-sm transition-all touch-manipulation ${
           type === "new"
             ? "bg-[#0d1f4e] border-[#0d1f4e] text-white"
-            : "bg-[color:var(--wp-surface-card)] border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700"
+            : "border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300"
         }`}
       >
         {product === "loan" ? "Nový úvěr" : "Nová hypotéka"}
@@ -33,7 +33,7 @@ export function MortgageTabSwitcher({
         className={`min-h-[40px] min-w-[44px] px-4 sm:px-5 py-2 rounded-full border-[1.5px] font-medium text-xs sm:text-sm transition-all touch-manipulation ${
           type === "refi"
             ? "bg-[#0d1f4e] border-[#0d1f4e] text-white"
-            : "bg-[color:var(--wp-surface-card)] border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700"
+            : "border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300"
         }`}
       >
         Refinancování

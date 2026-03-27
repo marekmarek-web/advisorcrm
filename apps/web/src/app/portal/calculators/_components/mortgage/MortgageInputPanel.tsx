@@ -17,6 +17,7 @@ import {
 import type { MortgageState } from "@/lib/calculators/mortgage/mortgage.types";
 import type { MortgageSubType, LoanSubType } from "@/lib/calculators/mortgage/mortgage.types";
 import type { ProductType, TabType } from "@/lib/calculators/mortgage";
+import { calculatorSliderGradient } from "@/lib/calculators/calculator-slider-gradient";
 
 export interface MortgageInputPanelProps {
   state: MortgageState;
@@ -33,11 +34,6 @@ function getTermLimits(state: MortgageState): { min: number; max: number } {
   if (state.product === "mortgage") return TERM_LIMITS.mortgage;
   if (state.loanType === "auto") return TERM_LIMITS.loanAuto;
   return TERM_LIMITS.loanConsumer;
-}
-
-function sliderGradient(value: number, min: number, max: number): string {
-  const pct = ((value - min) / (max - min)) * 100;
-  return `linear-gradient(90deg, #2563eb 0%, #38bdf8 ${pct}%, #cbd5e1 ${pct}%)`;
 }
 
 export function MortgageInputPanel({
@@ -126,10 +122,10 @@ export function MortgageInputPanel({
   const ownResources = Math.max(0, result.propertyValue - state.loan);
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-[20px] border-[1.5px] border-[#e2e8f0] shadow-[0_1px_3px_rgba(13,31,78,0.06),0_1px_2px_rgba(13,31,78,0.04)] p-5 sm:p-6 md:p-7">
+    <div className="bg-[color:var(--wp-surface-card)] rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] shadow-[0_1px_3px_rgba(13,31,78,0.06),0_1px_2px_rgba(13,31,78,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)] p-5 sm:p-6 md:p-7">
 
       {/* ── Product selector ── */}
-      <div className="mb-6 pb-5 border-b border-[#e2e8f0]">
+      <div className="mb-6 pb-5 border-b border-[color:var(--wp-surface-card-border)]">
         <div className="grid grid-cols-2 gap-2 mb-3">
           <button
             type="button"
@@ -137,7 +133,7 @@ export function MortgageInputPanel({
             className={`py-3 px-4 rounded-[10px] border-[1.5px] text-sm font-semibold text-center transition-all min-h-[44px] touch-manipulation ${
               state.product === "mortgage"
                 ? "bg-[#0d1f4e] border-[#0d1f4e] text-white shadow-[0_2px_10px_rgba(13,31,78,0.18)]"
-                : "bg-[#f4f6fb] border-[#cbd5e1] text-[#475569] hover:border-[#2563eb] hover:text-[#2563eb] hover:bg-[#eff4ff]"
+                : "bg-[color:var(--wp-surface-muted)] border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300"
             }`}
           >
             Hypotéka
@@ -148,7 +144,7 @@ export function MortgageInputPanel({
             className={`py-3 px-4 rounded-[10px] border-[1.5px] text-sm font-semibold text-center transition-all min-h-[44px] touch-manipulation ${
               state.product === "loan"
                 ? "bg-[#0d1f4e] border-[#0d1f4e] text-white shadow-[0_2px_10px_rgba(13,31,78,0.18)]"
-                : "bg-[#f4f6fb] border-[#cbd5e1] text-[#475569] hover:border-[#2563eb] hover:text-[#2563eb] hover:bg-[#eff4ff]"
+                : "bg-[color:var(--wp-surface-muted)] border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300"
             }`}
           >
             Úvěry
@@ -161,7 +157,7 @@ export function MortgageInputPanel({
             className={`py-1.5 px-3.5 rounded-full border-[1.5px] text-xs font-medium transition-all min-h-[36px] touch-manipulation whitespace-nowrap ${
               state.type === "new"
                 ? "bg-[#0d1f4e] border-[#0d1f4e] text-white font-semibold"
-                : "bg-[color:var(--wp-surface-card)] border-[#cbd5e1] text-[#475569] hover:border-[#2563eb] hover:text-[#2563eb]"
+                : "bg-[color:var(--wp-surface-card)] border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300"
             }`}
           >
             {isMortgage ? "Nová hypotéka" : "Nový úvěr"}
@@ -174,7 +170,7 @@ export function MortgageInputPanel({
               className={`py-1.5 px-3.5 rounded-full border-[1.5px] text-xs font-medium transition-all min-h-[36px] touch-manipulation whitespace-nowrap ${
                 (isMortgage ? state.mortgageType : state.loanType) === sub.id
                   ? "bg-[#0d1f4e] border-[#0d1f4e] text-white font-semibold"
-                  : "bg-[color:var(--wp-surface-card)] border-[#cbd5e1] text-[#475569] hover:border-[#2563eb] hover:text-[#2563eb]"
+                  : "bg-[color:var(--wp-surface-card)] border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300"
               }`}
             >
               {sub.label}
@@ -186,7 +182,7 @@ export function MortgageInputPanel({
             className={`py-1.5 px-3.5 rounded-full border-[1.5px] text-xs font-medium transition-all min-h-[36px] touch-manipulation whitespace-nowrap ${
               state.type === "refi"
                 ? "bg-[#0d1f4e] border-[#0d1f4e] text-white font-semibold"
-                : "bg-[color:var(--wp-surface-card)] border-[#cbd5e1] text-[#475569] hover:border-[#2563eb] hover:text-[#2563eb]"
+                : "bg-[color:var(--wp-surface-card)] border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300"
             }`}
           >
             Refinancování
@@ -197,7 +193,7 @@ export function MortgageInputPanel({
       {/* ── Loan amount ── */}
       <div className="mb-0">
         <div className="flex justify-between items-center mb-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">{loanLabel}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">{loanLabel}</span>
           <div className="flex items-baseline gap-1">
             <input
               type="text"
@@ -205,9 +201,9 @@ export function MortgageInputPanel({
               value={formatCurrency(state.loan)}
               onChange={(e) => handleLoanChange(parseCurrency(e.target.value))}
               onFocus={(e) => e.target.select()}
-              className="text-right font-bold text-[1.3rem] text-[#0d1f4e] bg-transparent border-none outline-none w-[170px] p-0.5 rounded hover:bg-[#f4f6fb] focus:bg-[#eff4ff] focus:text-[#2563eb] transition-colors"
+              className="text-right font-bold text-[1.3rem] text-[color:var(--wp-text)] bg-transparent border-none outline-none w-[170px] p-0.5 rounded hover:bg-[color:var(--wp-surface-muted)] focus:bg-indigo-500/15 focus:text-indigo-600 transition-colors dark:focus:text-indigo-400"
             />
-            <span className="text-xs font-semibold text-[#94a3b8]">Kč</span>
+            <span className="text-xs font-semibold text-[color:var(--wp-text-tertiary)]">Kč</span>
           </div>
         </div>
         <div className="px-2.5 pb-1">
@@ -218,21 +214,21 @@ export function MortgageInputPanel({
             step={lim.step}
             value={state.loan}
             onChange={(e) => handleLoanChange(parseInt(e.target.value, 10))}
-            className="mod-slider w-full"
-            style={{ background: sliderGradient(state.loan, lim.min, lim.max) }}
+            className="calc-range-slider w-full"
+            style={{ background: calculatorSliderGradient(state.loan, lim.min, lim.max) }}
           />
         </div>
         <div className="flex justify-between px-2.5 mt-0.5">
-          <span className="text-[11px] text-[#94a3b8]">{loanMinLabel}</span>
-          <span className="text-[11px] text-[#94a3b8]">{loanMaxLabel}</span>
+          <span className="text-[11px] text-[color:var(--wp-text-tertiary)]">{loanMinLabel}</span>
+          <span className="text-[11px] text-[color:var(--wp-text-tertiary)]">{loanMaxLabel}</span>
         </div>
       </div>
 
       {/* ── Extra money (consolidation) ── */}
       {isConsolidation && (
-        <div className="mt-6 pt-6 border-t border-[#e2e8f0]">
+        <div className="mt-6 pt-6 border-t border-[color:var(--wp-surface-card-border)]">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">Peníze navíc</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">Peníze navíc</span>
             <div className="flex items-baseline gap-1">
               <input
                 type="text"
@@ -240,9 +236,9 @@ export function MortgageInputPanel({
                 value={formatCurrency(state.extra)}
                 onChange={(e) => handleExtraChange(parseCurrency(e.target.value))}
                 onFocus={(e) => e.target.select()}
-                className="text-right font-bold text-[1.3rem] text-[#0d1f4e] bg-transparent border-none outline-none w-[170px] p-0.5 rounded hover:bg-[#f4f6fb] focus:bg-[#eff4ff] focus:text-[#2563eb] transition-colors"
+                className="text-right font-bold text-[1.3rem] text-[color:var(--wp-text)] bg-transparent border-none outline-none w-[170px] p-0.5 rounded hover:bg-[color:var(--wp-surface-muted)] focus:bg-indigo-500/15 focus:text-indigo-600 transition-colors dark:focus:text-indigo-400"
               />
-              <span className="text-xs font-semibold text-[#94a3b8]">Kč</span>
+              <span className="text-xs font-semibold text-[color:var(--wp-text-tertiary)]">Kč</span>
             </div>
           </div>
           <div className="px-2.5 pb-1">
@@ -253,8 +249,8 @@ export function MortgageInputPanel({
               step={EXTRA_LIMITS.step}
               value={state.extra}
               onChange={(e) => handleExtraChange(parseInt(e.target.value, 10))}
-              className="mod-slider w-full"
-              style={{ background: sliderGradient(state.extra, EXTRA_LIMITS.min, EXTRA_LIMITS.max) }}
+              className="calc-range-slider w-full"
+              style={{ background: calculatorSliderGradient(state.extra, EXTRA_LIMITS.min, EXTRA_LIMITS.max) }}
             />
           </div>
         </div>
@@ -262,9 +258,9 @@ export function MortgageInputPanel({
 
       {/* ── Own resources / LTV ── */}
       {(isMortgage || isAuto) && (
-        <div className="mt-6 pt-6 border-t border-[#e2e8f0]">
+        <div className="mt-6 pt-6 border-t border-[color:var(--wp-surface-card-border)]">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">
               {isMortgage ? "Vlastní zdroje" : "Akontace"}
             </span>
             <div className="flex items-baseline gap-1">
@@ -274,9 +270,9 @@ export function MortgageInputPanel({
                 value={formatCurrency(state.own)}
                 onChange={(e) => handleOwnChange(parseCurrency(e.target.value))}
                 onFocus={(e) => e.target.select()}
-                className="text-right font-bold text-[1.3rem] text-[#0d1f4e] bg-transparent border-none outline-none w-[170px] p-0.5 rounded hover:bg-[#f4f6fb] focus:bg-[#eff4ff] focus:text-[#2563eb] transition-colors"
+                className="text-right font-bold text-[1.3rem] text-[color:var(--wp-text)] bg-transparent border-none outline-none w-[170px] p-0.5 rounded hover:bg-[color:var(--wp-surface-muted)] focus:bg-indigo-500/15 focus:text-indigo-600 transition-colors dark:focus:text-indigo-400"
               />
-              <span className="text-xs font-semibold text-[#94a3b8]">Kč</span>
+              <span className="text-xs font-semibold text-[color:var(--wp-text-tertiary)]">Kč</span>
             </div>
           </div>
           <div className="px-2.5 pb-1">
@@ -287,12 +283,12 @@ export function MortgageInputPanel({
               step={OWN_LIMITS.step}
               value={state.own}
               onChange={(e) => handleOwnChange(parseInt(e.target.value, 10))}
-              className="mod-slider w-full"
-              style={{ background: sliderGradient(state.own, OWN_LIMITS.min, OWN_LIMITS.max) }}
+              className="calc-range-slider w-full"
+              style={{ background: calculatorSliderGradient(state.own, OWN_LIMITS.min, OWN_LIMITS.max) }}
             />
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">LTV:</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">LTV:</span>
             <div className="flex gap-1">
               {(isMortgage ? LTV_BUTTONS_MORTGAGE : LTV_BUTTONS_AUTO)
                 .filter((p) => p <= maxLtv)
@@ -304,7 +300,7 @@ export function MortgageInputPanel({
                     className={`py-1 px-2.5 rounded-[7px] border-[1.5px] text-xs font-semibold transition-all min-h-[32px] touch-manipulation ${
                       state.ltvLock === pct
                         ? "bg-[#2563eb] border-[#2563eb] text-white"
-                        : "border-[#cbd5e1] text-[#475569] hover:border-[#2563eb] hover:text-[#2563eb]"
+                        : "border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300"
                     }`}
                   >
                     {pct} %
@@ -312,14 +308,14 @@ export function MortgageInputPanel({
                 ))}
             </div>
             {isMortgage && (
-              <div className="ml-auto bg-[#eff4ff] rounded-[7px] py-1 px-2.5 text-xs font-medium text-[#2563eb]">
+              <div className="ml-auto rounded-[7px] bg-indigo-500/10 py-1 px-2.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
                 Vlastní zdroje: <strong>{formatCurrency(ownResources)}</strong> Kč
               </div>
             )}
           </div>
 
           {result.showLtvWarning && (
-            <div className="mt-3 flex items-start gap-2 bg-[#fff7ed] border-[1.5px] border-[rgba(234,88,12,0.2)] rounded-[10px] p-2.5 text-xs font-medium text-[#ea580c]">
+            <div className="mt-3 flex items-start gap-2 rounded-[10px] border-[1.5px] border-[rgba(234,88,12,0.2)] bg-[#fff7ed] p-2.5 text-xs font-medium text-[#ea580c] dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-200">
               <span>⚠️</span>
               <span>LTV nad <strong>{result.ltvWarningValue}</strong> % — většina bank požaduje pojištění nebo účtuje vyšší sazbu.</span>
             </div>
@@ -328,15 +324,15 @@ export function MortgageInputPanel({
       )}
 
       {/* ── Term + Fixation side-by-side ── */}
-      <div className="mt-6 pt-6 border-t border-[#e2e8f0]">
+      <div className="mt-6 pt-6 border-t border-[color:var(--wp-surface-card-border)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Splatnost */}
           <div>
             <div className="flex justify-between items-center mb-3">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">Splatnost</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">Splatnost</span>
               <div className="flex items-baseline gap-1">
-                <span className="font-bold text-[1.2rem] text-[#0d1f4e]">{state.term}</span>
-                <span className="text-xs font-semibold text-[#94a3b8]">let</span>
+                <span className="font-bold text-[1.2rem] text-[color:var(--wp-text)]">{state.term}</span>
+                <span className="text-xs font-semibold text-[color:var(--wp-text-tertiary)]">let</span>
               </div>
             </div>
             <div className="px-2.5 pb-1">
@@ -347,20 +343,20 @@ export function MortgageInputPanel({
                 step={1}
                 value={state.term}
                 onChange={(e) => handleTermChange(parseInt(e.target.value, 10))}
-                className="mod-slider w-full"
-                style={{ background: sliderGradient(state.term, termLimits.min, termLimits.max) }}
+                className="calc-range-slider w-full"
+                style={{ background: calculatorSliderGradient(state.term, termLimits.min, termLimits.max) }}
               />
             </div>
             <div className="flex justify-between px-2.5 mt-0.5">
-              <span className="text-[11px] text-[#94a3b8]">{termLimits.min} let</span>
-              <span className="text-[11px] text-[#94a3b8]">{termLimits.max} let</span>
+              <span className="text-[11px] text-[color:var(--wp-text-tertiary)]">{termLimits.min} let</span>
+              <span className="text-[11px] text-[color:var(--wp-text-tertiary)]">{termLimits.max} let</span>
             </div>
           </div>
 
           {/* Fixace */}
           {isMortgage && (
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8] mb-2">Délka fixace</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)] mb-2">Délka fixace</div>
               <div className="flex gap-1">
                 {FIX_OPTIONS.map((years) => (
                   <button
@@ -370,58 +366,19 @@ export function MortgageInputPanel({
                     className={`flex-1 min-w-[34px] py-2 px-1 text-center rounded-[10px] border-[1.5px] text-xs font-semibold transition-all min-h-[40px] touch-manipulation ${
                       state.fix === years
                         ? "bg-[#0d1f4e] border-[#0d1f4e] text-white"
-                        : "border-[#cbd5e1] text-[#475569] hover:border-[#0d1f4e] hover:text-[#0d1f4e]"
+                        : "border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] hover:border-indigo-600 hover:text-[color:var(--wp-text)] dark:hover:border-indigo-400 dark:hover:text-indigo-200"
                     }`}
                   >
                     {years}
                   </button>
                 ))}
               </div>
-              <div className="mt-1.5 text-[11px] text-[#94a3b8]">Roků fixní sazby</div>
+              <div className="mt-1.5 text-[11px] text-[color:var(--wp-text-tertiary)]">Roků fixní sazby</div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Slider styles ── */}
-      <style jsx>{`
-        .mod-slider {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 100%;
-          height: 5px;
-          border-radius: 3px;
-          outline: none;
-          cursor: pointer;
-        }
-        .mod-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #fff;
-          border: 2.5px solid #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13), 0 2px 7px rgba(37, 99, 235, 0.28);
-          cursor: grab;
-          margin-top: -7px;
-          transition: transform 0.14s ease, box-shadow 0.14s ease;
-        }
-        .mod-slider::-webkit-slider-thumb:hover {
-          transform: scale(1.22);
-          box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.15), 0 4px 12px rgba(37, 99, 235, 0.38);
-        }
-        .mod-slider::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
-        .mod-slider::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: transparent; }
-        .mod-slider::-moz-range-thumb {
-          width: 20px; height: 20px; border-radius: 50%; background: #fff;
-          border: 2.5px solid #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13);
-          cursor: grab;
-        }
-        .mod-slider::-moz-range-track { height: 5px; border-radius: 3px; background: transparent; }
-        .mod-slider::-moz-range-progress { background: linear-gradient(90deg, #2563eb, #38bdf8); border-radius: 3px; }
-        .mod-slider:focus { outline: none; }
-      `}</style>
     </div>
   );
 }

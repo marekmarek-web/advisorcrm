@@ -4,6 +4,7 @@ import { LIMITS } from "@/lib/calculators/life/life.config";
 import { formatCurrency } from "@/lib/calculators/life/formatters";
 import type { LifeState } from "@/lib/calculators/life/life.types";
 import { Info } from "lucide-react";
+import { calculatorSliderGradient } from "@/lib/calculators/calculator-slider-gradient";
 
 const INPUT_GROUPS: Array<{
   id: keyof Pick<LifeState, "age" | "netIncome" | "expenses" | "liabilities" | "reserves">;
@@ -19,11 +20,6 @@ const INPUT_GROUPS: Array<{
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function sliderGradient(value: number, min: number, max: number): string {
-  const pct = ((value - min) / (max - min)) * 100;
-  return `linear-gradient(90deg, #2563eb 0%, #38bdf8 ${pct}%, #cbd5e1 ${pct}%)`;
 }
 
 export interface LifeInputPanelProps {
@@ -59,7 +55,7 @@ export function LifeInputPanel({ state, onStateChange }: LifeInputPanelProps) {
     id === "age" ? `${lim.max} ${unit}` : `${formatCurrency(lim.max)} ${unit}`;
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-[20px] border-[1.5px] border-[#e2e8f0] shadow-[0_1px_3px_rgba(13,31,78,0.06),0_1px_2px_rgba(13,31,78,0.04)] p-5 sm:p-6 md:p-7">
+    <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-[0_1px_3px_rgba(13,31,78,0.06),0_1px_2px_rgba(13,31,78,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)] sm:p-6 md:p-7">
 
       {INPUT_GROUPS.map(({ id, label, unit }, idx) => {
         const lim = LIMITS[id];
@@ -67,9 +63,9 @@ export function LifeInputPanel({ state, onStateChange }: LifeInputPanelProps) {
         const isWarning = id === "expenses" && expensesWarning;
         const isFirst = idx === 0;
         return (
-          <div key={id} className={`${!isFirst ? "mt-6 pt-6 border-t border-[#e2e8f0]" : ""} ${isWarning ? "rounded-[10px] border-[1.5px] border-[rgba(234,88,12,0.2)] bg-[#fff7ed] p-3" : ""}`}>
+          <div key={id} className={`${!isFirst ? "mt-6 border-t border-[color:var(--wp-surface-card-border)] pt-6" : ""} ${isWarning ? "rounded-[10px] border-[1.5px] border-[rgba(234,88,12,0.2)] bg-[#fff7ed] p-3 dark:border-amber-500/35 dark:bg-amber-950/35" : ""}`}>
             <div className="flex justify-between items-center mb-3">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">{label}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">{label}</span>
               <div className="flex items-baseline gap-1">
                 <input
                   type="text"
@@ -77,9 +73,9 @@ export function LifeInputPanel({ state, onStateChange }: LifeInputPanelProps) {
                   value={id === "age" ? String(value) : formatCurrency(value)}
                   onChange={(e) => handleTextChange(id, e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  className="text-right font-bold text-[1.3rem] text-[#0d1f4e] bg-transparent border-none outline-none w-[170px] p-0.5 rounded hover:bg-[#f4f6fb] focus:bg-[#eff4ff] focus:text-[#2563eb] transition-colors"
+                  className="w-[170px] rounded border-none bg-transparent p-0.5 text-right text-[1.3rem] font-bold text-[color:var(--wp-text)] outline-none transition-colors hover:bg-[color:var(--wp-surface-muted)] focus:bg-indigo-500/15 focus:text-indigo-600 dark:focus:text-indigo-400"
                 />
-                <span className="text-xs font-semibold text-[#94a3b8]">{unit}</span>
+                <span className="text-xs font-semibold text-[color:var(--wp-text-tertiary)]">{unit}</span>
               </div>
             </div>
             <div className="px-2.5 pb-1">
@@ -90,16 +86,16 @@ export function LifeInputPanel({ state, onStateChange }: LifeInputPanelProps) {
                 step={lim.step}
                 value={value}
                 onChange={(e) => handleRangeChange(id, Number(e.target.value))}
-                className="mod-slider w-full"
-                style={{ background: sliderGradient(value, lim.min, lim.max) }}
+                className="calc-range-slider w-full"
+                style={{ background: calculatorSliderGradient(value, lim.min, lim.max) }}
               />
             </div>
             <div className="flex justify-between px-2.5 mt-0.5">
-              <span className="text-[11px] text-[#94a3b8]">{fmtMin(id, lim, unit)}</span>
-              <span className="text-[11px] text-[#94a3b8]">{fmtMax(id, lim, unit)}</span>
+              <span className="text-[11px] text-[color:var(--wp-text-tertiary)]">{fmtMin(id, lim, unit)}</span>
+              <span className="text-[11px] text-[color:var(--wp-text-tertiary)]">{fmtMax(id, lim, unit)}</span>
             </div>
             {isWarning && (
-              <div className="mt-2 flex items-center gap-2 text-xs font-bold text-[#ea580c]">
+              <div className="mt-2 flex items-center gap-2 text-xs font-bold text-[#ea580c] dark:text-amber-300">
                 <Info className="h-4 w-4 shrink-0" />
                 Pozor: Výdaje převyšují příjem.
               </div>
@@ -109,28 +105,28 @@ export function LifeInputPanel({ state, onStateChange }: LifeInputPanelProps) {
       })}
 
       {/* Rodina */}
-      <div className="mt-6 pt-6 border-t border-[#e2e8f0]">
+      <div className="mt-6 border-t border-[color:var(--wp-surface-card-border)] pt-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8] mb-2">Děti</span>
+            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">Děti</span>
             <input
               type="number"
               min={LIMITS.children.min}
               max={LIMITS.children.max}
               value={state.children}
               onChange={(e) => update({ children: clamp(parseInt(e.target.value, 10) || 0, LIMITS.children.min, LIMITS.children.max) })}
-              className="min-h-[44px] w-full rounded-[10px] border-[1.5px] border-[#cbd5e1] bg-[color:var(--wp-surface-card)] px-4 py-2 font-bold text-[#0d1f4e] outline-none focus:ring-2 focus:ring-[#2563eb]"
+              className="min-h-[44px] w-full rounded-[10px] border-[1.5px] border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] px-4 py-2 font-bold text-[color:var(--wp-text)] outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8] mb-2">Manžel/ka</span>
+            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--wp-text-tertiary)]">Manžel/ka</span>
             <button
               type="button"
               onClick={() => update({ hasSpouse: !state.hasSpouse })}
               className={`min-h-[44px] w-full rounded-[10px] border-[1.5px] py-2 font-semibold transition-all ${
                 state.hasSpouse
                   ? "bg-[#0d1f4e] border-[#0d1f4e] text-white"
-                  : "bg-[color:var(--wp-surface-card)] border-[#cbd5e1] text-[#475569] hover:border-[#2563eb]"
+                  : "border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:border-indigo-500 dark:hover:text-indigo-300"
               }`}
               aria-pressed={state.hasSpouse}
             >
@@ -140,17 +136,6 @@ export function LifeInputPanel({ state, onStateChange }: LifeInputPanelProps) {
         </div>
       </div>
 
-      <style jsx>{`
-        .mod-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 5px; border-radius: 3px; outline: none; cursor: pointer; }
-        .mod-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2.5px solid #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.13), 0 2px 7px rgba(37,99,235,0.28); cursor: grab; margin-top: -7px; transition: transform 0.14s ease, box-shadow 0.14s ease; }
-        .mod-slider::-webkit-slider-thumb:hover { transform: scale(1.22); box-shadow: 0 0 0 5px rgba(37,99,235,0.15), 0 4px 12px rgba(37,99,235,0.38); }
-        .mod-slider::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
-        .mod-slider::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: transparent; }
-        .mod-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2.5px solid #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.13); cursor: grab; }
-        .mod-slider::-moz-range-track { height: 5px; border-radius: 3px; background: transparent; }
-        .mod-slider::-moz-range-progress { background: linear-gradient(90deg, #2563eb, #38bdf8); border-radius: 3px; }
-        .mod-slider:focus { outline: none; }
-      `}</style>
     </div>
   );
 }

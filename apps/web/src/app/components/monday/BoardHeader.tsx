@@ -37,7 +37,7 @@ export function BoardHeader({
   }, [open]);
 
   return (
-    <div className="flex items-center gap-2 h-12 px-4 border-b border-monday-border bg-monday-surface shrink-0">
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4">
       {editingName && onViewNameChange ? (
         <input
           value={editNameVal}

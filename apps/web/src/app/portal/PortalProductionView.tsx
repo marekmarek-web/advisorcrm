@@ -192,7 +192,7 @@ export function PortalProductionView() {
                   }`}
                   style={
                     period === opt.value
-                      ? { background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)", color: "var(--wp-accent, #4f46e5)" }
+                      ? { background: "var(--wp-bg-card)", borderColor: "var(--wp-border)", color: "var(--wp-accent, #4f46e5)" }
                       : { color: "var(--wp-text-muted)" }
                   }
                 >
@@ -205,7 +205,7 @@ export function PortalProductionView() {
               onClick={handleExport}
               disabled={!data || data.rows.length === 0}
               className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--wp-radius-sm)] text-xs font-semibold uppercase tracking-wide border transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
-              style={{ background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)", color: "var(--wp-text)" }}
+              style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)", color: "var(--wp-text)" }}
             >
               <Download size={16} /> Export
             </button>
@@ -253,7 +253,7 @@ export function PortalProductionView() {
               {/* Card 2: Počet smluv */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
-                style={{ background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)" }}
+                style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div
@@ -274,7 +274,7 @@ export function PortalProductionView() {
               {/* Card 3: Pojistné celkem */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
-                style={{ background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)" }}
+                style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div
@@ -295,7 +295,7 @@ export function PortalProductionView() {
               {/* Card 4: Roční souhrn */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
-                style={{ background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)" }}
+                style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div
@@ -319,7 +319,7 @@ export function PortalProductionView() {
               {/* Levý panel: Podle segmentu */}
               <div
                 className="xl:col-span-1 rounded-[var(--wp-radius-sm)] border flex flex-col p-5 md:p-8 shadow-sm"
-                style={{ background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)" }}
+                style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
               >
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--wp-text)" }}>
@@ -363,7 +363,7 @@ export function PortalProductionView() {
               {/* Pravý panel: Detail produkce */}
               <div
                 className="xl:col-span-2 rounded-[var(--wp-radius-sm)] border overflow-hidden flex flex-col min-w-0 shadow-sm"
-                style={{ background: "var(--wp-bg-card, #fff)", borderColor: "var(--wp-border)" }}
+                style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
               >
                 <div
                   className="px-4 md:px-8 py-4 md:py-6 border-b flex flex-wrap items-center justify-between gap-4"

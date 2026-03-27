@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 export default function PortalToolsDrivePage() {
   return (
-    <div className="h-[calc(100vh-80px)] min-h-[500px] -mx-2 -my-2 md:-mx-4 md:-my-4">
+    <div className="flex min-h-[min(560px,calc(100dvh-5rem))] w-full flex-1 flex-col overflow-hidden bg-[color:var(--wp-main-scroll-bg)]">
       <DriveWorkspace />
     </div>
   );

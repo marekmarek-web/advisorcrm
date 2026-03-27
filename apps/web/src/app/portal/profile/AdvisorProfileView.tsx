@@ -334,7 +334,7 @@ export function AdvisorProfileView({
   const initials = [parsed.firstName, parsed.lastName].map((s) => s[0]).filter(Boolean).join("").toUpperCase() || "?";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[color:var(--wp-text)] pb-12 md:pb-20">
+    <div className="min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-12 text-[color:var(--wp-text)] md:pb-20">
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -392,7 +392,7 @@ export function AdvisorProfileView({
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6 z-10 text-center md:text-left">
             <div className="relative group">
               <label className="block cursor-pointer">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-[28px] bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-xl shadow-indigo-200 border-4 border-white transition-transform group-hover:scale-105 overflow-hidden">
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-[color:var(--wp-surface-card)] bg-gradient-to-br from-indigo-600 to-purple-600 text-2xl font-black text-white shadow-xl shadow-indigo-500/25 transition-transform group-hover:scale-105 sm:h-24 sm:w-24 sm:rounded-[28px] sm:text-3xl">
                   {advisorAvatarUrl ? (
                     <img src={advisorAvatarUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -418,7 +418,7 @@ export function AdvisorProfileView({
                 <p className="text-xs text-red-600 mt-1 text-center max-w-[100px]">{advisorAvatarError}</p>
               )}
               <div
-                className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-white shadow-sm pointer-events-none"
+                className="pointer-events-none absolute -bottom-2 -right-2 rounded-full border-4 border-[color:var(--wp-surface-card)] bg-emerald-500 p-1.5 text-white shadow-sm"
                 title="Účet je aktivní"
               >
                 <ShieldCheck size={16} aria-hidden />
@@ -429,7 +429,7 @@ export function AdvisorProfileView({
                 {firstName || lastName ? `${firstName} ${lastName}`.trim() || "—" : "Můj profil"}
               </h1>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-md border border-indigo-100">
+                <span className="rounded-md border border-indigo-200/60 bg-indigo-500/15 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/40 dark:text-indigo-300">
                   {initial.roleName}
                 </span>
                 <span className="px-3 py-1 bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] text-[10px] font-black uppercase tracking-widest rounded-md border border-[color:var(--wp-surface-card-border)]">
@@ -456,22 +456,24 @@ export function AdvisorProfileView({
         </div>
 
         {/* Taby */}
-        <div className="flex items-center gap-4 sm:gap-8 border-b border-[color:var(--wp-surface-card-border)] px-2 overflow-x-auto hide-scrollbar">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id as TabId)}
-              className={`pb-4 text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap min-h-[44px] flex items-end
-                ${activeTab === tab.id ? "text-indigo-600" : "text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text)]"}
-              `}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 w-full h-[3px] bg-indigo-600 rounded-t-full" aria-hidden />
-              )}
-            </button>
-          ))}
+        <div className="overflow-x-auto rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 hide-scrollbar">
+          <div className="flex items-center gap-4 border-b border-[color:var(--wp-surface-card-border)] sm:gap-8">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as TabId)}
+                className={`relative flex min-h-[44px] items-end whitespace-nowrap pb-4 text-sm font-black uppercase tracking-widest transition-all
+                  ${activeTab === tab.id ? "text-indigo-600 dark:text-indigo-400" : "text-[color:var(--wp-text-tertiary)] hover:text-[color:var(--wp-text)]"}
+                `}
+              >
+                {tab.label}
+                {activeTab === tab.id && (
+                  <div className="absolute bottom-0 left-0 h-[3px] w-full rounded-t-full bg-indigo-600 dark:bg-indigo-500" aria-hidden />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Hlavní obsah podle tabu */}

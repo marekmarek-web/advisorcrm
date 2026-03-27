@@ -144,7 +144,7 @@ export function MortgageCalculatorPage() {
           />
         )}
 
-        <div className="mt-4 rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
+        <div className="mt-4 rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
           <MortgageBankOffers
             offers={offers}
             fetchedAt={ratesMeta?.fetchedAt}

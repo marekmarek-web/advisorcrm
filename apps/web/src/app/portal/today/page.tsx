@@ -9,7 +9,7 @@ import { getContactsCount } from "@/app/actions/contacts";
 import { requireAuth, getCachedSupabaseUser } from "@/lib/auth/require-auth";
 import { perfLog } from "@/lib/perf-log";
 import { DashboardEditable } from "./DashboardEditable";
-import { LinesAndDotsLoader } from "@/app/components/LinesAndDotsLoader";
+import { AidvisoraLogoShimmerLoader } from "@/app/components/AidvisoraLogoShimmerLoader";
 
 function isRedirectError(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";
@@ -17,11 +17,8 @@ function isRedirectError(e: unknown): boolean {
 
 function DashboardLoader() {
   return (
-    <div className="flex-1 flex items-center justify-center min-h-[60vh] bg-[#f8fafc]">
-      <div className="flex flex-col items-center gap-4">
-        <LinesAndDotsLoader />
-        <p className="text-slate-500 text-sm">Načítám nástěnku…</p>
-      </div>
+    <div className="flex min-h-[60vh] flex-1 items-center justify-center bg-[color:var(--wp-main-scroll-bg)]">
+      <AidvisoraLogoShimmerLoader />
     </div>
   );
 }

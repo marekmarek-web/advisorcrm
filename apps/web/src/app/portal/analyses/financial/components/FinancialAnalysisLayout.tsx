@@ -197,7 +197,7 @@ export function FinancialAnalysisLayout() {
       <div className="w-full max-w-6xl rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3 sm:p-6 md:p-10 mb-8 sm:mb-20 shadow-lg flex flex-col min-h-0">
         <FinancialAnalysisToolbar />
 
-        <div className="min-h-[min(50vh,320px)] sm:min-h-[320px] flex-1 min-h-0 overflow-x-hidden">
+        <div className="min-h-[min(50vh,320px)] flex-1 min-h-0 overflow-x-hidden sm:min-h-[320px]">
           {StepComponent ? (
             <StepComponent
               key={`${Boolean(data.includeCompany)}-${currentStep}-${StepComponent.name ?? "step"}`}
@@ -205,7 +205,7 @@ export function FinancialAnalysisLayout() {
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 z-[5] -mx-3 sm:mx-0 mt-4 sm:mt-8 pt-4 pb-2 sm:pb-0 sm:pt-8 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/95 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4 px-1 sm:px-0">
+        <div className="mt-4 flex flex-col items-stretch gap-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-4 sm:mx-0 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8">
           <button
             type="button"
             onClick={() => prevStep()}
@@ -237,7 +237,7 @@ export function FinancialAnalysisLayout() {
             value={notes}
             onChange={(e) => setData({ notes: e.target.value })}
             placeholder="Poznámky k analýze – uloží se s analýzou. Můžete je později převést na úkol nebo do zápisků."
-            className="w-full min-h-[100px] px-4 py-3 border border-[color:var(--wp-surface-card-border)] rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-y"
+            className="w-full min-h-[100px] resize-y rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-input-bg)] px-4 py-3 text-sm text-[color:var(--wp-input-text)] placeholder:text-[color:var(--wp-text-muted)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400"
           />
           <div className="flex flex-wrap gap-3 mt-2 items-center">
             <button

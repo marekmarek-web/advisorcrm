@@ -70,7 +70,7 @@ export function Toolbar(props: ToolbarProps) {
   const personRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex items-center gap-1 h-10 px-3 border-b border-monday-border bg-monday-surface shrink-0">
+    <div className="flex h-10 shrink-0 items-center gap-1 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3">
       {/* Hledat */}
       <input
         type="text"

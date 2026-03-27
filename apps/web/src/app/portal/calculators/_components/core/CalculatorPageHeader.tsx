@@ -25,10 +25,10 @@ export function CalculatorPageHeader({
     <div className="mb-1">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-600 mb-1">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-600 sm:text-[11px] dark:text-indigo-400">
             {eyebrow}
           </p>
-          <h1 className="font-display text-[1.45rem] sm:text-[1.55rem] md:text-[1.8rem] font-extrabold text-[#0d1f4e] tracking-[-0.02em] leading-[1.12]">
+          <h1 className="font-display text-[1.45rem] font-extrabold leading-[1.12] tracking-[-0.02em] text-[color:var(--wp-text)] sm:text-[1.55rem] md:text-[1.8rem]">
             {title}
           </h1>
           {subtitle && (

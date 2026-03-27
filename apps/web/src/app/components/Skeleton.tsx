@@ -50,7 +50,7 @@ export function SkeletonTableRow({
 export function SkeletonBlock({ className }: { className?: string }) {
   return (
     <div
-      className={`wp-skeleton-line overflow-hidden rounded bg-[color:var(--wp-surface-card-border)] ${className ?? ""}`}
+      className={`animate-pulse overflow-hidden rounded bg-[color:var(--wp-skeleton-bg)] ${className ?? ""}`}
       aria-hidden
     />
   );

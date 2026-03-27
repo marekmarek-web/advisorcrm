@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { formatCurrency } from "@/lib/calculators/mortgage/formatters";
+import { calculatorSliderGradient } from "@/lib/calculators/calculator-slider-gradient";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
 
@@ -43,11 +44,6 @@ function buildAmortTable(principal: number, annualRate: number, termYears: numbe
     rows.push({ month: i, interest, principal: prinPay, balance });
   }
   return rows;
-}
-
-function sliderGradient(value: number, min: number, max: number): string {
-  const pct = ((value - min) / (max - min)) * 100;
-  return `linear-gradient(90deg, #2563eb 0%, #38bdf8 ${pct}%, #cbd5e1 ${pct}%)`;
 }
 
 export function MortgageAmortSection({
@@ -185,12 +181,12 @@ export function MortgageAmortSection({
   if (!stats) return null;
 
   return (
-    <div className="rounded-[20px] border-[1.5px] border-[#e2e8f0] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
+    <div className="rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
       <div className="mb-6">
-        <h3 className="text-base sm:text-lg font-bold text-[#0d1f4e] mb-1">
+        <h3 className="mb-1 text-base font-bold text-[color:var(--wp-text)] sm:text-lg">
           Analýza splácení — kolik skutečně ušetříte splacením po {pivot} letech?
         </h3>
-        <p className="text-xs sm:text-sm text-[#475569] max-w-xl leading-relaxed">
+        <p className="max-w-xl text-xs leading-relaxed text-[color:var(--wp-text-secondary)] sm:text-sm">
           Anuitní hypotéka je nastavena tak, aby banka dostala největší část úroků v prvních letech.
           Po {pivot} letech dluh stále existuje, ale většinu úroků jste již zaplatili.
         </p>
@@ -198,44 +194,44 @@ export function MortgageAmortSection({
 
       {/* Stat boxes */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
-        <div className="rounded-[14px] border-[1.5px] border-[#e2e8f0] bg-[#f4f6fb] p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#94a3b8] mb-2">Zaplaceno za prvních {pivot} let</div>
-          <div className="text-xl font-extrabold text-[#0d1f4e]">{formatCurrency(Math.round(stats.paid))} Kč</div>
-          <div className="text-xs text-[#475569] mt-1">Z toho jistina: <strong>{formatCurrency(Math.round(stats.prinPaid))} Kč</strong></div>
+        <div className="rounded-[14px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-4">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--wp-text-tertiary)]">Zaplaceno za prvních {pivot} let</div>
+          <div className="text-xl font-extrabold text-[color:var(--wp-text)]">{formatCurrency(Math.round(stats.paid))} Kč</div>
+          <div className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">Z toho jistina: <strong>{formatCurrency(Math.round(stats.prinPaid))} Kč</strong></div>
         </div>
-        <div className="rounded-[14px] border-[1.5px] border-[rgba(37,99,235,0.2)] bg-[#eff4ff] p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2563eb] opacity-70 mb-2">Úroky zaplacené do zvoleného roku</div>
-          <div className="text-xl font-extrabold text-[#2563eb]">{formatCurrency(Math.round(stats.intPaid))} Kč</div>
-          <div className="text-xs text-[#475569] mt-1">= <strong>{stats.intPct} %</strong> z celkových úroků</div>
+        <div className="rounded-[14px] border-[1.5px] border-indigo-500/30 bg-indigo-500/10 p-4 dark:border-indigo-400/25 dark:bg-indigo-950/35">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-700 opacity-90 dark:text-indigo-300">Úroky zaplacené do zvoleného roku</div>
+          <div className="text-xl font-extrabold text-indigo-700 dark:text-indigo-300">{formatCurrency(Math.round(stats.intPaid))} Kč</div>
+          <div className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">= <strong>{stats.intPct} %</strong> z celkových úroků</div>
         </div>
-        <div className="rounded-[14px] border-[1.5px] border-[#e2e8f0] bg-[#f4f6fb] p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#94a3b8] mb-2">Úspora při splacení v roce {pivot}</div>
-          <div className="text-xl font-extrabold text-[#0d1f4e]">{formatCurrency(Math.round(stats.saving))} Kč</div>
-          <div className="text-xs text-[#475569] mt-1">Zbývající nezaplacené úroky</div>
+        <div className="rounded-[14px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-4">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--wp-text-tertiary)]">Úspora při splacení v roce {pivot}</div>
+          <div className="text-xl font-extrabold text-[color:var(--wp-text)]">{formatCurrency(Math.round(stats.saving))} Kč</div>
+          <div className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">Zbývající nezaplacené úroky</div>
         </div>
       </div>
 
       {/* Toggle + year picker */}
       <div className="flex flex-wrap items-center gap-2.5 mb-4">
-        <span className="text-xs text-[#475569]">Zobrazit:</span>
+        <span className="text-xs text-[color:var(--wp-text-secondary)]">Zobrazit:</span>
         <button
           type="button"
           onClick={toggleEarly}
           className={`inline-flex items-center gap-2 py-1.5 px-3 rounded-full border-[1.5px] text-xs font-medium transition-all ${
-            showEarly ? "border-[#059669] bg-[color:var(--wp-surface-card)]" : "border-[#cbd5e1] bg-[color:var(--wp-surface-card)]"
+            showEarly ? "border-emerald-600 bg-[color:var(--wp-surface-card)] dark:border-emerald-500" : "border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)]"
           }`}
         >
-          <div className={`w-[30px] h-4 rounded-full relative transition-colors ${showEarly ? "bg-[#059669]" : "bg-[#cbd5e1]"}`}>
+          <div className={`relative h-4 w-[30px] rounded-full transition-colors ${showEarly ? "bg-emerald-600 dark:bg-emerald-500" : "bg-[color:var(--wp-border-strong)]"}`}>
             <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-[color:var(--wp-surface-card)] shadow-sm transition-transform ${showEarly ? "translate-x-[14px]" : "translate-x-0.5"}`} />
           </div>
-          <span className="text-[#0d1f4e]">Předčasné splacení</span>
+          <span className="text-[color:var(--wp-text)]">Předčasné splacení</span>
         </button>
       </div>
 
       {showEarly && (
         <>
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <span className="text-xs text-[#475569]">Splatit po</span>
+            <span className="text-xs text-[color:var(--wp-text-secondary)]">Splatit po</span>
             <div className="flex-1 min-w-[140px] px-2.5">
               <input
                 type="range"
@@ -244,8 +240,8 @@ export function MortgageAmortSection({
                 step={1}
                 value={earlyYear}
                 onChange={(e) => setEarlyYear(parseInt(e.target.value, 10))}
-                className="mod-slider w-full"
-                style={{ background: sliderGradient(earlyYear, 1, termYears - 1) }}
+                className="calc-range-slider w-full"
+                style={{ background: calculatorSliderGradient(earlyYear, 1, termYears - 1) }}
               />
             </div>
             <span className="text-sm font-bold text-[#2563eb] min-w-[56px] text-right whitespace-nowrap">
@@ -253,7 +249,7 @@ export function MortgageAmortSection({
             </span>
           </div>
 
-          <div className="bg-[#ecfdf5] border-[1.5px] border-[rgba(5,150,105,0.22)] rounded-[10px] p-3 text-xs text-[#065f46] leading-relaxed mb-4">
+          <div className="mb-4 rounded-[10px] border-[1.5px] border-[rgba(5,150,105,0.22)] bg-[#ecfdf5] p-3 text-xs leading-relaxed text-[#065f46] dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-200">
             Splacením hypotéky v roce <strong>{earlyYear}</strong> ušetříte pouze zbývající část úroků — větší část jste již zaplatili v prvních letech.
           </div>
         </>
@@ -264,37 +260,6 @@ export function MortgageAmortSection({
         <Line data={chartData} options={chartOptions} />
       </div>
 
-      <style jsx>{`
-        .mod-slider {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 100%;
-          height: 5px;
-          border-radius: 3px;
-          outline: none;
-          cursor: pointer;
-        }
-        .mod-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #fff;
-          border: 2.5px solid #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13), 0 2px 7px rgba(37, 99, 235, 0.28);
-          cursor: grab;
-          margin-top: -7px;
-        }
-        .mod-slider::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: transparent; }
-        .mod-slider::-moz-range-thumb {
-          width: 20px; height: 20px; border-radius: 50%; background: #fff;
-          border: 2.5px solid #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13);
-          cursor: grab;
-        }
-        .mod-slider::-moz-range-track { height: 5px; border-radius: 3px; background: transparent; }
-        .mod-slider:focus { outline: none; }
-      `}</style>
     </div>
   );
 }

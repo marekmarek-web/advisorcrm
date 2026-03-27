@@ -420,7 +420,7 @@ export function StepIncomeProtection() {
       </div>
 
       {/* Side summary */}
-      <div className="mt-8 p-4 sm:p-6 bg-[color:var(--wp-surface-muted)] rounded-2xl border border-[color:var(--wp-surface-card-border)] sticky bottom-4 sm:bottom-0">
+      <div className="mt-8 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-4 sm:p-6">
         <h4 className="font-bold text-[color:var(--wp-text)] mb-2">Souhrn</h4>
         <p className="text-[color:var(--wp-text-secondary)]">
           Celková měsíční cena: <strong>{formatCzk(grandTotalMonthly)}</strong>

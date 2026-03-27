@@ -1,0 +1,66 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logoBox {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 10px;
+  line-height: 0;
+}
+
+.logo {
+  display: block;
+  height: auto;
+  max-width: min(200px, 70vw);
+  width: auto;
+  opacity: 0.9;
+  filter: grayscale(0.15);
+}
+
+:global(html.dark) .logo {
+  filter: grayscale(0.08) brightness(1.08);
+}
+
+.shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  animation: aidvLogoShimmer 1.85s ease-in-out infinite;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+:global(html.dark) .shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+}
+
+@keyframes aidvLogoShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.caption {
+  font-size: 0.875rem;
+  color: var(--wp-text-muted);
+}
