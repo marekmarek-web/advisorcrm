@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import React, { useReducer, useCallback, useEffect, useState } from "react";
 import {
   FileText,
@@ -22,7 +23,18 @@ import type {
 } from "@/lib/ai-review/types";
 import { AIReviewTopBar } from "./AIReviewTopBar";
 import { ExtractionLeftPanel } from "./ExtractionLeftPanel";
-import { PDFViewerPanel } from "./PDFViewerPanel";
+
+const PDFViewerPanel = dynamic(
+  () => import("./PDFViewerPanel").then((m) => m.PDFViewerPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[240px] flex-1 items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 text-sm font-medium text-[color:var(--wp-text-secondary)] animate-pulse">
+        Načítám prohlížeč PDF…
+      </div>
+    ),
+  },
+);
 
 const initialState: ExtractionReviewState = {
   activeFieldId: null,

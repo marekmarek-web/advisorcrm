@@ -74,10 +74,8 @@ import {
   type WidgetColorId,
 } from "./dashboard-config";
 import { useDashboardCalendarDrawer } from "./use-dashboard-calendar-drawer";
-import { DashboardCalendarSidePanel } from "./DashboardCalendarSidePanel";
 import clsx from "clsx";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
-import { TodayInCalendarWidget } from "@/app/components/dashboard/TodayInCalendarWidget";
 
 export type { BusinessPlanWidgetData, DashboardSecondaryBundle } from "./dashboard-secondary-types";
 

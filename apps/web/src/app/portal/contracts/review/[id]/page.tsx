@@ -93,7 +93,8 @@ export default function ContractReviewDetailPage() {
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [processingStepHint, setProcessingStepHint] = useState<string | undefined>();
   const [scanRetryBusy, setScanRetryBusy] = useState(false);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<number | null>(null);
+  const pollBackoffMsRef = useRef(2500);
   const processingStartedRef = useRef(false);
 
   const loadPdf = useCallback(async () => {
@@ -130,18 +131,24 @@ export default function ContractReviewDetailPage() {
   }, [id, pdfUrl]);
 
   const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
+    if (pollTimeoutRef.current != null) {
+      window.clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     }
   }, []);
 
+  /** Exponential backoff (2.5s → ~12s cap) snižuje počet requestů při dlouhém běhu AI. */
   const startPolling = useCallback(() => {
     stopPolling();
-    pollingRef.current = setInterval(async () => {
+    pollBackoffMsRef.current = 2500;
+    const run = async () => {
       try {
         const res = await fetch(`/api/contracts/review/${id}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          pollBackoffMsRef.current = Math.min(Math.round(pollBackoffMsRef.current * 1.35), 12000);
+          pollTimeoutRef.current = window.setTimeout(run, pollBackoffMsRef.current);
+          return;
+        }
         const data = await res.json();
         const status: string = data.processingStatus ?? "";
         setProcessingStatus(status);
@@ -149,17 +156,22 @@ export default function ContractReviewDetailPage() {
         if (hint) setProcessingStepHint(hint);
         if (status !== "uploaded" && status !== "processing") {
           stopPolling();
+          pollBackoffMsRef.current = 2500;
           const mapped = mapApiToExtractionDocument(data, pdfUrl);
           setDoc(mapped);
           setLoading(false);
           if (status === "failed") {
             setError(data.errorMessage ?? "Extrakce selhala.");
           }
+          return;
         }
       } catch {
-        /* polling error – keep retrying */
+        /* keep retrying */
       }
-    }, 3000);
+      pollBackoffMsRef.current = Math.min(Math.round(pollBackoffMsRef.current * 1.35), 12000);
+      pollTimeoutRef.current = window.setTimeout(run, pollBackoffMsRef.current);
+    };
+    pollTimeoutRef.current = window.setTimeout(run, pollBackoffMsRef.current);
   }, [id, pdfUrl, stopPolling]);
 
   const triggerProcessing = useCallback(async () => {

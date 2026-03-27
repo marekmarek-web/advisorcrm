@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { resolveSentryTracesSampleRate } from "@/lib/sentry-traces-sample-rate";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
 
@@ -9,7 +10,7 @@ if (dsn) {
     environment:
       process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT?.trim() ?? process.env.NODE_ENV,
     sendDefaultPii: process.env.NODE_ENV !== "production",
-    tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
+    tracesSampleRate: resolveSentryTracesSampleRate("browser"),
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     enableLogs: true,
