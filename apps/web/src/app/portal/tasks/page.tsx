@@ -1097,9 +1097,9 @@ function TasksPageContent() {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">V tomto výběru</h3>
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/25 bg-white/10 p-1">
-                  <AiAssistantBrandIcon size={20} className="max-h-full max-w-full opacity-95" />
-                </span>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/50 bg-white p-1 shadow-sm dark:border-white/70 dark:bg-white">
+                  <AiAssistantBrandIcon size={22} variant="blendOnly" className="max-h-full max-w-full" />
+                </div>
               </div>
               <div className="mb-8">
                 <div className="flex items-end gap-3 mb-1">
@@ -1124,7 +1124,7 @@ function TasksPageContent() {
           <div className="bg-[color:var(--wp-surface-card)] rounded-[32px] border border-[color:var(--wp-surface-card-border)] p-6 shadow-sm relative group overflow-hidden">
             <div className="flex items-center gap-3 mb-6">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-white dark:bg-white">
-                <AiAssistantBrandIcon size={22} className="max-h-full max-w-full" />
+                <AiAssistantBrandIcon size={22} variant="blendOnly" className="max-h-full max-w-full" />
               </div>
               <h3 className="font-black text-sm uppercase tracking-widest text-[color:var(--wp-text)]">AI Priority</h3>
             </div>

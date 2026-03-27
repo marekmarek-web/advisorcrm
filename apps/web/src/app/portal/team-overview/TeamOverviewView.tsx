@@ -579,7 +579,7 @@ export function TeamOverviewView({
                 <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Rizikoví členové</p>
               </div>
               <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Pipeline value</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Hodnota obchodů</p>
                 <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{formatNumber(Math.round(kpis.pipelineValue))}</p>
                 <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Konverze: {Math.round(kpis.conversionRate * 100)} %</p>
               </div>

@@ -27,7 +27,6 @@ import {
   Mail,
   MoreHorizontal,
   Search,
-  Sparkles,
   Filter,
   User,
   Clock,
@@ -38,6 +37,8 @@ import {
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { useToast } from "@/app/components/Toast";
+import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
+import { useOptionalAiAssistantDrawer } from "@/app/portal/AiAssistantDrawerContext";
 import { PIPELINE_COLUMN_THEMES as COLUMN_THEMES } from "@/lib/pipeline/column-themes";
 
 type ContactOption = { id: string; firstName: string; lastName: string };
@@ -432,6 +433,7 @@ export function PipelineBoard({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const aiAssistant = useOptionalAiAssistantDrawer();
   const [, startTransition] = useTransition();
   const [localStages, setLocalStages] = useState<StageWithOpportunities[]>(stages);
   const [createStageId, setCreateStageId] = useState<string | null>(null);
@@ -583,12 +585,13 @@ export function PipelineBoard({
       />
 
       <div className="font-pipeline-sans flex min-h-0 flex-1 flex-col text-[color:var(--wp-text)]">
-        {/* Local header (v2): Obchodní Pipeline, metadata, Všechny filtry */}
+        {/* Local header (v2): obchodní nástěnka, metadata, filtry */}
         {showLocalHeader && (
           <div className="z-10 flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-t-xl border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-0 py-4 sm:gap-4">
             <div>
-              <h1 className="font-pipeline-display mb-1 text-2xl font-black leading-tight text-[color:var(--wp-text)]">Obchodní Pipeline</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm font-medium text-[color:var(--wp-text-secondary)]">
+              <h1 className="font-pipeline-display mb-1 text-2xl font-black leading-tight text-[color:var(--wp-text)]">Obchodní nástěnka</h1>
+              <p className="text-xs font-medium text-[color:var(--wp-text-tertiary)] sm:text-sm">Přehled případů podle fáze jednání</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-medium text-[color:var(--wp-text-secondary)]">
                 <span>Potenciál: <strong className="font-bold text-[color:var(--wp-text)]">{new Intl.NumberFormat("cs-CZ", { style: "currency", currency: "CZK", maximumFractionDigits: 0 }).format(totalPotential)}</strong></span>
                 <span className="hidden text-[color:var(--wp-border-strong)] sm:inline">|</span>
                 <span className="flex items-center gap-1 font-bold text-rose-500 dark:text-rose-400"><AlertCircle size={14} /> 2 úkoly k řešení</span>
@@ -624,7 +627,7 @@ export function PipelineBoard({
           </div>
         )}
 
-        {/* Toolbar: search, AI, Nový obchod (v2 style) */}
+        {/* Toolbar: hledání, AI asistent, nový obchod */}
         <div className="flex flex-shrink-0 flex-col items-stretch justify-between gap-3 py-3 sm:flex-row sm:items-center">
           <div className="group relative w-full max-w-md">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
@@ -641,10 +644,21 @@ export function PipelineBoard({
           <div className="flex flex-shrink-0 items-center gap-3">
             <button
               type="button"
-              onClick={() => toast.showToast("AI analýza pipeline bude brzy k dispozici.")}
-              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-500/25 dark:text-amber-200"
+              onClick={() => {
+                if (aiAssistant) {
+                  aiAssistant.setOpen(true);
+                } else {
+                  toast.showToast("AI asistent je v portálu vpravo dole (ikona Ai).");
+                }
+              }}
+              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 py-1.5 pr-3 text-sm font-semibold text-[color:var(--wp-text)] shadow-sm transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+              title="Otevře boční panel AI asistenta (dotazy k CRM, klientům, úkolům…)"
+              aria-label="Otevřít AI asistenta"
             >
-              <Sparkles size={14} className="text-amber-500" /> AI Analýza pipeline
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--wp-surface-card-border)] bg-white dark:bg-white">
+                <AiAssistantBrandIcon size={20} variant="blendOnly" className="max-h-full max-w-full" />
+              </span>
+              <span className="hidden sm:inline">AI asistent</span>
             </button>
             <CreateActionButton type="button" onClick={() => setCreateStageId(localStages[0]?.id ?? null)} icon={Plus}>
               Nový obchod

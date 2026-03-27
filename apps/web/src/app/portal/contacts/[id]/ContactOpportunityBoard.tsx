@@ -112,9 +112,9 @@ export function ContactOpportunityBoard({
         {!loading && !loadError && noStages && (
           <div className="flex flex-col items-center justify-center rounded-[var(--wp-radius-sm)] border-2 border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 p-8 min-h-[200px]">
             <LayoutList size={40} className="text-[color:var(--wp-text-tertiary)] mb-3" />
-            <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Pipeline není nastavená</h2>
+            <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Obchodní nástěnka není nastavená</h2>
             <p className="text-sm text-[color:var(--wp-text-secondary)] text-center mb-4">
-              Nastavte stupně pipeline v modulu Obchody.
+              Nastavte fáze obchodu v modulu Obchody.
             </p>
             <Link href="/portal/pipeline" className={secondaryLinkClass}>
               Přejít do Obchodů

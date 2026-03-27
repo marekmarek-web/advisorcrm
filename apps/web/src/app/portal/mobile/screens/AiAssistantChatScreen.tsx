@@ -56,7 +56,7 @@ const QUICK_STARTERS = [
   { emoji: "📋", label: "Jaké úkoly mám dnes?" },
   { emoji: "⚠️", label: "Co je urgentní v mém portfoliu?" },
   { emoji: "📞", label: "Kteří klienti potřebují pozornost?" },
-  { emoji: "💼", label: "Přehled aktivního pipeline" },
+  { emoji: "💼", label: "Přehled aktivních obchodů" },
   { emoji: "📄", label: "Nejnovější smlouvy ke kontrole" },
 ];
 
@@ -455,7 +455,7 @@ export function AiAssistantChatScreen() {
               </div>
               <h2 className="text-base font-black text-[color:var(--wp-text)]">AI Asistent</h2>
               <p className="text-sm text-[color:var(--wp-text-secondary)] max-w-xs mx-auto leading-relaxed">
-                Zeptejte se na cokoliv z vašeho CRM. Asistent zná vaše kontakty, úkoly, pipeline a smlouvy.
+                Zeptejte se na cokoliv z vašeho CRM. Asistent zná vaše kontakty, úkoly, obchody a smlouvy.
               </p>
             </div>
 

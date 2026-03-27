@@ -535,7 +535,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                     <>
                       <p className="text-sm text-[color:var(--wp-text-secondary)]">Žádné otevřené obchody.</p>
                       <Link href="/portal/pipeline" className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline">
-                        Pipeline
+                        Obchody
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                       </Link>
                     </>

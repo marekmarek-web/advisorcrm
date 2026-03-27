@@ -9,10 +9,10 @@ export default async function PipelinePage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold" style={{ color: "var(--brand-dark)" }}>
-        Pipeline
+        Obchodní nástěnka
       </h1>
       <p className="text-[color:var(--wp-text-muted)]">
-        Případy (hypo / invest / pojist) – přesuňte do jiného stupně pomocí tlačítka.
+        Případy (hypo / invest / pojist) – přesuňte do jiné fáze obchodu.
       </p>
       <PipelineBoard stages={stages} contacts={contacts} />
     </div>

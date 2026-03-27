@@ -281,7 +281,7 @@ function ActiveDealsWidget({ kpis }: { kpis: DashboardKpis }) {
         href="/portal/pipeline"
         className="text-xs font-bold text-indigo-600 hover:underline inline-flex items-center gap-1 pt-1"
       >
-        Pipeline <ChevronRight size={12} />
+        Obchody <ChevronRight size={12} />
       </Link>
     </div>
   );

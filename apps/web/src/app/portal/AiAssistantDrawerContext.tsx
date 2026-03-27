@@ -25,3 +25,8 @@ export function useAiAssistantDrawer(): AiAssistantDrawerContextValue {
   }
   return ctx;
 }
+
+/** V částech sdílených s legacy layoutem – v portálu vrací stejné jako hook výše, jinde null. */
+export function useOptionalAiAssistantDrawer(): AiAssistantDrawerContextValue | null {
+  return useContext(AiAssistantDrawerContext);
+}

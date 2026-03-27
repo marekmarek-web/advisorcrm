@@ -22,6 +22,13 @@ import {
 import { buildDebugContext, type AiContextDebugOutput } from "@/lib/ai/context/debug-context";
 import { buildOrchestratedOutput, collectGenerationErrors, type AiOrchestratedOutput } from "@/lib/ai/orchestration";
 
+/** RSC and Server Action responses must not include raw Date (serialization). */
+function serializeCreatedAt(value: Date | string): string {
+  if (value instanceof Date) return value.toISOString();
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
 export type ResultOk = { ok: true; text: string; generationId?: string };
 export type ResultErr = { ok: false; error: string; generationId?: string };
 export type GenResult = ResultOk | ResultErr;
@@ -143,7 +150,8 @@ export async function generatePostMeetingFollowupAction(
 export type ClientGenerationItem = {
   promptType: string;
   outputText: string;
-  createdAt: Date;
+  /** ISO 8601 — serializable for RSC props and Server Action returns */
+  createdAt: string;
   id: string;
 };
 
@@ -173,7 +181,7 @@ export async function getLatestClientGenerations(
         ? {
             promptType: r.promptType,
             outputText: r.outputText,
-            createdAt: r.createdAt,
+            createdAt: serializeCreatedAt(r.createdAt),
             id: r.id,
           }
         : null;
@@ -195,7 +203,7 @@ export async function getLatestClientGenerations(
 export type MeetingGenerationItem = {
   promptType: string;
   outputText: string;
-  createdAt: Date;
+  createdAt: string;
   id: string;
 } | null;
 
@@ -212,7 +220,7 @@ export async function getLatestMeetingGeneration(
     return {
       promptType: r.promptType,
       outputText: r.outputText,
-      createdAt: r.createdAt,
+      createdAt: serializeCreatedAt(r.createdAt),
       id: r.id,
     };
   } catch {
@@ -235,7 +243,7 @@ export async function getLatestGenerationAction(
     return {
       promptType: r.promptType,
       outputText: r.outputText,
-      createdAt: r.createdAt,
+      createdAt: serializeCreatedAt(r.createdAt),
       id: r.id,
     };
   } catch {
@@ -266,7 +274,7 @@ export async function getLatestTeamSummaryAction(): Promise<ClientGenerationItem
     return {
       promptType: r.promptType,
       outputText: r.outputText,
-      createdAt: r.createdAt,
+      createdAt: serializeCreatedAt(r.createdAt),
       id: r.id,
     };
   } catch {
@@ -290,7 +298,7 @@ export async function getLatestPreMeetingBriefing(
     return {
       promptType: r.promptType,
       outputText: r.outputText,
-      createdAt: r.createdAt,
+      createdAt: serializeCreatedAt(r.createdAt),
       id: r.id,
     };
   } catch {

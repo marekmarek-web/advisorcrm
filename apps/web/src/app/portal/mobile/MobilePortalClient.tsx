@@ -255,7 +255,7 @@ function resolveHeaderMeta(
   if (tab === "home") return { title: "Přehled", subtitle };
   if (tab === "tasks") return { title: "Úkoly", subtitle };
   if (tab === "clients") return { title: "Klienti", subtitle };
-  if (tab === "pipeline") return { title: "Pipeline", subtitle };
+  if (tab === "pipeline") return { title: "Obchody", subtitle };
   return { title: "Aidvisora", subtitle };
 }
 
@@ -560,7 +560,7 @@ export function MobilePortalClient({
       try {
         setPipeline(await getPipeline());
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Nepodařilo se načíst pipeline.");
+        setError(e instanceof Error ? e.message : "Nepodařilo se načíst obchody.");
       }
     });
   }
@@ -665,7 +665,7 @@ export function MobilePortalClient({
     { id: "home", label: "Přehled", icon: LayoutDashboard },
     { id: "tasks", label: "Úkoly", icon: CheckSquare, badge: taskCounts.overdue > 0 ? taskCounts.overdue : undefined },
     { id: "clients", label: "Klienti", icon: Users },
-    { id: "pipeline", label: "Pipeline", icon: Briefcase },
+    { id: "pipeline", label: "Obchody", icon: Briefcase },
   ];
 
   /** Exactly one screen mounts per render — no more overlapping conditionals. */

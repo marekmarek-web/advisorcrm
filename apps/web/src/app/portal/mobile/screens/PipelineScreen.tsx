@@ -415,7 +415,7 @@ export function PipelineScreen({
   return (
     <div className="space-y-4">
       {!refreshing && pipeline.length === 0 ? (
-        <EmptyState title="Pipeline je prázdná" description="Začněte přidáním prvního případu." />
+        <EmptyState title="Žádné obchody ve fázích" description="Začněte přidáním prvního případu." />
       ) : null}
       {pipeline.length === 0 && !refreshing ? null : (
         <>

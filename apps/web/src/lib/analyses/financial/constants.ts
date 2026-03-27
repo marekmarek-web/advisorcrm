@@ -475,13 +475,13 @@ export const STEP_TITLES = [
 /** Počet kroků bez firemního rozšíření. */
 export const TOTAL_STEPS = 8;
 
-/** Titulky kroků; při includeCompany vloží „FIRMA“ za Cashflow. */
+/** Titulky kroků; při includeCompany vloží „Benefity“ za Cashflow. */
 export function getStepTitles(includeCompany: boolean): readonly string[] {
   if (!includeCompany) return STEP_TITLES;
   return [
     STEP_TITLES[0],
     STEP_TITLES[1],
-    'FIRMA',
+    "Benefity",
     ...STEP_TITLES.slice(2),
   ];
 }

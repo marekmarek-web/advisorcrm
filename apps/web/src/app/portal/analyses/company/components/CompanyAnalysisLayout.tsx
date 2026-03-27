@@ -39,7 +39,7 @@ export function CompanyAnalysisLayout({
   const companyName = payload.company?.name || "Firemní analýza";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-1 sm:px-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-[color:var(--wp-text)]">{companyName}</h2>
         <div className="flex items-center gap-3">

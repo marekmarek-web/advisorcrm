@@ -325,7 +325,7 @@ function PortalShellInner({
             className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] z-floating-ai flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] shadow-md shadow-black/10 transition-all duration-200 hover:bg-[color:var(--wp-surface-muted)] hover:border-[color:var(--wp-border-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--wp-text-tertiary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--wp-main-scroll-bg)] active:scale-95 dark:border-slate-200/90 dark:bg-white dark:shadow-black/25 dark:hover:border-slate-300 dark:hover:bg-slate-50 dark:focus-visible:ring-offset-white md:bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:right-[max(1.5rem,env(safe-area-inset-right,0px))]"
             aria-label="Otevřít AI asistenta"
           >
-            <AiAssistantBrandIcon size={26} className="max-h-full max-w-full" />
+            <AiAssistantBrandIcon size={26} variant="blendOnly" className="max-h-full max-w-full" />
           </button>
         )}
 

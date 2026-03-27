@@ -168,7 +168,7 @@ function EventDetailBody({
                 onClick={onOpenPipeline}
                 className="min-h-[40px] rounded-lg border border-[color:var(--wp-surface-card-border)] px-3 text-xs font-bold text-indigo-600 active:bg-[color:var(--wp-surface-muted)]"
               >
-                Otevřít pipeline
+                Otevřít obchody
               </button>
             ) : null}
           </div>

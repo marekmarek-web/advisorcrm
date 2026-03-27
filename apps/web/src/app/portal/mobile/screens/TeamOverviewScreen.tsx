@@ -141,7 +141,7 @@ function MemberCard({
             <p className="text-sm font-black text-[color:var(--wp-text)] mt-0.5">{fmtCzk(metrics.productionThisPeriod)}</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Pipeline</p>
+            <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Hodnota obchodů</p>
             <p className="text-sm font-black text-[color:var(--wp-text)] mt-0.5">{fmtCzk(metrics.pipelineValue)}</p>
           </div>
         </div>

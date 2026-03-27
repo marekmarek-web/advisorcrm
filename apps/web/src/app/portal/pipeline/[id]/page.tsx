@@ -89,7 +89,7 @@ export default async function OpportunityDetailPage({
             className="flex items-center gap-2 text-sm font-bold text-[color:var(--wp-text-tertiary)] hover:text-indigo-600 transition-colors min-h-[44px] min-w-[44px] -ml-2 px-2"
           >
             <ArrowLeft size={16} aria-hidden />
-            <span className="hidden sm:inline">Zpět do pipeline</span>
+            <span className="hidden sm:inline">Zpět na nástěnku obchodů</span>
             <span className="sm:hidden">Zpět</span>
           </Link>
           <div className="w-px h-6 bg-[color:var(--wp-surface-card-border)] hidden sm:block" aria-hidden />

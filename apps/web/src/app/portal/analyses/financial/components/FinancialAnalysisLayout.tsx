@@ -182,24 +182,24 @@ export function FinancialAnalysisLayout() {
   }
 
   return (
-    <div className="flex-grow flex flex-col items-center pt-4 sm:pt-6 pb-[max(6rem,env(safe-area-inset-bottom))] sm:pb-20 px-3 sm:px-4 min-h-0">
+    <div className="flex w-full flex-col items-center px-3 pt-4 sm:px-4 sm:pt-6 pb-[max(6rem,env(safe-area-inset-bottom))] sm:pb-20">
       <FinancialAnalysisAutoSave />
-      <section className="w-full max-w-4xl mb-4 sm:mb-6 text-center px-1">
-        <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-[color:var(--wp-text)] tracking-tight">
+      <section className="mb-4 w-full max-w-6xl px-1 text-center sm:mb-6">
+        <h1 className="text-xl font-extrabold tracking-tight text-[color:var(--wp-text)] sm:text-3xl md:text-4xl">
           Finanční analýza
         </h1>
       </section>
 
       <FinancialAnalysisStepper />
 
-      <div className="w-full max-w-6xl mb-4">
+      <div className="mb-4 w-full max-w-6xl">
         <PersonalFALinkBanner />
       </div>
 
-      <div className="w-full max-w-6xl rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3 sm:p-6 md:p-10 mb-8 sm:mb-20 shadow-lg flex flex-col min-h-0">
+      <div className="mb-8 flex w-full max-w-6xl flex-col rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3 shadow-lg sm:mb-20 sm:p-6 md:p-10">
         <FinancialAnalysisToolbar />
 
-        <div className="min-h-[min(50vh,320px)] flex-1 min-h-0 overflow-x-hidden sm:min-h-[320px]">
+        <div className="w-full overflow-x-auto overflow-y-visible">
           {StepComponent ? (
             <StepComponent
               key={`${Boolean(data.includeCompany)}-${currentStep}-${StepComponent.name ?? "step"}`}

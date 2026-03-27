@@ -139,7 +139,7 @@ export function TeamMemberDetailView({ detail }: { detail: TeamMemberDetail }) {
             </div>
             <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm">
               <p className="text-2xl font-bold text-[color:var(--wp-text)]">{formatNumber(m.pipelineValue)}</p>
-              <p className="text-xs text-[color:var(--wp-text-secondary)]">Pipeline</p>
+              <p className="text-xs text-[color:var(--wp-text-secondary)]">Hodnota obchodů</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">

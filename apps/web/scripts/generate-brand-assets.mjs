@@ -19,6 +19,17 @@ const publicDir = path.join(webRoot, "public");
 
 const black = { r: 0, g: 0, b: 0, alpha: 1 };
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+/** White letterboxing after trim so non-square marks still look correct in tab / iOS. */
+const webIconBg = { r: 255, g: 255, b: 255, alpha: 1 };
+/**
+ * Source file has generous padding; trim removes it so the mark fills favicon / native sizes.
+ * threshold: tolerance vs top-left “background” (anti-alias fringe).
+ */
+const trimThreshold = 24;
+
+function sharpTrimmedMark(inputPath) {
+  return sharp(inputPath).trim({ threshold: trimThreshold });
+}
 
 async function main() {
   if (!existsSync(nativeLogoPath)) {
@@ -30,7 +41,7 @@ async function main() {
 
   const iconSize = 1024;
   const logoMax = 900;
-  const logoBuf = await sharp(nativeLogoPath)
+  const logoBuf = await sharpTrimmedMark(nativeLogoPath)
     .resize(logoMax, logoMax, { fit: "inside", withoutEnlargement: true })
     .toBuffer();
 
@@ -47,7 +58,7 @@ async function main() {
 
   const splashSize = 2732;
   const splashSide = Math.round(splashSize * 0.35);
-  const splashLogoBuf = await sharp(nativeLogoPath)
+  const splashLogoBuf = await sharpTrimmedMark(nativeLogoPath)
     .resize(splashSide, splashSide, { fit: "inside", withoutEnlargement: true })
     .toBuffer();
 
@@ -61,13 +72,13 @@ async function main() {
   await sharp(path.join(assetsDir, "splash.png")).png().toFile(path.join(assetsDir, "splash-dark.png"));
 
   const webSrc = webFaviconPath;
-  await sharp(webSrc)
-    .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+  await sharpTrimmedMark(webSrc)
+    .resize(512, 512, { fit: "contain", background: webIconBg })
     .png()
     .toFile(path.join(publicDir, "favicon.png"));
 
-  await sharp(webSrc)
-    .resize(180, 180, { fit: "inside", withoutEnlargement: true })
+  await sharpTrimmedMark(webSrc)
+    .resize(180, 180, { fit: "contain", background: webIconBg })
     .png()
     .toFile(path.join(publicDir, "apple-touch-icon.png"));
 

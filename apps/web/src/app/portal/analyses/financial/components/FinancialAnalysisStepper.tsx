@@ -13,46 +13,56 @@ export function FinancialAnalysisStepper() {
   const stepTitles = getStepTitles(includeCompany);
 
   return (
-    <div className="w-full max-w-4xl mb-8 relative z-10 overflow-x-auto">
-      <div className="flex justify-between items-center relative min-w-0">
+    <nav
+      className="relative z-10 mx-auto mb-6 w-full max-w-6xl px-1 sm:mb-8 sm:px-2"
+      aria-label="Kroky finanční analýzy"
+    >
+      <ol className="m-0 flex list-none flex-wrap justify-center gap-x-1 gap-y-5 p-0 sm:gap-x-2 sm:gap-y-6 lg:flex-nowrap lg:justify-between lg:gap-x-1">
         {stepTitles.map((title, i) => {
           const stepNum = i + 1;
           const isActive = currentStep === stepNum;
           const isCompleted = currentStep > stepNum;
           return (
-            <button
+            <li
               key={stepNum}
-              type="button"
-              onClick={() => goToStep(stepNum)}
-              className={clsx(
-                "stepper-item flex-1 flex flex-col items-center min-w-0 sm:min-w-[60px]",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 rounded-lg"
-              )}
-              aria-current={isActive ? "step" : undefined}
-              aria-label={`Krok ${stepNum}: ${title}`}
+              className="flex min-w-[4.5rem] max-w-[7.5rem] flex-1 basis-[22%] justify-center sm:min-w-[4.75rem] sm:max-w-[6.5rem] sm:basis-0 md:max-w-[7rem] lg:min-w-0 lg:max-w-none lg:flex-1"
             >
-              <div
+              <button
+                type="button"
+                onClick={() => goToStep(stepNum)}
                 className={clsx(
-                  "w-10 h-10 sm:w-11 sm:h-11 min-w-[40px] sm:min-w-[44px] rounded-full flex items-center justify-center font-semibold text-base border-2 transition-all",
-                  isActive && "border-indigo-500 text-indigo-600 bg-[color:var(--wp-surface-card)] shadow-[0_0_0_4px_rgba(99,102,241,0.2)]",
-                  isCompleted && "bg-indigo-500 border-indigo-500 text-white",
-                  !isActive && !isCompleted && "border-[color:var(--wp-border-strong)] text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-card)]"
+                  "flex w-full max-w-[6.5rem] flex-col items-center gap-2 sm:max-w-[7rem] lg:max-w-none",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--wp-main-scroll-bg)] rounded-xl",
                 )}
+                aria-current={isActive ? "step" : undefined}
+                aria-label={`Krok ${stepNum}: ${title}`}
               >
-                {isCompleted ? <Check className="w-5 h-5" /> : stepNum}
-              </div>
-              <span
-                className={clsx(
-                  "text-[9px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider mt-1.5 sm:mt-2 text-center leading-tight max-w-[3.25rem] sm:max-w-[5.5rem] line-clamp-2 sm:line-clamp-3",
-                  isActive ? "text-[color:var(--wp-text)]" : "text-[color:var(--wp-text-tertiary)]"
-                )}
-              >
-                {title}
-              </span>
-            </button>
+                <div
+                  className={clsx(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 text-base font-semibold transition-all sm:h-12 sm:w-12 sm:text-lg",
+                    isActive &&
+                      "border-indigo-500 bg-[color:var(--wp-surface-card)] text-indigo-600 shadow-[0_0_0_4px_rgba(99,102,241,0.2)] dark:text-indigo-400",
+                    isCompleted && "border-indigo-500 bg-indigo-500 text-white",
+                    !isActive &&
+                      !isCompleted &&
+                      "border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)]",
+                  )}
+                >
+                  {isCompleted ? <Check className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} /> : stepNum}
+                </div>
+                <span
+                  className={clsx(
+                    "w-full px-0.5 text-center text-[10px] font-bold uppercase leading-snug tracking-wide sm:text-xs",
+                    isActive ? "text-[color:var(--wp-text)]" : "text-[color:var(--wp-text-tertiary)]",
+                  )}
+                >
+                  {title}
+                </span>
+              </button>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ol>
+    </nav>
   );
 }

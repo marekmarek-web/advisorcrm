@@ -257,9 +257,7 @@ export default function ContractReviewListPage() {
         {/* Header - reference style */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-white p-2.5 dark:bg-white">
-              <AiAssistantBrandIcon size={36} className="max-h-full max-w-full" />
-            </div>
+            <AiAssistantBrandIcon size={52} className="flex-shrink-0 self-center" />
             <div>
               <h1 className="text-3xl font-black text-[color:var(--wp-text)] tracking-tight mb-1">Review smluv</h1>
               <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] max-w-xl leading-relaxed">
@@ -465,9 +463,7 @@ export default function ContractReviewListPage() {
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-400 dark:text-indigo-300">
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white p-0.5 shadow-sm dark:bg-white">
-                                  <AiAssistantBrandIcon size={12} className="max-h-full max-w-full" />
-                                </span>
+                                <AiAssistantBrandIcon size={16} className="shrink-0" />
                                 Extrahovaná data
                               </span>
                               {row.confidence != null && (

@@ -571,7 +571,7 @@ export function ClientProfileScreen({
           options={[
             { id: "overview", label: "Přehled" },
             { id: "tasks", label: "Úkoly", badge: tasks.filter((t) => !t.completedAt).length },
-            { id: "pipeline", label: "Pipeline", badge: totalOpportunities },
+            { id: "pipeline", label: "Obchody", badge: totalOpportunities },
             { id: "documents", label: "Dokumenty", badge: documents.length },
           ]}
         />
