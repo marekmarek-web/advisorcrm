@@ -153,7 +153,7 @@ export function NewClientWizard({
     }
   }
 
-  function set(key: keyof typeof form) {
+  function fieldOnChange(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
   }
@@ -183,7 +183,7 @@ export function NewClientWizard({
       {!isSuccess && (
         <WizardStepper steps={WIZARD_STEPS} currentStep={step + 1} />
       )}
-      <WizardBody withSlide={!isSuccess}>
+      <WizardBody withSlide={!isSuccess} focusFirstFieldKey={isSuccess ? undefined : step}>
         {isSuccess ? (
           <WizardSuccess
             headline="Klient úspěšně vytvořen!"
@@ -202,18 +202,17 @@ export function NewClientWizard({
                     <label className={wizardLabelClass}>Jméno *</label>
                     <input
                       value={form.firstName}
-                      onChange={set("firstName")}
+                      onChange={fieldOnChange("firstName")}
                       placeholder="Např. Jan"
                       className={wizardInputClass}
                       autoComplete="given-name"
-                      autoFocus
                     />
                   </div>
                   <div>
                     <label className={wizardLabelClass}>Příjmení *</label>
                     <input
                       value={form.lastName}
-                      onChange={set("lastName")}
+                      onChange={fieldOnChange("lastName")}
                       placeholder="Např. Novák"
                       className={wizardInputClass}
                       autoComplete="family-name"
@@ -225,7 +224,7 @@ export function NewClientWizard({
                   <WizardInputWithIcon
                     type="email"
                     value={form.email}
-                    onChange={set("email")}
+                    onChange={fieldOnChange("email")}
                     placeholder="jan.novak@email.cz"
                     icon={Mail}
                     autoComplete="email"
@@ -236,7 +235,7 @@ export function NewClientWizard({
                   <WizardInputWithIcon
                     type="tel"
                     value={form.phone}
-                    onChange={set("phone")}
+                    onChange={fieldOnChange("phone")}
                     placeholder="+420 777 123 456"
                     icon={Phone}
                     autoComplete="tel"
@@ -247,7 +246,7 @@ export function NewClientWizard({
                   <WizardInputWithIcon
                     type="date"
                     value={form.birthDate}
-                    onChange={set("birthDate")}
+                    onChange={fieldOnChange("birthDate")}
                     icon={Calendar}
                   />
                 </div>
@@ -279,7 +278,7 @@ export function NewClientWizard({
                   <WizardInputWithIcon
                     type="text"
                     value={form.street}
-                    onChange={set("street")}
+                    onChange={fieldOnChange("street")}
                     placeholder="Např. Václavské náměstí 1"
                     icon={MapPin}
                   />
@@ -290,7 +289,7 @@ export function NewClientWizard({
                     <WizardInputWithIcon
                       type="text"
                       value={form.city}
-                      onChange={set("city")}
+                      onChange={fieldOnChange("city")}
                       placeholder="Praha"
                       icon={Building}
                     />
@@ -300,7 +299,7 @@ export function NewClientWizard({
                     <input
                       type="text"
                       value={form.zip}
-                      onChange={set("zip")}
+                      onChange={fieldOnChange("zip")}
                       placeholder="110 00"
                       className={wizardInputClass}
                     />
@@ -310,7 +309,7 @@ export function NewClientWizard({
                   <label className={wizardLabelClass}>Rodné číslo</label>
                   <input
                     value={form.personalId}
-                    onChange={set("personalId")}
+                    onChange={fieldOnChange("personalId")}
                     className={wizardInputClass}
                   />
                 </div>
@@ -318,7 +317,7 @@ export function NewClientWizard({
                   <label className={wizardLabelClass}>Doporučil / zdroj</label>
                   <input
                     value={form.referralSource}
-                    onChange={set("referralSource")}
+                    onChange={fieldOnChange("referralSource")}
                     placeholder="web, doporučení…"
                     className={wizardInputClass}
                   />
@@ -355,7 +354,7 @@ export function NewClientWizard({
                   <label className={wizardLabelClass}>Štítky (oddělené čárkou)</label>
                   <input
                     value={form.tags}
-                    onChange={set("tags")}
+                    onChange={fieldOnChange("tags")}
                     placeholder="VIP, rodina…"
                     className={wizardInputClass}
                   />

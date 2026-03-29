@@ -169,7 +169,7 @@ export function NewContractWizard({
       {!isSuccess && (
         <WizardStepper steps={WIZARD_STEPS} currentStep={step + 1} />
       )}
-      <WizardBody withSlide={!isSuccess}>
+      <WizardBody withSlide={!isSuccess} focusFirstFieldKey={isSuccess ? undefined : step}>
         {isSuccess ? (
           <WizardSuccess
             headline="Smlouva přidána"

@@ -86,7 +86,7 @@ export function NewHouseholdWizard({
       {!isSuccess && (
         <WizardStepper steps={WIZARD_STEPS} currentStep={step + 1} />
       )}
-      <WizardBody withSlide={!isSuccess}>
+      <WizardBody withSlide={!isSuccess} focusFirstFieldKey={isSuccess ? undefined : step}>
         {isSuccess ? (
           <WizardSuccess
             headline="Domácnost vytvořena"
@@ -107,7 +107,6 @@ export function NewHouseholdWizard({
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Např. Rodina Novákovi"
                     className={wizardInputClass}
-                    autoFocus
                   />
                 </div>
               </div>

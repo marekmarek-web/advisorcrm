@@ -213,6 +213,25 @@ async function loadContact(id: string): Promise<ContactRow | null> {
 /** Dedup v rámci jednoho requestu; vrací výhradně JSON-kompatibilní ContactRow pro RSC. */
 export const getContact = cache(loadContact);
 
+/** Stejný tvar jako u detailu kontaktu — platné UUID v1–v5 z DB. */
+const CONTACT_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function sanitizeOptionalUuid(value: string | undefined): string | null {
+  const t = value?.trim();
+  if (!t) return null;
+  return CONTACT_UUID_RE.test(t) ? t : null;
+}
+
+function isRedirectError(e: unknown): boolean {
+  const d = typeof e === "object" && e !== null ? (e as { digest?: string }).digest : undefined;
+  return typeof d === "string" && d.startsWith("NEXT_REDIRECT");
+}
+
+function isPgUniqueViolation(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "23505";
+}
+
 export async function createContact(form: {
   firstName: string;
   lastName: string;
@@ -246,8 +265,8 @@ export async function createContact(form: {
         phone: form.phone?.trim() || null,
         title: form.title?.trim() || null,
         referralSource: form.referralSource?.trim() || null,
-        referralContactId: form.referralContactId || null,
-        birthDate: form.birthDate || null,
+        referralContactId: sanitizeOptionalUuid(form.referralContactId),
+        birthDate: form.birthDate?.trim() || null,
         personalId: form.personalId?.trim() || null,
         street: form.street?.trim() || null,
         city: form.city?.trim() || null,
@@ -262,8 +281,16 @@ export async function createContact(form: {
       .returning({ id: contacts.id });
     return row?.id ?? null;
   } catch (e) {
+    if (isRedirectError(e)) throw e;
+    if (isPgUniqueViolation(e)) {
+      throw new Error("V tomto workspace už existuje kontakt se stejným e-mailem.");
+    }
     console.error("[createContact]", e);
-    throw new Error(e instanceof Error ? e.message : "Kontakt se nepodařilo vytvořit.");
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === "Forbidden") {
+      throw new Error("Nemáte oprávnění vytvářet kontakty.");
+    }
+    throw new Error("Kontakt se nepodařilo vytvořit. Zkuste to znovu.");
   }
 }
 
