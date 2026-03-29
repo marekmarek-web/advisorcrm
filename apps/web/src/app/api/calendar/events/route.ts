@@ -4,6 +4,11 @@ import { eq, and, inArray } from "db";
 import { getCalendarAuth, calendarTokenErrorResponse } from "../auth";
 import { getValidAccessToken } from "@/lib/integrations/google-calendar-integration-service";
 import { listCalendarEvents, createCalendarEvent, type GoogleCalendarEvent } from "@/lib/integrations/google-calendar";
+import {
+  addOneCalendarDayYmd,
+  allDayGoogleRangeToDbInstants,
+  hasExplicitIsoOffset,
+} from "@/app/portal/calendar/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +42,17 @@ function normalizeGoogleEvent(ev: GoogleCalendarEvent): CalendarEventItem | null
     endIso = end?.dateTime ?? startIso;
     allDay = false;
   } else if (start?.date) {
-    startIso = `${start.date}T00:00:00.000Z`;
-    endIso = end?.date ? `${end.date}T23:59:59.999Z` : `${start.date}T23:59:59.999Z`;
+    const sd = start.date.trim();
+    const endExclusive =
+      end?.date && /^\d{4}-\d{2}-\d{2}$/.test(end.date.trim()) ? end.date.trim() : addOneCalendarDayYmd(sd) ?? sd;
+    const parsed = allDayGoogleRangeToDbInstants(sd, endExclusive);
+    if (parsed) {
+      startIso = parsed.startAt.toISOString();
+      endIso = parsed.endAt.toISOString();
+    } else {
+      startIso = `${sd}T12:00:00.000Z`;
+      endIso = startIso;
+    }
     allDay = true;
   } else {
     return null;
@@ -193,6 +207,20 @@ function validateCreateBody(body: unknown): { ok: true; data: CreateCalendarEven
   }
   if (Number.isNaN(endDate.getTime())) {
     return { ok: false, error: "Neplatné datum konce", status: 400 };
+  }
+  if (!hasExplicitIsoOffset(start.trim())) {
+    return {
+      ok: false,
+      error: "Začátek musí být ISO 8601 s časovou zónou (např. koncovka Z).",
+      status: 400,
+    };
+  }
+  if (!hasExplicitIsoOffset(end.trim())) {
+    return {
+      ok: false,
+      error: "Konec musí být ISO 8601 s časovou zónou (např. koncovka Z).",
+      status: 400,
+    };
   }
   if (endDate.getTime() <= startDate.getTime()) {
     return { ok: false, error: "Čas konce musí být po čase začátku", status: 400 };

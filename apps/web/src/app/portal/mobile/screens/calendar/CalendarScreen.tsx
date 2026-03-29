@@ -18,6 +18,7 @@ import {
   formatDateLocal,
   formatDateTimeLocal,
   localDateTimeInputToUtcIso,
+  reminderIsoBeforeStartUtc,
 } from "@/app/portal/calendar/date-utils";
 import {
   DEFAULT_SETTINGS,
@@ -72,11 +73,6 @@ function eventToFormData(ev: EventRow): EventFormData & { id: string } {
     notes: ev.notes ?? "",
     meetingLink: ev.meetingLink ?? "",
   };
-}
-
-function reminderDate(startAt: string, minutes: number): string | null {
-  if (!minutes || !startAt) return null;
-  return new Date(new Date(startAt).getTime() - minutes * 60_000).toISOString();
 }
 
 const UNDO_TIMEOUT_MS = 5_000;
@@ -351,7 +347,14 @@ export function CalendarScreen({
           setSaveError("Neplatný začátek události.");
           return;
         }
-        const reminderAtIso = reminderDate(form.startAt, form.reminderMinutes);
+        const reminderAtIso = reminderIsoBeforeStartUtc(startIso, form.reminderMinutes) ?? null;
+        const allDayYmd =
+          form.allDay
+            ? {
+                allDayStartYmd: form.startAt.slice(0, 10),
+                allDayEndYmd: (form.endAt || form.startAt).slice(0, 10),
+              }
+            : {};
         if (id) {
           await updateEvent(id, {
             title: form.title,
@@ -359,6 +362,7 @@ export function CalendarScreen({
             startAt: startIso,
             ...(endIso ? { endAt: endIso } : {}),
             allDay: form.allDay,
+            ...allDayYmd,
             location: form.location,
             contactId: form.contactId || undefined,
             opportunityId: form.opportunityId || undefined,
@@ -375,10 +379,11 @@ export function CalendarScreen({
             startAt: startIso,
             endAt: endIso || undefined,
             allDay: form.allDay,
+            ...allDayYmd,
             location: form.location,
             contactId: form.contactId || undefined,
             opportunityId: form.opportunityId || undefined,
-            reminderAt: reminderAtIso || undefined,
+            reminderAt: reminderIsoBeforeStartUtc(startIso, form.reminderMinutes),
             status: form.status || undefined,
             notes: form.notes,
             meetingLink: form.meetingLink,

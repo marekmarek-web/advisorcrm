@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { Clock, ChevronDown, ChevronUp } from "lucide-react";
-import { formatDateLocal } from "./date-utils";
+import { formatDateLocal, parseNaiveLocalDateTimeToLocalDate } from "./date-utils";
 
 const MONTH_NAMES = [
   "Leden", "Únor", "Březen", "Duben", "Květen", "Červen",
@@ -62,8 +62,13 @@ function formatPrimaryLine(startIso: string, endIso: string, allDay: boolean): s
       ed !== sd ? ` – ${e.toLocaleDateString("cs-CZ", { day: "numeric", month: "long" })}` : ""
     } (celý den)`;
   }
-  const start = new Date(startIso);
-  const end = endIso ? new Date(endIso) : new Date(start.getTime() + 60 * 60 * 1000);
+  const start = parseNaiveLocalDateTimeToLocalDate(startIso) ?? new Date(startIso);
+  let end: Date;
+  if (endIso) {
+    end = parseNaiveLocalDateTimeToLocalDate(endIso) ?? new Date(endIso);
+  } else {
+    end = new Date(start.getTime() + 60 * 60 * 1000);
+  }
   const dayPart = start.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const t0 = start.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
   const t1 = end.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });

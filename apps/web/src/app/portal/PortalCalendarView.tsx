@@ -24,6 +24,7 @@ import {
   formatDateTimeLocal,
   formatTimeQuarterHourDisplay,
   localDateTimeInputToUtcIso,
+  reminderIsoBeforeStartUtc,
 } from "@/app/portal/calendar/date-utils";
 import { getEventCategory } from "@/app/portal/calendar/event-categories";
 import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
@@ -930,11 +931,14 @@ export function PortalCalendarView() {
   const handleSave = useCallback(async (form: EventFormData, id?: string) => {
     const startIso = localDateTimeInputToUtcIso(form.startAt);
     const endIso = localDateTimeInputToUtcIso(form.endAt);
-    const startLocal = form.startAt ? new Date(form.startAt) : null;
-    const reminderAtIso =
-      form.reminderMinutes > 0 && startLocal && !Number.isNaN(startLocal.getTime())
-        ? new Date(startLocal.getTime() - form.reminderMinutes * 60 * 1000).toISOString()
-        : null;
+    const reminderAtIso = reminderIsoBeforeStartUtc(startIso, form.reminderMinutes) ?? null;
+    const allDayYmd =
+      form.allDay
+        ? {
+            allDayStartYmd: form.startAt.slice(0, 10),
+            allDayEndYmd: (form.endAt || form.startAt).slice(0, 10),
+          }
+        : {};
     if (!startIso) {
       toast.showToast("Neplatný začátek události.", "error");
       return;
@@ -946,6 +950,7 @@ export function PortalCalendarView() {
         startAt: startIso,
         ...(endIso ? { endAt: endIso } : {}),
         allDay: form.allDay,
+        ...allDayYmd,
         location: form.location || undefined,
         reminderAt: reminderAtIso,
         contactId: form.contactId || undefined,
@@ -962,8 +967,9 @@ export function PortalCalendarView() {
         startAt: startIso,
         endAt: endIso || undefined,
         allDay: form.allDay,
+        ...allDayYmd,
         location: form.location || undefined,
-        reminderAt: reminderAtIso ?? undefined,
+        reminderAt: reminderIsoBeforeStartUtc(startIso, form.reminderMinutes),
         contactId: form.contactId || undefined,
         opportunityId: form.opportunityId || undefined,
         status: form.status || undefined,

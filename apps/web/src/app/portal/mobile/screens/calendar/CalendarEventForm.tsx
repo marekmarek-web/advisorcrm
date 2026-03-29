@@ -159,7 +159,7 @@ export function CalendarEventForm({
       className={
         largeScreen
           ? "fixed inset-0 z-[100] flex items-end justify-center bg-[color:var(--wp-overlay-scrim)] p-0 sm:items-center sm:p-4"
-          : "fixed inset-0 z-[100] flex flex-col bg-[color:var(--wp-surface-card)]"
+          : "fixed inset-0 z-[100] flex min-h-0 flex-col bg-[color:var(--wp-surface-card)] max-h-[100dvh]"
       }
       role="presentation"
       onClick={largeScreen ? onClose : undefined}
@@ -168,11 +168,11 @@ export function CalendarEventForm({
         className={
           largeScreen
             ? "flex max-h-[min(92vh,820px)] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[24px] bg-[color:var(--wp-surface-card)] shadow-2xl sm:rounded-2xl"
-            : "flex min-h-0 flex-1 flex-col"
+            : "flex min-h-0 max-h-full flex-1 flex-col overflow-hidden"
         }
         onClick={(e) => e.stopPropagation()}
       >
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+      <form onSubmit={handleSubmit} className="flex min-h-0 max-h-full flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] px-4 py-3">
           <h2 className="text-sm font-black text-[color:var(--wp-text)]">
             {initial.id ? "Upravit aktivitu" : "Nová aktivita"}
@@ -424,7 +424,7 @@ export function CalendarEventForm({
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3">
+        <div className="flex shrink-0 items-center gap-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 pb-[max(0.75rem,calc(var(--safe-area-bottom)+0.5rem))] pt-3">
           <button
             type="button"
             onClick={onClose}

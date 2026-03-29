@@ -9,7 +9,24 @@ import { db } from "db";
 import { events, contacts, tasks } from "db";
 import { eq, and, gte, lt, asc, desc, sql } from "db";
 import { logActivity } from "./activity";
-import { DEFAULT_EVENT_DURATION_MS } from "@/app/portal/calendar/date-utils";
+import {
+  DEFAULT_EVENT_DURATION_MS,
+  addOneCalendarDayYmd,
+  hasExplicitIsoOffset,
+} from "@/app/portal/calendar/date-utils";
+
+function parseInstantRequired(fieldLabel: string, s: string): Date {
+  if (!hasExplicitIsoOffset(s)) {
+    throw new Error(
+      `${fieldLabel}: očekává se ISO 8601 s časovou zónou (např. koncovka Z).`,
+    );
+  }
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`${fieldLabel}: neplatné datum.`);
+  }
+  return d;
+}
 
 function instantMs(v: string | Date | null | undefined): number | null {
   if (v == null || v === "") return null;
@@ -238,6 +255,9 @@ export async function createEvent(form: {
   startAt: string;
   endAt?: string;
   allDay?: boolean;
+  /** Inclusive calendar YYYY-MM-DD when allDay (user’s chosen days); drives Google `date` fields. */
+  allDayStartYmd?: string;
+  allDayEndYmd?: string;
   location?: string;
   reminderAt?: string;
   contactId?: string;
@@ -258,8 +278,10 @@ export async function createEvent(form: {
     if (!member || member.tenantId !== auth.tenantId) throw new Error("Forbidden");
     assignee = form.assignedTo;
   }
-  const startAt = new Date(form.startAt);
-  const endAt = form.endAt ? new Date(form.endAt) : new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
+  const startAt = parseInstantRequired("Začátek události", form.startAt);
+  const endAt = form.endAt
+    ? parseInstantRequired("Konec události", form.endAt)
+    : new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
   let googleEventId: string | null = null;
   let googleCalendarId: string | null = null;
   try {
@@ -267,14 +289,22 @@ export async function createEvent(form: {
     const allDay = form.allDay ?? false;
     const startIso = startAt.toISOString();
     const endIso = endAt.toISOString();
+    const sy = form.allDayStartYmd?.trim();
+    const ey = form.allDayEndYmd?.trim();
+    const googleAllDayStart =
+      allDay && sy && /^\d{4}-\d{2}-\d{2}$/.test(sy) ? sy : startIso.slice(0, 10);
+    const googleAllDayEndInclusive =
+      allDay && ey && /^\d{4}-\d{2}-\d{2}$/.test(ey) ? ey : endIso.slice(0, 10);
+    const googleAllDayEndExclusive =
+      allDay ? addOneCalendarDayYmd(googleAllDayEndInclusive) ?? googleAllDayEndInclusive : "";
     const googleEvent = await createCalendarEvent(valid.accessToken, valid.calendarId, {
       summary: form.title.trim(),
       description: form.notes?.trim() || undefined,
       location: form.location?.trim() || undefined,
       ...(allDay
         ? {
-            start: { date: startIso.slice(0, 10) },
-            end: { date: endIso.slice(0, 10) },
+            start: { date: googleAllDayStart },
+            end: { date: googleAllDayEndExclusive },
           }
         : {
             start: { dateTime: startIso },
@@ -296,7 +326,7 @@ export async function createEvent(form: {
       endAt,
       allDay: form.allDay ?? false,
       location: form.location?.trim() || null,
-      reminderAt: form.reminderAt ? new Date(form.reminderAt) : null,
+      reminderAt: form.reminderAt ? parseInstantRequired("Připomínka", form.reminderAt) : null,
       contactId: form.contactId || null,
       opportunityId: form.opportunityId || null,
       status: form.status?.trim() || null,
@@ -323,6 +353,8 @@ export async function updateEvent(
     startAt?: string;
     endAt?: string;
     allDay?: boolean;
+    allDayStartYmd?: string;
+    allDayEndYmd?: string;
     location?: string;
     /** `null` zruší připomenutí; vynechání pole ponechá DB beze změny. */
     reminderAt?: string | null;
@@ -343,6 +375,7 @@ export async function updateEvent(
       startAt: events.startAt,
       endAt: events.endAt,
       reminderAt: events.reminderAt,
+      allDay: events.allDay,
     })
     .from(events)
     .where(and(eq(events.tenantId, auth.tenantId), eq(events.id, id)))
@@ -356,17 +389,33 @@ export async function updateEvent(
       if (form.notes != null) patch.description = form.notes.trim() || undefined;
       if (form.location != null) patch.location = form.location.trim() || undefined;
       if (form.startAt != null || form.endAt != null || form.allDay != null) {
-        const startAt = form.startAt ? new Date(form.startAt) : null;
-        const endAt = form.endAt ? new Date(form.endAt) : startAt ? new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS) : null;
-        const allDay = form.allDay ?? false;
-        if (startAt && endAt) {
-          if (allDay) {
-            patch.start = { date: startAt.toISOString().slice(0, 10) };
-            patch.end = { date: endAt.toISOString().slice(0, 10) };
-          } else {
-            patch.start = { dateTime: startAt.toISOString() };
-            patch.end = { dateTime: endAt.toISOString() };
-          }
+        const startAt =
+          form.startAt != null
+            ? parseInstantRequired("Začátek události", form.startAt)
+            : existing.startAt;
+        const endAt =
+          form.endAt != null
+            ? parseInstantRequired("Konec události", form.endAt)
+            : existing.endAt != null
+              ? existing.endAt
+              : new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
+        const allDay = form.allDay ?? existing.allDay ?? false;
+        const startIso = startAt.toISOString();
+        const endIso = endAt.toISOString();
+        const sy = form.allDayStartYmd?.trim();
+        const ey = form.allDayEndYmd?.trim();
+        const googleAllDayStart =
+          allDay && sy && /^\d{4}-\d{2}-\d{2}$/.test(sy) ? sy : startIso.slice(0, 10);
+        const googleAllDayEndInclusive =
+          allDay && ey && /^\d{4}-\d{2}-\d{2}$/.test(ey) ? ey : endIso.slice(0, 10);
+        const googleAllDayEndExclusive =
+          allDay ? addOneCalendarDayYmd(googleAllDayEndInclusive) ?? googleAllDayEndInclusive : "";
+        if (allDay) {
+          patch.start = { date: googleAllDayStart };
+          patch.end = { date: googleAllDayEndExclusive };
+        } else {
+          patch.start = { dateTime: startIso };
+          patch.end = { dateTime: endIso };
         }
       }
       if (Object.keys(patch).length > 0) {
@@ -383,14 +432,14 @@ export async function updateEvent(
     .set({
       ...(form.title != null && { title: form.title.trim() }),
       ...(form.eventType != null && { eventType: form.eventType }),
-      ...(form.startAt != null && { startAt: new Date(form.startAt) }),
-      ...(form.endAt != null && { endAt: new Date(form.endAt) }),
+      ...(form.startAt != null && { startAt: parseInstantRequired("Začátek události", form.startAt) }),
+      ...(form.endAt != null && { endAt: parseInstantRequired("Konec události", form.endAt) }),
       ...(form.allDay != null && { allDay: form.allDay }),
       ...(form.location != null && { location: form.location.trim() || null }),
       ...(form.contactId != null && { contactId: form.contactId || null }),
       ...(form.opportunityId != null && { opportunityId: form.opportunityId || null }),
       ...(form.reminderAt !== undefined && {
-        reminderAt: form.reminderAt ? new Date(form.reminderAt) : null,
+        reminderAt: form.reminderAt ? parseInstantRequired("Připomínka", form.reminderAt) : null,
       }),
       ...(scheduleChanged && { reminderNotifiedAt: null }),
       ...(form.status != null && { status: form.status.trim() || null }),
@@ -436,7 +485,7 @@ export async function createFollowUp(
     if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
     if (type === "event") {
-      const startAt = form.startAt ? new Date(form.startAt) : new Date();
+      const startAt = form.startAt ? parseInstantRequired("Začátek události", form.startAt) : new Date();
       const endAt = new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
       const [row] = await db
         .insert(events)

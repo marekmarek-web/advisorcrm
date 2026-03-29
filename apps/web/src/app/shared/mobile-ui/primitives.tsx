@@ -454,11 +454,11 @@ function OverlayContainer({
       {/* Panel */}
       <div
         className={cx(
-          "absolute left-0 right-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-2xl",
+          "absolute left-0 right-0 flex flex-col overflow-hidden border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-2xl",
           "animate-in slide-in-from-bottom duration-300 ease-out",
           fullScreen
-            ? "top-0 bottom-0 rounded-none pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)]"
-            : "bottom-0 max-h-[85vh] rounded-t-3xl pb-[var(--safe-area-bottom)]"
+            ? "top-0 bottom-0 max-h-[100dvh] min-h-0 rounded-none pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)]"
+            : "bottom-0 max-h-[min(85dvh,85vh)] rounded-t-3xl pb-0"
         )}
       >
         {children}
@@ -481,18 +481,24 @@ export function BottomSheet({
   const labelId = `bs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   return (
     <OverlayContainer open={open} onClose={onClose} labelId={labelId}>
-      <div className="px-4 py-3 border-b border-[color:var(--wp-surface-card-border)] flex items-center justify-between gap-2">
-        <h3 id={labelId} className="font-black text-sm">{title}</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Zavřít panel"
-          className="min-h-[36px] min-w-[36px] rounded-lg border border-[color:var(--wp-surface-card-border)] grid place-items-center hover:bg-[color:var(--wp-surface-muted)] transition-colors"
-        >
-          <X size={16} />
-        </button>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] px-4 py-3">
+          <h3 id={labelId} className="font-black text-sm">
+            {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Zavřít panel"
+            className="grid min-h-[36px] min-w-[36px] place-items-center rounded-lg border border-[color:var(--wp-surface-card-border)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(var(--safe-area-bottom)+0.5rem))]">
+          {children}
+        </div>
       </div>
-      <div className="overflow-y-auto max-h-[calc(85vh-60px)] p-4">{children}</div>
     </OverlayContainer>
   );
 }
@@ -511,18 +517,24 @@ export function FullscreenSheet({
   const labelId = `fs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   return (
     <OverlayContainer open={open} onClose={onClose} fullScreen labelId={labelId}>
-      <div className="px-4 py-3 border-b border-[color:var(--wp-surface-card-border)] flex items-center justify-between gap-2">
-        <h3 id={labelId} className="font-black text-sm">{title}</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Zavřít"
-          className="min-h-[36px] min-w-[36px] rounded-lg border border-[color:var(--wp-surface-card-border)] grid place-items-center hover:bg-[color:var(--wp-surface-muted)] transition-colors"
-        >
-          <X size={16} />
-        </button>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] px-4 py-3">
+          <h3 id={labelId} className="min-w-0 flex-1 font-black text-sm leading-snug">
+            {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Zavřít"
+            className="grid min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-lg border border-[color:var(--wp-surface-card-border)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(var(--safe-area-bottom)+0.75rem))]">
+          {children}
+        </div>
       </div>
-      <div className="overflow-y-auto h-[calc(100%-60px)] p-4">{children}</div>
     </OverlayContainer>
   );
 }

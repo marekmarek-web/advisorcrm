@@ -21,7 +21,7 @@ import {
   EVENT_STATUSES,
 } from "@/app/portal/calendar/event-categories";
 import {
-  BottomSheet,
+  FullscreenSheet,
   MobileCard,
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
@@ -221,8 +221,8 @@ function EventDetailBody({
       ) : null}
 
       {canWriteCalendar ? (
-        <>
-          <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="sticky bottom-0 z-[5] -mx-4 mt-2 space-y-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 pb-[max(0.75rem,var(--safe-area-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={onEdit}
@@ -264,7 +264,7 @@ function EventDetailBody({
               + Úkol
             </button>
           </div>
-        </>
+        </div>
       ) : (
         <p className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2 text-center text-xs text-[color:var(--wp-text-secondary)]">
           Nemáte oprávnění upravovat kalendář — zobrazení je jen pro čtení.
@@ -369,7 +369,7 @@ export function CalendarEventDetail({
   }
 
   return (
-    <BottomSheet open onClose={onClose} title={ev.title}>
+    <FullscreenSheet open onClose={onClose} title={ev.title}>
       <EventDetailBody
         ev={ev}
         onEdit={openEdit}
@@ -383,6 +383,6 @@ export function CalendarEventDetail({
         contactPhone={contactPhone}
         contactEmail={contactEmail}
       />
-    </BottomSheet>
+    </FullscreenSheet>
   );
 }

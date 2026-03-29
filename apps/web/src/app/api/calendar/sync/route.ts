@@ -4,6 +4,10 @@ import { eq, and } from "db";
 import { getCalendarAuth, calendarTokenErrorResponse } from "../auth";
 import { getValidAccessToken } from "@/lib/integrations/google-calendar-integration-service";
 import { listAllCalendarEventsInRange, type GoogleCalendarEvent } from "@/lib/integrations/google-calendar";
+import {
+  addOneCalendarDayYmd,
+  allDayGoogleRangeToDbInstants,
+} from "@/app/portal/calendar/date-utils";
 
 export const dynamic = "force-dynamic";
 /** Delší sync (až 2 roky + stránkování); na Vercelu zvedni limit v plánu pokud padá na timeout. */
@@ -33,9 +37,15 @@ function parseGoogleEventTime(ev: GoogleCalendarEvent): { startAt: Date; endAt: 
     return { startAt, endAt, allDay: false };
   }
   if (start?.date) {
-    const startAt = new Date(start.date + "T00:00:00.000Z");
-    const endAt = end?.date ? new Date(end.date + "T23:59:59.999Z") : new Date(start.date + "T23:59:59.999Z");
-    return { startAt, endAt, allDay: true };
+    const sd = start.date.trim();
+    const endExclusive =
+      end?.date && /^\d{4}-\d{2}-\d{2}$/.test(end.date.trim()) ? end.date.trim() : addOneCalendarDayYmd(sd) ?? sd;
+    const parsed = allDayGoogleRangeToDbInstants(sd, endExclusive);
+    if (!parsed) {
+      const startAt = new Date();
+      return { startAt, endAt: null, allDay: true };
+    }
+    return { startAt: parsed.startAt, endAt: parsed.endAt, allDay: true };
   }
   const startAt = new Date();
   return { startAt, endAt: null, allDay: false };
