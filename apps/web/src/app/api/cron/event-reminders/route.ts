@@ -5,8 +5,18 @@ import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** Nepřipomínat události starší než tento okno (minuty), aby se po výpadku cronu neposlal dávný spam. */
-const GRACE_PAST_MIN = 120;
+/**
+ * Jak daleko zpět (minuty) bereme neodeslaná připomenutí po `reminderAt`, aby po výpadku cronu
+ * nenaskákaly roky staré záznamy. Na Vercelu Hobby (cron 1× denně) nech výchozí 24 h nebo vyšší.
+ * Na Pro s častým cronem můžeš zúžit, např. `EVENT_REMINDER_GRACE_PAST_MIN=120`.
+ */
+function reminderGracePastMinutes(): number {
+  const raw = process.env.EVENT_REMINDER_GRACE_PAST_MIN?.trim();
+  if (!raw) return 24 * 60;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1) return 24 * 60;
+  return Math.min(Math.floor(n), 7 * 24 * 60);
+}
 
 /**
  * Kalendářní připomenutí: in-app (advisor_notifications) + push (FCM) + volitelně e-mail (Resend).
@@ -19,13 +29,14 @@ export async function GET(request: Request) {
   const denied = cronAuthResponse(request);
   if (denied) return denied;
 
-  const { db, events, userProfiles, tenants, eq, and, isNull, lte, gte, or, ne, isNotNull } =
+  const { db, events, userProfiles, tenants, eq, and, isNull, lte, gte, gt, or, ne, isNotNull } =
     await import("db");
   const { sendPushToUser } = await import("@/lib/push/send");
   const { emitNotification } = await import("@/lib/execution/notification-center");
 
   const now = new Date();
-  const notBefore = new Date(now.getTime() - GRACE_PAST_MIN * 60_000);
+  const graceMin = reminderGracePastMinutes();
+  const notBefore = new Date(now.getTime() - graceMin * 60_000);
 
   const rows = await db
     .select({
@@ -48,6 +59,7 @@ export async function GET(request: Request) {
         isNull(events.reminderNotifiedAt),
         lte(events.reminderAt, now),
         gte(events.reminderAt, notBefore),
+        gt(events.startAt, now),
         isNotNull(events.assignedTo),
         or(isNull(events.status), and(ne(events.status, "cancelled"), ne(events.status, "done"))),
       ),
