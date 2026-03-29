@@ -1,7 +1,10 @@
 import OpenAI from "openai";
 import { withOpenAIRateLimitRetry } from "@/lib/openai-rate-limit";
 import { buildAiReviewResponsesCreateExtras } from "./openai-ai-review-params";
-import { findMissingAiReviewPromptVariables } from "./ai/ai-review-prompt-variables";
+import {
+  coerceNonEmptyAiReviewVariables,
+  findMissingAiReviewPromptVariables,
+} from "./ai/ai-review-prompt-variables";
 import type { AiReviewPromptKey } from "./ai/prompt-model-registry";
 
 const defaultModel = "gpt-5-mini";
@@ -274,9 +277,15 @@ export async function createResponseFromPrompt(
   const store = options?.store ?? false;
   const start = Date.now();
 
+  const sanitizedVariables: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params.variables)) {
+    if (typeof v !== "string") continue;
+    sanitizedVariables[k] = v;
+  }
+
   const promptPayload: { id: string; version?: string; variables: Record<string, string> } = {
     id: trimmedId,
-    variables: params.variables,
+    variables: sanitizedVariables,
   };
   if (params.version?.trim()) {
     promptPayload.version = params.version.trim();
@@ -352,8 +361,9 @@ export async function createAiReviewResponseFromPrompt(
   options?: { model?: string; store?: boolean; routing?: OpenAICallRoutingOptions }
 ): Promise<CreateResponseResult> {
   const started = Date.now();
-  const keys = Object.keys(params.variables);
-  const missing = findMissingAiReviewPromptVariables(params.promptKey, params.variables);
+  const variables = coerceNonEmptyAiReviewVariables(params.promptKey, params.variables);
+  const keys = Object.keys(variables);
+  const missing = findMissingAiReviewPromptVariables(params.promptKey, variables);
   logAiReviewPromptStep({
     promptKey: params.promptKey,
     phase: "preflight",
@@ -371,7 +381,7 @@ export async function createAiReviewResponseFromPrompt(
     {
       promptId: params.promptId,
       version: params.version,
-      variables: params.variables,
+      variables,
     },
     options
   );

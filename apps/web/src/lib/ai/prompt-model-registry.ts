@@ -219,7 +219,12 @@ export function getAiReviewPromptVersion(key: AiReviewPromptKey): string | null 
     const v = process.env[vk]?.trim();
     if (v) return v;
   }
-  return process.env.OPENAI_PROMPT_VERSION?.trim() || null;
+  /**
+   * Do not fall back to OPENAI_PROMPT_VERSION for extraction / generic keys: a single global version
+   * string was being sent with every pmpt_* id and could pin the wrong published revision, producing
+   * OpenAI 400 "Missing prompt variables" for templates that diverged from that version.
+   */
+  return null;
 }
 
 export function isAiReviewPromptConfigured(key: AiReviewPromptKey): boolean {

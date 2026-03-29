@@ -25,6 +25,7 @@ export async function runAiReviewDecisionLlm(params: {
   const started = Date.now();
   const promptId = getAiReviewPromptId("reviewDecision");
   if (!promptId) return { ok: false, durationMs: Date.now() - started };
+  const conf = capAiReviewPromptString(params.sectionConfidenceSummaryJson.trim() || "{}");
   const res = await createAiReviewResponseFromPrompt(
     {
       promptKey: "reviewDecision",
@@ -34,7 +35,8 @@ export async function runAiReviewDecisionLlm(params: {
         normalized_document_type: params.normalizedDocumentType.trim() || "unknown",
         extraction_payload: capAiReviewPromptString(params.extractionPayloadJson),
         validation_warnings: params.validationWarningsJson.trim() || "[]",
-        section_confidence_summary: params.sectionConfidenceSummaryJson.trim() || "{}",
+        section_confidence: conf,
+        section_confidence_summary: conf,
         input_mode: params.inputMode.trim() || "unknown",
         preprocess_warnings: params.preprocessWarningsJson.trim() || "[]",
       },

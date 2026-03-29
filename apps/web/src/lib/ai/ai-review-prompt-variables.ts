@@ -56,11 +56,12 @@ export const AI_REVIEW_PROMPT_REQUIRED_VARS: Partial<Record<AiReviewPromptKey, r
   terminationDocumentExtraction: EXTRACTION_REQUIRED,
   consentIdentificationExtraction: EXTRACTION_REQUIRED,
   confirmationDocumentExtraction: EXTRACTION_REQUIRED,
+  /** Must match Prompt Builder (`ai-review-review-decision-v1`); `section_confidence_summary` is dual-sent in code for legacy templates. */
   reviewDecision: [
     "normalized_document_type",
     "extraction_payload",
     "validation_warnings",
-    "section_confidence_summary",
+    "section_confidence",
     "input_mode",
     "preprocess_warnings",
   ],
@@ -86,6 +87,82 @@ export function findMissingAiReviewPromptVariables(
     if (typeof v !== "string" || !v.trim()) missing.push(name);
   }
   return missing;
+}
+
+function defaultStringForRequiredVar(name: string, ctx: Record<string, string>): string {
+  switch (name) {
+    case "filename":
+      return "unknown";
+    case "page_count":
+      return "1";
+    case "input_mode":
+      return "unknown";
+    case "text_excerpt":
+      return "(no excerpt)";
+    case "adobe_signals":
+      return "none";
+    case "source_channel":
+      return "ai_review";
+    case "classification_reasons":
+      return "[]";
+    case "extracted_text":
+      return "(no text)";
+    case "document_text":
+      return (
+        ctx.extracted_text?.trim() ||
+        ctx.extractedText?.trim() ||
+        "(no text)"
+      );
+    case "normalized_document_type":
+      return "unknown";
+    case "extraction_payload":
+      return "{}";
+    case "validation_warnings":
+      return "[]";
+    case "section_confidence":
+    case "section_confidence_summary":
+      return "{}";
+    case "preprocess_warnings":
+      return "[]";
+    case "extracted_client_payload":
+      return "{}";
+    case "existing_client_candidates":
+      return "[]";
+    case "extraction_parties_json":
+      return ctx.extracted_client_payload?.trim() || ctx.extraction_parties_json?.trim() || "{}";
+    case "db_candidates_json":
+      return ctx.existing_client_candidates?.trim() || ctx.db_candidates_json?.trim() || "[]";
+    default:
+      return "(none)";
+  }
+}
+
+/**
+ * Fills empty/missing required keys so OpenAI Prompt Builder always receives non-blank substitutions.
+ * Also mirrors snake_case extraction vars to camelCase when `extracted_text` is in the contract.
+ */
+export function coerceNonEmptyAiReviewVariables(
+  key: AiReviewPromptKey,
+  variables: Record<string, string>
+): Record<string, string> {
+  const required = getRequiredVarsForAiReviewPrompt(key);
+  const out: Record<string, string> = { ...variables };
+  if (!required?.length) return out;
+  for (const name of required) {
+    const cur = out[name];
+    if (typeof cur !== "string" || !cur.trim()) {
+      out[name] = defaultStringForRequiredVar(name, out);
+    }
+  }
+  if (required.includes("extracted_text")) {
+    out.extractedText = out.extracted_text;
+    out.classificationReasons = out.classification_reasons;
+    out.adobeSignals = out.adobe_signals;
+    if (out.document_text === undefined && out.extracted_text) {
+      out.document_text = out.extracted_text;
+    }
+  }
+  return out;
 }
 
 export type BuildExtractionPromptVariablesParams = {
@@ -119,6 +196,10 @@ export function buildAiReviewExtractionPromptVariables(
   if (params.includeLegacyDocumentText !== false) {
     out.document_text = extracted;
   }
+  // Some Prompt Builder templates bind camelCase variable ids — mirror snake_case values.
+  out.extractedText = out.extracted_text;
+  out.classificationReasons = out.classification_reasons;
+  out.adobeSignals = out.adobe_signals;
   return out;
 }
 

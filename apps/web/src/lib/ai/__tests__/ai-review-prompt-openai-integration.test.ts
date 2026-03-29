@@ -39,6 +39,7 @@ describe("AI Review Prompt Builder calls (mock OpenAI wrapper)", () => {
           normalized_document_type: "insurance_contract",
           extraction_payload: '{"x":1}',
           validation_warnings: "[]",
+          section_confidence: '{"overallConfidence":0.8}',
           section_confidence_summary: '{"overallConfidence":0.8}',
           input_mode: "text_pdf",
           preprocess_warnings: '["w"]',

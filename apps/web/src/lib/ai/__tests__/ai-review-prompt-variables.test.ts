@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildAiReviewExtractionPromptVariables,
   capAiReviewPromptString,
+  coerceNonEmptyAiReviewVariables,
   findMissingAiReviewPromptVariables,
 } from "../ai-review-prompt-variables";
 
@@ -37,7 +38,7 @@ describe("findMissingAiReviewPromptVariables", () => {
         normalized_document_type: "t",
         extraction_payload: "{}",
         validation_warnings: "[]",
-        section_confidence_summary: "{}",
+        section_confidence: "{}",
         input_mode: "text_pdf",
         preprocess_warnings: "   ",
       })
@@ -56,6 +57,20 @@ describe("buildAiReviewExtractionPromptVariables", () => {
     expect(v.extracted_text).toContain("hello");
     expect(v.document_text).toBe(v.extracted_text);
     expect(v.classification_reasons).toBe(JSON.stringify(["a"]));
+  });
+});
+
+describe("coerceNonEmptyAiReviewVariables", () => {
+  it("fills missing extraction keys and camelCase mirrors", () => {
+    const c = coerceNonEmptyAiReviewVariables("loanContractExtraction", {
+      extracted_text: "  body  ",
+    });
+    expect(c.filename).toBe("unknown");
+    expect(c.adobe_signals).toBe("none");
+    expect(c.classification_reasons).toBe("[]");
+    expect(c.extracted_text).toBe("  body  ");
+    expect(c.extractedText).toBe("  body  ");
+    expect(c.adobeSignals).toBe("none");
   });
 });
 

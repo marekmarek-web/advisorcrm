@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { zodIssuesToAdvisorBriefMessages } from "./zod-issues-advisor-copy";
 
 /**
  * Zod schema for a single extracted contact.
@@ -97,11 +98,12 @@ export function validateContactExtraction(raw: string): { ok: true; data: Extrac
     return { ok: true, data: filtered };
   }
 
+  const brief = zodIssuesToAdvisorBriefMessages(result.error.issues, 4);
   return {
     ok: false,
     error: {
       code: "VALIDATION_FAILED",
-      message: "Odpověď modelu nevyhovuje schématu kontaktů.",
+      message: brief[0] ?? "Odpověď modelu nevyhovuje schématu kontaktů.",
       issues: result.error.issues,
     },
   };
@@ -133,11 +135,14 @@ export function validateContractExtraction(raw: string): { ok: true; data: Extra
     return { ok: true, data: result.data };
   }
 
+  const brief = zodIssuesToAdvisorBriefMessages(result.error.issues, 4);
   return {
     ok: false,
     error: {
       code: "VALIDATION_FAILED",
-      message: "Odpověď modelu nevyhovuje schématu smlouvy.",
+      message:
+        brief[0] ??
+        "Struktura extrahovaných údajů neodpovídá očekávání — ověřte pole ručně v CRM.",
       issues: result.error.issues,
     },
   };

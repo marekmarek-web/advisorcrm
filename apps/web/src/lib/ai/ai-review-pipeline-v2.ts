@@ -45,6 +45,7 @@ import { mapAiClassifierToClassificationResult } from "./ai-review-type-mapper";
 import { getAiReviewPromptId, getAiReviewPromptVersion, type AiReviewPromptKey } from "./prompt-model-registry";
 import { isAiReviewLlmPostprocessEnabled, runAiReviewDecisionLlm } from "./ai-review-llm-postprocess";
 import { buildAiReviewExtractionPromptVariables, capAiReviewPromptString } from "./ai-review-prompt-variables";
+import { zodIssuesToAdvisorBriefMessages } from "./zod-issues-advisor-copy";
 import type {
   ContractPipelineOptions,
   PipelinePreprocessMeta,
@@ -791,6 +792,22 @@ export async function runAiReviewV2Pipeline(
   trace.validationDurationMs = Date.now() - valStart;
 
   if (!validated.ok) {
+    let parsedKeys: string[] = [];
+    try {
+      const jsonMatch = rawExtraction.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : rawExtraction;
+      const obj = JSON.parse(jsonStr) as Record<string, unknown> | null;
+      parsedKeys = obj && typeof obj === "object" ? Object.keys(obj).slice(0, 24) : [];
+    } catch {
+      parsedKeys = [];
+    }
+    console.warn("[ai-review] extraction_validation_soft_fail", {
+      documentType,
+      issueCount: validated.issues.length,
+      topPaths: validated.issues.slice(0, 8).map((i) => i.path.join(".") || "(root)"),
+      responseKeys: parsedKeys,
+      rawHead: rawExtraction.slice(0, 240),
+    });
     const stub = buildManualReviewStubEnvelope({
       classification,
       inputMode: inputModeResult.inputMode as string,
@@ -800,10 +817,10 @@ export async function runAiReviewV2Pipeline(
       route: extractionRoute,
     });
     stub.documentMeta.textCoverageEstimate = textCov;
-    for (const issue of validated.issues.slice(0, 12)) {
+    for (const message of zodIssuesToAdvisorBriefMessages(validated.issues, 10)) {
       stub.reviewWarnings.push({
         code: "extraction_schema_validation",
-        message: issue.message,
+        message,
         severity: "warning",
       });
     }
