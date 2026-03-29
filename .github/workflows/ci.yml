@@ -19,9 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Verze pnpm jen z root package.json (`packageManager`); duplicitní `version` zde by padalo (ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       # Lockfile lives at repo root — do not set job default cwd to apps/web or
       # setup-node cache may fail to resolve pnpm-lock.yaml (very fast CI failure).
