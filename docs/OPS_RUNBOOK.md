@@ -21,6 +21,8 @@
 
 V repu je `apps/web/vercel.json` s polem `crons` – po deployi zkontroluj **Vercel → Project → Cron Jobs**, že se zobrazily (na některých plánech může být cron placený).
 
+**Hobby plán Vercelu:** každý cron smí běžet **nejvýš jednou denně**. Výrazy typu `*/5 * * * *` (každých 5 minut) **deployment na Hobby shodí** a v logu / dokumentaci odkáže na *Usage & Pricing for Cron Jobs*. Kalendářní připomenutí (`/api/cron/event-reminders`) je v repu nastavené denně (`0 10 * * *` UTC). Pro opětovné **subdenní** připomínky je potřeba **Vercel Pro** (nebo externí scheduler volající stejný endpoint s `CRON_SECRET`).
+
 **Kde nastavit `CRON_SECRET`:** Vercel → tvůj projekt → **Settings** → **Environment Variables** → přidej `CRON_SECRET` (dlouhý náhodný řetězec, např. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`), scope **Production** (a případně Preview). Stejnou hodnotu musí route ověřit přes hlavičku `Authorization: Bearer <CRON_SECRET>` – Vercel u naplánovaných cronů **posílá tuto hlavičku automaticky**, pokud je proměnná nastavená.
 
 **Pozn.:** Cursor / Vercel MCP nemá nástroj na zápis env proměnných – musíš to doplnit v dashboardu, nebo po `vercel login` z kořene projektu webu:  
