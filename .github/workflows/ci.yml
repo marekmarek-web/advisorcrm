@@ -16,34 +16,45 @@ env:
 jobs:
   web:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      # Lockfile lives at repo root — do not set job default cwd to apps/web or
+      # setup-node cache may fail to resolve pnpm-lock.yaml (very fast CI failure).
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
+
       - name: Install
-        run: cd ../.. && pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
       - name: Compliance copy check (advisory)
-        working-directory: .
         run: pnpm compliance:copy-check
         continue-on-error: true
+
       - name: Unit tests
+        working-directory: apps/web
         run: pnpm test
+
       - name: Build
+        working-directory: apps/web
         run: pnpm build
+
       # Volitelně: v GitHub → Variables nastavte RUN_DOCUMENTS_SCHEMA_VERIFY=true a v job secrets
       # DATABASE_URL na read-only Postgres; pak sem přidejte krok `pnpm db:verify-documents-schema` (viz docs/OPS_RUNBOOK.md).
+
       - name: Install Playwright browsers
+        working-directory: apps/web
         run: pnpm exec playwright install chromium --with-deps
+
       - name: E2E smoke
+        working-directory: apps/web
         run: pnpm test:e2e
         env:
           CI: "true"
