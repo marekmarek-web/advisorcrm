@@ -19,8 +19,8 @@ export function formatDateTimeLocal(d: Date): string {
   return `${y}-${m}-${day}T${h}:${min}`;
 }
 
-/** Výchozí délka nové časované aktivity (30 min). */
-export const DEFAULT_EVENT_DURATION_MS = 30 * 60 * 1000;
+/** Výchozí délka nové časované aktivity (60 min). */
+export const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 
 const NAIVE_LOCAL_DT = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2})(?::(\d{2}))?/;
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_EVENT_DURATION_MS,
   addMsToLocalDateTime,
   addOneCalendarDayYmd,
   allDayGoogleRangeToDbInstants,
@@ -8,6 +9,12 @@ import {
   parseNaiveLocalDateTimeToLocalDate,
   reminderIsoBeforeStartUtc,
 } from "../date-utils";
+
+describe("DEFAULT_EVENT_DURATION_MS", () => {
+  it("is 60 minutes", () => {
+    expect(DEFAULT_EVENT_DURATION_MS).toBe(60 * 60 * 1000);
+  });
+});
 
 describe("parseNaiveLocalDateTimeToLocalDate", () => {
   it("parses YYYY-MM-DDTHH:mm as local components", () => {
