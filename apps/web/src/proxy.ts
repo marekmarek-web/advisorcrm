@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { AIDV_PROXY_AUTH_USER_HEADER } from "@/lib/auth/proxy-headers";
 
 const PRODUCTION_DOMAIN = "https://www.aidvisora.cz";
 
@@ -117,6 +118,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const forwardHeaders = new Headers(request.headers);
+  forwardHeaders.delete(AIDV_PROXY_AUTH_USER_HEADER);
   if (pathname.startsWith("/portal")) {
     forwardHeaders.set("x-pathname", pathname);
   }
@@ -133,6 +135,9 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    forwardHeaders.set(AIDV_PROXY_AUTH_USER_HEADER, user.id);
+  }
   const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
   const isClientZone = request.nextUrl.pathname.startsWith("/client");
   const isBoard = request.nextUrl.pathname.startsWith("/board");
@@ -165,7 +170,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return response;
+  const out = NextResponse.next({ request: { headers: forwardHeaders } });
+  for (const c of response.cookies.getAll()) {
+    out.cookies.set(c.name, c.value);
+  }
+  return out;
 }
 
 export const config = {

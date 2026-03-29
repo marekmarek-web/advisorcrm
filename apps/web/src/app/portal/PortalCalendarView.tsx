@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, X, RefreshCw, MapPin, Link2, AlignLeft, User, Briefcase, Bell, Check, Info, Flag, CheckSquare, Calendar, Send, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, X, RefreshCw, MapPin, Link2, AlignLeft, User, Briefcase, Bell, Check, Info, Flag, CheckSquare, Calendar, Send, Clock, Video, ArrowRight } from "lucide-react";
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
@@ -49,6 +49,10 @@ import { ContactSearchInput } from "@/app/components/ContactSearchInput";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { useKeyboardAware } from "@/lib/ui/useKeyboardAware";
+import clsx from "clsx";
+import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import { PreMeetingBriefPanel } from "@/app/components/meeting-briefing/PreMeetingBriefPanel";
+import { CalendarEventAiActions } from "@/app/portal/calendar/CalendarEventAiActions";
 
 type ViewMode = "day" | "month" | "week" | "workweek";
 
@@ -397,22 +401,30 @@ function EventDetailPopup({
   const typeInfo = getEventCategory(event.eventType);
   const statusObj = EVENT_STATUSES.find((status) => status.id === event.status);
   const dateLine = formatEventDetailDateLine(event);
-  const dateLineCaption = event.allDay ? "" : "Čas zobrazen po čtvrthodinách";
   const contact = event.contactId ? contacts.find((c) => c.id === event.contactId) : null;
   const mailtoHref = buildEventMailtoHref(event, contact?.email);
   const accentStyle = getEventAccentStyle(event, eventTypeColors);
+  const hasVideoLink =
+    Boolean(event.meetingLink) &&
+    (event.eventType === "telefonat" ||
+      event.meetingLink!.includes("meet") ||
+      event.meetingLink!.includes("zoom"));
 
   return (
     <div
       className="fixed inset-0 z-modal flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm dark:bg-black/50"
       onClick={onClose}
+      role="presentation"
     >
       <div
-        className="bg-[color:var(--wp-surface-muted)] rounded-2xl shadow-xl border border-[color:var(--wp-surface-card-border)] w-full max-w-md overflow-hidden"
+        className="bg-[color:var(--wp-surface-muted)] rounded-2xl shadow-xl border border-[color:var(--wp-surface-card-border)] w-full max-w-md max-h-[min(90dvh,720px)] min-h-0 flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cal-event-detail-title"
       >
-        <div className="h-1.5 w-full" style={accentStyle} />
-        <div className="px-6 pb-6 pt-4">
+        <div className="h-1.5 w-full shrink-0" style={accentStyle} />
+        <div className="px-6 pb-6 pt-4 flex flex-col min-h-0 flex-1 overflow-hidden">
           <div className="mb-4 flex items-center justify-end gap-1.5">
             <button type="button" onClick={onEdit} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600" aria-label="Upravit">
               <Edit2 size={16} />
@@ -429,8 +441,8 @@ function EventDetailPopup({
             </button>
           </div>
 
-          <div className="mb-5 px-1">
-            <h2 className="text-2xl font-extrabold leading-tight text-[#0B1021] break-words">{event.title}</h2>
+          <div className="mb-5 px-1 shrink-0">
+            <h2 id="cal-event-detail-title" className="text-2xl font-extrabold leading-tight text-[#0B1021] break-words">{event.title}</h2>
             <p className="mt-1 text-xs font-bold text-[color:var(--wp-text-secondary)]">
               {typeInfo.label}
               {statusObj ? ` · ${statusObj.label}` : null}
@@ -441,13 +453,12 @@ function EventDetailPopup({
             eventType={event.eventType}
             eventTypeColors={eventTypeColors}
             onChangeType={onChangeType}
-            className="mb-5 px-1"
+            className="mb-5 px-1 shrink-0"
           />
 
-          <div className="space-y-2 px-1">
+          <div className="space-y-2 px-1 shrink-0">
             <EventDetailInfoBlock icon={Clock} label="Kdy" accentStyle={accentStyle}>
               <p className="text-sm font-semibold text-slate-800">{dateLine}</p>
-              {dateLineCaption ? <p className="mt-0.5 text-xs text-slate-500">{dateLineCaption}</p> : null}
             </EventDetailInfoBlock>
             <EventDetailInfoBlock icon={MapPin} label="Místo" subdued={!event.location}>
               <p className={event.location ? "text-sm font-medium text-slate-700" : "text-sm font-medium text-slate-500"}>
@@ -456,7 +467,7 @@ function EventDetailPopup({
             </EventDetailInfoBlock>
           </div>
 
-          <div className="mt-5 space-y-4">
+          <div className="mt-5 min-h-0 flex-1 overflow-y-auto wp-cal-hide-scrollbar space-y-4 pr-1 -mr-1">
             <div className="flex items-start gap-3 text-sm text-[color:var(--wp-text-secondary)]">
               <Bell size={18} className="shrink-0 mt-0.5 text-[color:var(--wp-text-tertiary)]" aria-hidden />
               <span>{formatEventReminderLabel(event)}</span>
@@ -467,30 +478,75 @@ function EventDetailPopup({
               <span>WePlan kalendář</span>
             </div>
 
-            {event.meetingLink && (
-              <a
-                href={event.meetingLink.startsWith("http") ? event.meetingLink : `https://${event.meetingLink}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 text-sm font-bold text-indigo-700 transition-colors hover:border-indigo-200"
-              >
-                Otevřít odkaz
-              </a>
-            )}
-            {event.contactName && (
-              <div className="flex items-start gap-3">
-                <User size={18} className="shrink-0 mt-0.5 text-[color:var(--wp-text-tertiary)]" aria-hidden />
-                <Link href={event.contactId ? `/portal/contacts/${event.contactId}` : "#"} className="text-sm font-bold text-indigo-600 hover:text-indigo-700 break-words">
-                  {event.contactName}
+            {hasVideoLink ? (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[color:var(--wp-surface-card)] flex items-center justify-center text-[color:var(--wp-text-secondary)] shrink-0 border border-[color:var(--wp-surface-card-border)]">
+                  <Video size={14} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Forma</p>
+                  <p className="text-sm font-bold text-[color:var(--wp-text)]">Online hovor</p>
+                </div>
+              </div>
+            ) : null}
+
+            {event.meetingLink ? (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex flex-col gap-2 dark:bg-indigo-950/30 dark:border-indigo-800/40">
+                <a
+                  href={event.meetingLink.startsWith("http") ? event.meetingLink : `https://${event.meetingLink}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={clsx(portalPrimaryButtonClassName, "w-full rounded-lg py-2.5 text-sm shadow-sm justify-center")}
+                >
+                  <Video size={16} /> {hasVideoLink ? "Připojit se k hovoru" : "Otevřít odkaz"}
+                </a>
+              </div>
+            ) : null}
+
+            {event.contactName ? (
+              <div className="pt-2 border-t border-[color:var(--wp-surface-card-border)]">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-3">Účastník</p>
+                <Link
+                  href={event.contactId ? `/portal/contacts/${event.contactId}` : "#"}
+                  className="flex items-center justify-between group cursor-pointer min-h-[44px]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+                      {event.contactName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-[color:var(--wp-text)] group-hover:text-indigo-600 truncate">{event.contactName}</p>
+                      <p className="text-[11px] font-medium text-[color:var(--wp-text-secondary)]">Otevřít profil klienta</p>
+                    </div>
+                  </div>
                 </Link>
               </div>
-            )}
-            {event.notes && (
-              <div>
+            ) : null}
+
+            {event.contactId ? (
+              <div className="pt-4 border-t border-[color:var(--wp-surface-card-border)] space-y-3">
+                <PreMeetingBriefPanel contactId={event.contactId} eventId={event.id} compact />
+                <CalendarEventAiActions contactId={event.contactId} eventId={event.id} eventNotes={event.notes} />
+                <Link
+                  href={`/portal/contacts/${event.contactId}?eventId=${event.id}#briefing`}
+                  className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 min-h-[44px]"
+                >
+                  Po schůzce – shrnutí a kroky <ArrowRight size={14} />
+                </Link>
+              </div>
+            ) : null}
+
+            {event.notes ? (
+              <div className="pt-2">
                 <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Poznámka</p>
                 <p className="whitespace-pre-wrap text-sm text-[color:var(--wp-text-secondary)]">{event.notes}</p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -1486,33 +1542,21 @@ export function PortalCalendarView() {
 
           {!contextPanelCollapsed && (
             <CalendarContextPanel
-              selectedEvent={detailEvent}
               selectedDate={selectedDate}
               dayEvents={eventsByDate.get(selectedDate) ?? []}
               dayTasks={dayTasks}
               dayTasksLoading={dayTasksLoading}
               unreadMessagesCount={unreadMessagesCount}
-              onEditEvent={(ev) => openEdit(ev)}
-              onQuickEditEvent={openEdit}
-              onDeleteEvent={handleDeleteEvent}
-              onFollowUp={(eventId) => handleFollowUp(eventId, "event")}
-              onOpenFullEdit={openEdit}
-              onMarkDone={handleMarkEventDone}
               onToggleTask={handleToggleDayTask}
               onAddTask={(dateStr) => setNewTaskModal({ dueDate: dateStr })}
-              onRefresh={() => { loadEvents(); loadDayTasks(selectedDate); }}
-              onChangeEventType={(ev, nextType) => handleDetailEventTypeChange(ev.id, nextType)}
-              collapsed={false}
               onToggleCollapsed={() => setContextPanelCollapsed(true)}
-              onCloseSelectedEvent={() => setDetailEvent(null)}
               isMobile={isMobile}
-              eventTypeColors={settings.eventTypeColors}
             />
           )}
         </div>
       </div>
 
-      {detailEvent && (isMobile || contextPanelCollapsed) && (
+      {detailEvent && (
         <EventDetailPopup
           event={detailEvent}
           contacts={contacts}

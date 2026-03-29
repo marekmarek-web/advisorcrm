@@ -873,9 +873,6 @@ function TasksPageContent() {
   return (
     <div className="min-h-screen bg-[color:var(--wp-bg)] pb-20 font-sans text-[color:var(--wp-text)]">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap');
-        .font-sans { font-family: 'Inter', sans-serif; }
-        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -895,7 +892,9 @@ function TasksPageContent() {
         {/* --- LEFT PANEL --- */}
         <div className="xl:col-span-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-            <h1 className="text-3xl font-display font-black text-[color:var(--wp-text)] tracking-tight">Moje úkoly</h1>
+            <h1 className="text-3xl font-black tracking-tight text-[color:var(--wp-text)] [font-family:var(--font-jakarta),var(--font-primary),system-ui,sans-serif]">
+              Moje úkoly
+            </h1>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsSettingsOpen(true)}
@@ -981,7 +980,9 @@ function TasksPageContent() {
                 <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-400 mb-6 shadow-inner">
                   <CheckCircle2 size={40} strokeWidth={1.5} />
                 </div>
-                <h3 className="font-display text-xl font-bold text-[color:var(--wp-text)] mb-2">Žádné aktivní úkoly</h3>
+                <h3 className="mb-2 text-xl font-bold text-[color:var(--wp-text)] [font-family:var(--font-jakarta),var(--font-primary),system-ui,sans-serif]">
+                  Žádné aktivní úkoly
+                </h3>
                 <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] max-w-sm mb-8">V tomto výběru máte čistý stůl. Vytvořte si nový úkol pomocí průvodce, nebo si užijte volnou chvíli.</p>
                 <button onClick={() => setIsWizardOpen(true)} className="px-6 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
                   <Plus size={16} strokeWidth={2.5} /> Přidat první úkol
@@ -1103,7 +1104,9 @@ function TasksPageContent() {
               </div>
               <div className="mb-8">
                 <div className="flex items-end gap-3 mb-1">
-                  <span className="text-6xl font-display font-black tracking-tighter">{activeTasksCount}</span>
+                  <span className="text-6xl font-black tracking-tighter [font-family:var(--font-jakarta),var(--font-primary),system-ui,sans-serif]">
+                    {activeTasksCount}
+                  </span>
                 </div>
                 <span className="text-sm font-bold text-[color:var(--wp-text-tertiary)]">Aktivních úkolů</span>
               </div>

@@ -165,9 +165,6 @@ function EventDetailBody({
           <div className="space-y-2 px-1">
             <EventDetailInfoBlock icon={Clock} label="Kdy" accentStyle={accentStyle}>
               <p className="text-sm font-semibold text-slate-800">{dateLine}</p>
-              {!ev.allDay ? (
-                <p className="mt-0.5 text-xs text-slate-500">Čas zobrazen po čtvrthodinách</p>
-              ) : null}
             </EventDetailInfoBlock>
             <EventDetailInfoBlock icon={MapPin} label="Místo" subdued={!ev.location}>
               <p className={ev.location ? "text-sm font-medium text-slate-700" : "text-sm font-medium text-slate-500"}>

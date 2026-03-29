@@ -11,6 +11,16 @@ const MONTH_NAMES = [
 
 const WEEKDAYS_MON = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
 
+const QUICK_MINUTES = [0, 15, 30, 45] as const;
+
+function clampClock(hour: number, minute: number): { hour: number; minute: number } {
+  let h = Number.isFinite(hour) ? Math.floor(hour) : 0;
+  let m = Number.isFinite(minute) ? Math.floor(minute) : 0;
+  h = Math.min(23, Math.max(0, h));
+  m = Math.min(59, Math.max(0, m));
+  return { hour: h, minute: m };
+}
+
 function parseLocalDateTime(iso: string): { date: string; hour: number; minute: number } {
   if (!iso || !iso.includes("T")) {
     const d = new Date();
@@ -21,17 +31,15 @@ function parseLocalDateTime(iso: string): { date: string; hour: number; minute: 
     };
   }
   const [datePart, timePart = "09:00"] = iso.split("T");
-  const [h = "9", m = "0"] = timePart.split(":");
+  const parts = timePart.split(":");
+  const h = parts[0] ?? "9";
+  const m = parts[1] ?? "0";
   let hour = Number(h);
   let minute = Number(m);
   if (!Number.isFinite(hour)) hour = 9;
   if (!Number.isFinite(minute)) minute = 0;
-  minute = Math.round(minute / 15) * 15;
-  if (minute >= 60) {
-    minute = 0;
-    hour = Math.min(23, hour + 1);
-  }
-  return { date: datePart, hour: Math.min(23, Math.max(0, hour)), minute };
+  const c = clampClock(hour, minute);
+  return { date: datePart, hour: c.hour, minute: c.minute };
 }
 
 function composeLocalDateTime(date: string, hour: number, minute: number): string {
@@ -39,17 +47,14 @@ function composeLocalDateTime(date: string, hour: number, minute: number): strin
 }
 
 function parseTimeInputValue(v: string): { hour: number; minute: number } | null {
-  const [h, m] = (v || "").split(":");
+  const parts = (v || "").split(":");
+  const h = parts[0];
+  const m = parts[1];
   let hour = Number(h);
   let minute = Number(m);
   if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-  hour = Math.min(23, Math.max(0, hour));
-  minute = Math.round(minute / 15) * 15;
-  if (minute >= 60) {
-    minute = 0;
-    hour = Math.min(23, hour + 1);
-  }
-  return { hour, minute };
+  const c = clampClock(hour, minute);
+  return { hour: c.hour, minute: c.minute };
 }
 
 function formatPrimaryLine(startIso: string, endIso: string, allDay: boolean): string {
@@ -272,9 +277,6 @@ export function EventFormDateTimeSection({
             className="w-full text-left rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3.5 transition-colors hover:border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 min-h-[44px]"
           >
             <p className="text-sm sm:text-base font-bold text-[color:var(--wp-text)] leading-snug">{primary}</p>
-            <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-1.5 font-medium">
-              Časové pásmo: lokální čas zařízení · minuty jen po 15 min
-            </p>
             <div className="flex items-center gap-1 mt-2 text-xs font-bold text-indigo-600">
               {expanded ? (
                 <>
@@ -316,11 +318,11 @@ export function EventFormDateTimeSection({
                   )}
                   <div>
                     <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
-                      Čas (po 15 min)
+                      Čas
                     </label>
                     <input
                       type="time"
-                      step={900}
+                      step={60}
                       value={`${String(startP.hour).padStart(2, "0")}:${String(startP.minute).padStart(2, "0")}`}
                       onChange={(e) => {
                         const p = parseTimeInputValue(e.target.value);
@@ -329,6 +331,22 @@ export function EventFormDateTimeSection({
                       }}
                       className={`${eInputClass} mt-1 min-h-[44px] font-mono tabular-nums`}
                     />
+                    <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Rychlá volba čtvrt hodiny">
+                      {QUICK_MINUTES.map((mm) => (
+                        <button
+                          key={mm}
+                          type="button"
+                          onClick={() => setStartParts(startP.date, startP.hour, mm)}
+                          className={`min-h-9 min-w-[2.75rem] rounded-lg border text-xs font-bold transition-colors ${
+                            startP.minute === mm
+                              ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                              : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:border-indigo-200"
+                          }`}
+                        >
+                          :{String(mm).padStart(2, "0")}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -357,11 +375,11 @@ export function EventFormDateTimeSection({
                   )}
                   <div>
                     <label className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wide">
-                      Čas (po 15 min)
+                      Čas
                     </label>
                     <input
                       type="time"
-                      step={900}
+                      step={60}
                       value={`${String(endP.hour).padStart(2, "0")}:${String(endP.minute).padStart(2, "0")}`}
                       onChange={(e) => {
                         const p = parseTimeInputValue(e.target.value);
@@ -370,6 +388,22 @@ export function EventFormDateTimeSection({
                       }}
                       className={`${eInputClass} mt-1 min-h-[44px] font-mono tabular-nums`}
                     />
+                    <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Rychlá volba čtvrt hodiny">
+                      {QUICK_MINUTES.map((mm) => (
+                        <button
+                          key={mm}
+                          type="button"
+                          onClick={() => setEndParts(endP.date, endP.hour, mm)}
+                          className={`min-h-9 min-w-[2.75rem] rounded-lg border text-xs font-bold transition-colors ${
+                            endP.minute === mm
+                              ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                              : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:border-indigo-200"
+                          }`}
+                        >
+                          :{String(mm).padStart(2, "0")}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

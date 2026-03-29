@@ -4,7 +4,8 @@
  */
 import { redirect } from "next/navigation";
 import dynamic from "next/dynamic";
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { AIDV_PROXY_AUTH_USER_HEADER } from "@/lib/auth/proxy-headers";
 
 const PremiumLandingPage = dynamic(() => import("./components/PremiumLandingPage"), {
   loading: () => (
@@ -38,10 +39,9 @@ export default async function HomePage() {
     redirect("/portal");
   }
 
-  // If OAuth lands on "/" after login, immediately continue to app flow.
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
+  // Session už ověřil proxy.ts — nepoužívat druhé getUser (TTFB).
+  const headerList = await headers();
+  if (headerList.get(AIDV_PROXY_AUTH_USER_HEADER)) {
     redirect("/register/complete?next=/portal/today");
   }
 

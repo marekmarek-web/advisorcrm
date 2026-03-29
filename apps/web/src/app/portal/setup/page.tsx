@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getCachedSupabaseUser } from "@/lib/auth/require-auth";
 import { getWorkspaceBillingSnapshot } from "@/lib/stripe/workspace-billing";
 import { db, tenants, advisorPreferences } from "db";
 import { eq, and } from "db";
@@ -8,37 +7,34 @@ import { SetupView } from "./SetupView";
 
 export default async function SetupPage() {
   const auth = await requireAuth();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  const [user, prefRows, tenantRows, billing] = await Promise.all([
+    getCachedSupabaseUser(),
+    db
+      .select({ phone: advisorPreferences.phone })
+      .from(advisorPreferences)
+      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+      .limit(1),
+    db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, auth.tenantId)).limit(1),
+    getWorkspaceBillingSnapshot({
+      tenantId: auth.tenantId,
+      roleName: auth.roleName,
+    }),
+  ]);
+
   const email = user?.email ?? "";
   const fullName = (user?.user_metadata?.full_name as string | undefined) ?? null;
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const metaCompany = typeof meta.company === "string" ? meta.company.trim() : "";
   const metaCorr = typeof meta.correspondence_address === "string" ? meta.correspondence_address.trim() : "";
 
-  const [prefRow] = await db
-    .select({ phone: advisorPreferences.phone })
-    .from(advisorPreferences)
-    .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
-    .limit(1);
-
-  const [tenantRow] = await db
-    .select({ name: tenants.name })
-    .from(tenants)
-    .where(eq(tenants.id, auth.tenantId))
-    .limit(1);
+  const [prefRow] = prefRows;
+  const [tenantRow] = tenantRows;
   const tenantName = tenantRow?.name ?? "—";
 
   /** Legacy: sídlo se dřív ukládalo do `company`; po migraci je v correspondence_address. */
   const initialCorrespondenceAddress = metaCorr || metaCompany;
   const initialNetworkCompany = metaCorr ? metaCompany || tenantName : undefined;
-
-  const billing = await getWorkspaceBillingSnapshot({
-    tenantId: auth.tenantId,
-    roleName: auth.roleName,
-  });
 
   return (
     <Suspense>
