@@ -51,13 +51,33 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+const CONTACT_ID_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isRedirectError(e: unknown): boolean {
+  if (typeof e !== "object" || e === null) return false;
+  const d = (e as { digest?: string }).digest;
+  return typeof d === "string" && d.startsWith("NEXT_REDIRECT");
+}
+
 export default async function ContactDetailPage({ params, searchParams }: PageProps) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const contactId = rawId?.trim() ?? "";
   const sp = await searchParams;
   const tab: ContactTabId = parseContactTabFromSearchParams(sp);
   const baseQueryNoTab = contactDetailQueryWithoutTab(sp);
 
-  const contact = await getContact(id);
+  if (!contactId || !CONTACT_ID_UUID_RE.test(contactId)) {
+    notFound();
+  }
+
+  let contact: Awaited<ReturnType<typeof getContact>>;
+  try {
+    contact = await getContact(contactId);
+  } catch (e) {
+    if (isRedirectError(e)) throw e;
+    notFound();
+  }
   if (!contact) notFound();
 
   let household: Awaited<ReturnType<typeof getHouseholdForContact>> = null;
@@ -68,8 +88,8 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   };
   try {
     [household, latestGenerations] = await Promise.all([
-      getHouseholdForContact(id),
-      getLatestClientGenerations(id),
+      getHouseholdForContact(contactId),
+      getLatestClientGenerations(contactId),
     ]);
   } catch {
     /* Sekundární data – stránka klienta zůstane, chybějící bloky se doplní prázdně */
@@ -77,25 +97,25 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
 
   const overviewContent = (
     <div className="space-y-8">
-      <ContactOverviewKpi contactId={id} />
-      <ClientFinancialSummaryBlock contactId={id} />
-      <ClientServiceBlock contactId={id} />
-      <ContactPaymentSetupsSection contactId={id} />
-      <ClientReferralSection contactId={id} />
-      <ClientCoverageWidget contactId={id} />
+      <ContactOverviewKpi contactId={contactId} />
+      <ClientFinancialSummaryBlock contactId={contactId} />
+      <ClientServiceBlock contactId={contactId} />
+      <ContactPaymentSetupsSection contactId={contactId} />
+      <ClientReferralSection contactId={contactId} />
+      <ClientCoverageWidget contactId={contactId} />
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className="xl:col-span-2 space-y-6">
-          <ContactLastNotePreview contactId={id} />
-          <ContactProductsPreview contactId={id} />
-          <ContactFinancialAnalysesSection contactId={id} />
+          <ContactLastNotePreview contactId={contactId} />
+          <ContactProductsPreview contactId={contactId} />
+          <ContactFinancialAnalysesSection contactId={contactId} />
         </div>
         <aside className="xl:col-span-1 space-y-6">
           {household && <ContactHouseholdCard household={household} />}
         </aside>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ContactOpenTasksPreview contactId={id} />
-        <ContactAiGenerationsBlock contactId={id} initialGenerations={latestGenerations} />
+        <ContactOpenTasksPreview contactId={contactId} />
+        <ContactAiGenerationsBlock contactId={contactId} initialGenerations={latestGenerations} />
       </div>
     </div>
   );
@@ -104,11 +124,11 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
     <div className="space-y-6 md:space-y-8">
       <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
         <div className="p-6">
-          <ContractsSection contactId={id} />
-          <ClientFinancialSummary contactId={id} />
+          <ContractsSection contactId={contactId} />
+          <ClientFinancialSummary contactId={contactId} />
           <div className="mt-6 pt-6 border-t border-[color:var(--wp-surface-card-border)]">
             <h2 className="text-lg font-black text-[color:var(--wp-text)] mb-2">Platební instrukce</h2>
-            <SendPaymentPdfButton contactId={id} />
+            <SendPaymentPdfButton contactId={contactId} />
           </div>
         </div>
       </div>
@@ -119,7 +139,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
     <div className="space-y-6 md:space-y-8">
       <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
         <div className="p-6">
-          <ContactActivityTimeline contactId={id} />
+          <ContactActivityTimeline contactId={contactId} />
         </div>
       </div>
       <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
@@ -127,7 +147,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
           <h2 className="text-lg font-black text-[color:var(--wp-text)]">Zprávy</h2>
         </div>
         <div className="p-6">
-          <ChatThread contactId={id} currentUserType="advisor" />
+          <ChatThread contactId={contactId} currentUserType="advisor" />
         </div>
       </div>
     </div>
@@ -136,7 +156,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   const zapiskyContent = (
     <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
       <div className="p-6">
-        <ContactNotesSection contactId={id} />
+        <ContactNotesSection contactId={contactId} />
       </div>
     </div>
   );
@@ -144,7 +164,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   const timelineContent = (
     <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
       <div className="p-6">
-        <ClientTimeline contactId={id} />
+        <ClientTimeline contactId={contactId} />
       </div>
     </div>
   );
@@ -155,7 +175,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
         <h2 className="text-lg font-black text-[color:var(--wp-text)]">Dokumenty</h2>
       </div>
       <div className="p-6">
-        <DocumentsSection contactId={id} />
+        <DocumentsSection contactId={contactId} />
       </div>
     </div>
   );
@@ -166,7 +186,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
         <h2 className="text-lg font-black text-[color:var(--wp-text)]">Úkoly a schůzky</h2>
       </div>
       <div className="p-6">
-        <ContactTasksAndEvents contactId={id} />
+        <ContactTasksAndEvents contactId={contactId} />
       </div>
     </div>
   );
@@ -174,7 +194,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   const obchodyContent = (
     <div className="flex flex-col flex-1 min-h-0 w-full">
       <ContactOpportunityBoard
-        contactId={id}
+        contactId={contactId}
         contactFirstName={contact.firstName ?? undefined}
         contactLastName={contact.lastName ?? undefined}
       />
@@ -183,7 +203,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
 
   const briefingContent = (
     <Suspense fallback={<div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6">Načítání…</div>}>
-      <BriefingTabContent contactId={id} />
+      <BriefingTabContent contactId={contactId} />
     </Suspense>
   );
 
@@ -227,7 +247,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <CreateActionButton
-            href={`/portal/contacts/${id}/edit`}
+            href={`/portal/contacts/${contactId}/edit`}
             icon={Edit2}
             className="min-h-[44px] px-5 py-2 text-xs font-black uppercase tracking-widest shadow-lg"
           >
@@ -255,7 +275,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
                   <h1 className="text-2xl md:text-3xl font-black text-[color:var(--wp-text)] tracking-tight">
                     {contact.firstName} {contact.lastName}
                   </h1>
-                  <ContactTagsEditor contactId={id} initialTags={contact.tags ?? []} />
+                  <ContactTagsEditor contactId={contactId} initialTags={contact.tags ?? []} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 mt-4 text-sm font-bold text-[color:var(--wp-text-secondary)]">
                   {contact.email && (
@@ -295,21 +315,27 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
                 </a>
               )}
               <Link
-                href={`/portal/messages?contact=${id}`}
+                href={`/portal/messages?contact=${contactId}`}
                 className="flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-sm font-black transition-colors w-full sm:w-auto min-h-[44px]"
               >
                 <MessageSquare size={16} /> Zpráva
               </Link>
               {contact.email && (
                 <div className="w-full sm:w-auto min-h-[44px] flex items-center">
-                  <InviteToClientZoneButton contactId={id} />
+                  <InviteToClientZoneButton contactId={contactId} />
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <ContactTabNav activeTab={tab} baseQueryNoTab={baseQueryNoTab} />
+        <Suspense
+          fallback={
+            <div className="h-14 animate-pulse rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/60" />
+          }
+        >
+          <ContactTabNav activeTab={tab} baseQueryNoTab={baseQueryNoTab} />
+        </Suspense>
         <div className="pt-6 pb-8">{tabBody[tab]}</div>
       </main>
     </div>

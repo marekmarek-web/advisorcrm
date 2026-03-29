@@ -137,7 +137,8 @@ function normalizeTagsForRsc(value: unknown): string[] | null {
 
 async function loadContact(id: string): Promise<ContactRow | null> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  // Neházet — throw rozbije RSC v produkci (obecný digest). Stejně jako missing row → null.
+  if (!hasPermission(auth.roleName, "contacts:read")) return null;
   const rows = await db
     .select({
       id: contacts.id,
