@@ -41,6 +41,13 @@ export function CalendarAgendaView({
         ? "text-base"
         : "text-sm";
 
+  const dayHeadingClass =
+    settings?.fontSize === "small"
+      ? "text-[9px]"
+      : settings?.fontSize === "large"
+        ? "text-xs"
+        : "text-[10px]";
+
   const hasAny = visibleDays.some((d) => (eventsByDate.get(formatDateLocal(d)) ?? []).length > 0);
 
   if (!hasAny) {
@@ -70,7 +77,9 @@ export function CalendarAgendaView({
           );
           return (
             <section key={ds}>
-              <h3 className="sticky top-0 z-[1] mb-2 bg-[color:var(--wp-surface-card)]/95 py-1 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] backdrop-blur-sm">
+              <h3
+                className={`sticky top-0 z-[1] mb-2 bg-[color:var(--wp-surface-card)]/95 py-1 font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] backdrop-blur-sm ${dayHeadingClass}`}
+              >
                 {dayHeading(day, todayStr)}
               </h3>
               <ul className="space-y-2">

@@ -1,9 +1,15 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { EventRow } from "@/app/actions/events";
 import { formatDateLocal } from "@/app/portal/calendar/date-utils";
-import type { CalendarSettings } from "@/app/portal/calendar/calendar-settings";
+import { getCalendarGridFontClasses } from "@/app/portal/calendar/calendar-grid-font";
+import {
+  DEFAULT_SETTINGS,
+  ensureAccentLight,
+  type CalendarSettings,
+} from "@/app/portal/calendar/calendar-settings";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import {
   DEFAULT_END_HOUR_PHONE,
@@ -14,6 +20,7 @@ import { CalendarAllDayChips, CalendarEventBlock } from "./CalendarEventBlock";
 import { CalendarCurrentTimeLine } from "./CalendarCurrentTimeLine";
 import { CalendarDayHeader } from "./CalendarDayHeader";
 import { layoutTimedOverlaps } from "./event-overlap-layout";
+import { useCalendarPointerDrag } from "./useCalendarPointerDrag";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -29,6 +36,9 @@ export function CalendarTimeGrid({
   selectedEventId,
   onSlotClick,
   onEventClick,
+  onEventMove,
+  onEventResize,
+  onDragCreate,
   onSelectDay,
   scrollSignal,
 }: {
@@ -41,10 +51,18 @@ export function CalendarTimeGrid({
   selectedEventId: string | null;
   onSlotClick: (dateStr: string, hour: number) => void;
   onEventClick: (ev: EventRow) => void;
+  onEventMove?: (eventId: string, targetDateStr: string, startMinutesFromMidnight: number) => void;
+  onEventResize?: (eventId: string, targetDateStr: string, endMinutesFromMidnight: number) => void;
+  onDragCreate?: (
+    targetDateStr: string,
+    startMinutesFromMidnight: number,
+    endMinutesFromMidnight: number,
+  ) => void;
   onSelectDay?: (day: Date) => void;
   scrollSignal: number;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dayColumnRefs = useRef<Array<HTMLDivElement | null>>([]);
   const startHour = DEFAULT_START_HOUR;
   const endHour = deviceClass === "phone" ? DEFAULT_END_HOUR_PHONE : DEFAULT_END_HOUR_TABLET;
   const pixelsPerHour =
@@ -65,6 +83,15 @@ export function CalendarTimeGrid({
   const eventTypeColors = settings?.eventTypeColors;
   const lineColor = settings?.currentTimeLineColor ?? "#e5534b";
   const lineWidth = settings?.currentTimeLineWidth ?? 2;
+
+  const accent = settings?.accent ?? DEFAULT_SETTINGS.accent;
+  const accentLight = settings?.accentLight ?? ensureAccentLight(accent, settings?.accentLight);
+  const fontSizeSetting = settings?.fontSize ?? DEFAULT_SETTINGS.fontSize;
+  const todayStyleSetting = settings?.todayStyle ?? DEFAULT_SETTINGS.todayStyle;
+  const fc = useMemo(
+    () => getCalendarGridFontClasses(fontSizeSetting, compact),
+    [fontSizeSetting, compact],
+  );
 
   const scrollToNow = useCallback(() => {
     const el = scrollRef.current;
@@ -107,8 +134,29 @@ export function CalendarTimeGrid({
     [pixelsPerHour],
   );
 
+  const pointerDrag = useCalendarPointerDrag({
+    visibleDays,
+    scrollRef,
+    dayColumnRefs,
+    startHour,
+    endHour,
+    pixelsPerHour,
+    enabled: Boolean(onEventMove || onEventResize || onDragCreate),
+    onEventMove,
+    onEventResize,
+    onDragCreate,
+  });
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[color:var(--wp-surface-card)]">
+    <div
+      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[color:var(--wp-surface-card)]"
+      style={
+        {
+          ["--cal-accent" as string]: accent,
+          ["--cal-accent-light" as string]: accentLight,
+        } as CSSProperties
+      }
+    >
       {hasAnyAllDay ? (
         <div className="flex shrink-0 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40">
           <div className="shrink-0 border-r border-[color:var(--wp-surface-card-border)]" style={{ width: timeColWidth }} />
@@ -121,6 +169,7 @@ export function CalendarTimeGrid({
                   events={list}
                   columnDateStr={ds}
                   eventTypeColors={eventTypeColors}
+                  chipTextClass={fc.allDayChip}
                   onEventClick={onEventClick}
                 />
               </div>
@@ -136,6 +185,10 @@ export function CalendarTimeGrid({
         timeColWidth={timeColWidth}
         compact={compact}
         onSelectDay={onSelectDay}
+        fontSize={fontSizeSetting}
+        accent={accent}
+        accentLight={accentLight}
+        todayStyle={todayStyleSetting}
       />
 
       <div
@@ -153,7 +206,8 @@ export function CalendarTimeGrid({
                 <span
                   className={cx(
                     "absolute -top-2.5 font-bold text-[color:var(--wp-text-tertiary)]",
-                    compact ? "right-1 text-[9px]" : "right-2 text-[10px]",
+                    compact ? "right-1" : "right-2",
+                    fc.timeCol,
                   )}
                 >
                   {h}:00
@@ -164,7 +218,7 @@ export function CalendarTimeGrid({
 
           <div className="relative min-h-0 min-w-0 flex-1" style={{ minHeight: totalHeight }}>
             <div className="flex h-full min-h-[inherit]">
-              {visibleDays.map((day) => {
+              {visibleDays.map((day, dayIndex) => {
                 const ds = formatDateLocal(day);
                 const isToday = ds === todayStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
@@ -176,6 +230,9 @@ export function CalendarTimeGrid({
                 return (
                   <div
                     key={ds}
+                    ref={(node) => {
+                      dayColumnRefs.current[dayIndex] = node;
+                    }}
                     className={cx(
                       "relative min-w-0 flex-1 border-r border-[color:var(--wp-surface-card-border)] last:border-r-0",
                       isWeekend ? "bg-[color:var(--wp-surface-muted)]/40" : "bg-[color:var(--wp-surface-card)]",
@@ -193,8 +250,9 @@ export function CalendarTimeGrid({
                             key={h}
                             type="button"
                             onClick={() => handleSlotClick(ds, h)}
+                            onPointerDown={(event) => pointerDrag.onSlotPointerDown(event, ds)}
                             className={cx(
-                              "w-full shrink-0 border-b border-[color:var(--wp-surface-card-border)]/80 transition-colors active:bg-indigo-50/60",
+                              "w-full shrink-0 border-b border-[color:var(--wp-surface-card-border)]/80 transition-colors active:bg-[color:var(--cal-accent-light)]",
                               isPastHour ? "bg-[color:var(--wp-surface-muted)]/30" : "",
                             )}
                             style={{ height: pixelsPerHour }}
@@ -219,10 +277,25 @@ export function CalendarTimeGrid({
                           compact={compact}
                           layoutLeftPct={pos?.leftPct}
                           layoutWidthPct={pos?.widthPct}
+                          isDragging={pointerDrag.activeEventId === ev.id}
+                          suppressClick={pointerDrag.suppressClickEventId === ev.id}
                           onClick={() => onEventClick(ev)}
+                          onPointerDown={(event) => pointerDrag.onEventPointerDown(event, ev)}
+                          onResizePointerDown={(event) => pointerDrag.onResizePointerDown(event, ev)}
+                          fontTitleClass={fc.eventTitle}
+                          fontMetaClass={fc.eventMeta}
                         />
                       );
                     })}
+                    {pointerDrag.preview?.dateStr === ds ? (
+                      <div
+                        className="pointer-events-none absolute left-1 right-1 z-20 rounded-xl border border-dashed border-[color:var(--cal-accent)] bg-[color:var(--cal-accent-light)] shadow-sm opacity-90"
+                        style={{
+                          top: pointerDrag.preview.topPx,
+                          height: Math.max(pointerDrag.preview.heightPx, 12),
+                        }}
+                      />
+                    ) : null}
                   </div>
                 );
               })}

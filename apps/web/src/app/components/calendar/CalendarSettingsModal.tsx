@@ -379,7 +379,9 @@ export function CalendarSettingsModal({
                 <p className="text-xs font-medium text-slate-500 mt-1">Vyberte barvu z palety. Klik na stejnou barvu zruší výběr (výchozí barva typu).</p>
               </div>
               <div className="space-y-5">
-                {CALENDAR_EVENT_CATEGORIES.filter((c) => ["schuzka", "telefonat", "kafe", "mail"].includes(c.id)).map((cat) => {
+                {CALENDAR_EVENT_CATEGORIES.filter((c) =>
+                  ["schuzka", "telefonat", "kafe", "mail", "ukol", "priorita"].includes(c.id),
+                ).map((cat) => {
                   const current = form.eventTypeColors?.[cat.id] ?? cat.color;
                   return (
                     <div key={cat.id} className="flex flex-col sm:flex-row sm:items-center gap-3">

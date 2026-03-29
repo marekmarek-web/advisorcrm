@@ -1,5 +1,6 @@
 "use client";
 
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { User } from "lucide-react";
 import type { EventRow } from "@/app/actions/events";
 import { formatDateLocal } from "@/app/portal/calendar/date-utils";
@@ -20,7 +21,13 @@ export function CalendarEventBlock({
   compact,
   layoutLeftPct,
   layoutWidthPct,
+  fontTitleClass,
+  fontMetaClass,
+  isDragging,
+  suppressClick,
   onClick,
+  onPointerDown,
+  onResizePointerDown,
 }: {
   ev: EventRow;
   columnDateStr: string;
@@ -33,7 +40,14 @@ export function CalendarEventBlock({
   /** Horizontal position in day column when overlapping events (0–100). */
   layoutLeftPct?: number;
   layoutWidthPct?: number;
+  /** From calendar settings (`getCalendarGridFontClasses`). */
+  fontTitleClass?: string;
+  fontMetaClass?: string;
+  isDragging?: boolean;
+  suppressClick?: boolean;
   onClick: () => void;
+  onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onResizePointerDown?: (event: ReactPointerEvent<HTMLSpanElement>) => void;
 }) {
   if (formatDateLocal(new Date(ev.startAt)) !== columnDateStr) return null;
   if (ev.allDay) return null;
@@ -70,11 +84,13 @@ export function CalendarEventBlock({
       type="button"
       onClick={(e) => {
         e.stopPropagation();
+        if (suppressClick || isDragging) return;
         onClick();
       }}
+      onPointerDown={onPointerDown}
       className={`absolute z-10 overflow-hidden rounded-lg border border-l-[3px] p-1 text-left shadow-sm transition-transform active:scale-[0.97] ${
         useInlineColor ? "border-[color:var(--wp-border-strong)] text-[color:var(--wp-text)]" : style.tailwindClass
-      } ${isSelected ? "ring-2 ring-indigo-500 ring-offset-1 z-30" : ""}`}
+      } ${isSelected ? "z-30 ring-2 ring-[color:var(--cal-accent)] ring-offset-1" : ""} ${isDragging ? "opacity-40" : ""}`}
       style={{
         top: topPx + 1,
         height: Math.max(heightPx - 2, compact ? 18 : 20),
@@ -84,19 +100,30 @@ export function CalendarEventBlock({
       }}
       title={`${style.label}: ${ev.title}`}
     >
-      <h4 className={`font-bold leading-tight line-clamp-2 ${compact ? "text-[9px]" : "text-[10px]"}`}>{ev.title}</h4>
+      <h4
+        className={`font-bold leading-tight line-clamp-2 ${fontTitleClass ?? (compact ? "text-[9px]" : "text-[10px]")}`}
+      >
+        {ev.title}
+      </h4>
       {!compact ? (
-        <div className="mt-0.5 text-[9px] font-semibold opacity-80">
+        <div className={`mt-0.5 font-semibold opacity-80 ${fontMetaClass ?? "text-[9px]"}`}>
           {formatTime(start)}
           {ev.endAt ? ` – ${formatTime(end)}` : null}
         </div>
       ) : null}
       {showClient ? (
-        <div className="mt-0.5 flex items-center gap-0.5 truncate text-[9px] font-semibold opacity-90">
+        <div
+          className={`mt-0.5 flex items-center gap-0.5 truncate font-semibold opacity-90 ${fontMetaClass ?? "text-[9px]"}`}
+        >
           <User size={9} className="shrink-0" />
           <span className="truncate">{ev.contactName}</span>
         </div>
       ) : null}
+      <span
+        className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize touch-none"
+        onPointerDown={onResizePointerDown}
+        aria-hidden
+      />
     </button>
   );
 }
@@ -105,11 +132,13 @@ export function CalendarAllDayChips({
   events,
   columnDateStr,
   eventTypeColors,
+  chipTextClass,
   onEventClick,
 }: {
   events: EventRow[];
   columnDateStr: string;
   eventTypeColors?: Record<string, string>;
+  chipTextClass?: string;
   onEventClick: (ev: EventRow) => void;
 }) {
   const allDay = events.filter(
@@ -127,7 +156,7 @@ export function CalendarAllDayChips({
             key={ev.id}
             type="button"
             onClick={() => onEventClick(ev)}
-            className={`truncate rounded-md border border-l-[3px] px-1.5 py-0.5 text-left text-[9px] font-bold shadow-sm active:scale-[0.98] ${
+            className={`truncate rounded-md border border-l-[3px] px-1.5 py-0.5 text-left font-bold shadow-sm active:scale-[0.98] ${chipTextClass ?? "text-[9px]"} ${
               useInline ? "border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text)]" : style.tailwindClass
             }`}
             style={

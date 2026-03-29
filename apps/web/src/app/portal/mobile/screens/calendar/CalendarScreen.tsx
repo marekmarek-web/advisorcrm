@@ -301,6 +301,107 @@ export function CalendarScreen({
     setSelectedEventId(ev.id);
   }, []);
 
+  const handleEventMove = useCallback(
+    async (eventId: string, targetDateStr: string, startMinutesFromMidnight: number) => {
+      if (!canWriteCalendar) return;
+      const ev = events.find((item) => item.id === eventId);
+      if (!ev || ev.allDay) return;
+      const oldStart = new Date(ev.startAt);
+      const oldEnd = ev.endAt
+        ? new Date(ev.endAt)
+        : new Date(oldStart.getTime() + DEFAULT_EVENT_DURATION_MS);
+      const durationMs = Math.max(15 * 60_000, oldEnd.getTime() - oldStart.getTime());
+      const [yy, mm, dd] = targetDateStr.split("-").map(Number);
+      const newStart = new Date(
+        yy,
+        mm - 1,
+        dd,
+        Math.floor(startMinutesFromMidnight / 60),
+        startMinutesFromMidnight % 60,
+        0,
+        0,
+      );
+      const newEnd = new Date(newStart.getTime() + durationMs);
+      const delta = newStart.getTime() - oldStart.getTime();
+      try {
+        await updateEvent(eventId, {
+          startAt: newStart.toISOString(),
+          endAt: newEnd.toISOString(),
+          ...(ev.reminderAt != null && {
+            reminderAt: new Date(new Date(ev.reminderAt).getTime() + delta).toISOString(),
+          }),
+        });
+        showToast("Aktivita přesunuta", "success");
+        reload();
+      } catch {
+        showToast("Nepodařilo se přesunout aktivitu", "error");
+      }
+    },
+    [canWriteCalendar, events, reload, showToast],
+  );
+
+  const handleEventResize = useCallback(
+    async (eventId: string, targetDateStr: string, endMinutesFromMidnight: number) => {
+      if (!canWriteCalendar) return;
+      const ev = events.find((item) => item.id === eventId);
+      if (!ev || ev.allDay) return;
+      const start = new Date(ev.startAt);
+      const [yy, mm, dd] = targetDateStr.split("-").map(Number);
+      const proposedEnd = new Date(
+        yy,
+        mm - 1,
+        dd,
+        Math.floor(endMinutesFromMidnight / 60),
+        endMinutesFromMidnight % 60,
+        0,
+        0,
+      );
+      const minEnd = new Date(start.getTime() + 15 * 60_000);
+      const nextEnd = proposedEnd.getTime() <= minEnd.getTime() ? minEnd : proposedEnd;
+      try {
+        await updateEvent(eventId, { endAt: nextEnd.toISOString() });
+        showToast("Délka aktivity upravena", "success");
+        reload();
+      } catch {
+        showToast("Nepodařilo se upravit délku aktivity", "error");
+      }
+    },
+    [canWriteCalendar, events, reload, showToast],
+  );
+
+  const handleDragCreate = useCallback(
+    (dateStr: string, startMinutesFromMidnight: number, endMinutesFromMidnight: number) => {
+      if (!canWriteCalendar) return;
+      const [yy, mm, dd] = dateStr.split("-").map(Number);
+      const start = new Date(
+        yy,
+        mm - 1,
+        dd,
+        Math.floor(startMinutesFromMidnight / 60),
+        startMinutesFromMidnight % 60,
+        0,
+        0,
+      );
+      const end = new Date(
+        yy,
+        mm - 1,
+        dd,
+        Math.floor(endMinutesFromMidnight / 60),
+        endMinutesFromMidnight % 60,
+        0,
+        0,
+      );
+      setFormInitial({
+        ...EMPTY_FORM,
+        startAt: formatDateTimeLocal(start),
+        endAt: formatDateTimeLocal(end),
+      });
+      setSaveError(null);
+      setFormOpen(true);
+    },
+    [canWriteCalendar],
+  );
+
   const onSlotClick = useCallback(
     (dateStr: string, hour: number) => {
       if (!canWriteCalendar) return;
@@ -562,6 +663,9 @@ export function CalendarScreen({
               selectedEventId={selectedEventId}
               onSlotClick={onSlotClick}
               onEventClick={onEventClick}
+              onEventMove={handleEventMove}
+              onEventResize={handleEventResize}
+              onDragCreate={handleDragCreate}
               scrollSignal={scrollSignal}
             />
           ) : (
@@ -657,6 +761,7 @@ export function CalendarScreen({
           initial={formInitial}
           contacts={contacts}
           opportunities={opportunities}
+          eventTypeColors={settings?.eventTypeColors}
           saving={saving}
           saveError={saveError}
           onSave={handleSave}
