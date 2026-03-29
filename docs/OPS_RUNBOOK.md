@@ -67,6 +67,8 @@ Lokálně / po nasazení SQL ověřte z kořene repa (`DATABASE_URL` musí míř
 
 `pnpm db:verify-documents-schema`
 
+Pokud migrace chybí, serverová akce `listDocuments` může vrátit prázdný seznam a v logu označit pravděpodobný drift schématu — jde o měkký fallback; produkční stav je vždy po aplikaci SQL výše.
+
 ### 2) Env proměnné na Vercelu
 
 **Lokální `.env.local` se na Vercel nepřenáší** – každou proměnnou, kterou máš v `apps/web/.env.local` a kterou aplikace v produkci potřebuje, musíš znovu zadat v dashboardu (nebo `vercel env add`). U Adobe PDF Services viz tabulku **Document Processing (Adobe PDF Services)** níže.

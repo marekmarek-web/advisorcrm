@@ -49,15 +49,16 @@ function financialAnalysisTypeLabel(type: string): string {
 export type FinancialAnalysisListItem = {
   id: string;
   status: string;
-  createdAt: Date;
-  updatedAt: Date;
-  lastExportedAt: Date | null;
+  /** ISO string or Date — po přenosu z RSC bývá řetězec. */
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  lastExportedAt: Date | string | null;
   contactId: string | null;
   householdId: string | null;
   clientName?: string | null;
   /** Phase 7: link to company and last refresh from shared facts */
   linkedCompanyId?: string | null;
-  lastRefreshedFromSharedAt?: Date | null;
+  lastRefreshedFromSharedAt?: Date | string | null;
   /** 0–100, derived from payload.currentStep for list display */
   progress?: number;
   /** Label for analysis type/focus (e.g. "Komplexní finanční analýza") */

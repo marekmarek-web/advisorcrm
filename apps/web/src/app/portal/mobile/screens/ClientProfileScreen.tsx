@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Phone,
   Mail,
@@ -340,10 +341,21 @@ function PipelineTab({ pipeline }: { pipeline: StageWithOpportunities[] }) {
 /* ------------------------------------------------------------------ */
 
 function DocumentsTab({ documents }: { documents: DocumentRow[] }) {
+  const router = useRouter();
   if (documents.length === 0) {
     return (
       <MobileSection title="Dokumenty">
-        <EmptyState title="Žádné dokumenty" description="Klient nemá nahrané dokumenty." />
+        <EmptyState
+          title="Žádné dokumenty"
+          description="Nahrajte soubor v knihovně dokumentů a přiřaďte ho klientovi, nebo otevřete knihovnu."
+        />
+        <button
+          type="button"
+          onClick={() => router.push("/portal/documents")}
+          className="mt-3 w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800"
+        >
+          Otevřít knihovnu dokumentů
+        </button>
       </MobileSection>
     );
   }
@@ -361,7 +373,11 @@ function DocumentsTab({ documents }: { documents: DocumentRow[] }) {
     <MobileSection title={`Dokumenty (${documents.length})`}>
       {documents.map((doc) => (
         <MobileCard key={doc.id} className="p-3.5">
-          <div className="flex items-start gap-3">
+          <button
+            type="button"
+            className="flex w-full items-start gap-3 text-left"
+            onClick={() => router.push(`/portal/documents?doc=${encodeURIComponent(doc.id)}`)}
+          >
             <span className="text-2xl flex-shrink-0">{getDocIcon(doc.mimeType)}</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">{doc.name}</p>
@@ -384,7 +400,7 @@ function DocumentsTab({ documents }: { documents: DocumentRow[] }) {
                 </span>
               </div>
             </div>
-          </div>
+          </button>
         </MobileCard>
       ))}
     </MobileSection>

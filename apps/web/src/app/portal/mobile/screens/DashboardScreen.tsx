@@ -500,8 +500,9 @@ function ClientCareWidget({
 }
 
 function FinancialAnalysesWidget({ analyses }: { analyses: FinancialAnalysisListItem[] }) {
-  const formatAgo = (d: Date) => {
-    const diff = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+  const formatAgo = (d: Date | string) => {
+    const t = new Date(d).getTime();
+    const diff = Math.floor((Date.now() - t) / 86400000);
     if (diff === 0) return "Dnes";
     if (diff === 1) return "Včera";
     if (diff < 7) return `Před ${diff} dny`;

@@ -289,6 +289,13 @@ export function HouseholdDetailScreen({
                 <BarChart2 size={11} /> {analyses.length} analýz
               </span>
             </div>
+            <button
+              type="button"
+              onClick={() => router.push("/portal/documents")}
+              className="mt-3 text-[11px] font-bold text-indigo-200 underline-offset-2 hover:underline min-h-[44px] text-left"
+            >
+              Otevřít knihovnu dokumentů
+            </button>
           </div>
         </div>
       </div>
@@ -373,7 +380,16 @@ export function HouseholdDetailScreen({
       {tab === "deals" ? (
         <MobileSection title={`Obchodní příležitosti (${opportunities.length})`}>
           {opportunities.length === 0 ? (
-            <EmptyState title="Žádné navázané obchody" description="Domácnost nemá obchodní příležitosti." />
+            <div className="space-y-3">
+              <EmptyState title="Žádné navázané obchody" description="Obchody spravujete v pipeline — můžete je navázat na členy domácnosti." />
+              <button
+                type="button"
+                onClick={() => router.push("/portal/pipeline")}
+                className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800"
+              >
+                Otevřít obchodní pipeline
+              </button>
+            </div>
           ) : (
             opportunities.map((opp) => (
               <MobileCard key={opp.id} className="p-3.5">
@@ -396,7 +412,16 @@ export function HouseholdDetailScreen({
       {tab === "analyses" ? (
         <MobileSection title={`Finanční analýzy (${analyses.length})`}>
           {analyses.length === 0 ? (
-            <EmptyState title="Žádné analýzy" description="Domácnost nemá finanční analýzy." />
+            <div className="space-y-3">
+              <EmptyState title="Žádné analýzy" description="Finanční analýzy založíte v sekci Analýzy portálu." />
+              <button
+                type="button"
+                onClick={() => router.push("/portal/analyses")}
+                className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800"
+              >
+                Přejít na analýzy
+              </button>
+            </div>
           ) : (
             analyses.map((analysis) => {
               const progress = analysis.progress ?? 0;

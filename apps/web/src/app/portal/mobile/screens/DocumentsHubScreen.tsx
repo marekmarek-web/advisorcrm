@@ -47,6 +47,7 @@ import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 import { humanizeAdvisorActionError } from "@/lib/ui/humanize-action-error";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import { isIosWebKitPdfEmbedUnreliable, openDocumentUrlInNewTab } from "@/lib/browser/pdf-document-open";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -404,14 +405,49 @@ function DocumentDetailPanel({
           Akce
         </p>
         <div className="space-y-2">
-          <a
-            href={downloadHref}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800 flex items-center justify-center gap-2"
-          >
-            <Download size={14} /> Otevřít / stáhnout
-          </a>
+          {doc.mimeType === "application/pdf" ? (
+            <>
+              <button
+                type="button"
+                onClick={() => openDocumentUrlInNewTab(downloadHref)}
+                className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800 flex items-center justify-center gap-2"
+              >
+                <Download size={14} /> Otevřít PDF (nový panel)
+              </button>
+              {isIosWebKitPdfEmbedUnreliable() ? (
+                <p className="text-xs text-[color:var(--wp-text-secondary)] rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2">
+                  Na iOS Safari použijte tlačítko výše — vložený náhled PDF v aplikaci bývá nespolehlivý.
+                </p>
+              ) : (
+                <details className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] overflow-hidden">
+                  <summary className="min-h-[44px] cursor-pointer list-none px-3 py-2.5 text-sm font-bold text-[color:var(--wp-text-secondary)] flex items-center gap-2">
+                    <Eye size={14} /> Náhled v aplikaci
+                  </summary>
+                  <div className="border-t border-[color:var(--wp-surface-card-border)] px-2 pb-2">
+                    <div className="relative mx-auto mt-2 aspect-[210/297] max-h-[min(55vh,520px)] w-full overflow-hidden rounded-lg bg-[color:var(--wp-surface-card)]">
+                      <iframe
+                        title="Náhled PDF"
+                        src={`${downloadHref}#view=FitH`}
+                        className="absolute inset-0 h-full w-full border-0"
+                      />
+                    </div>
+                    <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-2 px-1">
+                      Pokud je rámeček prázdný, použijte „Otevřít PDF (nový panel)“.
+                    </p>
+                  </div>
+                </details>
+              )}
+            </>
+          ) : (
+            <a
+              href={downloadHref}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800 flex items-center justify-center gap-2"
+            >
+              <Download size={14} /> Otevřít / stáhnout
+            </a>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -578,8 +614,11 @@ function UploadSheet({
 
 export function DocumentsHubScreen({
   deviceClass = "phone",
+  hideScreenFab = false,
 }: {
   deviceClass?: DeviceClass;
+  /** Skryje lokální FAB — používá se se spodní lištou s centrálním +. */
+  hideScreenFab?: boolean;
 }) {
   const { supportsMultiPageScan } = useCaptureCapabilities();
   const searchParams = useSearchParams();
@@ -756,7 +795,7 @@ export function DocumentsHubScreen({
         <div className="px-4 pt-8">
           <EmptyState
             title="Žádné dokumenty"
-            description="Nahrajte první dokument přes + tlačítko."
+            description="Nahrajte první dokument přes tlačítko + v dolní liště (rychlé akce)."
           />
         </div>
       ) : null}
@@ -802,8 +841,9 @@ export function DocumentsHubScreen({
         </div>
       )}
 
-      {/* FAB */}
-      <FloatingActionButton onClick={() => setUploadOpen(true)} label="Nahrát dokument" />
+      {!hideScreenFab ? (
+        <FloatingActionButton onClick={() => setUploadOpen(true)} label="Nahrát dokument" />
+      ) : null}
 
       {/* Upload sheet */}
       <UploadSheet

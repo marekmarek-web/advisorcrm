@@ -48,36 +48,48 @@ const documentSelectFields = {
 export async function listDocuments(): Promise<(DocumentRow & { contactName?: string | null })[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select({
-      ...documentSelectFields,
-      contactFirstName: contacts.firstName,
-      contactLastName: contacts.lastName,
-    })
-    .from(documents)
-    .leftJoin(contacts, eq(documents.contactId, contacts.id))
-    .where(eq(documents.tenantId, auth.tenantId))
-    .orderBy(desc(documents.createdAt))
-    .limit(200);
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    mimeType: r.mimeType,
-    tags: r.tags,
-    contractId: r.contractId,
-    visibleToClient: r.visibleToClient,
-    createdAt: r.createdAt,
-    uploadSource: r.uploadSource,
-    processingStatus: r.processingStatus,
-    processingStage: r.processingStage,
-    aiInputSource: r.aiInputSource,
-    pageCount: r.pageCount,
-    isScanLike: r.isScanLike,
-    sizeBytes: r.sizeBytes ?? null,
-    contactName: r.contactFirstName && r.contactLastName
-      ? `${r.contactFirstName} ${r.contactLastName}`
-      : r.contactFirstName || r.contactLastName || null,
-  }));
+  try {
+    const rows = await db
+      .select({
+        ...documentSelectFields,
+        contactFirstName: contacts.firstName,
+        contactLastName: contacts.lastName,
+      })
+      .from(documents)
+      .leftJoin(contacts, eq(documents.contactId, contacts.id))
+      .where(eq(documents.tenantId, auth.tenantId))
+      .orderBy(desc(documents.createdAt))
+      .limit(200);
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      mimeType: r.mimeType,
+      tags: r.tags,
+      contractId: r.contractId,
+      visibleToClient: r.visibleToClient,
+      createdAt: r.createdAt,
+      uploadSource: r.uploadSource,
+      processingStatus: r.processingStatus,
+      processingStage: r.processingStage,
+      aiInputSource: r.aiInputSource,
+      pageCount: r.pageCount,
+      isScanLike: r.isScanLike,
+      sizeBytes: r.sizeBytes ?? null,
+      contactName: r.contactFirstName && r.contactLastName
+        ? `${r.contactFirstName} ${r.contactLastName}`
+        : r.contactFirstName || r.contactLastName || null,
+    }));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const likelySchemaDrift =
+      msg.includes("does not exist") || msg.includes("column") || msg.includes("42703");
+    console.error("[listDocuments] query failed:", err);
+    if (likelySchemaDrift) {
+      console.error("[listDocuments] Pravděpodobně chybí migrace tabulky documents — viz pnpm db:verify-documents-schema a OPS_RUNBOOK.");
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function getDocumentsForContact(contactId: string): Promise<DocumentRow[]> {

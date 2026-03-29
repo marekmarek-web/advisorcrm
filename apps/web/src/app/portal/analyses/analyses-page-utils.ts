@@ -1,7 +1,7 @@
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 
-export function formatUpdated(updatedAt: Date): string {
-  const d = new Date(updatedAt);
+export function formatUpdated(updatedAt: Date | string): string {
+  const d = updatedAt instanceof Date ? updatedAt : new Date(updatedAt);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));

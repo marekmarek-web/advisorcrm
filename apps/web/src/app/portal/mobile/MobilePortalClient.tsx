@@ -793,7 +793,7 @@ export function MobilePortalClient({
       );
     }
     if (onScanRoute) return <ScanPage />;
-    if (onDocumentsRoute) return <DocumentsHubScreen deviceClass={deviceClass} />;
+    if (onDocumentsRoute) return <DocumentsHubScreen deviceClass={deviceClass} hideScreenFab />;
     if (onProductionRoute) return <ProductionScreen deviceClass={deviceClass} />;
     if (onToolsRoute) {
       return (

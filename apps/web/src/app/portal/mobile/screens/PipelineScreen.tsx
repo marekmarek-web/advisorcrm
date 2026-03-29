@@ -14,6 +14,7 @@ import {
   Ban,
 } from "lucide-react";
 import { getPipelineColumnTheme } from "@/lib/pipeline/column-themes";
+import { getPipelineStageSubtitle } from "@/lib/pipeline/pipeline-stage-subtitles";
 import type { StageWithOpportunities, OpportunityCard } from "@/app/actions/pipeline";
 import {
   updateOpportunity,
@@ -426,10 +427,45 @@ export function PipelineScreen({
           <p className="text-xs text-[color:var(--wp-text-secondary)]">případů</p>
         </MobileCard>
         <MobileCard className="flex-1 p-3 text-center">
-          <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Hodnota</p>
-          <p className="text-lg font-black text-[color:var(--wp-text)] mt-0.5">{formatValue(String(totalValue))}</p>
-          <p className="text-xs text-[color:var(--wp-text-secondary)]">celkem</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Potenciál</p>
+          <p className="text-lg font-black text-[color:var(--wp-text)] mt-0.5">
+            {new Intl.NumberFormat("cs-CZ", {
+              style: "currency",
+              currency: "CZK",
+              maximumFractionDigits: 0,
+            }).format(totalValue)}
+          </p>
+          <p className="text-xs text-[color:var(--wp-text-secondary)]">součet očekávaných hodnot</p>
         </MobileCard>
+      </div>
+
+      <div className="-mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 px-1 w-max max-w-full">
+          {pipeline.map((stage, idx) => {
+            const theme = getPipelineColumnTheme(stage.sortOrder);
+            const subtitle = getPipelineStageSubtitle(idx);
+            return (
+              <div
+                key={stage.id}
+                className={cx(
+                  "shrink-0 rounded-xl border bg-[color:var(--wp-surface-card)] px-3 py-2.5 min-w-[148px] max-w-[220px] shadow-sm",
+                  "border-[color:var(--wp-surface-card-border)] border-l-4",
+                  theme.mobileBorderL
+                )}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] truncate">
+                  {stage.name}
+                </p>
+                {subtitle ? (
+                  <p className="text-[9px] font-bold text-[color:var(--wp-text-secondary)] mt-0.5 leading-snug line-clamp-2">
+                    {subtitle}
+                  </p>
+                ) : null}
+                <p className="text-base font-black text-[color:var(--wp-text)] mt-1.5">{stage.opportunities.length}</p>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className={cx("grid gap-3", isTablet ? "grid-cols-2" : "grid-cols-1")}>
