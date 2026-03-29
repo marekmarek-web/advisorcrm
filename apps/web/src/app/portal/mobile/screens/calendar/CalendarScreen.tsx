@@ -15,9 +15,11 @@ import {
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
 import {
   DEFAULT_EVENT_DURATION_MS,
+  formatDateDisplayCsFromYyyyMmDd,
   formatDateLocal,
   formatDateTimeLocal,
   localDateTimeInputToUtcIso,
+  reminderUtcIsoFromLocalStart,
 } from "@/app/portal/calendar/date-utils";
 import {
   DEFAULT_SETTINGS,
@@ -41,6 +43,7 @@ import { CalendarSettingsWizard } from "./CalendarSettingsWizard";
 import { CalendarHeader } from "./CalendarHeader";
 import { CalendarTimeGrid } from "./CalendarTimeGrid";
 import {
+  MOBILE_CALENDAR_SHEET_BOTTOM_INSET,
   buildEventsByDate,
   filterEventsByDateMap,
   startOfDayLocal,
@@ -72,11 +75,6 @@ function eventToFormData(ev: EventRow): EventFormData & { id: string } {
     notes: ev.notes ?? "",
     meetingLink: ev.meetingLink ?? "",
   };
-}
-
-function reminderDate(startAt: string, minutes: number): string | null {
-  if (!minutes || !startAt) return null;
-  return new Date(new Date(startAt).getTime() - minutes * 60_000).toISOString();
 }
 
 const UNDO_TIMEOUT_MS = 5_000;
@@ -351,7 +349,7 @@ export function CalendarScreen({
           setSaveError("Neplatný začátek události.");
           return;
         }
-        const reminderAtIso = reminderDate(form.startAt, form.reminderMinutes);
+        const reminderAtIso = reminderUtcIsoFromLocalStart(form.startAt, form.reminderMinutes);
         if (id) {
           await updateEvent(id, {
             title: form.title,
@@ -492,7 +490,7 @@ export function CalendarScreen({
   const showGrid = view !== "agenda";
 
   return (
-    <div className="flex min-h-[50vh] flex-1 flex-col pb-20">
+    <div className="flex min-h-[50vh] flex-1 flex-col pb-[calc(112px+var(--safe-area-bottom))]">
       <CalendarHeader
         anchorDate={anchorDate}
         view={view}
@@ -617,7 +615,9 @@ export function CalendarScreen({
         query={searchQuery}
         onQueryChange={setSearchQuery}
         results={searchResults}
-        rangeLabel={`${visibleDayKeys[0] ?? ""} – ${visibleDayKeys[visibleDayKeys.length - 1] ?? ""}`}
+        rangeLabel={`${visibleDayKeys[0] ? formatDateDisplayCsFromYyyyMmDd(visibleDayKeys[0]) : ""} – ${
+          visibleDayKeys.length ? formatDateDisplayCsFromYyyyMmDd(visibleDayKeys[visibleDayKeys.length - 1]) : ""
+        }`}
         onPickEvent={(ev) => {
           onEventClick(ev);
           setSearchOpen(false);
@@ -655,6 +655,7 @@ export function CalendarScreen({
           saving={saving}
           saveError={saveError}
           onSave={handleSave}
+          sheetBottomInset={dc === "phone" ? MOBILE_CALENDAR_SHEET_BOTTOM_INSET : undefined}
           onClose={() => {
             setFormOpen(false);
             setFormInitial(null);

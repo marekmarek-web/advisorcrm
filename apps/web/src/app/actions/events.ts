@@ -9,11 +9,21 @@ import { db } from "db";
 import { events, contacts, tasks } from "db";
 import { eq, and, gte, lt, asc, desc, sql } from "db";
 import { logActivity } from "./activity";
-import { DEFAULT_EVENT_DURATION_MS } from "@/app/portal/calendar/date-utils";
+import {
+  CALENDAR_ALL_DAY_TIMEZONE,
+  DEFAULT_EVENT_DURATION_MS,
+  addCalendarDaysYyyyMmDd,
+  formatCalendarDateInTimeZone,
+  parseInstantFromClientPayload,
+} from "@/app/portal/calendar/date-utils";
 
 function instantMs(v: string | Date | null | undefined): number | null {
   if (v == null || v === "") return null;
-  const t = new Date(v).getTime();
+  if (v instanceof Date) {
+    const t = v.getTime();
+    return Number.isNaN(t) ? null : t;
+  }
+  const t = parseInstantFromClientPayload(v).getTime();
   return Number.isNaN(t) ? null : t;
 }
 
@@ -258,8 +268,10 @@ export async function createEvent(form: {
     if (!member || member.tenantId !== auth.tenantId) throw new Error("Forbidden");
     assignee = form.assignedTo;
   }
-  const startAt = new Date(form.startAt);
-  const endAt = form.endAt ? new Date(form.endAt) : new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
+  const startAt = parseInstantFromClientPayload(form.startAt);
+  const endAt = form.endAt
+    ? parseInstantFromClientPayload(form.endAt)
+    : new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
   let googleEventId: string | null = null;
   let googleCalendarId: string | null = null;
   try {
@@ -267,14 +279,18 @@ export async function createEvent(form: {
     const allDay = form.allDay ?? false;
     const startIso = startAt.toISOString();
     const endIso = endAt.toISOString();
+    const tz = CALENDAR_ALL_DAY_TIMEZONE;
+    const startDateStr = formatCalendarDateInTimeZone(startAt, tz);
+    const endDateCivil = formatCalendarDateInTimeZone(endAt, tz);
+    const endDateExclusive = addCalendarDaysYyyyMmDd(endDateCivil, 1);
     const googleEvent = await createCalendarEvent(valid.accessToken, valid.calendarId, {
       summary: form.title.trim(),
       description: form.notes?.trim() || undefined,
       location: form.location?.trim() || undefined,
       ...(allDay
         ? {
-            start: { date: startIso.slice(0, 10) },
-            end: { date: endIso.slice(0, 10) },
+            start: { date: startDateStr, timeZone: tz },
+            end: { date: endDateExclusive, timeZone: tz },
           }
         : {
             start: { dateTime: startIso },
@@ -296,7 +312,7 @@ export async function createEvent(form: {
       endAt,
       allDay: form.allDay ?? false,
       location: form.location?.trim() || null,
-      reminderAt: form.reminderAt ? new Date(form.reminderAt) : null,
+      reminderAt: form.reminderAt ? parseInstantFromClientPayload(form.reminderAt) : null,
       contactId: form.contactId || null,
       opportunityId: form.opportunityId || null,
       status: form.status?.trim() || null,
@@ -351,18 +367,32 @@ export async function updateEvent(
     try {
       const valid = await getValidAccessToken(auth.userId, auth.tenantId);
       const calendarId = existing.googleCalendarId ?? valid.calendarId;
-      const patch: { summary?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; description?: string; location?: string } = {};
+      const patch: {
+        summary?: string;
+        start?: { dateTime?: string; date?: string; timeZone?: string };
+        end?: { dateTime?: string; date?: string; timeZone?: string };
+        description?: string;
+        location?: string;
+      } = {};
       if (form.title != null) patch.summary = form.title.trim();
       if (form.notes != null) patch.description = form.notes.trim() || undefined;
       if (form.location != null) patch.location = form.location.trim() || undefined;
       if (form.startAt != null || form.endAt != null || form.allDay != null) {
-        const startAt = form.startAt ? new Date(form.startAt) : null;
-        const endAt = form.endAt ? new Date(form.endAt) : startAt ? new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS) : null;
+        const startAt = form.startAt ? parseInstantFromClientPayload(form.startAt) : null;
+        const endAt = form.endAt
+          ? parseInstantFromClientPayload(form.endAt)
+          : startAt
+            ? new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS)
+            : null;
         const allDay = form.allDay ?? false;
+        const tz = CALENDAR_ALL_DAY_TIMEZONE;
         if (startAt && endAt) {
           if (allDay) {
-            patch.start = { date: startAt.toISOString().slice(0, 10) };
-            patch.end = { date: endAt.toISOString().slice(0, 10) };
+            const startDateStr = formatCalendarDateInTimeZone(startAt, tz);
+            const endDateCivil = formatCalendarDateInTimeZone(endAt, tz);
+            const endDateExclusive = addCalendarDaysYyyyMmDd(endDateCivil, 1);
+            patch.start = { date: startDateStr, timeZone: tz };
+            patch.end = { date: endDateExclusive, timeZone: tz };
           } else {
             patch.start = { dateTime: startAt.toISOString() };
             patch.end = { dateTime: endAt.toISOString() };
@@ -383,14 +413,14 @@ export async function updateEvent(
     .set({
       ...(form.title != null && { title: form.title.trim() }),
       ...(form.eventType != null && { eventType: form.eventType }),
-      ...(form.startAt != null && { startAt: new Date(form.startAt) }),
-      ...(form.endAt != null && { endAt: new Date(form.endAt) }),
+      ...(form.startAt != null && { startAt: parseInstantFromClientPayload(form.startAt) }),
+      ...(form.endAt != null && { endAt: parseInstantFromClientPayload(form.endAt) }),
       ...(form.allDay != null && { allDay: form.allDay }),
       ...(form.location != null && { location: form.location.trim() || null }),
       ...(form.contactId != null && { contactId: form.contactId || null }),
       ...(form.opportunityId != null && { opportunityId: form.opportunityId || null }),
       ...(form.reminderAt !== undefined && {
-        reminderAt: form.reminderAt ? new Date(form.reminderAt) : null,
+        reminderAt: form.reminderAt ? parseInstantFromClientPayload(form.reminderAt) : null,
       }),
       ...(scheduleChanged && { reminderNotifiedAt: null }),
       ...(form.status != null && { status: form.status.trim() || null }),
@@ -436,7 +466,7 @@ export async function createFollowUp(
     if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
     if (type === "event") {
-      const startAt = form.startAt ? new Date(form.startAt) : new Date();
+      const startAt = form.startAt ? parseInstantFromClientPayload(form.startAt) : new Date();
       const endAt = new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MS);
       const [row] = await db
         .insert(events)

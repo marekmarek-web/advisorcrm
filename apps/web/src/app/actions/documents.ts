@@ -2,9 +2,10 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
+import { isPostgresUndefinedColumnError } from "@/lib/db/postgres-errors";
 import { db } from "db";
 import { documents, contacts } from "db";
-import { eq, and, desc } from "db";
+import { eq, and, desc, sql } from "db";
 import { createAdminClient } from "@/lib/supabase/server";
 import { logActivity } from "./activity";
 import { logAudit } from "@/lib/audit";
@@ -45,21 +46,66 @@ const documentSelectFields = {
   sizeBytes: documents.sizeBytes,
 } as const;
 
-export async function listDocuments(): Promise<(DocumentRow & { contactName?: string | null })[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "documents:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select({
-      ...documentSelectFields,
-      contactFirstName: contacts.firstName,
-      contactLastName: contacts.lastName,
-    })
-    .from(documents)
-    .leftJoin(contacts, eq(documents.contactId, contacts.id))
-    .where(eq(documents.tenantId, auth.tenantId))
-    .orderBy(desc(documents.createdAt))
-    .limit(200);
-  return rows.map((r) => ({
+/** Same as documentSelectFields but omits `upload_source` for DBs before migrations. */
+const documentSelectFieldsLegacy = {
+  id: documents.id,
+  name: documents.name,
+  mimeType: documents.mimeType,
+  tags: documents.tags,
+  contractId: documents.contractId,
+  visibleToClient: documents.visibleToClient,
+  createdAt: documents.createdAt,
+  processingStatus: documents.processingStatus,
+  processingStage: documents.processingStage,
+  aiInputSource: documents.aiInputSource,
+  pageCount: documents.pageCount,
+  isScanLike: documents.isScanLike,
+  sizeBytes: documents.sizeBytes,
+} as const;
+
+let documentsTableHasUploadSourceColumn: boolean | null = null;
+
+async function documentsHasUploadSourceColumn(): Promise<boolean> {
+  if (documentsTableHasUploadSourceColumn !== null) return documentsTableHasUploadSourceColumn;
+  try {
+    const r = await db.execute(sql`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'documents' AND column_name = 'upload_source'
+      ) AS col_exists
+    `);
+    const rows = Array.isArray(r) ? r : (r as { rows?: { col_exists: boolean }[] }).rows ?? [];
+    const first = rows[0] as { col_exists: boolean } | undefined;
+    documentsTableHasUploadSourceColumn = Boolean(first?.col_exists);
+    return documentsTableHasUploadSourceColumn;
+  } catch {
+    documentsTableHasUploadSourceColumn = true;
+    return true;
+  }
+}
+
+function mapListRow(
+  r: {
+    id: string;
+    name: string;
+    mimeType: string | null;
+    tags: string[] | null;
+    contractId: string | null;
+    visibleToClient: boolean | null;
+    createdAt: Date;
+    uploadSource?: string | null;
+    processingStatus: string | null;
+    processingStage: string | null;
+    aiInputSource: string | null;
+    pageCount: number | null;
+    isScanLike: boolean | null;
+    sizeBytes: number | null;
+    contactFirstName: string | null;
+    contactLastName: string | null;
+  },
+  includeUploadSource: boolean
+): DocumentRow & { contactName?: string | null } {
+  return {
     id: r.id,
     name: r.name,
     mimeType: r.mimeType,
@@ -67,7 +113,7 @@ export async function listDocuments(): Promise<(DocumentRow & { contactName?: st
     contractId: r.contractId,
     visibleToClient: r.visibleToClient,
     createdAt: r.createdAt,
-    uploadSource: r.uploadSource,
+    uploadSource: includeUploadSource ? (r.uploadSource ?? null) : null,
     processingStatus: r.processingStatus,
     processingStage: r.processingStage,
     aiInputSource: r.aiInputSource,
@@ -77,35 +123,90 @@ export async function listDocuments(): Promise<(DocumentRow & { contactName?: st
     contactName: r.contactFirstName && r.contactLastName
       ? `${r.contactFirstName} ${r.contactLastName}`
       : r.contactFirstName || r.contactLastName || null,
-  }));
+  };
+}
+
+export async function listDocuments(): Promise<(DocumentRow & { contactName?: string | null })[]> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "documents:read")) throw new Error("Forbidden");
+  const hasUploadSource = await documentsHasUploadSourceColumn();
+  const fields = hasUploadSource ? documentSelectFields : documentSelectFieldsLegacy;
+  const rows = await db
+    .select({
+      ...fields,
+      contactFirstName: contacts.firstName,
+      contactLastName: contacts.lastName,
+    })
+    .from(documents)
+    .leftJoin(contacts, eq(documents.contactId, contacts.id))
+    .where(eq(documents.tenantId, auth.tenantId))
+    .orderBy(desc(documents.createdAt))
+    .limit(200);
+  return rows.map((r) => mapListRow(r, hasUploadSource));
 }
 
 export async function getDocumentsForContact(contactId: string): Promise<DocumentRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:read")) throw new Error("Forbidden");
+  const hasUploadSource = await documentsHasUploadSourceColumn();
+  const fields = hasUploadSource ? documentSelectFields : documentSelectFieldsLegacy;
   const rows = await db
-    .select(documentSelectFields)
+    .select(fields)
     .from(documents)
     .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.contactId, contactId)));
-  return rows;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    mimeType: r.mimeType,
+    tags: r.tags,
+    contractId: r.contractId,
+    visibleToClient: r.visibleToClient,
+    createdAt: r.createdAt,
+    uploadSource: hasUploadSource ? (r as unknown as { uploadSource: string | null }).uploadSource : null,
+    processingStatus: r.processingStatus,
+    processingStage: r.processingStage,
+    aiInputSource: r.aiInputSource,
+    pageCount: r.pageCount,
+    isScanLike: r.isScanLike,
+    sizeBytes: r.sizeBytes ?? null,
+  }));
 }
 
 export async function getDocumentsForOpportunity(opportunityId: string): Promise<DocumentRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:read")) throw new Error("Forbidden");
+  const hasUploadSource = await documentsHasUploadSourceColumn();
+  const fields = hasUploadSource ? documentSelectFields : documentSelectFieldsLegacy;
   const rows = await db
-    .select(documentSelectFields)
+    .select(fields)
     .from(documents)
     .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.opportunityId, opportunityId)));
-  return rows;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    mimeType: r.mimeType,
+    tags: r.tags,
+    contractId: r.contractId,
+    visibleToClient: r.visibleToClient,
+    createdAt: r.createdAt,
+    uploadSource: hasUploadSource ? (r as unknown as { uploadSource: string | null }).uploadSource : null,
+    processingStatus: r.processingStatus,
+    processingStage: r.processingStage,
+    aiInputSource: r.aiInputSource,
+    pageCount: r.pageCount,
+    isScanLike: r.isScanLike,
+    sizeBytes: r.sizeBytes ?? null,
+  }));
 }
 
 /** Pro Client Zone – jen dokumenty s visibleToClient true. */
 export async function getDocumentsForClient(contactId: string): Promise<DocumentRow[]> {
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || !auth.contactId || auth.contactId !== contactId) throw new Error("Forbidden");
+  const hasUploadSource = await documentsHasUploadSourceColumn();
+  const fields = hasUploadSource ? documentSelectFields : documentSelectFieldsLegacy;
   const rows = await db
-    .select(documentSelectFields)
+    .select(fields)
     .from(documents)
     .where(
       and(
@@ -114,7 +215,22 @@ export async function getDocumentsForClient(contactId: string): Promise<Document
         eq(documents.visibleToClient, true)
       )
     );
-  return rows;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    mimeType: r.mimeType,
+    tags: r.tags,
+    contractId: r.contractId,
+    visibleToClient: r.visibleToClient,
+    createdAt: r.createdAt,
+    uploadSource: hasUploadSource ? (r as unknown as { uploadSource: string | null }).uploadSource : null,
+    processingStatus: r.processingStatus,
+    processingStage: r.processingStage,
+    aiInputSource: r.aiInputSource,
+    pageCount: r.pageCount,
+    isScanLike: r.isScanLike,
+    sizeBytes: r.sizeBytes ?? null,
+  }));
 }
 
 export async function uploadDocument(
@@ -143,24 +259,41 @@ export async function uploadDocument(
       : uploadError.message;
     throw new Error(msg);
   }
-  const [row] = await db
-    .insert(documents)
-    .values({
-      tenantId: auth.tenantId,
-      contactId: contactId || null,
-      contractId: options.contractId || null,
-      opportunityId: options.opportunityId || null,
-      name,
-      storagePath: path,
-      tags: options.tags?.length ? options.tags : null,
-      mimeType: file.type || null,
-      sizeBytes: file.size,
-      visibleToClient: options.visibleToClient ?? false,
-      uploadSource: options.uploadSource ?? "web",
-      uploadedBy: auth.userId,
-    })
-    .returning({ id: documents.id });
-  const newId = row?.id ?? null;
+  const hasUploadSource = await documentsHasUploadSourceColumn();
+  const baseInsert = {
+    tenantId: auth.tenantId,
+    contactId: contactId || null,
+    contractId: options.contractId || null,
+    opportunityId: options.opportunityId || null,
+    name,
+    storagePath: path,
+    tags: options.tags?.length ? options.tags : null,
+    mimeType: file.type || null,
+    sizeBytes: file.size,
+    visibleToClient: options.visibleToClient ?? false,
+    uploadedBy: auth.userId,
+  };
+  let newId: string | null = null;
+  try {
+    const [row] = hasUploadSource
+      ? await db
+          .insert(documents)
+          .values({
+            ...baseInsert,
+            uploadSource: options.uploadSource ?? "web",
+          })
+          .returning({ id: documents.id })
+      : await db.insert(documents).values(baseInsert).returning({ id: documents.id });
+    newId = row?.id ?? null;
+  } catch (e) {
+    if (hasUploadSource && isPostgresUndefinedColumnError(e, "upload_source")) {
+      documentsTableHasUploadSourceColumn = false;
+      const [row] = await db.insert(documents).values(baseInsert).returning({ id: documents.id });
+      newId = row?.id ?? null;
+    } else {
+      throw e;
+    }
+  }
   if (newId) {
     try { await logActivity("document", newId, "upload", { contactId, opportunityId: options.opportunityId, name }); } catch {}
     try {
@@ -280,25 +413,38 @@ export async function clientUploadDocument(formData: FormData) {
     throw new Error(uploadError.message || "Nahrání souboru se nezdařilo.");
   }
 
-  const [row] = await db
-    .insert(documents)
-    .values({
-      tenantId: auth.tenantId,
-      contactId: auth.contactId,
-      contractId: null,
-      opportunityId: null,
-      name: name || file.name,
-      storagePath,
-      tags: tags.length ? tags : null,
-      mimeType: file.type || null,
-      sizeBytes: file.size,
-      visibleToClient: true,
-      uploadSource,
-      uploadedBy: auth.userId,
-    })
-    .returning({ id: documents.id });
-
-  const documentId = row?.id ?? null;
+  const hasUploadSource = await documentsHasUploadSourceColumn();
+  const baseInsert = {
+    tenantId: auth.tenantId,
+    contactId: auth.contactId,
+    contractId: null,
+    opportunityId: null,
+    name: name || file.name,
+    storagePath,
+    tags: tags.length ? tags : null,
+    mimeType: file.type || null,
+    sizeBytes: file.size,
+    visibleToClient: true,
+    uploadedBy: auth.userId,
+  };
+  let documentId: string | null = null;
+  try {
+    const [row] = hasUploadSource
+      ? await db
+          .insert(documents)
+          .values({ ...baseInsert, uploadSource })
+          .returning({ id: documents.id })
+      : await db.insert(documents).values(baseInsert).returning({ id: documents.id });
+    documentId = row?.id ?? null;
+  } catch (e) {
+    if (hasUploadSource && isPostgresUndefinedColumnError(e, "upload_source")) {
+      documentsTableHasUploadSourceColumn = false;
+      const [row] = await db.insert(documents).values(baseInsert).returning({ id: documents.id });
+      documentId = row?.id ?? null;
+    } else {
+      throw e;
+    }
+  }
 
   if (documentId) {
     await logActivity("document", documentId, "upload", {

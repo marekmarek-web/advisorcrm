@@ -94,6 +94,8 @@ export function CalendarEventForm({
   saveError,
   onSave,
   onClose,
+  /** CSS bottom offset so sheet clears app bottom nav + safe area (mobile portal). */
+  sheetBottomInset,
 }: {
   deviceClass?: DeviceClass;
   initial: EventFormData & { id?: string };
@@ -103,6 +105,7 @@ export function CalendarEventForm({
   saveError: string | null;
   onSave: (form: EventFormData, id?: string) => void;
   onClose: () => void;
+  sheetBottomInset?: string;
 }) {
   const [form, setForm] = useState<EventFormData>(() => {
     if (!initial.startAt) {
@@ -154,12 +157,14 @@ export function CalendarEventForm({
     (o) => !form.contactId || o.contactId === form.contactId,
   );
 
+  const phoneBottom = sheetBottomInset ?? "env(safe-area-inset-bottom, 0px)";
+
   return (
     <div
       className={
         largeScreen
-          ? "fixed inset-0 z-[100] flex items-end justify-center bg-[color:var(--wp-overlay-scrim)] p-0 sm:items-center sm:p-4"
-          : "fixed inset-0 z-[100] flex flex-col bg-[color:var(--wp-surface-card)]"
+          ? "fixed inset-0 z-[220] flex items-end justify-center bg-[color:var(--wp-overlay-scrim)] p-0 sm:items-center sm:p-4"
+          : "fixed inset-0 z-[220] flex flex-col justify-end bg-[color:var(--wp-overlay-scrim)]"
       }
       role="presentation"
       onClick={largeScreen ? onClose : undefined}
@@ -168,12 +173,20 @@ export function CalendarEventForm({
         className={
           largeScreen
             ? "flex max-h-[min(92vh,820px)] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[24px] bg-[color:var(--wp-surface-card)] shadow-2xl sm:rounded-2xl"
-            : "flex min-h-0 flex-1 flex-col"
+            : "flex max-h-[min(92dvh,900px)] min-h-0 w-full flex-col overflow-hidden rounded-t-3xl border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-2xl"
+        }
+        style={
+          !largeScreen
+            ? {
+                marginBottom: phoneBottom,
+                paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              }
+            : undefined
         }
         onClick={(e) => e.stopPropagation()}
       >
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-center justify-between border-b border-[color:var(--wp-surface-card-border)] px-4 py-3">
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--wp-surface-card-border)] px-4 py-3 pt-[max(0.75rem,var(--safe-area-top))]">
           <h2 className="text-sm font-black text-[color:var(--wp-text)]">
             {initial.id ? "Upravit aktivitu" : "Nová aktivita"}
           </h2>
@@ -188,8 +201,12 @@ export function CalendarEventForm({
         </div>
 
         <div
-          className="flex-1 space-y-5 overflow-y-auto px-4 py-5"
-          style={keyboardInset ? { paddingBottom: `${keyboardInset + 80}px` } : undefined}
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5"
+          style={
+            keyboardInset
+              ? { paddingBottom: `${keyboardInset + 24}px` }
+              : undefined
+          }
         >
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {EVENT_FORM_PRIMARY_TYPE_ORDER.map((id) => {
@@ -424,7 +441,7 @@ export function CalendarEventForm({
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3">
+        <div className="flex shrink-0 items-center gap-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 pb-[max(0.75rem,var(--safe-area-bottom))]">
           <button
             type="button"
             onClick={onClose}

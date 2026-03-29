@@ -268,7 +268,7 @@ export function EventFormDateTimeSection({
           >
             <p className="text-sm sm:text-base font-bold text-[color:var(--wp-text)] leading-snug">{primary}</p>
             <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-1.5 font-medium">
-              Časové pásmo: lokální čas zařízení · minuty jen po 15 min
+              Čas podle času zařízení (v ČR = středoevropský, včetně letního času). Minuty jen po 15 min.
             </p>
             <div className="flex items-center gap-1 mt-2 text-xs font-bold text-indigo-600">
               {expanded ? (

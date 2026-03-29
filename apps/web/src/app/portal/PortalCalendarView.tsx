@@ -24,6 +24,7 @@ import {
   formatDateTimeLocal,
   formatTimeQuarterHourDisplay,
   localDateTimeInputToUtcIso,
+  reminderUtcIsoFromLocalStart,
 } from "@/app/portal/calendar/date-utils";
 import { getEventCategory } from "@/app/portal/calendar/event-categories";
 import { WeekDayGrid } from "@/app/portal/calendar/WeekDayGrid";
@@ -930,11 +931,7 @@ export function PortalCalendarView() {
   const handleSave = useCallback(async (form: EventFormData, id?: string) => {
     const startIso = localDateTimeInputToUtcIso(form.startAt);
     const endIso = localDateTimeInputToUtcIso(form.endAt);
-    const startLocal = form.startAt ? new Date(form.startAt) : null;
-    const reminderAtIso =
-      form.reminderMinutes > 0 && startLocal && !Number.isNaN(startLocal.getTime())
-        ? new Date(startLocal.getTime() - form.reminderMinutes * 60 * 1000).toISOString()
-        : null;
+    const reminderAtIso = reminderUtcIsoFromLocalStart(form.startAt, form.reminderMinutes);
     if (!startIso) {
       toast.showToast("Neplatný začátek události.", "error");
       return;

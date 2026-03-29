@@ -1,6 +1,10 @@
 import type { EventRow } from "@/app/actions/events";
 import { formatDateLocal } from "@/app/portal/calendar/date-utils";
 
+/** Clear portal bottom nav + device safe area for calendar modals/sheets. */
+export const MOBILE_CALENDAR_SHEET_BOTTOM_INSET =
+  "calc(112px + env(safe-area-inset-bottom, 0px))";
+
 export type CalendarViewMode = "day" | "3day" | "week" | "agenda";
 
 export const MONTH_NAMES = [

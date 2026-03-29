@@ -41,6 +41,7 @@ import {
   type PaymentInstructionExtraction,
 } from "./payment-instruction-extraction";
 import { buildManualReviewStubEnvelope, buildScanOcrUnusableStubEnvelope } from "./ai-review-manual-stub";
+import { summarizeZodIssuesForAdvisor } from "./zod-issue-humanize";
 import { shouldSkipContractLlmExtractionForScanOcr } from "./scan-ocr-extraction-gate";
 import { runAiReviewV2Pipeline } from "./ai-review-pipeline-v2";
 
@@ -508,16 +509,51 @@ export async function runContractUnderstandingPipeline(
   if (!validated.ok) {
     trace.validationDurationMs = Date.now() - valBlockStart;
     trace.failedStep = "structured_extraction";
-    trace.warnings = [
-      ...(trace.warnings ?? []),
-      "Neplatná struktura odpovědi: " + validated.issues.map((i) => i.message).join("; "),
-    ];
+    trace.warnings = [...(trace.warnings ?? []), "extraction_schema_validation_soft_fail"];
+    const stub = buildManualReviewStubEnvelope({
+      classification,
+      inputMode: inputModeResult.inputMode as string,
+      extractionMode: inputModeResult.extractionMode as string,
+      pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
+      norm: normPipeline,
+      route: extractionRoute,
+    });
+    stub.documentMeta.textCoverageEstimate = textCov;
+    stub.documentMeta.preprocessMode = options?.preprocessMeta?.preprocessMode;
+    stub.documentMeta.preprocessStatus = options?.preprocessMeta?.preprocessStatus;
+    stub.documentClassification.primaryType = documentType;
+    stub.documentClassification.lifecycleStatus = classification.lifecycleStatus;
+    stub.documentClassification.documentIntent = classification.documentIntent;
+    stub.documentClassification.subtype = classification.subtype;
+    stub.documentClassification.confidence = classification.confidence;
+    stub.documentClassification.reasons = classification.reasons;
+    const humanSummary = summarizeZodIssuesForAdvisor(validated.issues);
+    for (const issue of validated.issues.slice(0, 12)) {
+      stub.reviewWarnings.push({
+        code: "extraction_schema_validation",
+        message: issue.message,
+        severity: "warning",
+      });
+    }
+    stub.reviewWarnings.unshift({
+      code: "extraction_schema_validation_summary",
+      message: humanSummary,
+      severity: "warning",
+    });
+    logPipelineEvent("extraction_validation_soft_fail", { documentType, issueCount: validated.issues.length });
     return {
-      ok: false,
-      processingStatus: "failed",
-      errorMessage: "Odpověď modelu nevyhovuje schématu smlouvy.",
+      ok: true,
+      processingStatus: "review_required",
+      extractedPayload: stub,
+      confidence: classification.confidence * 0.4,
+      reasonsForReview: [...new Set([...allReasons, "extraction_schema_validation"])],
+      inputMode: inputModeResult.inputMode,
+      extractionMode: inputModeResult.extractionMode,
+      detectedDocumentType: documentType,
       extractionTrace: trace,
-      details: validated.issues,
+      validationWarnings: stub.reviewWarnings as ValidationWarning[],
+      fieldConfidenceMap: null,
+      classificationReasons: classification.reasons,
     };
   }
 

@@ -26,6 +26,7 @@ import {
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
+import { MOBILE_CALENDAR_SHEET_BOTTOM_INSET } from "./calendar-utils";
 
 function formatTimeRange(ev: EventRow) {
   const s = new Date(ev.startAt);
@@ -369,7 +370,13 @@ export function CalendarEventDetail({
   }
 
   return (
-    <BottomSheet open onClose={onClose} title={ev.title}>
+    <BottomSheet
+      open
+      onClose={onClose}
+      title={ev.title}
+      zIndexClass="z-[220]"
+      bottomOffset={MOBILE_CALENDAR_SHEET_BOTTOM_INSET}
+    >
       <EventDetailBody
         ev={ev}
         onEdit={openEdit}

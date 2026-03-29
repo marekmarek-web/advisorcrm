@@ -1,7 +1,7 @@
 "use client";
 
 import type { EventRow } from "@/app/actions/events";
-import { formatDateLocal } from "@/app/portal/calendar/date-utils";
+import { formatDateDisplayCs, formatDateLocal } from "@/app/portal/calendar/date-utils";
 import { BottomSheet } from "@/app/shared/mobile-ui/primitives";
 
 export function CalendarSearch({
@@ -48,7 +48,7 @@ export function CalendarSearch({
               >
                 <span className="font-bold text-[color:var(--wp-text)]">{ev.title}</span>
                 <span className="text-xs text-[color:var(--wp-text-secondary)]">
-                  {formatDateLocal(new Date(ev.startAt))}{" "}
+                  {formatDateDisplayCs(new Date(ev.startAt))}{" "}
                   {ev.allDay
                     ? "· celý den"
                     : `· ${new Date(ev.startAt).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}`}

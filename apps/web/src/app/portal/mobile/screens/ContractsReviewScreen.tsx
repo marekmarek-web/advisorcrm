@@ -67,6 +67,7 @@ type ReviewDetail = {
   errorMessage?: string | null;
   extractedPayload?: Record<string, unknown> | null;
   draftActions?: unknown[] | null;
+  validationWarnings?: Array<{ code?: string; message?: string; severity?: string }> | null;
   clientMatchCandidates?: Array<{ id: string; fullName?: string; score?: number }> | null;
   matchedClientId?: string;
   createNewClientConfirmed?: string | null;
@@ -81,6 +82,38 @@ type StatusFilter = "all" | "pending" | "done" | "failed";
 
 function getEffectiveStatus(item: ReviewListItem) {
   return item.reviewStatus ?? item.processingStatus;
+}
+
+function ValidationWarningsCard({ warnings }: { warnings: NonNullable<ReviewDetail["validationWarnings"]> }) {
+  const sorted = [...warnings].sort((a, b) => {
+    if (a.code === "extraction_schema_validation_summary") return -1;
+    if (b.code === "extraction_schema_validation_summary") return 1;
+    return 0;
+  });
+  const visible = sorted.filter((w) => w.message?.trim()).slice(0, 8);
+  if (!visible.length) return null;
+  const isSchemaSoft =
+    visible.some((w) => w.code === "extraction_schema_validation_summary") ||
+    visible.some((w) => w.code === "extraction_schema_validation");
+  return (
+    <MobileCard className="p-3.5 bg-amber-50/80 border-amber-200">
+      <div className="flex items-start gap-2">
+        <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-amber-950">
+            {isSchemaSoft ? "Automatická extrakce jen částečně" : "Upozornění z AI"}
+          </p>
+          <ul className="mt-1.5 space-y-1 text-xs text-amber-900/90 list-disc pl-4">
+            {visible.map((w, i) => (
+              <li key={`${w.code ?? "w"}-${i}`} className="break-words">
+                {w.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </MobileCard>
+  );
 }
 
 function getStatusConfig(status: string) {
@@ -268,6 +301,10 @@ function ReviewDetailPanel({
             </div>
           </div>
         </MobileCard>
+      ) : null}
+
+      {detail.validationWarnings?.length ? (
+        <ValidationWarningsCard warnings={detail.validationWarnings} />
       ) : null}
 
       {/* Client match */}

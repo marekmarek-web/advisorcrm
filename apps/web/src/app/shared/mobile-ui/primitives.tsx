@@ -1,6 +1,13 @@
 "use client";
 
-import { type ButtonHTMLAttributes, type ReactNode, createElement, useEffect, useState } from "react";
+import {
+  type ButtonHTMLAttributes,
+  type CSSProperties,
+  type ReactNode,
+  createElement,
+  useEffect,
+  useState,
+} from "react";
 import { X, Plus, AlertCircle, Wifi, WifiOff, PackageOpen, RefreshCw } from "lucide-react";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 
@@ -22,8 +29,9 @@ export function MobileAppShell({
     <div
       className={cx(
         "flex min-h-screen flex-col bg-[color:var(--wp-bg)] text-[color:var(--wp-text)]",
-        deviceClass === "phone" && "pb-[calc(96px+var(--safe-area-bottom))]",
-        deviceClass === "tablet" && "pb-[calc(72px+var(--safe-area-bottom))]",
+        /* Extra inset: bottom nav + protruding center FAB (Safari / thumb zone) */
+        deviceClass === "phone" && "pb-[calc(112px+var(--safe-area-bottom))]",
+        deviceClass === "tablet" && "pb-[calc(84px+var(--safe-area-bottom))]",
         deviceClass === "desktop" && "pb-0",
         className
       )}
@@ -142,18 +150,18 @@ export function MobileBottomNav({
       onClick={centerFab.onClick}
       aria-label={centerFab.ariaLabel ?? "Nový – rychlé akce"}
       className={cx(
-        "flex shrink-0 items-center justify-center rounded-full border-4 border-[color:var(--wp-surface-card)] bg-aidv-create text-white shadow-lg shadow-indigo-950/20 transition-transform active:scale-95",
-        deviceClass === "tablet" ? "w-12 h-12 -translate-y-1" : "w-14 h-14 -translate-y-2"
+        "flex shrink-0 items-center justify-center rounded-full border-2 border-[color:var(--wp-surface-card)] bg-aidv-create text-white shadow-md shadow-indigo-950/15 transition-transform active:scale-95",
+        deviceClass === "tablet" ? "w-11 h-11 -translate-y-0.5" : "w-12 h-12 -translate-y-1"
       )}
     >
-      <Plus size={deviceClass === "tablet" ? 22 : 26} strokeWidth={2.5} className="shrink-0" />
+      <Plus size={deviceClass === "tablet" ? 20 : 22} strokeWidth={2.25} className="shrink-0" />
     </button>
   ) : null;
 
   return (
     <nav
       className={cx(
-        "fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/95 backdrop-blur",
+        "fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/98 backdrop-blur-sm",
         "pb-[max(0.5rem,var(--safe-area-bottom))]",
         "pl-[max(0.25rem,env(safe-area-inset-left,0px))] pr-[max(0.25rem,env(safe-area-inset-right,0px))]"
       )}
@@ -398,7 +406,7 @@ export function FloatingActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="fixed z-40 flex min-h-[52px] min-w-[52px] items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform active:scale-95 bottom-[calc(90px+var(--safe-area-bottom))] right-[max(1rem,env(safe-area-inset-right,0px))]"
+      className="fixed z-40 flex min-h-[52px] min-w-[52px] items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform active:scale-95 bottom-[calc(102px+var(--safe-area-bottom))] right-[max(1rem,env(safe-area-inset-right,0px))]"
       aria-label={label}
       title={label}
     >
@@ -413,12 +421,21 @@ function OverlayContainer({
   children,
   fullScreen,
   labelId,
+  panelClassName,
+  panelStyle,
+  overlayClassName,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   fullScreen?: boolean;
   labelId?: string;
+  /** Extra classes on the sheet panel (e.g. z-index). */
+  panelClassName?: string;
+  /** e.g. `{ bottom: 'calc(112px + env(safe-area-inset-bottom))' }` to clear app bottom nav. */
+  panelStyle?: CSSProperties;
+  /** Classes on the fixed full-screen overlay wrapper (e.g. z-[220]). */
+  overlayClassName?: string;
 }) {
   // Lock body scroll when open
   useEffect(() => {
@@ -439,7 +456,7 @@ function OverlayContainer({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[100]"
+      className={cx("fixed inset-0 z-[100]", overlayClassName)}
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelId}
@@ -458,8 +475,19 @@ function OverlayContainer({
           "animate-in slide-in-from-bottom duration-300 ease-out",
           fullScreen
             ? "top-0 bottom-0 rounded-none pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)]"
-            : "bottom-0 max-h-[85vh] rounded-t-3xl pb-[var(--safe-area-bottom)]"
+            : "max-h-[min(92dvh,900px)] rounded-t-3xl",
+          !fullScreen && panelStyle?.bottom == null && "bottom-0 pb-[var(--safe-area-bottom)]",
+          !fullScreen && panelStyle?.bottom != null && "pb-[var(--safe-area-bottom)]",
+          panelClassName
         )}
+        style={
+          fullScreen
+            ? panelStyle
+            : {
+                ...panelStyle,
+                maxHeight: panelStyle?.maxHeight ?? "min(92dvh, 900px)",
+              }
+        }
       >
         {children}
       </div>
@@ -472,27 +500,42 @@ export function BottomSheet({
   onClose,
   title,
   children,
+  zIndexClass = "z-[100]",
+  /** Lift sheet above app bottom nav / FAB (CSS length, e.g. calc(112px + env(safe-area-inset-bottom))). */
+  bottomOffset,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  zIndexClass?: string;
+  bottomOffset?: string;
 }) {
   const labelId = `bs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   return (
-    <OverlayContainer open={open} onClose={onClose} labelId={labelId}>
-      <div className="px-4 py-3 border-b border-[color:var(--wp-surface-card-border)] flex items-center justify-between gap-2">
-        <h3 id={labelId} className="font-black text-sm">{title}</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Zavřít panel"
-          className="min-h-[36px] min-w-[36px] rounded-lg border border-[color:var(--wp-surface-card-border)] grid place-items-center hover:bg-[color:var(--wp-surface-muted)] transition-colors"
-        >
-          <X size={16} />
-        </button>
+    <OverlayContainer
+      open={open}
+      onClose={onClose}
+      labelId={labelId}
+      overlayClassName={zIndexClass}
+      panelStyle={bottomOffset ? { bottom: bottomOffset, top: "auto" } : undefined}
+    >
+      <div className="flex max-h-[inherit] min-h-0 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] px-4 py-3 pt-[max(0.75rem,var(--safe-area-top))]">
+          <h3 id={labelId} className="font-black text-sm">
+            {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Zavřít panel"
+            className="grid min-h-[40px] min-w-[40px] place-items-center rounded-lg border border-[color:var(--wp-surface-card-border)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{children}</div>
       </div>
-      <div className="overflow-y-auto max-h-[calc(85vh-60px)] p-4">{children}</div>
     </OverlayContainer>
   );
 }
@@ -1119,7 +1162,7 @@ export function Toast({
       role="status"
       aria-live="polite"
       className={cx(
-        "fixed bottom-[calc(96px+var(--safe-area-bottom))] inset-x-4 z-[201] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg",
+        "fixed bottom-[calc(112px+var(--safe-area-bottom))] inset-x-4 z-[201] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg",
         "animate-in slide-in-from-bottom duration-300",
         variant === "success" && "bg-emerald-600 text-white",
         variant === "error" && "bg-rose-600 text-white",

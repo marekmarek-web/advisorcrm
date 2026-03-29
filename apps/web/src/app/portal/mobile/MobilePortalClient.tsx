@@ -324,6 +324,7 @@ export function MobilePortalClient({
   canWriteCalendar = true,
   roleName = "Advisor",
   deferDataHydration = false,
+  showFeedbackLauncher,
 }: {
   advisorName: string;
   initialKpis: DashboardKpis;
@@ -342,7 +343,11 @@ export function MobilePortalClient({
   roleName?: RoleName;
   /** Načte úkoly, kontakty, pipeline a doplňková data po idle — rychlejší první paint shellu. */
   deferDataHydration?: boolean;
+  /** Override floating bug-report button. Default: hidden in production, visible in dev. */
+  showFeedbackLauncher?: boolean;
 }) {
+  const showFloatingFeedback =
+    showFeedbackLauncher ?? process.env.NODE_ENV !== "production";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -1297,7 +1302,7 @@ export function MobilePortalClient({
         }}
       />
     </MobileAppShell>
-    <PortalFeedbackLauncher variant="mobile" />
+    {showFloatingFeedback ? <PortalFeedbackLauncher variant="mobile" /> : null}
     </ToastProvider>
   );
 }
