@@ -15,6 +15,7 @@ import {
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
 import {
   DEFAULT_EVENT_DURATION_MS,
+  formatDateDisplayCsFromYyyyMmDd,
   formatDateLocal,
   formatDateTimeLocal,
   localDateTimeInputToUtcIso,
@@ -614,7 +615,9 @@ export function CalendarScreen({
         query={searchQuery}
         onQueryChange={setSearchQuery}
         results={searchResults}
-        rangeLabel={`${visibleDayKeys[0] ?? ""} – ${visibleDayKeys[visibleDayKeys.length - 1] ?? ""}`}
+        rangeLabel={`${visibleDayKeys[0] ? formatDateDisplayCsFromYyyyMmDd(visibleDayKeys[0]) : ""} – ${
+          visibleDayKeys.length ? formatDateDisplayCsFromYyyyMmDd(visibleDayKeys[visibleDayKeys.length - 1]) : ""
+        }`}
         onPickEvent={(ev) => {
           onEventClick(ev);
           setSearchOpen(false);

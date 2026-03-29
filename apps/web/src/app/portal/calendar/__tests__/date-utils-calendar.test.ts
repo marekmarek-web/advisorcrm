@@ -3,6 +3,8 @@ import {
   addCalendarDaysYyyyMmDd,
   addMsToLocalDateTime,
   formatCalendarDateInTimeZone,
+  formatDateDisplayCs,
+  formatDateDisplayCsFromYyyyMmDd,
   localDateTimeInputToUtcIso,
   parseInstantFromClientPayload,
   parseLocalDateTimeInputToUtcMs,
@@ -48,6 +50,16 @@ describe("calendar datetime-local ↔ UTC (Prague wall time)", () => {
   it("addMsToLocalDateTime uses local interpretation", () => {
     const next = addMsToLocalDateTime("2026-06-15T14:45", 30 * 60_000);
     expect(next).toBe("2026-06-15T15:15");
+  });
+});
+
+describe("Czech date display helpers", () => {
+  it("formatDateDisplayCs uses d. m. yyyy", () => {
+    expect(formatDateDisplayCs(new Date(2026, 2, 28))).toBe("28. 3. 2026");
+  });
+
+  it("formatDateDisplayCsFromYyyyMmDd parses key to d. m. yyyy", () => {
+    expect(formatDateDisplayCsFromYyyyMmDd("2026-03-28")).toBe("28. 3. 2026");
   });
 });
 

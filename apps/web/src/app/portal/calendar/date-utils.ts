@@ -1,12 +1,34 @@
 /**
- * Local date formatting for calendar (avoids UTC shift).
- * Use everywhere we compare "today" or build date keys (YYYY-MM-DD).
+ * Calendar datetime strategy (Aidvisora):
+ * - **Storage:** `timestamptz` in DB = single UTC instant (`toISOString()` / `Date` from server).
+ * - **Timed events:** User picks **local wall time** on device (`datetime-local` → `parseLocalDateTimeInputToUtcMs`).
+ *   In Czech Republic with phone set to Prague, that is **Europe/Prague** (including DST).
+ * - **Display:** `new Date(iso).getHours()` / `formatDateLocal` use the **browser’s local zone** (same as device).
+ * - **All-day → Google Calendar:** civil dates in **`Europe/Prague`** (`CALENDAR_ALL_DAY_TIMEZONE`), exclusive end date.
+ *
+ * Internal **sort keys** stay `YYYY-MM-DD` (stable, locale-neutral). Use **`formatDateDisplayCs`** for user-visible dates.
  */
 export function formatDateLocal(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** User-visible date in Czech style: `28. 3. 2026` (day in device local calendar). */
+export function formatDateDisplayCs(d: Date): string {
+  return `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`;
+}
+
+/** `YYYY-MM-DD` key → `28. 3. 2026` (for labels built from map keys). */
+export function formatDateDisplayCsFromYyyyMmDd(yyyyMmDd: string): string {
+  const m = yyyyMmDd.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return yyyyMmDd;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!y || !mo || !d) return yyyyMmDd;
+  return `${d}. ${mo}. ${y}`;
 }
 
 /** Hodnota pro `<input type="datetime-local" />` v lokálním čase uživatele (ne UTC z toISOString). */
