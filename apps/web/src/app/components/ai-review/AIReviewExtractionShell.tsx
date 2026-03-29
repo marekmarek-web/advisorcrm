@@ -221,7 +221,7 @@ export function AIReviewExtractionShell({
   }, [onApproveAndApply, state.editedFields]);
 
   return (
-    <div className="flex flex-col h-full min-h-[600px] bg-[#f8fafc] font-sans text-[color:var(--wp-text)] overflow-hidden -m-4 md:-m-6">
+    <div className="flex flex-col flex-1 min-h-0 bg-[#f8fafc] font-sans text-[color:var(--wp-text)] overflow-hidden -m-4 md:-m-6">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap');
         .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -508,10 +508,10 @@ export function AIReviewExtractionShell({
         </button>
       </div>
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left panel */}
         <section
-          className={`w-full lg:w-[55%] flex flex-col bg-[#f4f7f9] border-r border-[color:var(--wp-surface-card-border)] ${
+          className={`flex min-h-0 w-full min-w-0 flex-col bg-[#f4f7f9] border-r border-[color:var(--wp-surface-card-border)] lg:w-[55%] ${
             state.showPdfOnMobile ? "hidden lg:flex" : "flex"
           }`}
         >
@@ -637,7 +637,7 @@ export function AIReviewExtractionShell({
 
         {/* Right panel */}
         <aside
-          className={`w-full lg:w-[45%] flex flex-col ${
+          className={`flex min-h-0 w-full min-w-0 flex-col lg:w-[45%] ${
             state.showPdfOnMobile ? "flex" : "hidden lg:flex"
           }`}
         >
