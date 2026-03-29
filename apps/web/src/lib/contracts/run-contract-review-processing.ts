@@ -8,12 +8,9 @@ import type { AuditRequestContext } from "@/lib/audit";
 import { logAudit } from "@/lib/audit";
 import { updateContractReview } from "@/lib/ai/review-queue-repository";
 import { runContractUnderstandingPipeline } from "@/lib/ai/contract-understanding-pipeline";
+import { buildAllDraftActions, applyAidvisorDraftCanonicalTypes } from "@/lib/ai/draft-actions";
 import {
   findClientCandidates,
-  buildAllDraftActions,
-  applyAidvisorDraftCanonicalTypes,
-} from "@/lib/ai/draft-actions";
-import {
   findMatchedCompanies,
   findMatchedDeals,
   findMatchedExistingContracts,

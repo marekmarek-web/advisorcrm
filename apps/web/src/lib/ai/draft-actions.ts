@@ -8,9 +8,6 @@ import {
   pickFirstAmount,
 } from "./contract-draft-premiums";
 
-export { findClientCandidates } from "./client-matching";
-export type { ClientMatchingContext } from "./client-matching";
-
 /** Maps document primary type to CRM contract segment code. */
 export function resolveSegmentFromType(primaryType: string): string {
   const map: Record<string, string> = {
