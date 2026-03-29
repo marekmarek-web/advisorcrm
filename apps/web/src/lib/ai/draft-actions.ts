@@ -178,6 +178,8 @@ function toLegacyProjection(envelope: DocumentReviewEnvelope): ExtractedContract
     paymentDetails: {
       amount:
         pickFirstAmount(
+          fieldValue(envelope, "totalMonthlyPremium"),
+          fieldValue(envelope, "premiumAmount"),
           fieldValue(envelope, "regularAmount"),
           fieldValue(envelope, "premium"),
           fieldValue(envelope, "monthlyPremium"),

@@ -6,9 +6,6 @@ import { Bug, Lightbulb, Loader2, X } from "lucide-react";
 import { useToast } from "@/app/components/Toast";
 
 export function PortalFeedbackLauncher({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
-  if (variant === "mobile" && process.env.NODE_ENV === "production") {
-    return null;
-  }
   const pathname = usePathname();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -56,6 +53,10 @@ export function PortalFeedbackLauncher({ variant = "desktop" }: { variant?: "des
       setSending(false);
     }
   }, [body, category, pathname, reset, title, toast]);
+
+  if (variant === "mobile" && process.env.NODE_ENV === "production") {
+    return null;
+  }
 
   const positionClass =
     variant === "mobile"

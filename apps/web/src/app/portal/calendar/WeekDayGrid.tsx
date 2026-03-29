@@ -29,7 +29,12 @@ export interface WeekDayGridProps {
   firstDayOfWeek: 0 | 1;
   timeColWidth: number;
   onSlotClick: (dateStr: string, hour: number) => void;
-  onEventClick: (event: EventRow) => void;
+  onEventClick: (
+    event: EventRow,
+    anchorRect?: { top: number; left: number; width: number; height: number },
+  ) => void;
+  /** Called when the main grid scrolls (e.g. close anchored popovers). */
+  onGridScroll?: () => void;
   onDaySelect?: (dateStr: string) => void;
   selectedEventId: string | null;
   isMobile?: boolean;
@@ -67,6 +72,7 @@ export function WeekDayGrid({
   timeColWidth,
   onSlotClick,
   onEventClick,
+  onGridScroll,
   onDaySelect,
   selectedEventId,
   isMobile = false,
@@ -192,7 +198,11 @@ export function WeekDayGrid({
         })}
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-auto min-h-0 wp-cal-hide-scrollbar relative">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-auto min-h-0 wp-cal-hide-scrollbar relative"
+        onScroll={() => onGridScroll?.()}
+      >
         <div
           className="flex min-h-[660px]"
           style={{
@@ -309,7 +319,9 @@ export function WeekDayGrid({
                           suppressClickEventIdRef.current = null;
                           return;
                         }
-                        onEventClick(ev);
+                        const el = e.currentTarget as HTMLElement;
+                        const r = el.getBoundingClientRect();
+                        onEventClick(ev, { top: r.top, left: r.left, width: r.width, height: r.height });
                       }}
                       title={`${style.label}: ${ev.title}${ev.contactName ? ` – ${ev.contactName}` : ""} – ${formatTime(start)}`}
                     >

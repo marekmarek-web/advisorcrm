@@ -101,6 +101,18 @@ export type DraftAction = {
   payload: Record<string, unknown>;
 };
 
+/** Advisor-facing structured summary (main panel, not raw schema dump). */
+export type AdvisorReviewViewModel = {
+  recognition: string;
+  client: string;
+  product: string;
+  payments: string;
+  healthSensitive: string;
+  manualChecklist: string[];
+  workActions: DraftAction[];
+  debugSnapshot: Record<string, unknown>;
+};
+
 export type ApplyResultPayload = {
   createdClientId?: string;
   linkedClientId?: string;
@@ -158,6 +170,10 @@ export type ExtractionDocument = {
   };
   /** Human-readable pipeline sub-step while status is processing (from API `processingStage`). */
   processingStageLabel?: string;
+  /** Server input mode (e.g. text_pdf) for readability-aware field warnings. */
+  inputMode?: string;
+  /** Structured advisor summary + work actions (not raw envelope dump). */
+  advisorReview?: AdvisorReviewViewModel;
   /** From GET review `pipelineInsights` — routing, preprocess, payment preview. */
   pipelineInsights?: {
     normalizedPipelineClassification?: string;

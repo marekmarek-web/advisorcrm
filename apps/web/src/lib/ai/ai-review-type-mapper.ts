@@ -1,6 +1,7 @@
 import type { ClassificationResult } from "./document-classification";
 import type { AiClassifierOutput } from "./ai-review-classifier";
 import type { DocumentIntent, DocumentLifecycleStatus, PrimaryDocumentType } from "./document-review-types";
+import type { AiReviewPromptKey } from "./prompt-model-registry";
 
 function n(s: string): string {
   return String(s || "")
@@ -37,9 +38,30 @@ export function mapAiClassifierToPrimaryType(c: AiClassifierOutput): PrimaryDocu
   const sub = n(c.productSubtype);
 
   if (dt === "payment_instructions") return "payment_instruction";
-  if (fam === "life_insurance" && dt === "contract") return "life_insurance_contract";
-  if (fam === "non_life_insurance" && dt === "contract") return "nonlife_insurance_contract";
-  if (fam === "investment" && dt === "contract") return "investment_service_agreement";
+  // Life insurance — proposals / modelations / contracts (must run before generic fallback).
+  if (fam === "life_insurance") {
+    if (dt === "proposal" || dt === "offer") return "life_insurance_proposal";
+    if (dt === "modelation") return "life_insurance_modelation";
+    if (dt === "contract") {
+      if (sub.includes("investment")) return "life_insurance_investment_contract";
+      return "life_insurance_contract";
+    }
+    if (dt === "amendment") return "life_insurance_change_request";
+  }
+  if (fam === "non_life_insurance") {
+    if (dt === "proposal" || dt === "offer") {
+      if (sub.includes("liability")) return "liability_insurance_offer";
+      if (sub.includes("car")) return "nonlife_insurance_contract";
+      return "precontract_information";
+    }
+    if (dt === "modelation") return "precontract_information";
+    if (dt === "contract") return "nonlife_insurance_contract";
+    if (dt === "amendment") return "insurance_policy_change_or_service_doc";
+  }
+  if (fam === "investment") {
+    if (dt === "contract") return "investment_service_agreement";
+    if (dt === "proposal" || dt === "offer" || dt === "modelation") return "investment_modelation";
+  }
   if (fam === "pp" || fam === "dps") {
     if (dt === "contract" || dt === "amendment") return "pension_contract";
   }
@@ -54,6 +76,63 @@ export function mapAiClassifierToPrimaryType(c: AiClassifierOutput): PrimaryDocu
   if (dt === "confirmation_document") return "income_confirmation";
   if (sub.includes("car") && dt === "contract") return "nonlife_insurance_contract";
   return "generic_financial_document";
+}
+
+/**
+ * When classifier primary type is still generic, infer canonical type from the extraction prompt
+ * the router chose (keeps validateExtractionByType / finalize aligned with the LLM prompt).
+ */
+export function primaryTypeFallbackFromPromptKey(
+  promptKey: AiReviewPromptKey,
+  ai: AiClassifierOutput
+): PrimaryDocumentType | null {
+  const fam = n(ai.productFamily);
+  const dt = n(ai.documentType);
+  switch (promptKey) {
+    case "insuranceProposalModelation":
+      if (fam === "life_insurance") {
+        return dt === "modelation" ? "life_insurance_modelation" : "life_insurance_proposal";
+      }
+      if (fam === "non_life_insurance") {
+        return "precontract_information";
+      }
+      if (fam === "investment") return "investment_modelation";
+      return "life_insurance_proposal";
+    case "insuranceContractExtraction":
+      if (fam === "life_insurance") {
+        return n(ai.productSubtype).includes("investment")
+          ? "life_insurance_investment_contract"
+          : "life_insurance_contract";
+      }
+      if (fam === "non_life_insurance") return "nonlife_insurance_contract";
+      return null;
+    case "insuranceAmendment":
+      if (fam === "life_insurance") return "life_insurance_change_request";
+      if (fam === "non_life_insurance") return "insurance_policy_change_or_service_doc";
+      return null;
+    case "nonLifeInsuranceExtraction":
+      return "nonlife_insurance_contract";
+    case "carInsuranceExtraction":
+      return "nonlife_insurance_contract";
+    case "investmentContractExtraction":
+      return "investment_service_agreement";
+    case "investmentProposal":
+      return "investment_modelation";
+    case "loanContractExtraction":
+    case "mortgageExtraction":
+      return fam === "mortgage" ? "mortgage_document" : "consumer_loan_contract";
+    case "retirementProductExtraction":
+      return "pension_contract";
+    case "dipExtraction":
+    case "buildingSavingsExtraction":
+      return "generic_financial_document";
+    case "supportingDocumentExtraction":
+      return "bank_statement";
+    case "legacyFinancialProductExtraction":
+      return "generic_financial_document";
+    default:
+      return null;
+  }
 }
 
 export function mapAiClassifierToClassificationResult(c: AiClassifierOutput): ClassificationResult {

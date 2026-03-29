@@ -10,11 +10,13 @@ import type {
   ClientMatchCandidate,
   DraftAction,
 } from "./types";
-import { buildHumanSummary, buildHumanErrorMessage, getDocumentTypeLabel } from "@/lib/ai/document-messages";
-import { getReasonMessage } from "@/lib/ai/reason-codes";
-import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
-import type { InputMode } from "@/lib/ai/input-mode-detection";
+import { buildHumanSummary, buildHumanErrorMessage, getDocumentTypeLabel } from "../ai/document-messages";
+import type { PrimaryDocumentType } from "../ai/document-review-types";
+import type { DocumentReviewEnvelope } from "../ai/document-review-types";
+import type { InputMode } from "../ai/input-mode-detection";
 import { formatAiClassifierForAdvisor } from "./czech-labels";
+import { advisorFieldPresentation, shouldCountFieldForAttentionBanner } from "./advisor-confidence-policy";
+import { buildAdvisorReviewViewModel } from "./advisor-review-view-model";
 
 type ApiReviewDetail = Record<string, unknown>;
 
@@ -150,6 +152,165 @@ function fieldStatus(conf: number, value: unknown): FieldStatus {
   return "success";
 }
 
+export function formatExtractedValue(v: unknown): string {
+  if (v == null) return "—";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) {
+    const parts = v.map((x) => formatExtractedValue(x)).filter((s) => s && s !== "—");
+    return parts.length ? parts.join(", ") : "—";
+  }
+  if (typeof v === "object") {
+    try {
+      const s = JSON.stringify(v);
+      return s.length > 480 ? `${s.slice(0, 477)}…` : s;
+    } catch {
+      return "—";
+    }
+  }
+  return String(v);
+}
+
+function looksLikeDocumentEnvelope(payload: Record<string, unknown>): boolean {
+  return (
+    payload.documentClassification != null &&
+    typeof payload.documentClassification === "object" &&
+    payload.extractedFields != null &&
+    typeof payload.extractedFields === "object"
+  );
+}
+
+type ReadabilityCtx = {
+  inputMode?: string;
+  textCoverageEstimate?: number;
+  preprocessStatus?: string;
+};
+
+function flattenEnvelopeToGroups(
+  envelope: Record<string, unknown>,
+  fieldConfidenceMap: Record<string, number> | undefined,
+  globalConfidence01: number,
+  ctx: ReadabilityCtx
+): ExtractedGroup[] {
+  const groups: ExtractedGroup[] = [];
+  const ef = envelope.extractedFields as
+    | Record<string, { value?: unknown; status?: string; confidence?: number }>
+    | undefined;
+  if (ef && typeof ef === "object") {
+    const fields: ExtractedField[] = [];
+    for (const [fKey, fObj] of Object.entries(ef)) {
+      if (!fObj || typeof fObj !== "object" || fKey.startsWith("_")) continue;
+      const rawVal = fObj.value;
+      const strVal = formatExtractedValue(rawVal);
+      const conf01 =
+        typeof fObj.confidence === "number" && Number.isFinite(fObj.confidence)
+          ? fObj.confidence
+          : globalConfidence01;
+      const confPct = fieldConfidence(fKey, fieldConfidenceMap, globalConfidence01);
+      const pres = advisorFieldPresentation(rawVal, fObj.status, conf01, {
+        inputMode: ctx.inputMode as InputMode | undefined,
+        textCoverageEstimate: ctx.textCoverageEstimate,
+        preprocessStatus: ctx.preprocessStatus,
+      });
+      fields.push({
+        id: `extractedFields.${fKey}`,
+        groupId: "extractedFields",
+        label: FIELD_LABELS[fKey] ?? fKey.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim(),
+        value: strVal,
+        confidence: confPct,
+        status: pres.status,
+        message: pres.message,
+        sourceType: "ai",
+        isConfirmed: false,
+        isEdited: false,
+        originalAiValue: strVal,
+      });
+    }
+    if (fields.length > 0) {
+      fields.sort((a, b) => a.label.localeCompare(b.label, "cs"));
+      groups.push({
+        id: "extractedFields",
+        name: "Extrahovaná pole",
+        iconName: "FileText",
+        fields,
+      });
+    }
+  }
+
+  const parties = envelope.parties as Record<string, unknown> | undefined;
+  if (parties && typeof parties === "object" && Object.keys(parties).length > 0) {
+    const pFields: ExtractedField[] = [];
+    for (const [pk, pv] of Object.entries(parties)) {
+      if (pk.startsWith("_")) continue;
+      const strVal = formatExtractedValue(pv);
+      const confPct = fieldConfidence(pk, fieldConfidenceMap, globalConfidence01);
+      const pres = advisorFieldPresentation(pv, "extracted", globalConfidence01, {
+        inputMode: ctx.inputMode as InputMode | undefined,
+        textCoverageEstimate: ctx.textCoverageEstimate,
+        preprocessStatus: ctx.preprocessStatus,
+      });
+      pFields.push({
+        id: `parties.${pk}`,
+        groupId: "parties",
+        label: FIELD_LABELS[pk] ?? pk.replace(/_/g, " "),
+        value: strVal,
+        confidence: confPct,
+        status: strVal === "—" ? "error" : pres.status,
+        message: strVal === "—" ? "Údaj nebyl nalezen nebo chybí v dokumentu." : pres.message,
+        sourceType: "ai",
+        isConfirmed: false,
+        isEdited: false,
+        originalAiValue: strVal,
+      });
+    }
+    if (pFields.length > 0) {
+      groups.push({
+        id: "parties",
+        name: SECTION_LABELS.parties,
+        iconName: "User",
+        fields: pFields,
+      });
+    }
+  }
+
+  const ft = envelope.financialTerms as Record<string, unknown> | undefined;
+  if (ft && typeof ft === "object") {
+    const ftFields: ExtractedField[] = [];
+    for (const [k, v] of Object.entries(ft)) {
+      if (k.startsWith("_")) continue;
+      if (v != null && typeof v === "object" && !Array.isArray(v)) continue;
+      const strVal = formatExtractedValue(v);
+      if (strVal === "—") continue;
+      const confPct = fieldConfidence(k, fieldConfidenceMap, globalConfidence01);
+      ftFields.push({
+        id: `financialTerms.${k}`,
+        groupId: "financialTerms",
+        label: FIELD_LABELS[k] ?? k.replace(/_/g, " "),
+        value: strVal,
+        confidence: confPct,
+        status: fieldStatus(confPct, v),
+        message:
+          fieldStatus(confPct, v) === "warning"
+            ? "Ověřte oproti dokumentu."
+            : undefined,
+        sourceType: "ai",
+        isConfirmed: false,
+        isEdited: false,
+        originalAiValue: strVal,
+      });
+    }
+    if (ftFields.length > 0) {
+      groups.push({
+        id: "financialTerms",
+        name: "Finanční údaje (text)",
+        iconName: "FileText",
+        fields: ftFields,
+      });
+    }
+  }
+
+  return groups;
+}
+
 function flattenPayload(
   payload: Record<string, unknown>,
   fieldConfidenceMap: Record<string, number> | undefined,
@@ -245,23 +406,6 @@ function buildRecommendations(
   const recs: AIRecommendation[] = [];
   let idx = 0;
 
-  const reasons = (detail.reasonsForReview as string[] | undefined) ?? [];
-  for (const reason of reasons) {
-    const isCode = /^[a-z][a-z0-9_]+$/.test(reason);
-    const description = isCode ? getReasonMessage(reason) : reason;
-    recs.push({
-      id: `reason-${idx++}`,
-      type: "warning",
-      severity: "high",
-      title: "Důvod ke kontrole",
-      description,
-      linkedFieldIds: [],
-      actionState: "pending",
-      dismissed: false,
-      createdAt: new Date().toISOString(),
-    });
-  }
-
   const warnings = (detail.validationWarnings as Array<{ code?: string; message: string; field?: string }> | undefined) ?? [];
   for (const w of warnings) {
     recs.push({
@@ -302,7 +446,7 @@ function buildDiagnostics(
   groups: ExtractedGroup[]
 ): ExtractionDiagnostics {
   const allFields = groups.flatMap((g) => g.fields);
-  const warningCount = allFields.filter((f) => f.status === "warning").length;
+  const warningCount = allFields.filter(shouldCountFieldForAttentionBanner).length;
   const errorCount = allFields.filter((f) => f.status === "error").length;
   const extractedCount = allFields.filter((f) => f.status !== "error").length;
   const totalCount = allFields.length;
@@ -329,28 +473,58 @@ function buildDiagnostics(
   };
 }
 
+function pickClientNameFromPayload(extracted: Record<string, unknown>): string | undefined {
+  if (looksLikeDocumentEnvelope(extracted)) {
+    const ef = extracted.extractedFields as Record<string, { value?: unknown }> | undefined;
+    if (!ef) return undefined;
+    const p = (k: string) => {
+      const v = ef[k]?.value;
+      return v != null && String(v).trim() ? String(v).trim() : "";
+    };
+    const n = p("fullName") || p("clientFullName") || [p("firstName"), p("lastName")].filter(Boolean).join(" ");
+    return n || undefined;
+  }
+  const client = (extracted.client ?? {}) as Record<string, unknown>;
+  const flat = [client.fullName, client.firstName, client.lastName].filter(Boolean).join(" ");
+  return flat || undefined;
+}
+
 function buildSummary(
   detail: ApiReviewDetail,
   groups: ExtractedGroup[],
   diagnostics: ExtractionDiagnostics
 ): string {
   const extracted = (detail.extractedPayload ?? {}) as Record<string, unknown>;
-  const client = (extracted.client ?? {}) as Record<string, unknown>;
-  const primaryType = (detail.detectedDocumentType as PrimaryDocumentType) ?? "generic_financial_document";
-  const lifecycle = (detail.lifecycleStatus as string) ?? "unknown";
+  const dc = extracted.documentClassification as Record<string, unknown> | undefined;
+  const primaryType =
+    (dc?.primaryType as PrimaryDocumentType) ??
+    (detail.detectedDocumentType as PrimaryDocumentType) ??
+    "generic_financial_document";
+  const lifecycle =
+    (dc?.lifecycleStatus as string) ?? (detail.lifecycleStatus as string) ?? "unknown";
   const inputMode = (detail.inputMode as InputMode) ?? "text_pdf";
   const confidence = (detail.confidence as number) ?? 0;
   const contentFlags = (extracted.contentFlags ?? {}) as Record<string, boolean>;
+  const ef = extracted.extractedFields as Record<string, { value?: unknown }> | undefined;
+  const productName =
+    (extracted.productName as string | undefined) ?? (ef?.productName?.value != null ? String(ef.productName.value) : undefined);
+  const institutionName =
+    (extracted.institutionName as string | undefined) ??
+    (ef?.institutionName?.value != null ? String(ef.institutionName.value) : undefined) ??
+    (ef?.insurer?.value != null ? String(ef.insurer.value) : undefined);
+  const contractNumber =
+    (extracted.contractNumber as string | undefined) ??
+    (ef?.contractNumber?.value != null ? String(ef.contractNumber.value) : undefined);
 
   const humanSummary = buildHumanSummary({
     primaryType,
     lifecycleStatus: lifecycle as Parameters<typeof buildHumanSummary>[0]["lifecycleStatus"],
     inputMode,
     confidence,
-    productName: extracted.productName as string | undefined,
-    institutionName: extracted.institutionName as string | undefined,
-    contractNumber: extracted.contractNumber as string | undefined,
-    clientName: [client.fullName, client.firstName, client.lastName].filter(Boolean).join(" ") || undefined,
+    productName,
+    institutionName,
+    contractNumber,
+    clientName: pickClientNameFromPayload(extracted),
     containsPaymentInstructions: contentFlags.containsPaymentInstructions ?? false,
     reasonsForReview: detail.reasonsForReview as string[] | undefined,
   });
@@ -375,11 +549,31 @@ export function mergeFieldEditsIntoExtractedPayload(
   }
   for (const [fieldId, value] of Object.entries(editedFields)) {
     const parts = fieldId.split(".");
+    if (parts[0] === "extractedFields" && parts.length === 2) {
+      const key = parts[1];
+      const rootEf = merged.extractedFields;
+      if (rootEf && typeof rootEf === "object" && !Array.isArray(rootEf)) {
+        const ef = rootEf as Record<string, Record<string, unknown>>;
+        const cell = ef[key];
+        if (cell && typeof cell === "object" && !Array.isArray(cell)) {
+          cell.value = value;
+        } else {
+          ef[key] = { value, status: "extracted", confidence: 1 };
+        }
+        correctedFields.push(fieldId);
+      }
+      continue;
+    }
     if (parts.length === 2 && parts[0] !== "root") {
       const [sec, key] = parts;
       const section = merged[sec];
       if (section && typeof section === "object" && section !== null && !Array.isArray(section)) {
-        (section as Record<string, unknown>)[key] = value;
+        const slot = (section as Record<string, unknown>)[key];
+        if (slot && typeof slot === "object" && !Array.isArray(slot) && "value" in (slot as object)) {
+          (slot as Record<string, unknown>).value = value;
+        } else {
+          (section as Record<string, unknown>)[key] = value;
+        }
         correctedFields.push(fieldId);
       }
     } else if (parts[0] === "root" && parts.length === 2) {
@@ -390,12 +584,23 @@ export function mergeFieldEditsIntoExtractedPayload(
   return { merged, correctedFields };
 }
 
+function dedupeDraftActions(actions: DraftAction[]): DraftAction[] {
+  const seen = new Set<string>();
+  const out: DraftAction[] = [];
+  for (const a of actions) {
+    const k = `${a.type}:${a.label}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(a);
+  }
+  return out;
+}
+
 export function mapApiToExtractionDocument(
   detail: ApiReviewDetail,
   pdfUrl: string
 ): ExtractionDocument {
   const extracted = (detail.extractedPayload ?? {}) as Record<string, unknown>;
-  const client = (extracted.client ?? {}) as Record<string, unknown>;
   const confidence = (detail.confidence as number | null) ?? 0;
   const fieldConfidenceMap = detail.fieldConfidenceMap as Record<string, number> | undefined;
   const processingStatus = (detail.processingStatus as string) ?? "uploaded";
@@ -406,18 +611,26 @@ export function mapApiToExtractionDocument(
       ? PROCESSING_STAGE_LABELS_CS[processingStage]
       : undefined;
 
-  const groups = Object.keys(extracted).length > 0
-    ? flattenPayload(extracted, fieldConfidenceMap, confidence)
-    : [];
+  const insights = detail.pipelineInsights as ExtractionDocument["pipelineInsights"] | undefined;
+  const readCtx: ReadabilityCtx = {
+    inputMode: detail.inputMode as string | undefined,
+    textCoverageEstimate: insights?.textCoverageEstimate,
+    preprocessStatus: insights?.preprocessStatus,
+  };
+
+  const groups =
+    Object.keys(extracted).length > 0
+      ? looksLikeDocumentEnvelope(extracted)
+        ? flattenEnvelopeToGroups(extracted, fieldConfidenceMap, confidence, readCtx)
+        : flattenPayload(extracted, fieldConfidenceMap, confidence)
+      : [];
 
   const diagnostics = buildDiagnostics(detail, groups);
   const recommendations = buildRecommendations(detail, groups);
   const summary = buildSummary(detail, groups, diagnostics);
 
-  const clientName =
-    [client.fullName, client.firstName, client.lastName].filter(Boolean).join(" ") || "—";
+  const clientName = pickClientNameFromPayload(extracted) ?? "—";
 
-  const insights = detail.pipelineInsights as ExtractionDocument["pipelineInsights"] | undefined;
   const norm = insights?.normalizedPipelineClassification;
   const baseType = (detail.detectedDocumentType as string) ?? "Neznámý typ";
   const trace = detail.extractionTrace as Record<string, unknown> | undefined;
@@ -428,6 +641,25 @@ export function mapApiToExtractionDocument(
   } else if (norm && norm !== baseType) {
     documentTypeLabel = `${humanPrimaryTypeHeading(baseType)} · ${norm}`;
   }
+
+  const advisorReview = looksLikeDocumentEnvelope(extracted)
+    ? buildAdvisorReviewViewModel({
+        envelope: extracted as unknown as DocumentReviewEnvelope,
+        aiClassifierJson: aiRaw,
+        detectedDocumentTypeLabel: documentTypeLabel,
+        reasonsForReview: detail.reasonsForReview as string[] | undefined,
+        validationWarnings: detail.validationWarnings as
+          | Array<{ code?: string; message: string }>
+          | undefined,
+        extractionTrace: trace,
+      })
+    : undefined;
+
+  const apiDrafts = (detail.draftActions as DraftAction[] | undefined) ?? [];
+  const mergedDrafts = dedupeDraftActions([
+    ...apiDrafts,
+    ...(advisorReview?.workActions ?? []),
+  ]);
 
   return {
     id: detail.id as string,
@@ -463,7 +695,9 @@ export function mapApiToExtractionDocument(
     reasonsForReview: detail.reasonsForReview as string[] | undefined,
     clientMatchCandidates:
       (detail.clientMatchCandidates as ClientMatchCandidate[] | undefined) ?? [],
-    draftActions: (detail.draftActions as DraftAction[] | undefined) ?? [],
+    draftActions: mergedDrafts,
+    inputMode: detail.inputMode as string | undefined,
+    advisorReview,
     matchedClientId: detail.matchedClientId as string | undefined,
     createNewClientConfirmed: detail.createNewClientConfirmed as string | undefined,
     isApplied: reviewStatus === "applied",

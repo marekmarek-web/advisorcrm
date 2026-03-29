@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, X, RefreshCw, MapPin, Link2, AlignLeft, User, Briefcase, Bell, Check, Info, Flag, CheckSquare, Calendar, Send, Clock, Video, ArrowRight } from "lucide-react";
@@ -55,6 +55,30 @@ import { PreMeetingBriefPanel } from "@/app/components/meeting-briefing/PreMeeti
 import { CalendarEventAiActions } from "@/app/portal/calendar/CalendarEventAiActions";
 
 type ViewMode = "day" | "month" | "week" | "workweek";
+
+/** Plain rect from `getBoundingClientRect()` for anchoring the event detail popover. */
+type EventDetailAnchorRect = { top: number; left: number; width: number; height: number };
+
+function computeEventDetailPopoverPosition(
+  anchor: EventDetailAnchorRect,
+  popW: number,
+  popH: number,
+): { top: number; left: number } {
+  const pad = 8;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = anchor.left + anchor.width + pad;
+  let top = anchor.top;
+  if (left + popW > vw - pad) {
+    left = anchor.left - popW - pad;
+  }
+  if (left < pad) left = pad;
+  if (top + popH > vh - pad) {
+    top = vh - popH - pad;
+  }
+  if (top < pad) top = pad;
+  return { top, left };
+}
 
 const DAY_NAMES_MON = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
 const DAY_NAMES_SUN = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
@@ -389,6 +413,8 @@ function EventDetailPopup({
   onChangeType,
   onClose,
   eventTypeColors,
+  anchorRect,
+  isMobile = false,
 }: {
   event: EventRow;
   contacts: ContactRow[];
@@ -397,7 +423,33 @@ function EventDetailPopup({
   onChangeType: (nextType: string) => void;
   onClose: () => void;
   eventTypeColors?: Record<string, string>;
+  anchorRect?: EventDetailAnchorRect | null;
+  isMobile?: boolean;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [placedAt, setPlacedAt] = useState<{ top: number; left: number } | null>(null);
+  const useAnchored = Boolean(!isMobile && anchorRect);
+
+  const reposition = useCallback(() => {
+    if (!anchorRect || !panelRef.current) return;
+    const pop = panelRef.current.getBoundingClientRect();
+    setPlacedAt(computeEventDetailPopoverPosition(anchorRect, pop.width, pop.height));
+  }, [anchorRect]);
+
+  useLayoutEffect(() => {
+    if (!useAnchored || !anchorRect) {
+      setPlacedAt(null);
+      return;
+    }
+    reposition();
+  }, [useAnchored, anchorRect, event.id, reposition]);
+
+  useEffect(() => {
+    if (!useAnchored) return;
+    window.addEventListener("resize", reposition);
+    return () => window.removeEventListener("resize", reposition);
+  }, [useAnchored, reposition]);
+
   const typeInfo = getEventCategory(event.eventType);
   const statusObj = EVENT_STATUSES.find((status) => status.id === event.status);
   const dateLine = formatEventDetailDateLine(event);
@@ -410,14 +462,35 @@ function EventDetailPopup({
       event.meetingLink!.includes("meet") ||
       event.meetingLink!.includes("zoom"));
 
+  const overlayClass = useAnchored
+    ? "fixed inset-0 z-modal bg-black/25 backdrop-blur-[1px] dark:bg-black/40"
+    : "fixed inset-0 z-modal flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm dark:bg-black/50";
+
+  const panelClass = clsx(
+    "bg-[color:var(--wp-surface-muted)] rounded-2xl shadow-xl border border-[color:var(--wp-surface-card-border)] min-h-0 flex flex-col overflow-hidden",
+    useAnchored
+      ? clsx(
+          "fixed z-[1] transition-opacity duration-75",
+          useAnchored && placedAt === null && "opacity-0",
+        )
+      : "relative w-full max-w-md max-h-[min(90dvh,720px)]",
+  );
+
+  const panelStyle: React.CSSProperties | undefined = useAnchored
+    ? {
+        top: placedAt?.top ?? anchorRect!.top,
+        left: placedAt?.left ?? anchorRect!.left + anchorRect!.width + 8,
+        width: "min(28rem, calc(100vw - 16px))",
+        maxHeight: "min(85vh, 720px)",
+      }
+    : undefined;
+
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm dark:bg-black/50"
-      onClick={onClose}
-      role="presentation"
-    >
+    <div className={overlayClass} onClick={onClose} role="presentation">
       <div
-        className="bg-[color:var(--wp-surface-muted)] rounded-2xl shadow-xl border border-[color:var(--wp-surface-card-border)] w-full max-w-md max-h-[min(90dvh,720px)] min-h-0 flex flex-col overflow-hidden"
+        ref={panelRef}
+        className={panelClass}
+        style={panelStyle}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -856,6 +929,7 @@ export function PortalCalendarView() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<(EventFormData & { id?: string }) | null>(null);
   const [detailEvent, setDetailEvent] = useState<EventRow | null>(null);
+  const [detailAnchor, setDetailAnchor] = useState<EventDetailAnchorRect | null>(null);
   const todayStrInitial = formatDate(new Date());
   const [selectedDate, setSelectedDate] = useState(todayStrInitial);
   const [dayTasks, setDayTasks] = useState<TaskRow[]>([]);
@@ -887,6 +961,11 @@ export function PortalCalendarView() {
   const loadDayTasks = useCallback((dateStr: string) => {
     setDayTasksLoading(true);
     getTasksForDate(dateStr).then(setDayTasks).catch(() => setDayTasks([])).finally(() => setDayTasksLoading(false));
+  }, []);
+
+  const closeEventDetail = useCallback(() => {
+    setDetailEvent(null);
+    setDetailAnchor(null);
   }, []);
 
   useEffect(() => { loadDayTasks(selectedDate); }, [selectedDate, loadDayTasks]);
@@ -1064,7 +1143,7 @@ export function PortalCalendarView() {
       const payload = eventRowToCreatePayload(ev);
       await deleteEvent(ev.id);
       setModal(null);
-      setDetailEvent(null);
+      closeEventDetail();
       loadEvents();
       toast.showToast("Událost byla smazána", "success", 6000, {
         actionLabel: "Vrátit zpět",
@@ -1074,7 +1153,7 @@ export function PortalCalendarView() {
         },
       });
     },
-    [loadEvents, toast],
+    [loadEvents, toast, closeEventDetail],
   );
 
   const handleDeleteById = useCallback(
@@ -1085,12 +1164,12 @@ export function PortalCalendarView() {
       } else {
         await deleteEvent(id);
         setModal(null);
-        setDetailEvent(null);
+        closeEventDetail();
         loadEvents();
         toast.showToast("Událost byla smazána");
       }
     },
-    [events, handleDeleteEvent, loadEvents, toast],
+    [events, handleDeleteEvent, loadEvents, toast, closeEventDetail],
   );
 
   const handleFollowUp = useCallback(
@@ -1121,9 +1200,9 @@ export function PortalCalendarView() {
   const handleMarkEventDone = useCallback(async (ev: EventRow) => {
     await updateEvent(ev.id, { status: "done" });
     toast.showToast("Událost označena jako hotová");
-    setDetailEvent(null);
+    closeEventDetail();
     loadEvents();
-  }, [loadEvents, toast]);
+  }, [loadEvents, toast, closeEventDetail]);
 
   const handleEventMove = useCallback(
     async (eventId: string, targetDateStr: string, startMinutesFromMidnight: number) => {
@@ -1227,15 +1306,15 @@ export function PortalCalendarView() {
   }
 
   const openEventDetailFromGrid = useCallback(
-    (ev: EventRow) => {
+    (ev: EventRow, anchorRect?: EventDetailAnchorRect | null) => {
       if (detailEvent?.id === ev.id) {
-        setDetailEvent(null);
+        closeEventDetail();
         return;
       }
       setDetailEvent(ev);
-      setContextPanelCollapsed(false);
+      setDetailAnchor(anchorRect ?? null);
     },
-    [detailEvent],
+    [detailEvent, closeEventDetail],
   );
 
   function openEdit(ev: EventRow) {
@@ -1264,7 +1343,7 @@ export function PortalCalendarView() {
       notes: ev.notes ?? "",
       meetingLink: ev.meetingLink ?? "",
     });
-    setDetailEvent(null);
+    closeEventDetail();
   }
 
   const weekDays = useMemo(() => {
@@ -1489,7 +1568,14 @@ export function PortalCalendarView() {
                                 key={ev.id}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openEventDetailFromGrid(ev);
+                                  const el = e.currentTarget as HTMLElement;
+                                  const r = el.getBoundingClientRect();
+                                  openEventDetailFromGrid(ev, {
+                                    top: r.top,
+                                    left: r.left,
+                                    width: r.width,
+                                    height: r.height,
+                                  });
                                 }}
                                 className={`px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded border truncate hover:shadow-sm transition-shadow ${useInlineColor ? "text-gray-800 border-gray-300" : typeInfo.tailwindClass}`}
                                 style={useInlineColor ? { backgroundColor: customColor, borderColor: customColor } : undefined}
@@ -1519,6 +1605,7 @@ export function PortalCalendarView() {
                   timeColWidth={isMobile ? 48 : timeColWidth}
                   onSlotClick={(dateStr, hour) => openNew(dateStr, hour)}
                   onEventClick={openEventDetailFromGrid}
+                  onGridScroll={closeEventDetail}
                   onDaySelect={setSelectedDate}
                   selectedEventId={detailEvent?.id ?? null}
                   isMobile={isMobile}
@@ -1563,8 +1650,10 @@ export function PortalCalendarView() {
           onEdit={() => openEdit(detailEvent)}
           onDelete={() => handleDeleteEvent(detailEvent)}
           onChangeType={(nextType) => handleDetailEventTypeChange(detailEvent.id, nextType)}
-          onClose={() => setDetailEvent(null)}
+          onClose={closeEventDetail}
           eventTypeColors={settings.eventTypeColors}
+          anchorRect={detailAnchor}
+          isMobile={isMobile}
         />
       )}
 

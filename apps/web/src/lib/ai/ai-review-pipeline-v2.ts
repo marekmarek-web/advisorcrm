@@ -41,11 +41,15 @@ import { buildManualReviewStubEnvelope, buildScanOcrUnusableStubEnvelope } from 
 import { shouldSkipContractLlmExtractionForScanOcr } from "./scan-ocr-extraction-gate";
 import { runAiReviewClassifier } from "./ai-review-classifier";
 import { resolveAiReviewExtractionRoute } from "./ai-review-extraction-router";
-import { mapAiClassifierToClassificationResult } from "./ai-review-type-mapper";
+import {
+  mapAiClassifierToClassificationResult,
+  primaryTypeFallbackFromPromptKey,
+} from "./ai-review-type-mapper";
 import { getAiReviewPromptId, getAiReviewPromptVersion, type AiReviewPromptKey } from "./prompt-model-registry";
 import { isAiReviewLlmPostprocessEnabled, runAiReviewDecisionLlm } from "./ai-review-llm-postprocess";
 import { buildAiReviewExtractionPromptVariables, capAiReviewPromptString } from "./ai-review-prompt-variables";
 import { zodIssuesToAdvisorBriefMessages } from "./zod-issues-advisor-copy";
+import { deriveEnvelopeFlags } from "./derive-envelope-flags";
 import type {
   ContractPipelineOptions,
   PipelinePreprocessMeta,
@@ -245,6 +249,34 @@ function finalizeContractPayload(params: {
   if (advisorFields.some((k) => data.extractedFields[k]?.status === "extracted")) {
     data.contentFlags.containsAdvisorData = true;
   }
+  deriveEnvelopeFlags(data);
+
+  const ef = data.extractedFields;
+  const legacyPaymentAmount = (() => {
+    const keys = [
+      "totalMonthlyPremium",
+      "premiumAmount",
+      "regularAmount",
+      "installmentAmount",
+      "loanAmount",
+      "oneOffAmount",
+    ] as const;
+    for (const k of keys) {
+      const f = ef[k];
+      if (f && f.status === "extracted" && f.value != null && String(f.value).trim() !== "") {
+        return f.value as number | string;
+      }
+    }
+    return null;
+  })();
+  const legacyPaymentFreq =
+    (ef.paymentFrequency?.status === "extracted" && ef.paymentFrequency.value != null
+      ? ef.paymentFrequency.value
+      : null) ??
+    (ef.premiumFrequency?.status === "extracted" && ef.premiumFrequency.value != null
+      ? ef.premiumFrequency.value
+      : null);
+
   const extractionConfidence =
     typeof data.documentMeta.overallConfidence === "number"
       ? data.documentMeta.overallConfidence
@@ -263,21 +295,24 @@ function finalizeContractPayload(params: {
   }
 
   const legacyValidationPayload = {
-    contractNumber: data.extractedFields.contractNumber?.value as string | null,
-    institutionName: data.extractedFields.institutionName?.value as string | null,
+    contractNumber: ef.contractNumber?.value as string | null,
+    institutionName: ef.institutionName?.value as string | null,
     client: {
-      email: data.extractedFields.clientEmail?.value as string | null,
-      phone: data.extractedFields.clientPhone?.value as string | null,
-      personalId: data.extractedFields.maskedPersonalId?.value as string | null,
-      companyId: data.extractedFields.companyId?.value as string | null,
+      email: (ef.clientEmail?.value ?? ef.email?.value) as string | null,
+      phone: (ef.clientPhone?.value ?? ef.phone?.value) as string | null,
+      personalId: ef.maskedPersonalId?.value as string | null,
+      companyId: ef.companyId?.value as string | null,
     },
     paymentDetails: {
-      amount: data.extractedFields.loanAmount?.value as number | string | null,
-      currency: data.extractedFields.currency?.value as string | null,
-      frequency: data.extractedFields.paymentFrequency?.value as string | null,
+      amount: legacyPaymentAmount,
+      currency: ef.currency?.value as string | null,
+      frequency: legacyPaymentFreq as string | null,
+      iban: ef.iban?.value as string | null,
+      accountNumber: ef.bankAccount?.value as string | null,
+      variableSymbol: ef.variableSymbol?.value as string | null,
     },
-    effectiveDate: data.extractedFields.policyStartDate?.value as string | null,
-    expirationDate: data.extractedFields.policyEndDate?.value as string | null,
+    effectiveDate: ef.policyStartDate?.value as string | null,
+    expirationDate: ef.policyEndDate?.value as string | null,
   };
   const validation: ValidationResult = validateExtractedContract(legacyValidationPayload);
   inferDocumentRelationships(data);
@@ -459,7 +494,13 @@ export async function runAiReviewV2Pipeline(
 
   logPipelineEvent("routed", { outcome: router.outcome, codes: router.reasonCodes });
 
-  const normPipeline = mapPrimaryToPipelineClassification(classification.primaryType);
+  const effectivePrimary =
+    router.outcome === "extract" && classification.primaryType === "generic_financial_document"
+      ? primaryTypeFallbackFromPromptKey(router.promptKey, ai) ?? classification.primaryType
+      : classification.primaryType;
+  trace.documentType = effectivePrimary;
+
+  const normPipeline = mapPrimaryToPipelineClassification(effectivePrimary);
   trace.normalizedPipelineClassification = normPipeline;
   const extractionRoute: ExtractionRoute = resolveExtractionRoute(normPipeline, classification.confidence);
   trace.extractionRoute = extractionRoute;
@@ -712,7 +753,7 @@ export async function runAiReviewV2Pipeline(
     };
   }
 
-  const documentType = classification.primaryType;
+  const documentType = effectivePrimary;
   trace.selectedSchema = documentType;
   const mode = inputModeResult.extractionMode as string;
   const isScanFallback = mode === "vision_fallback" || mode === "ocr_enhanced";

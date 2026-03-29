@@ -23,6 +23,11 @@ import {
   Building2,
   Clock,
   Eye,
+  CreditCard,
+  Stethoscope,
+  ListChecks,
+  Wrench,
+  Bug,
 } from "lucide-react";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { getDocumentTypeLabel } from "@/lib/ai/document-messages";
@@ -63,29 +68,6 @@ function documentTypeDisplayLine(doc: ExtractionDocument): string {
   }
   const phrase = getDocumentTypeLabel(label as PrimaryDocumentType);
   return phrase.charAt(0).toUpperCase() + phrase.slice(1);
-}
-
-/* ─── Confidence Badge ──────────────────────────────────────────── */
-
-function ConfidenceBadge({
-  confidence,
-  status,
-}: {
-  confidence: number;
-  status: FieldStatus;
-}) {
-  const colors: Record<FieldStatus, string> = {
-    success: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    warning: "bg-amber-100 text-amber-700 border-amber-200",
-    error: "bg-rose-100 text-rose-700 border-rose-200",
-  };
-  return (
-    <span
-      className={`px-2 py-0.5 rounded text-[10px] font-black tracking-widest border inline-flex items-center gap-1 ${colors[status]}`}
-    >
-      {confidence}% AI
-    </span>
-  );
 }
 
 /* ─── Field Styles ──────────────────────────────────────────────── */
@@ -139,7 +121,9 @@ function recTypeBadge(type: AIRecommendation["type"]) {
 
 const SECTIONS = [
   { id: "summary", label: "Shrnutí" },
-  { id: "recommendations", label: "AI akce" },
+  { id: "advisor", label: "Přehled" },
+  { id: "workflow", label: "Pracovní kroky" },
+  { id: "recommendations", label: "Kontroly" },
   { id: "diagnostics", label: "Diagnostika" },
   { id: "data", label: "Data" },
   { id: "extra", label: "Další podněty" },
@@ -165,7 +149,7 @@ function SectionNav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
 
 const FILTERS: { value: FieldFilter; label: string }[] = [
   { value: "all", label: "Vše" },
-  { value: "warning", label: "Warning" },
+  { value: "warning", label: "K ověření" },
   { value: "error", label: "Chyby" },
   { value: "edited", label: "Upravené" },
   { value: "unconfirmed", label: "Nepotvrzené" },
@@ -269,6 +253,122 @@ function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
 
 /* ─── Executive Summary ─────────────────────────────────────────── */
 
+function AdvisorOverviewCard({ doc }: { doc: ExtractionDocument }) {
+  const ar = doc.advisorReview;
+  if (!ar) return null;
+  const row = (icon: React.ReactNode, title: string, body: string) => (
+    <div className="flex gap-3 py-3 border-b border-[color:var(--wp-surface-card-border)] last:border-0">
+      <div className="shrink-0 mt-0.5 text-indigo-500">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1">
+          {title}
+        </p>
+        <p className="text-sm font-semibold text-[color:var(--wp-text)] leading-snug break-words">{body}</p>
+      </div>
+    </div>
+  );
+  return (
+    <div
+      data-section="advisor"
+      className="bg-[color:var(--wp-surface-card)] rounded-[20px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-5 md:p-6"
+    >
+      <h3 className="text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-1 flex items-center gap-2">
+        <ListChecks size={14} className="text-indigo-500" /> Přehled pro poradce
+      </h3>
+      <p className="text-xs text-[color:var(--wp-text-tertiary)] mb-4 leading-relaxed">
+        Strukturovaný výstup z extrakce — interní podklad, ne náhrada vašeho posouzení.
+      </p>
+      <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 px-4">
+        {row(<FileText size={18} />, "Rozpoznání dokumentu", ar.recognition)}
+        {row(<User size={18} />, "Klient", ar.client)}
+        {row(<Shield size={18} />, "Produkt / smlouva", ar.product)}
+        {row(<CreditCard size={18} />, "Platby", ar.payments)}
+        {row(<Stethoscope size={18} />, "Zdravotní / citlivé údaje", ar.healthSensitive)}
+      </div>
+      {ar.manualChecklist.length > 0 ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-900 mb-2 flex items-center gap-2">
+            <AlertTriangle size={14} /> Ruční kontrola
+          </p>
+          <ul className="text-sm text-amber-950 space-y-2 list-disc pl-4">
+            {ar.manualChecklist.map((item, i) => (
+              <li key={i} className="leading-snug">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function WorkActionsCard({ doc }: { doc: ExtractionDocument }) {
+  const actions = doc.draftActions ?? [];
+  return (
+    <div
+      data-section="workflow"
+      className="bg-[color:var(--wp-surface-card)] rounded-[20px] border border-[color:var(--wp-surface-card-border)] shadow-sm p-5 md:p-6"
+    >
+      <h3 className="text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-3 flex items-center gap-2">
+        <Wrench size={14} className="text-indigo-500" /> Navrhované pracovní kroky
+      </h3>
+      <p className="text-xs text-[color:var(--wp-text-tertiary)] mb-4">
+        Návrhy kroků v CRM nebo portálu — ověřte údaje a potvrďte akci v horní liště (Schválit / Použít).
+      </p>
+      {actions.length === 0 ? (
+        <p className="text-sm text-[color:var(--wp-text-secondary)]">
+          Zatím nejsou k dispozici žádné navázané návrhy kroků pro tento dokument.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {actions.map((a, i) => (
+            <li
+              key={`${a.type}-${i}`}
+              className="flex items-start gap-2 text-sm font-medium text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)]/50 rounded-xl px-4 py-3 border border-[color:var(--wp-surface-card-border)]"
+            >
+              <ArrowRight size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+              <span>{a.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function InternalDebugCard({ doc }: { doc: ExtractionDocument }) {
+  const snap = doc.advisorReview?.debugSnapshot;
+  if (!snap) return null;
+  const [open, setOpen] = useState(false);
+  let text = "";
+  try {
+    text = JSON.stringify(snap, null, 2);
+  } catch {
+    text = String(snap);
+  }
+  return (
+    <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/30 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full px-4 py-3 flex items-center justify-between text-left"
+      >
+        <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] flex items-center gap-2">
+          <Bug size={14} className="text-[color:var(--wp-text-tertiary)]" />
+          Interní diagnostika (technické)
+        </span>
+        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+      </button>
+      {open ? (
+        <pre className="px-4 pb-4 text-[10px] leading-relaxed text-[color:var(--wp-text-secondary)] overflow-x-auto max-h-[min(50vh,420px)] overflow-y-auto font-mono border-t border-[color:var(--wp-surface-card-border)] pt-3">
+          {text}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
 function ExecutiveSummaryCard({ doc }: { doc: ExtractionDocument }) {
   const { diagnostics: d } = doc;
   return (
@@ -281,7 +381,7 @@ function ExecutiveSummaryCard({ doc }: { doc: ExtractionDocument }) {
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatBox label="Nalezeno polí" value={`${d.extractedFields}/${d.totalFields}`} color="indigo" />
-        <StatBox label="Warning" value={String(d.warningCount)} color="amber" />
+        <StatBox label="K ověření" value={String(d.warningCount)} color="amber" />
         <StatBox label="Chyby" value={String(d.errorCount)} color="rose" />
         <StatBox label="Pokrytí" value={`${d.extractionCoverage}%`} color="emerald" />
       </div>
@@ -324,13 +424,17 @@ function AIRecommendationsCard({
   const visible = recommendations.filter((r) => !dismissedMap[r.id]);
   const dismissed = recommendations.filter((r) => dismissedMap[r.id]);
 
+  if (visible.length === 0 && dismissed.length === 0) {
+    return null;
+  }
+
   return (
     <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 rounded-[20px] border border-indigo-100 shadow-sm p-5 md:p-6 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
       <div className="relative z-10">
         <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 mb-4 flex items-center gap-2">
           <AiAssistantBrandIcon size={16} className="shrink-0" />
-          AI Analýza a navrhované akce
+          Kontroly a validace
           <span className="ml-auto text-indigo-500 font-bold text-[10px] normal-case tracking-normal">
             {visible.length} aktivních
           </span>
@@ -430,15 +534,20 @@ function ReviewAttentionBanner({
           Vyžadována vaše kontrola
         </h4>
         <p className="text-xs font-medium text-amber-800/80 leading-relaxed">
-          AI upozorňuje na{" "}
-          {warningCount > 0 && (
-            <span className="font-bold">{warningCount} pole s nižší jistotou</span>
-          )}
-          {warningCount > 0 && errorCount > 0 && " a "}
           {errorCount > 0 && (
-            <span className="font-bold">{errorCount} chybějící/problematické údaje</span>
+            <>
+              <span className="font-bold">{errorCount} chybějících nebo nečitelných údajů</span>
+              {warningCount > 0 ? " a " : ". "}
+            </>
           )}
-          . Zkontrolujte prosím vyznačená pole s náhledem originálu vpravo.
+          {warningCount > 0 && (
+            <span className="font-bold">
+              {errorCount > 0 ? "další " : ""}
+              {warningCount} údajů k ověření oproti originálu
+            </span>
+          )}
+          {(warningCount > 0 || errorCount > 0) &&
+            " Zkontrolujte vyznačená pole s náhledem dokumentu vpravo."}
         </p>
         <button
           onClick={onShowProblems}
@@ -481,6 +590,9 @@ function ExtractionDiagnosticsCard({ doc }: { doc: ExtractionDocument }) {
       </button>
       {open && (
         <div className="px-5 md:px-6 pb-5 pt-0 border-t border-[color:var(--wp-surface-card-border)]">
+          <div className="mt-3 mb-4">
+            <InternalDebugCard doc={doc} />
+          </div>
           <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
@@ -577,7 +689,6 @@ function ExtractedFieldRow({
             </span>
           )}
         </span>
-        <ConfidenceBadge confidence={field.confidence} status={field.status} />
       </label>
 
       <div className="relative group/input">
@@ -698,7 +809,7 @@ function ExtractedGroupCard({
         <div className="flex items-center gap-2">
           {warningCount > 0 && (
             <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-              {warningCount} warning
+              {warningCount} k ověření
             </span>
           )}
           {errorCount > 0 && (
@@ -851,6 +962,10 @@ export function ExtractionLeftPanel({
           </div>
 
           <ExecutiveSummaryCard doc={doc} />
+
+          <AdvisorOverviewCard doc={doc} />
+
+          <WorkActionsCard doc={doc} />
 
           <div data-section="recommendations">
             <AIRecommendationsCard
