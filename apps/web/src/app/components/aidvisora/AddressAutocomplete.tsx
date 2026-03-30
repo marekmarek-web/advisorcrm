@@ -6,8 +6,10 @@ import { wizardInputWithIconClass } from "@/app/components/wizard/wizard-styles"
 declare global {
   interface Window {
     __googleMapsLoaded?: boolean;
+    gm_authFailure?: () => void;
     google?: {
       maps: {
+        event: { clearInstanceListeners: (instance: unknown) => void };
         places: {
           Autocomplete: new (
             input: HTMLInputElement,
@@ -50,7 +52,7 @@ function loadGoogleMapsScript(apiKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.id = SCRIPT_ID;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
@@ -102,7 +104,13 @@ export function AddressAutocomplete({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<unknown>(null);
+  const onSelectAddressRef = useRef(onSelectAddress);
+  const onChangeRef = useRef(onChange);
+  onSelectAddressRef.current = onSelectAddress;
+  onChangeRef.current = onChange;
+
   const [ready, setReady] = useState(false);
+  const [apiBlocked, setApiBlocked] = useState(false);
   const id = useId();
   const apiKey =
     typeof process !== "undefined" && process.env?.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
@@ -114,13 +122,27 @@ export function AddressAutocomplete({
       setReady(false);
       return;
     }
+
+    const prevGmAuthFailure = window.gm_authFailure;
+    window.gm_authFailure = () => {
+      setApiBlocked(true);
+      setReady(false);
+      prevGmAuthFailure?.();
+    };
+
     let cancelled = false;
     loadGoogleMapsScript(apiKey)
       .then(() => {
         if (cancelled || !inputRef.current || !window.google) return;
-        if (autocompleteRef.current) autocompleteRef.current = null;
         const g = window.google;
         if (!g?.maps?.places?.Autocomplete) return;
+
+        const acPrev = autocompleteRef.current;
+        if (acPrev && g.maps.event?.clearInstanceListeners) {
+          g.maps.event.clearInstanceListeners(acPrev);
+        }
+        autocompleteRef.current = null;
+
         const autocomplete = new g.maps.places.Autocomplete(inputRef.current, {
           types: ["address"],
           fields: ["address_components"],
@@ -129,32 +151,56 @@ export function AddressAutocomplete({
           const place = autocomplete.getPlace();
           if (!place?.address_components?.length) return;
           const components = parseAddressComponents(place);
-          onSelectAddress(components);
+          onSelectAddressRef.current(components);
           const streetPart = [components.street, components.houseNumber].filter(Boolean).join(" ");
-          if (streetPart) onChange(streetPart);
+          if (streetPart) onChangeRef.current(streetPart);
         });
         autocompleteRef.current = autocomplete;
         setReady(true);
+        setApiBlocked(false);
       })
-      .catch(() => setReady(false));
+      .catch(() => {
+        setReady(false);
+      });
+
     return () => {
       cancelled = true;
+      window.gm_authFailure = prevGmAuthFailure;
+      const ac = autocompleteRef.current;
       autocompleteRef.current = null;
+      if (ac && window.google?.maps?.event?.clearInstanceListeners) {
+        window.google.maps.event.clearInstanceListeners(ac);
+      }
     };
-  }, [apiKey, onSelectAddress, onChange]);
+  }, [apiKey]);
+
+  const noApi = !apiKey;
+  const showManualHint = noApi || apiBlocked;
+  const effectivePlaceholder = showManualHint
+    ? apiBlocked
+      ? "Google Maps na této doméně blokuje klíč — doplňte adresu ručně (API restrictions v Google Cloud)."
+      : "Adresa (bez klíče Google se doplňuje ručně)"
+    : placeholder;
 
   return (
-    <input
-      ref={inputRef}
-      id={id}
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={ready ? placeholder : "Adresa (bez klíče Google se doplňuje ručně)"}
-      className={`${wizardInputWithIconClass} ${className}`.trim()}
-      disabled={disabled}
-      autoComplete="off"
-      aria-describedby={ready ? undefined : "address-no-api"}
-    />
+    <>
+      <input
+        ref={inputRef}
+        id={id}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={effectivePlaceholder}
+        className={`${wizardInputWithIconClass} ${className}`.trim()}
+        disabled={disabled}
+        autoComplete="off"
+        aria-describedby={showManualHint ? "address-no-api" : undefined}
+      />
+      <span id="address-no-api" className="sr-only">
+        {apiBlocked
+          ? "Doplňování adresy z Google na této doméně nefunguje kvůli omezení API klíče. Vyplňte údaje ručně níže."
+          : "Bez nastaveného klíče zadejte adresu ručně do polí níže."}
+      </span>
+    </>
   );
 }
