@@ -21,7 +21,6 @@ import {
 } from "@/app/actions/ai-feedback";
 import { buildDebugContext, type AiContextDebugOutput } from "@/lib/ai/context/debug-context";
 import { buildOrchestratedOutput, collectGenerationErrors, type AiOrchestratedOutput } from "@/lib/ai/orchestration";
-import { debugLog79ea30 } from "@/lib/debug/debug-79ea30";
 
 /** RSC and Server Action responses must not include raw Date (serialization). */
 function serializeCreatedAt(value: Date | string): string {
@@ -165,18 +164,6 @@ export async function getLatestClientGenerations(
 }> {
   try {
     const auth = await requireAuthInAction();
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/ai-generations.ts:171",
-      message: "getLatestClientGenerations entry",
-      data: {
-        contactId,
-        roleName: auth.roleName,
-      },
-      runId: "initial",
-      hypothesisId: "H2",
-    });
-    // #endregion
     if (auth.roleName === "Client") {
       if (!auth.contactId || auth.contactId !== contactId) throw new Error("Forbidden");
     } else if (!hasPermission(auth.roleName, "contacts:read")) {
@@ -199,36 +186,12 @@ export async function getLatestClientGenerations(
           }
         : null;
 
-    const result = {
+    return {
       clientSummary: toItem(s),
       clientOpportunities: toItem(o),
       nextBestAction: toItem(n),
     };
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/ai-generations.ts:204",
-      message: "getLatestClientGenerations returning",
-      data: {
-        contactId,
-        hasClientSummary: Boolean(result.clientSummary),
-        hasClientOpportunities: Boolean(result.clientOpportunities),
-        hasNextBestAction: Boolean(result.nextBestAction),
-      },
-      runId: "initial",
-      hypothesisId: "H2",
-    });
-    // #endregion
-    return result;
   } catch {
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/ai-generations.ts:217",
-      message: "getLatestClientGenerations failed",
-      data: { contactId },
-      runId: "initial",
-      hypothesisId: "H2",
-    });
-    // #endregion
     return {
       clientSummary: null,
       clientOpportunities: null,

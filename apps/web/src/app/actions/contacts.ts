@@ -7,7 +7,6 @@ import { db } from "db";
 import { contacts } from "db";
 import { eq, and, asc, inArray, isNull, sql } from "db";
 import { createAdminClient } from "@/lib/supabase/server";
-import { debugLog79ea30 } from "@/lib/debug/debug-79ea30";
 
 export type ContactRow = {
   id: string;
@@ -179,19 +178,6 @@ const contactDetailExtendedSelect = {
 async function loadContact(id: string): Promise<ContactRow | null> {
   try {
     const auth = await requireAuthInAction();
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/contacts.ts:181",
-      message: "getContact entry",
-      data: {
-        contactId: id,
-        roleName: auth.roleName,
-        tenantIdPresent: Boolean(auth.tenantId),
-      },
-      runId: "initial",
-      hypothesisId: "H1",
-    });
-    // #endregion
     if (!hasPermission(auth.roleName, "contacts:read")) return null;
 
     let row: Record<string, unknown> | undefined;
@@ -203,19 +189,6 @@ async function loadContact(id: string): Promise<ContactRow | null> {
         .limit(1);
       row = rows[0] as Record<string, unknown> | undefined;
     } catch (e) {
-      // #region agent log
-      await debugLog79ea30({
-        location: "src/app/actions/contacts.ts:203",
-        message: "getContact extended select failed",
-        data: {
-          contactId: id,
-          code: typeof e === "object" && e !== null ? (e as { code?: string }).code ?? null : null,
-          error: e instanceof Error ? e.message : String(e),
-        },
-        runId: "initial",
-        hypothesisId: "H1",
-      });
-      // #endregion
       if (isRedirectError(e)) throw e;
       if (!isPgUndefinedColumn(e)) throw e;
       console.warn("[getContact] extended columns missing, using core select");
@@ -227,19 +200,6 @@ async function loadContact(id: string): Promise<ContactRow | null> {
       row = rows[0] as Record<string, unknown> | undefined;
     }
 
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/contacts.ts:225",
-      message: "getContact select resolved",
-      data: {
-        contactId: id,
-        foundRow: Boolean(row),
-        usedCoreFallback: row ? !("personalId" in row) : false,
-      },
-      runId: "initial",
-      hypothesisId: "H1",
-    });
-    // #endregion
     if (!row) return null;
 
     const referralContactId = row.referralContactId as string | null;
@@ -258,7 +218,7 @@ async function loadContact(id: string): Promise<ContactRow | null> {
       }
     }
 
-    const result = {
+    return {
       id: row.id as string,
       firstName: row.firstName as string,
       lastName: row.lastName as string,
@@ -284,38 +244,7 @@ async function loadContact(id: string): Promise<ContactRow | null> {
       nextServiceDue: dateLikeToOptionalYmd(row.nextServiceDue),
       gdprConsentAt: gdprConsentToIsoOrNull(row.gdprConsentAt),
     };
-
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/contacts.ts:271",
-      message: "getContact returning contact",
-      data: {
-        contactId: result.id,
-        hasEmail: Boolean(result.email),
-        hasPhone: Boolean(result.phone),
-        hasBirthDate: Boolean(result.birthDate),
-        tagsCount: result.tags?.length ?? 0,
-      },
-      runId: "initial",
-      hypothesisId: "H3",
-    });
-    // #endregion
-    return result;
   } catch (e) {
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/contacts.ts:284",
-      message: "getContact outer catch",
-      data: {
-        contactId: id,
-        code: typeof e === "object" && e !== null ? (e as { code?: string }).code ?? null : null,
-        digest: typeof e === "object" && e !== null ? (e as { digest?: string }).digest ?? null : null,
-        error: e instanceof Error ? e.message : String(e),
-      },
-      runId: "initial",
-      hypothesisId: "H1",
-    });
-    // #endregion
     if (isRedirectError(e)) throw e;
     console.error("[getContact]", e);
     return null;

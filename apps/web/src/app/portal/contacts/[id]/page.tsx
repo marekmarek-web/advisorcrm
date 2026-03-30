@@ -37,7 +37,6 @@ import { ClientTimeline } from "./ClientTimeline";
 import { Suspense, type ReactNode } from "react";
 import { BriefingTabContent } from "./BriefingTabContent";
 import { InviteToClientZoneButton } from "@/app/dashboard/contacts/[id]/InviteToClientZoneButton";
-import { debugLog79ea30 } from "@/lib/debug/debug-79ea30";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -60,30 +59,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   const tab: ContactTabId = parseContactTabFromSearchParams(sp);
   const baseQueryNoTab = contactDetailQueryWithoutTab(sp);
 
-  // #region agent log
-  await debugLog79ea30({
-    location: "src/app/portal/contacts/[id]/page.tsx:70",
-    message: "contact detail page entry",
-    data: {
-      contactId,
-      tab,
-      hasTabParam: typeof sp.tab === "string",
-    },
-    runId: "initial",
-    hypothesisId: "H3",
-  });
-  // #endregion
-
   if (!contactId || !CONTACT_ID_UUID_RE.test(contactId)) {
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/portal/contacts/[id]/page.tsx:83",
-      message: "contact detail invalid id",
-      data: { contactId },
-      runId: "initial",
-      hypothesisId: "H3",
-    });
-    // #endregion
     notFound();
   }
 
@@ -91,50 +67,12 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   try {
     contact = await getContact(contactId);
   } catch (e) {
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/portal/contacts/[id]/page.tsx:95",
-      message: "contact detail getContact threw",
-      data: {
-        contactId,
-        digest: typeof e === "object" && e !== null ? (e as { digest?: string }).digest ?? null : null,
-        error: e instanceof Error ? e.message : String(e),
-      },
-      runId: "initial",
-      hypothesisId: "H1",
-    });
-    // #endregion
     if (isRedirectError(e)) throw e;
     notFound();
   }
   if (!contact) {
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/portal/contacts/[id]/page.tsx:110",
-      message: "contact detail contact missing after getContact",
-      data: { contactId },
-      runId: "initial",
-      hypothesisId: "H1",
-    });
-    // #endregion
     notFound();
   }
-
-  // #region agent log
-  await debugLog79ea30({
-    location: "src/app/portal/contacts/[id]/page.tsx:121",
-    message: "contact detail contact loaded",
-    data: {
-      contactId,
-      hasEmail: Boolean(contact.email),
-      hasPhone: Boolean(contact.phone),
-      hasAvatarUrl: Boolean(contact.avatarUrl),
-      tagsCount: contact.tags?.length ?? 0,
-    },
-    runId: "initial",
-    hypothesisId: "H1",
-  });
-  // #endregion
 
   let household: Awaited<ReturnType<typeof getHouseholdForContact>> = null;
   let latestGenerations: Awaited<ReturnType<typeof getLatestClientGenerations>> = {
@@ -147,37 +85,9 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
       getHouseholdForContact(contactId),
       getLatestClientGenerations(contactId),
     ]);
-  } catch (e) {
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/portal/contacts/[id]/page.tsx:143",
-      message: "contact detail secondary preload failed",
-      data: {
-        contactId,
-        error: e instanceof Error ? e.message : String(e),
-      },
-      runId: "initial",
-      hypothesisId: "H2",
-    });
-    // #endregion
+  } catch {
     /* Sekundární data – stránka klienta zůstane, chybějící bloky se doplní prázdně */
   }
-
-  // #region agent log
-  await debugLog79ea30({
-    location: "src/app/portal/contacts/[id]/page.tsx:156",
-    message: "contact detail secondary preload result",
-    data: {
-      contactId,
-      hasHousehold: Boolean(household),
-      hasClientSummary: Boolean(latestGenerations.clientSummary),
-      hasClientOpportunities: Boolean(latestGenerations.clientOpportunities),
-      hasNextBestAction: Boolean(latestGenerations.nextBestAction),
-    },
-    runId: "initial",
-    hypothesisId: "H2",
-  });
-  // #endregion
 
   const overviewContent = (
     <div className="space-y-8">
@@ -311,21 +221,6 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   const addressLine = [contact.street, [contact.city, contact.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Kontakt";
-
-  // #region agent log
-  await debugLog79ea30({
-    location: "src/app/portal/contacts/[id]/page.tsx:323",
-    message: "contact detail page render ready",
-    data: {
-      contactId,
-      fullName,
-      activeTab: tab,
-      addressPresent: Boolean(addressLine),
-    },
-    runId: "initial",
-    hypothesisId: "H4",
-  });
-  // #endregion
 
   return (
     <div className="min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-20 text-[color:var(--wp-text)]">

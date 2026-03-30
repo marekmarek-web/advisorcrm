@@ -20,6 +20,7 @@ import { eq, and, ne, gt, inArray, isNull } from "db";
 import { sendEmail } from "@/lib/email/send-email";
 import { clientPortalInviteTemplate } from "@/lib/email/templates";
 import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
+import { getServerAppBaseUrl } from "@/lib/url/server-app-base-url";
 
 /** Po prvním přihlášení (OAuth nebo signup) vytvoří workspace a uživatele jako Admin, pokud ještě nemá membership. */
 export async function ensureMembership(): Promise<EnsureMembershipResult> {
@@ -81,7 +82,7 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
     })
     .returning({ id: clientInvitations.id } as any);
 
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const baseUrl = getServerAppBaseUrl();
   const inviteLink = `${baseUrl}/register?token=${token}`;
 
   const [tenantRow] = await db

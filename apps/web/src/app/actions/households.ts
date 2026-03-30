@@ -5,7 +5,6 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { db, households, householdMembers, contacts, eq, and, asc } from "db";
 import { createPortalNotification } from "./portal-notifications";
 import { logActivity } from "./activity";
-import { debugLog79ea30 } from "@/lib/debug/debug-79ea30";
 
 export type HouseholdRow = { id: string; name: string; memberCount: number };
 
@@ -92,73 +91,30 @@ export type ClientHouseholdDetail = {
 
 /** Household (if any) that this contact belongs to; for profile sidebar/card. */
 export async function getHouseholdForContact(contactId: string): Promise<HouseholdForContact | null> {
-  try {
-    const auth = await requireAuthInAction();
-    const isClientPortal = auth.roleName === "Client" && auth.contactId === contactId;
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/households.ts:98",
-      message: "getHouseholdForContact entry",
-      data: {
-        contactId,
-        roleName: auth.roleName,
-        isClientPortal,
-      },
-      runId: "initial",
-      hypothesisId: "H2",
-    });
-    // #endregion
-    if (!isClientPortal && !hasPermission(auth.roleName, "households:read")) return null;
-    const [member] = await db
-      .select({
-        householdId: householdMembers.householdId,
-        role: householdMembers.role,
-        name: households.name,
-      })
-      .from(householdMembers)
-      .innerJoin(households, eq(householdMembers.householdId, households.id))
-      .where(and(eq(householdMembers.contactId, contactId), eq(households.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!member) return null;
-    const count = await db
-      .select({ id: householdMembers.id })
-      .from(householdMembers)
-      .where(eq(householdMembers.householdId, member.householdId));
-    const result = {
-      id: member.householdId,
-      name: member.name,
-      role: member.role,
-      memberCount: count.length,
-    };
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/households.ts:130",
-      message: "getHouseholdForContact returning household",
-      data: {
-        contactId,
-        householdId: result.id,
-        memberCount: result.memberCount,
-      },
-      runId: "initial",
-      hypothesisId: "H2",
-    });
-    // #endregion
-    return result;
-  } catch (e) {
-    // #region agent log
-    await debugLog79ea30({
-      location: "src/app/actions/households.ts:142",
-      message: "getHouseholdForContact failed",
-      data: {
-        contactId,
-        error: e instanceof Error ? e.message : String(e),
-      },
-      runId: "initial",
-      hypothesisId: "H2",
-    });
-    // #endregion
-    throw e;
-  }
+  const auth = await requireAuthInAction();
+  const isClientPortal = auth.roleName === "Client" && auth.contactId === contactId;
+  if (!isClientPortal && !hasPermission(auth.roleName, "households:read")) return null;
+  const [member] = await db
+    .select({
+      householdId: householdMembers.householdId,
+      role: householdMembers.role,
+      name: households.name,
+    })
+    .from(householdMembers)
+    .innerJoin(households, eq(householdMembers.householdId, households.id))
+    .where(and(eq(householdMembers.contactId, contactId), eq(households.tenantId, auth.tenantId)))
+    .limit(1);
+  if (!member) return null;
+  const count = await db
+    .select({ id: householdMembers.id })
+    .from(householdMembers)
+    .where(eq(householdMembers.householdId, member.householdId));
+  return {
+    id: member.householdId,
+    name: member.name,
+    role: member.role,
+    memberCount: count.length,
+  };
 }
 
 export async function getClientHouseholdForContact(
