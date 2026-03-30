@@ -1,11 +1,14 @@
 import { pgTable, uuid, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { financialAnalyses } from "./financial-analyses";
+import { tenants } from "./tenants";
 
 export const faSyncLog = pgTable(
   "fa_sync_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    tenantId: uuid("tenant_id").notNull(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
     analysisId: uuid("analysis_id")
       .notNull()
       .references(() => financialAnalyses.id, { onDelete: "cascade" }),

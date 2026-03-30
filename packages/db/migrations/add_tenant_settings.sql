@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS tenant_settings (
   version INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE INDEX IF NOT EXISTS tenant_settings_tenant_key_idx ON tenant_settings(tenant_id, key);
+-- (tenant_id, key) is covered by UNIQUE index below — no separate btree on same columns.
 CREATE INDEX IF NOT EXISTS tenant_settings_domain_idx ON tenant_settings(tenant_id, domain);
 
 -- Unique constraint: only one value per tenant+key
