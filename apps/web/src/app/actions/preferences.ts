@@ -4,7 +4,8 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { db } from "db";
 import { advisorPreferences } from "db";
 import { eq, and } from "db";
-import { getDefaultQuickActionsConfig } from "@/lib/quick-actions";
+import { getDefaultQuickActionsConfig, type QuickActionsConfig } from "@/lib/quick-actions";
+import { loadQuickActionsConfig } from "@/lib/quick-actions/load-quick-actions-config";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
 
@@ -20,35 +21,12 @@ export type AdvisorReportBranding = {
   website: string | null;
 };
 
-export type QuickActionsConfig = {
-  order: string[];
-  visible: Record<string, boolean>;
-};
+export type { QuickActionsConfig };
 
 export async function getQuickActionsConfig(): Promise<QuickActionsConfig> {
   try {
     const auth = await requireAuthInAction();
-    const row = await db
-      .select({ quickActions: advisorPreferences.quickActions })
-      .from(advisorPreferences)
-      .where(
-        and(
-          eq(advisorPreferences.tenantId, auth.tenantId),
-          eq(advisorPreferences.userId, auth.userId)
-        )
-      )
-      .limit(1);
-
-    const raw = row[0]?.quickActions;
-    if (!raw || typeof raw !== "object" || !("order" in raw) || !Array.isArray((raw as { order?: string[] }).order)) {
-      return getDefaultQuickActionsConfig();
-    }
-    const data = raw as { order: string[]; visible?: Record<string, boolean> };
-    const visible = typeof data.visible === "object" && data.visible !== null ? data.visible : {};
-    return {
-      order: Array.isArray(data.order) ? data.order : getDefaultQuickActionsConfig().order,
-      visible,
-    };
+    return await loadQuickActionsConfig(auth.tenantId, auth.userId);
   } catch {
     return getDefaultQuickActionsConfig();
   }

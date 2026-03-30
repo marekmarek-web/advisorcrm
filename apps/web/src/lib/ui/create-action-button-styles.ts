@@ -50,5 +50,6 @@ export const createActionButtonSurfaceClassName = clsx(
   "px-5 py-3 min-h-[48px] box-border",
   "rounded-2xl",
   "text-xs font-black uppercase tracking-[0.15em]",
+  "font-[family-name:var(--font-jakarta),ui-sans-serif,system-ui,sans-serif]",
   "no-underline",
 );

@@ -8,6 +8,7 @@ import { MobilePortalApp } from "./mobile/MobilePortalApp";
 import { PortalThemeProvider } from "./PortalThemeProvider";
 import { PORTAL_THEME_STORAGE_PREFLIGHT } from "./theme-storage-preflight";
 import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
+import { loadQuickActionsConfig } from "@/lib/quick-actions/load-quick-actions-config";
 import "@/styles/aidvisora-monday.css";
 import "@/styles/board.css";
 import "@/styles/monday.css";
@@ -63,6 +64,9 @@ export default async function PortalLayout({
     userAgent: headerList.get("user-agent"),
     cookieStore,
   });
+  const initialQuickActions = mobileUiEnabled
+    ? undefined
+    : await loadQuickActionsConfig(auth.tenantId, auth.userId);
   if (mobileUiEnabled) {
     return (
       <>
@@ -85,7 +89,9 @@ export default async function PortalLayout({
         {PORTAL_THEME_STORAGE_PREFLIGHT}
       </Script>
       <PortalThemeProvider>
-        <PortalShell showTeamOverview={showTeamOverview}>{children}</PortalShell>
+        <PortalShell showTeamOverview={showTeamOverview} initialQuickActions={initialQuickActions}>
+          {children}
+        </PortalShell>
       </PortalThemeProvider>
     </>
   );

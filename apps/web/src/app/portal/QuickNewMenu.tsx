@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
 import { QuickActionsMenuContent } from "@/app/portal/quick-new-ui";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
+import type { QuickActionsConfig } from "@/lib/quick-actions";
 
-export function QuickNewMenu() {
+export function QuickNewMenu({ initialQuickActions }: { initialQuickActions?: QuickActionsConfig }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -40,14 +41,18 @@ export function QuickNewMenu() {
         aria-haspopup="true"
         aria-label="Nový – rychlé akce"
       >
-        <span className="hidden sm:inline">Nový</span>
+        Nový
       </CreateActionButton>
       {open && (
         <div
           role="menu"
           className="wp-quick-new-menu absolute right-0 top-full z-dropdown mt-3 w-56 origin-top-right animate-in fade-in zoom-in-95 p-2 duration-200"
         >
-          <QuickActionsMenuContent variant="dropdown" onClose={() => setOpen(false)} />
+          <QuickActionsMenuContent
+            variant="dropdown"
+            onClose={() => setOpen(false)}
+            initialConfig={initialQuickActions}
+          />
         </div>
       )}
     </div>

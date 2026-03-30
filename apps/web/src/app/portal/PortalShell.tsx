@@ -20,6 +20,7 @@ import { mapPushNotificationToRoute } from "@/lib/push/routing";
 import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 import clsx from "clsx";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import type { QuickActionsConfig } from "@/lib/quick-actions";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -45,7 +46,15 @@ function getStoredSidebarState() {
   }
 }
 
-export function PortalShell({ children, showTeamOverview }: { children: React.ReactNode; showTeamOverview?: boolean }) {
+export function PortalShell({
+  children,
+  showTeamOverview,
+  initialQuickActions,
+}: {
+  children: React.ReactNode;
+  showTeamOverview?: boolean;
+  initialQuickActions?: QuickActionsConfig;
+}) {
   const headerSearchRef = useRef<PortalHeaderSearchHandle>(null);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -109,7 +118,20 @@ export function PortalShell({ children, showTeamOverview }: { children: React.Re
   return (
     <ToastProvider>
       <AiAssistantDrawerProvider>
-        <PortalShellInner showTeamOverview={showTeamOverview} isDesktop={isDesktop} headerSearchRef={headerSearchRef} mainMarginPx={mainMarginPx} sidebarDrawerOpen={sidebarDrawerOpen} setSidebarDrawerOpen={setSidebarDrawerOpen} initSidebarState={initSidebarState} sidebarWidth={sidebarWidth} sidebarCollapsed={sidebarCollapsed} handleSidebarResize={handleSidebarResize} handleSidebarCollapsed={handleSidebarCollapsed}>
+        <PortalShellInner
+          showTeamOverview={showTeamOverview}
+          initialQuickActions={initialQuickActions}
+          isDesktop={isDesktop}
+          headerSearchRef={headerSearchRef}
+          mainMarginPx={mainMarginPx}
+          sidebarDrawerOpen={sidebarDrawerOpen}
+          setSidebarDrawerOpen={setSidebarDrawerOpen}
+          initSidebarState={initSidebarState}
+          sidebarWidth={sidebarWidth}
+          sidebarCollapsed={sidebarCollapsed}
+          handleSidebarResize={handleSidebarResize}
+          handleSidebarCollapsed={handleSidebarCollapsed}
+        >
           {children}
         </PortalShellInner>
       </AiAssistantDrawerProvider>
@@ -119,6 +141,7 @@ export function PortalShell({ children, showTeamOverview }: { children: React.Re
 
 function PortalShellInner({
   showTeamOverview,
+  initialQuickActions,
   isDesktop,
   headerSearchRef,
   mainMarginPx,
@@ -132,6 +155,7 @@ function PortalShellInner({
   children,
 }: {
   showTeamOverview?: boolean;
+  initialQuickActions?: QuickActionsConfig;
   isDesktop: boolean;
   headerSearchRef: React.RefObject<PortalHeaderSearchHandle | null>;
   mainMarginPx: number;
@@ -246,7 +270,7 @@ function PortalShellInner({
               )}
             </div>
             <div className="wp-portal-top-header-actions flex items-center gap-2 sm:gap-3 shrink-0 md:gap-5">
-              <QuickNewMenu />
+              <QuickNewMenu initialQuickActions={initialQuickActions} />
               {showScanInQuickMenu ? (
                 <Link
                   href="/portal/scan"

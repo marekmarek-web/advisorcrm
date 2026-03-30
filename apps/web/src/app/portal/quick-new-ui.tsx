@@ -15,7 +15,7 @@ import {
   FileText,
   Building,
 } from "lucide-react";
-import type { QuickActionId, QuickActionItem } from "@/lib/quick-actions";
+import type { QuickActionId, QuickActionItem, QuickActionsConfig } from "@/lib/quick-actions";
 import { useQuickActionsItems } from "@/lib/quick-actions/useQuickActionsItems";
 import { useCaptureCapabilities } from "@/lib/device/useCaptureCapabilities";
 
@@ -61,12 +61,15 @@ export function QuickNewItemIcon({ item }: { item: QuickActionItem }) {
 export function QuickActionsMenuContent({
   variant,
   onClose,
+  initialConfig,
 }: {
   variant: "dropdown" | "sheet";
   onClose: () => void;
+  /** Z RSC – okamžité vyplnění menu bez skeletonu (desktop header). */
+  initialConfig?: QuickActionsConfig | null;
 }) {
   const router = useRouter();
-  const { items, ready } = useQuickActionsItems();
+  const { items, ready } = useQuickActionsItems(initialConfig);
   const { showScanInQuickMenu } = useCaptureCapabilities();
 
   function go(href: string) {
