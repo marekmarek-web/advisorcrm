@@ -57,8 +57,8 @@ function cx(...classes: Array<string | false | null | undefined>) {
 /*  Types & helpers                                                    */
 /* ------------------------------------------------------------------ */
 
-type DocItem = DocumentRow & { contactName?: string | null };
-type SourceFilter = "all" | "pdf" | "image" | "scan";
+type DocItem = DocumentRow & { contactName?: string | null; contactId?: string | null };
+type SourceFilter = "all" | "pdf" | "image" | "scan" | "orphan";
 
 function getFileIcon(mimeType: string | null) {
   if (mimeType?.startsWith("image/")) return Image;
@@ -168,7 +168,11 @@ function DocumentCard({
               <p className="text-[10px] text-[color:var(--wp-text-secondary)] mt-0.5 flex items-center gap-1">
                 <User size={9} /> {doc.contactName}
               </p>
-            ) : null}
+            ) : (
+              <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-0.5 italic">
+                Bez klienta
+              </p>
+            )}
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <div className="flex items-center gap-1">
                 <ProcIcon size={10} className={cx(
@@ -675,6 +679,8 @@ export function DocumentsHubScreen({
       list = list.filter((d) => d.mimeType?.startsWith("image/"));
     } else if (sourceFilter === "scan") {
       list = list.filter((d) => d.isScanLike);
+    } else if (sourceFilter === "orphan") {
+      list = list.filter((d) => !d.contactId);
     }
     return list;
   }, [docs, search, sourceFilter]);
@@ -682,6 +688,7 @@ export function DocumentsHubScreen({
   const pdfCount = docs.filter((d) => d.mimeType === "application/pdf").length;
   const imgCount = docs.filter((d) => d.mimeType?.startsWith("image/")).length;
   const scanCount = docs.filter((d) => d.isScanLike).length;
+  const orphanCount = docs.filter((d) => !d.contactId).length;
 
   async function handleUpload(file: File, source: string) {
     const form = new FormData();
@@ -784,6 +791,7 @@ export function DocumentsHubScreen({
             { id: "pdf", label: "PDF", badge: pdfCount },
             { id: "image", label: "Obrázky", badge: imgCount },
             { id: "scan", label: "Skeny", badge: scanCount },
+            ...(orphanCount > 0 ? [{ id: "orphan", label: "Bez klienta", badge: orphanCount }] : []),
           ]}
         />
         <SearchBar value={search} onChange={setSearch} placeholder="Hledat dokument nebo klienta…" />

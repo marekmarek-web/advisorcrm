@@ -475,7 +475,7 @@ function AIRecommendationsCard({
   dismissedMap: Record<string, boolean>;
   onDismiss: (id: string) => void;
   onRestore: (id: string) => void;
-  onCreateTask: (rec: AIRecommendation) => void;
+  onCreateTask: (rec: AIRecommendation) => void | Promise<void>;
   onFieldClick: (fieldId: string, page?: number) => void;
 }) {
   const visible = recommendations.filter((r) => !dismissedMap[r.id]);
@@ -527,7 +527,7 @@ function AIRecommendationsCard({
                   )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
-                      onClick={() => onCreateTask(rec)}
+                      onClick={() => void onCreateTask(rec)}
                       className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-100/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
                     >
                       Vytvořit úkol
@@ -899,7 +899,7 @@ function ExtraRecommendationsCard({
   recommendations: AIRecommendation[];
   dismissedMap: Record<string, boolean>;
   onDismiss: (id: string) => void;
-  onCreateTask: (rec: AIRecommendation) => void;
+  onCreateTask: (rec: AIRecommendation) => void | Promise<void>;
 }) {
   const visible = recommendations.filter((r) => !dismissedMap[r.id]);
   if (visible.length === 0) return null;
@@ -928,7 +928,7 @@ function ExtraRecommendationsCard({
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
-                    onClick={() => onCreateTask(rec)}
+                    onClick={() => void onCreateTask(rec)}
                     className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-100/50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     Vytvořit úkol
@@ -962,7 +962,7 @@ type LeftPanelProps = {
   onToggleGroup: (groupId: string) => void;
   onDismissRec: (id: string) => void;
   onRestoreRec: (id: string) => void;
-  onCreateTask: (rec: AIRecommendation) => void;
+  onCreateTask: (rec: AIRecommendation) => void | Promise<void>;
 };
 
 export function ExtractionLeftPanel({

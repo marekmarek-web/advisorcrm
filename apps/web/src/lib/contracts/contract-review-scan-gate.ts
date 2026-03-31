@@ -38,6 +38,12 @@ export async function evaluateContractReviewScanGate(
     return { defer: false, reason: "text_with_good_readability" };
   }
 
+  // pdf-parse fallback already proves the file has a text layer — OCR cannot improve it further.
+  // Pass any amount of extracted text to the pipeline (file-based LLM will supplement if needed).
+  if (preprocess.preprocessMode === "pdf_parse_fallback" && md.length > 0) {
+    return { defer: false, reason: "pdf_parse_fallback_has_text" };
+  }
+
   if (mime.startsWith("image/")) {
     return { defer: true, reason: "image_without_usable_text" };
   }

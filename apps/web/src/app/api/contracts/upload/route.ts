@@ -9,7 +9,16 @@ import { tryBeginIdempotencyWindow } from "@/lib/security/idempotency";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_MIME = ["application/pdf"];
+// PDF is the primary format. Common image types are accepted too — scan gate handles text-less scans.
+// DOC/DOCX are NOT accepted: no server-side conversion pipeline is available.
+const ALLOWED_MIME = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
 const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 
 /** Set by middleware; /api/contracts/* autorizujeme jen přes hlavičku (bez Supabase v route). */
@@ -40,7 +49,7 @@ export async function POST(request: Request) {
     const file = formData.get("file") as File | null;
     if (!file?.size) {
       return NextResponse.json(
-        { error: "Vyberte soubor (PDF)." },
+        { error: "Vyberte soubor (PDF nebo obrázek)." },
         { status: 400 }
       );
     }
@@ -57,12 +66,17 @@ export async function POST(request: Request) {
     const detectedMime = detectMagicMimeTypeFromBytes(fileBytes.subarray(0, Math.min(64, fileBytes.byteLength)));
     let mimeType = (file.type?.toLowerCase() || "").trim();
     // iOS/Safari often sends empty type or application/octet-stream for real PDFs.
-    if (detectedMime === "application/pdf") {
-      mimeType = "application/pdf";
+    if (!mimeType || mimeType === "application/octet-stream") {
+      if (detectedMime && ALLOWED_MIME.includes(detectedMime)) {
+        mimeType = detectedMime;
+      }
     }
     if (!ALLOWED_MIME.includes(mimeType)) {
       return NextResponse.json(
-        { error: "Povolený formát je pouze PDF." },
+        {
+          error:
+            "Nepodporovaný formát. Povolené jsou PDF a obrázky (JPG, PNG, WEBP, HEIC). Soubory Word/Excel nejsou podporovány — převeďte je do PDF.",
+        },
         { status: 400 }
       );
     }

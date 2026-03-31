@@ -217,6 +217,7 @@ export default function ContractReviewDetailPage() {
 
   const handleRetryAfterScan = useCallback(async () => {
     setScanRetryBusy(true);
+    processingStartedRef.current = false;
     try {
       const res = await fetch(`/api/contracts/review/${id}/process`, { method: "POST" });
       if (res.ok || res.status === 409) {
@@ -386,11 +387,18 @@ export default function ContractReviewDetailPage() {
           OCR
         </div>
         <div>
-          <h1 className="text-xl font-black text-[color:var(--wp-text)] mb-2">Dokument je uložen — čeká na OCR</h1>
-          <p className="text-sm text-[color:var(--wp-text-secondary)] leading-relaxed">
-            Soubor vypadá jako sken nebo obrázek bez dostatečného textu pro AI Review. Zapněte Adobe / OCR pipeline v
-            nastavení, nebo nahrajte PDF s textovou vrstvou. Náhled souboru můžete použít hned.
+          <h1 className="text-xl font-black text-[color:var(--wp-text)] mb-2">Dokument čeká na OCR</h1>
+          <p className="text-sm text-[color:var(--wp-text-secondary)] leading-relaxed mb-3">
+            Soubor vypadá jako naskenovaný dokument nebo obrázek — AI Review potřebuje čitelný text.
           </p>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left space-y-2">
+            <p className="text-xs font-bold text-amber-900">Co dál?</p>
+            <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside leading-relaxed">
+              <li>Pokud máte PDF s textovou vrstvou, klikněte „Zkusit znovu" — pipeline text rovnou extrahuje.</li>
+              <li>Pokud je soubor fotografií / skenem, aktivujte Adobe OCR v nastavení a poté znovu spusťte zpracování.</li>
+              <li>Alternativně nahrajte verzi dokumentu s textovou vrstvou (ne scan).</li>
+            </ul>
+          </div>
         </div>
         {pdfUrl ? (
           <a

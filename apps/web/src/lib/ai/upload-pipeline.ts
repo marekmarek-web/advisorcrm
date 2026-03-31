@@ -30,11 +30,23 @@ export type ContractUploadResult =
   | { ok: false; error: string };
 
 /**
- * TODO: Extension point – normalise DOC/DOCX/JPG/PNG to PDF for consistent extraction.
- * Primary flow is PDF; other formats could be converted server-side before upload or before extraction.
+ * Normalise non-PDF inputs before extraction.
+ *
+ * Strategy (as of current implementation):
+ * - PDF: primary path, no conversion needed.
+ * - Images (JPEG/PNG/WEBP/HEIC): accepted directly; scan gate handles text-less inputs.
+ * - DOC/DOCX: explicitly rejected at upload API layer — no server-side Word→PDF converter.
+ *   Users must convert to PDF before uploading.
+ *
+ * This function is intentionally not implemented — conversion depends on a LibreOffice or
+ * cloud converter integration that is not yet available.
  */
 export async function normaliseContractFileToPdf(
   _input: ContractFileInput
 ): Promise<{ ok: true; pdfUrl: string } | { ok: false; error: string }> {
-  return { ok: false, error: "Normalisation to PDF not implemented." };
+  return {
+    ok: false,
+    error:
+      "Převod formátu není implementován. Nahrajte PDF nebo obrázek (JPG, PNG). Soubory Word nejsou podporovány — převeďte je do PDF před nahráním.",
+  };
 }

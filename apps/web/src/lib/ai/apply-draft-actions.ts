@@ -1,3 +1,10 @@
+/**
+ * @deprecated Use `applyContractReview` from `./apply-contract-review` instead.
+ * This module is kept for reference only. The canonical apply path goes through
+ * `applyContractReviewDrafts` server action → `applyContractReview` which handles
+ * idempotency, payment setups, audit log and the quality gate override pattern.
+ */
+
 import { db } from "db";
 import { contacts, contracts, tasks, auditLog } from "db";
 import { eq, and } from "db";

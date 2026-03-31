@@ -4,6 +4,7 @@ import { createSignedStorageUrl } from "@/lib/storage/signed-url";
 import { getProcessingProvider } from "./provider";
 import { decideProcessing } from "./heuristics";
 import { estimateOcrConfidenceFromText } from "@/lib/documents/adobe-service";
+import { extractTextFromPdfUrl } from "./pdf-text-fallback";
 import type { ProcessingInput, OrchestratorResult } from "./types";
 import type {
   DocumentAiInputSource,
@@ -326,6 +327,19 @@ export async function processDocument(
         aiInputSource = "markdown";
       } else if (mdResult.error) {
         warnings.push(`Markdown warning: ${mdResult.error}`);
+      }
+    }
+
+    // pdf-parse fallback: if no markdown yet and file is PDF, extract text layer directly.
+    // Mirrors contract-review pipeline behaviour so both paths produce consistent text coverage.
+    const isPdfDoc = (doc.mimeType ?? "").toLowerCase().includes("pdf");
+    if (!markdownContent?.trim() && isPdfDoc) {
+      const fallback = await extractTextFromPdfUrl(input.fileUrl).catch(() => null);
+      if (fallback) {
+        markdownContent = fallback;
+        aiInputSource = "markdown";
+        warnings.push("pdf_parse_fallback: text extracted from PDF text layer; provider markdown unavailable.");
+        console.info("[orchestrator] pdf_parse_fallback applied", { documentId: doc.id, length: fallback.length });
       }
     }
 

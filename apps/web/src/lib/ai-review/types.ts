@@ -118,6 +118,7 @@ export type ApplyResultPayload = {
   linkedClientId?: string;
   createdContractId?: string;
   createdTaskId?: string;
+  createdPaymentSetupId?: string;
   bridgeSuggestions?: Array<{
     id: string;
     label: string;

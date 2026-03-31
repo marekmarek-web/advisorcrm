@@ -15,6 +15,7 @@ export type DocumentRow = {
   name: string;
   mimeType: string | null;
   tags: string[] | null;
+  contactId: string | null;
   contractId: string | null;
   visibleToClient: boolean | null;
   createdAt: Date;
@@ -33,6 +34,7 @@ const documentSelectFields = {
   name: documents.name,
   mimeType: documents.mimeType,
   tags: documents.tags,
+  contactId: documents.contactId,
   contractId: documents.contractId,
   visibleToClient: documents.visibleToClient,
   createdAt: documents.createdAt,
@@ -65,6 +67,7 @@ export async function listDocuments(): Promise<(DocumentRow & { contactName?: st
       name: r.name,
       mimeType: r.mimeType,
       tags: r.tags,
+      contactId: r.contactId,
       contractId: r.contractId,
       visibleToClient: r.visibleToClient,
       createdAt: r.createdAt,

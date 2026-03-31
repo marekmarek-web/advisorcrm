@@ -14,6 +14,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
+import { createTask } from "@/app/actions/tasks";
+import { useToast } from "@/app/components/Toast";
 import type {
   ExtractionDocument,
   ExtractionReviewState,
@@ -145,6 +147,7 @@ export function AIReviewExtractionShell({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
+  const toast = useToast();
 
   const isFailed = doc.processingStatus === "failed";
   const isProcessing = doc.processingStatus === "uploaded" || doc.processingStatus === "processing";
@@ -207,9 +210,19 @@ export function AIReviewExtractionShell({
     dispatch({ type: "RESTORE_RECOMMENDATION", recId: id });
   }, []);
 
-  const handleCreateTask = useCallback((_rec: AIRecommendation) => {
-    // TODO: wire to actual task creation flow
-  }, []);
+  const handleCreateTask = useCallback(async (rec: AIRecommendation) => {
+    try {
+      const title = rec.title?.trim() || rec.description?.slice(0, 120).trim() || "Úkol z AI review";
+      await createTask({
+        title,
+        description: rec.description?.trim() || undefined,
+        contactId: doc.matchedClientId || undefined,
+      });
+      toast.showToast("Úkol vytvořen.", "success");
+    } catch {
+      toast.showToast("Vytvoření úkolu selhalo.", "error");
+    }
+  }, [doc.matchedClientId, toast]);
 
   const handleApproveClick = useCallback(() => {
     void Promise.resolve(onApprove(state.editedFields));
@@ -302,25 +315,55 @@ export function AIReviewExtractionShell({
       {doc.isApplied && doc.applyResultPayload && (
         <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-4">
           <div className="max-w-5xl mx-auto">
-            <h4 className="text-sm font-bold text-emerald-900 mb-2">Aplikováno do CRM</h4>
-            <div className="flex flex-wrap gap-2 text-xs text-emerald-800">
-              {doc.applyResultPayload.createdClientId && <span>Klient vytvořen</span>}
-              {doc.applyResultPayload.createdContractId && <span>Smlouva vytvořena</span>}
-              {doc.applyResultPayload.createdTaskId && <span>Úkol vytvořen</span>}
+            <h4 className="text-sm font-bold text-emerald-900 mb-2 flex items-center gap-1.5">
+              <Check size={14} className="text-emerald-600" />
+              Aplikováno do CRM
+            </h4>
+            <div className="flex flex-wrap gap-2 text-xs text-emerald-800 mb-2">
+              {doc.applyResultPayload.createdClientId && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">Klient vytvořen</span>
+              )}
+              {doc.applyResultPayload.linkedClientId && !doc.applyResultPayload.createdClientId && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">Klient přirazen</span>
+              )}
+              {doc.applyResultPayload.createdContractId && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">Smlouva vytvořena</span>
+              )}
+              {doc.applyResultPayload.createdTaskId && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">Úkol vytvořen</span>
+              )}
+              {doc.applyResultPayload.createdPaymentSetupId && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">Platební instrukce uloženy</span>
+              )}
             </div>
-            {doc.applyResultPayload.bridgeSuggestions?.length ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {doc.applyResultPayload.bridgeSuggestions.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    className="px-3 py-1.5 rounded-lg bg-[color:var(--wp-surface-card)] border border-emerald-200 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
+            {/* Direct CRM navigation links */}
+            <div className="flex flex-wrap gap-2">
+              {doc.applyResultPayload.createdClientId && (
+                <Link
+                  href={`/portal/contacts/${doc.applyResultPayload.createdClientId}`}
+                  className="px-3 py-1.5 rounded-lg bg-[color:var(--wp-surface-card)] border border-emerald-200 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1"
+                >
+                  <UserPlus size={11} /> Otevřít klienta
+                </Link>
+              )}
+              {doc.applyResultPayload.linkedClientId && !doc.applyResultPayload.createdClientId && (
+                <Link
+                  href={`/portal/contacts/${doc.applyResultPayload.linkedClientId}`}
+                  className="px-3 py-1.5 rounded-lg bg-[color:var(--wp-surface-card)] border border-emerald-200 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1"
+                >
+                  <UserPlus size={11} /> Zobrazit klienta
+                </Link>
+              )}
+              {doc.applyResultPayload.bridgeSuggestions?.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="px-3 py-1.5 rounded-lg bg-[color:var(--wp-surface-card)] border border-emerald-200 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       )}
