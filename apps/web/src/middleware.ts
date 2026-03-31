@@ -11,7 +11,7 @@ function legacyVercelHosts(): string[] {
   return ["advisorcrm-web.vercel.app"];
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const normalizeNext = (raw: string | null, fallback: string) => {
     if (!raw || !raw.startsWith("/")) return fallback;
     if (raw === "/" || raw === "/prihlaseni" || raw === "/login" || raw === "/register") return fallback;

@@ -108,22 +108,21 @@ Pak v Xcode:
 
 Poznamka: repo uz obsahuje patch pro `@supernotes/capacitor-send-intent`, takze po `pnpm install` musi byt Swift dependencies konzistentni.
 
-## 7. Co neni problem Xcode prostredi
+## 7. Kriticka env promenna na Vercelu
 
-Tyto problemy obvykle nejsou chyba Xcode setupu:
+Pro spravny beh OAuth a nativniho navratoveho flow **musi byt na Vercelu nastavena** tato promenna:
 
-- Google OAuth se nevrati zpet do appky
-- bila obrazovka po auth
-- spatny Supabase redirect
-- chyba session exchange
-- problem na Vercelu nebo produkcnim webu
+```
+NEXT_PUBLIC_APP_URL=https://www.aidvisora.cz
+```
 
-To patri do vrstvy:
+**Proc je to dulezite:**
+- Po Google OAuth vraci Capacitor deep link `aidvisora://auth/callback?code=...`
+- `NativeOAuthDeepLinkBridge` potrebuje znat kanonickou HTTPS URL, aby navigoval WebView spravne
+- Bez teto promenne nebo pri `capacitor://localhost` origin vznika bila obrazovka
+- Promena je `NEXT_PUBLIC_*` → vkompiluje se pri buildu → po nastaveni treba **Redeploy** na Vercelu
 
-- web aplikace,
-- OAuth flow,
-- deep link bridge,
-- server deploye.
+Kde nastavit: Vercel → Project → Settings → Environment Variables → `NEXT_PUBLIC_APP_URL` = `https://www.aidvisora.cz` → Save → Redeploy.
 
 ## 8. Kratky rozhodovaci tahak
 
