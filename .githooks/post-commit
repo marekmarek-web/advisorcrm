@@ -1,0 +1,16 @@
+#!/bin/sh
+# Push current branch to origin after every successful local commit.
+# Disable: SKIP_POST_COMMIT_PUSH=1 git commit ...
+# CI: skipped automatically.
+
+[ -n "$CI" ] && exit 0
+[ -n "$SKIP_POST_COMMIT_PUSH" ] && exit 0
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+# Detached HEAD — do not push
+[ "$branch" = "HEAD" ] && exit 0
+
+if ! git push origin "$branch"; then
+  echo "post-commit: git push failed — fix remote/auth, then: git push origin $branch" >&2
+fi
+exit 0

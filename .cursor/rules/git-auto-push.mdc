@@ -1,0 +1,10 @@
+---
+description: After any git commit in this repository, push to origin immediately unless the user explicitly asked not to.
+alwaysApply: true
+---
+
+# Git: commit → push
+
+In the **Aidvisora** repo, after you create a **successful local commit**, run **`git push`** to `origin` on the current branch (or `git pull --rebase` then push if the remote moved). Do not leave commits only local unless the user said to skip pushing.
+
+The repo may use **`.githooks/post-commit`** (via `core.hooksPath`) so local `git commit` also triggers push; still push when you commit from the agent so behavior stays consistent.

@@ -17,6 +17,8 @@ CRM pro finanční poradce v ČR – MVP dle specifikace (domácnosti, pipeline,
    pnpm install
    ```
 
+   Po `pnpm install` se nastaví **`core.hooksPath` → `.githooks`**: po každém lokálním **`git commit`** se automaticky spustí **`git push`** na `origin` (v CI se přeskočí). Jednorázově bez push: `SKIP_POST_COMMIT_PUSH=1 git commit …`.
+
    **Máš starou cestu typu `Desktop\WePlan\advisor-crm`?** Git na to nehlíží — můžeš složku klidně přejmenovat nebo přesunout. Zavři Cursor/IDE, pak např. v PowerShellu z nadřazené složky:
 
    ```powershell
