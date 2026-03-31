@@ -15,16 +15,21 @@ export function InviteToClientZoneButton({ contactId }: { contactId: string }) {
   async function handleClick() {
     setLoading(true);
     setResult(null);
-    const res = await sendClientZoneInvitation(contactId);
-    setLoading(false);
-    if (res.ok) {
-      setResult({
-        link: res.inviteLink,
-        emailSent: res.emailSent,
-        emailError: res.emailError,
-      });
-    } else {
-      setResult({ error: res.error });
+    try {
+      const res = await sendClientZoneInvitation(contactId);
+      if (res.ok) {
+        setResult({
+          link: res.inviteLink,
+          emailSent: res.emailSent,
+          emailError: res.emailError,
+        });
+      } else {
+        setResult({ error: res.error });
+      }
+    } catch {
+      setResult({ error: "Nepodařilo se odeslat pozvánku. Zkuste to znovu." });
+    } finally {
+      setLoading(false);
     }
   }
 

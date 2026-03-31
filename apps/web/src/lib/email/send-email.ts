@@ -74,7 +74,10 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
   if (process.env.RESEND_API_KEY) {
     return sendViaResend(payload);
   }
-  return sendViaConsole(payload);
+  if (process.env.NODE_ENV === "development") {
+    return sendViaConsole(payload);
+  }
+  return { ok: false, error: "RESEND_API_KEY not set" };
 }
 
 export async function logNotification(params: {

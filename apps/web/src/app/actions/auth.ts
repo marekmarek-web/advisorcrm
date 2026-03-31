@@ -35,99 +35,108 @@ export type SendClientZoneInvitationResult =
 
 /** Vytvoří pozvánku do Client Zone, odešle e-mail (Resend při RESEND_API_KEY) a vrátí odkaz. */
 export async function sendClientZoneInvitation(contactId: string): Promise<SendClientZoneInvitationResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Unauthorized" };
-  const membership = await getMembership(user.id);
-  if (!membership || membership.roleName === "Client") return { ok: false, error: "Forbidden" };
-  const [contact] = await db
-    .select({
-      id: contacts.id,
-      email: contacts.email,
-      tenantId: contacts.tenantId,
-      firstName: contacts.firstName,
-    } as any)
-    .from(contacts as any)
-    .where(and(eq(contacts.tenantId, membership.tenantId), eq(contacts.id, contactId)) as any)
-    .limit(1);
-  if (!contact) return { ok: false, error: "Kontakt nenalezen" };
-  if (!contact.email) return { ok: false, error: "U kontaktu chybí e-mail" };
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Unauthorized" };
+    const membership = await getMembership(user.id);
+    if (!membership || membership.roleName === "Client") return { ok: false, error: "Forbidden" };
+    const [contact] = await db
+      .select({
+        id: contacts.id,
+        email: contacts.email,
+        tenantId: contacts.tenantId,
+        firstName: contacts.firstName,
+      } as any)
+      .from(contacts as any)
+      .where(and(eq(contacts.tenantId, membership.tenantId), eq(contacts.id, contactId)) as any)
+      .limit(1);
+    if (!contact) return { ok: false, error: "Kontakt nenalezen" };
+    if (!contact.email) return { ok: false, error: "U kontaktu chybí e-mail" };
 
-  await db
-    .update(clientInvitations as any)
-    .set({ revokedAt: new Date() })
-    .where(
-      and(
-        eq(clientInvitations.tenantId, contact.tenantId),
-        eq(clientInvitations.contactId, contact.id),
-        isNull(clientInvitations.acceptedAt),
-        isNull(clientInvitations.revokedAt),
-      ) as any,
-    );
+    await db
+      .update(clientInvitations as any)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(clientInvitations.tenantId, contact.tenantId),
+          eq(clientInvitations.contactId, contact.id),
+          isNull(clientInvitations.acceptedAt),
+          isNull(clientInvitations.revokedAt),
+        ) as any,
+      );
 
-  const token = crypto.randomUUID().replace(/-/g, "");
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
-  const [inserted] = await db
-    .insert(clientInvitations as any)
-    .values({
-      tenantId: contact.tenantId,
-      contactId: contact.id,
-      email: contact.email.trim(),
-      token,
-      expiresAt,
-      invitedByUserId: user.id,
-    })
-    .returning({ id: clientInvitations.id } as any);
+    const token = crypto.randomUUID().replace(/-/g, "");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+    const [inserted] = await db
+      .insert(clientInvitations as any)
+      .values({
+        tenantId: contact.tenantId,
+        contactId: contact.id,
+        email: contact.email.trim(),
+        token,
+        expiresAt,
+        invitedByUserId: user.id,
+      })
+      .returning({ id: clientInvitations.id } as any);
 
-  const baseUrl = getServerAppBaseUrl();
-  const inviteLink = `${baseUrl}/register?token=${token}`;
+    const baseUrl = getServerAppBaseUrl();
+    const inviteLink = `${baseUrl}/register?token=${token}`;
 
-  const [tenantRow] = await db
-    .select({ name: tenants.name, notificationEmail: tenants.notificationEmail } as any)
-    .from(tenants as any)
-    .where(eq(tenants.id, contact.tenantId))
-    .limit(1);
+    const [tenantRow] = await db
+      .select({ name: tenants.name, notificationEmail: tenants.notificationEmail } as any)
+      .from(tenants as any)
+      .where(eq(tenants.id, contact.tenantId))
+      .limit(1);
 
-  const { subject, html } = clientPortalInviteTemplate({
-    registerUrl: inviteLink,
-    contactFirstName: contact.firstName?.trim() ?? "",
-    tenantName: tenantRow?.name ?? undefined,
-    expiresInDays: INVITE_EXPIRY_DAYS,
-    gdprUrl: `${baseUrl}/gdpr`,
-    termsUrl: `${baseUrl}/terms`,
-  });
+    const { subject, html } = clientPortalInviteTemplate({
+      registerUrl: inviteLink,
+      contactFirstName: contact.firstName?.trim() ?? "",
+      tenantName: tenantRow?.name ?? undefined,
+      expiresInDays: INVITE_EXPIRY_DAYS,
+      gdprUrl: `${baseUrl}/gdpr`,
+      termsUrl: `${baseUrl}/terms`,
+    });
 
-  const replyTo = resolveResendReplyTo(tenantRow?.notificationEmail ?? undefined);
-  const sendResult = await sendEmail({
-    to: contact.email.trim(),
-    subject,
-    html,
-    replyTo,
-  });
+    const replyTo = resolveResendReplyTo(tenantRow?.notificationEmail ?? undefined);
+    const sendResult = await sendEmail({
+      to: contact.email.trim(),
+      subject,
+      html,
+      replyTo,
+    });
 
-  if (inserted?.id) {
-    if (sendResult.ok) {
-      await db
-        .update(clientInvitations as any)
-        .set({ emailSentAt: new Date(), lastEmailError: null })
-        .where(eq(clientInvitations.id, inserted.id) as any);
-    } else {
-      await db
-        .update(clientInvitations as any)
-        .set({ lastEmailError: sendResult.error ?? "send failed" })
-        .where(eq(clientInvitations.id, inserted.id) as any);
+    if (inserted?.id) {
+      try {
+        if (sendResult.ok) {
+          await db
+            .update(clientInvitations as any)
+            .set({ emailSentAt: new Date(), lastEmailError: null })
+            .where(eq(clientInvitations.id, inserted.id) as any);
+        } else {
+          await db
+            .update(clientInvitations as any)
+            .set({ lastEmailError: sendResult.error ?? "send failed" })
+            .where(eq(clientInvitations.id, inserted.id) as any);
+        }
+      } catch (dbErr) {
+        console.error("[sendClientZoneInvitation] failed to update email status:", dbErr);
+      }
     }
-  }
 
-  return {
-    ok: true,
-    inviteLink,
-    emailSent: sendResult.ok,
-    emailError: sendResult.ok ? undefined : sendResult.error,
-  };
+    return {
+      ok: true,
+      inviteLink,
+      emailSent: sendResult.ok,
+      emailError: sendResult.ok ? undefined : sendResult.error,
+    };
+  } catch (err) {
+    console.error("[sendClientZoneInvitation] unexpected error:", err);
+    return { ok: false, error: "Nepodařilo se odeslat pozvánku. Zkuste to znovu." };
+  }
 }
 
 /** Po registraci klienta (email + token) propojí user_id → contact_id a vytvoří membership Client. gdprConsent: uloží souhlas s GDPR u kontaktu. */
