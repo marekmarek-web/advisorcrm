@@ -35,6 +35,8 @@ Přihlášení přes Google už v kódu je (tlačítko „Přihlásit se přes G
 
 **Produkce:** V Supabase → **Authentication** → **URL Configuration** musí být v **Redirect URLs** tvoje app URL (např. `https://tvuj-projekt.vercel.app/**`), aby Supabase po přihlášení přes Google věděl, kam uživatele poslat.
 
+**iOS (Capacitor):** OAuth po `/auth/native-bridge` přesměruje na **`aidvisora://auth/callback?code=…`**. V `Info.plist` musí být v `CFBundleURLSchemes` jak **`aidvisor`**, tak **`aidvisora`** (jinak Safari hlásí „address is invalid“).
+
 ---
 
 ## 2. Apple (Sign in with Apple)

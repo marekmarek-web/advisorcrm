@@ -26,6 +26,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>aidvisor</string>
+				<string>aidvisora</string>
 			</array>
 		</dict>
 	</array>
