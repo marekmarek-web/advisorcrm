@@ -40,6 +40,7 @@ const CLIENT_INVITATION_AUDIT_COLUMNS = [
   "last_email_error",
   "revoked_at",
 ] as const;
+const TENANT_OPTIONAL_COLUMNS = ["notification_email"] as const;
 
 function isMissingClientInvitationAuditColumnError(err: unknown): boolean {
   const message = String((err as { message?: string } | null)?.message ?? err).toLowerCase();
@@ -47,6 +48,11 @@ function isMissingClientInvitationAuditColumnError(err: unknown): boolean {
     message.includes("client_invitations") &&
     CLIENT_INVITATION_AUDIT_COLUMNS.some((column) => message.includes(column))
   );
+}
+
+function isMissingTenantOptionalColumnError(err: unknown): boolean {
+  const message = String((err as { message?: string } | null)?.message ?? err).toLowerCase();
+  return message.includes("tenants") && TENANT_OPTIONAL_COLUMNS.some((column) => message.includes(column));
 }
 
 async function revokePendingClientInvitations(tenantId: string, contactId: string) {
@@ -128,6 +134,26 @@ async function updateClientInvitationEmailStatus(invitationId: string, sendResul
   }
 }
 
+async function getTenantInviteEmailContext(tenantId: string) {
+  try {
+    const [tenantRow] = await db
+      .select({ name: tenants.name, notificationEmail: tenants.notificationEmail } as any)
+      .from(tenants as any)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    return tenantRow;
+  } catch (err) {
+    if (!isMissingTenantOptionalColumnError(err)) throw err;
+    console.warn("[sendClientZoneInvitation] tenants.notification_email missing; continuing without tenant reply-to");
+    const [tenantRow] = await db
+      .select({ name: tenants.name } as any)
+      .from(tenants as any)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    return tenantRow;
+  }
+}
+
 /** Vytvoří pozvánku do Client Zone, odešle e-mail (Resend při RESEND_API_KEY) a vrátí odkaz. */
 export async function sendClientZoneInvitation(contactId: string): Promise<SendClientZoneInvitationResult> {
   try {
@@ -168,11 +194,7 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
     const baseUrl = getServerAppBaseUrl();
     const inviteLink = `${baseUrl}/register?token=${token}`;
 
-    const [tenantRow] = await db
-      .select({ name: tenants.name, notificationEmail: tenants.notificationEmail } as any)
-      .from(tenants as any)
-      .where(eq(tenants.id, contact.tenantId))
-      .limit(1);
+    const tenantRow = await getTenantInviteEmailContext(contact.tenantId);
 
     const { subject, html } = clientPortalInviteTemplate({
       registerUrl: inviteLink,
