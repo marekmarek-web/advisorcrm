@@ -18,6 +18,37 @@ const PRIMARY_SET = new Set<string>(PRIMARY_DOCUMENT_TYPES);
 const LIFECYCLE_SET = new Set<string>(DOCUMENT_LIFECYCLE_STATUSES);
 const INTENT_SET = new Set<string>(DOCUMENT_INTENTS);
 const FIELD_STATUS_SET = new Set<string>(EXTRACTION_FIELD_STATUSES);
+const RESERVED_ENVELOPE_KEYS = new Set<string>([
+  "documentClassification",
+  "documentMeta",
+  "parties",
+  "productsOrObligations",
+  "financialTerms",
+  "serviceTerms",
+  "extractedFields",
+  "evidence",
+  "candidateMatches",
+  "sectionSensitivity",
+  "relationshipInference",
+  "reviewWarnings",
+  "suggestedActions",
+  "sensitivityProfile",
+  "contentFlags",
+  "debug",
+  "dataCompleteness",
+]);
+const NON_FIELD_TOP_LEVEL_KEYS = new Set<string>([
+  "confidence",
+  "reasoning",
+  "summary",
+  "notes",
+  "missingFields",
+  "fieldConfidenceMap",
+  "classificationReasons",
+  "reasonsForReview",
+  "processingStatus",
+  "processingStage",
+]);
 
 export function parseJsonObjectFromAiReviewRaw(raw: string): Record<string, unknown> | null {
   try {
@@ -62,6 +93,16 @@ function coerceExtractedFields(raw: unknown): Record<string, Record<string, unkn
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
   for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
     if (key.startsWith("_")) continue;
+    out[key] = normalizeExtractedFieldCell(key, val);
+  }
+  return out;
+}
+
+function collectTopLevelFieldCandidates(parsed: Record<string, unknown>): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const [key, val] of Object.entries(parsed)) {
+    if (key.startsWith("_") || RESERVED_ENVELOPE_KEYS.has(key) || NON_FIELD_TOP_LEVEL_KEYS.has(key)) continue;
+    if (val == null) continue;
     out[key] = normalizeExtractedFieldCell(key, val);
   }
   return out;
@@ -189,7 +230,10 @@ export function tryCoerceReviewEnvelopeAfterValidationFailure(
     classification
   );
   draft.documentMeta = coerceDocumentMeta(draft.documentMeta);
-  draft.extractedFields = coerceExtractedFields(draft.extractedFields);
+  draft.extractedFields = {
+    ...collectTopLevelFieldCandidates(draft),
+    ...coerceExtractedFields(draft.extractedFields),
+  };
   if (draft.parties == null || typeof draft.parties !== "object" || Array.isArray(draft.parties)) {
     draft.parties = {};
   }
@@ -239,10 +283,17 @@ export function mergePartialParsedIntoManualStub(
     return { mergedFieldKeys, mergedPartyKeys };
   }
 
+  const rootCandidates = collectTopLevelFieldCandidates(parsed);
+  for (const [k, v] of Object.entries(rootCandidates)) {
+    stub.extractedFields[k] = v as DocumentReviewEnvelope["extractedFields"][string];
+    mergedFieldKeys.push(k);
+  }
+
   const ef = parsed.extractedFields;
   if (ef && typeof ef === "object" && !Array.isArray(ef)) {
     for (const [k, v] of Object.entries(ef as Record<string, unknown>)) {
       if (k.startsWith("_")) continue;
+      if (mergedFieldKeys.includes(k)) continue;
       stub.extractedFields[k] = normalizeExtractedFieldCell(k, v) as DocumentReviewEnvelope["extractedFields"][string];
       mergedFieldKeys.push(k);
     }

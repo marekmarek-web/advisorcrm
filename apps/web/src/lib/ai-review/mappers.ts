@@ -132,6 +132,71 @@ const FIELD_LABELS: Record<string, string> = {
   brokerName: "Makléř",
 };
 
+const HIDDEN_REASON_CODES = new Set([
+  "partial_extraction_coerced",
+  "partial_extraction_merged_into_stub",
+  "critical_review_warning",
+  "missing_required_data",
+]);
+
+function fieldLabelForPath(field?: string): string | undefined {
+  if (!field) return undefined;
+  const key = field.replace(/^extractedFields\./, "").split(".").at(-1) ?? field;
+  return FIELD_LABELS[key] ?? key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+}
+
+function humanizeReasonForAdvisor(reason: string): string | null {
+  if (!reason || HIDDEN_REASON_CODES.has(reason)) return null;
+  if (reason === "low_confidence") return "AI si výsledkem není dost jistá. Ověřte hlavní údaje oproti dokumentu.";
+  if (reason === "scan_or_ocr_unusable") {
+    return "OCR nepřečetlo dokument dost spolehlivě. Doplňte údaje ručně nebo použijte kvalitnější PDF.";
+  }
+  if (reason === "proposal_or_modelation_not_final_contract") {
+    return "Dokument působí jako návrh nebo modelace, ne jako finální smlouva.";
+  }
+  if (reason === "proposal_not_final_contract") {
+    return "Rozpoznání ukazuje spíš na návrh než na finální smlouvu.";
+  }
+  if (reason === "hybrid_contract_signals_detected") {
+    return "Dokument obsahuje smluvní údaje, proto byl posouzen jako smlouva i přes modelační prvky.";
+  }
+  return null;
+}
+
+function humanizeValidationMessage(
+  warning: { code?: string; message: string; field?: string }
+): { title: string; description: string } {
+  const label = fieldLabelForPath(warning.field);
+  if (warning.code === "MISSING_REQUIRED_FIELD" && label) {
+    return {
+      title: `${label} chybí`,
+      description: `Údaj „${label}" se nepodařilo spolehlivě najít. Ověřte ho v PDF nebo doplňte ručně.`,
+    };
+  }
+  if (warning.code === "LOW_EVIDENCE_REQUIRED" && label) {
+    return {
+      title: `${label} potřebuje ověření`,
+      description: `AI našla údaj „${label}", ale má k němu slabý důkaz. Porovnejte ho prosím s dokumentem.`,
+    };
+  }
+  if (warning.code === "extraction_schema_validation") {
+    return {
+      title: "Struktura extrakce potřebuje kontrolu",
+      description: warning.message,
+    };
+  }
+  if (warning.code === "partial_extraction_coerced") {
+    return {
+      title: "Výsledek byl částečně opraven",
+      description: "AI vrátila neúplnou strukturu. Zachovali jsme nalezená pole, ale hodnoty zkontrolujte podle PDF.",
+    };
+  }
+  return {
+    title: label ? `Ověřit ${label}` : "Validační upozornění",
+    description: warning.message,
+  };
+}
+
 function fieldConfidence(
   fieldKey: string,
   fieldConfidenceMap: Record<string, number> | undefined,
@@ -409,12 +474,13 @@ function buildRecommendations(
 
   const warnings = (detail.validationWarnings as Array<{ code?: string; message: string; field?: string }> | undefined) ?? [];
   for (const w of warnings) {
+    const human = humanizeValidationMessage(w);
     recs.push({
       id: `vw-${idx++}`,
       type: "compliance",
       severity: "medium",
-      title: w.field ? `Validace: ${w.field}` : "Validační upozornění",
-      description: w.message,
+      title: human.title,
+      description: human.description,
       linkedFieldIds: w.field
         ? groups.flatMap((g) => g.fields).filter((f) => f.id.includes(w.field!)).map((f) => f.id)
         : [],
@@ -688,9 +754,6 @@ function appendSyntheticEnvelopeGroups(
         mkField(`synthetic.dm.${key}`, "synthetic_meta", label, formatExtractedValue(v), "warning")
       );
     };
-    add("normalizedPipelineClassification", "Normalizovaná klasifikace (pipeline)", dm.normalizedPipelineClassification);
-    add("pipelineRoute", "Větev pipeline", dm.pipelineRoute);
-    add("extractionRoute", "Trasa extrakce", dm.extractionRoute);
     add("overallConfidence", "Celková jistota (obálka)", dm.overallConfidence);
     add("pageCount", "Počet stran", dm.pageCount);
     add("scannedVsDigital", "Digitál / sken", dm.scannedVsDigital);
@@ -711,13 +774,12 @@ function appendSyntheticEnvelopeGroups(
   if (Array.isArray(rw)) {
     rw.forEach((w, i) => {
       if (!w?.message?.trim()) return;
-      const code = w.code ? `${w.code}: ` : "";
       statusFields.push(
         mkField(
           `synthetic.rw.${i}`,
           "synthetic_status",
-          "Upozornění z obálky",
-          `${code}${w.message}`,
+          "Kontrola extrakce",
+          w.message,
           w.severity === "critical" ? "error" : "warning"
         )
       );
@@ -726,9 +788,10 @@ function appendSyntheticEnvelopeGroups(
   const reasons = detail.reasonsForReview as string[] | undefined;
   if (Array.isArray(reasons)) {
     reasons.forEach((r, i) => {
-      if (!String(r).trim()) return;
+      const human = humanizeReasonForAdvisor(String(r));
+      if (!human) return;
       statusFields.push(
-        mkField(`synthetic.reason.${i}`, "synthetic_status", "Důvod ke kontrole", String(r), "warning")
+        mkField(`synthetic.reason.${i}`, "synthetic_status", "Co zkontrolovat", human, "warning")
       );
     });
   }
@@ -736,12 +799,13 @@ function appendSyntheticEnvelopeGroups(
   if (Array.isArray(vw)) {
     vw.forEach((w, i) => {
       if (!w?.message?.trim()) return;
+      const human = humanizeValidationMessage(w);
       statusFields.push(
         mkField(
           `synthetic.vw.${i}`,
           "synthetic_status",
-          "Validace",
-          w.code ? `${w.code}: ${w.message}` : w.message,
+          human.title,
+          human.description,
           "warning"
         )
       );

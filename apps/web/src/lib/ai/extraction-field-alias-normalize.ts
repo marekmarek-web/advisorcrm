@@ -34,6 +34,20 @@ function cloneCellFrom(source: ExtractedField): ExtractedField {
   };
 }
 
+function asSearchableText(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map((item) => asSearchableText(item)).filter(Boolean).join("\n");
+  if (typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
 function mergeFromAliases(
   ef: Record<string, ExtractedField>,
   canonical: string,
@@ -99,6 +113,80 @@ function deriveInvestmentStrategyFromNested(ef: Record<string, ExtractedField>):
         };
         return;
       }
+    }
+  }
+}
+
+function salvageCanonicalFieldsFromTextishCells(ef: Record<string, ExtractedField>): void {
+  const chunks = Object.values(ef)
+    .flatMap((cell) => [asSearchableText(cell?.value), cell?.evidenceSnippet ?? ""])
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+  if (chunks.length === 0) return;
+  const blob = chunks.join("\n");
+
+  if (!valuePresent(ef.insurer)) {
+    const insurerMatch = blob.match(
+      /\b(Generali Česká pojišťovna(?:\s+a\.s\.)?|Generali|Kooperativa|UNIQA|Allianz|NN Životní pojišťovna|ČSOB Pojišťovna|ČPP|Simplea)\b/i
+    );
+    if (insurerMatch) {
+      ef.insurer = {
+        value: insurerMatch[1],
+        status: "inferred_low_confidence",
+        confidence: 0.66,
+      };
+    }
+  }
+
+  if (!valuePresent(ef.productName)) {
+    const productMatch =
+      blob.match(/\b(Bel Mondo(?:\s+\d+)?)\b/i) ??
+      blob.match(/(?:produkt|plan|produktová řada|název produktu)[:\s]*([^\n,]{3,80})/i);
+    if (productMatch?.[1]) {
+      ef.productName = {
+        value: productMatch[1].trim(),
+        status: "inferred_low_confidence",
+        confidence: 0.64,
+      };
+    }
+  }
+
+  if (!valuePresent(ef.contractNumber)) {
+    const contractMatch = blob.match(
+      /(?:pojistná smlouva(?:\s+číslo)?|číslo smlouvy|číslo pojistné smlouvy|contract number|policy number)[:\s]*([A-Z0-9\/-]{5,})/i
+    );
+    if (contractMatch?.[1]) {
+      ef.contractNumber = {
+        value: contractMatch[1].trim(),
+        status: "inferred_low_confidence",
+        confidence: 0.68,
+      };
+    }
+  }
+
+  if (!valuePresent(ef.policyStartDate)) {
+    const startDateMatch = blob.match(
+      /(?:počátek pojištění|počátek smlouvy|start pojištění|účinnost od|effective date)[:\s]*([0-9]{1,2}\.\s*[0-9]{1,2}\.\s*[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})/i
+    );
+    if (startDateMatch?.[1]) {
+      ef.policyStartDate = {
+        value: startDateMatch[1].trim(),
+        status: "inferred_low_confidence",
+        confidence: 0.68,
+      };
+    }
+  }
+
+  if (!valuePresent(ef.investmentStrategy)) {
+    const strategyMatch = blob.match(
+      /(?:investiční strategie|strategie investování|strategie)[:\s]*([^\n]{3,120})/i
+    );
+    if (strategyMatch?.[1]) {
+      ef.investmentStrategy = {
+        value: strategyMatch[1].trim(),
+        status: "inferred_low_confidence",
+        confidence: 0.6,
+      };
     }
   }
 }
@@ -276,10 +364,21 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     "pojistovna",
     "insurerName",
     "carrier",
+    "providerName",
+    "institution",
   ]);
   mergeFromAliases(ef, "institutionName", ["insurer", "pojistovna", "insuranceCompany", "pojistitel"]);
 
-  mergeFromAliases(ef, "productName", ["product", "productTitle", "planName", "nazevProduktu", "productLine"]);
+  mergeFromAliases(ef, "productName", [
+    "product",
+    "productTitle",
+    "planName",
+    "nazevProduktu",
+    "productLine",
+    "productLabel",
+    "planLabel",
+    "contractName",
+  ]);
 
   mergeFromAliases(ef, "contractNumber", [
     "policyNumber",
@@ -288,6 +387,10 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     "contractRef",
     "referenceNumber",
     "existingPolicyNumber",
+    "contractId",
+    "policyId",
+    "pojistnaSmlouvaCislo",
+    "contractNumberOrPolicyNumber",
   ]);
 
   mergeFromAliases(ef, "policyStartDate", [
@@ -298,6 +401,9 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     "commencementDate",
     "startOfInsurance",
     "insuranceCommencementDate",
+    "policyCommencementDate",
+    "contractStartDate",
+    "datumPocatkuPojisteni",
   ]);
 
   mergeFromAliases(ef, "policyEndDate", [
@@ -315,6 +421,9 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     "fundAllocationSummary",
     "investmentApproach",
     "assetsOrFunds",
+    "strategy",
+    "investmentProfileName",
+    "portfolioStrategy",
   ]);
 
   mergeFromAliases(ef, "totalMonthlyPremium", [
@@ -356,4 +465,5 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
   mergeCompositeReferenceFields(ef);
   pullFromFinancialTerms(envelope);
   applyPrimaryTypeSpecificAliases(primary, ef);
+  salvageCanonicalFieldsFromTextishCells(ef);
 }

@@ -88,6 +88,10 @@ describe("mapApiToExtractionDocument partial / synthetic", () => {
     const names = doc.groups.map((g) => g.name).join(" ");
     expect(names).toContain("Rozpoznání");
     expect(names).toContain("Stav a kontrola");
+    const values = doc.groups.flatMap((g) => g.fields).map((f) => f.value).join(" | ");
+    expect(values).not.toContain("onboarding_form");
+    expect(values).not.toContain("contract_intake");
+    expect(values).toContain("AI si výsledkem není dost jistá");
   });
 
   it("hasMeaningfulReviewContent is true when trace has classifier despite empty groups", () => {

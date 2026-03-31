@@ -332,54 +332,9 @@ export function AIReviewExtractionShell({
         </div>
       )}
 
-      {doc.pipelineInsights && !isFailed && !isProcessing ? (
+      {(doc.pipelineInsights || doc.applyGate) && !isFailed && !isProcessing ? (
         <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 md:px-6">
-          <div className="max-w-5xl mx-auto space-y-2">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
-              {doc.pipelineInsights.extractionRoute ? (
-                <span>
-                  Trasa:{" "}
-                  <span className="text-indigo-700">{doc.pipelineInsights.extractionRoute}</span>
-                </span>
-              ) : null}
-              {doc.pipelineInsights.normalizedPipelineClassification ? (
-                <span>
-                  Typ:{" "}
-                  <span className="text-[color:var(--wp-text)]">{doc.pipelineInsights.normalizedPipelineClassification}</span>
-                </span>
-              ) : null}
-              {doc.pipelineInsights.preprocessStatus ? (
-                <span>
-                  Preprocess: <span className="text-[color:var(--wp-text)]">{doc.pipelineInsights.preprocessStatus}</span>
-                </span>
-              ) : null}
-              {typeof doc.pipelineInsights.preprocessDurationMs === "number" ? (
-                <span>
-                  Předzpracování:{" "}
-                  <span className="text-[color:var(--wp-text)]">
-                    {(doc.pipelineInsights.preprocessDurationMs / 1000).toFixed(1)} s
-                  </span>
-                </span>
-              ) : null}
-              {typeof doc.pipelineInsights.pipelineDurationMs === "number" ? (
-                <span>
-                  AI pipeline:{" "}
-                  <span className="text-[color:var(--wp-text)]">
-                    {(doc.pipelineInsights.pipelineDurationMs / 1000).toFixed(1)} s
-                  </span>
-                </span>
-              ) : null}
-              {doc.pipelineInsights.extractionSecondPass ? (
-                <span>
-                  2. krok:{" "}
-                  <span className="text-[color:var(--wp-text)]">
-                    {doc.pipelineInsights.extractionSecondPass === "text"
-                      ? "text (bez druhého PDF)"
-                      : "PDF"}
-                  </span>
-                </span>
-              ) : null}
-            </div>
+          <div className="max-w-6xl mx-auto space-y-2">
             {doc.applyGate ? (
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
@@ -404,8 +359,7 @@ export function AIReviewExtractionShell({
                 {doc.applyGate.blockedReasons.join(", ")}
               </div>
             ) : null}
-            {doc.applyGate &&
-            (doc.applyGate.applyBarrierReasons?.length ?? 0) > 0 ? (
+            {doc.applyGate && (doc.applyGate.applyBarrierReasons?.length ?? 0) > 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
                 <strong>Aplikace do portálu:</strong> dokument vypadá jako návrh, modelace nebo nefinální fáze —
                 extrahovaná data můžete kontrolovat, ale{" "}
@@ -413,20 +367,19 @@ export function AIReviewExtractionShell({
                 výslovného override (kódy: {doc.applyGate.applyBarrierReasons.join(", ")}).
               </div>
             ) : null}
-            {doc.applyGate &&
-            doc.applyGate.warnings.length > 0 ? (
+            {doc.applyGate && doc.applyGate.warnings.length > 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 <strong>Varování:</strong>{" "}
                 {doc.applyGate.warnings.join(", ")}
               </div>
             ) : null}
-            {doc.pipelineInsights.preprocessStatus === "failed" ? (
+            {doc.pipelineInsights?.preprocessStatus === "failed" ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Adobe preprocessing selhal — pipeline pokračovala na originálním PDF. Výsledek může být méně přesný;
                 porovnejte prosím extrakci s originálem dokumentu.
               </div>
             ) : null}
-            {typeof doc.pipelineInsights.textCoverageEstimate === "number" &&
+            {typeof doc.pipelineInsights?.textCoverageEstimate === "number" &&
             doc.pipelineInsights.textCoverageEstimate < 0.35 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Nízký odhad pokrytí textu (cca {Math.round(doc.pipelineInsights.textCoverageEstimate * 100)} %). U
@@ -444,49 +397,106 @@ export function AIReviewExtractionShell({
                 považován za finální podepsanou smlouvu.
               </div>
             ) : null}
-            {doc.pipelineInsights.paymentPreview &&
-            Object.keys(doc.pipelineInsights.paymentPreview).length > 0 ? (
-              <div className="rounded-xl border border-emerald-200 bg-[color:var(--wp-surface-card)] p-3 shadow-sm">
-                <h4 className="text-xs font-black uppercase tracking-widest text-emerald-900 mb-2">
-                  Platební údaje (náhled)
-                </h4>
-                <dl className="grid grid-cols-1 gap-1.5 text-xs text-[color:var(--wp-text-secondary)] sm:grid-cols-2">
-                  {(
-                    [
-                      ["Komu (instituce)", doc.pipelineInsights.paymentPreview.institutionName],
-                      ["Produkt", doc.pipelineInsights.paymentPreview.productName],
-                      ["Plátce", doc.pipelineInsights.paymentPreview.payerName],
-                      ["Příjemce", doc.pipelineInsights.paymentPreview.beneficiaryName],
-                      ["Částka", doc.pipelineInsights.paymentPreview.amount],
-                      ["Měna", doc.pipelineInsights.paymentPreview.currency],
-                      ["Frekvence", doc.pipelineInsights.paymentPreview.paymentFrequency],
-                      [
-                        "Splatnost / datum",
-                        doc.pipelineInsights.paymentPreview.dueDate || doc.pipelineInsights.paymentPreview.dueDay,
-                      ],
-                      ["Kanál", doc.pipelineInsights.paymentPreview.paymentChannel],
-                      ["Variabilní symbol", doc.pipelineInsights.paymentPreview.variableSymbol],
-                      ["Konstantní symbol", doc.pipelineInsights.paymentPreview.constantSymbol],
-                      ["Specifický symbol", doc.pipelineInsights.paymentPreview.specificSymbol],
-                      ["Reference", doc.pipelineInsights.paymentPreview.reference],
-                      ["IBAN (nápověda)", doc.pipelineInsights.paymentPreview.ibanHint],
-                    ] as [string, unknown][]
-                  ).map(([k, v]) => {
-                    if (v == null || String(v).trim() === "") return null;
-                    return (
-                      <div key={k} className="flex flex-col gap-0.5">
-                        <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">{k}</dt>
-                        <dd className="font-medium text-[color:var(--wp-text)]">{String(v)}</dd>
-                      </div>
-                    );
-                  })}
-                </dl>
-                {doc.pipelineInsights.paymentPreview.needsHumanReview ? (
-                  <p className="mt-2 text-[11px] font-semibold text-amber-800">
-                    Vyžaduje kontrolu poradce před sdílením s klientem.
-                  </p>
-                ) : null}
-              </div>
+            {doc.pipelineInsights ? (
+              <details className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2">
+                <summary className="cursor-pointer list-none text-xs font-bold text-[color:var(--wp-text-secondary)]">
+                  Technické detaily extrakce
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
+                    {doc.pipelineInsights.extractionRoute ? (
+                      <span>
+                        Trasa:{" "}
+                        <span className="text-indigo-700">{doc.pipelineInsights.extractionRoute}</span>
+                      </span>
+                    ) : null}
+                    {doc.pipelineInsights.normalizedPipelineClassification ? (
+                      <span>
+                        Typ:{" "}
+                        <span className="text-[color:var(--wp-text)]">
+                          {doc.pipelineInsights.normalizedPipelineClassification}
+                        </span>
+                      </span>
+                    ) : null}
+                    {doc.pipelineInsights.preprocessStatus ? (
+                      <span>
+                        Preprocess:{" "}
+                        <span className="text-[color:var(--wp-text)]">{doc.pipelineInsights.preprocessStatus}</span>
+                      </span>
+                    ) : null}
+                    {typeof doc.pipelineInsights.preprocessDurationMs === "number" ? (
+                      <span>
+                        Předzpracování:{" "}
+                        <span className="text-[color:var(--wp-text)]">
+                          {(doc.pipelineInsights.preprocessDurationMs / 1000).toFixed(1)} s
+                        </span>
+                      </span>
+                    ) : null}
+                    {typeof doc.pipelineInsights.pipelineDurationMs === "number" ? (
+                      <span>
+                        AI pipeline:{" "}
+                        <span className="text-[color:var(--wp-text)]">
+                          {(doc.pipelineInsights.pipelineDurationMs / 1000).toFixed(1)} s
+                        </span>
+                      </span>
+                    ) : null}
+                    {doc.pipelineInsights.extractionSecondPass ? (
+                      <span>
+                        2. krok:{" "}
+                        <span className="text-[color:var(--wp-text)]">
+                          {doc.pipelineInsights.extractionSecondPass === "text"
+                            ? "text (bez druhého PDF)"
+                            : "PDF"}
+                        </span>
+                      </span>
+                    ) : null}
+                  </div>
+                  {doc.pipelineInsights.paymentPreview &&
+                  Object.keys(doc.pipelineInsights.paymentPreview).length > 0 ? (
+                    <div className="rounded-xl border border-emerald-200 bg-[color:var(--wp-surface-card)] p-3 shadow-sm">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-emerald-900 mb-2">
+                        Platební údaje (náhled)
+                      </h4>
+                      <dl className="grid grid-cols-1 gap-1.5 text-xs text-[color:var(--wp-text-secondary)] sm:grid-cols-2">
+                        {(
+                          [
+                            ["Komu (instituce)", doc.pipelineInsights.paymentPreview.institutionName],
+                            ["Produkt", doc.pipelineInsights.paymentPreview.productName],
+                            ["Plátce", doc.pipelineInsights.paymentPreview.payerName],
+                            ["Příjemce", doc.pipelineInsights.paymentPreview.beneficiaryName],
+                            ["Částka", doc.pipelineInsights.paymentPreview.amount],
+                            ["Měna", doc.pipelineInsights.paymentPreview.currency],
+                            ["Frekvence", doc.pipelineInsights.paymentPreview.paymentFrequency],
+                            [
+                              "Splatnost / datum",
+                              doc.pipelineInsights.paymentPreview.dueDate || doc.pipelineInsights.paymentPreview.dueDay,
+                            ],
+                            ["Kanál", doc.pipelineInsights.paymentPreview.paymentChannel],
+                            ["Variabilní symbol", doc.pipelineInsights.paymentPreview.variableSymbol],
+                            ["Konstantní symbol", doc.pipelineInsights.paymentPreview.constantSymbol],
+                            ["Specifický symbol", doc.pipelineInsights.paymentPreview.specificSymbol],
+                            ["Reference", doc.pipelineInsights.paymentPreview.reference],
+                            ["IBAN (nápověda)", doc.pipelineInsights.paymentPreview.ibanHint],
+                          ] as [string, unknown][]
+                        ).map(([k, v]) => {
+                          if (v == null || String(v).trim() === "") return null;
+                          return (
+                            <div key={k} className="flex flex-col gap-0.5">
+                              <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">{k}</dt>
+                              <dd className="font-medium text-[color:var(--wp-text)]">{String(v)}</dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                      {doc.pipelineInsights.paymentPreview.needsHumanReview ? (
+                        <p className="mt-2 text-[11px] font-semibold text-amber-800">
+                          Vyžaduje kontrolu poradce před sdílením s klientem.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </details>
             ) : null}
           </div>
         </div>
@@ -503,7 +513,7 @@ export function AIReviewExtractionShell({
           }`}
         >
           <FileText size={14} className="inline-block mr-1.5 -mt-0.5" />
-          Extrakce
+          Kontrola
         </button>
         <button
           onClick={() => dispatch({ type: "SET_SHOW_PDF_MOBILE", show: true })}
@@ -514,14 +524,14 @@ export function AIReviewExtractionShell({
           }`}
         >
           <Eye size={14} className="inline-block mr-1.5 -mt-0.5" />
-          PDF Náhled
+          Dokument
         </button>
       </div>
 
       <main className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left panel */}
         <section
-          className={`flex min-h-0 w-full min-w-0 flex-col bg-[#f4f7f9] border-r border-[color:var(--wp-surface-card-border)] lg:w-[55%] ${
+          className={`flex min-h-0 w-full min-w-0 flex-col bg-[#f4f7f9] border-r border-[color:var(--wp-surface-card-border)] lg:w-[48%] ${
             state.showPdfOnMobile ? "hidden lg:flex" : "flex"
           }`}
         >
@@ -560,94 +570,96 @@ export function AIReviewExtractionShell({
           )}
 
           {/* Client match + actions at bottom of left panel */}
-          {!doc.isApplied && (doc.clientMatchCandidates.length > 0 || canApproveReject || canApply) && hasData && (
-            <div className="border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 md:p-6 space-y-4 shrink-0">
-              {/* Client candidates */}
-              {doc.clientMatchCandidates.length > 0 && (
-                <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2">
-                    Kandidáti klientů
-                  </h4>
-                  <div className="space-y-2">
-                    {doc.clientMatchCandidates.map((c) => (
-                      <div
-                        key={c.clientId}
-                        className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">
-                            {c.displayName ?? c.clientId}
-                          </p>
-                          <p className="text-[10px] text-[color:var(--wp-text-secondary)]">
-                            {Math.round(c.score * 100)}% · {c.reasons.join(", ")}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => onSelectClient?.(c.clientId)}
-                          disabled={!!actionLoading || doc.matchedClientId === c.clientId}
-                          className={`shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition-colors min-h-[44px] ${
-                            doc.matchedClientId === c.clientId
-                              ? "bg-indigo-100 text-indigo-700"
-                              : "bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
-                          }`}
-                        >
-                          {doc.matchedClientId === c.clientId ? (
-                            <span className="flex items-center gap-1"><Check size={14} /> Vybrán</span>
-                          ) : "Vybrat"}
-                        </button>
+          {!doc.isApplied && hasData && (
+            <div className="border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 md:p-6 shrink-0">
+              <details className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 px-4 py-3">
+                <summary className="cursor-pointer list-none text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
+                  Klient a další akce
+                </summary>
+                <div className="mt-4 space-y-4">
+                  {doc.clientMatchCandidates.length > 0 ? (
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2">
+                        Kandidáti klientů
+                      </h4>
+                      <div className="space-y-2">
+                        {doc.clientMatchCandidates.map((c) => (
+                          <div
+                            key={c.clientId}
+                            className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">
+                                {c.displayName ?? c.clientId}
+                              </p>
+                              <p className="text-[10px] text-[color:var(--wp-text-secondary)]">
+                                {Math.round(c.score * 100)}% · {c.reasons.join(", ")}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => onSelectClient?.(c.clientId)}
+                              disabled={!!actionLoading || doc.matchedClientId === c.clientId}
+                              className={`shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition-colors min-h-[44px] ${
+                                doc.matchedClientId === c.clientId
+                                  ? "bg-indigo-100 text-indigo-700"
+                                  : "bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
+                              }`}
+                            >
+                              {doc.matchedClientId === c.clientId ? (
+                                <span className="flex items-center gap-1">
+                                  <Check size={14} /> Vybrán
+                                </span>
+                              ) : (
+                                "Vybrat"
+                              )}
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={onConfirmCreateNew}
+                      disabled={!!actionLoading || doc.createNewClientConfirmed === "true"}
+                      className="flex items-center gap-2 text-xs font-bold text-[color:var(--wp-text-secondary)] hover:text-indigo-600 transition-colors min-h-[44px]"
+                    >
+                      <UserPlus size={14} />
+                      {doc.createNewClientConfirmed === "true"
+                        ? "Nový klient potvrzen"
+                        : "Vytvořit nového klienta"}
+                    </button>
+                    {doc.clientMatchCandidates.length === 0 ? (
+                      <p className="text-xs text-[color:var(--wp-text-tertiary)]">
+                        Nepodařilo se navrhnout vhodného klienta. Vytvoření nového klienta je dostupné ručně.
+                      </p>
+                    ) : null}
                   </div>
-                  <button
-                    onClick={onConfirmCreateNew}
-                    disabled={!!actionLoading || doc.createNewClientConfirmed === "true"}
-                    className="mt-2 flex items-center gap-2 text-xs font-bold text-[color:var(--wp-text-secondary)] hover:text-indigo-600 transition-colors min-h-[44px]"
-                  >
-                    <UserPlus size={14} />
-                    {doc.createNewClientConfirmed === "true"
-                      ? "Nový klient potvrzen"
-                      : "Vytvořit nového klienta"}
-                  </button>
+
+                  <div className="pt-3 border-t border-[color:var(--wp-surface-card-border)]">
+                    <button
+                      onClick={onDiscard}
+                      disabled={actionLoading === "delete"}
+                      className="flex items-center gap-2 text-xs font-bold text-rose-600 hover:text-rose-800 transition-colors min-h-[44px]"
+                    >
+                      {actionLoading === "delete" ? (
+                        <RefreshCw size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                      Smazat dokument
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              {doc.clientMatchCandidates.length === 0 && (
-                <button
-                  onClick={onConfirmCreateNew}
-                  disabled={!!actionLoading || doc.createNewClientConfirmed === "true"}
-                  className="flex items-center gap-2 text-xs font-bold text-[color:var(--wp-text-secondary)] hover:text-indigo-600 transition-colors min-h-[44px]"
-                >
-                  <UserPlus size={14} />
-                  {doc.createNewClientConfirmed === "true"
-                    ? "Nový klient potvrzen"
-                    : "Žádný kandidát — vytvořit nového klienta"}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Danger zone — delete */}
-          {!doc.isApplied && (
-            <div className="border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 md:px-6 py-3 shrink-0">
-              <button
-                onClick={onDiscard}
-                disabled={actionLoading === "delete"}
-                className="flex items-center gap-2 text-xs font-bold text-rose-600 hover:text-rose-800 transition-colors min-h-[44px]"
-              >
-                {actionLoading === "delete" ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  <Trash2 size={14} />
-                )}
-                Smazat dokument
-              </button>
+              </details>
             </div>
           )}
         </section>
 
         {/* Right panel */}
         <aside
-          className={`flex min-h-0 w-full min-w-0 flex-col lg:w-[45%] ${
+          className={`flex min-h-0 w-full min-w-0 flex-col lg:w-[52%] ${
             state.showPdfOnMobile ? "flex" : "hidden lg:flex"
           }`}
         >

@@ -121,12 +121,8 @@ function recTypeBadge(type: AIRecommendation["type"]) {
 
 const SECTIONS = [
   { id: "summary", label: "Shrnutí" },
-  { id: "advisor", label: "Přehled" },
-  { id: "workflow", label: "Pracovní kroky" },
-  { id: "recommendations", label: "Kontroly" },
-  { id: "diagnostics", label: "Diagnostika" },
-  { id: "data", label: "Data" },
-  { id: "extra", label: "Další podněty" },
+  { id: "data", label: "Pole k ověření" },
+  { id: "recommendations", label: "Kontroly a akce" },
 ] as const;
 
 function SectionNav({ onScrollTo }: { onScrollTo: (id: string) => void }) {
@@ -200,6 +196,17 @@ function FilterBar({
 /* ─── Document Meta Header ──────────────────────────────────────── */
 
 function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
+  const statusMap: Record<
+    ExtractionDocument["reviewStatus"],
+    { label: string; className: string }
+  > = {
+    pending: { label: "K revizi", className: "text-amber-600" },
+    in_review: { label: "V řešení", className: "text-indigo-600" },
+    approved: { label: "Schváleno", className: "text-emerald-600" },
+    rejected: { label: "Zamítnuto", className: "text-rose-600" },
+    applied: { label: "Zapsáno do CRM", className: "text-emerald-700" },
+  };
+  const reviewStatus = statusMap[doc.reviewStatus] ?? statusMap.pending;
   return (
     <div>
       <div className="flex items-start gap-3 mb-2">
@@ -243,7 +250,7 @@ function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
         <div className="flex items-center gap-2 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-xl px-3 py-2 shadow-sm">
           <Eye size={14} className="text-[color:var(--wp-text-tertiary)]" />
           <span className="text-xs font-black text-[color:var(--wp-text-secondary)]">
-            Status: <span className="text-amber-600">K revizi</span>
+            Status: <span className={reviewStatus.className}>{reviewStatus.label}</span>
           </span>
         </div>
       </div>
@@ -434,7 +441,7 @@ function AIRecommendationsCard({
       <div className="relative z-10">
         <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 mb-4 flex items-center gap-2">
           <AiAssistantBrandIcon size={16} className="shrink-0" />
-          Kontroly a validace
+          Kontroly a akce
           <span className="ml-auto text-indigo-500 font-bold text-[10px] normal-case tracking-normal">
             {visible.length} aktivních
           </span>
@@ -956,7 +963,7 @@ export function ExtractionLeftPanel({
         ref={scrollRef}
         className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 lg:p-10"
       >
-        <div className="max-w-3xl mx-auto space-y-6 md:space-y-8">
+        <div className="w-full space-y-6 md:space-y-8">
           <div data-section="summary">
             <DocumentMetaHeader doc={doc} />
           </div>
@@ -964,19 +971,6 @@ export function ExtractionLeftPanel({
           <ExecutiveSummaryCard doc={doc} />
 
           <AdvisorOverviewCard doc={doc} />
-
-          <WorkActionsCard doc={doc} />
-
-          <div data-section="recommendations">
-            <AIRecommendationsCard
-              recommendations={doc.recommendations}
-              dismissedMap={state.dismissedRecommendations}
-              onDismiss={onDismissRec}
-              onRestore={onRestoreRec}
-              onCreateTask={onCreateTask}
-              onFieldClick={onFieldClick}
-            />
-          </div>
 
           <ReviewAttentionBanner
             warningCount={doc.diagnostics.warningCount}
@@ -1015,7 +1009,16 @@ export function ExtractionLeftPanel({
             </div>
           </div>
 
-          <div data-section="extra">
+          <div data-section="recommendations" className="space-y-6">
+            <WorkActionsCard doc={doc} />
+            <AIRecommendationsCard
+              recommendations={doc.recommendations}
+              dismissedMap={state.dismissedRecommendations}
+              onDismiss={onDismissRec}
+              onRestore={onRestoreRec}
+              onCreateTask={onCreateTask}
+              onFieldClick={onFieldClick}
+            />
             <ExtraRecommendationsCard
               recommendations={doc.extraRecommendations}
               dismissedMap={state.dismissedRecommendations}

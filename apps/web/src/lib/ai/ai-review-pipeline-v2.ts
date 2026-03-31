@@ -63,6 +63,8 @@ import type {
   PipelineSuccess,
 } from "./contract-understanding-pipeline";
 import { getPipelineVersionInfo } from "./pipeline-versioning";
+import type { DocumentReviewEnvelope } from "./document-review-types";
+import { resolveHybridInvestmentDocumentType } from "./ai-review-document-type-signals";
 
 function mergePreprocessIntoTrace(trace: ExtractionTrace, meta?: PipelinePreprocessMeta | null): void {
   if (!meta) return;
@@ -162,6 +164,49 @@ async function tryExtractPaymentWithPrompt(
 }
 
 type PipelineSuccessBody = Omit<PipelineSuccess, "extractionTrace">;
+
+function classificationForResolvedDocumentType(
+  documentType: ContractDocumentType,
+  classification: ClassificationResult
+): ClassificationResult {
+  if (documentType === classification.primaryType) return classification;
+  if (
+    documentType === "life_insurance_investment_contract" &&
+    classification.primaryType === "life_insurance_modelation"
+  ) {
+    return {
+      ...classification,
+      primaryType: documentType,
+      lifecycleStatus: "final_contract",
+      documentIntent: "creates_new_product",
+      reasons: [...classification.reasons, "hybrid_contract_signals_detected"],
+    };
+  }
+  return {
+    ...classification,
+    primaryType: documentType,
+  };
+}
+
+function applyResolvedClassificationToFallbackEnvelope(
+  envelope: DocumentReviewEnvelope,
+  documentType: ContractDocumentType,
+  classification: ClassificationResult,
+  extractionRoute: ExtractionRoute
+): void {
+  const normPipeline = mapPrimaryToPipelineClassification(documentType);
+  envelope.documentClassification.primaryType = documentType;
+  envelope.documentClassification.lifecycleStatus = classification.lifecycleStatus;
+  envelope.documentClassification.documentIntent = classification.documentIntent;
+  envelope.documentClassification.subtype = classification.subtype;
+  envelope.documentClassification.confidence = classification.confidence;
+  envelope.documentClassification.reasons = [...classification.reasons];
+  envelope.documentMeta.normalizedPipelineClassification = normPipeline;
+  envelope.documentMeta.rawPrimaryClassification = classification.primaryType;
+  envelope.documentMeta.pipelineRoute =
+    extractionRoute === "supporting_document" ? "supporting_document" : "contract_intake";
+  envelope.documentMeta.extractionRoute = extractionRoute;
+}
 
 function finalizeContractPayload(params: {
   data: ExtractedContractByType;
@@ -918,6 +963,22 @@ export async function runAiReviewV2Pipeline(
       parsedExtractionObj,
       rawExtraction.length
     );
+    applyExtractedFieldAliasNormalizations(stub);
+    const resolvedFallbackType = resolveHybridInvestmentDocumentType(documentType, stub, classification);
+    const resolvedFallbackClassification = classificationForResolvedDocumentType(
+      resolvedFallbackType,
+      classification
+    );
+    const resolvedFallbackRoute = resolveExtractionRoute(
+      mapPrimaryToPipelineClassification(resolvedFallbackType),
+      resolvedFallbackClassification.confidence
+    );
+    applyResolvedClassificationToFallbackEnvelope(
+      stub,
+      resolvedFallbackType,
+      resolvedFallbackClassification,
+      resolvedFallbackRoute
+    );
     if (mergedFieldKeys.length > 0) {
       allReasons.push("partial_extraction_merged_into_stub");
       stub.reviewWarnings.push({
@@ -925,6 +986,9 @@ export async function runAiReviewV2Pipeline(
         message: `Do náhledu bylo doplněno ${mergedFieldKeys.length} polí z částečné odpovědi modelu — struktura neprošla plnou validací. Ověřte oproti dokumentu.`,
         severity: "warning",
       });
+    }
+    if (resolvedFallbackType !== documentType) {
+      allReasons.push("hybrid_contract_signals_detected");
     }
     trace.warnings = [...(trace.warnings ?? []), "extraction_validation_soft_fail"];
     console.warn("[ai-review] extraction_validation_stub_fallback", {
@@ -950,6 +1014,26 @@ export async function runAiReviewV2Pipeline(
   }
 
   const validated = validationOutcome;
+  const resolvedDocumentType = resolveHybridInvestmentDocumentType(
+    documentType,
+    validated.data,
+    classification
+  );
+  const resolvedClassification = classificationForResolvedDocumentType(
+    resolvedDocumentType,
+    classification
+  );
+  const resolvedNormPipeline = mapPrimaryToPipelineClassification(resolvedDocumentType);
+  const resolvedExtractionRoute = resolveExtractionRoute(
+    resolvedNormPipeline,
+    resolvedClassification.confidence
+  );
+  if (resolvedDocumentType !== documentType) {
+    allReasons.push("hybrid_contract_signals_detected");
+    trace.documentType = resolvedDocumentType;
+    trace.normalizedPipelineClassification = resolvedNormPipeline;
+    trace.extractionRoute = resolvedExtractionRoute;
+  }
 
   const rdStart = Date.now();
   if (isAiReviewLlmPostprocessEnabled()) {
@@ -982,11 +1066,11 @@ export async function runAiReviewV2Pipeline(
 
   const finalized = finalizeContractPayload({
     data: validated.data,
-    classification,
+    classification: resolvedClassification,
     inputModeResult,
-    extractionRoute,
-    normPipeline,
-    documentType,
+    extractionRoute: resolvedExtractionRoute,
+    normPipeline: resolvedNormPipeline,
+    documentType: resolvedDocumentType,
     options,
     textCov,
     trace,

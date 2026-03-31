@@ -114,6 +114,30 @@ describe("applyExtractedFieldAliasNormalizations", () => {
     expect(warnings.filter((w) => w.code === "MISSING_REQUIRED_FIELD")).toHaveLength(0);
   });
 
+  it("salvages contract fields from Czech text fragments when aliases are missing", () => {
+    const env = minimalEnvelope("life_insurance_investment_contract");
+    env.extractedFields = {
+      title: {
+        value: [
+          "Modelace vývoje investičního životního pojištění",
+          "Bel Mondo 20",
+          "pojistná smlouva číslo 3282880076",
+          "Počátek pojištění 1. 6. 2026",
+          "Generali Česká pojišťovna a.s.",
+        ].join("\n"),
+        status: "inferred_low_confidence",
+        confidence: 0.62,
+      },
+    };
+
+    applyExtractedFieldAliasNormalizations(env);
+
+    expect(env.extractedFields.insurer?.value).toContain("Generali");
+    expect(env.extractedFields.productName?.value).toBe("Bel Mondo 20");
+    expect(env.extractedFields.contractNumber?.value).toBe("3282880076");
+    expect(env.extractedFields.policyStartDate?.value).toBe("1. 6. 2026");
+  });
+
   it("fills proposalNumber_or_contractNumber for life_insurance_proposal", () => {
     const env = minimalEnvelope("life_insurance_proposal");
     env.documentClassification.lifecycleStatus = "proposal";
