@@ -6,6 +6,23 @@
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 
+/** Refresh token revoked, expired, or otherwise unusable (Google OAuth `invalid_grant`). */
+export class GoogleInvalidGrantError extends Error {
+  constructor() {
+    super("Google refresh token expired or revoked");
+    this.name = "GoogleInvalidGrantError";
+  }
+}
+
+export function isGoogleOAuthInvalidGrantBody(bodyText: string): boolean {
+  if (bodyText.includes("invalid_grant")) return true;
+  try {
+    return (JSON.parse(bodyText) as { error?: string }).error === "invalid_grant";
+  } catch {
+    return false;
+  }
+}
+
 export type GoogleTokenResponse = {
   access_token: string;
   refresh_token?: string;
@@ -83,6 +100,9 @@ export async function refreshGoogleAccessToken(
   });
   if (!res.ok) {
     const err = await res.text();
+    if (isGoogleOAuthInvalidGrantBody(err)) {
+      throw new GoogleInvalidGrantError();
+    }
     throw new Error(`Google token refresh failed: ${res.status} ${err}`);
   }
   return res.json() as Promise<GoogleTokenResponse>;

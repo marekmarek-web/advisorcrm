@@ -49,6 +49,11 @@ import { getAiReviewPromptId, getAiReviewPromptVersion, type AiReviewPromptKey }
 import { isAiReviewLlmPostprocessEnabled, runAiReviewDecisionLlm } from "./ai-review-llm-postprocess";
 import { buildAiReviewExtractionPromptVariables, capAiReviewPromptString } from "./ai-review-prompt-variables";
 import { zodIssuesToAdvisorBriefMessages } from "./zod-issues-advisor-copy";
+import {
+  mergePartialParsedIntoManualStub,
+  parseJsonObjectFromAiReviewRaw,
+  tryCoerceReviewEnvelopeAfterValidationFailure,
+} from "./coerce-partial-review-envelope";
 import { deriveEnvelopeFlags } from "./derive-envelope-flags";
 import type {
   ContractPipelineOptions,
@@ -829,26 +834,58 @@ export async function runAiReviewV2Pipeline(
   trace.extractionDurationMs = Date.now() - extStart;
 
   const valStart = Date.now();
-  const validated = validateExtractionByType(rawExtraction, documentType);
+  let validationOutcome = validateExtractionByType(rawExtraction, documentType);
   trace.validationDurationMs = Date.now() - valStart;
 
-  if (!validated.ok) {
-    let parsedKeys: string[] = [];
-    try {
-      const jsonMatch = rawExtraction.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : rawExtraction;
-      const obj = JSON.parse(jsonStr) as Record<string, unknown> | null;
-      parsedKeys = obj && typeof obj === "object" ? Object.keys(obj).slice(0, 24) : [];
-    } catch {
-      parsedKeys = [];
-    }
+  const parsedExtractionObj = parseJsonObjectFromAiReviewRaw(rawExtraction);
+  const parsedExtractionTopKeys =
+    parsedExtractionObj && typeof parsedExtractionObj === "object"
+      ? Object.keys(parsedExtractionObj).slice(0, 24)
+      : [];
+
+  if (!validationOutcome.ok) {
     console.warn("[ai-review] extraction_validation_soft_fail", {
       documentType,
-      issueCount: validated.issues.length,
-      topPaths: validated.issues.slice(0, 8).map((i) => i.path.join(".") || "(root)"),
-      responseKeys: parsedKeys,
-      rawHead: rawExtraction.slice(0, 240),
+      aiReviewExtractionPromptKey: trace.aiReviewExtractionPromptKey,
+      extractionRoute: trace.extractionRoute,
+      normalizedPipelineClassification: trace.normalizedPipelineClassification,
+      issueCount: validationOutcome.issues.length,
+      topPaths: validationOutcome.issues.slice(0, 8).map((i) => i.path.join(".") || "(root)"),
+      responseKeys: parsedExtractionTopKeys,
+      rawHeadLength: Math.min(240, rawExtraction.length),
     });
+    const coercedData = parsedExtractionObj
+      ? tryCoerceReviewEnvelopeAfterValidationFailure(parsedExtractionObj, documentType, classification)
+      : null;
+    if (coercedData) {
+      trace.warnings = [...(trace.warnings ?? []), "extraction_validation_coerced"];
+      console.warn("[ai-review] extraction_validation_coerced", {
+        documentType,
+        promptKey,
+        extractionRoute: trace.extractionRoute,
+        normalizedPipelineClassification: trace.normalizedPipelineClassification,
+        extractedFieldCount: Object.keys(coercedData.extractedFields ?? {}).length,
+        originalIssueCount: validationOutcome.issues.length,
+      });
+      for (const message of zodIssuesToAdvisorBriefMessages(validationOutcome.issues, 8)) {
+        coercedData.reviewWarnings.push({
+          code: "extraction_schema_validation",
+          message,
+          severity: "info",
+        });
+      }
+      coercedData.reviewWarnings.push({
+        code: "partial_extraction_coerced",
+        message:
+          "Část struktury odpovědi z modelu byla po uložení upravena kvůli validaci (např. doplnění stavu pole). Ověřte hodnoty oproti PDF.",
+        severity: "warning",
+      });
+      allReasons.push("partial_extraction_coerced");
+      validationOutcome = { ok: true, data: coercedData };
+    }
+  }
+
+  if (!validationOutcome.ok) {
     const stub = buildManualReviewStubEnvelope({
       classification,
       inputMode: inputModeResult.inputMode as string,
@@ -858,14 +895,33 @@ export async function runAiReviewV2Pipeline(
       route: extractionRoute,
     });
     stub.documentMeta.textCoverageEstimate = textCov;
-    for (const message of zodIssuesToAdvisorBriefMessages(validated.issues, 10)) {
+    for (const message of zodIssuesToAdvisorBriefMessages(validationOutcome.issues, 10)) {
       stub.reviewWarnings.push({
         code: "extraction_schema_validation",
         message,
         severity: "warning",
       });
     }
+    const { mergedFieldKeys } = mergePartialParsedIntoManualStub(
+      stub,
+      parsedExtractionObj,
+      rawExtraction.length
+    );
+    if (mergedFieldKeys.length > 0) {
+      allReasons.push("partial_extraction_merged_into_stub");
+      stub.reviewWarnings.push({
+        code: "partial_extraction_merged",
+        message: `Do náhledu bylo doplněno ${mergedFieldKeys.length} polí z částečné odpovědi modelu — struktura neprošla plnou validací. Ověřte oproti dokumentu.`,
+        severity: "warning",
+      });
+    }
     trace.warnings = [...(trace.warnings ?? []), "extraction_validation_soft_fail"];
+    console.warn("[ai-review] extraction_validation_stub_fallback", {
+      documentType,
+      promptKey,
+      mergedExtractedFieldCount: mergedFieldKeys.length,
+      emptyStateReason: mergedFieldKeys.length > 0 ? "stub_with_partial_fields" : "stub_empty_fields",
+    });
     return {
       ok: true,
       processingStatus: "review_required",
@@ -881,6 +937,8 @@ export async function runAiReviewV2Pipeline(
       classificationReasons: classification.reasons,
     };
   }
+
+  const validated = validationOutcome;
 
   const rdStart = Date.now();
   if (isAiReviewLlmPostprocessEnabled()) {

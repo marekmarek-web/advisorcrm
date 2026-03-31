@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getIntegrationApiAuth } from "../../../../integrations/auth";
-import { getValidDriveAccessToken } from "@/lib/integrations/google-drive-integration-service";
+import { requireDriveAccessToken } from "@/lib/integrations/drive-access-token-api";
 import { createDrivePermission } from "@/lib/integrations/google-drive";
 
 type SharePayload = {
@@ -31,7 +31,7 @@ export async function POST(
   }
 
   try {
-    const accessToken = await getValidDriveAccessToken(userId, tenantId);
+    const accessToken = await requireDriveAccessToken(userId, tenantId);
     const permission = await createDrivePermission(accessToken, id, {
       type: body.type,
       role: body.role,
@@ -41,6 +41,7 @@ export async function POST(
     });
     return NextResponse.json({ permission });
   } catch (e) {
+    if (e instanceof Response) return e;
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
 }

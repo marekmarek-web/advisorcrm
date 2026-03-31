@@ -6,7 +6,7 @@
 import { db, userGoogleDriveIntegrations } from "db";
 import { eq, and } from "db";
 import { encrypt, decrypt } from "./encrypt";
-import { refreshGoogleAccessToken } from "./google-oauth";
+import { GoogleInvalidGrantError, refreshGoogleAccessToken } from "./google-oauth";
 
 const LOG_PREFIX = "[google-drive-integration]";
 function log(msg: string, meta?: Record<string, unknown>) {
@@ -85,6 +85,22 @@ export async function upsertDriveTokens(
   return { created: true };
 }
 
+async function invalidateDriveAfterRevokedRefresh(
+  userId: string,
+  tenantId: string
+): Promise<void> {
+  await db.update(userGoogleDriveIntegrations).set({
+    isActive: false,
+    accessToken: null,
+    refreshToken: null,
+    tokenExpiry: null,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(userGoogleDriveIntegrations.tenantId, tenantId),
+    eq(userGoogleDriveIntegrations.userId, userId)
+  ));
+}
+
 const REFRESH_BEFORE_EXPIRY_MS = 5 * 60 * 1000;
 
 export async function getValidDriveAccessToken(
@@ -130,6 +146,17 @@ export async function getValidDriveAccessToken(
     try {
       tokens = await refreshGoogleAccessToken(refreshDecrypted);
     } catch (e) {
+      if (e instanceof GoogleInvalidGrantError) {
+        await invalidateDriveAfterRevokedRefresh(userId, tenantId);
+        log("Refresh token revoked or expired; Drive integration deactivated", {
+          userId: userId.slice(0, 8),
+        });
+        const err = new Error("Google Drive reconnect required") as Error & {
+          code?: string;
+        };
+        err.code = "reauth_required";
+        throw err;
+      }
       logError("Refresh failed", e);
       const err = new Error("Token refresh failed") as Error & { code?: string };
       err.code = "refresh_failed";

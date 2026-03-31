@@ -175,6 +175,10 @@ export type ExtractionDocument = {
   inputMode?: string;
   /** Structured advisor summary + work actions (not raw envelope dump). */
   advisorReview?: AdvisorReviewViewModel;
+  /** Client-side: synthetic groups were added when extraction envelope had no flattenable fields. */
+  reviewUiMeta?: {
+    usedSyntheticGroups?: boolean;
+  };
   /** From GET review `pipelineInsights` — routing, preprocess, payment preview. */
   pipelineInsights?: {
     normalizedPipelineClassification?: string;

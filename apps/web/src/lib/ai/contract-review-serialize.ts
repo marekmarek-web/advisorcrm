@@ -123,6 +123,42 @@ export function serializeContractReviewDetailResponse(
           sensitivityProfile: row.sensitivityProfile ?? undefined,
           sectionSensitivity: row.sectionSensitivity ?? undefined,
           relationshipInference: row.relationshipInference ?? undefined,
+          /** Shape-only hints for AI Review UI (no field values). */
+          aiReviewPayloadShape: (() => {
+            const p = row.extractedPayload as Record<string, unknown> | null | undefined;
+            if (!p || typeof p !== "object") {
+              return {
+                emptyStateReason: "no_payload" as const,
+                topLevelKeyCount: 0,
+                extractedFieldsKeyCount: 0,
+                sampleTopLevelKeys: [] as string[],
+              };
+            }
+            const top = Object.keys(p).filter((k) => !k.startsWith("_"));
+            const ef = p.extractedFields;
+            const efKeys =
+              ef && typeof ef === "object" && !Array.isArray(ef)
+                ? Object.keys(ef as Record<string, unknown>).length
+                : 0;
+            const hasEnvelope =
+              p.documentClassification != null &&
+              typeof p.documentClassification === "object" &&
+              p.extractedFields != null &&
+              typeof p.extractedFields === "object";
+            let emptyStateReason: "no_payload" | "payload_not_envelope" | "envelope_no_fields" | "has_fields";
+            if (top.length === 0) emptyStateReason = "no_payload";
+            else if (!hasEnvelope) emptyStateReason = "payload_not_envelope";
+            else if (efKeys === 0) emptyStateReason = "envelope_no_fields";
+            else emptyStateReason = "has_fields";
+            const t = row.extractionTrace as Record<string, unknown> | undefined;
+            return {
+              emptyStateReason,
+              topLevelKeyCount: top.length,
+              extractedFieldsKeyCount: efKeys,
+              sampleTopLevelKeys: top.slice(0, 16),
+              traceKeys: t && typeof t === "object" ? Object.keys(t).slice(0, 20) : [],
+            };
+          })(),
         }
       : undefined,
   };

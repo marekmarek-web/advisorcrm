@@ -605,17 +605,59 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   useEffect(() => {
     const calendar = searchParams.get("calendar");
     const calendarError = searchParams.get("calendar_error");
-    if (calendar === "connected") toast.showToast("Google Kalendář byl úspěšně propojen.", "success");
-    if (calendarError) toast.showToast(calendarError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení se nepovedlo.", "error");
     const drive = searchParams.get("drive");
     const driveError = searchParams.get("drive_error");
-    if (drive === "connected") toast.showToast("Google Drive byl úspěšně propojen.", "success");
-    if (driveError) toast.showToast(driveError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení Drive se nepovedlo.", "error");
     const gmail = searchParams.get("gmail");
     const gmailError = searchParams.get("gmail_error");
-    if (gmail === "connected") toast.showToast("Gmail byl úspěšně propojen.", "success");
-    if (gmailError) toast.showToast(gmailError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení Gmailu se nepovedlo.", "error");
-  }, [searchParams, toast]);
+
+    const hasIntegrationQuery =
+      calendar !== null ||
+      calendarError !== null ||
+      drive !== null ||
+      driveError !== null ||
+      gmail !== null ||
+      gmailError !== null;
+
+    if (!hasIntegrationQuery) return;
+
+    if (calendar === "connected") {
+      toast.showToast("Google Kalendář byl úspěšně propojen.", "success");
+    }
+    if (calendarError) {
+      toast.showToast(
+        calendarError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení se nepovedlo.",
+        "error"
+      );
+    }
+    if (drive === "connected") {
+      toast.showToast("Google Drive byl úspěšně propojen.", "success");
+    }
+    if (driveError) {
+      toast.showToast(
+        driveError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení Drive se nepovedlo.",
+        "error"
+      );
+    }
+    if (gmail === "connected") {
+      toast.showToast("Gmail byl úspěšně propojen.", "success");
+    }
+    if (gmailError) {
+      toast.showToast(
+        gmailError === "access_denied" ? "Připojení bylo zrušeno." : "Připojení Gmailu se nepovedlo.",
+        "error"
+      );
+    }
+
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("calendar");
+    next.delete("calendar_error");
+    next.delete("drive");
+    next.delete("drive_error");
+    next.delete("gmail");
+    next.delete("gmail_error");
+    const q = next.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname);
+  }, [searchParams, pathname, router, toast.showToast]);
 
   useEffect(() => {
     if (activeTab !== "integrace") return;

@@ -21,6 +21,7 @@ import type {
   AIRecommendation,
   FieldFilter,
 } from "@/lib/ai-review/types";
+import { hasMeaningfulReviewContent } from "@/lib/ai-review/mappers";
 import { AIReviewTopBar } from "./AIReviewTopBar";
 import { ExtractionLeftPanel } from "./ExtractionLeftPanel";
 import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
@@ -148,7 +149,7 @@ export function AIReviewExtractionShell({
 
   const isFailed = doc.processingStatus === "failed";
   const isProcessing = doc.processingStatus === "uploaded" || doc.processingStatus === "processing";
-  const hasData = doc.groups.length > 0;
+  const hasData = hasMeaningfulReviewContent(doc);
   const isPending = doc.reviewStatus === "pending" || !doc.reviewStatus;
   const canApproveReject =
     isPending &&

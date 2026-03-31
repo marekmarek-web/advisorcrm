@@ -6,7 +6,7 @@
 import { db, userGoogleGmailIntegrations } from "db";
 import { eq, and } from "db";
 import { encrypt, decrypt } from "./encrypt";
-import { refreshGoogleAccessToken } from "./google-oauth";
+import { GoogleInvalidGrantError, refreshGoogleAccessToken } from "./google-oauth";
 
 const LOG_PREFIX = "[google-gmail-integration]";
 function log(msg: string, meta?: Record<string, unknown>) {
@@ -85,6 +85,22 @@ export async function upsertGmailTokens(
   return { created: true };
 }
 
+async function invalidateGmailAfterRevokedRefresh(
+  userId: string,
+  tenantId: string
+): Promise<void> {
+  await db.update(userGoogleGmailIntegrations).set({
+    isActive: false,
+    accessToken: null,
+    refreshToken: null,
+    tokenExpiry: null,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(userGoogleGmailIntegrations.tenantId, tenantId),
+    eq(userGoogleGmailIntegrations.userId, userId)
+  ));
+}
+
 const REFRESH_BEFORE_EXPIRY_MS = 5 * 60 * 1000;
 
 export async function getValidGmailAccessToken(
@@ -130,6 +146,17 @@ export async function getValidGmailAccessToken(
     try {
       tokens = await refreshGoogleAccessToken(refreshDecrypted);
     } catch (e) {
+      if (e instanceof GoogleInvalidGrantError) {
+        await invalidateGmailAfterRevokedRefresh(userId, tenantId);
+        log("Refresh token revoked or expired; Gmail integration deactivated", {
+          userId: userId.slice(0, 8),
+        });
+        const err = new Error(
+          "Přístup k Gmailu byl odvolán nebo vypršel. V Integracích ho znovu připojte."
+        ) as Error & { code?: string };
+        err.code = "reauth_required";
+        throw err;
+      }
       logError("Refresh failed", e);
       const err = new Error("Token refresh failed") as Error & { code?: string };
       err.code = "refresh_failed";

@@ -117,7 +117,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           ))}
         </div>
       )}
-      <div className="fixed left-4 right-4 bottom-20 md:bottom-4 md:left-auto md:right-4 z-toast flex flex-col gap-2 max-w-sm" aria-live="polite">
+      <div
+        className="pointer-events-none fixed left-4 right-4 bottom-20 md:bottom-4 md:left-auto md:right-4 z-toast flex flex-col gap-2 max-w-sm"
+        aria-live="polite"
+      >
         {bottomRightToasts.map((t) => (
           <ToastCard key={t.id} item={t} onDismiss={() => dismissToast(t.id)} />
         ))}
@@ -146,7 +149,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
   return (
     <div
       role={item.variant === "loading" ? "status" : "alert"}
-      className={`rounded-lg border px-4 py-3 shadow-lg ${style}`}
+      className={`pointer-events-auto rounded-lg border px-4 py-3 shadow-lg ${style}`}
     >
       <div className="flex items-center gap-3">
         {item.variant === "loading" && <TypingDots className="shrink-0" />}

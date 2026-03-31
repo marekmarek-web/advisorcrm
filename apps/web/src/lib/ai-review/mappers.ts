@@ -9,6 +9,7 @@ import type {
   ReviewStatus,
   ClientMatchCandidate,
   DraftAction,
+  AdvisorReviewViewModel,
 } from "./types";
 import { buildHumanSummary, buildHumanErrorMessage, getDocumentTypeLabel } from "../ai/document-messages";
 import type { PrimaryDocumentType } from "../ai/document-review-types";
@@ -596,6 +597,230 @@ function dedupeDraftActions(actions: DraftAction[]): DraftAction[] {
   return out;
 }
 
+const SYNTH_NOTE = "Interní podklad z metadat obálky — ověřte oproti PDF.";
+
+function appendSyntheticEnvelopeGroups(
+  base: ExtractedGroup[],
+  envelope: Record<string, unknown>,
+  detail: ApiReviewDetail,
+  advisorReview: AdvisorReviewViewModel | undefined,
+  globalConfidence01: number
+): ExtractedGroup[] {
+  const out = [...base];
+  const confPct = Math.round(globalConfidence01 * 100);
+  const mkField = (
+    id: string,
+    groupId: string,
+    label: string,
+    value: string,
+    status: FieldStatus
+  ): ExtractedField => ({
+    id,
+    groupId,
+    label,
+    value,
+    confidence: confPct,
+    status,
+    message: status === "success" ? undefined : SYNTH_NOTE,
+    sourceType: "ai",
+    isConfirmed: false,
+    isEdited: false,
+    originalAiValue: value,
+  });
+
+  const dc = envelope.documentClassification as Record<string, unknown> | undefined;
+  if (dc && typeof dc === "object") {
+    const recFields: ExtractedField[] = [
+      mkField(
+        "synthetic.dc.primaryType",
+        "synthetic_recognition",
+        "Primární typ (obálka)",
+        formatExtractedValue(dc.primaryType),
+        "warning"
+      ),
+      mkField(
+        "synthetic.dc.lifecycleStatus",
+        "synthetic_recognition",
+        "Životní cyklus dokumentu",
+        formatExtractedValue(dc.lifecycleStatus),
+        "warning"
+      ),
+      mkField(
+        "synthetic.dc.documentIntent",
+        "synthetic_recognition",
+        "Záměr dokumentu",
+        formatExtractedValue(dc.documentIntent),
+        "warning"
+      ),
+      mkField(
+        "synthetic.dc.confidence",
+        "synthetic_recognition",
+        "Jistota klasifikace (obálka)",
+        formatExtractedValue(dc.confidence),
+        "warning"
+      ),
+    ];
+    if (dc.subtype != null && String(dc.subtype).trim()) {
+      recFields.push(
+        mkField(
+          "synthetic.dc.subtype",
+          "synthetic_recognition",
+          "Podtyp / produkt (hint)",
+          formatExtractedValue(dc.subtype),
+          "warning"
+        )
+      );
+    }
+    out.push({
+      id: "synthetic_recognition",
+      name: "Rozpoznání dokumentu",
+      iconName: "FileText",
+      fields: recFields,
+    });
+  }
+
+  const dm = envelope.documentMeta as Record<string, unknown> | undefined;
+  if (dm && typeof dm === "object" && Object.keys(dm).length > 0) {
+    const metaFields: ExtractedField[] = [];
+    const add = (key: string, label: string, v: unknown) => {
+      if (v == null || v === "") return;
+      metaFields.push(
+        mkField(`synthetic.dm.${key}`, "synthetic_meta", label, formatExtractedValue(v), "warning")
+      );
+    };
+    add("normalizedPipelineClassification", "Normalizovaná klasifikace (pipeline)", dm.normalizedPipelineClassification);
+    add("pipelineRoute", "Větev pipeline", dm.pipelineRoute);
+    add("extractionRoute", "Trasa extrakce", dm.extractionRoute);
+    add("overallConfidence", "Celková jistota (obálka)", dm.overallConfidence);
+    add("pageCount", "Počet stran", dm.pageCount);
+    add("scannedVsDigital", "Digitál / sken", dm.scannedVsDigital);
+    add("textCoverageEstimate", "Odhad pokrytí textem", dm.textCoverageEstimate);
+    add("preprocessStatus", "Předzpracování", dm.preprocessStatus);
+    if (metaFields.length > 0) {
+      out.push({
+        id: "synthetic_meta",
+        name: "Metadata dokumentu",
+        iconName: "Building2",
+        fields: metaFields,
+      });
+    }
+  }
+
+  const statusFields: ExtractedField[] = [];
+  const rw = envelope.reviewWarnings as Array<{ code?: string; message?: string; severity?: string }> | undefined;
+  if (Array.isArray(rw)) {
+    rw.forEach((w, i) => {
+      if (!w?.message?.trim()) return;
+      const code = w.code ? `${w.code}: ` : "";
+      statusFields.push(
+        mkField(
+          `synthetic.rw.${i}`,
+          "synthetic_status",
+          "Upozornění z obálky",
+          `${code}${w.message}`,
+          w.severity === "critical" ? "error" : "warning"
+        )
+      );
+    });
+  }
+  const reasons = detail.reasonsForReview as string[] | undefined;
+  if (Array.isArray(reasons)) {
+    reasons.forEach((r, i) => {
+      if (!String(r).trim()) return;
+      statusFields.push(
+        mkField(`synthetic.reason.${i}`, "synthetic_status", "Důvod ke kontrole", String(r), "warning")
+      );
+    });
+  }
+  const vw = detail.validationWarnings as Array<{ code?: string; message: string }> | undefined;
+  if (Array.isArray(vw)) {
+    vw.forEach((w, i) => {
+      if (!w?.message?.trim()) return;
+      statusFields.push(
+        mkField(
+          `synthetic.vw.${i}`,
+          "synthetic_status",
+          "Validace",
+          w.code ? `${w.code}: ${w.message}` : w.message,
+          "warning"
+        )
+      );
+    });
+  }
+  const completeness = envelope.dataCompleteness as Record<string, unknown> | undefined;
+  if (completeness && typeof completeness === "object") {
+    const score = completeness.score;
+    if (score != null) {
+      statusFields.push(
+        mkField(
+          "synthetic.completeness",
+          "synthetic_status",
+          "Úplnost dat (skóre)",
+          formatExtractedValue(score),
+          "warning"
+        )
+      );
+    }
+  }
+  if (statusFields.length > 0) {
+    out.push({
+      id: "synthetic_status",
+      name: "Stav a kontrola",
+      iconName: "Shield",
+      fields: statusFields,
+    });
+  }
+
+  if (advisorReview) {
+    const lineFields: ExtractedField[] = [
+      mkField("synthetic.ar.client", "synthetic_lines", "Klient (souhrn)", advisorReview.client, "warning"),
+      mkField("synthetic.ar.product", "synthetic_lines", "Produkt / instituce", advisorReview.product, "warning"),
+      mkField("synthetic.ar.payments", "synthetic_lines", "Platby", advisorReview.payments, "warning"),
+    ];
+    out.push({
+      id: "synthetic_lines",
+      name: "Souhrn pro poradce",
+      iconName: "User",
+      fields: lineFields,
+    });
+  }
+
+  if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.debug("[ai-review-ui] synthetic_envelope_groups", {
+      groupCount: out.length - base.length,
+      totalGroups: out.length,
+    });
+  }
+
+  return out;
+}
+
+/** True when the review detail should show the main extraction panel (not the empty state). */
+export function hasMeaningfulReviewContent(doc: ExtractionDocument): boolean {
+  if (doc.groups.length > 0) return true;
+  if (doc.advisorReview) return true;
+  if (doc.reviewUiMeta?.usedSyntheticGroups) return true;
+  const ps = doc.processingStatus;
+  if (ps === "extracted" || ps === "review_required" || ps === "blocked") {
+    const trace = doc.extractionTrace as Record<string, unknown> | undefined;
+    if (
+      trace &&
+      (trace.aiClassifierJson ||
+        trace.documentType ||
+        trace.normalizedPipelineClassification ||
+        trace.classifierDurationMs != null)
+    ) {
+      return true;
+    }
+    if (doc.pipelineInsights?.normalizedPipelineClassification || doc.pipelineInsights?.extractionRoute) {
+      return true;
+    }
+    if (doc.documentType && doc.documentType !== "Neznámý typ") return true;
+  }
+  return false;
+}
+
 export function mapApiToExtractionDocument(
   detail: ApiReviewDetail,
   pdfUrl: string
@@ -618,18 +843,12 @@ export function mapApiToExtractionDocument(
     preprocessStatus: insights?.preprocessStatus,
   };
 
-  const groups =
+  let groups =
     Object.keys(extracted).length > 0
       ? looksLikeDocumentEnvelope(extracted)
         ? flattenEnvelopeToGroups(extracted, fieldConfidenceMap, confidence, readCtx)
         : flattenPayload(extracted, fieldConfidenceMap, confidence)
       : [];
-
-  const diagnostics = buildDiagnostics(detail, groups);
-  const recommendations = buildRecommendations(detail, groups);
-  const summary = buildSummary(detail, groups, diagnostics);
-
-  const clientName = pickClientNameFromPayload(extracted) ?? "—";
 
   const norm = insights?.normalizedPipelineClassification;
   const baseType = (detail.detectedDocumentType as string) ?? "Neznámý typ";
@@ -654,6 +873,27 @@ export function mapApiToExtractionDocument(
         extractionTrace: trace,
       })
     : undefined;
+
+  let usedSyntheticGroups = false;
+  if (groups.length === 0 && looksLikeDocumentEnvelope(extracted)) {
+    const augmented = appendSyntheticEnvelopeGroups(
+      groups,
+      extracted,
+      detail,
+      advisorReview,
+      confidence
+    );
+    if (augmented.length > 0) {
+      groups = augmented;
+      usedSyntheticGroups = true;
+    }
+  }
+
+  const diagnostics = buildDiagnostics(detail, groups);
+  const recommendations = buildRecommendations(detail, groups);
+  const summary = buildSummary(detail, groups, diagnostics);
+
+  const clientName = pickClientNameFromPayload(extracted) ?? "—";
 
   const apiDrafts = (detail.draftActions as DraftAction[] | undefined) ?? [];
   const mergedDrafts = dedupeDraftActions([
@@ -715,5 +955,6 @@ export function mapApiToExtractionDocument(
         applyBarrierReasons: g.applyBarrierReasons ?? [],
       };
     })(),
+    reviewUiMeta: usedSyntheticGroups ? { usedSyntheticGroups: true } : undefined,
   };
 }

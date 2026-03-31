@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getIntegrationApiAuth } from "../../integrations/auth";
-import { getValidDriveAccessToken } from "@/lib/integrations/google-drive-integration-service";
+import { requireDriveAccessToken } from "@/lib/integrations/drive-access-token-api";
 import {
   createDriveFolder,
   listDriveFiles,
@@ -11,21 +11,7 @@ import {
 export const dynamic = "force-dynamic";
 
 async function getAccessToken(userId: string, tenantId: string) {
-  try {
-    return await getValidDriveAccessToken(userId, tenantId);
-  } catch (e) {
-    const code = (e as Error & { code?: string }).code;
-    if (code === "not_connected") {
-      throw new Response(JSON.stringify({ error: "Google Drive není připojen" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    throw new Response(JSON.stringify({ error: "Chyba přístupu k Drive" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  return requireDriveAccessToken(userId, tenantId);
 }
 
 export async function GET(request: Request) {

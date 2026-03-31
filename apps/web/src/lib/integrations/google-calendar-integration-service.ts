@@ -7,6 +7,7 @@ import { db, userGoogleCalendarIntegrations } from "db";
 import { eq, and } from "db";
 import { encrypt, decrypt } from "./encrypt";
 import { refreshAccessToken } from "./google-calendar";
+import { GoogleInvalidGrantError } from "./google-oauth";
 
 const LOG_PREFIX = "[google-calendar-integration]";
 
@@ -128,6 +129,27 @@ export async function upsertIntegrationTokens(
   return { created: true };
 }
 
+async function invalidateCalendarAfterRevokedRefresh(
+  userId: string,
+  tenantId: string
+): Promise<void> {
+  await db
+    .update(userGoogleCalendarIntegrations)
+    .set({
+      isActive: false,
+      accessToken: null,
+      refreshToken: null,
+      tokenExpiry: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(userGoogleCalendarIntegrations.tenantId, tenantId),
+        eq(userGoogleCalendarIntegrations.userId, userId)
+      )
+    );
+}
+
 /** Buffer před expirací (ms), v které už provedeme refresh. */
 const REFRESH_BEFORE_EXPIRY_MS = 5 * 60 * 1000;
 
@@ -136,7 +158,7 @@ export type ValidAccessTokenResult = { accessToken: string; calendarId: string }
 /**
  * Vrátí platný access token pro volání Google Calendar API.
  * Pokud je token expirovaný (nebo brzy expiruje), provede refresh a uloží nový token do DB.
- * @throws Error s kódem "not_connected" | "refresh_failed" | "decrypt_failed"
+ * @throws Error s kódem "not_connected" | "reauth_required" | "refresh_failed" | "decrypt_failed"
  */
 export async function getValidAccessToken(
   userId: string,
@@ -184,6 +206,18 @@ export async function getValidAccessToken(
     try {
       tokens = await refreshAccessToken(refreshDecrypted);
     } catch (e) {
+      if (e instanceof GoogleInvalidGrantError) {
+        await invalidateCalendarAfterRevokedRefresh(userId, tenantId);
+        log("Refresh token revoked or expired; Calendar integration deactivated", {
+          userId: userId.slice(0, 8),
+          tenantId,
+        });
+        const err = new Error("Google Calendar reconnect required") as Error & {
+          code?: string;
+        };
+        err.code = "reauth_required";
+        throw err;
+      }
       logError("Refresh token failed", e);
       const err = new Error("Token refresh failed") as Error & { code?: string };
       err.code = "refresh_failed";

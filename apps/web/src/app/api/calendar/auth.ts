@@ -54,6 +54,16 @@ export function calendarTokenErrorResponse(e: unknown): NextResponse | null {
       { status: 400 }
     );
   }
+  if (code === "reauth_required") {
+    return NextResponse.json(
+      {
+        error:
+          "Přístup ke Google Kalendáři byl odvolán nebo vypršel. V Integracích účet znovu připojte.",
+        code: "reauth_required",
+      },
+      { status: 401 }
+    );
+  }
   if (code === "refresh_failed") {
     return NextResponse.json({ error: "Obnovení tokenu selhalo" }, { status: 502 });
   }

@@ -3,6 +3,8 @@
  * Requires GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET in env.
  */
 
+import { GoogleInvalidGrantError, isGoogleOAuthInvalidGrantBody } from "./google-oauth";
+
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 
@@ -84,6 +86,9 @@ export async function refreshAccessToken(refreshToken: string): Promise<GoogleTo
   });
   if (!res.ok) {
     const err = await res.text();
+    if (isGoogleOAuthInvalidGrantBody(err)) {
+      throw new GoogleInvalidGrantError();
+    }
     throw new Error(`Google token refresh failed: ${res.status} ${err}`);
   }
   return res.json() as Promise<GoogleTokenResponse>;
