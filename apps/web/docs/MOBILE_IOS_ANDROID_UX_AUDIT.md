@@ -53,3 +53,24 @@ Dokument doplňuje plán P0 stabilizace. Slouží jako **checklist a backlog** p
 - [ ] Smoke na iOS (login → přehled → analýza → uložit → scan bez klienta).
 - [ ] Smoke na Android (stejné).
 - [ ] Zkontrolovat Sentry / logy pro `digest` / `Server Components` v prvních 24 h.
+
+## Hardening po P0 (implementováno v kódu)
+
+Následující body adresují iteraci **produkční stabilita a hardening**:
+
+| Oblast | Co je v repu |
+|--------|----------------|
+| Chybové hlášky | Sdílená logika v [`production-error-ui.ts`](../src/lib/observability/production-error-ui.ts): `getPortalFriendlyErrorMessage`, `captureAppError` (tag `error_boundary`, `route`, `digest`). |
+| Globální pád | [`global-error.tsx`](../src/app/global-error.tsx) — srozumitelná zpráva, tlačítka Obnovit / Přehled / Úvod, digest jen v dev. |
+| Portál (segment) | [`portal/error.tsx`](../src/app/portal/error.tsx) — stejná copy + Sentry capture s kontextem route. |
+| Mobilní shell | [`MobileShellErrorBoundary.tsx`](../src/app/shared/mobile-ui/MobileShellErrorBoundary.tsx) — Sentry + `componentStack`, uživatelsky čitelný popis, odkaz na přehled v [`ErrorState`](../src/app/shared/mobile-ui/primitives.tsx) (`homeHref={false}` v client zóně). |
+| OAuth / WebView | [`NativeOAuthDeepLinkBridge.tsx`](../src/app/components/NativeOAuthDeepLinkBridge.tsx) — deduplikace URL, `handlerInFlight`, delší pauza po `Browser.close` na iOS/Android před `location.replace`. |
+| Start mobilního CRM | [`MobilePortalClient.tsx`](../src/app/portal/mobile/MobilePortalClient.tsx) — dvoufázová hydratace (nejdřív úkoly/counts/kontakty/pipeline, pak zbytek), Sentry breadcrumb `portal.mobile` + `window.__AIDV_LAST_PORTAL_PATH__` pro ladění. |
+| Capacitor domény | [`capacitor.config.ts`](../capacitor.config.ts) — `allowNavigation` pro celý host (viz komentář v souboru). |
+
+### Smoke po tomto hardeningu (ručně)
+
+- [ ] iOS: OAuth login → žádná bílá obrazovka mezi Safari custom tab a WebView.
+- [ ] Android: totéž.
+- [ ] Úmyslně rozbít jednu mobilní obrazovku (např. devtools) → `MobileShellErrorBoundary` ukáže recovery + Sentry event s `error_boundary=mobile-shell`.
+- [ ] `/portal/...` s umělou chybou RSC v preview → `portal/error` a tag `error_boundary=portal-route`.

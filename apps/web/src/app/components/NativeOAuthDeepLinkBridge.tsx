@@ -23,8 +23,23 @@ export function NativeOAuthDeepLinkBridge() {
 
     let disposed = false;
     let removeListener: (() => void) | null = null;
+    let handlerInFlight = false;
+    let lastHandledUrl = "";
+    let lastHandledAt = 0;
+    const DEDUPE_MS = 900;
 
     const handleOpenUrl = async (rawUrl: string) => {
+      if (disposed) return;
+      const now = Date.now();
+      if (rawUrl === lastHandledUrl && now - lastHandledAt < DEDUPE_MS) {
+        console.log("[NativeOAuthDeepLinkBridge] skip duplicate URL within window");
+        return;
+      }
+      if (handlerInFlight) {
+        console.log("[NativeOAuthDeepLinkBridge] skip; previous handler still running");
+        return;
+      }
+      handlerInFlight = true;
       console.log("[NativeOAuthDeepLinkBridge] received URL:", rawUrl);
 
       let parsed: URL;
@@ -32,17 +47,26 @@ export function NativeOAuthDeepLinkBridge() {
         parsed = new URL(rawUrl);
       } catch {
         console.warn("[NativeOAuthDeepLinkBridge] failed to parse URL:", rawUrl);
+        handlerInFlight = false;
         return;
       }
 
       if (parsed.protocol !== "aidvisor:" && parsed.protocol !== "aidvisora:") {
+        handlerInFlight = false;
         return;
       }
 
-      await Browser.close().catch(() => {});
-      // Let SFSafariViewController dismiss before we navigate the main WebView (iOS white screen otherwise).
-      if (Capacitor.getPlatform() === "ios") {
-        await new Promise((r) => setTimeout(r, 350));
+      lastHandledUrl = rawUrl;
+      lastHandledAt = Date.now();
+
+      try {
+        await Browser.close().catch(() => {});
+      // Let in-app browser / SFSafariViewController finish dismissing before WebView navigates (reduces white screen).
+      const platform = Capacitor.getPlatform();
+      if (platform === "ios") {
+        await new Promise((r) => setTimeout(r, 450));
+      } else if (platform === "android") {
+        await new Promise((r) => setTimeout(r, 160));
       }
 
       const origin = getNativeWebAppBaseUrl();
@@ -107,8 +131,11 @@ export function NativeOAuthDeepLinkBridge() {
       const normalized = path.startsWith("/") ? path : `/${path}`;
       const target = `${origin}${normalized}${parsed.search}${parsed.hash}`;
       console.log("[NativeOAuthDeepLinkBridge] generic deep link, navigating to:", target);
-      if (window.location.href !== target) {
-        window.location.replace(target);
+        if (window.location.href !== target) {
+          window.location.replace(target);
+        }
+      } finally {
+        handlerInFlight = false;
       }
     };
 

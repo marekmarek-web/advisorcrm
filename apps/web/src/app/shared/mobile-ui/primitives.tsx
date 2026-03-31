@@ -586,10 +586,17 @@ export function EmptyState({
 
 export function ErrorState({
   title = "Něco se nepovedlo",
+  description,
   onRetry,
+  homeHref = "/portal/today",
+  homeLabel = "Přehled portálu",
 }: {
   title?: string;
+  description?: string;
   onRetry?: () => void;
+  /** Fallback navigation when the screen cannot recover. Set `false` to hide (e.g. client zone). */
+  homeHref?: string | false;
+  homeLabel?: string;
 }) {
   return (
     <MobileCard className="border-rose-200 bg-rose-50/50 px-4">
@@ -599,16 +606,29 @@ export function ErrorState({
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-rose-800 text-sm">{title}</p>
-          {onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors"
-            >
-              <RefreshCw size={12} />
-              Zkusit znovu
-            </button>
+          {description ? (
+            <p className="mt-1.5 text-xs text-rose-700/90 leading-relaxed">{description}</p>
           ) : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors"
+              >
+                <RefreshCw size={12} />
+                Zkusit znovu
+              </button>
+            ) : null}
+            {homeHref !== false ? (
+              <a
+                href={homeHref}
+                className="inline-flex items-center justify-center min-h-[36px] px-3 rounded-lg border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors"
+              >
+                {homeLabel}
+              </a>
+            ) : null}
+          </div>
         </div>
       </div>
     </MobileCard>

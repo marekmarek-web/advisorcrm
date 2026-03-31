@@ -350,7 +350,9 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
       />
 
       <MobileScreen>
-        {error ? <ErrorState title={error} onRetry={() => router.refresh()} /> : null}
+        {error ? (
+          <ErrorState title={error} homeHref={false} onRetry={() => router.refresh()} />
+        ) : null}
         {busy ? <LoadingSkeleton rows={2} /> : null}
 
         {tab === "home" && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute ? (

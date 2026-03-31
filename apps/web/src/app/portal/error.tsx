@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { captureAppError, getPortalFriendlyErrorMessage } from "@/lib/observability/production-error-ui";
+
 export default function PortalError({
   error,
   reset,
@@ -7,21 +10,16 @@ export default function PortalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const isProd = process.env.NODE_ENV === "production";
-  const isGenericProdMessage =
-    isProd &&
-    (error.message?.includes("omitted in production") ||
-      error.message?.includes("digest") ||
-      !error.message);
-  const isServerRenderProd =
-    isProd &&
-    (error.message?.includes("Server Components") ||
-      error.message?.includes("server components"));
-  const displayMessage = isServerRenderProd
-    ? "Načtení portálu selhalo — často jde o nesoulad databáze s nasazenou verzí (např. chybějící migrace u tabulky dokumentů). Zkuste znovu; pokud to trvá, spusťte SQL migrace podle provozní příručky (documents_schema_sync) nebo kontaktujte správce."
-    : isGenericProdMessage
-      ? "Došlo k chybě na serveru. Zkuste obnovit stránku nebo se vrátit na úvod."
-      : (error.message || "Nastala neočekávaná chyba.");
+  const displayMessage = getPortalFriendlyErrorMessage(error);
+
+  useEffect(() => {
+    const route = typeof window !== "undefined" ? window.location.pathname : undefined;
+    captureAppError(error, {
+      boundary: "portal-route",
+      route,
+      digest: error.digest,
+    });
+  }, [error]);
 
   return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -31,8 +29,12 @@ export default function PortalError({
         </div>
         <h2 className="text-lg font-semibold text-monday-text mb-2">Něco se pokazilo</h2>
         <p className="text-monday-text-muted text-sm mb-4">{displayMessage}</p>
+        {process.env.NODE_ENV !== "production" && error.digest ? (
+          <p className="text-[10px] text-monday-text-muted mb-4 font-mono break-all">digest: {error.digest}</p>
+        ) : null}
         <div className="flex flex-wrap gap-2 justify-center">
           <button
+            type="button"
             onClick={reset}
             className="rounded-[6px] px-4 py-2 text-sm font-semibold text-white bg-monday-blue hover:opacity-90"
           >
@@ -44,7 +46,10 @@ export default function PortalError({
           >
             Přehled portálu
           </a>
-          <a href="/" className="rounded-[6px] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] hover:bg-[color:var(--wp-surface-card-border)]">
+          <a
+            href="/"
+            className="rounded-[6px] px-4 py-2 text-sm font-semibold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] hover:bg-[color:var(--wp-surface-card-border)]"
+          >
             Úvodní stránka
           </a>
         </div>

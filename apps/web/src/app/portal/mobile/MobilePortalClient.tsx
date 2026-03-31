@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
@@ -402,21 +403,19 @@ export function MobilePortalClient({
     if (!deferDataHydration) return;
     let cancelled = false;
     async function hydrate() {
-      const [
-        tasksRes,
-        countsRes,
-        contactsRes,
-        pipelineRes,
-        serviceRes,
-        notesRes,
-        analysesRes,
-        productionRes,
-        businessPlanRes,
-      ] = await Promise.allSettled([
+      const [tasksRes, countsRes, contactsRes, pipelineRes] = await Promise.allSettled([
         getTasksList("all"),
         getTasksCounts(),
         getContactsList(),
         getPipeline(),
+      ]);
+      if (cancelled) return;
+      if (tasksRes.status === "fulfilled") setTasks(tasksRes.value);
+      if (countsRes.status === "fulfilled") setTaskCounts(countsRes.value);
+      if (contactsRes.status === "fulfilled") setContacts(contactsRes.value);
+      if (pipelineRes.status === "fulfilled") setPipeline(pipelineRes.value);
+
+      const [serviceRes, notesRes, analysesRes, productionRes, businessPlanRes] = await Promise.allSettled([
         getServiceRecommendationsForDashboard(10),
         getMeetingNotesForBoard(),
         listFinancialAnalyses(),
@@ -424,10 +423,6 @@ export function MobilePortalClient({
         getBusinessPlanWidgetData(),
       ]);
       if (cancelled) return;
-      if (tasksRes.status === "fulfilled") setTasks(tasksRes.value);
-      if (countsRes.status === "fulfilled") setTaskCounts(countsRes.value);
-      if (contactsRes.status === "fulfilled") setContacts(contactsRes.value);
-      if (pipelineRes.status === "fulfilled") setPipeline(pipelineRes.value);
       if (serviceRes.status === "fulfilled") setServiceRecommendations(serviceRes.value);
       if (notesRes.status === "fulfilled") setMeetingNotes(notesRes.value);
       if (analysesRes.status === "fulfilled") setFinancialAnalyses(analysesRes.value);
@@ -493,6 +488,24 @@ export function MobilePortalClient({
   useEffect(() => {
     notifyRouteForWebview(pathname, searchParams.toString());
   }, [pathname, searchParams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      (window as Window & { __AIDV_LAST_PORTAL_PATH__?: string }).__AIDV_LAST_PORTAL_PATH__ = pathname;
+    } catch {
+      /* ignore */
+    }
+    try {
+      Sentry.addBreadcrumb({
+        category: "portal.mobile",
+        message: pathname,
+        level: "info",
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [pathname]);
 
   useEffect(() => {
     setTab(pathnameToBottomTab(pathname));
