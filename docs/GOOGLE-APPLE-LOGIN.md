@@ -62,13 +62,31 @@ Přihlášení přes Google už v kódu je (tlačítko „Přihlásit se přes G
 
 1. **Authentication** → **Providers** → **Apple**.
 2. Zapni **Enable Sign in with Apple**.
-3. Vyplň údaje z Apple Developeru:
-   - **Services ID** (Identifier ze Services IDs),
-   - **Secret Key** (obsah souboru `.p8`),
-   - **Key ID**, **Team ID**, **App Bundle ID** (z Apple účtu).
-4. **Save**.
+3. **Client IDs:** čárkou oddělený seznam – **Services ID** (identifier z Apple → Services IDs) a pro nativní appku i **Bundle ID** (např. `cz.aidvisora.app`). Řetězec musí **přesně** odpovídat Apple (bez překlepů).
+4. **Secret Key (for OAuth):** Supabase očekává **JWT** (jeden dlouhý řetězec ve třech částech oddělených tečkami), **ne** přímý obsah souboru `.p8` (PEM). Chyba „Secret key should be a JWT“ znamená, že v poli je PEM nebo něco jiného než JWT.
+   - JWT vygeneruj z `.p8` pomocí [nástroje v dokumentaci Supabase – Login with Apple](https://supabase.com/docs/guides/auth/social-login/auth-apple) (sekce *Configuration* / generátor client secret; v Safari občas nefunguje – použij Chrome nebo Firefox).
+   - Do generátoru zadáš **Team ID**, **Key ID**, **Client ID** (= stejný **Services ID** jako v Supabase Client IDs) a **private key** = celý obsah `AuthKey_XXX.p8`.
+   - Apple JWT secret **vyprší** (max. cca 6 měsíců) – pak je potřeba vygenerovat nový JWT a znovu uložit v Supabase.
+5. Ostatní pole v dashboardu (např. Key ID / Team ID) doplň podle aktuálního UI Supabase, pokud je vyžaduje.
+6. **Save**.
 
-V aplikaci pak přidáš tlačítko „Přihlásit se přes Apple“ a voláš `supabase.auth.signInWithOAuth({ provider: 'apple', ... })` stejně jako u Google.
+Na `/prihlaseni` jsou tlačítka Google a Apple a volají `supabase.auth.signInWithOAuth` stejně jako u Google (web → `/auth/callback`, Capacitor → `/auth/native-bridge`).
+
+---
+
+## 3. Backtest / kontrolní seznam (konfigurace)
+
+Před ostrým náborem ověř v Supabase a Apple Developeru:
+
+| Kontrola | Kde |
+|----------|-----|
+| **Redirect URLs** obsahují produkční URL aplikace (a případně `http://localhost:3000/**` pro lokál) | Supabase → Authentication → URL Configuration |
+| **Services ID** v Apple = stejný řetězec jako v Supabase **Client IDs** | Apple Identifiers → Services IDs vs. Supabase → Apple |
+| U Services ID: **Return URLs** = přesná **Callback URL** z Supabase (Apple provider) | Apple → Sign in with Apple → Web |
+| **Secret Key** v Supabase = platný **JWT**, ne PEM z `.p8` | Supabase → Apple; při chybě viz výše |
+| JWT secret není po expiraci (kalendář cca každých 6 měsíců) | — |
+
+**Automatický smoke v repu:** `pnpm test:e2e` v `apps/web` kontroluje, že `/prihlaseni` načte stránku a zobrazí tlačítka Google a Apple. Kompletní přihlášení přes Apple vyžaduje ruční klik v prohlížeči na produkci/stagingu.
 
 ---
 
@@ -77,5 +95,5 @@ V aplikaci pak přidáš tlačítko „Přihlásit se přes Apple“ a voláš `
 | Kde | Co |
 |-----|-----|
 | **Google** | Cloud Console → OAuth client (Web) → Redirect URI = Supabase callback → Client ID + Secret do Supabase |
-| **Apple** | Developer → Services ID + Key (.p8) → údaje do Supabase |
+| **Apple** | Developer → Services ID + klíč `.p8` → do Supabase Client IDs + **JWT secret** (z `.p8` přes generátor), ne raw PEM |
 | **Supabase** | Redirect URLs musí obsahovat produkční URL aplikace |
