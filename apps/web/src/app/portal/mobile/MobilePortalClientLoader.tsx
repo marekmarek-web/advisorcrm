@@ -42,13 +42,20 @@ export async function MobilePortalClientLoader({
   let dashboardKpis: DashboardKpis = EMPTY_KPIS;
   let taskCounts: TaskCounts = EMPTY_COUNTS;
 
-  try {
-    await ensureDefaultStages();
-  } catch {
-    // ignore stage initialization errors for mobile fallback rendering
-  }
-
-  const [kpisRes, countsRes] = await Promise.allSettled([getDashboardKpis(), getTasksCounts()]);
+  // Run stage seeding in parallel with KPI/counts so it never blocks first dashboard data.
+  const settled = await Promise.allSettled([
+    getDashboardKpis(),
+    getTasksCounts(),
+    (async () => {
+      try {
+        await ensureDefaultStages();
+      } catch {
+        // ignore stage initialization errors for mobile fallback rendering
+      }
+    })(),
+  ]);
+  const kpisRes = settled[0]!;
+  const countsRes = settled[1]!;
 
   if (kpisRes.status === "fulfilled") dashboardKpis = kpisRes.value;
   if (countsRes.status === "fulfilled") taskCounts = countsRes.value;

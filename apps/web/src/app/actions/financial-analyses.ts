@@ -2,6 +2,7 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
+import { FA_ERROR_NO_READ, FA_ERROR_NO_WRITE } from "@/lib/analyses/financial/financialAnalysisErrors";
 import { db } from "db";
 import { financialAnalyses, householdMembers, contacts, households } from "db";
 import { eq, and, desc } from "db";
@@ -90,7 +91,7 @@ export async function getFinancialAnalysis(id: string): Promise<FinancialAnalysi
       }
       return null;
     }
-    if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+    if (!hasPermission(auth.roleName, "financial_analyses:read")) throw new Error(FA_ERROR_NO_READ);
     return row as FinancialAnalysisRow;
   } catch (err) {
     console.error("[getFinancialAnalysis] failed for id=" + id, err);
@@ -100,7 +101,7 @@ export async function getFinancialAnalysis(id: string): Promise<FinancialAnalysi
 
 export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem[]> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:read")) throw new Error(FA_ERROR_NO_READ);
   try {
     const rows = await db
       .select()
@@ -144,7 +145,7 @@ export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem
 export async function getFinancialAnalysesForContact(contactId: string): Promise<FinancialAnalysisListItem[]> {
   const auth = await requireAuthInAction();
   if (auth.roleName === "Client" && auth.contactId !== contactId) throw new Error("Forbidden");
-  if (auth.roleName !== "Client" && !hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  if (auth.roleName !== "Client" && !hasPermission(auth.roleName, "financial_analyses:read")) throw new Error(FA_ERROR_NO_READ);
   const rows = await db
     .select({
       id: financialAnalyses.id,
@@ -215,7 +216,7 @@ export async function saveFinancialAnalysisDraft(params: {
   payload: { data: Record<string, unknown>; currentStep: number };
 }): Promise<string> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:write")) throw new Error(FA_ERROR_NO_WRITE);
   const { id, contactId, householdId, payload } = params;
 
   if (contactId) {
@@ -278,7 +279,7 @@ export async function saveFinancialAnalysisDraft(params: {
 /** Odstraní záznam z databáze (včetně navázaných řádků dle FK cascade / set null). */
 export async function deleteFinancialAnalysisPermanently(id: string): Promise<void> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:write")) throw new Error(FA_ERROR_NO_WRITE);
   const [row] = await db
     .select({ id: financialAnalyses.id })
     .from(financialAnalyses)
@@ -295,7 +296,7 @@ export async function setFinancialAnalysisStatus(
   status: FinancialAnalysisStatus
 ): Promise<void> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:write")) throw new Error(FA_ERROR_NO_WRITE);
   await db
     .update(financialAnalyses)
     .set({ status, updatedBy: auth.userId, updatedAt: new Date() })
@@ -318,7 +319,7 @@ export async function setFinancialAnalysisStatus(
 
 export async function setFinancialAnalysisLastExportedAt(id: string): Promise<void> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:write")) throw new Error(FA_ERROR_NO_WRITE);
   await db
     .update(financialAnalyses)
     .set({
@@ -335,7 +336,7 @@ export async function setFinancialAnalysisLinkMetadata(
   params: { linkedCompanyId?: string | null; lastRefreshedFromSharedAt?: Date | null }
 ): Promise<void> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:write")) throw new Error(FA_ERROR_NO_WRITE);
   await db
     .update(financialAnalyses)
     .set({
@@ -355,7 +356,7 @@ export async function setFinancialAnalysisLinkMetadata(
 /** Phase 7: list personal analyses linked to a company. */
 export async function getPersonalAnalysesLinkedToCompany(companyId: string): Promise<FinancialAnalysisListItem[]> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:read")) throw new Error(FA_ERROR_NO_READ);
   const rows = await db
     .select({
       id: financialAnalyses.id,
@@ -401,7 +402,7 @@ export async function applyRefreshFromShared(
   options?: { paths?: string[] }
 ): Promise<{ ok: boolean; error?: string }> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:write")) throw new Error(FA_ERROR_NO_WRITE);
   const analysis = await getFinancialAnalysis(analysisId);
   if (!analysis || analysis.type !== "financial" || !analysis.contactId) {
     return { ok: false, error: "Analysis not found or not personal" };
@@ -447,7 +448,7 @@ export async function applyRefreshFromShared(
 /** Phase 7: clear link metadata and mark former linked paths as overridden (Odpojit). */
 export async function clearFinancialAnalysisLink(analysisId: string): Promise<{ ok: boolean; error?: string }> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "financial_analyses:write")) throw new Error(FA_ERROR_NO_WRITE);
   const analysis = await getFinancialAnalysis(analysisId);
   if (!analysis || analysis.type !== "financial") return { ok: false, error: "Analysis not found" };
   const payload = analysis.payload as { data: Record<string, unknown> & { _provenance?: Record<string, string> }; currentStep: number };

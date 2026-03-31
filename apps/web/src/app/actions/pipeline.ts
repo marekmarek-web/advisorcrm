@@ -320,16 +320,16 @@ export async function ensureDefaultStages(): Promise<void> {
     .from(opportunityStages)
     .where(eq(opportunityStages.tenantId, auth.tenantId));
   const existingOrders = new Set(existing.map((r) => r.sortOrder));
-  for (const stage of DEFAULT_STAGES) {
-    if (existingOrders.has(stage.sortOrder)) continue;
-    await db.insert(opportunityStages).values({
+  const missing = DEFAULT_STAGES.filter((stage) => !existingOrders.has(stage.sortOrder));
+  if (missing.length === 0) return;
+  await db.insert(opportunityStages).values(
+    missing.map((stage) => ({
       tenantId: auth.tenantId,
       name: stage.name,
       sortOrder: stage.sortOrder,
       probability: stage.probability,
-    });
-    existingOrders.add(stage.sortOrder);
-  }
+    })),
+  );
 }
 
 export type OpenOpportunityOption = { id: string; title: string; contactId: string | null };

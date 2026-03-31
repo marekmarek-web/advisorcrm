@@ -19,6 +19,7 @@ export function hasPermission(roleName: RoleName, action: string): boolean {
     "export:*",
     "team_overview:read",
     "team_calendar:write",
+    "financial_analyses:*",
   ];
   const manager = [
     "contacts:*",
@@ -31,6 +32,7 @@ export function hasPermission(roleName: RoleName, action: string): boolean {
     "export:*",
     "team_overview:read",
     "team_calendar:write",
+    "financial_analyses:*",
   ];
   const advisor = [
     "contacts:read",
@@ -43,6 +45,8 @@ export function hasPermission(roleName: RoleName, action: string): boolean {
     "documents:*",
     "meeting_notes:*",
     "team_overview:read",
+    "financial_analyses:read",
+    "financial_analyses:write",
   ];
   const viewer = [
     "contacts:read",
@@ -51,6 +55,8 @@ export function hasPermission(roleName: RoleName, action: string): boolean {
     "tasks:read",
     "events:read",
     "documents:read",
+    "financial_analyses:read",
+    "financial_analyses:write",
   ];
   const client = ["client_zone:*"];
   const map: Record<RoleName, string[]> = {

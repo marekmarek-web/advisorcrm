@@ -3,6 +3,7 @@ import {
   listFinancialAnalyses,
   type FinancialAnalysisListItem,
 } from "@/app/actions/financial-analyses";
+import { translateFinancialAnalysisActionError } from "@/lib/analyses/financial/financialAnalysisErrors";
 import AnalysesPageClient from "./AnalysesPageClient";
 
 function AnalysesPageSkeleton() {
@@ -56,8 +57,10 @@ async function AnalysesData() {
   } catch (err) {
     console.error("[AnalysesPage] listFinancialAnalyses failed:", err);
     analyses = [];
-    loadError =
-      "Nepodařilo se načíst seznam finančních analýz. Zkuste stránku obnovit nebo to opakovat později.";
+    const msg = err instanceof Error ? err.message : "";
+    loadError = msg
+      ? translateFinancialAnalysisActionError(msg)
+      : "Nepodařilo se načíst seznam finančních analýz. Zkuste stránku obnovit nebo to opakovat později.";
   }
 
   return (

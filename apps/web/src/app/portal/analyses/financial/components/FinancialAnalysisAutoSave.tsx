@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useFinancialAnalysisStore } from "@/lib/analyses/financial/store";
 import { hasPersistableFinancialDraft } from "@/lib/analyses/financial/saveLoad";
 import { saveFinancialAnalysisDraft } from "@/app/actions/financial-analyses";
+import { useToast } from "@/app/components/Toast";
+import { translateFinancialAnalysisActionError } from "@/lib/analyses/financial/financialAnalysisErrors";
 
 const DEBOUNCE_MS = 32_000;
 const MIN_INTERVAL_MS = 18_000;
@@ -16,8 +18,12 @@ function shouldSyncToServer(): boolean {
   return hasPersistableFinancialDraft(s.data, s.currentStep);
 }
 
+const FA_ERROR_TOAST_COOLDOWN_MS = 90_000;
+
 export function FinancialAnalysisAutoSave() {
   const router = useRouter();
+  const toast = useToast();
+  const lastFaErrorToastAtRef = useRef(0);
   const savingRef = useRef(false);
   const debounceTimerRef = useRef<number | null>(null);
   const lastNetworkSaveAtRef = useRef(0);
@@ -54,6 +60,15 @@ export function FinancialAnalysisAutoSave() {
         useFinancialAnalysisStore.getState().saveToStorage();
       } catch (e) {
         console.warn("[FinancialAnalysisAutoSave]", e);
+        const raw = e instanceof Error ? e.message : String(e);
+        const now = Date.now();
+        if (
+          raw.startsWith("ERR_FA_") &&
+          now - lastFaErrorToastAtRef.current >= FA_ERROR_TOAST_COOLDOWN_MS
+        ) {
+          lastFaErrorToastAtRef.current = now;
+          toast.showToast(translateFinancialAnalysisActionError(raw), "error");
+        }
       } finally {
         savingRef.current = false;
       }

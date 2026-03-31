@@ -265,10 +265,6 @@ export default function ScanPage() {
   }
 
   const preparePreviewPdf = async () => {
-    if (!selectedContact?.id) {
-      setGlobalError("Vyberte klienta.");
-      return;
-    }
     if (pages.length === 0) return;
 
     setGlobalError(null);
@@ -302,10 +298,6 @@ export default function ScanPage() {
   };
 
   const uploadPreparedPdf = async () => {
-    if (!selectedContact?.id) {
-      setGlobalError("Vyberte klienta.");
-      return;
-    }
     if (!preparedPdf) return;
 
     setGlobalError(null);
@@ -321,7 +313,7 @@ export default function ScanPage() {
       const captureQualityWarnings = buildPageLevelCaptureWarnings(scanPages);
 
       const uploadResponse = await uploadFile(preparedPdf, {
-        contactId: selectedContact.id,
+        contactId: selectedContact?.id,
         name: docName,
         tags,
         uploadSource: tier === "native_capacitor" ? "mobile_scan" : "web_scan",
@@ -497,7 +489,7 @@ export default function ScanPage() {
 
         {!quickDocId ? (
           <>
-            <ContactPicker value={selectedContact} onChange={setSelectedContact} />
+            <ContactPicker value={selectedContact} onChange={setSelectedContact} label="Klient (volitelné)" />
 
             <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3">
               <label className="mb-2 block text-sm font-medium text-[color:var(--wp-text-secondary)]" htmlFor="quick-doc-name">
@@ -548,10 +540,6 @@ export default function ScanPage() {
               disabled={quickUploading}
               onClick={() => {
                 void (async () => {
-                  if (!selectedContact?.id) {
-                    setQuickError("Vyberte klienta.");
-                    return;
-                  }
                   if (quickFiles.length === 0) {
                     setQuickError("Vyberte alespoň jeden soubor.");
                     return;
@@ -563,7 +551,7 @@ export default function ScanPage() {
                     for (const f of quickFiles) {
                       fd.append("files", f);
                     }
-                    fd.set("contactId", selectedContact.id);
+                    if (selectedContact?.id) fd.set("contactId", selectedContact.id);
                     if (quickName.trim()) fd.set("name", quickName.trim());
                     fd.set("uploadSource", tier === "native_capacitor" ? "mobile_quick" : "web_quick");
                     const res = await fetch("/api/documents/quick-upload", {
@@ -597,8 +585,8 @@ export default function ScanPage() {
               <strong>Stav zpracování:</strong> {processingLabel}
             </p>
             <p className="text-xs text-[color:var(--wp-text-secondary)]">
-              Úplný stav uvidíte u přílohy u klienta v sekci dokumentů. Obnovení stránky tady ukončí sledování — dokument v
-              systému zůstane.
+              Úplný stav uvidíte v sekci dokumentů (u klienta, pokud jste ho vybrali). Obnovení stránky tady ukončí
+              sledování — dokument v systému zůstane.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link
@@ -878,7 +866,7 @@ export default function ScanPage() {
               <>
                 <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                   Na pozadí běží příprava textu (OCR a data pro AI), pokud je zpracování v projektu zapnuté. Stav uvidíte u
-                  dokumentu u klienta.
+                  dokumentu v sekci dokumentů.
                 </p>
                 <button
                   type="button"
@@ -889,11 +877,11 @@ export default function ScanPage() {
                     });
                     setPreparedPdf(null);
                     clearPages();
-                    router.push(selectedContact ? `/portal/contacts/${selectedContact.id}` : "/portal/today");
+                    router.push(selectedContact ? `/portal/contacts/${selectedContact.id}` : "/portal/documents");
                   }}
                   className="min-h-[44px] flex-1 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700"
                 >
-                  Otevřít klienta
+                  {selectedContact ? "Otevřít klienta" : "Otevřít dokumenty"}
                 </button>
               </>
             ) : null}
@@ -924,7 +912,7 @@ export default function ScanPage() {
         </div>
       ) : null}
 
-      <ContactPicker value={selectedContact} onChange={setSelectedContact} />
+      <ContactPicker value={selectedContact} onChange={setSelectedContact} label="Klient (volitelné)" />
 
       <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3">
         <label className="mb-2 block text-sm font-medium text-[color:var(--wp-text-secondary)]" htmlFor="scan-doc-type">

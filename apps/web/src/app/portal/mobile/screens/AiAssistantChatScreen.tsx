@@ -275,13 +275,17 @@ export function AiAssistantChatScreen() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping, scrollToBottom]);
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const vv = window.visualViewport;
     if (!vv) return;
-    const bump = () => requestAnimationFrame(scrollToBottom);
+    const bump = () => {
+      if (document.activeElement === inputRef.current) {
+        requestAnimationFrame(scrollToBottom);
+      }
+    };
     vv.addEventListener("resize", bump);
     vv.addEventListener("scroll", bump);
     return () => {
@@ -446,9 +450,9 @@ export function AiAssistantChatScreen() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-4">
         {isEmpty ? (
-          <div className="space-y-6 pt-4">
+          <div className="space-y-4 pt-1 sm:space-y-6 sm:pt-4">
             <div className="text-center space-y-2">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mx-auto shadow-lg p-2">
                 <AiAssistantBrandIcon size={36} className="max-w-full max-h-full" />

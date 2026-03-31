@@ -51,7 +51,7 @@ export function MobileHeader({
     <header
       className={cx(
         "sticky top-0 z-40 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/90 backdrop-blur",
-        "pt-[calc(var(--safe-area-top)+0.5rem)] pb-3",
+        "pt-[calc(var(--safe-area-top)+0.25rem)] pb-2",
         deviceClass === "phone" && "px-4",
         deviceClass === "tablet" && "px-6",
         className

@@ -11,11 +11,13 @@ export type ContactPickerValue = {
 type ContactPickerProps = {
   value: ContactPickerValue | null;
   onChange: (value: ContactPickerValue) => void;
+  /** Override field label (default: "Klient") */
+  label?: string;
 };
 
 type ContactOption = ContactPickerValue;
 
-export function ContactPicker({ value, onChange }: ContactPickerProps) {
+export function ContactPicker({ value, onChange, label = "Klient" }: ContactPickerProps) {
   const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -57,7 +59,7 @@ export function ContactPicker({ value, onChange }: ContactPickerProps) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-3">
       <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="share-contact-search">
-        Klient
+        {label}
       </label>
       <input
         id="share-contact-search"

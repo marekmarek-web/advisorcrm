@@ -108,11 +108,31 @@ function AiAssistantWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/ai/dashboard-summary")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setSummary(d))
-      .catch(() => null)
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    let started = false;
+    const run = () => {
+      if (cancelled || started) return;
+      started = true;
+      fetch("/api/ai/dashboard-summary")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!cancelled) setSummary(d);
+        })
+        .catch(() => null)
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+    const idleId =
+      typeof requestIdleCallback !== "undefined"
+        ? requestIdleCallback(run, { timeout: 2500 })
+        : undefined;
+    const t = window.setTimeout(run, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+      if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") cancelIdleCallback(idleId);
+    };
   }, []);
 
   return (

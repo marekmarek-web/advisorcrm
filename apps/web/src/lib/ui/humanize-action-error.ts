@@ -1,3 +1,5 @@
+import { translateFinancialAnalysisActionError } from "@/lib/analyses/financial/financialAnalysisErrors";
+
 /**
  * Maps server action / DB errors to user-visible Czech messages in the advisor portal.
  */
@@ -5,6 +7,9 @@ export function humanizeAdvisorActionError(error: unknown, fallback: string): st
   const raw = error instanceof Error ? error.message : String(error ?? "");
   const m = raw.trim();
   if (!m) return fallback;
+  if (m.startsWith("ERR_FA_")) {
+    return translateFinancialAnalysisActionError(m);
+  }
   if (m === "Forbidden" || /^forbidden$/i.test(m) || m.includes("403")) {
     return "Nemáte oprávnění k této akci. Požádejte správce o přístup.";
   }

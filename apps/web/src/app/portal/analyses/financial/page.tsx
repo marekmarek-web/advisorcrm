@@ -9,6 +9,7 @@ import { FinancialAnalysisLayout } from "./components/FinancialAnalysisLayout";
 import clsx from "clsx";
 import { getFinancialAnalysis } from "@/app/actions/financial-analyses";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import { translateFinancialAnalysisActionError } from "@/lib/analyses/financial/financialAnalysisErrors";
 
 function withTimeout<T>(promise: Promise<T>, ms = 15_000): Promise<T> {
   return Promise.race([
@@ -40,6 +41,7 @@ export default function FinancialAnalysisPage() {
   const loadFromFile = useFinancialAnalysisStore((s) => s.loadFromFile);
 
   const [loadState, setLoadState] = useState<"idle" | "loading" | "ok" | "error" | "timeout">("idle");
+  const [loadErrorDetail, setLoadErrorDetail] = useState<string | null>(null);
   const [showDraftPrompt, setShowDraftPrompt] = useState(false);
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export default function FinancialAnalysisPage() {
     const fromImport = searchParams.get("fromImport");
     if (id) {
       setLoadState("loading");
+      setLoadErrorDetail(null);
       withTimeout(getFinancialAnalysis(id))
         .catch(async (err) => {
           if (err?.message === "Timeout") {
@@ -72,14 +75,18 @@ export default function FinancialAnalysisPage() {
               setLoadState("ok");
             } catch (e) {
               console.error("[FinancialAnalysisPage] failed to hydrate analysis payload", e);
+              setLoadErrorDetail("Data analýzy jsou poškozená nebo v nepodporovaném formátu.");
               setLoadState("error");
             }
           } else {
+            setLoadErrorDetail("Analýza neexistuje nebo k ní nemáte přístup.");
             setLoadState("error");
           }
         })
         .catch((err) => {
           console.error("[FinancialAnalysisPage] getFinancialAnalysis failed", err);
+          const msg = err instanceof Error ? err.message : "";
+          setLoadErrorDetail(msg ? translateFinancialAnalysisActionError(msg) : null);
           setLoadState(err?.message === "Timeout" ? "timeout" : "error");
         });
       return;
@@ -178,7 +185,10 @@ export default function FinancialAnalysisPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
         <p className="text-[color:var(--wp-text-secondary)] font-medium mb-2">Analýzu se nepodařilo načíst.</p>
-        <p className="text-[color:var(--wp-text-secondary)] text-sm mb-4">Zkontrolujte připojení nebo zkuste začít novou analýzu.</p>
+        <p className="text-[color:var(--wp-text-secondary)] text-sm mb-4 max-w-md">
+          {loadErrorDetail ??
+            "Zkontrolujte připojení k internetu, oprávnění účtu nebo zkuste začít novou analýzu."}
+        </p>
         <Link
           href="/portal/analyses/financial"
           className={clsx(portalPrimaryButtonClassName, "inline-flex items-center justify-center px-6 py-3 font-semibold")}

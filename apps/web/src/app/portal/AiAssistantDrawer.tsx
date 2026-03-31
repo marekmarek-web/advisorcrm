@@ -446,12 +446,12 @@ export function AiAssistantDrawer() {
     <>
       {/* Overlay jen vlevo od panelu (na desktopu), aby klik do panelu nezavíral */}
       <div
-        className="fixed inset-0 md:right-[420px] z-[var(--z-drawer-overlay,100)] bg-transparent"
+        className="fixed z-[var(--z-drawer-overlay,100)] max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:top-[calc(var(--safe-area-top,0px)+3.25rem)] max-md:bg-black/25 md:inset-0 md:right-[420px] md:bg-transparent"
         onClick={() => setOpen(false)}
         aria-hidden
       />
       <div
-        className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 md:w-full md:max-w-[420px] z-[101] flex flex-col bg-[color:var(--wp-surface-card)] shadow-[-4px_0_24px_rgba(0,0,0,0.12)]"
+        className="fixed z-[101] flex min-h-0 flex-col bg-[color:var(--wp-surface-card)] shadow-[-4px_0_24px_rgba(0,0,0,0.12)] max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:top-[calc(var(--safe-area-top,0px)+3.25rem)] max-md:rounded-t-2xl max-md:border max-md:border-b-0 max-md:border-[color:var(--wp-surface-card-border)] md:inset-y-0 md:left-auto md:right-0 md:top-0 md:w-full md:max-w-[420px] md:rounded-none md:border-0"
         role="dialog"
         aria-label="Interní AI podpora pro CRM"
       >

@@ -12,6 +12,7 @@ import clsx from "clsx";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 import { useToast } from "@/app/components/Toast";
+import { translateFinancialAnalysisActionError } from "@/lib/analyses/financial/financialAnalysisErrors";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 
 export function FinancialAnalysisToolbar() {
@@ -45,8 +46,8 @@ export function FinancialAnalysisToolbar() {
         router.replace(`/portal/analyses/financial?id=${encodeURIComponent(id)}`);
       }
     } catch (e) {
-      const msg = typeof e === "object" && e && "message" in e ? String((e as Error).message) : "Nepodařilo se uložit.";
-      toast.showToast(msg, "error");
+      const raw = typeof e === "object" && e && "message" in e ? String((e as Error).message) : "Nepodařilo se uložit.";
+      toast.showToast(translateFinancialAnalysisActionError(raw), "error");
     } finally {
       setSaving(false);
     }

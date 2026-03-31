@@ -443,14 +443,9 @@ export function MobilePortalClient({
       }
       if (businessPlanRes.status === "fulfilled") setBusinessPlanWidgetData(businessPlanRes.value);
     }
-    const run = () => void hydrate();
-    const idleId =
-      typeof requestIdleCallback !== "undefined" ? requestIdleCallback(run, { timeout: 2800 }) : undefined;
-    const t = window.setTimeout(run, 80);
+    void hydrate();
     return () => {
       cancelled = true;
-      clearTimeout(t);
-      if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") cancelIdleCallback(idleId);
     };
   }, [deferDataHydration]);
 
@@ -1015,7 +1010,13 @@ export function MobilePortalClient({
 
       <MobileScreen
         key={pathname}
-        className={`page-enter${onCalendarRoute ? " !min-h-0 flex flex-1 flex-col px-0 !space-y-0 pt-2" : ""}`}
+        className={`page-enter${
+          onCalendarRoute
+            ? " !min-h-0 flex flex-1 flex-col px-0 !space-y-0 pt-2"
+            : onAiRoute
+              ? " !min-h-0 flex flex-1 flex-col px-3 pt-2 pb-2 !space-y-3"
+              : ""
+        }`}
       >
         {error ? <ErrorState title={error} onRetry={() => { refreshTasks(taskFilter); refreshContacts(); refreshPipeline(); }} /> : null}
 

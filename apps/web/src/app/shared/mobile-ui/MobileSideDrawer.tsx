@@ -24,6 +24,7 @@ import {
   Zap,
   ScanLine,
 } from "lucide-react";
+import Link from "next/link";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { hasPermission, type RoleName } from "@/shared/rolePermissions";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
@@ -101,7 +102,7 @@ function buildSections(showTeamOverview: boolean, roleName: RoleName): DrawerSec
     ...(hasPermission(roleName, "documents:read") && isPortalMultiPageScanEnabled()
       ? [{ href: "/portal/scan", label: "Skenovat dokument", Icon: ScanLine } as DrawerNavItem]
       : []),
-    ...(hasPermission(roleName, "contacts:write")
+    ...(hasPermission(roleName, "financial_analyses:read")
       ? [{ href: "/portal/analyses", label: "Finanční analýzy", Icon: BarChart3 } as DrawerNavItem]
       : []),
     { href: "/portal/calculators", label: "Kalkulačky", Icon: Calculator },
@@ -224,10 +225,25 @@ export function MobileSideDrawer({
           widthClass
         )}
       >
-        <div className="pt-[calc(var(--safe-area-top)+0.75rem)] px-4 pb-3 border-b border-[color:var(--wp-surface-card-border)] flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-[color:var(--wp-text-secondary)]">Přihlášen</p>
-            <p className="text-sm font-black text-[color:var(--wp-text)] truncate">{advisorName}</p>
+        <div className="pt-[calc(var(--safe-area-top)+0.5rem)] px-4 pb-3 border-b border-[color:var(--wp-surface-card-border)] flex items-start justify-between gap-2">
+          <div className="min-w-0 flex items-start gap-3">
+            <Link
+              href="/portal/today"
+              onClick={onClose}
+              className="shrink-0 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-1.5 active:scale-95 transition-transform"
+              aria-label="Aidvisora – přejít na přehled"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logos/Aidvisora%20logo%20new%20fav.png"
+                alt="Aidvisora"
+                className="h-9 w-9 object-contain"
+              />
+            </Link>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[color:var(--wp-text-secondary)]">Přihlášen</p>
+              <p className="text-sm font-black text-[color:var(--wp-text)] truncate">{advisorName}</p>
+            </div>
           </div>
           <button
             type="button"

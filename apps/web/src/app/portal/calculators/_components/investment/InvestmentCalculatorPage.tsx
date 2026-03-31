@@ -59,7 +59,7 @@ export function InvestmentCalculatorPage() {
   );
 
   return (
-    <div className="pt-0 pb-56 lg:pb-0">
+    <div className="pt-0 pb-44 lg:pb-0">
       <CalculatorPageShell>
         <div className="mb-3">
           <CalculatorPageHeader
