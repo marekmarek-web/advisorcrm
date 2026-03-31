@@ -39,6 +39,8 @@ Přihlášení přes Google už v kódu je (tlačítko „Přihlásit se přes G
 
 **Android vs iOS:** Stránka `/auth/native-bridge` používá jako druhý krok URL typu **`intent://…`** jen na **Androidu** (Chrome Custom Tabs). Na iOS by `intent://` bylo neplatné a rozbilo návrat do aplikace.
 
+**Bílá obrazovka po návratu:** Na produkci musí být na Vercelu nastavené **`NEXT_PUBLIC_APP_URL`** (např. `https://www.aidvisora.cz`) — po `exchangeCodeForSession` aplikace přesměrovává na tuto doménu; pokud by se použil `window.location.origin` z iOS WebView (`capacitor://…`), stránka se nenačte.
+
 ---
 
 ## 2. Apple (Sign in with Apple)

@@ -5,6 +5,7 @@ import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { createClient } from "@/lib/supabase/client";
+import { getNativeWebAppBaseUrl } from "@/lib/url/native-web-app-base";
 
 /**
  * Listens for deep-link events on native platforms and handles:
@@ -35,9 +36,13 @@ export function NativeOAuthDeepLinkBridge() {
         return;
       }
 
-      Browser.close().catch(() => {});
+      await Browser.close().catch(() => {});
+      // Let SFSafariViewController dismiss before we navigate the main WebView (iOS white screen otherwise).
+      if (Capacitor.getPlatform() === "ios") {
+        await new Promise((r) => setTimeout(r, 350));
+      }
 
-      const origin = window.location.origin;
+      const origin = getNativeWebAppBaseUrl();
 
       // ── Auth callback with code → exchange client-side ──
       if (
@@ -50,25 +55,25 @@ export function NativeOAuthDeepLinkBridge() {
             const supabase = createClient();
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             if (error) {
-              window.location.href = `${origin}/prihlaseni?error=${encodeURIComponent(error.message)}`;
+              window.location.replace(`${origin}/prihlaseni?error=${encodeURIComponent(error.message)}`);
               return;
             }
-            window.location.href = `${origin}/register/complete?next=%2Fportal%2Ftoday`;
+            window.location.replace(`${origin}/register/complete?next=%2Fportal%2Ftoday`);
           } catch (e) {
             const msg = e instanceof Error ? e.message : "session_exchange_failed";
-            window.location.href = `${origin}/prihlaseni?error=${encodeURIComponent(msg)}`;
+            window.location.replace(`${origin}/prihlaseni?error=${encodeURIComponent(msg)}`);
           }
           return;
         }
         // No code – fall through to portal
-        window.location.href = `${origin}/portal/today`;
+        window.location.replace(`${origin}/portal/today`);
         return;
       }
 
       // ── Auth error ──
       if (parsed.host === "auth" && parsed.pathname === "/error") {
         const msg = parsed.searchParams.get("message") || "auth_failed";
-        window.location.href = `${origin}/prihlaseni?error=${encodeURIComponent(msg)}`;
+        window.location.replace(`${origin}/prihlaseni?error=${encodeURIComponent(msg)}`);
         return;
       }
 
@@ -77,7 +82,7 @@ export function NativeOAuthDeepLinkBridge() {
         parsed.host === "auth" &&
         (parsed.pathname === "/done" || parsed.pathname === "/done/")
       ) {
-        window.location.href = `${origin}/portal/today`;
+        window.location.replace(`${origin}/portal/today`);
         return;
       }
 
@@ -87,7 +92,7 @@ export function NativeOAuthDeepLinkBridge() {
       const normalized = path.startsWith("/") ? path : `/${path}`;
       const target = `${origin}${normalized}${parsed.search}${parsed.hash}`;
       if (window.location.href !== target) {
-        window.location.href = target;
+        window.location.replace(target);
       }
     };
 
