@@ -6,13 +6,18 @@ import { MobileLoginView } from "./auth/MobileLoginView";
 import { WebLoginView } from "./auth/WebLoginView";
 import { useAidvisoraLogin } from "./auth/useAidvisoraLogin";
 
-export function LandingLoginPage() {
+type Props = {
+  /** Z serverové stránky `/prihlaseni` — musí odpovídat `?native=1` v URL requestu (hydratace v appce). */
+  nativeFromUrl?: boolean;
+};
+
+export function LandingLoginPage({ nativeFromUrl = false }: Props) {
   const login = useAidvisoraLogin();
-  const [isNativeShell, setIsNativeShell] = useState(login.forceNative);
+  const [isNativeShell, setIsNativeShell] = useState(nativeFromUrl);
 
   useEffect(() => {
-    setIsNativeShell(login.forceNative || Capacitor.isNativePlatform());
-  }, [login.forceNative]);
+    setIsNativeShell(nativeFromUrl || login.forceNative || Capacitor.isNativePlatform());
+  }, [nativeFromUrl, login.forceNative]);
 
   return isNativeShell ? <MobileLoginView login={login} /> : <WebLoginView login={login} />;
 }
