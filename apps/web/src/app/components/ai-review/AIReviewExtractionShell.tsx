@@ -24,7 +24,6 @@ import type {
 import { hasMeaningfulReviewContent } from "@/lib/ai-review/mappers";
 import { AIReviewTopBar } from "./AIReviewTopBar";
 import { ExtractionLeftPanel } from "./ExtractionLeftPanel";
-import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 
 const PDFViewerPanel = dynamic(
   () => import("./PDFViewerPanel").then((m) => m.PDFViewerPanel),
@@ -249,12 +248,6 @@ export function AIReviewExtractionShell({
         actionLoading={actionLoading}
       />
 
-      <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-1.5 md:px-6">
-        <div className="max-w-6xl mx-auto">
-          <AdvisorAiOutputNotice />
-        </div>
-      </div>
-
       {isApproved && !doc.isApplied && hasResolvedClient && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-6 py-3">
           <div className="max-w-5xl mx-auto flex items-start gap-3">
@@ -332,117 +325,61 @@ export function AIReviewExtractionShell({
         </div>
       )}
 
-      {(doc.pipelineInsights || doc.applyGate) && !isFailed && !isProcessing ? (
-        <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-1.5 md:px-6">
-          <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-x-3 gap-y-1">
-            {doc.applyGate ? (
-              <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${
-                  doc.applyGate.readiness === "ready_for_apply"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : doc.applyGate.readiness === "blocked_for_apply"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-amber-100 text-amber-800"
-                }`}
-              >
-                {doc.applyGate.readiness === "ready_for_apply"
-                  ? "Připraveno k aplikaci"
-                  : doc.applyGate.readiness === "blocked_for_apply"
-                    ? "Blokováno"
-                    : "Vyžaduje kontrolu"}
-              </span>
-            ) : null}
-            {doc.applyGate && doc.applyGate.blockedReasons.length > 0 ? (
-              <span className="text-[11px] text-red-800 font-semibold">
-                Blokace: {doc.applyGate.blockedReasons.join(", ")}
-              </span>
-            ) : null}
-            {doc.applyGate && (doc.applyGate.applyBarrierReasons?.length ?? 0) > 0 ? (
-              <span className="text-[11px] text-amber-900 font-medium">
-                Návrh/modelace — nelze automaticky aplikovat jako finální smlouvu.
-              </span>
-            ) : null}
-            {doc.applyGate && doc.applyGate.warnings.length > 0 ? (
-              <span className="text-[11px] text-amber-800">
-                {doc.applyGate.warnings.join(", ")}
-              </span>
-            ) : null}
-            {doc.pipelineInsights?.preprocessStatus === "failed" ? (
-              <span className="text-[11px] text-amber-800">
-                Preprocessing selhal — porovnejte extrakci s originálem.
-              </span>
-            ) : null}
-            {typeof doc.pipelineInsights?.textCoverageEstimate === "number" &&
-            doc.pipelineInsights.textCoverageEstimate < 0.35 ? (
-              <span className="text-[11px] text-amber-800">
-                Nízké pokrytí textem ({Math.round(doc.pipelineInsights.textCoverageEstimate * 100)} %) — zkontrolujte pole oproti dokumentu.
-              </span>
-            ) : null}
-            {(doc.reasonsForReview ?? []).some(
-              (r) =>
-                r.includes("proposal_or_modelation") ||
-                r.includes("proposal_not_final") ||
-                r.includes("offer_not_binding")
-            ) ? (
-              <span className="text-[11px] font-semibold text-amber-900">
-                Návrh / modelace — ne finální smlouva.
-              </span>
-            ) : null}
-            {doc.pipelineInsights ? (
-              <details className="w-full mt-1">
-                <summary className="cursor-pointer list-none text-[11px] font-bold text-[color:var(--wp-text-secondary)]">
-                  Technické detaily
-                </summary>
-                <div className="mt-2 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 space-y-2">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
-                    {doc.pipelineInsights.extractionRoute ? (
-                      <span>Trasa: <span className="text-indigo-700">{doc.pipelineInsights.extractionRoute}</span></span>
-                    ) : null}
-                    {doc.pipelineInsights.normalizedPipelineClassification ? (
-                      <span>Typ: <span className="text-[color:var(--wp-text)]">{doc.pipelineInsights.normalizedPipelineClassification}</span></span>
-                    ) : null}
-                    {doc.pipelineInsights.preprocessStatus ? (
-                      <span>Preprocess: <span className="text-[color:var(--wp-text)]">{doc.pipelineInsights.preprocessStatus}</span></span>
-                    ) : null}
-                    {typeof doc.pipelineInsights.preprocessDurationMs === "number" ? (
-                      <span>OCR: <span className="text-[color:var(--wp-text)]">{(doc.pipelineInsights.preprocessDurationMs / 1000).toFixed(1)}s</span></span>
-                    ) : null}
-                    {typeof doc.pipelineInsights.pipelineDurationMs === "number" ? (
-                      <span>Pipeline: <span className="text-[color:var(--wp-text)]">{(doc.pipelineInsights.pipelineDurationMs / 1000).toFixed(1)}s</span></span>
-                    ) : null}
-                    {doc.pipelineInsights.extractionSecondPass ? (
-                      <span>2. krok: <span className="text-[color:var(--wp-text)]">{doc.pipelineInsights.extractionSecondPass === "text" ? "text" : "PDF"}</span></span>
-                    ) : null}
-                  </div>
-                  {doc.pipelineInsights.paymentPreview &&
-                  Object.keys(doc.pipelineInsights.paymentPreview).length > 0 ? (
-                    <div className="rounded-lg border border-emerald-200 bg-[color:var(--wp-surface-card)] p-2">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-900 mb-1">Platební údaje</h4>
-                      <dl className="grid grid-cols-2 gap-1 text-xs text-[color:var(--wp-text-secondary)]">
-                        {([
-                          ["Instituce", doc.pipelineInsights.paymentPreview.institutionName],
-                          ["Částka", doc.pipelineInsights.paymentPreview.amount],
-                          ["Frekvence", doc.pipelineInsights.paymentPreview.paymentFrequency],
-                          ["VS", doc.pipelineInsights.paymentPreview.variableSymbol],
-                          ["IBAN", doc.pipelineInsights.paymentPreview.ibanHint],
-                        ] as [string, unknown][]).map(([k, v]) => {
-                          if (v == null || String(v).trim() === "") return null;
-                          return (
-                            <div key={k} className="flex flex-col">
-                              <dt className="text-[10px] font-bold uppercase text-[color:var(--wp-text-secondary)]">{k}</dt>
-                              <dd className="font-medium text-[color:var(--wp-text)]">{String(v)}</dd>
-                            </div>
-                          );
-                        })}
-                      </dl>
-                    </div>
-                  ) : null}
-                </div>
-              </details>
-            ) : null}
+      {(() => {
+        if (isFailed || isProcessing) return null;
+        const showApplyIssues =
+          doc.applyGate &&
+          (doc.applyGate.blockedReasons.length > 0 ||
+            (doc.applyGate.applyBarrierReasons?.length ?? 0) > 0 ||
+            doc.applyGate.warnings.length > 0);
+        const showPrepFailed = doc.pipelineInsights?.preprocessStatus === "failed";
+        const showLowCov =
+          typeof doc.pipelineInsights?.textCoverageEstimate === "number" &&
+          doc.pipelineInsights.textCoverageEstimate < 0.35;
+        const showProposal = (doc.reasonsForReview ?? []).some(
+          (r) =>
+            r.includes("proposal_or_modelation") ||
+            r.includes("proposal_not_final") ||
+            r.includes("offer_not_binding")
+        );
+        if (!showApplyIssues && !showPrepFailed && !showLowCov && !showProposal) return null;
+        return (
+          <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-1.5 md:px-6">
+            <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+              {doc.applyGate && doc.applyGate.blockedReasons.length > 0 ? (
+                <span className="text-[11px] text-red-800 font-semibold">
+                  Blokace: {doc.applyGate.blockedReasons.join(", ")}
+                </span>
+              ) : null}
+              {doc.applyGate && (doc.applyGate.applyBarrierReasons?.length ?? 0) > 0 ? (
+                <span className="text-[11px] text-amber-900 font-medium">
+                  Návrh/modelace — nelze automaticky aplikovat jako finální smlouvu.
+                </span>
+              ) : null}
+              {doc.applyGate && doc.applyGate.warnings.length > 0 ? (
+                <span className="text-[11px] text-amber-800">{doc.applyGate.warnings.join(", ")}</span>
+              ) : null}
+              {showPrepFailed ? (
+                <span className="text-[11px] text-amber-800">
+                  Preprocessing selhal — porovnejte extrakci s originálem.
+                </span>
+              ) : null}
+              {showLowCov ? (
+                <span className="text-[11px] text-amber-800">
+                  Nízké pokrytí textem (
+                  {Math.round((doc.pipelineInsights?.textCoverageEstimate ?? 0) * 100)} %) — zkontrolujte pole
+                  oproti dokumentu.
+                </span>
+              ) : null}
+              {showProposal ? (
+                <span className="text-[11px] font-semibold text-amber-900">
+                  Návrh / modelace — ne finální smlouva.
+                </span>
+              ) : null}
+            </div>
           </div>
-        </div>
-      ) : null}
+        );
+      })()}
 
       {/* Mobile tab switcher */}
       <div className="lg:hidden flex border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]">

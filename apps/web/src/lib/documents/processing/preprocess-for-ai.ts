@@ -6,12 +6,13 @@
 import { preprocessDocument } from "@/lib/documents/adobe-service";
 import { createAdminClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/storage/signed-url";
+import { extractTextFromPdfUrl } from "./pdf-text-fallback";
 
 export type PreprocessResult = {
   preprocessed: boolean;
   /** Adobe / preprocessing layer outcome for pipeline persistence. */
   preprocessStatus: "completed" | "failed" | "skipped" | "partial";
-  preprocessMode: "adobe" | "none";
+  preprocessMode: "adobe" | "none" | "pdf_parse_fallback";
   fileUrl: string;
   markdownContent: string | null;
   ocrPdfPath: string | null;
@@ -84,12 +85,35 @@ export async function preprocessForAiExtraction(
     preprocessStatus = "partial";
   }
 
+  let markdownContent = canonical.extractedText ?? null;
+  const isPdf =
+    mimeType === "application/pdf" || (mimeType?.toLowerCase().includes("pdf") ?? false);
+
+  if (isPdf && (!markdownContent || !markdownContent.trim()) && bestFileUrl) {
+    const fallbackText = await extractTextFromPdfUrl(bestFileUrl);
+    if (fallbackText) {
+      markdownContent = fallbackText;
+      preprocessMode = "pdf_parse_fallback";
+      warnings.push(
+        "pdf_parse_fallback: text extracted server-side (PDF text layer); Adobe markdown unavailable."
+      );
+      if (preprocessStatus === "skipped" || preprocessStatus === "failed") {
+        preprocessStatus = "partial";
+      } else if (preprocessStatus === "completed") {
+        preprocessStatus = "partial";
+      }
+    }
+  }
+
+  const hasUsableMarkdown = Boolean(markdownContent?.trim());
+  const adobePreprocessedOk = canonical.ok && preprocessed && !adobeDisabled;
+
   return {
-    preprocessed: canonical.ok && preprocessed && !adobeDisabled,
+    preprocessed: adobePreprocessedOk || (hasUsableMarkdown && preprocessMode === "pdf_parse_fallback"),
     preprocessStatus,
     preprocessMode,
     fileUrl: bestFileUrl,
-    markdownContent: canonical.extractedText ?? null,
+    markdownContent,
     ocrPdfPath: canonical.normalizedPdfPath ?? null,
     normalizedPdfPath: canonical.normalizedPdfPath ?? null,
     providerJobIds: canonical.providerJobIds,
