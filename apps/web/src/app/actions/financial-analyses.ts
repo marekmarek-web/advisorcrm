@@ -66,11 +66,28 @@ export type FinancialAnalysisListItem = {
   analysisTypeLabel?: string | null;
 };
 
+const financialAnalysisBaseSelection = {
+  id: financialAnalyses.id,
+  tenantId: financialAnalyses.tenantId,
+  contactId: financialAnalyses.contactId,
+  householdId: financialAnalyses.householdId,
+  type: financialAnalyses.type,
+  status: financialAnalyses.status,
+  payload: financialAnalyses.payload,
+  createdBy: financialAnalyses.createdBy,
+  updatedBy: financialAnalyses.updatedBy,
+  createdAt: financialAnalyses.createdAt,
+  updatedAt: financialAnalyses.updatedAt,
+  lastExportedAt: financialAnalyses.lastExportedAt,
+  linkedCompanyId: financialAnalyses.linkedCompanyId,
+  lastRefreshedFromSharedAt: financialAnalyses.lastRefreshedFromSharedAt,
+};
+
 export async function getFinancialAnalysis(id: string): Promise<FinancialAnalysisRow | null> {
   try {
     const auth = await requireAuthInAction();
     const [row] = await db
-      .select()
+      .select(financialAnalysisBaseSelection)
       .from(financialAnalyses)
       .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, id)));
     if (!row) return null;
@@ -104,7 +121,7 @@ export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem
   if (!hasPermission(auth.roleName, "financial_analyses:read")) throw new Error(FA_ERROR_NO_READ);
   try {
     const rows = await db
-      .select()
+      .select(financialAnalysisBaseSelection)
       .from(financialAnalyses)
       .where(eq(financialAnalyses.tenantId, auth.tenantId))
       .orderBy(desc(financialAnalyses.updatedAt));

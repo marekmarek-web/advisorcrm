@@ -17,9 +17,23 @@ type ResponsesCreateBody = {
   store: boolean;
   temperature?: number;
   reasoning?: { effort: string };
-  text?: { verbosity: string };
+  text?: {
+    verbosity?: string;
+    format?: {
+      type: "json_schema";
+      name: string;
+      schema: Record<string, unknown>;
+      strict?: boolean;
+    };
+  };
   max_output_tokens?: number;
 };
+
+type OpenAIRequestOptions = {
+  signal?: AbortSignal;
+};
+
+type JsonSchemaFormat = NonNullable<NonNullable<ResponsesCreateBody["text"]>["format"]>;
 
 /** Model routing for copilot vs AI Review (env overrides). */
 export type OpenAIModelRoutingCategory = "default" | "copilot" | "ai_review";
@@ -38,6 +52,48 @@ function aiReviewResponsesAugmentation(
 ): Record<string, unknown> {
   if (routing?.category !== "ai_review") return {};
   return buildAiReviewResponsesCreateExtras(resolvedModel, routing.maxOutputTokens);
+}
+
+function isAiReviewRouting(routing: OpenAICallRoutingOptions | undefined): boolean {
+  return routing?.category === "ai_review";
+}
+
+function resolveOpenAIRetryAttempts(routing: OpenAICallRoutingOptions | undefined): number {
+  return isAiReviewRouting(routing) ? 2 : 6;
+}
+
+function buildOpenAIRequestOptions(
+  routing: OpenAICallRoutingOptions | undefined
+): OpenAIRequestOptions | undefined {
+  if (!isAiReviewRouting(routing)) return undefined;
+  return {
+    signal: AbortSignal.timeout(60_000),
+  };
+}
+
+function buildResponsesCreateBody(params: {
+  model: string;
+  store: boolean;
+  routing?: OpenAICallRoutingOptions;
+  input?: unknown;
+  prompt?: unknown;
+  textFormat?: JsonSchemaFormat;
+}): ResponsesCreateBody {
+  const augmented = aiReviewResponsesAugmentation(params.routing, params.model) as ResponsesCreateBody;
+  const text = params.textFormat
+    ? {
+        ...(augmented.text ?? {}),
+        format: params.textFormat,
+      }
+    : augmented.text;
+  return {
+    ...augmented,
+    model: params.model,
+    store: params.store,
+    ...(params.input !== undefined ? { input: params.input } : {}),
+    ...(params.prompt !== undefined ? { prompt: params.prompt } : {}),
+    ...(text ? { text } : {}),
+  };
 }
 
 /**
@@ -135,27 +191,38 @@ export async function createResponse(
   let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
   let usedModel = primaryModel;
   try {
-    const createBody: ResponsesCreateBody = {
+    const createBody = buildResponsesCreateBody({
       model: primaryModel,
       input,
       store,
-      ...aiReviewResponsesAugmentation(options?.routing, primaryModel),
-    };
+      routing: options?.routing,
+    });
     response = await withOpenAIRateLimitRetry(
-      () => client.responses.create(createBody as Parameters<OpenAI["responses"]["create"]>[0]),
-      { label: "responses.create", maxAttempts: 6 }
+      () =>
+        client.responses.create(
+          createBody as Parameters<OpenAI["responses"]["create"]>[0],
+          buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+        ),
+      { label: "responses.create", maxAttempts: resolveOpenAIRetryAttempts(options?.routing) }
     );
   } catch (err) {
     if (isModelError(err) && primaryModel !== fallbackModel) {
-      const fallbackBody: ResponsesCreateBody = {
+      const fallbackBody = buildResponsesCreateBody({
         model: fallbackModel,
         input,
         store,
-        ...aiReviewResponsesAugmentation(options?.routing, fallbackModel),
-      };
+        routing: options?.routing,
+      });
       response = await withOpenAIRateLimitRetry(
-        () => client.responses.create(fallbackBody as Parameters<OpenAI["responses"]["create"]>[0]),
-        { label: "responses.create(fallback_model)", maxAttempts: 6 }
+        () =>
+          client.responses.create(
+            fallbackBody as Parameters<OpenAI["responses"]["create"]>[0],
+            buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+          ),
+        {
+          label: "responses.create(fallback_model)",
+          maxAttempts: resolveOpenAIRetryAttempts(options?.routing),
+        }
       );
       usedModel = fallbackModel;
     } else {
@@ -219,6 +286,123 @@ export async function createResponseSafe(
     const code = (err as { code?: string })?.code;
     return { ok: false, error: message, code };
   }
+}
+
+export type CreateStructuredResponseResult<T> = {
+  text: string;
+  parsed: T;
+  model: string;
+};
+
+export async function createResponseStructured<T>(
+  input: string,
+  jsonSchema: Record<string, unknown>,
+  options?: {
+    model?: string;
+    store?: boolean;
+    routing?: OpenAICallRoutingOptions;
+    schemaName?: string;
+  }
+): Promise<CreateStructuredResponseResult<T>> {
+  const client = getClient();
+  if (!client) {
+    throw new Error(
+      "OPENAI_API_KEY není nastaven. Nastavte ho v Nastavení nebo v .env."
+    );
+  }
+
+  const primaryModel = resolveOpenAIModel({
+    explicit: options?.model,
+    category: options?.routing?.category,
+  });
+  const store = options?.store ?? false;
+  const start = Date.now();
+  const schemaName = options?.schemaName?.trim() || "extraction";
+
+  let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
+  let usedModel = primaryModel;
+  try {
+    const createBody = buildResponsesCreateBody({
+      model: primaryModel,
+      input,
+      store,
+      routing: options?.routing,
+      textFormat: {
+        type: "json_schema",
+        name: schemaName,
+        schema: jsonSchema,
+        strict: true,
+      },
+    });
+    response = await withOpenAIRateLimitRetry(
+      () =>
+        client.responses.create(
+          createBody as Parameters<OpenAI["responses"]["create"]>[0],
+          buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+        ),
+      {
+        label: "responses.create_structured",
+        maxAttempts: resolveOpenAIRetryAttempts(options?.routing),
+      }
+    );
+  } catch (err) {
+    if (isModelError(err) && primaryModel !== fallbackModel) {
+      const fallbackBody = buildResponsesCreateBody({
+        model: fallbackModel,
+        input,
+        store,
+        routing: options?.routing,
+        textFormat: {
+          type: "json_schema",
+          name: schemaName,
+          schema: jsonSchema,
+          strict: true,
+        },
+      });
+      response = await withOpenAIRateLimitRetry(
+        () =>
+          client.responses.create(
+            fallbackBody as Parameters<OpenAI["responses"]["create"]>[0],
+            buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+          ),
+        {
+          label: "responses.create_structured(fallback_model)",
+          maxAttempts: resolveOpenAIRetryAttempts(options?.routing),
+        }
+      );
+      usedModel = fallbackModel;
+    } else {
+      const latencyMs = Date.now() - start;
+      const message = err instanceof Error ? err.message : String(err);
+      logOpenAICall({
+        endpoint: "responses.create_structured",
+        model: primaryModel,
+        latencyMs,
+        success: false,
+        error: message,
+      });
+      throw err instanceof Error ? err : new Error(message);
+    }
+  }
+
+  const latencyMs = Date.now() - start;
+  logOpenAICall({
+    endpoint: "responses.create_structured",
+    model: usedModel,
+    latencyMs,
+    success: true,
+  });
+
+  const parsedDirect = (response as { output_parsed?: T }).output_parsed;
+  const text = extractResponseText(response as { output_text?: string; output?: unknown[] });
+  if (parsedDirect !== undefined) {
+    return { text, parsed: parsedDirect, model: usedModel };
+  }
+  return {
+    text,
+    parsed: JSON.parse(text) as T,
+    model: usedModel,
+  };
 }
 
 /** Extract text from Responses API response (shared by createResponse and createResponseFromPrompt). */
@@ -292,14 +476,19 @@ export async function createResponseFromPrompt(
   }
 
   try {
-    const promptBody: ResponsesCreateBody = {
+    const promptBody = buildResponsesCreateBody({
       model: primaryModel,
       prompt: promptPayload as Parameters<OpenAI["responses"]["create"]>[0]["prompt"],
       store,
-      ...aiReviewResponsesAugmentation(options?.routing, primaryModel),
-    };
-    const response = await client.responses.create(
-      promptBody as Parameters<OpenAI["responses"]["create"]>[0]
+      routing: options?.routing,
+    });
+    const response = await withOpenAIRateLimitRetry(
+      () =>
+        client.responses.create(
+          promptBody as Parameters<OpenAI["responses"]["create"]>[0],
+          buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+        ),
+      { label: "responses.create_prompt", maxAttempts: resolveOpenAIRetryAttempts(options?.routing) }
     );
     const latencyMs = Date.now() - start;
     logOpenAICall({
@@ -432,27 +621,38 @@ export async function createResponseWithFile(
   let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
   let usedModel = primaryModel;
   try {
-    const fileBody: ResponsesCreateBody = {
+    const fileBody = buildResponsesCreateBody({
       model: primaryModel,
       input,
       store,
-      ...aiReviewResponsesAugmentation(options?.routing, primaryModel),
-    };
+      routing: options?.routing,
+    });
     response = await withOpenAIRateLimitRetry(
-      () => client.responses.create(fileBody as Parameters<OpenAI["responses"]["create"]>[0]),
-      { label: "responses.create_with_file", maxAttempts: 6 }
+      () =>
+        client.responses.create(
+          fileBody as Parameters<OpenAI["responses"]["create"]>[0],
+          buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+        ),
+      { label: "responses.create_with_file", maxAttempts: resolveOpenAIRetryAttempts(options?.routing) }
     );
   } catch (err) {
     if (isModelError(err) && primaryModel !== fallbackModel) {
-      const fileFallbackBody: ResponsesCreateBody = {
+      const fileFallbackBody = buildResponsesCreateBody({
         model: fallbackModel,
         input,
         store,
-        ...aiReviewResponsesAugmentation(options?.routing, fallbackModel),
-      };
+        routing: options?.routing,
+      });
       response = await withOpenAIRateLimitRetry(
-        () => client.responses.create(fileFallbackBody as Parameters<OpenAI["responses"]["create"]>[0]),
-        { label: "responses.create_with_file(fallback_model)", maxAttempts: 6 }
+        () =>
+          client.responses.create(
+            fileFallbackBody as Parameters<OpenAI["responses"]["create"]>[0],
+            buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+          ),
+        {
+          label: "responses.create_with_file(fallback_model)",
+          maxAttempts: resolveOpenAIRetryAttempts(options?.routing),
+        }
       );
       usedModel = fallbackModel;
     } else {

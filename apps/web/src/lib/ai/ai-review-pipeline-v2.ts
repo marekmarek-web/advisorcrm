@@ -4,7 +4,7 @@
 
 import { createResponse, createAiReviewResponseFromPrompt, createResponseWithFile } from "@/lib/openai";
 import { detectInputMode, type InputModeResult } from "./input-mode-detection";
-import type { ClassificationResult } from "./document-classification";
+import { normalizeClassification, type ClassificationResult } from "./document-classification";
 import {
   buildExtractionPrompt,
   buildFileBasedExtractionPrompt,
@@ -68,6 +68,10 @@ import { getPipelineVersionInfo } from "./pipeline-versioning";
 import type { DocumentReviewEnvelope } from "./document-review-types";
 import { resolveHybridInvestmentDocumentType } from "./ai-review-document-type-signals";
 import { resolveDocumentSchema } from "./document-schema-router";
+import {
+  COMBINED_CLASSIFY_AND_EXTRACT_MIN_HINT_CHARS,
+  runCombinedClassifyAndExtract,
+} from "./combined-extraction";
 
 /**
  * Returns true when none of the required fields for this document type have a non-empty extracted value.
@@ -155,6 +159,17 @@ function tryInferInputModeFromPreprocess(
   meta: PipelinePreprocessMeta | null | undefined,
   hintLength: number
 ): InputModeResult | null {
+  if (meta?.preprocessMode === "pdf_parse_fallback" && hintLength > 0) {
+    return {
+      inputMode: "text_pdf",
+      confidence: 0.9,
+      extractionMode: "text",
+      ocrRequired: false,
+      pageCount: meta.pageCountEstimate ?? undefined,
+      qualityWarnings: [],
+      extractionWarnings: ["input_mode_inferred_from_pdf_parse_fallback"],
+    };
+  }
   if (process.env.AI_REVIEW_SKIP_INPUT_MODE_WHEN_PREPROCESS_OK !== "true") return null;
   if (hintLength < 800) return null;
   if (typeof meta?.readabilityScore !== "number" || meta.readabilityScore < 68) return null;
@@ -257,6 +272,17 @@ function applyResolvedClassificationToFallbackEnvelope(
   envelope.documentMeta.pipelineRoute =
     extractionRoute === "supporting_document" ? "supporting_document" : "contract_intake";
   envelope.documentMeta.extractionRoute = extractionRoute;
+}
+
+function classificationFromEnvelope(envelope: DocumentReviewEnvelope): ClassificationResult {
+  return normalizeClassification({
+    primaryType: envelope.documentClassification.primaryType,
+    subtype: envelope.documentClassification.subtype,
+    lifecycleStatus: envelope.documentClassification.lifecycleStatus,
+    documentIntent: envelope.documentClassification.documentIntent,
+    confidence: envelope.documentClassification.confidence,
+    reasons: envelope.documentClassification.reasons,
+  });
 }
 
 function finalizeContractPayload(params: {
@@ -551,6 +577,114 @@ export async function runAiReviewV2Pipeline(
     inputModeResult.pageCount ?? options?.preprocessMeta?.pageCountEstimate ?? trace.pageCount;
   trace.warnings = [...(trace.warnings ?? []), ...inputModeResult.extractionWarnings];
 
+  const textCov =
+    typeof trace.textCoverageEstimate === "number"
+      ? trace.textCoverageEstimate
+      : typeof options?.preprocessMeta?.ocrConfidenceEstimate === "number"
+        ? options.preprocessMeta.ocrConfidenceEstimate
+        : undefined;
+
+  const allowCombinedSingleCall =
+    hint.length >= COMBINED_CLASSIFY_AND_EXTRACT_MIN_HINT_CHARS &&
+    inputModeResult.inputMode === "text_pdf" &&
+    inputModeResult.extractionMode === "text";
+
+  if (allowCombinedSingleCall) {
+    trace.extractionSecondPass = "text";
+    trace.aiReviewExtractionPromptKey = "combined_single_call";
+    const combinedStart = Date.now();
+    try {
+      const combined = await runCombinedClassifyAndExtract({
+        documentText: hint,
+        sourceFileName: options?.sourceFileName ?? null,
+      });
+      trace.extractionDurationMs = Date.now() - combinedStart;
+
+      const combinedClassification = classificationFromEnvelope(combined.envelope);
+      const combinedDocumentType = combinedClassification.primaryType;
+      trace.documentType = combinedDocumentType;
+      trace.classificationConfidence = combinedClassification.confidence;
+      trace.rawClassification = `${combinedDocumentType}/${combinedClassification.subtype ?? "unknown"}`;
+      trace.selectedSchema = combinedDocumentType;
+      trace.supportedForDirectExtraction = true;
+      trace.aiReviewRouterOutcome = "combined_single_call";
+      trace.aiReviewRouterReasonCodes = ["combined_single_call"];
+
+      const combinedNormPipeline = mapPrimaryToPipelineClassification(combinedDocumentType);
+      const combinedExtractionRoute = resolveExtractionRoute(
+        combinedNormPipeline,
+        combinedClassification.confidence
+      );
+      trace.normalizedPipelineClassification = combinedNormPipeline;
+      trace.extractionRoute = combinedExtractionRoute;
+
+      const resolvedDocumentType = resolveHybridInvestmentDocumentType(
+        combinedDocumentType,
+        combined.envelope,
+        combinedClassification
+      );
+      const resolvedClassification = classificationForResolvedDocumentType(
+        resolvedDocumentType,
+        combinedClassification
+      );
+      const resolvedNormPipeline = mapPrimaryToPipelineClassification(resolvedDocumentType);
+      const resolvedExtractionRoute = resolveExtractionRoute(
+        resolvedNormPipeline,
+        resolvedClassification.confidence
+      );
+      if (resolvedDocumentType !== combinedDocumentType) {
+        allReasons.push("hybrid_contract_signals_detected");
+        trace.documentType = resolvedDocumentType;
+        trace.normalizedPipelineClassification = resolvedNormPipeline;
+        trace.extractionRoute = resolvedExtractionRoute;
+      }
+
+      trace.reviewDecisionDurationMs = 0;
+      const finalized = finalizeContractPayload({
+        data: combined.envelope,
+        classification: resolvedClassification,
+        inputModeResult,
+        extractionRoute: resolvedExtractionRoute,
+        normPipeline: resolvedNormPipeline,
+        documentType: resolvedDocumentType,
+        options,
+        textCov,
+        trace,
+        allReasons,
+      });
+
+      return {
+        ...finalized,
+        extractionTrace: trace,
+      };
+    } catch (e) {
+      trace.failedStep = "combined_structured_extraction";
+      trace.extractionDurationMs = Date.now() - combinedStart;
+      trace.warnings = [
+        ...(trace.warnings ?? []),
+        `combined_single_call_failed:${e instanceof Error ? e.message : String(e)}`,
+      ];
+      if (isOpenAIRateLimitError(e)) {
+        return {
+          ok: false,
+          processingStatus: "failed",
+          errorCode: "OPENAI_RATE_LIMIT",
+          errorMessage:
+            "OpenAI dočasně odmítá požadavky (limit tokenů za minutu). Počkejte cca minutu a zkuste znovu.",
+          extractionTrace: trace,
+          details: e instanceof Error ? e.message : String(e),
+        };
+      }
+      return {
+        ok: false,
+        processingStatus: "failed",
+        errorMessage: "Kombinovaná extrakce dokumentu selhala.",
+        extractionTrace: trace,
+        details: e instanceof Error ? e.message : String(e),
+      };
+    }
+  }
+
   const classifierPageCount =
     inputModeResult.pageCount ?? options?.preprocessMeta?.pageCountEstimate ?? trace.pageCount ?? null;
   const clsRes = await runAiReviewClassifier({
@@ -618,13 +752,6 @@ export async function runAiReviewV2Pipeline(
   trace.normalizedPipelineClassification = normPipeline;
   const extractionRoute: ExtractionRoute = resolveExtractionRoute(normPipeline, classification.confidence);
   trace.extractionRoute = extractionRoute;
-
-  const textCov =
-    typeof trace.textCoverageEstimate === "number"
-      ? trace.textCoverageEstimate
-      : typeof options?.preprocessMeta?.ocrConfidenceEstimate === "number"
-        ? options.preprocessMeta.ocrConfidenceEstimate
-        : undefined;
 
   if (router.outcome === "manual_review") {
     const stub = buildManualReviewStubEnvelope({

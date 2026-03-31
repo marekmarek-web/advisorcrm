@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
  * OpenAI + Adobe může trvat dlouho. `after()` dokončí práci po odpovědi klientovi (krátký POST).
  * Na Vercelu zvyš limit projektu, pokud 120s nestačí (Pro / delší funkce).
  */
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const USER_ID_HEADER = "x-user-id";
 

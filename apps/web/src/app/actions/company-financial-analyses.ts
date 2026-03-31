@@ -20,6 +20,27 @@ export type CompanyAnalysisListItem = {
   companyName?: string | null;
 };
 
+const companyAnalysisBaseSelection = {
+  id: financialAnalyses.id,
+  tenantId: financialAnalyses.tenantId,
+  contactId: financialAnalyses.contactId,
+  householdId: financialAnalyses.householdId,
+  companyId: financialAnalyses.companyId,
+  primaryContactId: financialAnalyses.primaryContactId,
+  type: financialAnalyses.type,
+  status: financialAnalyses.status,
+  sourceType: financialAnalyses.sourceType,
+  version: financialAnalyses.version,
+  payload: financialAnalyses.payload,
+  createdBy: financialAnalyses.createdBy,
+  updatedBy: financialAnalyses.updatedBy,
+  createdAt: financialAnalyses.createdAt,
+  updatedAt: financialAnalyses.updatedAt,
+  lastExportedAt: financialAnalyses.lastExportedAt,
+  linkedCompanyId: financialAnalyses.linkedCompanyId,
+  lastRefreshedFromSharedAt: financialAnalyses.lastRefreshedFromSharedAt,
+};
+
 export async function createCompanyAnalysis(params: {
   companyId: string;
   primaryContactId?: string | null;
@@ -55,7 +76,7 @@ export async function getCompanyAnalysis(id: string): Promise<CompanyAnalysisRow
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
   const [row] = await db
-    .select()
+    .select(companyAnalysisBaseSelection)
     .from(financialAnalyses)
     .where(
       and(
