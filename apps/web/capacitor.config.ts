@@ -3,6 +3,18 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim() || "https://www.aidvisora.cz/prihlaseni?native=1";
 const isHttpServer = /^http:\/\//i.test(serverUrl);
 
+/**
+ * Hostnames whose URLs should stay inside the WKWebView / Android WebView.
+ * Without this, Capacitor's navigation policy does a string prefix match on
+ * `server.url` — since that includes a path, any navigation to a different
+ * path on the same domain would open Safari instead of staying in-app.
+ */
+function deriveAllowedHosts(url: string): string[] {
+  const hosts = new Set(["www.aidvisora.cz", "aidvisora.cz"]);
+  try { hosts.add(new URL(url).hostname); } catch {}
+  return [...hosts];
+}
+
 const config: CapacitorConfig = {
   appId: "cz.aidvisora.app",
   appName: "Aidvisora",
@@ -11,6 +23,7 @@ const config: CapacitorConfig = {
     url: serverUrl,
     cleartext: isHttpServer,
     androidScheme: "https",
+    allowNavigation: deriveAllowedHosts(serverUrl),
   },
   ios: {
     contentInset: "always",
