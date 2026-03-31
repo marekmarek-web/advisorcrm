@@ -50,14 +50,22 @@ function serializeAnalysesForClient(
 
 async function AnalysesData() {
   let analyses: Awaited<ReturnType<typeof listFinancialAnalyses>> = [];
+  let loadError: string | null = null;
   try {
     analyses = await listFinancialAnalyses();
   } catch (err) {
     console.error("[AnalysesPage] listFinancialAnalyses failed:", err);
     analyses = [];
+    loadError =
+      "Nepodařilo se načíst seznam finančních analýz. Zkuste stránku obnovit nebo to opakovat později.";
   }
 
-  return <AnalysesPageClient analyses={serializeAnalysesForClient(analyses)} />;
+  return (
+    <AnalysesPageClient
+      analyses={serializeAnalysesForClient(analyses)}
+      loadError={loadError}
+    />
+  );
 }
 
 export default function AnalysesPage() {

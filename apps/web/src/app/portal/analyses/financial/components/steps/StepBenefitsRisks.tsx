@@ -32,22 +32,7 @@ import {
 } from "lucide-react";
 import { CurrencyCzkInput } from "../CurrencyCzkInput";
 import { COMPANY_RISK_MONTHLY_PREMIUM_MAX_CZK } from "@/lib/analyses/financial/constants";
-
-/** Ochrana před zobrazením nesmyslné „úspory“ při poškozených datech nebo omylem obřích částkách. */
-function safeMonthlySavingsCzk(
-  current: number | null | undefined,
-  proposed: number | null | undefined,
-): number | null {
-  const max = COMPANY_RISK_MONTHLY_PREMIUM_MAX_CZK;
-  if (current == null || proposed == null) return null;
-  if (!Number.isFinite(current) || !Number.isFinite(proposed)) return null;
-  if (current < 0 || proposed < 0) return null;
-  if (current > max || proposed > max) return null;
-  if (current <= proposed) return null;
-  const diff = current - proposed;
-  if (diff > max) return null;
-  return diff;
-}
+import { safeMonthlySavingsCzk } from "@/lib/analyses/financial/company-risk-premium";
 
 const BENEFIT_OPTIONS: { key: "dps" | "dip" | "izp"; label: string; subtitle: string; Icon: typeof PiggyBank; iconBg: string }[] = [
   { key: "dps", label: "DPS", subtitle: "Penzijní připojištění", Icon: PiggyBank, iconBg: "bg-blue-100 text-blue-600" },
@@ -401,7 +386,7 @@ export function StepBenefitsRisks() {
                 {risks[key] && (
                   <div className="mt-4 pt-4 border-t border-[color:var(--wp-surface-card-border)] space-y-4">
                     <p className="text-sm font-bold text-[color:var(--wp-text)]">Pojistné – srovnání</p>
-                    <div className="grid grid-cols-1 gap-4 min-w-0 md:grid-cols-3 md:items-end md:gap-4">
+                    <div className="flex min-w-0 flex-col gap-4">
                       <div className="min-w-0">
                         <span className="mb-1.5 block text-sm font-semibold text-[color:var(--wp-text-secondary)]">Aktuálně platí</span>
                         <CurrencyCzkInput
@@ -422,7 +407,7 @@ export function StepBenefitsRisks() {
                           clampMax={COMPANY_RISK_MONTHLY_PREMIUM_MAX_CZK}
                         />
                       </div>
-                      <div className="flex min-h-[52px] min-w-0 flex-col justify-center gap-1 rounded-xl border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 md:min-h-0 md:justify-end">
+                      <div className="flex min-h-[52px] w-full min-w-0 flex-col justify-center gap-1 rounded-xl border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3">
                         <span className="text-xs font-bold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">Úspora měsíčně</span>
                         <span className="text-lg font-bold tabular-nums text-emerald-700 break-words dark:text-emerald-400">
                           {monthlySaving != null && monthlySaving > 0 ? formatCzk(monthlySaving) : "—"}

@@ -6,6 +6,7 @@
 import type { FinancialAnalysisData, CompanyRisks, FundDetail } from './types';
 import { STATE_PENSION_TAX_LIMIT_ANNUAL, STATE_PENSION_TAX_REFUND_ANNUAL } from './types';
 import { CREDIT_WISH_BANKS, FUND_DETAILS, FUND_LOGOS, INSURANCE_LOGOS } from './constants';
+import { safeMonthlySavingsCzk } from './company-risk-premium';
 import { buildPremiumReportHTML } from './report/index';
 import {
   totalIncome,
@@ -1122,7 +1123,7 @@ function renderCompanyPDFSection(
             const d = rd[r.key];
             const cur = d?.currentPremiumMonthly;
             const prop = d?.proposedPremiumMonthly;
-            const sav = cur != null && prop != null && cur > prop ? cur - prop : null;
+            const sav = safeMonthlySavingsCzk(cur, prop);
             return `<tr><td>${escapeHtml(r.label)}</td><td style="text-align:right">${cur != null ? formatCurrencyMonthly(cur) : '—'}</td><td style="text-align:right">${prop != null ? formatCurrencyMonthly(prop) : '—'}</td><td style="text-align:right">${sav != null && sav > 0 ? formatCurrencyMonthly(sav) : '—'}</td></tr>`;
           })
           .join('');

@@ -1,5 +1,6 @@
 import type { SectionCtx } from '../types';
 import type { CompanyRisks } from '../../types';
+import { safeMonthlySavingsCzk } from '../../company-risk-premium';
 import { nextSection, fmtCzk, fmtMonthly, esc } from '../helpers';
 
 interface RiskCategory {
@@ -53,7 +54,7 @@ export function renderCompanyInsurance(ctx: SectionCtx): string {
       const limit = d?.limit;
       const cur = d?.currentPremiumMonthly;
       const prop = d?.proposedPremiumMonthly;
-      const saving = cur != null && prop != null && cur > prop ? cur - prop : null;
+      const saving = safeMonthlySavingsCzk(cur, prop);
       const limitCell =
         k === 'property' || k === 'interruption' || k === 'liability'
           ? limit != null && limit > 0

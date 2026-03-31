@@ -19,13 +19,20 @@ import {
   Trash2,
   MoreHorizontal,
   Edit3,
+  AlertCircle,
 } from "lucide-react";
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 import { deleteFinancialAnalysisPermanently, setFinancialAnalysisStatus } from "@/app/actions/financial-analyses";
 import { formatUpdated, TABS, matchesTab, isCompleted, type TabId } from "./analyses-page-utils";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 
-export default function AnalysesPageClient({ analyses }: { analyses: FinancialAnalysisListItem[] }) {
+export default function AnalysesPageClient({
+  analyses,
+  loadError = null,
+}: {
+  analyses: FinancialAnalysisListItem[];
+  loadError?: string | null;
+}) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabId>("all");
@@ -178,6 +185,16 @@ export default function AnalysesPageClient({ analyses }: { analyses: FinancialAn
           </div>
           <CreateActionButton href="/portal/analyses/financial">Nová analýza</CreateActionButton>
         </div>
+
+        {loadError ? (
+          <div
+            role="alert"
+            className="mb-6 flex gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 dark:border-rose-500/40 dark:bg-rose-950/40 dark:text-rose-100"
+          >
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
+            <p className="font-medium leading-relaxed">{loadError}</p>
+          </div>
+        ) : null}
 
         {/* Zvýrazněná CTA karta – Wizard */}
         <Link

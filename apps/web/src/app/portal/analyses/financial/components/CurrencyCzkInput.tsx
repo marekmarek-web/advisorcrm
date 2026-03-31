@@ -71,10 +71,13 @@ export function CurrencyCzkInput({
           setFocused(false);
           commit();
         }}
-        className="w-full min-h-[52px] rounded-xl border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 pr-[6.25rem] text-base font-semibold tabular-nums tracking-tight text-[color:var(--wp-text)] shadow-sm placeholder:font-normal placeholder:text-[color:var(--wp-text-tertiary)] caret-indigo-600 selection:bg-indigo-200/50 selection:text-[color:var(--wp-text)] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:caret-indigo-400 dark:selection:bg-indigo-500/30"
-        style={{ color: "var(--wp-text)" }}
+        className="relative z-10 w-full min-h-[52px] rounded-xl border-2 border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 pr-[7.25rem] text-base font-semibold tabular-nums tracking-tight text-[color:var(--wp-text)] shadow-sm placeholder:font-normal placeholder:text-[color:var(--wp-text-tertiary)] caret-indigo-600 selection:bg-indigo-200/50 selection:text-[color:var(--wp-text)] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:caret-indigo-400 dark:selection:bg-indigo-500/30"
+        style={{
+          color: "var(--wp-text)",
+          WebkitTextFillColor: "var(--wp-text)",
+        }}
       />
-      <span className="pointer-events-none absolute right-3 top-1/2 max-w-[5.5rem] -translate-y-1/2 text-right text-[11px] font-bold leading-tight text-[color:var(--wp-text-secondary)] sm:text-xs">
+      <span className="pointer-events-none absolute right-3 top-1/2 z-0 max-w-[6.25rem] -translate-y-1/2 text-right text-[11px] font-bold leading-tight text-[color:var(--wp-text-secondary)] sm:text-xs">
         {unitLabel}
       </span>
     </div>
