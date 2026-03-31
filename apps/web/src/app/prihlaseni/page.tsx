@@ -9,6 +9,9 @@
 import { Suspense } from "react";
 import { LandingLoginPage } from "../components/LandingLoginPage";
 
+/** Vždy render podle skutečného requestu (query), žádné SSG HTML bez `?native=1` pro Capacitor. */
+export const dynamic = "force-dynamic";
+
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 function LoginFallback() {
