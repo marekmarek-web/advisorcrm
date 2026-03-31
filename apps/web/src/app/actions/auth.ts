@@ -18,6 +18,7 @@ import {
 } from "db";
 import { eq, and, ne, gt, inArray, isNull } from "db";
 import { sendEmail } from "@/lib/email/send-email";
+import type { SendResult } from "@/lib/email/send-email";
 import { clientPortalInviteTemplate } from "@/lib/email/templates";
 import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
 import { getServerAppBaseUrl } from "@/lib/url/server-app-base-url";
@@ -32,6 +33,100 @@ const INVITE_EXPIRY_DAYS = 7;
 export type SendClientZoneInvitationResult =
   | { ok: true; inviteLink: string; emailSent: boolean; emailError?: string }
   | { ok: false; error: string };
+
+const CLIENT_INVITATION_AUDIT_COLUMNS = [
+  "invited_by_user_id",
+  "email_sent_at",
+  "last_email_error",
+  "revoked_at",
+] as const;
+
+function isMissingClientInvitationAuditColumnError(err: unknown): boolean {
+  const message = String((err as { message?: string } | null)?.message ?? err).toLowerCase();
+  return (
+    message.includes("client_invitations") &&
+    CLIENT_INVITATION_AUDIT_COLUMNS.some((column) => message.includes(column))
+  );
+}
+
+async function revokePendingClientInvitations(tenantId: string, contactId: string) {
+  try {
+    await db
+      .update(clientInvitations as any)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(clientInvitations.tenantId, tenantId),
+          eq(clientInvitations.contactId, contactId),
+          isNull(clientInvitations.acceptedAt),
+          isNull(clientInvitations.revokedAt),
+        ) as any,
+      );
+  } catch (err) {
+    if (!isMissingClientInvitationAuditColumnError(err)) throw err;
+    console.warn("[sendClientZoneInvitation] client_invitations audit columns missing; skipping revoke step");
+  }
+}
+
+async function insertClientInvitation(params: {
+  tenantId: string;
+  contactId: string;
+  email: string;
+  token: string;
+  expiresAt: Date;
+  invitedByUserId: string;
+}) {
+  try {
+    const [inserted] = await db
+      .insert(clientInvitations as any)
+      .values({
+        tenantId: params.tenantId,
+        contactId: params.contactId,
+        email: params.email,
+        token: params.token,
+        expiresAt: params.expiresAt,
+        invitedByUserId: params.invitedByUserId,
+      })
+      .returning({ id: clientInvitations.id } as any);
+    return inserted;
+  } catch (err) {
+    if (!isMissingClientInvitationAuditColumnError(err)) throw err;
+    console.warn("[sendClientZoneInvitation] client_invitations audit columns missing; inserting legacy row");
+    const [inserted] = await db
+      .insert(clientInvitations as any)
+      .values({
+        tenantId: params.tenantId,
+        contactId: params.contactId,
+        email: params.email,
+        token: params.token,
+        expiresAt: params.expiresAt,
+      })
+      .returning({ id: clientInvitations.id } as any);
+    return inserted;
+  }
+}
+
+async function updateClientInvitationEmailStatus(invitationId: string, sendResult: SendResult) {
+  try {
+    if (sendResult.ok) {
+      await db
+        .update(clientInvitations as any)
+        .set({ emailSentAt: new Date(), lastEmailError: null })
+        .where(eq(clientInvitations.id, invitationId) as any);
+      return;
+    }
+    await db
+      .update(clientInvitations as any)
+      .set({ lastEmailError: sendResult.error ?? "send failed" })
+      .where(eq(clientInvitations.id, invitationId) as any);
+  } catch (err) {
+    if (isMissingClientInvitationAuditColumnError(err)) {
+      console.warn("[sendClientZoneInvitation] client_invitations audit columns missing; skipping email status update");
+      return;
+    }
+    throw err;
+  }
+}
 
 /** Vytvoří pozvánku do Client Zone, odešle e-mail (Resend při RESEND_API_KEY) a vrátí odkaz. */
 export async function sendClientZoneInvitation(contactId: string): Promise<SendClientZoneInvitationResult> {
@@ -56,32 +151,19 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
     if (!contact) return { ok: false, error: "Kontakt nenalezen" };
     if (!contact.email) return { ok: false, error: "U kontaktu chybí e-mail" };
 
-    await db
-      .update(clientInvitations as any)
-      .set({ revokedAt: new Date() })
-      .where(
-        and(
-          eq(clientInvitations.tenantId, contact.tenantId),
-          eq(clientInvitations.contactId, contact.id),
-          isNull(clientInvitations.acceptedAt),
-          isNull(clientInvitations.revokedAt),
-        ) as any,
-      );
+    await revokePendingClientInvitations(contact.tenantId, contact.id);
 
     const token = crypto.randomUUID().replace(/-/g, "");
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
-    const [inserted] = await db
-      .insert(clientInvitations as any)
-      .values({
-        tenantId: contact.tenantId,
-        contactId: contact.id,
-        email: contact.email.trim(),
-        token,
-        expiresAt,
-        invitedByUserId: user.id,
-      })
-      .returning({ id: clientInvitations.id } as any);
+    const inserted = await insertClientInvitation({
+      tenantId: contact.tenantId,
+      contactId: contact.id,
+      email: contact.email.trim(),
+      token,
+      expiresAt,
+      invitedByUserId: user.id,
+    });
 
     const baseUrl = getServerAppBaseUrl();
     const inviteLink = `${baseUrl}/register?token=${token}`;
@@ -111,17 +193,7 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
 
     if (inserted?.id) {
       try {
-        if (sendResult.ok) {
-          await db
-            .update(clientInvitations as any)
-            .set({ emailSentAt: new Date(), lastEmailError: null })
-            .where(eq(clientInvitations.id, inserted.id) as any);
-        } else {
-          await db
-            .update(clientInvitations as any)
-            .set({ lastEmailError: sendResult.error ?? "send failed" })
-            .where(eq(clientInvitations.id, inserted.id) as any);
-        }
+        await updateClientInvitationEmailStatus(inserted.id, sendResult);
       } catch (dbErr) {
         console.error("[sendClientZoneInvitation] failed to update email status:", dbErr);
       }
