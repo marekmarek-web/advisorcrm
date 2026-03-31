@@ -2,28 +2,15 @@
  * Stránka přihlášení a registrace – formulář s motivy (Barevný/Tmavý).
  * Z hlavní landing stránky (/) sem vedou odkazy Přihlásit se a Založit účet.
  *
- * `nativeFromUrl` se bere ze serverového requestu, aby první HTML sedělo s hydratací
- * v Capacitoru (`?native=1`). Jinak SSG HTML bez query často vykreslí WebLoginView
- * a klient MobileLoginView → React minifikovaná chyba #418 a prázdná obrazovka.
+ * Samotný login se načítá v client wrapperu s `ssr: false`, aby v Capacitoru
+ * nedocházelo k hydrataci server HTML vs. WebView → React #418.
  */
-import { Suspense } from "react";
-import { LandingLoginPage } from "../components/LandingLoginPage";
+import { PrihlaseniLoginDynamic } from "./PrihlaseniLoginDynamic";
 
-/** Vždy render podle skutečného requestu (query), žádné SSG HTML bez `?native=1` pro Capacitor. */
+/** Vždy render podle skutečného requestu (query). */
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
-
-function LoginFallback() {
-  return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{ background: "linear-gradient(60deg, #10121f 0%, #1a1c2e 100%)", fontFamily: "var(--wp-font)" }}
-    >
-      <p className="text-white/70 text-sm">Načítám…</p>
-    </div>
-  );
-}
 
 function nativeParamIsSet(params: Record<string, string | string[] | undefined>): boolean {
   const raw = params.native;
@@ -36,9 +23,5 @@ export default async function PrihlaseniPage({ searchParams }: Props) {
   const params = await searchParams;
   const nativeFromUrl = nativeParamIsSet(params ?? {});
 
-  return (
-    <Suspense fallback={<LoginFallback />}>
-      <LandingLoginPage nativeFromUrl={nativeFromUrl} />
-    </Suspense>
-  );
+  return <PrihlaseniLoginDynamic nativeFromUrl={nativeFromUrl} />;
 }
