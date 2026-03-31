@@ -5,6 +5,9 @@
   "pnpm": {
     "overrides": {
       "drizzle-orm": "0.36.4"
+    },
+    "patchedDependencies": {
+      "@supernotes/capacitor-send-intent@7.0.0": "patches/@supernotes__capacitor-send-intent@7.0.0.patch"
     }
   },
   "scripts": {

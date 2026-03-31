@@ -121,6 +121,7 @@ Nejjednodušší je **Vercel** (Next.js, automatické deploye z GitHubu).
 ## Struktura
 
 - `apps/web` – Next.js aplikace (Aidvisora)
+- **`apps/web/ios/APP_STORE.md`** – iOS (Capacitor): App Store Connect, signing, APNs, privacy manifest, šablona review poznámek
 - `packages/db` – Drizzle schema, client, seed
 - `docs/` – PRD, ASSUMPTIONS, ROADMAP, DATA_MODEL, API, SECURITY, COMPLIANCE_CZ, UI_POLICY
 - `legal/` – DPA a DPIA šablony

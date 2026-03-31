@@ -43,8 +43,10 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -62,6 +64,8 @@
 	<string>Aidvisora potrebuje pristup ke kamere pro porizeni fotografie dokumentu.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Aidvisora potrebuje pristup k fotkam pro vyber dokumentu z galerie.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Aidvisora muze ulozit vygenerovany nebo vyfoteny dokument do knihovny fotek.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

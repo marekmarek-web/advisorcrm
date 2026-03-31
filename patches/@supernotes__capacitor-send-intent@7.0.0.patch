@@ -1,0 +1,23 @@
+diff --git a/Package.swift b/Package.swift
+index 32e266759c273c4ffe1bd328f7cc8917cc2c472a..8f3a1c2b9d0e4f5a6b7c8d9e0f1a2b3c4d5e6f7a 100644
+--- a/Package.swift
++++ b/Package.swift
+@@ -2,15 +2,15 @@
+ import PackageDescription
+ 
+ let package = Package(
+-    name: "SendIntent",
++    name: "SupernotesCapacitorSendIntent",
+     platforms: [.iOS(.v14)],
+     products: [
+         .library(
+-            name: "SendIntent",
++            name: "SupernotesCapacitorSendIntent",
+             targets: ["SendIntentPlugin"])
+     ],
+     dependencies: [
+-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "7.0.0")
++        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0")
+     ],
+     targets: [
+         .target(
