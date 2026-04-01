@@ -1,10 +1,14 @@
 ---
-description: After any git commit in this repository, push to origin immediately unless the user explicitly asked not to.
+description: Always push to origin after commits; keep the remote in sync—do not leave completed work unpushed unless the user opts out.
 alwaysApply: true
 ---
 
-# Git: commit → push
+# Git: vždy commit → push
 
-In the **Aidvisora** repo, after you create a **successful local commit**, run **`git push`** to `origin` on the current branch (or `git pull --rebase` then push if the remote moved). Do not leave commits only local unless the user said to skip pushing.
+V repu **Aidvisora** platí:
 
-The repo may use **`.githooks/post-commit`** (via `core.hooksPath`) so local `git commit` also triggers push; still push when you commit from the agent so behavior stays consistent.
+1. **Po každém úspěšném lokálním `git commit`** hned spusť **`git push`** na `origin` a aktuální větev. Pokud remote předběhl lokál, nejdřív `git pull --rebase` (nebo dohodnutý merge), pak znovu push.
+2. **Vše pushuj** v kontextu dokončené práce: neukončuj úkol tak, že zůstanou jen lokální commity, které uživatel musí pushovat sám — kromě případu, kdy uživatel výslovně řekl push přeskočit nebo pracuje offline.
+3. Commity, které agent vytvoří z Cursoru, chovej stejně jako lokální: **vždy po commitu ověřit push** (hook může push udělat sám; pokud ne, pushni ručně).
+
+Repo může používat **`.githooks/post-commit`** (`core.hooksPath`); i tak po commitu z agenta zajisti, že změny jsou na `origin`, aby se chování shodovalo.
