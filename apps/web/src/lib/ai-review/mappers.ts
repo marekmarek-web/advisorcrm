@@ -44,6 +44,13 @@ const SECTION_LABELS: Record<string, string> = {
   dates: "Datum",
   coverage: "Krytí",
   risks: "Krytá rizika",
+  clientProfile: "Klient",
+  contractCore: "Smlouva",
+  paymentsCore: "Platby",
+  insuredRisks: "Rizika a připojištění",
+  intermediary: "Zprostředkovatel",
+  investments: "Investice",
+  beneficiaries: "Oprávněné osoby",
   parties: "Smluvní strany",
   payment: "Platební údaje",
   other: "Ostatní",
@@ -58,22 +65,45 @@ const SECTION_ICONS: Record<string, string> = {
   dates: "FileText",
   coverage: "Shield",
   risks: "Shield",
+  clientProfile: "User",
+  contractCore: "FileText",
+  paymentsCore: "Building2",
+  insuredRisks: "Shield",
+  intermediary: "Building2",
+  investments: "Heart",
+  beneficiaries: "User",
   parties: "User",
   other: "Heart",
 };
 
 const FIELD_LABELS: Record<string, string> = {
   contractNumber: "Číslo smlouvy",
+  contractNumberOrProposalNumber: "Číslo smlouvy / návrhu",
+  proposalNumberOrContractNumber: "Číslo návrhu / smlouvy",
   existingPolicyNumber: "Číslo existující pojistky",
+  existingPolicyNumberOrReference: "Číslo pojistky / reference",
   businessCaseNumber: "Číslo obch. případu",
   institutionName: "Pojišťovna / instituce",
   insurer: "Pojišťovna",
   lender: "Poskytovatel úvěru",
   provider: "Poskytovatel",
   platform: "Platforma",
+  companyName: "Společnost",
+  companyNameOrProvider: "Společnost / poskytovatel",
   productName: "Produkt",
+  productType: "Typ produktu",
+  productArea: "Oblast produktu",
+  productSummary: "Shrnutí produktu",
+  serviceType: "Typ služby",
+  serviceAgreementStatus: "Stav servisní smlouvy",
+  offerType: "Typ nabídky",
+  packageName: "Balíček",
+  documentType: "Typ dokumentu",
+  documentStatus: "Stav dokumentu",
+  documentSummary: "Shrnutí dokumentu",
   fullName: "Jméno a příjmení",
   clientFullName: "Jméno klienta",
+  clientName: "Klient",
   firstName: "Jméno",
   lastName: "Příjmení",
   email: "E-mail",
@@ -84,52 +114,294 @@ const FIELD_LABELS: Record<string, string> = {
   personalId: "Rodné číslo",
   maskedPersonalId: "Rodné číslo (maskované)",
   companyId: "IČO",
+  ico: "IČO",
+  dic: "DIČ",
   address: "Adresa",
   permanentAddress: "Trvalé bydliště",
+  officeAddress: "Adresa sídla",
+  nationality: "Státní příslušnost",
+  issuingAuthority: "Vydávající úřad",
+  issuedDate: "Datum vydání",
+  expiryDate: "Platnost do",
+  documentNumber: "Číslo dokladu",
+  communicationPreferences: "Komunikační preference",
+  onlineAccessServices: "Online služby",
+  fatcaStatus: "FATCA status",
+  qualifiedInvestorDeclaration: "Prohlášení kvalifikovaného investora",
+  declarationType: "Typ prohlášení",
   startDate: "Počátek smlouvy",
   policyStartDate: "Počátek pojištění",
+  policyStartIfIllustrated: "Počátek pojištění (ilustrační)",
   policyEndDate: "Konec pojištění",
   endDate: "Konec smlouvy",
   dateSigned: "Datum podpisu",
+  signedDate: "Datum podpisu",
+  documentDate: "Datum dokumentu",
+  issueDate: "Datum vystavení",
+  analysisDate: "Datum analýzy",
+  questionnaireDate: "Datum dotazníku",
+  offerValidDate: "Platnost nabídky do",
+  statementPeriodFrom: "Období od",
+  statementPeriodTo: "Období do",
+  taxPeriodFrom: "Daňové období od",
+  taxPeriodTo: "Daňové období do",
+  period: "Období",
+  periodMonth: "Měsíc",
+  periodYear: "Rok",
+  taxOrIncomePeriod: "Daňové / příjmové období",
+  firstPaymentDate: "Datum první platby",
+  lastPaymentDate: "Datum poslední platby",
   premiumAmount: "Pojistné",
   totalMonthlyPremium: "Celkové měsíční pojistné",
+  annualPremium: "Roční pojistné",
   riskPremium: "Rizikové pojistné",
   investmentPremium: "Investiční pojistné",
   premiumFrequency: "Frekvence plateb",
   paymentFrequency: "Frekvence plateb",
+  paymentType: "Typ platby",
+  paymentPurpose: "Účel platby",
+  paymentAccounts: "Platební účty",
+  paymentAccountNumber: "Číslo účtu pro platbu",
+  bankPaymentInfo: "Platební údaje",
+  regularAmount: "Pravidelná částka",
+  oneOffAmount: "Jednorázová částka",
+  regularContribution: "Pravidelný vklad",
+  oneOffContribution: "Jednorázový vklad",
+  regularExtraContribution: "Mimořádný pravidelný vklad",
+  contributionAmount: "Výše vkladu",
+  contributionParticipant: "Příspěvek účastníka",
+  contributionEmployer: "Příspěvek zaměstnavatele",
+  stateContribution: "Státní příspěvek",
+  stateContributionEstimate: "Odhad státního příspěvku",
+  currency: "Měna",
   deathBenefit: "Pojistná částka na smrt",
+  accidentBenefit: "Plnění pro případ úrazu",
+  disabilityBenefit: "Plnění pro případ invalidity",
+  hospitalizationBenefit: "Plnění za hospitalizaci",
+  seriousIllnessBenefit: "Plnění za závažná onemocnění",
   beneficiary: "Obmyšlená osoba",
   beneficiaries: "Oprávněné osoby",
   vinkulace: "Vinkulace",
   coverages: "Sjednaná rizika",
+  selectedCoverages: "Zvolená rizika",
   riders: "Připojištění",
+  insuredRisks: "Pojištěná rizika",
+  includedRiders: "Zahrnutá připojištění",
+  changedCoverages: "Změněná rizika",
+  removedCoverages: "Zrušená rizika",
+  addedCoverages: "Přidaná rizika",
+  requestedChanges: "Požadované změny",
+  coverageLimit: "Limit pojistného plnění",
+  coverageSummary: "Přehled krytí",
+  deductible: "Spoluúčast",
+  exclusions: "Výluky",
+  insuredObject: "Předmět pojištění",
+  insuredAddress: "Adresa pojištěného objektu",
+  insuredPersons: "Pojištěné osoby",
+  insuredPersonName: "Jméno pojištěné osoby",
+  policyholder: "Pojistník",
+  participantFullName: "Účastník",
+  investorFullName: "Investor",
+  investorFullNameOrClientName: "Investor / klient",
+  employeeFullNameOrOwnerName: "Zaměstnanec / vlastník",
+  employeeName: "Jméno zaměstnance",
+  ownerName: "Vlastník",
+  ownerNameIfPresent: "Vlastník",
+  accountOwner: "Majitel účtu",
+  policyDuration: "Doba pojištění",
   investmentStrategy: "Investiční strategie",
   investmentFunds: "Fondy",
   fundAllocation: "Alokace fondů",
+  investmentAllocation: "Investiční alokace",
+  investmentScenario: "Investiční scénář",
+  investmentType: "Typ investice",
+  investmentHorizon: "Investiční horizont",
+  projectedReturn: "Odhadovaný výnos",
+  proposedFunds: "Navržené fondy",
+  fundName: "Název fondu",
+  feeProjection: "Odhad poplatků",
   feeStructure: "Poplatková struktura",
+  premiumRange: "Rozmezí pojistného",
+  feeProjectionTotal: "Celkové poplatky",
   loanAmount: "Výše úvěru",
   installmentAmount: "Výše splátky",
   interestRate: "Úroková sazba",
   rpsn: "RPSN",
   installmentCount: "Počet splátek",
+  totalPayable: "Celkem k úhradě",
+  collateral: "Zajištění",
+  accountForRepayment: "Účet pro splácení",
+  relatedBankAccount: "Navázaný účet",
   bankAccount: "Číslo účtu",
   iban: "IBAN",
   bic: "SWIFT/BIC",
   bankCode: "Kód banky",
   variableSymbol: "Variabilní symbol",
+  constantSymbol: "Konstantní symbol",
   specificSymbol: "Specifický symbol",
-  regularAmount: "Pravidelná částka",
-  oneOffAmount: "Jednorázová částka",
-  currency: "Měna",
-  firstPaymentDate: "Datum první platby",
-  paymentPurpose: "Účel platby",
-  paymentType: "Typ platby",
+  minimumInvestment: "Minimální investice",
+  separateInstructionsCZK: "Pokyny pro platbu v CZK",
+  separateInstructionsEUR: "Pokyny pro platbu v EUR",
+  separateInstructionsUSD: "Pokyny pro platbu v USD",
+  contractReference: "Reference smlouvy",
+  relatedContractNumber: "Související číslo smlouvy",
+  proposalNumber: "Číslo návrhu",
+  modelationId: "Číslo modelace",
+  modelPremium: "Modelované pojistné",
+  policyStartIfPresent: "Počátek pojištění",
+  riskProfile: "Rizikový profil",
+  riskCategory: "Riziková kategorie",
+  occupation: "Povolání",
+  sports: "Sporty / rizikové aktivity",
+  healthQuestionnairePresent: "Zdravotní dotazník přiložen",
+  medicalConsentPresent: "Souhlas se zdravotními údaji",
+  paymentProtectionProvider: "Poskytovatel pojištění schopnosti splácet",
+  monthlyInsuranceCharge: "Měsíční pojistné za pojištění schopnosti splácet",
+  insuranceStart: "Počátek pojištění",
+  insuranceEnd: "Konec pojištění",
+  claimsConditions: "Podmínky plnění",
+  surrenderValue: "Odkupná hodnota",
+  taxMode: "Daňový režim",
+  taxOptimization: "Daňová optimalizace",
+  taxBaseSignals: "Ukazatele daňového základu",
   employerName: "Zaměstnavatel",
+  employerStampPresent: "Razítko zaměstnavatele",
   employeeFullName: "Jméno zaměstnance",
   netWage: "Čistá mzda",
   grossWage: "Hrubá mzda",
+  deductions: "Srážky",
+  wageDeductionsDetail: "Detail srážek",
+  bonuses: "Bonusy",
+  holidayCompensation: "Náhrady dovolené",
+  averageNetIncomeLast3Months: "Průměrný čistý příjem za 3 měsíce",
+  averageNetIncomeLast12Months: "Průměrný čistý příjem za 12 měsíců",
+  incomeSummary: "Shrnutí příjmů",
+  incomeSource: "Zdroj příjmů",
+  netIncomeSummary: "Čistý příjem",
+  expenseSummary: "Výdaje",
+  totalIncome: "Celkové příjmy",
+  totalExpenses: "Celkové výdaje",
+  existingProducts: "Stávající produkty",
+  recommendations: "Doporučení",
+  mainBusinessActivity: "Hlavní činnost",
+  resultOfOperations: "Výsledek hospodaření",
+  paymentToAccountMasked: "Účet pro výplatu (maskovaný)",
+  openingBalance: "Počáteční zůstatek",
+  closingBalance: "Koncový zůstatek",
+  transactionsSummary: "Shrnutí transakcí",
+  recurringPayments: "Pravidelné platby",
+  detectedLoanPayments: "Rozpoznané splátky úvěrů",
+  scheduleRows: "Splátkový kalendář",
+  totalPayments: "Celkem plateb",
   advisorName: "Zprostředkovatel",
   brokerName: "Makléř",
+  intermediaryName: "Zprostředkovatel",
+  intermediaryCode: "Kód zprostředkovatele",
+  intermediaryCompany: "Společnost zprostředkovatele",
+  requestedDocuments: "Požadované dokumenty",
+  requiredDocuments: "Požadované dokumenty",
+  serviceNotes: "Servisní poznámky",
+  partnerCompany: "Partnerská společnost",
+  houseHoldMembers: "Členové domácnosti",
+  householdMembers: "Členové domácnosti",
+  coinsured: "Spolupojištěné osoby",
+  communicationChannel: "Komunikační kanál",
+  advisorFiledFlag: "Podáno poradcem",
+  signedOrunsigned: "Podepsáno",
+  loanLinkedCoverageFlag: "Napojení na úvěr",
+  primaryParties: "Hlavní strany dokumentu",
+  financialTerms: "Finanční údaje",
+};
+
+const FIELD_GROUP_MAP: Record<string, string> = {
+  fullName: "clientProfile",
+  clientFullName: "clientProfile",
+  clientName: "clientProfile",
+  firstName: "clientProfile",
+  lastName: "clientProfile",
+  birthDate: "clientProfile",
+  personalId: "clientProfile",
+  maskedPersonalId: "clientProfile",
+  address: "clientProfile",
+  permanentAddress: "clientProfile",
+  phone: "clientProfile",
+  email: "clientProfile",
+  occupation: "clientProfile",
+  sports: "clientProfile",
+  policyholder: "clientProfile",
+  participantFullName: "clientProfile",
+  investorFullName: "clientProfile",
+  employeeFullName: "clientProfile",
+  ownerName: "clientProfile",
+  contractNumber: "contractCore",
+  contractNumberOrProposalNumber: "contractCore",
+  proposalNumberOrContractNumber: "contractCore",
+  proposalNumber: "contractCore",
+  businessCaseNumber: "contractCore",
+  insurer: "contractCore",
+  provider: "contractCore",
+  lender: "contractCore",
+  institutionName: "contractCore",
+  productName: "contractCore",
+  productType: "contractCore",
+  documentStatus: "contractCore",
+  startDate: "contractCore",
+  endDate: "contractCore",
+  policyStartDate: "contractCore",
+  policyEndDate: "contractCore",
+  policyDuration: "contractCore",
+  dateSigned: "contractCore",
+  signedDate: "contractCore",
+  issueDate: "contractCore",
+  coverages: "insuredRisks",
+  selectedCoverages: "insuredRisks",
+  riders: "insuredRisks",
+  insuredRisks: "insuredRisks",
+  insuredPersons: "insuredRisks",
+  insuredObject: "insuredRisks",
+  insuredAddress: "insuredRisks",
+  coverageLimit: "insuredRisks",
+  deductible: "insuredRisks",
+  deathBenefit: "insuredRisks",
+  accidentBenefit: "insuredRisks",
+  disabilityBenefit: "insuredRisks",
+  hospitalizationBenefit: "insuredRisks",
+  seriousIllnessBenefit: "insuredRisks",
+  paymentAccountNumber: "paymentsCore",
+  paymentAccounts: "paymentsCore",
+  bankPaymentInfo: "paymentsCore",
+  bankAccount: "paymentsCore",
+  iban: "paymentsCore",
+  bankCode: "paymentsCore",
+  variableSymbol: "paymentsCore",
+  constantSymbol: "paymentsCore",
+  specificSymbol: "paymentsCore",
+  paymentFrequency: "paymentsCore",
+  paymentType: "paymentsCore",
+  paymentPurpose: "paymentsCore",
+  totalMonthlyPremium: "paymentsCore",
+  annualPremium: "paymentsCore",
+  premiumAmount: "paymentsCore",
+  riskPremium: "paymentsCore",
+  investmentPremium: "paymentsCore",
+  regularAmount: "paymentsCore",
+  oneOffAmount: "paymentsCore",
+  firstPaymentDate: "paymentsCore",
+  intermediaryName: "intermediary",
+  intermediaryCode: "intermediary",
+  intermediaryCompany: "intermediary",
+  advisorName: "intermediary",
+  brokerName: "intermediary",
+  investmentStrategy: "investments",
+  investmentFunds: "investments",
+  fundAllocation: "investments",
+  investmentAllocation: "investments",
+  investmentScenario: "investments",
+  riskProfile: "investments",
+  projectedReturn: "investments",
+  proposedFunds: "investments",
+  beneficiaries: "beneficiaries",
+  beneficiary: "beneficiaries",
 };
 
 const HIDDEN_REASON_CODES = new Set([
@@ -142,7 +414,77 @@ const HIDDEN_REASON_CODES = new Set([
 function fieldLabelForPath(field?: string): string | undefined {
   if (!field) return undefined;
   const key = field.replace(/^extractedFields\./, "").split(".").at(-1) ?? field;
-  return FIELD_LABELS[key] ?? key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+  return fieldLabelForKey(key);
+}
+
+function toCamelCase(key: string): string {
+  if (!key.includes("_") && !key.includes("-")) {
+    return key.charAt(0).toLowerCase() + key.slice(1);
+  }
+  return key
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+([a-z0-9])/g, (_, char: string) => char.toUpperCase());
+}
+
+function stripFieldConditionSuffixes(key: string): string {
+  return key
+    .replace(/_if_[a-z0-9_]+$/i, "")
+    .replace(/_or_[a-z0-9_]+$/i, "")
+    .replace(/_vs_[a-z0-9_]+$/i, "");
+}
+
+function humanizeSnakeOrCamel(key: string): string {
+  const spaced = key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim();
+  return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : key;
+}
+
+function fieldLabelForKey(rawKey: string): string {
+  const candidates = [
+    rawKey,
+    toCamelCase(rawKey),
+    stripFieldConditionSuffixes(rawKey),
+    toCamelCase(stripFieldConditionSuffixes(rawKey)),
+  ];
+  for (const candidate of candidates) {
+    if (FIELD_LABELS[candidate]) return FIELD_LABELS[candidate];
+  }
+  return humanizeSnakeOrCamel(rawKey);
+}
+
+function resolveFieldGroupId(rawKey: string): string {
+  const candidates = [
+    rawKey,
+    toCamelCase(rawKey),
+    stripFieldConditionSuffixes(rawKey),
+    toCamelCase(stripFieldConditionSuffixes(rawKey)),
+  ];
+  for (const candidate of candidates) {
+    if (FIELD_GROUP_MAP[candidate]) return FIELD_GROUP_MAP[candidate];
+  }
+  const probe = candidates.join(" ").toLowerCase();
+  if (/(name|birth|personal|email|phone|address|occupation|sport|nationality|client|policyholder|investor|participant|employee|owner)/.test(probe)) {
+    return "clientProfile";
+  }
+  if (/(intermediary|advisor|broker|partner)/.test(probe)) {
+    return "intermediary";
+  }
+  if (/(beneficiar|obmyš|coinsured|household)/.test(probe)) {
+    return "beneficiaries";
+  }
+  if (/(fund|investment|allocation|scenario|strategy|horizon|portfolio|projection|dip|dps|pp)/.test(probe)) {
+    return "investments";
+  }
+  if (/(coverage|risk|rider|insured|benefit|deductible|health|questionnaire|limit)/.test(probe)) {
+    return "insuredRisks";
+  }
+  if (/(payment|premium|amount|account|iban|bank|symbol|currency|installment|loan|interest|balance|contribution|wage|income|payable)/.test(probe)) {
+    return "paymentsCore";
+  }
+  return "contractCore";
 }
 
 function humanizeReasonForAdvisor(reason: string): string | null {
@@ -271,12 +613,18 @@ function flattenEnvelopeToGroups(
   globalConfidence01: number,
   ctx: ReadabilityCtx
 ): ExtractedGroup[] {
-  const groups: ExtractedGroup[] = [];
+  const groupedFields = new Map<string, ExtractedField[]>();
+  const pushGroupedField = (field: ExtractedField, rawKey: string) => {
+    const groupId = resolveFieldGroupId(rawKey);
+    const nextField = { ...field, groupId };
+    const bucket = groupedFields.get(groupId) ?? [];
+    bucket.push(nextField);
+    groupedFields.set(groupId, bucket);
+  };
   const ef = envelope.extractedFields as
     | Record<string, { value?: unknown; status?: string; confidence?: number }>
     | undefined;
   if (ef && typeof ef === "object") {
-    const fields: ExtractedField[] = [];
     for (const [fKey, fObj] of Object.entries(ef)) {
       if (!fObj || typeof fObj !== "object" || fKey.startsWith("_")) continue;
       const rawVal = fObj.value;
@@ -291,10 +639,10 @@ function flattenEnvelopeToGroups(
         textCoverageEstimate: ctx.textCoverageEstimate,
         preprocessStatus: ctx.preprocessStatus,
       });
-      fields.push({
+      pushGroupedField({
         id: `extractedFields.${fKey}`,
         groupId: "extractedFields",
-        label: FIELD_LABELS[fKey] ?? fKey.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim(),
+        label: fieldLabelForKey(fKey),
         value: strVal,
         confidence: confPct,
         status: pres.status,
@@ -303,22 +651,12 @@ function flattenEnvelopeToGroups(
         isConfirmed: false,
         isEdited: false,
         originalAiValue: strVal,
-      });
-    }
-    if (fields.length > 0) {
-      fields.sort((a, b) => a.label.localeCompare(b.label, "cs"));
-      groups.push({
-        id: "extractedFields",
-        name: "Extrahovaná pole",
-        iconName: "FileText",
-        fields,
-      });
+      }, fKey);
     }
   }
 
   const parties = envelope.parties as Record<string, unknown> | undefined;
   if (parties && typeof parties === "object" && Object.keys(parties).length > 0) {
-    const pFields: ExtractedField[] = [];
     for (const [pk, pv] of Object.entries(parties)) {
       if (pk.startsWith("_")) continue;
       const strVal = formatExtractedValue(pv);
@@ -328,10 +666,10 @@ function flattenEnvelopeToGroups(
         textCoverageEstimate: ctx.textCoverageEstimate,
         preprocessStatus: ctx.preprocessStatus,
       });
-      pFields.push({
+      pushGroupedField({
         id: `parties.${pk}`,
         groupId: "parties",
-        label: FIELD_LABELS[pk] ?? pk.replace(/_/g, " "),
+        label: fieldLabelForKey(pk),
         value: strVal,
         confidence: confPct,
         status: strVal === "—" ? "error" : pres.status,
@@ -340,31 +678,22 @@ function flattenEnvelopeToGroups(
         isConfirmed: false,
         isEdited: false,
         originalAiValue: strVal,
-      });
-    }
-    if (pFields.length > 0) {
-      groups.push({
-        id: "parties",
-        name: SECTION_LABELS.parties,
-        iconName: "User",
-        fields: pFields,
-      });
+      }, pk);
     }
   }
 
   const ft = envelope.financialTerms as Record<string, unknown> | undefined;
   if (ft && typeof ft === "object") {
-    const ftFields: ExtractedField[] = [];
     for (const [k, v] of Object.entries(ft)) {
       if (k.startsWith("_")) continue;
       if (v != null && typeof v === "object" && !Array.isArray(v)) continue;
       const strVal = formatExtractedValue(v);
       if (strVal === "—") continue;
       const confPct = fieldConfidence(k, fieldConfidenceMap, globalConfidence01);
-      ftFields.push({
+      pushGroupedField({
         id: `financialTerms.${k}`,
         groupId: "financialTerms",
-        label: FIELD_LABELS[k] ?? k.replace(/_/g, " "),
+        label: fieldLabelForKey(k),
         value: strVal,
         confidence: confPct,
         status: fieldStatus(confPct, v),
@@ -376,16 +705,32 @@ function flattenEnvelopeToGroups(
         isConfirmed: false,
         isEdited: false,
         originalAiValue: strVal,
-      });
+      }, k);
     }
-    if (ftFields.length > 0) {
-      groups.push({
-        id: "financialTerms",
-        name: "Finanční údaje (text)",
-        iconName: "FileText",
-        fields: ftFields,
-      });
-    }
+  }
+
+  const groups: ExtractedGroup[] = [];
+  const orderedGroups = [
+    "clientProfile",
+    "contractCore",
+    "insuredRisks",
+    "paymentsCore",
+    "intermediary",
+    "investments",
+    "beneficiaries",
+    "parties",
+    "other",
+  ];
+  for (const groupId of orderedGroups) {
+    const fields = groupedFields.get(groupId);
+    if (!fields || fields.length === 0) continue;
+    fields.sort((a, b) => a.label.localeCompare(b.label, "cs"));
+    groups.push({
+      id: groupId,
+      name: SECTION_LABELS[groupId] ?? "Další údaje",
+      iconName: SECTION_ICONS[groupId] ?? "FileText",
+      fields,
+    });
   }
 
   return groups;
@@ -396,7 +741,14 @@ function flattenPayload(
   fieldConfidenceMap: Record<string, number> | undefined,
   globalConfidence: number,
 ): ExtractedGroup[] {
-  const groups: ExtractedGroup[] = [];
+  const groupedFields = new Map<string, ExtractedField[]>();
+  const pushGroupedField = (field: ExtractedField, rawKey: string) => {
+    const groupId = resolveFieldGroupId(rawKey);
+    const nextField = { ...field, groupId };
+    const bucket = groupedFields.get(groupId) ?? [];
+    bucket.push(nextField);
+    groupedFields.set(groupId, bucket);
+  };
 
   for (const [sectionKey, sectionVal] of Object.entries(payload)) {
     if (
@@ -407,7 +759,6 @@ function flattenPayload(
     ) continue;
 
     if (typeof sectionVal === "object" && sectionVal !== null && !Array.isArray(sectionVal)) {
-      const fields: ExtractedField[] = [];
       const section = sectionVal as Record<string, unknown>;
 
       for (const [fKey, fVal] of Object.entries(section)) {
@@ -415,10 +766,10 @@ function flattenPayload(
         const strVal = fVal == null ? "—" : String(fVal);
         const conf = fieldConfidence(fKey, fieldConfidenceMap, globalConfidence);
         const status = fieldStatus(conf, fVal);
-        fields.push({
+        pushGroupedField({
           id: `${sectionKey}.${fKey}`,
           groupId: sectionKey,
-          label: FIELD_LABELS[fKey] ?? fKey,
+          label: fieldLabelForKey(fKey),
           value: strVal,
           confidence: conf,
           status,
@@ -431,25 +782,16 @@ function flattenPayload(
           isConfirmed: false,
           isEdited: false,
           originalAiValue: strVal,
-        });
-      }
-      if (fields.length > 0) {
-        groups.push({
-          id: sectionKey,
-          name: SECTION_LABELS[sectionKey] ?? sectionKey,
-          iconName: SECTION_ICONS[sectionKey] ?? "FileText",
-          fields,
-        });
+        }, fKey);
       }
     } else if (typeof sectionVal === "string" || typeof sectionVal === "number") {
-      const ungrouped = groups.find((g) => g.id === "__ungrouped");
       const strVal = String(sectionVal);
       const conf = fieldConfidence(sectionKey, fieldConfidenceMap, globalConfidence);
       const status = fieldStatus(conf, sectionVal);
-      const field: ExtractedField = {
+      pushGroupedField({
         id: `root.${sectionKey}`,
         groupId: "__ungrouped",
-        label: FIELD_LABELS[sectionKey] ?? sectionKey,
+        label: fieldLabelForKey(sectionKey),
         value: strVal,
         confidence: conf,
         status,
@@ -462,18 +804,31 @@ function flattenPayload(
         isConfirmed: false,
         isEdited: false,
         originalAiValue: strVal,
-      };
-      if (ungrouped) {
-        ungrouped.fields.push(field);
-      } else {
-        groups.push({
-          id: "__ungrouped",
-          name: "Obecné údaje",
-          iconName: "FileText",
-          fields: [field],
-        });
-      }
+      }, sectionKey);
     }
+  }
+
+  const groups: ExtractedGroup[] = [];
+  const orderedGroups = [
+    "clientProfile",
+    "contractCore",
+    "insuredRisks",
+    "paymentsCore",
+    "intermediary",
+    "investments",
+    "beneficiaries",
+    "other",
+  ];
+  for (const groupId of orderedGroups) {
+    const fields = groupedFields.get(groupId);
+    if (!fields || fields.length === 0) continue;
+    fields.sort((a, b) => a.label.localeCompare(b.label, "cs"));
+    groups.push({
+      id: groupId,
+      name: SECTION_LABELS[groupId] ?? "Další údaje",
+      iconName: SECTION_ICONS[groupId] ?? "FileText",
+      fields,
+    });
   }
 
   return groups;

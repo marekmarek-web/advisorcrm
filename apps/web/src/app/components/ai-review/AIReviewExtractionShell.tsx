@@ -6,6 +6,7 @@ import {
   FileText,
   Eye,
   AlertCircle,
+  ArrowLeft,
   UserPlus,
   Check,
   Send,
@@ -24,7 +25,6 @@ import type {
   FieldFilter,
 } from "@/lib/ai-review/types";
 import { hasMeaningfulReviewContent } from "@/lib/ai-review/mappers";
-import { AIReviewTopBar } from "./AIReviewTopBar";
 import { ExtractionLeftPanel } from "./ExtractionLeftPanel";
 
 const PDFViewerPanel = dynamic(
@@ -51,6 +51,36 @@ const initialState: ExtractionReviewState = {
   isFullscreen: false,
   showPdfOnMobile: false,
 };
+
+const APPLY_GATE_REASON_LABELS: Record<string, string> = {
+  PROPOSAL_NOT_FINAL: "Dokument působí jako návrh nebo modelace.",
+  NON_FINAL_LIFECYCLE: "Rozpoznaný životní cyklus neodpovídá finální smlouvě.",
+  LOW_CLASSIFICATION_CONFIDENCE: "Typ dokumentu není rozpoznaný dost jistě.",
+  LOW_EXTRACTION_CONFIDENCE: "Extrakce má nižší jistotu a potřebuje kontrolu.",
+  LOW_TEXT_COVERAGE: "Dokument má slabé textové pokrytí.",
+  PREPROCESS_FAILED: "Předzpracování dokumentu nebylo zcela spolehlivé.",
+  PIPELINE_FAILED_STEP: "Část pipeline během zpracování selhala.",
+  AMBIGUOUS_CLIENT_MATCH: "V CRM je více možných klientů a je potřeba vybrat správného.",
+  LLM_CLIENT_MATCH_AMBIGUOUS: "AI našla více možných klientů.",
+  UNSUPPORTED_DOCUMENT_TYPE: "Tento typ dokumentu nelze zapsat přímo do CRM.",
+  PAYMENT_MISSING_AMOUNT: "Chybí částka platby.",
+  PAYMENT_MISSING_TARGET: "Chybí účet nebo cíl platby.",
+  PAYMENT_MISSING_FREQUENCY: "Chybí frekvence platby.",
+  PAYMENT_MISSING_IDENTIFIER: "Chybí variabilní nebo konstantní symbol.",
+  PAYMENT_MISSING_INSTITUTION: "Chybí příjemce nebo produkt platby.",
+  PAYMENT_NEEDS_HUMAN_REVIEW: "Platební údaje potřebují ruční kontrolu.",
+  PAYMENT_LOW_CONFIDENCE: "Platební údaje mají nízkou jistotu.",
+};
+
+function humanizeApplyGateReason(code: string): string {
+  if (!code) return "";
+  if (APPLY_GATE_REASON_LABELS[code]) return APPLY_GATE_REASON_LABELS[code];
+  if (code.startsWith("LOW_FIELD_CONFIDENCE:")) {
+    const fieldName = code.split(":").slice(1).join(":");
+    return `Nízká jistota u pole ${fieldName}.`;
+  }
+  return code.replace(/_/g, " ").toLowerCase();
+}
 
 function reducer(
   state: ExtractionReviewState,
@@ -121,9 +151,12 @@ type Props = {
   onBack: () => void;
   onDiscard: () => void;
   onApprove: (editedFields: Record<string, string>) => void | Promise<void>;
-  onApproveAndApply?: (editedFields: Record<string, string>) => void | Promise<void>;
+  onApproveAndApply?: (
+    editedFields: Record<string, string>,
+    options?: { overrideGateReasons?: string[]; overrideReason?: string }
+  ) => void | Promise<void>;
   onReject?: (reason?: string) => void;
-  onApply?: () => void;
+  onApply?: (options?: { overrideGateReasons?: string[]; overrideReason?: string }) => void;
   onSelectClient?: (clientId: string) => void;
   onConfirmCreateNew?: () => void;
   isApproving?: boolean;
@@ -147,6 +180,7 @@ export function AIReviewExtractionShell({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
+  const [applyOverrideEnabled, setApplyOverrideEnabled] = useState(false);
   const toast = useToast();
 
   const isFailed = doc.processingStatus === "failed";
@@ -163,6 +197,17 @@ export function AIReviewExtractionShell({
   const canApply = isApproved && hasResolvedClient && !doc.isApplied;
   const canApproveAndApply =
     !!onApproveAndApply && canApproveReject && hasResolvedClient;
+  const proposalBarrierReasons = doc.applyGate?.applyBarrierReasons ?? [];
+  const hasProposalBarrier = proposalBarrierReasons.length > 0;
+  const effectiveApplyBarrierReasons = applyOverrideEnabled ? [] : proposalBarrierReasons;
+
+  const resolveApplyOverrideOptions = useCallback(() => {
+    if (!applyOverrideEnabled || proposalBarrierReasons.length === 0) return undefined;
+    return {
+      overrideGateReasons: proposalBarrierReasons,
+      overrideReason: "Poradce potvrdil dokument jako finální smlouvu.",
+    };
+  }, [applyOverrideEnabled, proposalBarrierReasons]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -173,6 +218,10 @@ export function AIReviewExtractionShell({
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [state.isFullscreen]);
+
+  useEffect(() => {
+    setApplyOverrideEnabled(false);
+  }, [doc.id]);
 
   const handleFieldClick = useCallback((fieldId: string, page?: number) => {
     dispatch({ type: "SET_ACTIVE_FIELD", fieldId, page });
@@ -230,8 +279,8 @@ export function AIReviewExtractionShell({
 
   const handleApproveAndApplyClick = useCallback(() => {
     if (!onApproveAndApply) return;
-    void Promise.resolve(onApproveAndApply(state.editedFields));
-  }, [onApproveAndApply, state.editedFields]);
+    void Promise.resolve(onApproveAndApply(state.editedFields, resolveApplyOverrideOptions()));
+  }, [onApproveAndApply, resolveApplyOverrideOptions, state.editedFields]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-[#f8fafc] font-sans text-[color:var(--wp-text)] overflow-hidden -m-4 md:-m-6">
@@ -244,22 +293,6 @@ export function AIReviewExtractionShell({
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
       `}</style>
-
-      <AIReviewTopBar
-        doc={doc}
-        onBack={onBack}
-        onDiscard={onDiscard}
-        onApprove={handleApproveClick}
-        onApproveAndApply={canApproveAndApply ? handleApproveAndApplyClick : undefined}
-        isApproving={isApproving}
-        canApproveReject={canApproveReject}
-        canApproveAndApply={canApproveAndApply}
-        canApply={canApply}
-        isApplied={doc.isApplied}
-        onReject={() => setShowRejectModal(true)}
-        onApply={() => setShowApplyConfirm(true)}
-        actionLoading={actionLoading}
-      />
 
       {isApproved && !doc.isApplied && hasResolvedClient && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-6 py-3">
@@ -373,34 +406,56 @@ export function AIReviewExtractionShell({
         const showApplyIssues =
           doc.applyGate &&
           (doc.applyGate.blockedReasons.length > 0 ||
-            (doc.applyGate.applyBarrierReasons?.length ?? 0) > 0 ||
+            effectiveApplyBarrierReasons.length > 0 ||
             doc.applyGate.warnings.length > 0);
         const showPrepFailed = doc.pipelineInsights?.preprocessStatus === "failed";
         const showLowCov =
           typeof doc.pipelineInsights?.textCoverageEstimate === "number" &&
           doc.pipelineInsights.textCoverageEstimate < 0.35;
-        const showProposal = (doc.reasonsForReview ?? []).some(
+        const showProposal = !applyOverrideEnabled && (doc.reasonsForReview ?? []).some(
           (r) =>
             r.includes("proposal_or_modelation") ||
             r.includes("proposal_not_final") ||
             r.includes("offer_not_binding")
         );
-        if (!showApplyIssues && !showPrepFailed && !showLowCov && !showProposal) return null;
+        if (!showApplyIssues && !showPrepFailed && !showLowCov && !showProposal && !applyOverrideEnabled) return null;
         return (
           <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-1.5 md:px-6">
             <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-x-3 gap-y-1">
               {doc.applyGate && doc.applyGate.blockedReasons.length > 0 ? (
                 <span className="text-[11px] text-red-800 font-semibold">
-                  Blokace: {doc.applyGate.blockedReasons.join(", ")}
+                  Blokace: {doc.applyGate.blockedReasons.map(humanizeApplyGateReason).join(" ")}
                 </span>
               ) : null}
-              {doc.applyGate && (doc.applyGate.applyBarrierReasons?.length ?? 0) > 0 ? (
-                <span className="text-[11px] text-amber-900 font-medium">
-                  Návrh/modelace — nelze automaticky aplikovat jako finální smlouvu.
+              {effectiveApplyBarrierReasons.length > 0 ? (
+                <>
+                  <span className="text-[11px] text-amber-900 font-medium">
+                    Dokument je označen jako návrh / modelace. Pokud jde ve skutečnosti o finální smlouvu,
+                    potvrďte to ručně.
+                  </span>
+                  {hasProposalBarrier ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApplyOverrideEnabled(true);
+                        toast.showToast("Dokument je ručně potvrzený jako finální smlouva.", "success");
+                      }}
+                      className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-colors hover:bg-emerald-100"
+                    >
+                      Potvrdit jako finální smlouvu
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
+              {applyOverrideEnabled ? (
+                <span className="text-[11px] font-semibold text-emerald-700">
+                  Poradce potvrdil dokument jako finální smlouvu. Zápis do CRM je povolen ručně.
                 </span>
               ) : null}
               {doc.applyGate && doc.applyGate.warnings.length > 0 ? (
-                <span className="text-[11px] text-amber-800">{doc.applyGate.warnings.join(", ")}</span>
+                <span className="text-[11px] text-amber-800">
+                  {doc.applyGate.warnings.map(humanizeApplyGateReason).join(" ")}
+                </span>
               ) : null}
               {showPrepFailed ? (
                 <span className="text-[11px] text-amber-800">
@@ -457,6 +512,91 @@ export function AIReviewExtractionShell({
             state.showPdfOnMobile ? "hidden lg:flex" : "flex"
           }`}
         >
+          <div className="shrink-0 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 md:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={onBack}
+                className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+              >
+                <ArrowLeft size={14} />
+                <span>Zpět</span>
+              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {canApproveReject ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowRejectModal(true)}
+                    disabled={!!actionLoading}
+                    className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-rose-200 px-3 text-xs font-black uppercase tracking-widest text-rose-700 transition-colors hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    <X size={14} />
+                    <span>Zamítnout</span>
+                  </button>
+                ) : null}
+                {canApproveAndApply ? (
+                  <button
+                    type="button"
+                    onClick={handleApproveAndApplyClick}
+                    disabled={!!actionLoading}
+                    className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-indigo-600 px-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {actionLoading === "approveApply" ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                    <span>Schválit + CRM</span>
+                  </button>
+                ) : null}
+                {canApproveReject ? (
+                  <button
+                    type="button"
+                    onClick={handleApproveClick}
+                    disabled={!!actionLoading}
+                    className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 text-xs font-black uppercase tracking-widest text-[color:var(--wp-text)] transition-colors hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-60"
+                  >
+                    {isApproving ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <Check size={14} />
+                    )}
+                    <span>Schválit</span>
+                  </button>
+                ) : null}
+                {canApply ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowApplyConfirm(true)}
+                    disabled={!!actionLoading}
+                    className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-indigo-600 px-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {actionLoading === "apply" ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                    <span>Zapsat do CRM</span>
+                  </button>
+                ) : null}
+                {!canApproveReject && !canApply && !doc.isApplied ? (
+                  <button
+                    type="button"
+                    onClick={onDiscard}
+                    disabled={actionLoading === "delete"}
+                    className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-50"
+                  >
+                    {actionLoading === "delete" ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                    <span>Zahodit</span>
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
           {hasData ? (
             <ExtractionLeftPanel
               doc={doc}
@@ -668,7 +808,7 @@ export function AIReviewExtractionShell({
               <button
                 type="button"
                 onClick={() => {
-                  onApply?.();
+                  onApply?.(resolveApplyOverrideOptions());
                   setShowApplyConfirm(false);
                 }}
                 disabled={actionLoading === "apply" || actionLoading === "approveApply"}

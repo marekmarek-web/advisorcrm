@@ -307,10 +307,13 @@ export default function ContractReviewDetailPage() {
     [id, toast, load]
   );
 
-  const handleApply = useCallback(async () => {
+  const handleApply = useCallback(async (options?: {
+    overrideGateReasons?: string[];
+    overrideReason?: string;
+  }) => {
     setActionLoading("apply");
     try {
-      const result = await applyContractReviewDrafts(id);
+      const result = await applyContractReviewDrafts(id, options);
       if (result.ok) {
         toast.showToast("Údaje zapsány do CRM.", "success");
         load();
@@ -323,12 +326,20 @@ export default function ContractReviewDetailPage() {
   }, [id, toast, load]);
 
   const handleApproveAndApply = useCallback(
-    async (editedFields: Record<string, string>) => {
+    async (
+      editedFields: Record<string, string>,
+      options?: {
+        overrideGateReasons?: string[];
+        overrideReason?: string;
+      }
+    ) => {
       setActionLoading("approveApply");
       try {
         const result = await approveAndApplyContractReview(id, {
           fieldEdits: editedFields,
           rawExtractedPayload: rawExtractedPayload ?? undefined,
+          overrideGateReasons: options?.overrideGateReasons,
+          overrideReason: options?.overrideReason,
         });
         if (result.ok) {
           toast.showToast("Kontrola schválena a údaje zapsány do CRM.", "success");

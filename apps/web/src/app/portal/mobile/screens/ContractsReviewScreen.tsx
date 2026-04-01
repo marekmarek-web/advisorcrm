@@ -582,20 +582,29 @@ export function ContractsReviewScreen({
     });
   }
 
-  async function handleApply() {
+  async function handleApply(options?: {
+    overrideGateReasons?: string[];
+    overrideReason?: string;
+  }) {
     if (!detail) return;
     startTransition(async () => {
-      const result = await applyContractReviewDrafts(detail.id);
+      const result = await applyContractReviewDrafts(detail.id, options);
       if (!result.ok) setError(result.error);
       await fetchList();
       await fetchDetail(detail.id);
     });
   }
 
-  async function handleApproveAndApply() {
+  async function handleApproveAndApply(
+    _editedFields?: Record<string, string>,
+    options?: {
+      overrideGateReasons?: string[];
+      overrideReason?: string;
+    }
+  ) {
     if (!detail) return;
     startTransition(async () => {
-      const result = await approveAndApplyContractReview(detail.id);
+      const result = await approveAndApplyContractReview(detail.id, options);
       if (!result.ok) setError(result.error);
       await fetchList();
       await fetchDetail(detail.id);

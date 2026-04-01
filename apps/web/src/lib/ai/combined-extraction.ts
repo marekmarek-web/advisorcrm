@@ -133,7 +133,17 @@ Z textu dokumentu proveď v jednom kroku:
 Pravidla:
 - Vycházej pouze z textu dokumentu níže.
 - Nevymýšlej hodnoty. Pokud si nejsi jistý, dej field status "missing" nebo pole vůbec neuváděj.
-- U klíčových údajů smlouvy preferuj extractedFields jako např. insurer, productName, contractNumber, policyStartDate, investmentStrategy, premiumAmount, totalMonthlyPremium, fullName, birthDate, iban, variableSymbol.
+- Extrahuj co nejvíce praktických údajů pro finančního poradce a CRM.
+- Preferované kategorie v extractedFields:
+  - Klient: fullName, birthDate, personalId, address, permanentAddress, phone, email, occupation, sports.
+  - Smlouva: contractNumber, proposalNumber, insurer, productName, productType, documentStatus, policyStartDate, policyEndDate, policyDuration, dateSigned, businessCaseNumber.
+  - Rizika a připojištění: coverages, riders, insuredRisks, insuredPersons, deathBenefit, accidentBenefit, disabilityBenefit, hospitalizationBenefit, seriousIllnessBenefit.
+  - Platby: totalMonthlyPremium, annualPremium, riskPremium, investmentPremium, paymentFrequency, paymentAccountNumber, bankAccount, iban, variableSymbol, bankCode, firstPaymentDate, paymentPurpose.
+  - Zprostředkovatel: intermediaryName, intermediaryCode, intermediaryCompany, advisorName, brokerName.
+  - Investice: investmentStrategy, investmentFunds, fundAllocation, investmentAllocation, investmentScenario.
+  - Oprávněné osoby: beneficiaries.
+- Pokud dokument obsahuje více pojištěných osob nebo více rizik, zachovej strukturu tak, aby šlo poznat ke komu a k jakému riziku údaj patří.
+- U modelací nebo návrhů stejně extrahuj maximum užitečných údajů, pokud jsou v dokumentu čitelné.
 - Vrátíš pouze JSON dle schema. Žádný markdown, žádný komentář.
 - documentClassification.reasons piš stručně česky.
 - documentMeta.scannedVsDigital nastav na "digital", pokud text působí jako strojově čitelný PDF převod.

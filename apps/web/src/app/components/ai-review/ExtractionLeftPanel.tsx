@@ -28,7 +28,6 @@ import {
   Stethoscope,
   ListChecks,
   Wrench,
-  Bug,
   ExternalLink,
 } from "lucide-react";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
@@ -199,6 +198,12 @@ function FilterBar({
 /* ─── Document Meta Header ──────────────────────────────────────── */
 
 function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
+  const providerLabel =
+    doc.extractionProvider === "adobe"
+      ? "Adobe OCR"
+      : doc.extractionProvider === "mixed"
+        ? "Kombinované"
+        : "Interní AI";
   const statusMap: Record<
     ExtractionDocument["reviewStatus"],
     { label: string; className: string }
@@ -236,7 +241,7 @@ function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
             <span className="w-1 h-1 bg-[color:var(--wp-surface-card-border)] rounded-full" />
             <span>Zdroj: {doc.uploadSource}</span>
             <span className="w-1 h-1 bg-[color:var(--wp-surface-card-border)] rounded-full" />
-            <span>Provider: {doc.extractionProvider}</span>
+            <span>Zpracování: {providerLabel}</span>
             <span className="w-1 h-1 bg-[color:var(--wp-surface-card-border)] rounded-full" />
             <span>Zpracováno: {doc.lastProcessedAt}</span>
           </div>
@@ -350,7 +355,7 @@ function WorkActionsCard({ doc }: { doc: ExtractionDocument }) {
         <Wrench size={14} className="text-indigo-500" /> Navrhované pracovní kroky
       </h3>
       <p className="text-xs text-[color:var(--wp-text-tertiary)] mb-4">
-        Kliknutím otevřete příslušnou sekci portálu. Automatické akce (smlouva, platba) se provedou při schválení v horní liště.
+        Kliknutím otevřete příslušnou sekci portálu. Automatické akce se provedou při schválení nebo při zápisu do CRM.
       </p>
       {actions.length === 0 ? (
         <p className="text-sm text-[color:var(--wp-text-secondary)]">
@@ -390,38 +395,6 @@ function WorkActionsCard({ doc }: { doc: ExtractionDocument }) {
           })}
         </ul>
       )}
-    </div>
-  );
-}
-
-function InternalDebugCard({ doc }: { doc: ExtractionDocument }) {
-  const snap = doc.advisorReview?.debugSnapshot;
-  if (!snap) return null;
-  const [open, setOpen] = useState(false);
-  let text = "";
-  try {
-    text = JSON.stringify(snap, null, 2);
-  } catch {
-    text = String(snap);
-  }
-  return (
-    <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/30 overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full px-4 py-3 flex items-center justify-between text-left"
-      >
-        <span className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] flex items-center gap-2">
-          <Bug size={14} className="text-[color:var(--wp-text-tertiary)]" />
-          Interní diagnostika (technické)
-        </span>
-        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-      </button>
-      {open ? (
-        <pre className="px-4 pb-4 text-[10px] leading-relaxed text-[color:var(--wp-text-secondary)] overflow-x-auto max-h-[min(50vh,420px)] overflow-y-auto font-mono border-t border-[color:var(--wp-surface-card-border)] pt-3">
-          {text}
-        </pre>
-      ) : null}
     </div>
   );
 }
@@ -632,9 +605,6 @@ function ExtractionDiagnosticsCard({ doc }: { doc: ExtractionDocument }) {
       </button>
       {open && (
         <div className="px-5 md:px-6 pb-5 pt-0 border-t border-[color:var(--wp-surface-card-border)]">
-          <div className="mt-3 mb-4">
-            <InternalDebugCard doc={doc} />
-          </div>
           <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
@@ -856,7 +826,7 @@ function ExtractedGroupCard({
           )}
           {errorCount > 0 && (
             <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
-              {errorCount} error
+              {errorCount} chyb
             </span>
           )}
           {isCollapsed ? (
