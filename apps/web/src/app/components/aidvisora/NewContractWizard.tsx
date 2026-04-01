@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { FileText } from "lucide-react";
-import {
-  getContractSegments,
-  createContract,
-} from "@/app/actions/contracts";
+import { getContractSegments, createContract } from "@/app/actions/contracts";
 import { updateDocument } from "@/app/actions/documents";
 import { ProductPicker } from "@/app/components/aidvisora/ProductPicker";
 import type { ProductPickerValue } from "@/app/components/aidvisora/ProductPicker";
+import { ContractParametersFields } from "@/app/components/aidvisora/ContractParametersFields";
 import { segmentLabel } from "@/app/lib/segment-labels";
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
@@ -23,11 +21,14 @@ import {
   wizardLabelClass,
   wizardInputClass,
 } from "@/app/components/wizard";
-import type { WizardReviewRow } from "@/app/components/wizard";
 import {
-  annualPremiumFromMonthlyInput,
-  annualPremiumPillLabel,
-} from "@/lib/contracts/annual-premium-from-monthly";
+  initialContractFormState,
+  resetContractFormForNewSegment,
+  buildContractReviewRows,
+  validateContractFormForSubmit,
+  normalizeContractFormForSave,
+} from "@/lib/contracts/contract-form-payload";
+import type { ContractFormState } from "@/lib/contracts/contract-form-payload";
 
 const WIZARD_STEPS = [
   { label: "Typ smlouvy" },
@@ -35,20 +36,6 @@ const WIZARD_STEPS = [
   { label: "Dokument" },
   { label: "Shrnutí" },
 ];
-
-const initialForm = {
-  segment: "ZP",
-  partnerId: "",
-  productId: "",
-  partnerName: "",
-  productName: "",
-  premiumAmount: "",
-  premiumAnnual: "",
-  contractNumber: "",
-  startDate: "",
-  anniversaryDate: "",
-  note: "",
-};
 
 export function NewContractWizard({
   open,
@@ -66,7 +53,7 @@ export function NewContractWizard({
   const [error, setError] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [segments, setSegments] = useState<string[]>([]);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState<ContractFormState>(() => initialContractFormState());
   const [pickerValue, setPickerValue] = useState<ProductPickerValue>({
     partnerId: "",
     productId: "",
@@ -84,7 +71,7 @@ export function NewContractWizard({
     setStep(0);
     setError("");
     setIsSuccess(false);
-    setForm(initialForm);
+    setForm(initialContractFormState());
     setPickerValue({ partnerId: "", productId: "" });
     setUploadedDocumentId(null);
     setUploadedDocumentName(null);
@@ -96,27 +83,15 @@ export function NewContractWizard({
   }
 
   async function handleSubmit() {
-    const segment = form.segment?.trim();
-    if (!segment || !segments.includes(segment)) {
-      setError("Vyberte segment smlouvy.");
+    const validation = validateContractFormForSubmit(form);
+    if (!validation.ok) {
+      setError(validation.message);
       return;
     }
     setSaving(true);
     setError("");
+    const payload = normalizeContractFormForSave(form);
     try {
-      const payload = {
-        segment: form.segment,
-        partnerId: form.partnerId || undefined,
-        productId: form.productId || undefined,
-        partnerName: form.partnerName || undefined,
-        productName: form.productName || undefined,
-        premiumAmount: form.premiumAmount || undefined,
-        premiumAnnual: form.premiumAnnual || undefined,
-        contractNumber: form.contractNumber || undefined,
-        startDate: form.startDate || undefined,
-        anniversaryDate: form.anniversaryDate || undefined,
-        note: form.note || undefined,
-      };
       const result = await createContract(contactId, payload);
       if (!result.ok) {
         setError(result.message);
@@ -138,40 +113,9 @@ export function NewContractWizard({
     }
   }
 
-  function setFormKey<K extends keyof typeof form>(key: K) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
-  }
-
   if (!open) return null;
 
-  const annualPremiumPill = annualPremiumPillLabel(form.premiumAmount);
-
-  const reviewRows: WizardReviewRow[] = [
-    { label: "Segment", value: segmentLabel(form.segment) },
-    {
-      label: "Partner / Produkt",
-      value: [form.partnerName, form.productName].filter(Boolean).join(" – ") || "—",
-    },
-    ...(form.premiumAmount
-      ? [{ label: "Pojistné (měs.)", value: `${form.premiumAmount} Kč` }]
-      : []),
-    ...(form.premiumAnnual
-      ? [{ label: "Pojistné (roční)", value: `${form.premiumAnnual} Kč` }]
-      : []),
-    ...(form.contractNumber
-      ? [{ label: "Číslo smlouvy", value: form.contractNumber }]
-      : []),
-    ...(form.startDate ? [{ label: "Od", value: form.startDate }] : []),
-    ...(form.anniversaryDate
-      ? [{ label: "Výročí", value: form.anniversaryDate }]
-      : []),
-    ...(form.note ? [{ label: "Poznámka", value: form.note }] : []),
-    {
-      label: "Soubor",
-      value: uploadedDocumentName || "—",
-    },
-  ];
+  const reviewRows = buildContractReviewRows(form, uploadedDocumentName);
 
   return (
     <WizardShell
@@ -203,15 +147,10 @@ export function NewContractWizard({
                   <CustomDropdown
                     value={form.segment}
                     onChange={(seg) => {
-                      setForm((f) => ({
-                        ...f,
-                        segment: seg,
-                        partnerId: "",
-                        productId: "",
-                        partnerName: "",
-                        productName: "",
-                      }));
+                      setForm((f) => resetContractFormForNewSegment(f, seg));
                       setPickerValue({ partnerId: "", productId: "" });
+                      setUploadedDocumentId(null);
+                      setUploadedDocumentName(null);
                     }}
                     options={segments.map((s) => ({ id: s, label: segmentLabel(s) }))}
                     placeholder="Segment"
@@ -261,76 +200,11 @@ export function NewContractWizard({
             )}
 
             {step === 1 && (
-              <div className="space-y-6">
-                <div>
-                  <label className={wizardLabelClass}>Pojistné (měsíční) Kč</label>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      inputMode="decimal"
-                      value={form.premiumAmount}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setForm((f) => ({
-                          ...f,
-                          premiumAmount: v,
-                          premiumAnnual: annualPremiumFromMonthlyInput(v),
-                        }));
-                      }}
-                      placeholder="Kč"
-                      className={`${wizardInputClass} sm:max-w-[200px]`}
-                    />
-                    {annualPremiumPill ? (
-                      <span
-                        className="inline-flex min-h-[44px] items-center rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800"
-                        aria-live="polite"
-                      >
-                        {annualPremiumPill}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">Roční pojistné se dopočítá automaticky (× 12).</p>
-                </div>
-                <div>
-                  <label className={wizardLabelClass}>Číslo smlouvy</label>
-                  <input
-                    value={form.contractNumber}
-                    onChange={setFormKey("contractNumber")}
-                    placeholder="např. 12345678"
-                    className={wizardInputClass}
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className={wizardLabelClass}>Od</label>
-                    <input
-                      type="date"
-                      value={form.startDate}
-                      onChange={setFormKey("startDate")}
-                      className={wizardInputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className={wizardLabelClass}>Výročí</label>
-                    <input
-                      type="date"
-                      value={form.anniversaryDate}
-                      onChange={setFormKey("anniversaryDate")}
-                      className={wizardInputClass}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={wizardLabelClass}>Poznámka</label>
-                  <input
-                    value={form.note}
-                    onChange={setFormKey("note")}
-                    className={wizardInputClass}
-                  />
-                </div>
-              </div>
+              <ContractParametersFields
+                form={form}
+                setForm={setForm}
+                classes={{ label: wizardLabelClass, input: wizardInputClass }}
+              />
             )}
 
             {step === 2 && (
@@ -338,6 +212,7 @@ export function NewContractWizard({
                 <div>
                   <label className={wizardLabelClass}>Nahrát smlouvu (PDF)</label>
                   <DocumentUploadZone
+                    key={`${contactId}-${form.segment}-upload`}
                     contactId={contactId}
                     submitButtonLabel="Nahrát dokument"
                     chooseButtonLabel="Vybrat smlouvu (PDF / foto)"
@@ -371,7 +246,21 @@ export function NewContractWizard({
         <WizardFooter
           onBack={() => setStep((s) => Math.max(0, s - 1))}
           onClose={handleClose}
-          onPrimary={step === 3 ? handleSubmit : () => setStep((s) => s + 1)}
+          onPrimary={
+            step === 3
+              ? handleSubmit
+              : () => {
+                  setError("");
+                  if (step === 0) {
+                    const v = validateContractFormForSubmit(form);
+                    if (!v.ok) {
+                      setError(v.message);
+                      return;
+                    }
+                  }
+                  setStep((s) => s + 1);
+                }
+          }
           primaryLabel={step === 3 ? "Vytvořit smlouvu" : "Další"}
           primaryLoading={saving}
           isFirstStep={step === 0}

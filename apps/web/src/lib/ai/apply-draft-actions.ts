@@ -91,6 +91,7 @@ export async function applyDraftActions(input: ApplyDraftActionsInput): Promise<
             contactId,
             advisorId: userId,
             segment,
+            type: segment,
             partnerName: (action.payload.institutionName as string)?.trim() || null,
             productName,
             contractNumber: (action.payload.contractNumber as string)?.trim() || null,

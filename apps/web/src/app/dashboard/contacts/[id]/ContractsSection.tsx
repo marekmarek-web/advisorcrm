@@ -17,11 +17,15 @@ import { ConfirmDeleteModal } from "@/app/components/ConfirmDeleteModal";
 import { NewContractWizard } from "@/app/components/aidvisora/NewContractWizard";
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { ContractParametersFields } from "@/app/components/aidvisora/ContractParametersFields";
 import { FileText } from "lucide-react";
 import {
-  annualPremiumFromMonthlyInput,
-  annualPremiumPillLabel,
-} from "@/lib/contracts/annual-premium-from-monthly";
+  initialContractFormState,
+  resetContractFormForNewSegment,
+  validateContractFormForSubmit,
+} from "@/lib/contracts/contract-form-payload";
+import type { ContractFormState } from "@/lib/contracts/contract-form-payload";
+import { getSegmentUiGroup } from "@/lib/contracts/contract-segment-wizard-config";
 
 export function ContractsSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<ContractRow[]>([]);
@@ -33,19 +37,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    segment: "ZP",
-    partnerId: "",
-    productId: "",
-    partnerName: "",
-    productName: "",
-    premiumAmount: "",
-    premiumAnnual: "",
-    contractNumber: "",
-    startDate: "",
-    anniversaryDate: "",
-    note: "",
-  });
+  const [form, setForm] = useState<ContractFormState>(() => initialContractFormState());
   const [pickerValue, setPickerValue] = useState<ProductPickerValue>({ partnerId: "", productId: "" });
 
   function load() {
@@ -88,6 +80,11 @@ export function ContractsSection({ contactId }: { contactId: string }) {
     e.preventDefault();
     if (!editingId) return;
     setSubmitError(null);
+    const validation = validateContractFormForSubmit(form);
+    if (!validation.ok) {
+      setSubmitError(validation.message);
+      return;
+    }
     const payload = {
       segment: form.segment,
       partnerId: form.partnerId || undefined,
@@ -103,19 +100,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
     };
     try {
       await updateContract(editingId, payload);
-      setForm({
-        segment: "ZP",
-        partnerId: "",
-        productId: "",
-        partnerName: "",
-        productName: "",
-        premiumAmount: "",
-        premiumAnnual: "",
-        contractNumber: "",
-        startDate: "",
-        anniversaryDate: "",
-        note: "",
-      });
+      setForm(initialContractFormState());
       setPickerValue({ partnerId: "", productId: "" });
       setEditingId(null);
       load();
@@ -165,7 +150,6 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   }
 
   if (loading) return <p className="text-[color:var(--wp-text-muted)] text-sm">Načítám smlouvy…</p>;
-  const editAnnualPill = annualPremiumPillLabel(form.premiumAmount);
 
   if (loadError) {
     return (
@@ -202,7 +186,9 @@ export function ContractsSection({ contactId }: { contactId: string }) {
                 </>
               ) : null}
               {segmentLabel(c.segment)} – {c.partnerName || c.productName || "—"}
-              {c.premiumAmount ? ` • ${Number(c.premiumAmount).toLocaleString("cs-CZ")} Kč` : ""}
+              {c.premiumAmount && getSegmentUiGroup(c.segment) !== "lending"
+                ? ` • ${Number(c.premiumAmount).toLocaleString("cs-CZ")} Kč`
+                : ""}
               {c.partnerName && <ZpRatingBadge partnerName={c.partnerName} productName={c.productName ?? undefined} segment={c.segment} />}
             </span>
             <div className="flex gap-2 shrink-0">
@@ -229,7 +215,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
             <CustomDropdown
               value={form.segment}
               onChange={(seg) => {
-                setForm((f) => ({ ...f, segment: seg, partnerId: "", productId: "", partnerName: "", productName: "" }));
+                setForm((f) => resetContractFormForNewSegment(f, seg));
                 setPickerValue({ partnerId: "", productId: "" });
               }}
               options={segments.map((s) => ({ id: s, label: segmentLabel(s) }))}
@@ -268,83 +254,24 @@ export function ContractsSection({ contactId }: { contactId: string }) {
               className="w-full rounded border border-monday-border px-2 py-1.5 text-sm mt-1"
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Pojistné (měsíční)</label>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                inputMode="decimal"
-                value={form.premiumAmount}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setForm((f) => ({
-                    ...f,
-                    premiumAmount: v,
-                    premiumAnnual: annualPremiumFromMonthlyInput(v),
-                  }));
-                }}
-                placeholder="Kč"
-                className="w-full max-w-[220px] rounded border border-monday-border px-2 py-1.5 text-sm min-h-[44px]"
-              />
-              {editAnnualPill ? (
-                <span
-                  className="inline-flex min-h-[44px] items-center rounded-full border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2 text-sm font-semibold text-[color:var(--wp-text)]"
-                  aria-live="polite"
-                >
-                  {editAnnualPill}
-                </span>
-              ) : null}
-            </div>
-            <p className="text-xs text-[color:var(--wp-text-muted)] mt-1">Roční pojistné se dopočítá automaticky (× 12).</p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Číslo smlouvy</label>
-            <input
-              value={form.contractNumber}
-              onChange={(e) => setForm((f) => ({ ...f, contractNumber: e.target.value }))}
-              placeholder="např. 12345678"
-              className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
-            />
-          </div>
+          <ContractParametersFields
+            form={form}
+            setForm={setForm}
+            classes={{
+              label: "block text-xs font-medium text-[color:var(--wp-text-muted)]",
+              input: "w-full rounded border border-monday-border px-2 py-1.5 text-sm min-h-[44px]",
+            }}
+          />
           <div>
             <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">Nahrát smlouvu (PDF)</label>
             <DocumentUploadZone
+              key={`${contactId}-${form.segment}-${editingId}`}
               contactId={contactId}
               initialContractId={editingId}
               submitButtonLabel="Nahrát smlouvu"
               chooseButtonLabel="Vybrat smlouvu (PDF / foto)"
               onUploaded={() => load()}
               className="p-0 border-0 bg-transparent"
-            />
-          </div>
-          <div className="flex gap-2">
-            <div>
-              <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Od</label>
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Výročí</label>
-              <input
-                type="date"
-                value={form.anniversaryDate}
-                onChange={(e) => setForm((f) => ({ ...f, anniversaryDate: e.target.value }))}
-                className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Poznámka</label>
-            <input
-              value={form.note}
-              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-              className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
             />
           </div>
           {submitError && <p className="text-sm text-red-600" role="alert">{submitError}</p>}

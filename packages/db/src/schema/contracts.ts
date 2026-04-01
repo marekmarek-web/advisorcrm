@@ -59,6 +59,8 @@ export const contracts = pgTable("contracts", {
   contactId: uuid("client_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
   advisorId: text("advisor_id"),
   segment: text("segment").notNull(),
+  /** Kanonický kód shodný se segmentem (legacy / reporting); vždy synchronní s `segment`. */
+  type: text("type").notNull(),
   partnerId: uuid("partner_id").references(() => partners.id, { onDelete: "set null" }),
   productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
   partnerName: text("partner_name"),

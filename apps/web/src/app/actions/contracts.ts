@@ -7,11 +7,18 @@ import { contracts, partners, products } from "db";
 import { eq, and, asc, or, isNull } from "db";
 import { contractSegments } from "db";
 import { logActivity } from "./activity";
+import {
+  normalizeContractFormForSave,
+  validateContractFormForSubmit,
+  type ContractFormState,
+} from "@/lib/contracts/contract-form-payload";
 
 export type ContractRow = {
   id: string;
   contactId: string;
   segment: string;
+  /** Kanonický kód shodný se segmentem (DB sloupec `type`). */
+  type: string;
   partnerId: string | null;
   productId: string | null;
   partnerName: string | null;
@@ -38,7 +45,10 @@ export async function getContractsByContact(contactId: string): Promise<Contract
     .from(contracts)
     .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.contactId, contactId)))
     .orderBy(asc(contracts.startDate));
-  return rows;
+  return rows.map((r) => ({
+    ...r,
+    type: r.type ?? r.segment,
+  }));
 }
 
 export async function getPartnersForTenant(): Promise<{ id: string; name: string; segment: string }[]> {
@@ -132,19 +142,33 @@ export async function createContract(
       };
     }
 
-    const segment = form.segment?.trim();
+    const validation = validateContractFormForSubmit(form as ContractFormState);
+    if (!validation.ok) {
+      return { ok: false, message: validation.message };
+    }
+
+    const normalized = normalizeContractFormForSave(form as ContractFormState);
+    const segment = normalized.segment;
     if (!segment || !contractSegments.includes(segment as (typeof contractSegments)[number])) {
       return { ok: false, message: "Neplatný segment smlouvy. Vyberte segment z nabídky." };
     }
 
-    let partnerName = form.partnerName?.trim() || null;
-    let productName = form.productName?.trim() || null;
-    if (form.partnerId && !partnerName) {
-      const [p] = await db.select({ name: partners.name }).from(partners).where(eq(partners.id, form.partnerId)).limit(1);
+    let partnerName = normalized.partnerName?.trim() || null;
+    let productName = normalized.productName?.trim() || null;
+    if (normalized.partnerId && !partnerName) {
+      const [p] = await db
+        .select({ name: partners.name })
+        .from(partners)
+        .where(eq(partners.id, normalized.partnerId))
+        .limit(1);
       if (p) partnerName = p.name;
     }
-    if (form.productId && !productName) {
-      const [pr] = await db.select({ name: products.name }).from(products).where(eq(products.id, form.productId)).limit(1);
+    if (normalized.productId && !productName) {
+      const [pr] = await db
+        .select({ name: products.name })
+        .from(products)
+        .where(eq(products.id, normalized.productId))
+        .limit(1);
       if (pr) productName = pr.name;
     }
 
@@ -162,16 +186,17 @@ export async function createContract(
         contactId,
         advisorId: auth.userId,
         segment,
-        partnerId: form.partnerId || null,
-        productId: form.productId || null,
+        type: segment,
+        partnerId: normalized.partnerId || null,
+        productId: normalized.productId || null,
         partnerName,
         productName,
-        premiumAmount: form.premiumAmount || null,
-        premiumAnnual: form.premiumAnnual || null,
-        contractNumber: form.contractNumber?.trim() || null,
-        startDate: form.startDate || null,
-        anniversaryDate: form.anniversaryDate || null,
-        note: form.note?.trim() || null,
+        premiumAmount: normalized.premiumAmount || null,
+        premiumAnnual: normalized.premiumAnnual || null,
+        contractNumber: normalized.contractNumber?.trim() || null,
+        startDate: normalized.startDate || null,
+        anniversaryDate: normalized.anniversaryDate || null,
+        note: normalized.note?.trim() || null,
       })
       .returning({ id: contracts.id });
     const newId = row?.id ?? null;
@@ -220,6 +245,13 @@ export async function createContract(
             "Sloupec advisor_id je v databázi stále povinný. Spusťte: ALTER TABLE contracts ALTER COLUMN advisor_id DROP NOT NULL;",
         };
       }
+      if (col === "type") {
+        return {
+          ok: false,
+          message:
+            "Tabulka contracts vyžaduje sloupec type. V Supabase SQL Editoru spusťte packages/db/migrations/contracts-add-type-column.sql (nebo sync supabase-schema.sql).",
+        };
+      }
       return {
         ok: false,
         message:
@@ -257,34 +289,69 @@ export async function updateContract(
   try {
     const auth = await requireAuthInAction();
     if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-    let partnerName: string | null | undefined = form.partnerName != null ? (form.partnerName?.trim() || null) : undefined;
-    let productName: string | null | undefined = form.productName != null ? (form.productName?.trim() || null) : undefined;
-    if (form.partnerId != null && (partnerName === undefined || partnerName === null || partnerName === "")) {
-      const [p] = await db.select({ name: partners.name }).from(partners).where(eq(partners.id, form.partnerId)).limit(1);
+
+    const full: ContractFormState = {
+      segment: form.segment ?? "",
+      partnerId: form.partnerId ?? "",
+      productId: form.productId ?? "",
+      partnerName: form.partnerName ?? "",
+      productName: form.productName ?? "",
+      premiumAmount: form.premiumAmount ?? "",
+      premiumAnnual: form.premiumAnnual ?? "",
+      contractNumber: form.contractNumber ?? "",
+      startDate: form.startDate ?? "",
+      anniversaryDate: form.anniversaryDate ?? "",
+      note: form.note ?? "",
+    };
+
+    const validation = validateContractFormForSubmit(full);
+    if (!validation.ok) {
+      throw new Error(validation.message);
+    }
+
+    const normalized = normalizeContractFormForSave(full);
+    const segment = normalized.segment;
+
+    let partnerName: string | null = normalized.partnerName?.trim() || null;
+    let productName: string | null = normalized.productName?.trim() || null;
+    if (normalized.partnerId && !partnerName) {
+      const [p] = await db
+        .select({ name: partners.name })
+        .from(partners)
+        .where(eq(partners.id, normalized.partnerId))
+        .limit(1);
       if (p) partnerName = p.name;
     }
-    if (form.productId != null && (productName === undefined || productName === null || productName === "")) {
-      const [pr] = await db.select({ name: products.name }).from(products).where(eq(products.id, form.productId)).limit(1);
+    if (normalized.productId && !productName) {
+      const [pr] = await db
+        .select({ name: products.name })
+        .from(products)
+        .where(eq(products.id, normalized.productId))
+        .limit(1);
       if (pr) productName = pr.name;
     }
+
     await db
       .update(contracts)
       .set({
-        ...(form.segment != null && { segment: form.segment }),
-        ...(form.partnerId != null && { partnerId: form.partnerId || null }),
-        ...(form.productId != null && { productId: form.productId || null }),
-        ...(partnerName !== undefined && { partnerName }),
-        ...(productName !== undefined && { productName }),
-        ...(form.premiumAmount != null && { premiumAmount: form.premiumAmount || null }),
-        ...(form.premiumAnnual != null && { premiumAnnual: form.premiumAnnual || null }),
-        ...(form.contractNumber != null && { contractNumber: form.contractNumber?.trim() || null }),
-        ...(form.startDate != null && { startDate: form.startDate || null }),
-        ...(form.anniversaryDate != null && { anniversaryDate: form.anniversaryDate || null }),
-        ...(form.note != null && { note: form.note?.trim() || null }),
+        segment,
+        type: segment,
+        partnerId: normalized.partnerId || null,
+        productId: normalized.productId || null,
+        partnerName,
+        productName,
+        premiumAmount: normalized.premiumAmount || null,
+        premiumAnnual: normalized.premiumAnnual || null,
+        contractNumber: normalized.contractNumber?.trim() || null,
+        startDate: normalized.startDate || null,
+        anniversaryDate: normalized.anniversaryDate || null,
+        note: normalized.note?.trim() || null,
         updatedAt: new Date(),
       })
       .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, id)));
-    try { await logActivity("contract", id, "update", { fields: Object.keys(form) }); } catch {}
+    try {
+      await logActivity("contract", id, "update", { fields: Object.keys(form) });
+    } catch {}
   } catch (e) {
     console.error("[updateContract]", e);
     throw new Error(e instanceof Error ? e.message : "Smlouvu se nepodařilo upravit.");

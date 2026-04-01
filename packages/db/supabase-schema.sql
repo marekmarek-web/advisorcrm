@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   client_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
   advisor_id text,
   segment text NOT NULL,
+  type text NOT NULL,
   partner_id uuid REFERENCES partners(id) ON DELETE SET NULL,
   product_id uuid REFERENCES products(id) ON DELETE SET NULL,
   partner_name text,
@@ -252,6 +253,9 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS premium_annual numeric(12,2);
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS advisor_id text;
 ALTER TABLE contracts ALTER COLUMN advisor_id DROP NOT NULL;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS type text;
+UPDATE contracts SET type = segment WHERE type IS NULL OR trim(type) = '';
+ALTER TABLE contracts ALTER COLUMN type SET NOT NULL;
 -- Legacy DBs: column was contact_id; Drizzle app expects client_id (see packages/db/migrations/contracts-contact-id-to-client-id.sql)
 DO $$
 BEGIN

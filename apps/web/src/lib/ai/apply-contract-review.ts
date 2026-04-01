@@ -173,6 +173,7 @@ export async function applyContractReview(
               contactId: effectiveContactId,
               advisorId: userId,
               segment,
+              type: segment,
               partnerName: institutionName,
               productName,
               contractNumber,

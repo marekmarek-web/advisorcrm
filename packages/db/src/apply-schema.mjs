@@ -59,6 +59,9 @@ BEGIN
   END IF;
 END $$;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS segment text;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS type text;
+UPDATE contracts SET type = segment WHERE type IS NULL OR trim(type) = '';
+ALTER TABLE contracts ALTER COLUMN type SET NOT NULL;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS partner_id uuid REFERENCES partners(id) ON DELETE SET NULL;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS product_id uuid REFERENCES products(id) ON DELETE SET NULL;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS partner_name text;

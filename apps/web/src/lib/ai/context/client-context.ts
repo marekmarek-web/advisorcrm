@@ -6,6 +6,7 @@ import { getContact } from "@/app/actions/contacts";
 import { getHouseholdForContact } from "@/app/actions/households";
 import { getClientFinancialSummaryForContact } from "@/app/actions/client-financial-summary";
 import { getContractsByContact, type ContractRow } from "@/app/actions/contracts";
+import { getSegmentUiGroup } from "@/lib/contracts/contract-segment-wizard-config";
 import { getClientTimeline } from "@/app/actions/timeline";
 import { getTasksByContactId, type TaskRow } from "@/app/actions/tasks";
 import { listEvents, type EventRow } from "@/app/actions/events";
@@ -591,7 +592,13 @@ function getContractMissingFields(c: ContractRow): string[] {
   if (!c.productName) missing.push("produkt");
   if (!c.contractNumber) missing.push("číslo smlouvy");
   if (!c.startDate) missing.push("datum podpisu");
-  if (!c.premiumAmount && !c.premiumAnnual) missing.push("platba");
+  if (
+    getSegmentUiGroup(c.segment) !== "lending" &&
+    !c.premiumAmount &&
+    !c.premiumAnnual
+  ) {
+    missing.push("platba");
+  }
   if (!c.anniversaryDate) missing.push("revizní datum");
   return missing;
 }

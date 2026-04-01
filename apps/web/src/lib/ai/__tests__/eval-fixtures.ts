@@ -2,6 +2,7 @@ type ContractRow = {
   id: string;
   contactId: string;
   segment: string;
+  type: string;
   partnerId: string | null;
   productId: string | null;
   partnerName: string | null;
@@ -129,6 +130,7 @@ function baseContract(overrides: Partial<ContractRow> = {}): ContractRow {
     id: "ctr-1",
     contactId: "c-1",
     segment: "HYPO",
+    type: "HYPO",
     partnerId: null,
     productId: null,
     partnerName: "Česká spořitelna",
