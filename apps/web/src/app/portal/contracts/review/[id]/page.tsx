@@ -17,6 +17,9 @@ import { AIReviewExtractionShell } from "@/app/components/ai-review/AIReviewExtr
 import { mapApiToExtractionDocument } from "@/lib/ai-review/mappers";
 import type { ExtractionDocument } from "@/lib/ai-review/types";
 
+/** Polling revize na skrytém tabu – méně zátěže než plný backoff. */
+const HIDDEN_POLL_MS = 60_000;
+
 const PROCESSING_STEPS = [
   { key: "uploaded", label: "Soubor nahrán" },
   { key: "preprocessing", label: "Předpracování dokumentu" },
@@ -101,6 +104,8 @@ export default function ContractReviewDetailPage() {
   const [linkDocBusy, setLinkDocBusy] = useState(false);
   const pollTimeoutRef = useRef<number | null>(null);
   const pollBackoffMsRef = useRef(2500);
+  /** Aktuální iterace backoff pollingu (pro visibility + hidden interval). */
+  const pollRunRef = useRef<(() => Promise<void>) | null>(null);
   const processingStartedRef = useRef(false);
 
   const loadPdf = useCallback(async () => {
@@ -142,18 +147,27 @@ export default function ContractReviewDetailPage() {
       window.clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
     }
+    pollRunRef.current = null;
   }, []);
 
-  /** Exponential backoff (2.5s → ~12s cap) snižuje počet requestů při dlouhém běhu AI. */
+  /** Exponential backoff (2.5s → ~12s cap) snižuje počet requestů při dlouhém běhu AI. Na skrytém tabu se interval prodlouží. */
   const startPolling = useCallback(() => {
     stopPolling();
     pollBackoffMsRef.current = 2500;
     const run = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        pollTimeoutRef.current = window.setTimeout(() => {
+          void pollRunRef.current?.();
+        }, HIDDEN_POLL_MS);
+        return;
+      }
       try {
         const res = await fetch(`/api/contracts/review/${id}`);
         if (!res.ok) {
           pollBackoffMsRef.current = Math.min(Math.round(pollBackoffMsRef.current * 1.35), 12000);
-          pollTimeoutRef.current = window.setTimeout(run, pollBackoffMsRef.current);
+          pollTimeoutRef.current = window.setTimeout(() => {
+            void pollRunRef.current?.();
+          }, pollBackoffMsRef.current);
           return;
         }
         const data = await res.json();
@@ -177,9 +191,14 @@ export default function ContractReviewDetailPage() {
         /* keep retrying */
       }
       pollBackoffMsRef.current = Math.min(Math.round(pollBackoffMsRef.current * 1.35), 12000);
-      pollTimeoutRef.current = window.setTimeout(run, pollBackoffMsRef.current);
+      pollTimeoutRef.current = window.setTimeout(() => {
+        void pollRunRef.current?.();
+      }, pollBackoffMsRef.current);
     };
-    pollTimeoutRef.current = window.setTimeout(run, pollBackoffMsRef.current);
+    pollRunRef.current = run;
+    pollTimeoutRef.current = window.setTimeout(() => {
+      void run();
+    }, pollBackoffMsRef.current);
   }, [id, pdfUrl, stopPolling]);
 
   const triggerProcessing = useCallback(async () => {
@@ -238,6 +257,18 @@ export default function ContractReviewDetailPage() {
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      if (pollTimeoutRef.current == null) return;
+      window.clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+      void pollRunRef.current?.();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   const handleBack = useCallback(() => {
     router.push("/portal/contracts/review");

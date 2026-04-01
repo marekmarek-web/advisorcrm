@@ -921,7 +921,6 @@ export function PortalCalendarView() {
   }, []);
   const [mode, setMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [modal, setModal] = useState<(EventFormData & { id?: string }) | null>(null);
   const [detailEvent, setDetailEvent] = useState<EventRow | null>(null);
   const [detailAnchor, setDetailAnchor] = useState<EventDetailAnchorRect | null>(null);
@@ -1004,7 +1003,12 @@ export function PortalCalendarView() {
 
   const [calendarSyncLoading, setCalendarSyncLoading] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
-  useEffect(() => { getContactsList().then(setContacts).catch(() => setContacts([])); }, []);
+  const { data: contacts = [] } = useQuery({
+    queryKey: queryKeys.calendar.contactsPick(),
+    queryFn: getContactsList,
+    staleTime: 120_000,
+  });
+
   useEffect(() => {
     fetch("/api/calendar/status")
       .then(async (res) => {
@@ -1061,8 +1065,11 @@ export function PortalCalendarView() {
       setCalendarSyncLoading(false);
     }
   }, [rangeStartIso, rangeEndIso, invalidateCalendarEvents, toast]);
-  const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
-  useEffect(() => { getOpenOpportunitiesList().then(setOpportunities).catch(() => setOpportunities([])); }, []);
+  const { data: opportunities = [] } = useQuery({
+    queryKey: queryKeys.calendar.openOpportunities(),
+    queryFn: getOpenOpportunitiesList,
+    staleTime: 120_000,
+  });
 
   const handleSave = useCallback(async (form: EventFormData, id?: string) => {
     const startIso = localDateTimeInputToUtcIso(form.startAt);

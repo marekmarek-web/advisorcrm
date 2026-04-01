@@ -4,22 +4,15 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import {
-  getDocumentsForContact,
   updateDocumentVisibleToClient,
   deleteDocument,
 } from "@/app/actions/documents";
-import { getContractsByContact } from "@/app/actions/contracts";
 import type { DocumentRow } from "@/app/actions/documents";
-import type { ContractRow } from "@/app/actions/contracts";
+import { fetchContactDocumentsBundle } from "@/app/dashboard/contacts/contact-documents-bundle";
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 import { DocumentPdfPreviewDialog } from "../../../components/documents/DocumentPdfPreviewDialog";
 import { ProcessingStatusBadge } from "../../../components/documents/ProcessingStatusBadge";
 import { useConfirm } from "@/app/components/ConfirmDialog";
-
-async function fetchDocumentsBundle(contactId: string): Promise<{ docs: DocumentRow[]; contracts: ContractRow[] }> {
-  const [docs, contracts] = await Promise.all([getDocumentsForContact(contactId), getContractsByContact(contactId)]);
-  return { docs, contracts };
-}
 
 export function DocumentsSection({ contactId }: { contactId: string }) {
   const askConfirm = useConfirm();
@@ -35,7 +28,7 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
     isFetching,
   } = useQuery({
     queryKey: qk,
-    queryFn: () => fetchDocumentsBundle(contactId),
+    queryFn: () => fetchContactDocumentsBundle(contactId),
     staleTime: 45_000,
   });
 

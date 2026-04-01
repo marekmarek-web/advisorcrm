@@ -9,6 +9,35 @@ export const dynamic = "force-dynamic";
 
 const USER_ID_HEADER = "x-user-id";
 
+const SSE_CHUNK = 48;
+
+function assistantResponseToSseStream(response: AssistantResponse): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const text = response.message ?? "";
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        for (let i = 0; i < text.length; i += SSE_CHUNK) {
+          const slice = text.slice(i, i + SSE_CHUNK);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "text", text: slice })}\n\n`),
+          );
+          await new Promise((r) => setTimeout(r, 0));
+        }
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "complete" as const, ...response })}\n\n`,
+          ),
+        );
+        controller.close();
+      } catch (e) {
+        controller.error(e);
+      }
+    },
+  });
+}
+
 export async function POST(request: Request) {
   try {
     let userId: string | null = request.headers.get(USER_ID_HEADER);
@@ -43,6 +72,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Chybí zpráva." }, { status: 400 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const useStream = searchParams.get("stream") === "1";
+
     const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined;
     const activeContext = body.activeContext ?? {};
 
@@ -54,6 +86,17 @@ export async function POST(request: Request) {
       session,
       activeContext,
     );
+
+    if (useStream) {
+      return new Response(assistantResponseToSseStream(response), {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     return NextResponse.json(response);
   } catch (err) {
