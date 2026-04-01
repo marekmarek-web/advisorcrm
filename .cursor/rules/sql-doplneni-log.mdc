@@ -1,0 +1,15 @@
+---
+description: Při změnách SQL aktualizovat docs/SQL-DOPOJENI.md
+globs: packages/db/migrations/**/*.sql, docs/**/*.sql, packages/db/supabase-schema.sql
+alwaysApply: false
+---
+
+# Log SQL doplnění
+
+Když přidáte nebo podstatně změníte **migraci** (`packages/db/migrations/*.sql`), **patch v docs** (`docs/*.sql`) nebo **hlavní schéma** (`packages/db/supabase-schema.sql`):
+
+1. Otevřete [`docs/SQL-DOPOJENI.md`](../../docs/SQL-DOPOJENI.md).
+2. Do tabulky **Log** přidejte **nový řádek na konec** (nejnovější vždy dole): datum (ISO), jednovětý popis, markdown odkaz na konkrétní `.sql` soubor (`../packages/db/migrations/…` nebo `…` relativně z `docs/`).
+3. U „základních“ souborů v tabulce Základ upravte jen popis, pokud se změnil účel souboru.
+
+Cíl: jedno místo s rozkliknutelnými odkazy na `.sql`, bez hledání v chat historii.
