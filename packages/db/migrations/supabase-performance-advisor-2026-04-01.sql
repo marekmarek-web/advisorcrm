@@ -3,7 +3,9 @@
 -- - mindmap_maps: remove duplicate unique index on (tenant_id, entity_type, entity_id).
 -- - Fewer permissive policies per table/action (merge OR conditions) for clients, contracts, client_requests.
 --
--- Idempotent where possible. Apply via Supabase SQL Editor or: psql "$DATABASE_URL" -f this file.
+-- Idempotent: DROP POLICY IF EXISTS před novými názvy (clients_*, contracts_*, client_requests_*),
+-- aby šlo skript spustit znovu po částečném běhu (ERROR 42710 already exists).
+-- Apply via Supabase SQL Editor or: psql "$DATABASE_URL" -f this file.
 
 -- ---------------------------------------------------------------------------
 -- 1) Duplicate unique index on mindmap_maps (Drizzle name vs constraint index)
@@ -36,6 +38,11 @@ CREATE POLICY advisors_own_all ON public.advisors
 DROP POLICY IF EXISTS clients_advisor_all ON public.clients;
 DROP POLICY IF EXISTS clients_client_self ON public.clients;
 DROP POLICY IF EXISTS clients_client_link ON public.clients;
+-- Re-run safe: drop policies introduced by this migration (42710 if missing)
+DROP POLICY IF EXISTS clients_select ON public.clients;
+DROP POLICY IF EXISTS clients_insert ON public.clients;
+DROP POLICY IF EXISTS clients_update ON public.clients;
+DROP POLICY IF EXISTS clients_delete ON public.clients;
 
 CREATE POLICY clients_select ON public.clients
   FOR SELECT TO authenticated
@@ -71,6 +78,10 @@ CREATE POLICY clients_delete ON public.clients
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS contracts_advisor_all ON public.contracts;
 DROP POLICY IF EXISTS contracts_client_select ON public.contracts;
+DROP POLICY IF EXISTS contracts_select ON public.contracts;
+DROP POLICY IF EXISTS contracts_insert ON public.contracts;
+DROP POLICY IF EXISTS contracts_update ON public.contracts;
+DROP POLICY IF EXISTS contracts_delete ON public.contracts;
 
 CREATE POLICY contracts_select ON public.contracts
   FOR SELECT TO authenticated
@@ -107,6 +118,10 @@ CREATE POLICY contracts_delete ON public.contracts
 DROP POLICY IF EXISTS client_requests_advisor ON public.client_requests;
 DROP POLICY IF EXISTS client_requests_client ON public.client_requests;
 DROP POLICY IF EXISTS client_requests_client_insert ON public.client_requests;
+DROP POLICY IF EXISTS client_requests_select ON public.client_requests;
+DROP POLICY IF EXISTS client_requests_insert ON public.client_requests;
+DROP POLICY IF EXISTS client_requests_update ON public.client_requests;
+DROP POLICY IF EXISTS client_requests_delete ON public.client_requests;
 
 CREATE POLICY client_requests_select ON public.client_requests
   FOR SELECT TO authenticated
