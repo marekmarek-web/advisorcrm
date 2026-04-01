@@ -14,24 +14,7 @@ import {
 } from "@/app/lib/client-portal/request-status";
 import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import { logActivity } from "./activity";
-
-const CASE_TYPE_LABELS: Record<string, string> = {
-  hypotéka: "Hypotéka",
-  hypo: "Hypotéka",
-  investice: "Investice",
-  invest: "Investice",
-  pojištění: "Pojištění",
-  pojist: "Pojištění",
-  úvěr: "Úvěr",
-  "změna situace": "Změna životní situace",
-  "servis smlouvy": "Servis smlouvy",
-  jiné: "Jiné",
-};
-
-function caseTypeToLabel(caseType: string): string {
-  const n = caseType?.toLowerCase().trim() ?? "";
-  return (CASE_TYPE_LABELS[n] ?? caseType) || "Jiné";
-}
+import { caseTypeToLabel } from "@/lib/client-portal/case-type-labels";
 
 async function notifyAdvisorNewPortalRequest(params: {
   tenantId: string;

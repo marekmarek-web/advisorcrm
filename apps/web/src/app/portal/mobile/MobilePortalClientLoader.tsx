@@ -33,11 +33,13 @@ export async function MobilePortalClientLoader({
   showTeamOverview,
   canWriteCalendar,
   roleName,
+  tenantId,
 }: {
   advisorName: string;
   showTeamOverview: boolean;
   canWriteCalendar: boolean;
   roleName: RoleName;
+  tenantId: string;
 }) {
   let dashboardKpis: DashboardKpis = EMPTY_KPIS;
   let taskCounts: TaskCounts = EMPTY_COUNTS;
@@ -63,6 +65,7 @@ export async function MobilePortalClientLoader({
   return (
     <MobilePortalClient
       advisorName={advisorName}
+      tenantId={tenantId}
       initialKpis={dashboardKpis}
       initialTasks={[]}
       initialTaskCounts={taskCounts}
