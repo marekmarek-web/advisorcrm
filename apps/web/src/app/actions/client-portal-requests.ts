@@ -2,8 +2,10 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
+import { sendEmail, logNotification } from "@/lib/email/send-email";
+import { newPortalRequestAdvisorTemplate } from "@/lib/email/templates";
 import { db } from "db";
-import { opportunities, opportunityStages, auditLog } from "db";
+import { opportunities, opportunityStages, auditLog, contacts, tenants } from "db";
 import { eq, and, asc } from "db";
 import {
   stageToClientStatus,
@@ -29,6 +31,61 @@ const CASE_TYPE_LABELS: Record<string, string> = {
 function caseTypeToLabel(caseType: string): string {
   const n = caseType?.toLowerCase().trim() ?? "";
   return (CASE_TYPE_LABELS[n] ?? caseType) || "Jiné";
+}
+
+async function notifyAdvisorNewPortalRequest(params: {
+  tenantId: string;
+  contactId: string;
+  opportunityId: string;
+  caseTypeLabel: string;
+  descriptionPreview: string;
+}): Promise<void> {
+  const [c] = await db
+    .select({ firstName: contacts.firstName, lastName: contacts.lastName })
+    .from(contacts)
+    .where(and(eq(contacts.tenantId, params.tenantId), eq(contacts.id, params.contactId)))
+    .limit(1);
+  const displayName = c
+    ? [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || "Klient"
+    : "Klient";
+
+  const [tenant] = await db
+    .select({ notificationEmail: tenants.notificationEmail })
+    .from(tenants)
+    .where(eq(tenants.id, params.tenantId))
+    .limit(1);
+  const email = tenant?.notificationEmail?.trim();
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.aidvisora.cz");
+  const pipelineUrl = `${baseUrl}/portal/pipeline/${params.opportunityId}`;
+  const { subject, html } = newPortalRequestAdvisorTemplate({
+    contactName: displayName,
+    caseTypeLabel: params.caseTypeLabel,
+    descriptionPreview: params.descriptionPreview || "(bez popisu)",
+    pipelineUrl,
+  });
+
+  if (email) {
+    const result = await sendEmail({ to: email, subject, html });
+    await logNotification({
+      tenantId: params.tenantId,
+      contactId: params.contactId,
+      template: "new_portal_request_advisor",
+      subject,
+      recipient: email,
+      status: result.ok ? "sent" : (result.error ?? "failed"),
+    });
+  } else {
+    await logNotification({
+      tenantId: params.tenantId,
+      contactId: params.contactId,
+      template: "new_portal_request_advisor",
+      subject,
+      recipient: "",
+      status: "skipped_no_email",
+    });
+  }
 }
 
 /**
@@ -93,6 +150,8 @@ export async function createClientPortalRequest(params: {
     (hasPermission(auth.roleName, "client_zone:request_create") ||
       hasPermission(auth.roleName, "client_zone:*"));
   if (!canCreate) return { success: false, error: "Forbidden" };
+  const contactId = auth.contactId;
+  if (!contactId) return { success: false, error: "Forbidden" };
 
   const [firstStage] = await db
     .select({ id: opportunityStages.id })
@@ -110,7 +169,7 @@ export async function createClientPortalRequest(params: {
     .insert(opportunities)
     .values({
       tenantId: auth.tenantId,
-      contactId: auth.contactId,
+      contactId,
       title: title.trim(),
       caseType: params.caseType.trim() || "jiné",
       stageId: firstStage.id,
@@ -127,7 +186,7 @@ export async function createClientPortalRequest(params: {
   try {
     await logActivity("opportunity", newId, "create", {
       title,
-      contactId: auth.contactId,
+      contactId,
       source: "client_portal",
     });
   } catch {
@@ -141,11 +200,19 @@ export async function createClientPortalRequest(params: {
       action: "portal_request_create",
       entityType: "opportunity",
       entityId: newId,
-      meta: { contactId: auth.contactId, caseType: params.caseType },
+      meta: { contactId, caseType: params.caseType },
     });
   } catch {
     // non-fatal
   }
+
+  notifyAdvisorNewPortalRequest({
+    tenantId: auth.tenantId,
+    contactId,
+    opportunityId: newId,
+    caseTypeLabel,
+    descriptionPreview: params.description?.trim() ?? "",
+  }).catch(() => {});
 
   return { success: true, id: newId };
 }

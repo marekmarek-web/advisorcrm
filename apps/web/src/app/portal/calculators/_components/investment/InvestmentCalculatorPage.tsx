@@ -26,7 +26,13 @@ import { formatCurrency } from "@/lib/calculators/investment/formatters";
 import { buildInvestmentPdfSections } from "@/lib/calculators/pdf";
 import { CalculatorPdfExportButton } from "@/components/calculators/CalculatorPdfExportButton";
 
-export function InvestmentCalculatorPage() {
+export type InvestmentCalculatorAudience = "advisor" | "client";
+
+export function InvestmentCalculatorPage({
+  audience = "advisor",
+}: {
+  audience?: InvestmentCalculatorAudience;
+}) {
   const [initial, setInitial] = useState<number>(INVESTMENT_DEFAULTS.initialDefault);
   const [monthly, setMonthly] = useState<number>(INVESTMENT_DEFAULTS.monthlyDefault);
   const [years, setYears] = useState<number>(INVESTMENT_DEFAULTS.yearsDefault);
@@ -65,7 +71,11 @@ export function InvestmentCalculatorPage() {
           <CalculatorPageHeader
             eyebrow="Kalkulačka investic · 2026"
             title="Investiční kalkulačka"
-            subtitle="Projekce hodnoty investice v čase při pravidelném investování a zvolené strategii."
+            subtitle={
+              audience === "client"
+                ? "Orientační projekce v čase — ilustrativní výpočet. Individuální posouzení řeší váš poradce."
+                : "Projekce hodnoty investice v čase při pravidelném investování a zvolené strategii."
+            }
             actions={
               <CalculatorPdfExportButton
                 documentTitle="Investiční kalkulačka – přehled výpočtu"

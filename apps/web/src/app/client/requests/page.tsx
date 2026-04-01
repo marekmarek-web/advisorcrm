@@ -25,7 +25,8 @@ export default async function ClientRequestsPage() {
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center">
           <p className="text-slate-500 font-medium mb-2">Zatím nemáte žádné požadavky.</p>
           <p className="text-slate-500 text-sm mb-4">
-            Vytvořte nový požadavek a poradce jej ihned uvidí v poradenském portálu.
+            Vytvořte nový požadavek — uloží se do poradenského portálu (pipeline). Při nastaveném e-mailu pro
+            oznámení dostane tým i upozornění e-mailem.
           </p>
         </div>
       ) : (

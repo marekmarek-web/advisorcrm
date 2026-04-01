@@ -2,8 +2,8 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { db } from "db";
-import { contracts, memberships, roles, userProfiles } from "db";
-import { and, desc, eq } from "db";
+import { clientInvitations, contracts, memberships, roles, userProfiles } from "db";
+import { and, desc, eq, isNotNull } from "db";
 import { getClientFinancialSummaryForContact } from "./client-financial-summary";
 
 type DashboardMetricSummary = {
@@ -82,6 +82,41 @@ export async function getAssignedAdvisorForClient(
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || auth.contactId !== contactId) {
     throw new Error("Forbidden");
+  }
+
+  const [latestAcceptedInvite] = await db
+    .select({ invitedByUserId: clientInvitations.invitedByUserId })
+    .from(clientInvitations)
+    .where(
+      and(
+        eq(clientInvitations.tenantId, auth.tenantId),
+        eq(clientInvitations.contactId, contactId),
+        isNotNull(clientInvitations.acceptedAt),
+        isNotNull(clientInvitations.invitedByUserId)
+      )
+    )
+    .orderBy(desc(clientInvitations.acceptedAt))
+    .limit(1);
+
+  if (latestAcceptedInvite?.invitedByUserId) {
+    const [inviterProfile] = await db
+      .select({
+        userId: userProfiles.userId,
+        fullName: userProfiles.fullName,
+        email: userProfiles.email,
+      })
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, latestAcceptedInvite.invitedByUserId))
+      .limit(1);
+    const inviterName = inviterProfile?.fullName?.trim();
+    if (inviterName) {
+      return {
+        userId: inviterProfile.userId,
+        fullName: inviterName,
+        email: inviterProfile.email,
+        initials: toInitials(inviterName),
+      };
+    }
   }
 
   const [latestContractAdvisor] = await db

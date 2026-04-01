@@ -31,7 +31,13 @@ import {
 import { buildMortgagePdfSections } from "@/lib/calculators/pdf";
 import { CalculatorPdfExportButton } from "@/components/calculators/CalculatorPdfExportButton";
 
-export function MortgageCalculatorPage() {
+export type MortgageCalculatorAudience = "advisor" | "client";
+
+export function MortgageCalculatorPage({
+  audience = "advisor",
+}: {
+  audience?: MortgageCalculatorAudience;
+}) {
   const [state, setState] = useState<MortgageState>(defaultMortgageFormState);
   const productDraftsRef = useRef<Partial<Record<"mortgage" | "loan", MortgageState>>>({});
   const skipPersistOnceRef = useRef(true);
@@ -80,6 +86,10 @@ export function MortgageCalculatorPage() {
   }, [state]);
 
   useEffect(() => {
+    if (audience === "client") {
+      setLiveRates(null);
+      return;
+    }
     const ctrl = new AbortController();
     (async () => {
       try {
@@ -100,7 +110,7 @@ export function MortgageCalculatorPage() {
       }
     })();
     return () => ctrl.abort();
-  }, [state.product]);
+  }, [state.product, audience]);
 
   const rankedBanks = useMemo<BankEntry[] | undefined>(() => {
     if (!liveRates || liveRates.length === 0) return defaultAllowedBanks;
@@ -134,7 +144,11 @@ export function MortgageCalculatorPage() {
           <CalculatorPageHeader
             eyebrow="Kalkulačka hypoték a úvěrů · 2026"
             title="Spočítejte si splátku"
-            subtitle="Zjistěte přesnou měsíční splátku a srovnejte aktuální nabídky bank."
+            subtitle={
+              audience === "client"
+                ? "Orientační měsíční splátka — bez srovnání nabídek bank. Ilustrativní výpočet, ne závazná nabídka."
+                : "Zjistěte přesnou měsíční splátku a srovnejte aktuální nabídky bank."
+            }
             actions={
               <CalculatorPdfExportButton
                 documentTitle="Hypotéka a úvěr – přehled výpočtu"
@@ -185,14 +199,16 @@ export function MortgageCalculatorPage() {
           />
         )}
 
-        <div className="mt-4 rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
-          <MortgageBankOffers
-            offers={offers}
-            fetchedAt={ratesMeta?.fetchedAt}
-            source={ratesMeta?.source}
-            sourceUrl={ratesMeta?.sourceUrl}
-          />
-        </div>
+        {audience === "advisor" && (
+          <div className="mt-4 rounded-[20px] border-[1.5px] border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm sm:p-6 md:p-7">
+            <MortgageBankOffers
+              offers={offers}
+              fetchedAt={ratesMeta?.fetchedAt}
+              source={ratesMeta?.source}
+              sourceUrl={ratesMeta?.sourceUrl}
+            />
+          </div>
+        )}
       </CalculatorPageShell>
 
       <CalculatorMobileResultDock>

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Bell,
   Briefcase,
+  Calculator,
   FileText,
   LayoutDashboard,
   ListTodo,
@@ -646,6 +647,13 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                 </button>
                 <button type="button" onClick={() => router.push("/client/notifications")} className="min-h-[48px] rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center justify-center gap-2">
                   <Settings size={16} /> Oznámení
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/client/calculators")}
+                  className="min-h-[48px] col-span-2 rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center justify-center gap-2"
+                >
+                  <Calculator size={16} /> Kalkulačky
                 </button>
               </div>
             </MobileSection>

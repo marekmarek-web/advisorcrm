@@ -235,7 +235,8 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
               </div>
               <h3 className="text-2xl font-black text-slate-900 mb-2">Požadavek odeslán</h3>
               <p className="text-slate-500 font-medium mb-8 max-w-sm">
-                Váš poradce byl notifikován a uvidí požadavek v poradenském portálu.
+                Požadavek je v poradenském portálu v pipeline. Pokud má váš tým v Aidvisoře nastavený e-mail pro
+                oznámení, odešle se také upozornění na schránku pro tým.
               </p>
               <button
                 onClick={resetAndClose}

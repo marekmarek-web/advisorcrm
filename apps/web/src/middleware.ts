@@ -124,7 +124,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/client")) {
       requestHeaders.set("x-demo-client-zone", "1");
     }
-    if (pathname.startsWith("/portal")) {
+    if (pathname.startsWith("/portal") || pathname.startsWith("/client")) {
       requestHeaders.set("x-pathname", pathname);
     }
     return NextResponse.next({ request: { headers: requestHeaders } });
@@ -135,7 +135,7 @@ export async function middleware(request: NextRequest) {
 
   const forwardHeaders = new Headers(request.headers);
   forwardHeaders.delete(AIDV_PROXY_AUTH_USER_HEADER);
-  if (pathname.startsWith("/portal")) {
+  if (pathname.startsWith("/portal") || pathname.startsWith("/client")) {
     forwardHeaders.set("x-pathname", pathname);
   }
   let response = NextResponse.next({ request: { headers: forwardHeaders } });

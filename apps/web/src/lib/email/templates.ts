@@ -65,6 +65,32 @@ export function newDocumentTemplate(params: {
   };
 }
 
+export function newPortalRequestAdvisorTemplate(params: {
+  contactName: string;
+  caseTypeLabel: string;
+  descriptionPreview: string;
+  pipelineUrl: string;
+}) {
+  const html = layout(`
+    <h2 style="font-size: 16px; margin: 0 0 12px;">Nový požadavek z klientské zóny</h2>
+    <p style="font-size: 14px; line-height: 1.5;">
+      Klient <strong>${params.contactName}</strong> odeslal nový požadavek
+      (<strong>${params.caseTypeLabel}</strong>).
+    </p>
+    <p style="font-size: 14px; line-height: 1.5; color: #676879; margin: 12px 0;">
+      ${params.descriptionPreview}
+    </p>
+    <p style="font-size: 14px;">
+      <a href="${params.pipelineUrl}" style="color: #0073ea;">Otevřít příležitost v pipeline</a>
+    </p>
+  `);
+
+  return {
+    subject: `Nový požadavek z klientské zóny: ${params.contactName}`,
+    html,
+  };
+}
+
 export function newMessageAdvisorTemplate(params: {
   contactName: string;
   bodyPreview: string;

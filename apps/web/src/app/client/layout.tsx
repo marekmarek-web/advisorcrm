@@ -61,8 +61,11 @@ export default async function ClientZoneLayout({
     userAgent: headerList.get("user-agent"),
     cookieStore,
   });
+  const pathname = headerList.get("x-pathname") ?? "";
+  const useFullClientShellOnMobile =
+    pathname.startsWith("/client/calculators") || pathname.startsWith("/client/calculators/");
 
-  if (mobileUiEnabled && auth.contactId) {
+  if (mobileUiEnabled && auth.contactId && !useFullClientShellOnMobile) {
     return (
       <ClientMobileApp
         contactId={auth.contactId}
