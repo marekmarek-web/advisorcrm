@@ -208,7 +208,8 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS contracts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
-  contact_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  client_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  advisor_id text,
   segment text NOT NULL,
   partner_id uuid REFERENCES partners(id) ON DELETE SET NULL,
   product_id uuid REFERENCES products(id) ON DELETE SET NULL,
@@ -220,9 +221,22 @@ CREATE TABLE IF NOT EXISTS contracts (
   start_date date,
   anniversary_date date,
   note text,
+  archived_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS advisor_id text;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'contact_id'
+  ) THEN
+    ALTER TABLE contracts RENAME COLUMN contact_id TO client_id;
+  END IF;
+END $$;
 
 -- 6. board_views + board_items
 CREATE TABLE IF NOT EXISTS board_views (

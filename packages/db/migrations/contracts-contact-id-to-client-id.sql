@@ -1,4 +1,8 @@
--- Contracts: align column name with DB (client_id). Rename contact_id -> client_id if present.
+-- Contracts: align with Drizzle app (packages/db/src/schema/contracts.ts).
+-- 1) Rename legacy contact_id -> client_id if present.
+-- 2) Ensure advisor_id + archived_at exist (inserts use advisor_id).
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS advisor_id text;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 DO $$
 BEGIN
   IF EXISTS (

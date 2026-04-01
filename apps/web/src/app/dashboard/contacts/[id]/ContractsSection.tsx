@@ -18,6 +18,10 @@ import { NewContractWizard } from "@/app/components/aidvisora/NewContractWizard"
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { FileText } from "lucide-react";
+import {
+  annualPremiumFromMonthlyInput,
+  annualPremiumPillLabel,
+} from "@/lib/contracts/annual-premium-from-monthly";
 
 export function ContractsSection({ contactId }: { contactId: string }) {
   const [list, setList] = useState<ContractRow[]>([]);
@@ -161,6 +165,8 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   }
 
   if (loading) return <p className="text-[color:var(--wp-text-muted)] text-sm">Načítám smlouvy…</p>;
+  const editAnnualPill = annualPremiumPillLabel(form.premiumAmount);
+
   if (loadError) {
     return (
       <div className="rounded-[var(--wp-radius-lg)] border border-red-200 bg-red-50 p-6 shadow-sm">
@@ -262,29 +268,36 @@ export function ContractsSection({ contactId }: { contactId: string }) {
               className="w-full rounded border border-monday-border px-2 py-1.5 text-sm mt-1"
             />
           </div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Pojistné (měsíční)</label>
+          <div>
+            <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Pojistné (měsíční)</label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <input
                 type="number"
                 step="0.01"
+                min={0}
+                inputMode="decimal"
                 value={form.premiumAmount}
-                onChange={(e) => setForm((f) => ({ ...f, premiumAmount: e.target.value }))}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm((f) => ({
+                    ...f,
+                    premiumAmount: v,
+                    premiumAnnual: annualPremiumFromMonthlyInput(v),
+                  }));
+                }}
                 placeholder="Kč"
-                className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
+                className="w-full max-w-[220px] rounded border border-monday-border px-2 py-1.5 text-sm min-h-[44px]"
               />
+              {editAnnualPill ? (
+                <span
+                  className="inline-flex min-h-[44px] items-center rounded-full border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2 text-sm font-semibold text-[color:var(--wp-text)]"
+                  aria-live="polite"
+                >
+                  {editAnnualPill}
+                </span>
+              ) : null}
             </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Roční pojistné</label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.premiumAnnual}
-                onChange={(e) => setForm((f) => ({ ...f, premiumAnnual: e.target.value }))}
-                placeholder="Kč"
-                className="w-full rounded border border-monday-border px-2 py-1.5 text-sm"
-              />
-            </div>
+            <p className="text-xs text-[color:var(--wp-text-muted)] mt-1">Roční pojistné se dopočítá automaticky (× 12).</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-[color:var(--wp-text-muted)]">Číslo smlouvy</label>

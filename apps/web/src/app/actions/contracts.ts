@@ -3,8 +3,8 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
-import { contracts, partners, products, SEGMENT_LABELS } from "db";
-import { eq, and, asc, or, isNull, gte, lt, sql } from "db";
+import { contracts, partners, products } from "db";
+import { eq, and, asc, or, isNull } from "db";
 import { contractSegments } from "db";
 import { logActivity } from "./activity";
 
@@ -69,6 +69,29 @@ export async function getContractSegments(): Promise<string[]> {
   return [...contractSegments];
 }
 
+function isRedirectError(e: unknown): boolean {
+  const d = typeof e === "object" && e !== null ? (e as { digest?: string }).digest : undefined;
+  return typeof d === "string" && d.startsWith("NEXT_REDIRECT");
+}
+
+function pgErrorCode(e: unknown): string | undefined {
+  if (typeof e !== "object" || e === null || !("code" in e)) return undefined;
+  const c = (e as { code?: unknown }).code;
+  return typeof c === "string" ? c : undefined;
+}
+
+function pgMissingColumnName(e: unknown): string | null {
+  const msg = e instanceof Error ? e.message : String(e);
+  const m = /column\s+"([^"]+)"\s+of\s+relation\s+"([^"]+)"\s+does\s+not\s+exist/i.exec(msg);
+  return m?.[1] ?? null;
+}
+
+/**
+ * Vrací výsledek místo throw u očekávaných chyb — v produkci Next.js jinak skryje zprávu z Server Action
+ * a klient uvidí jen obecný „Server Components render“ text.
+ */
+export type CreateContractResult = { ok: true; id: string } | { ok: false; message: string };
+
 export async function createContract(
   contactId: string,
   form: {
@@ -84,31 +107,36 @@ export async function createContract(
     anniversaryDate?: string;
     note?: string;
   }
-) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-
-  if (!contactId || typeof contactId !== "string" || !contactId.trim()) {
-    throw new Error("Chybí identifikátor kontaktu. Smlouvu nelze uložit bez přiřazení ke klientovi.");
-  }
-
-  const segment = form.segment?.trim();
-  if (!segment || !contractSegments.includes(segment as (typeof contractSegments)[number])) {
-    throw new Error("Neplatný segment smlouvy. Vyberte segment z nabídky.");
-  }
-
-  let partnerName = form.partnerName?.trim() || null;
-  let productName = form.productName?.trim() || null;
-  if (form.partnerId && !partnerName) {
-    const [p] = await db.select({ name: partners.name }).from(partners).where(eq(partners.id, form.partnerId)).limit(1);
-    if (p) partnerName = p.name;
-  }
-  if (form.productId && !productName) {
-    const [pr] = await db.select({ name: products.name }).from(products).where(eq(products.id, form.productId)).limit(1);
-    if (pr) productName = pr.name;
-  }
-
+): Promise<CreateContractResult> {
   try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:write")) {
+      return { ok: false, message: "Nemáte oprávnění přidávat smlouvy." };
+    }
+
+    if (!contactId || typeof contactId !== "string" || !contactId.trim()) {
+      return {
+        ok: false,
+        message: "Chybí identifikátor kontaktu. Smlouvu nelze uložit bez přiřazení ke klientovi.",
+      };
+    }
+
+    const segment = form.segment?.trim();
+    if (!segment || !contractSegments.includes(segment as (typeof contractSegments)[number])) {
+      return { ok: false, message: "Neplatný segment smlouvy. Vyberte segment z nabídky." };
+    }
+
+    let partnerName = form.partnerName?.trim() || null;
+    let productName = form.productName?.trim() || null;
+    if (form.partnerId && !partnerName) {
+      const [p] = await db.select({ name: partners.name }).from(partners).where(eq(partners.id, form.partnerId)).limit(1);
+      if (p) partnerName = p.name;
+    }
+    if (form.productId && !productName) {
+      const [pr] = await db.select({ name: products.name }).from(products).where(eq(products.id, form.productId)).limit(1);
+      if (pr) productName = pr.name;
+    }
+
     const [row] = await db
       .insert(contracts)
       .values({
@@ -129,19 +157,48 @@ export async function createContract(
       })
       .returning({ id: contracts.id });
     const newId = row?.id ?? null;
-    if (newId) {
-      try {
-        await logActivity("contract", newId, "create", { segment, contactId });
-      } catch {}
+    if (!newId) {
+      return { ok: false, message: "Smlouvu se nepodařilo uložit. Zkuste to znovu." };
     }
-    return newId;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    try {
+      await logActivity("contract", newId, "create", { segment, contactId });
+    } catch {}
+    return { ok: true, id: newId };
+  } catch (e) {
+    if (isRedirectError(e)) throw e;
+    console.error("[createContract]", e);
+    const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("foreign key") || msg.includes("violates foreign key")) {
-      throw new Error("Kontakt nebo vybraný partner/produkt neexistuje. Zkontrolujte údaje.");
+      return { ok: false, message: "Kontakt nebo vybraný partner/produkt neexistuje. Zkontrolujte údaje." };
     }
-    if (msg.includes("Unauthorized") || msg.includes("Forbidden")) throw err;
-    throw new Error(msg || "Smlouvu se nepodařilo uložit. Zkuste to znovu.");
+    const code = pgErrorCode(e);
+    if (code === "42703") {
+      const col = pgMissingColumnName(e);
+      const hint =
+        col != null
+          ? `V tabulce contracts chybí sloupec „${col}“. V Supabase SQL Editoru spusťte packages/db/migrations/contracts-contact-id-to-client-id.sql (sloupce client_id, advisor_id).`
+          : "Schéma databáze v Supabase neodpovídá aplikaci. Spusťte packages/db/migrations/contracts-contact-id-to-client-id.sql.";
+      return { ok: false, message: hint };
+    }
+    if (code === "23503") {
+      return {
+        ok: false,
+        message: "Neplatná vazba v databázi (klient nebo partner/produkt). Zkontrolujte výběr v CRM.",
+      };
+    }
+    if (code === "23502") {
+      return {
+        ok: false,
+        message: "Uložení se nepovedlo: databáze odmítla záznam (chybí povinné pole). Zkontrolujte migrace.",
+      };
+    }
+    if (e instanceof Error && e.message === "Unauthorized") {
+      return { ok: false, message: "Nejste přihlášeni nebo vypršela relace. Obnovte stránku a přihlaste se znovu." };
+    }
+    if (e instanceof Error && e.message.startsWith("Unauthorized:")) {
+      return { ok: false, message: "Tento účet nemůže přidávat smlouvy." };
+    }
+    return { ok: false, message: "Smlouvu se nepodařilo uložit. Zkuste to znovu." };
   }
 }
 

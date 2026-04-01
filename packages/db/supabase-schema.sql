@@ -228,7 +228,8 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS contracts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
-  contact_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  client_id uuid NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  advisor_id text,
   segment text NOT NULL,
   partner_id uuid REFERENCES partners(id) ON DELETE SET NULL,
   product_id uuid REFERENCES products(id) ON DELETE SET NULL,
@@ -240,6 +241,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   start_date date,
   anniversary_date date,
   note text,
+  archived_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -247,6 +249,18 @@ CREATE TABLE IF NOT EXISTS contracts (
 -- Migration: add premium columns if upgrading
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS premium_amount numeric(12,2);
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS premium_annual numeric(12,2);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS advisor_id text;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+-- Legacy DBs: column was contact_id; Drizzle app expects client_id (see packages/db/migrations/contracts-contact-id-to-client-id.sql)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'contact_id'
+  ) THEN
+    ALTER TABLE contracts RENAME COLUMN contact_id TO client_id;
+  END IF;
+END $$;
 
 -- board_views for Phase 2
 CREATE TABLE IF NOT EXISTS board_views (

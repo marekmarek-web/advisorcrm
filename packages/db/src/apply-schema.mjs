@@ -34,9 +34,18 @@ const fullSchema = readFileSync(schemaPath, "utf-8");
 
 const patchSql = `
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS tenant_id uuid;
-ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contact_id uuid REFERENCES contacts(id) ON DELETE CASCADE;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS advisor_id text;
 ALTER TABLE contracts ALTER COLUMN advisor_id DROP NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'contact_id'
+  ) THEN
+    ALTER TABLE contracts RENAME COLUMN contact_id TO client_id;
+  END IF;
+END $$;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS segment text;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS partner_id uuid REFERENCES partners(id) ON DELETE SET NULL;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS product_id uuid REFERENCES products(id) ON DELETE SET NULL;

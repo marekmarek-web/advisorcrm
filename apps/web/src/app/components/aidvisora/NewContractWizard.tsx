@@ -24,6 +24,10 @@ import {
   wizardInputClass,
 } from "@/app/components/wizard";
 import type { WizardReviewRow } from "@/app/components/wizard";
+import {
+  annualPremiumFromMonthlyInput,
+  annualPremiumPillLabel,
+} from "@/lib/contracts/annual-premium-from-monthly";
 
 const WIZARD_STEPS = [
   { label: "Typ smlouvy" },
@@ -113,9 +117,13 @@ export function NewContractWizard({
         anniversaryDate: form.anniversaryDate || undefined,
         note: form.note || undefined,
       };
-      const contractId = await createContract(contactId, payload);
-      if (contractId && uploadedDocumentId) {
-        await updateDocument(uploadedDocumentId, { contractId, visibleToClient: false }).catch(() => {});
+      const result = await createContract(contactId, payload);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      if (uploadedDocumentId) {
+        await updateDocument(uploadedDocumentId, { contractId: result.id, visibleToClient: false }).catch(() => {});
       }
       setIsSuccess(true);
       onSuccess?.();
@@ -136,6 +144,8 @@ export function NewContractWizard({
   }
 
   if (!open) return null;
+
+  const annualPremiumPill = annualPremiumPillLabel(form.premiumAmount);
 
   const reviewRows: WizardReviewRow[] = [
     { label: "Segment", value: segmentLabel(form.segment) },
@@ -252,29 +262,36 @@ export function NewContractWizard({
 
             {step === 1 && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className={wizardLabelClass}>Pojistné (měsíční) Kč</label>
+                <div>
+                  <label className={wizardLabelClass}>Pojistné (měsíční) Kč</label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <input
                       type="number"
                       step="0.01"
+                      min={0}
+                      inputMode="decimal"
                       value={form.premiumAmount}
-                      onChange={setFormKey("premiumAmount")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setForm((f) => ({
+                          ...f,
+                          premiumAmount: v,
+                          premiumAnnual: annualPremiumFromMonthlyInput(v),
+                        }));
+                      }}
                       placeholder="Kč"
-                      className={wizardInputClass}
+                      className={`${wizardInputClass} sm:max-w-[200px]`}
                     />
+                    {annualPremiumPill ? (
+                      <span
+                        className="inline-flex min-h-[44px] items-center rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800"
+                        aria-live="polite"
+                      >
+                        {annualPremiumPill}
+                      </span>
+                    ) : null}
                   </div>
-                  <div>
-                    <label className={wizardLabelClass}>Pojistné (roční) Kč</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={form.premiumAnnual}
-                      onChange={setFormKey("premiumAnnual")}
-                      placeholder="Kč"
-                      className={wizardInputClass}
-                    />
-                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Roční pojistné se dopočítá automaticky (× 12).</p>
                 </div>
                 <div>
                   <label className={wizardLabelClass}>Číslo smlouvy</label>

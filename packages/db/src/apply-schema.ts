@@ -28,7 +28,17 @@ const sql = readFileSync(schemaPath, "utf-8");
 // Idempotent patch: add columns to existing tables that may have been created from an older schema.
 // (CREATE TABLE IF NOT EXISTS does not add columns to existing tables.)
 const patchSql = `
-ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contact_id uuid REFERENCES contacts(id) ON DELETE CASCADE;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS advisor_id text;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'contact_id'
+  ) THEN
+    ALTER TABLE contracts RENAME COLUMN contact_id TO client_id;
+  END IF;
+END $$;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS segment text;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS premium_amount numeric(12,2);
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS premium_annual numeric(12,2);
