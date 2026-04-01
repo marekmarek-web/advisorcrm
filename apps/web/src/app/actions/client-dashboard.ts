@@ -76,20 +76,19 @@ export async function getClientDashboardMetrics(
   };
 }
 
-export async function getAssignedAdvisorForClient(
+/**
+ * Určí userId poradce pro kontakt (stejná priorita jako getAssignedAdvisorForClient), bez role Client — pro serverové notifikace.
+ */
+export async function getTargetAdvisorUserIdForContact(
+  tenantId: string,
   contactId: string
-): Promise<ClientAdvisorInfo | null> {
-  const auth = await requireAuthInAction();
-  if (auth.roleName !== "Client" || auth.contactId !== contactId) {
-    throw new Error("Forbidden");
-  }
-
+): Promise<string | null> {
   const [latestAcceptedInvite] = await db
     .select({ invitedByUserId: clientInvitations.invitedByUserId })
     .from(clientInvitations)
     .where(
       and(
-        eq(clientInvitations.tenantId, auth.tenantId),
+        eq(clientInvitations.tenantId, tenantId),
         eq(clientInvitations.contactId, contactId),
         isNotNull(clientInvitations.acceptedAt),
         isNotNull(clientInvitations.invitedByUserId)
@@ -109,13 +108,8 @@ export async function getAssignedAdvisorForClient(
       .where(eq(userProfiles.userId, latestAcceptedInvite.invitedByUserId))
       .limit(1);
     const inviterName = inviterProfile?.fullName?.trim();
-    if (inviterName) {
-      return {
-        userId: inviterProfile.userId,
-        fullName: inviterName,
-        email: inviterProfile.email,
-        initials: toInitials(inviterName),
-      };
+    if (inviterName && inviterProfile) {
+      return inviterProfile.userId;
     }
   }
 
@@ -124,7 +118,7 @@ export async function getAssignedAdvisorForClient(
     .from(contracts)
     .where(
       and(
-        eq(contracts.tenantId, auth.tenantId),
+        eq(contracts.tenantId, tenantId),
         eq(contracts.contactId, contactId)
       )
     )
@@ -136,19 +130,13 @@ export async function getAssignedAdvisorForClient(
       .select({
         userId: userProfiles.userId,
         fullName: userProfiles.fullName,
-        email: userProfiles.email,
       })
       .from(userProfiles)
       .where(eq(userProfiles.userId, latestContractAdvisor.advisorId))
       .limit(1);
 
-    if (profile?.fullName) {
-      return {
-        userId: profile.userId,
-        fullName: profile.fullName,
-        email: profile.email,
-        initials: toInitials(profile.fullName),
-      };
+    if (profile?.fullName?.trim()) {
+      return profile.userId;
     }
   }
 
@@ -156,26 +144,49 @@ export async function getAssignedAdvisorForClient(
     .select({
       userId: memberships.userId,
       fullName: userProfiles.fullName,
-      email: userProfiles.email,
     })
     .from(memberships)
     .innerJoin(roles, eq(memberships.roleId, roles.id))
     .leftJoin(userProfiles, eq(userProfiles.userId, memberships.userId))
     .where(
       and(
-        eq(memberships.tenantId, auth.tenantId),
-        eq(roles.tenantId, auth.tenantId),
+        eq(memberships.tenantId, tenantId),
+        eq(roles.tenantId, tenantId),
         eq(roles.name, "Advisor")
       )
     )
     .limit(1);
 
-  if (!fallbackAdvisor) return null;
-  const name = fallbackAdvisor.fullName?.trim() || "Váš poradce";
+  return fallbackAdvisor?.userId ?? null;
+}
+
+export async function getAssignedAdvisorForClient(
+  contactId: string
+): Promise<ClientAdvisorInfo | null> {
+  const auth = await requireAuthInAction();
+  if (auth.roleName !== "Client" || auth.contactId !== contactId) {
+    throw new Error("Forbidden");
+  }
+
+  const userId = await getTargetAdvisorUserIdForContact(auth.tenantId, contactId);
+  if (!userId) return null;
+
+  const [profile] = await db
+    .select({
+      userId: userProfiles.userId,
+      fullName: userProfiles.fullName,
+      email: userProfiles.email,
+    })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
+
+  if (!profile?.fullName?.trim()) return null;
+  const name = profile.fullName.trim();
   return {
-    userId: fallbackAdvisor.userId,
+    userId: profile.userId,
     fullName: name,
-    email: fallbackAdvisor.email,
+    email: profile.email,
     initials: toInitials(name),
   };
 }

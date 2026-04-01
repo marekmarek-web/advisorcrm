@@ -15,11 +15,13 @@ import {
 import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import { logActivity } from "./activity";
 import { caseTypeToLabel } from "@/lib/client-portal/case-type-labels";
+import { getTargetAdvisorUserIdForContact } from "@/app/actions/client-dashboard";
 
 async function notifyAdvisorNewPortalRequest(params: {
   tenantId: string;
   contactId: string;
   opportunityId: string;
+  caseType: string;
   caseTypeLabel: string;
   descriptionPreview: string;
 }): Promise<void> {
@@ -68,6 +70,31 @@ async function notifyAdvisorNewPortalRequest(params: {
       recipient: "",
       status: "skipped_no_email",
     });
+  }
+
+  const targetUserId = await getTargetAdvisorUserIdForContact(params.tenantId, params.contactId);
+  if (targetUserId) {
+    try {
+      const { emitNotification } = await import("@/lib/execution/notification-center");
+      const body = JSON.stringify({
+        caseType: params.caseType,
+        caseTypeLabel: params.caseTypeLabel,
+        preview: params.descriptionPreview || "",
+      });
+      await emitNotification({
+        tenantId: params.tenantId,
+        type: "client_portal_request",
+        title: displayName,
+        body,
+        severity: "info",
+        targetUserId,
+        channels: ["in_app"],
+        relatedEntityType: "opportunity",
+        relatedEntityId: params.opportunityId,
+      });
+    } catch {
+      /* best-effort */
+    }
   }
 }
 
@@ -193,6 +220,7 @@ export async function createClientPortalRequest(params: {
     tenantId: auth.tenantId,
     contactId,
     opportunityId: newId,
+    caseType: params.caseType.trim() || "jiné",
     caseTypeLabel,
     descriptionPreview: params.description?.trim() ?? "",
   }).catch(() => {});

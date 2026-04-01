@@ -1,17 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("db", () => {
-  const chain = () => {
+  const insertChain = () => {
+    const self: Record<string, unknown> = {};
+    self.values = vi.fn().mockImplementation(() => self);
+    self.returning = vi.fn().mockResolvedValue([{ id: "550e8400-e29b-41d4-a716-446655440000" }]);
+    return self;
+  };
+  const updateChain = () => {
     const self: Record<string, unknown> = {};
     const fn = vi.fn().mockImplementation(() => self);
-    self.values = fn;
     self.set = fn;
     self.where = fn;
     self.limit = fn;
     return self;
   };
   return {
-    db: { insert: vi.fn().mockReturnValue(chain()), update: vi.fn().mockReturnValue(chain()) },
+    db: { insert: vi.fn().mockReturnValue(insertChain()), update: vi.fn().mockReturnValue(updateChain()) },
     advisorNotifications: {},
     eq: vi.fn(),
     and: vi.fn(),
@@ -44,7 +49,7 @@ describe("emitNotification", () => {
       channels: ["in_app"],
     });
     expect(result).not.toBeNull();
-    expect(result!.id).toMatch(/^notif_/);
+    expect(result!.id).toBe("550e8400-e29b-41d4-a716-446655440000");
     expect(result!.status).toBe("unread");
   });
 

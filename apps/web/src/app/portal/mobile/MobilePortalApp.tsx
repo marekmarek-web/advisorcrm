@@ -5,10 +5,8 @@ import { MobilePortalClientLoader } from "./MobilePortalClientLoader";
 
 export async function MobilePortalApp({
   showTeamOverview = true,
-  tenantId,
 }: {
   showTeamOverview?: boolean;
-  tenantId: string;
 }) {
   const user = await getCachedSupabaseUser();
   const advisorName = (user?.user_metadata?.full_name as string | undefined) ?? "Poradce";
@@ -43,7 +41,6 @@ export async function MobilePortalApp({
         showTeamOverview={showTeamOverview}
         canWriteCalendar={canWriteCalendar}
         roleName={roleName}
-        tenantId={tenantId}
       />
     </Suspense>
   );

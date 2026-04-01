@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedApiUserId } from "@/lib/auth/api-auth-user";
 import { getMembership } from "@/lib/auth/get-membership";
-import { dismissNotification } from "@/lib/execution/notification-center";
+import { markAllNotificationsReadForUser } from "@/lib/execution/notification-center";
 
 export async function POST(request: Request) {
   const userId = await getAuthenticatedApiUserId();
@@ -10,9 +10,14 @@ export async function POST(request: Request) {
   const membership = await getMembership(userId);
   if (!membership) return NextResponse.json({ error: "No membership" }, { status: 403 });
 
-  const { notificationId } = await request.json();
-  if (!notificationId) return NextResponse.json({ error: "Missing notificationId" }, { status: 400 });
+  let type: string | undefined;
+  try {
+    const body = (await request.json()) as { type?: string };
+    type = typeof body?.type === "string" ? body.type : undefined;
+  } catch {
+    type = undefined;
+  }
 
-  const ok = await dismissNotification(notificationId, membership.tenantId, userId);
+  const ok = await markAllNotificationsReadForUser(membership.tenantId, userId, type ? { type } : undefined);
   return NextResponse.json({ ok });
 }

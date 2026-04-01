@@ -74,7 +74,7 @@ export default async function PortalLayout({
         </Script>
         <PortalThemeProvider>
           <PortalAppProviders>
-            <MobilePortalApp showTeamOverview={showTeamOverview} tenantId={auth.tenantId} />
+            <MobilePortalApp showTeamOverview={showTeamOverview} />
             {/* RSC slot: deep link / refresh musí vyhodnotit vnořené stránky (analýzy, dokumenty, …). */}
             <div className="sr-only" aria-hidden data-portal-mobile-rsc-slot>
               {children}
@@ -94,7 +94,6 @@ export default async function PortalLayout({
           <PortalShell
             showTeamOverview={showTeamOverview}
             initialQuickActions={initialQuickActions}
-            tenantId={auth.tenantId}
           >
             {children}
           </PortalShell>

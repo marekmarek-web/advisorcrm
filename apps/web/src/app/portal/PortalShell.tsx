@@ -11,6 +11,7 @@ import { QuickNewMenu } from "./QuickNewMenu";
 import { NotificationBell } from "./NotificationBell";
 import { UserMenu } from "@/app/components/UserMenu";
 import { ToastProvider } from "@/app/components/Toast";
+import { AdvisorInAppNotificationsProvider } from "./AdvisorInAppNotificationsContext";
 import { AdvisorClientRequestToastStack } from "./AdvisorClientRequestToastStack";
 import { AiAssistantDrawerProvider, useAiAssistantDrawer } from "./AiAssistantDrawerContext";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
@@ -52,12 +53,10 @@ export function PortalShell({
   children,
   showTeamOverview,
   initialQuickActions,
-  tenantId,
 }: {
   children: React.ReactNode;
   showTeamOverview?: boolean;
   initialQuickActions?: QuickActionsConfig;
-  tenantId: string;
 }) {
   const headerSearchRef = useRef<PortalHeaderSearchHandle>(null);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH_DEFAULT);
@@ -121,7 +120,8 @@ export function PortalShell({
 
   return (
     <ToastProvider>
-      <AdvisorClientRequestToastStack tenantId={tenantId} />
+      <AdvisorInAppNotificationsProvider>
+      <AdvisorClientRequestToastStack />
       <PortalBadgeCountsProvider>
       <AiAssistantDrawerProvider>
         <PortalShellInner
@@ -142,6 +142,7 @@ export function PortalShell({
         </PortalShellInner>
       </AiAssistantDrawerProvider>
       </PortalBadgeCountsProvider>
+      </AdvisorInAppNotificationsProvider>
     </ToastProvider>
   );
 }

@@ -60,19 +60,25 @@ export async function emitNotification(
 
   try {
     const { db, advisorNotifications } = await import("db");
-    await db.insert(advisorNotifications).values({
-      tenantId: notification.tenantId,
-      type: notification.type,
-      title: notification.title,
-      body: notification.body,
-      severity: notification.severity,
-      targetUserId: notification.targetUserId,
-      channels: notification.channels,
-      relatedEntityType: notification.relatedEntityType,
-      relatedEntityId: notification.relatedEntityId,
-      status: notification.status,
-      groupKey: notification.groupKey,
-    });
+    const [inserted] = await db
+      .insert(advisorNotifications)
+      .values({
+        tenantId: notification.tenantId,
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        severity: notification.severity,
+        targetUserId: notification.targetUserId,
+        channels: notification.channels,
+        relatedEntityType: notification.relatedEntityType,
+        relatedEntityId: notification.relatedEntityId,
+        status: notification.status,
+        groupKey: notification.groupKey,
+      })
+      .returning({ id: advisorNotifications.id });
+    if (inserted?.id) {
+      notification.id = inserted.id;
+    }
   } catch { /* best-effort persist */ }
 
   if (notification.channels.includes("push")) {
@@ -105,6 +111,7 @@ function mapNotificationTypeToPushType(type: string): PushEventType {
 export async function markNotificationRead(
   notificationId: string,
   tenantId: string,
+  targetUserId: string,
 ): Promise<boolean> {
   try {
     const { db, advisorNotifications, eq, and } = await import("db");
@@ -114,7 +121,33 @@ export async function markNotificationRead(
     }).where(and(
       eq(advisorNotifications.id, notificationId),
       eq(advisorNotifications.tenantId, tenantId),
+      eq(advisorNotifications.targetUserId, targetUserId),
     ));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function markAllNotificationsReadForUser(
+  tenantId: string,
+  targetUserId: string,
+  options?: { type?: string },
+): Promise<boolean> {
+  try {
+    const { db, advisorNotifications, eq, and } = await import("db");
+    const conditions = [
+      eq(advisorNotifications.tenantId, tenantId),
+      eq(advisorNotifications.targetUserId, targetUserId),
+      eq(advisorNotifications.status, "unread"),
+    ];
+    if (options?.type?.trim()) {
+      conditions.push(eq(advisorNotifications.type, options.type.trim()));
+    }
+    await db.update(advisorNotifications).set({
+      status: "read",
+      readAt: new Date(),
+    }).where(and(...conditions));
     return true;
   } catch {
     return false;
@@ -124,6 +157,7 @@ export async function markNotificationRead(
 export async function dismissNotification(
   notificationId: string,
   tenantId: string,
+  targetUserId: string,
 ): Promise<boolean> {
   try {
     const { db, advisorNotifications, eq, and } = await import("db");
@@ -133,6 +167,7 @@ export async function dismissNotification(
     }).where(and(
       eq(advisorNotifications.id, notificationId),
       eq(advisorNotifications.tenantId, tenantId),
+      eq(advisorNotifications.targetUserId, targetUserId),
     ));
     return true;
   } catch {

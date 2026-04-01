@@ -3,8 +3,8 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
-import { tasks, notificationLog } from "db";
-import { and, eq, isNull, gte, sql } from "db";
+import { tasks, advisorNotifications } from "db";
+import { and, eq, isNull, sql } from "db";
 
 export type PortalShellBadgeCounts = {
   openTasks: number;
@@ -43,11 +43,13 @@ export async function getPortalShellBadgeCounts(): Promise<PortalShellBadgeCount
       : Promise.resolve({ rows: [{ cnt: 0 }] }),
     db
       .select({ c: sql<number>`count(*)::int` })
-      .from(notificationLog)
+      .from(advisorNotifications)
       .where(
         and(
-          eq(notificationLog.tenantId, auth.tenantId),
-          gte(notificationLog.sentAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+          eq(advisorNotifications.tenantId, auth.tenantId),
+          eq(advisorNotifications.targetUserId, auth.userId),
+          eq(advisorNotifications.status, "unread"),
+          eq(advisorNotifications.type, "client_portal_request")
         )
       ),
   ]);

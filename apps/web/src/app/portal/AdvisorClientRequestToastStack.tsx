@@ -14,15 +14,17 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { caseTypeToLabel } from "@/lib/client-portal/case-type-labels";
-import { getContactDisplayNameForAdvisorToast } from "@/app/actions/advisor-client-request-toast";
+import { parseClientPortalNotificationBody } from "@/lib/advisor-in-app/parse-client-portal-notification-body";
+import {
+  useAdvisorInAppNotifications,
+  type AdvisorInAppNotificationRow,
+} from "@/app/portal/AdvisorInAppNotificationsContext";
 import "@/styles/advisor-client-request-toast.css";
 
 const AUTO_DISMISS_MS = 6000;
 const EXIT_MS = 400;
 const PREVIEW_MAX = 140;
-const STORAGE_KEY = "aidv_seen_portal_request_toasts";
 
 type Accent = "blue" | "emerald" | "violet" | "amber" | "rose" | "slate";
 
@@ -38,23 +40,6 @@ type ToastRow = {
   isExiting: boolean;
   progressMs: number;
 };
-
-function parseCustomFields(raw: unknown): Record<string, unknown> | null {
-  if (raw == null) return null;
-  if (typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-function isClientPortalRequest(cf: Record<string, unknown> | null): boolean {
-  return cf?.client_portal_request === true;
-}
 
 function accentForCaseType(caseType: string): Accent {
   const n = caseType?.toLowerCase().trim() ?? "";
@@ -86,11 +71,33 @@ function formatToastTime(iso: string): string {
   return d.toLocaleString("cs-CZ", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function previewFromRow(title: string, cf: Record<string, unknown> | null): string {
-  const desc = cf?.client_description;
-  const text = typeof desc === "string" && desc.trim() ? desc.trim() : title;
+function clipPreview(text: string): string {
   if (text.length <= PREVIEW_MAX) return text;
   return `${text.slice(0, PREVIEW_MAX).trim()}…`;
+}
+
+function notificationToToastRow(n: AdvisorInAppNotificationRow): ToastRow | null {
+  if (n.type !== "client_portal_request" || n.relatedEntityType !== "opportunity" || !n.relatedEntityId) {
+    return null;
+  }
+  const { caseType, caseTypeLabel, preview } = parseClientPortalNotificationBody(n.body);
+  const accent = accentForCaseType(caseType);
+  const Icon = iconForCaseType(caseType);
+  const categoryLabel = caseTypeLabel || caseTypeToLabel(caseType);
+  const previewText = clipPreview(preview || n.title);
+  const timeLabel = formatToastTime(n.createdAt);
+  return {
+    id: `toast-${n.id}`,
+    opportunityId: n.relatedEntityId,
+    clientName: n.title,
+    categoryLabel,
+    preview: previewText,
+    timeLabel,
+    accent,
+    Icon,
+    isExiting: false,
+    progressMs: AUTO_DISMISS_MS,
+  };
 }
 
 const ACCENT_BAR: Record<Accent, string> = {
@@ -129,39 +136,19 @@ const ACCENT_PROGRESS: Record<Accent, string> = {
   slate: "bg-slate-500/30",
 };
 
-function loadSeenIds(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw) as string[];
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function rememberSeenId(id: string) {
-  try {
-    const s = loadSeenIds();
-    s.add(id);
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...s].slice(-200)));
-  } catch {
-    /* ignore */
-  }
-}
-
-export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string }) {
+export function AdvisorClientRequestToastStack() {
   const router = useRouter();
-  const [items, setItems] = useState<ToastRow[]>([]);
+  const { items: notifications, loading } = useAdvisorInAppNotifications();
+  const [toastRows, setToastRows] = useState<ToastRow[]>([]);
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const exitTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const seenRef = useRef<Set<string>>(new Set());
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
+  const initialSyncDoneRef = useRef(false);
 
   const removeAfterExit = useCallback((id: string) => {
     if (exitTimersRef.current[id]) clearTimeout(exitTimersRef.current[id]);
     exitTimersRef.current[id] = setTimeout(() => {
-      setItems((prev) => prev.filter((t) => t.id !== id));
+      setToastRows((prev) => prev.filter((t) => t.id !== id));
       delete exitTimersRef.current[id];
     }, EXIT_MS);
   }, []);
@@ -172,7 +159,7 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
         clearTimeout(timersRef.current[id]);
         delete timersRef.current[id];
       }
-      setItems((prev) => prev.map((t) => (t.id === id ? { ...t, isExiting: true } : t)));
+      setToastRows((prev) => prev.map((t) => (t.id === id ? { ...t, isExiting: true } : t)));
       removeAfterExit(id);
     },
     [removeAfterExit]
@@ -198,78 +185,23 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
   );
 
   useEffect(() => {
-    if (!tenantId?.trim()) return;
-    seenRef.current = loadSeenIds();
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-    if (!url) return;
+    if (loading) return;
+    if (!initialSyncDoneRef.current) {
+      initialSyncDoneRef.current = true;
+      seenNotificationIdsRef.current = new Set(notifications.map((n) => n.id));
+      return;
+    }
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`opportunities-portal-requests-${tenantId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "opportunities",
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        async (payload) => {
-          const row = payload.new as Record<string, unknown> | null;
-          if (!row?.id) return;
-          const opportunityId = String(row.id);
-          if (seenRef.current.has(opportunityId)) return;
-
-          const cf = parseCustomFields(row.custom_fields);
-          if (!isClientPortalRequest(cf)) return;
-
-          const contactId = row.contact_id != null ? String(row.contact_id) : null;
-          if (!contactId) return;
-
-          seenRef.current.add(opportunityId);
-          rememberSeenId(opportunityId);
-
-          const caseType = typeof row.case_type === "string" ? row.case_type : "jiné";
-          const title = typeof row.title === "string" ? row.title : "";
-          const createdAt = typeof row.created_at === "string" ? row.created_at : new Date().toISOString();
-          const accent = accentForCaseType(caseType);
-          const Icon = iconForCaseType(caseType);
-          const categoryLabel = caseTypeToLabel(caseType);
-          const preview = previewFromRow(title, cf);
-          const timeLabel = formatToastTime(createdAt);
-
-          let clientName = "Klient";
-          const nameRes = await getContactDisplayNameForAdvisorToast(contactId);
-          if ("name" in nameRes) clientName = nameRes.name;
-
-          const toastId = `prt-${opportunityId}-${Date.now()}`;
-          const next: ToastRow = {
-            id: toastId,
-            opportunityId,
-            clientName,
-            categoryLabel,
-            preview,
-            timeLabel,
-            accent,
-            Icon,
-            isExiting: false,
-            progressMs: AUTO_DISMISS_MS,
-          };
-
-          setItems((prev) => [...prev.slice(-6), next]);
-          scheduleAutoDismiss(toastId);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-      Object.values(timersRef.current).forEach(clearTimeout);
-      Object.values(exitTimersRef.current).forEach(clearTimeout);
-      timersRef.current = {};
-      exitTimersRef.current = {};
-    };
-  }, [tenantId, scheduleAutoDismiss]);
+    for (const n of notifications) {
+      if (seenNotificationIdsRef.current.has(n.id)) continue;
+      seenNotificationIdsRef.current.add(n.id);
+      if (n.status !== "unread" || n.type !== "client_portal_request") continue;
+      const row = notificationToToastRow(n);
+      if (!row) continue;
+      setToastRows((prev) => [...prev.slice(-6), row]);
+      scheduleAutoDismiss(row.id);
+    }
+  }, [notifications, loading, scheduleAutoDismiss]);
 
   useEffect(
     () => () => {
@@ -279,17 +211,17 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
     []
   );
 
-  if (items.length === 0) return null;
+  if (toastRows.length === 0) return null;
 
   return (
     <div
-      className="pointer-events-none fixed left-4 right-4 z-[301] flex w-[calc(100%-2rem)] max-w-[400px] flex-col gap-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 md:left-auto md:right-6 md:w-full"
+      className="pointer-events-none fixed bottom-24 right-4 z-[301] flex w-[calc(100%-2rem)] max-w-[400px] flex-col gap-3 md:bottom-6 md:right-6"
       aria-live="polite"
     >
-      <div className="flex w-full flex-col gap-3">
-      {items.map((t) => (
-        <article
+      {toastRows.map((t) => (
+        <div
           key={t.id}
+          role="button"
           tabIndex={0}
           onClick={() => openDetail(t.opportunityId, t.id)}
           onKeyDown={(e) => {
@@ -298,8 +230,7 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
               openDetail(t.opportunityId, t.id);
             }
           }}
-          aria-label={`Nový požadavek od ${t.clientName}, ${t.categoryLabel}. Otevřít detail v pipeline.`}
-          className={`pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-[24px] border border-white bg-white/95 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5 backdrop-blur-2xl outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
+          className={`pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-[24px] border border-white bg-white/95 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5 backdrop-blur-2xl ${
             t.isExiting ? "aidv-client-request-toast--out" : "aidv-client-request-toast--in"
           }`}
         >
@@ -307,7 +238,7 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
 
           <div className="flex items-start gap-4 p-5">
             <div
-              className={`pointer-events-none flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm ${ACCENT_ICON[t.accent]}`}
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm ${ACCENT_ICON[t.accent]}`}
             >
               <t.Icon size={20} strokeWidth={2.5} />
             </div>
@@ -318,7 +249,7 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
                   {t.clientName}
                 </p>
                 <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <Clock size={10} aria-hidden /> {t.timeLabel}
+                  <Clock size={10} /> {t.timeLabel}
                 </span>
               </div>
               <p className={`mb-1.5 font-[family-name:var(--font-jakarta)] text-xs font-bold ${ACCENT_SUB[t.accent]}`}>
@@ -327,9 +258,16 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
               <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-slate-500">{t.preview}</p>
 
               <div className="mt-4">
-                <span className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-[10px] bg-[#0B1021] px-4 py-2.5 font-[family-name:var(--font-jakarta)] text-xs font-bold text-white pointer-events-none">
-                  Zobrazit <ArrowRight size={14} aria-hidden />
-                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDetail(t.opportunityId, t.id);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#0B1021] px-4 py-2.5 font-[family-name:var(--font-jakarta)] text-xs font-bold text-white transition-all hover:bg-black hover:shadow-lg"
+                >
+                  Zobrazit <ArrowRight size={14} />
+                </button>
               </div>
             </div>
 
@@ -346,17 +284,17 @@ export function AdvisorClientRequestToastStack({ tenantId }: { tenantId: string 
             </button>
           </div>
 
-          <div className="pointer-events-none absolute bottom-0 left-0 h-1 w-full bg-slate-100">
+          <div className="absolute bottom-0 left-0 h-1 w-full bg-slate-100">
             <div
-              className={`aidv-client-request-toast__progress-inner h-full ${ACCENT_PROGRESS[t.accent]}`}
+              className={`h-full ${ACCENT_PROGRESS[t.accent]}`}
               style={{
+                transformOrigin: "left center",
                 animation: `aidvToastProgress ${t.progressMs}ms linear forwards`,
               }}
             />
           </div>
-        </article>
+        </div>
       ))}
-      </div>
     </div>
   );
 }

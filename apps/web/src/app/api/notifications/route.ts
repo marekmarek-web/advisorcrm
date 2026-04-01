@@ -12,6 +12,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
+  const type = url.searchParams.get("type");
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 100);
 
   const conditions = [
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
     eq(advisorNotifications.targetUserId, userId),
   ];
   if (status) conditions.push(eq(advisorNotifications.status, status));
+  if (type?.trim()) conditions.push(eq(advisorNotifications.type, type.trim()));
 
   const items = await db.select()
     .from(advisorNotifications)

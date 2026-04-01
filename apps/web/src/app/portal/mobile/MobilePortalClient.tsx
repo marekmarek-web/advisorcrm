@@ -77,6 +77,7 @@ import { MobileSideDrawer } from "@/app/shared/mobile-ui/MobileSideDrawer";
 import { MobileGlobalSearchOverlay } from "./MobileGlobalSearchOverlay";
 import { MobileShellErrorBoundary } from "@/app/shared/mobile-ui/MobileShellErrorBoundary";
 import { ToastProvider } from "@/app/components/Toast";
+import { AdvisorInAppNotificationsProvider } from "@/app/portal/AdvisorInAppNotificationsContext";
 import { AdvisorClientRequestToastStack } from "@/app/portal/AdvisorClientRequestToastStack";
 import { PortalFeedbackLauncher } from "@/app/portal/PortalFeedbackLauncher";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
@@ -311,7 +312,6 @@ function resolveHeaderMeta(
 
 export function MobilePortalClient({
   advisorName,
-  tenantId,
   initialKpis,
   initialTasks,
   initialTaskCounts,
@@ -329,7 +329,6 @@ export function MobilePortalClient({
   deferDataHydration = false,
 }: {
   advisorName: string;
-  tenantId: string;
   initialKpis: DashboardKpis;
   initialTasks: TaskRow[];
   initialTaskCounts: TaskCounts;
@@ -930,7 +929,8 @@ export function MobilePortalClient({
 
   return (
     <ToastProvider>
-      <AdvisorClientRequestToastStack tenantId={tenantId} />
+      <AdvisorInAppNotificationsProvider>
+      <AdvisorClientRequestToastStack />
     <MobileAppShell deviceClass={deviceClass}>
       {/* Global banners */}
       <OfflineBanner />
@@ -1322,6 +1322,7 @@ export function MobilePortalClient({
       />
     </MobileAppShell>
     <PortalFeedbackLauncher variant="mobile" />
+    </AdvisorInAppNotificationsProvider>
     </ToastProvider>
   );
 }

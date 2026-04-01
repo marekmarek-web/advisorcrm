@@ -13,6 +13,6 @@ export async function POST(request: Request) {
   const { notificationId } = await request.json();
   if (!notificationId) return NextResponse.json({ error: "Missing notificationId" }, { status: 400 });
 
-  const ok = await markNotificationRead(notificationId, membership.tenantId);
+  const ok = await markNotificationRead(notificationId, membership.tenantId, userId);
   return NextResponse.json({ ok });
 }
