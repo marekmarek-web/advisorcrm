@@ -76,7 +76,7 @@ export function RightPanel({
   const [draftText, setDraftText] = useState("");
   const [feedNotes, setFeedNotes] = useState<MeetingNoteFeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(false);
-  const [smartBusy, setSmartBusy] = useState<"task" | "note" | "event" | null>(null);
+  const [smartBusy, setSmartBusy] = useState<{ postId: string; kind: "task" | "note" | "event" } | null>(null);
   /** Poznámky jen u řádku nástěnky (ne CRM), dokud je poradce neuloží přes „Do zápisků“. */
   const [localThreadByItem, setLocalThreadByItem] = useState<
     Record<string, { id: string; text: string; createdAt: string }[]>
@@ -151,16 +151,11 @@ export function RightPanel({
     }));
     appendActivity?.(itemId, { action: "board_thread_post" });
     setDraftText("");
-    showToast("Přidáno do poznámek u řádku.", "success");
   }
 
-  async function handleSmartTask() {
-    const text = draftText.trim();
-    if (!text) {
-      showToast("Napište text pro úkol.", "error");
-      return;
-    }
-    setSmartBusy("task");
+  async function handleSmartTaskFromPost(postId: string, text: string) {
+    if (!text.trim()) return;
+    setSmartBusy({ postId, kind: "task" });
     try {
       const title = firstLineTitle(text, 120);
       const tid = await createTask({
@@ -171,7 +166,6 @@ export function RightPanel({
       if (tid) {
         appendActivity?.(itemId, { action: "task_created" });
         showToast("Úkol byl vytvořen.", "success");
-        setDraftText("");
         router.push("/portal/tasks");
       } else {
         showToast("Úkol se nepodařilo vytvořit.", "error");
@@ -183,13 +177,9 @@ export function RightPanel({
     }
   }
 
-  async function handleSmartNote() {
-    const text = draftText.trim();
-    if (!text) {
-      showToast("Napište text zápisku.", "error");
-      return;
-    }
-    setSmartBusy("note");
+  async function handleSmartNoteFromPost(postId: string, text: string) {
+    if (!text.trim()) return;
+    setSmartBusy({ postId, kind: "note" });
     try {
       const id = await createMeetingNote({
         contactId: contactId ?? null,
@@ -200,7 +190,6 @@ export function RightPanel({
       if (id) {
         appendActivity?.(itemId, { action: "note_created" });
         showToast("Zápisek byl uložen.", "success");
-        setDraftText("");
         await loadFeed();
       } else {
         showToast("Zápisek se nepodařilo uložit.", "error");
@@ -212,13 +201,9 @@ export function RightPanel({
     }
   }
 
-  async function handleSmartEvent() {
-    const text = draftText.trim();
-    if (!text) {
-      showToast("Napište text nebo název události.", "error");
-      return;
-    }
-    setSmartBusy("event");
+  async function handleSmartEventFromPost(postId: string, text: string) {
+    if (!text.trim()) return;
+    setSmartBusy({ postId, kind: "event" });
     try {
       const title = firstLineTitle(text, 160);
       const start = new Date();
@@ -235,7 +220,6 @@ export function RightPanel({
       if (eid) {
         appendActivity?.(itemId, { action: "event_created" });
         showToast("Událost byla vytvořena v kalendáři.", "success");
-        setDraftText("");
         router.push("/portal/calendar");
       } else {
         showToast("Událost se nepodařilo vytvořit.", "error");
@@ -246,6 +230,12 @@ export function RightPanel({
       setSmartBusy(null);
     }
   }
+
+  function isSmartBusy(postId: string, kind: "task" | "note" | "event") {
+    return smartBusy?.postId === postId && smartBusy?.kind === kind;
+  }
+
+  const anySmartBusy = smartBusy !== null;
 
   const linkedContactName =
     contactId && contacts.length
@@ -368,48 +358,27 @@ export function RightPanel({
                 id="board-detail-draft"
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!anySmartBusy && draftText.trim()) handleAddThreadPost();
+                  }
+                }}
                 placeholder={
                   contactId
-                    ? "Zapsat poznámku nebo aktivitu ke klientovi…"
-                    : "Propojte kontakt pro ukládání do CRM, nebo použijte akce níže (zápisek lze uložit i bez kontaktu)."
+                    ? "Napište poznámku k řádku… (Enter odešle do vlákna, Shift+Enter nový řádek)"
+                    : "Napište poznámku… (Enter odešle do vlákna). Propojte kontakt pro zápisky u klienta v CRM."
                 }
                 rows={4}
                 className="w-full resize-none rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-3 text-sm text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-main)]/25"
               />
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mt-3 mb-2">Chytré uložení</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={!!smartBusy}
-                  onClick={() => void handleSmartTask()}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
-                >
-                  <CheckSquare size={14} aria-hidden />
-                  Jako úkol
-                </button>
-                <button
-                  type="button"
-                  disabled={!!smartBusy}
-                  onClick={() => void handleSmartNote()}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl text-xs font-bold bg-sky-500/10 text-sky-800 dark:text-sky-300 hover:bg-sky-500/20 disabled:opacity-50"
-                >
-                  <FileText size={14} aria-hidden />
-                  Do zápisků
-                </button>
-                <button
-                  type="button"
-                  disabled={!!smartBusy}
-                  onClick={() => void handleSmartEvent()}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 disabled:opacity-50"
-                >
-                  <CalendarIcon size={14} aria-hidden />
-                  Událost v kalendáři
-                </button>
-              </div>
+              <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-2">
+                Po odeslání se pod příspěvkem zobrazí akce: úkol, zápisek, kalendář.
+              </p>
               <div className="mt-3 flex justify-end">
                 <button
                   type="button"
-                  disabled={!!smartBusy || !draftText.trim()}
+                  disabled={anySmartBusy || !draftText.trim()}
                   onClick={() => handleAddThreadPost()}
                   className={`${portalPrimaryButtonClassName} min-h-[44px] px-5 text-sm font-bold disabled:opacity-50`}
                 >
@@ -423,7 +392,7 @@ export function RightPanel({
                 <p className="text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">
                   Poznámky u řádku (jen zde, ne v CRM)
                 </p>
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {(localThreadByItem[itemId] ?? []).map((p) => (
                     <li
                       key={p.id}
@@ -433,6 +402,44 @@ export function RightPanel({
                         {new Date(p.createdAt).toLocaleString("cs-CZ")}
                       </p>
                       <p className="text-[color:var(--wp-text)] whitespace-pre-wrap leading-relaxed">{p.text}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mt-3 mb-2">
+                        Chytré uložení z tohoto textu
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            !!smartBusy && !(smartBusy.postId === p.id && smartBusy.kind === "task")
+                          }
+                          onClick={() => void handleSmartTaskFromPost(p.id, p.text)}
+                          className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+                        >
+                          <CheckSquare size={14} aria-hidden />
+                          {isSmartBusy(p.id, "task") ? "Ukládám…" : "Jako úkol"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            !!smartBusy && !(smartBusy.postId === p.id && smartBusy.kind === "note")
+                          }
+                          onClick={() => void handleSmartNoteFromPost(p.id, p.text)}
+                          className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl text-xs font-bold bg-sky-500/10 text-sky-800 dark:text-sky-300 hover:bg-sky-500/20 disabled:opacity-50"
+                        >
+                          <FileText size={14} aria-hidden />
+                          {isSmartBusy(p.id, "note") ? "Ukládám…" : "Do zápisků"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            !!smartBusy && !(smartBusy.postId === p.id && smartBusy.kind === "event")
+                          }
+                          onClick={() => void handleSmartEventFromPost(p.id, p.text)}
+                          className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 disabled:opacity-50"
+                        >
+                          <CalendarIcon size={14} aria-hidden />
+                          {isSmartBusy(p.id, "event") ? "Ukládám…" : "Událost v kalendáři"}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
