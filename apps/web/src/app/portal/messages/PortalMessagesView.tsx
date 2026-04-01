@@ -97,7 +97,10 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
 
   useEffect(() => {
     loadConversations();
-    const interval = setInterval(loadConversations, POLL_INTERVAL);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void loadConversations();
+    }, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [loadConversations]);
 

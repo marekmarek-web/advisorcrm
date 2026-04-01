@@ -30,7 +30,10 @@ export function ChatThread({
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, POLL_INTERVAL);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void load();
+    }, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [contactId]);
 

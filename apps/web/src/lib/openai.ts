@@ -152,6 +152,7 @@ export function logOpenAICall(params: {
   success: boolean;
   error?: string;
 }): void {
+  if (process.env.NODE_ENV !== "development") return;
   console.log("[OpenAI]", {
     endpoint: params.endpoint,
     model: params.model,

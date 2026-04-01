@@ -27,7 +27,10 @@ export function ClientChatWrapper({ contactId }: ClientChatWrapperProps) {
 
   useEffect(() => {
     loadMessages();
-    const interval = setInterval(loadMessages, POLL_INTERVAL);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void loadMessages();
+    }, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [contactId]);
 

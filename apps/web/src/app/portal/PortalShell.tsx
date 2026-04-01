@@ -14,6 +14,7 @@ import { ToastProvider } from "@/app/components/Toast";
 import { AiAssistantDrawerProvider, useAiAssistantDrawer } from "./AiAssistantDrawerContext";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
 import { PortalFeedbackLauncher } from "./PortalFeedbackLauncher";
+import { PortalBadgeCountsProvider } from "./PortalBadgeCountsContext";
 import { useShareIntent } from "@/lib/share/useShareIntent";
 import { usePushNotifications } from "@/lib/push/usePushNotifications";
 import { mapPushNotificationToRoute } from "@/lib/push/routing";
@@ -117,6 +118,7 @@ export function PortalShell({
 
   return (
     <ToastProvider>
+      <PortalBadgeCountsProvider>
       <AiAssistantDrawerProvider>
         <PortalShellInner
           showTeamOverview={showTeamOverview}
@@ -135,6 +137,7 @@ export function PortalShell({
           {children}
         </PortalShellInner>
       </AiAssistantDrawerProvider>
+      </PortalBadgeCountsProvider>
     </ToastProvider>
   );
 }

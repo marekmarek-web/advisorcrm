@@ -231,7 +231,10 @@ export default function ScanPage() {
       }
     };
     void poll();
-    const id = window.setInterval(poll, 2500);
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void poll();
+    }, 2500);
     return () => {
       cancelled = true;
       window.clearInterval(id);

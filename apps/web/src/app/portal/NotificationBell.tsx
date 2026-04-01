@@ -1,14 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getNotificationBadgeCount } from "@/app/actions/notification-log";
+import { usePortalBadgeCounts } from "@/app/portal/PortalBadgeCountsContext";
 
 export function NotificationBell() {
-  const [count, setCount] = useState<number | null>(null);
-  useEffect(() => {
-    getNotificationBadgeCount().then(setCount).catch(() => setCount(0));
-  }, []);
+  const { notifications: count } = usePortalBadgeCounts();
 
   return (
     <Link

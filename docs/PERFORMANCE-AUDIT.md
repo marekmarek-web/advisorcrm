@@ -1,6 +1,6 @@
 # Postupná kontrola výkonu (Aidvisora)
 
-**Datum auditu:** 2026-03-31  
+**Datum auditu:** 2026-03-31 · **Implementace pass:** 2026-04-01  
 **Rozsah:** monorepo – primárně [`apps/web`](../apps/web) (Next.js 16), [`packages/db`](../packages/db), sdílené balíčky.
 
 **Jak s tím pracovat:** každá fáze má stav a konkrétní nálezy z kódu. Metriky Lighthouse/PageSpeed doplňte ručně do tabulek po nasazení nebo z produkčního buildu (`pnpm --filter web build` / Vercel preview).
@@ -15,7 +15,7 @@
 | Bundle Analyzer | Částečně | Skript `pnpm --filter web analyze` spouští `ANALYZE=true next build --webpack`. Next 16 default build používá Turbopack; **webpack** je nutný pro `@next/bundle-analyzer` (viz [Next bundling](https://nextjs.org/docs/app/guides/package-bundling)). |
 | Sentry | Nasazeno | `@sentry/nextjs`, `instrumentation-client.ts` (replay + traces), server/edge config, `tunnelRoute: "/monitoring"` v [`next.config.js`](../apps/web/next.config.js). |
 
-**Bundle report (lokální běh):** při úspěšném buildu se generuje `apps/web/.next/analyze/nodejs.html` a `edge.html` (složka `.next` je v `.gitignore`). **Aktuálně build může selhat** na chybějící závislosti `pdf-parse` (viz import v `pdf-text-fallback.ts`) – dokud to není vyřešeno, analýzu chunků dokončete po opravě nebo v CI s kompletními závislostmi.
+**Bundle report (lokální běh):** při úspěšném buildu se generuje `apps/web/.next/analyze/nodejs.html` a `edge.html` (složka `.next` je v `.gitignore`). Production build (`pnpm --filter web build`) **prošel** s `pdf-parse` v závislostech ([`apps/web/package.json`](../apps/web/package.json)); dynamický import v [`pdf-text-fallback.ts`](../apps/web/src/lib/documents/processing/pdf-text-fallback.ts).
 
 ### Šablona Lighthouse (mobile + desktop)
 
@@ -76,7 +76,7 @@ Změřte na produkčním buildu nebo preview; zapisujte LCP, INP, CLS (Google po
 
 ## Fáze 5 – Portal UI (desktop vs mobil)
 
-**Desktop:** [`PortalShell`](../apps/web/src/app/portal/PortalShell.tsx), [`PortalSidebar`](../apps/web/src/app/portal/PortalSidebar.tsx) – badge úkolů/zpráv může způsobovat periodické re-fetch; sledujte frekvenci volání v síťové záložce.
+**Desktop:** [`PortalShell`](../apps/web/src/app/portal/PortalShell.tsx) obaluje [`PortalBadgeCountsProvider`](../apps/web/src/app/portal/PortalBadgeCountsContext.tsx) – **jedno** volání server action [`getPortalShellBadgeCounts`](../apps/web/src/app/actions/portal-badges.ts) místo dvou při každé změně `pathname` + samostatného dotazu pro zvoneček; obnovení každých ~60 s, při návratu na tab (`visibilitychange`), na události `portal-messages-badge-refresh` / `portal-tasks-badge-refresh` / `portal-notifications-badge-refresh`. Layout portálu už **neníčí** DB pro quick actions ([`portal/layout.tsx`](../apps/web/src/app/portal/layout.tsx)) – načítá je klient přes [`useQuickActionsItems`](../apps/web/src/lib/quick-actions/useQuickActionsItems.ts) (bez duplicitního fetchu, pokud RSC předá `initialConfig`).
 
 **Mobil:** [`portal/layout.tsx`](../apps/web/src/app/portal/layout.tsx) – při `mobileUiEnabled` renderuje `MobilePortalApp` + `children` ve skrytém `sr-only` slotu. Detail kontaktu má serverový **early return** pro mobilní UI, aby se neplýtvalo těžkým RSC stromem.
 
@@ -122,14 +122,31 @@ Změřte na produkčním buildu nebo preview; zapisujte LCP, INP, CLS (Google po
 
 | Priorita | Položka |
 |----------|---------|
-| **P0** | Opravit build: chybějící modul `pdf-parse` (nebo podmíněný import) pro kompletní production build a spolehlivý bundle report. |
-| **P1** | Ověřit DB indexy pro časté dotazy (`contacts.tenant_id`, další hot listy) v produkční DB. |
+| ~~**P0**~~ | ~~Build `pdf-parse`~~ – ověřeno úspěšným `pnpm --filter web build`. |
+| **P1** | V produkční Supabase spustit nové indexy ze [`supabase-schema.sql`](../packages/db/supabase-schema.sql) / [`messages-unread-badge-index.sql`](../packages/db/migrations/messages-unread-badge-index.sql), pokud ještě nejsou. |
 | **P1** | Sledovat náklady middleware/proxy po migraci z `middleware.ts` na doporučenou konvenci Next 16. |
 | **P2** | Rozšířit `next/image` a optimalizaci obrázků na další stránky. |
 | **P2** | Zvážit `next experimental-analyze` při přechodu na výchozí Turbopack build pro srovnání s webpack analyzerem. |
 
 ---
 
+## Implementované optimalizace (2026-04-01)
+
+| Oblast | Změna |
+|--------|--------|
+| Portál – badge | [`getPortalShellBadgeCounts`](../apps/web/src/app/actions/portal-badges.ts) + [`PortalBadgeCountsContext`](../apps/web/src/app/portal/PortalBadgeCountsContext.tsx); sidebar + zvoneček sdílí data; méně HTTP volání při navigaci. |
+| Quick actions | Layout už nevolá `loadQuickActionsConfig`; jeden klientovský fetch, bez duplicity když RSC dodá seed. |
+| `router.refresh` | Odstraněn u [`ContactTagsEditor`](../apps/web/src/app/components/contacts/ContactTagsEditor.tsx) (stačí lokální stav). |
+| Dokumenty u kontaktu | [`DocumentsSection`](../apps/web/src/app/dashboard/contacts/[id]/DocumentsSection.tsx) – tichý refetch po uploadu/smazání (bez celého „Načítám…“). |
+| Polling | Intervaly ve zprávách / chatu / scanu přeskakují tick, když je tab na pozadí (`document.visibilityState`). |
+| DB | `getNotificationBadgeCount` používá `COUNT(*)` místo načtení všech řádků; index `idx_messages_tenant_unread_client` v schématu a migraci. |
+| Fonty | `Plus_Jakarta_Sans`: `preload: false` – méně konkurence o LCP s primárním fontem. |
+| Logy (produkce) | `logOpenAICall` a debug logy v [`api/contracts/review`](../apps/web/src/app/api/contracts/review/route.ts) jen v `development`. |
+
+**Kontrola:** `pnpm exec tsc -p apps/web`, `pnpm --filter web build`, `pnpm --filter web test` (vitest).
+
+---
+
 ## Závěr
 
-Checklist všech fází je **dokumentovaný v repu**; číselné metriky Lighthouse vyplňte po měření v cílovém prostředí. Iterace: P0 build → baseline metriky → P1–P2 → regrese.
+Checklist všech fází je **dokumentovaný v repu**; číselné metriky Lighthouse vyplňte po měření v cílovém prostředí. Iterace: baseline metriky → P1–P2 → regrese.

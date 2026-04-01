@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { setContactTags } from "@/app/actions/contacts";
 import { useToast } from "@/app/components/Toast";
@@ -20,7 +19,6 @@ export function ContactTagsEditor({ contactId, initialTags }: ContactTagsEditorP
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const toast = useToast();
-  const router = useRouter();
 
   const persist = useCallback(
     async (next: string[], action: "add" | "remove") => {
@@ -30,7 +28,6 @@ export function ContactTagsEditor({ contactId, initialTags }: ContactTagsEditorP
         await setContactTags(contactId, next);
         setTags(next);
         toast.showToast(action === "add" ? "Štítek přidán" : "Štítek odebrán", "success");
-        router.refresh();
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Štítky se nepodařilo uložit";
         toast.showToast(msg, "error");
@@ -39,7 +36,7 @@ export function ContactTagsEditor({ contactId, initialTags }: ContactTagsEditorP
         setSaving(false);
       }
     },
-    [contactId, toast, router]
+    [contactId, toast]
   );
 
   const handleRemove = useCallback(

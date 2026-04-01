@@ -626,6 +626,9 @@ export function MobilePortalClient({
       try {
         if (task.completedAt) await reopenTask(task.id);
         else await completeTask(task.id);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("portal-tasks-badge-refresh"));
+        }
         refreshTasks(taskFilter);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Nepodařilo se změnit stav úkolu.");
@@ -637,6 +640,9 @@ export function MobilePortalClient({
     startTransition(async () => {
       try {
         await deleteTask(taskId);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("portal-tasks-badge-refresh"));
+        }
         refreshTasks(taskFilter);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Úkol se nepodařilo smazat.");

@@ -8,7 +8,7 @@ import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { getOpenOpportunitiesList } from "@/app/actions/pipeline";
 import { getTasksForDate, completeTask, reopenTask, createTask, type TaskRow } from "@/app/actions/tasks";
-import { getUnreadConversationsCount } from "@/app/actions/messages";
+import { usePortalBadgeCountsOptional } from "@/app/portal/PortalBadgeCountsContext";
 // BaseModal no longer used — EventFormModal & NewTaskModal use custom overlays
 import { useToast } from "@/app/components/Toast";
 import { CalendarSettingsModal } from "@/app/components/calendar/CalendarSettingsModal";
@@ -932,13 +932,10 @@ export function PortalCalendarView() {
   /** When set, new-task modal is open with this due date. */
   const [newTaskModal, setNewTaskModal] = useState<{ dueDate: string } | null>(null);
   const [contextPanelCollapsed, setContextPanelCollapsed] = useState(false);
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const badgeCtx = usePortalBadgeCountsOptional();
+  const unreadMessagesCount = badgeCtx?.unreadConversations ?? 0;
 
   const dayNames = useMemo(() => getDayNames(settings.firstDayOfWeek), [settings.firstDayOfWeek]);
-
-  useEffect(() => {
-    getUnreadConversationsCount().then(setUnreadMessagesCount).catch(() => setUnreadMessagesCount(0));
-  }, []);
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -1389,6 +1386,9 @@ export function PortalCalendarView() {
   async function handleToggleDayTask(task: TaskRow) {
     if (task.completedAt) await reopenTask(task.id);
     else await completeTask(task.id);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("portal-tasks-badge-refresh"));
+    }
     loadDayTasks(selectedDate);
   }
 

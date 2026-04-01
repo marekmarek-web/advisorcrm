@@ -41,9 +41,17 @@ export async function GET(request: Request) {
   const xDebugMw = request.headers.get("x-debug-mw");
   const xDebugPath = request.headers.get("x-debug-path");
   const userId = request.headers.get(USER_ID_HEADER);
-  // Diagnostický log: co route obdržela (bez citlivých dat)
-  // eslint-disable-next-line no-console
-  console.log("[route GET /api/contracts/review]", { url, method, xDebugMw, xDebugPath, hasUserIdHeader: !!userId, userIdMask: userId ? `${userId.slice(0, 8)}…` : null });
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("[route GET /api/contracts/review]", {
+      url,
+      method,
+      xDebugMw,
+      xDebugPath,
+      hasUserIdHeader: !!userId,
+      userIdMask: userId ? `${userId.slice(0, 8)}…` : null,
+    });
+  }
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,8 +59,10 @@ export async function GET(request: Request) {
   try {
     const membership = await getMembership(userId);
     if (!membership) {
-      // eslint-disable-next-line no-console
-      console.log("[route GET /api/contracts/review] 403", { hasMembership: false });
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.log("[route GET /api/contracts/review] 403", { hasMembership: false });
+      }
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

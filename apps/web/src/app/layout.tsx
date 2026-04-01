@@ -21,7 +21,8 @@ const plusJakarta = Plus_Jakarta_Sans({
   weight: ["500", "600", "700", "800"],
   variable: "--font-jakarta",
   display: "swap",
-  preload: true,
+  /** Druhý font — neblokuje LCP; primární text je Source Sans. */
+  preload: false,
 });
 
 const siteUrl =

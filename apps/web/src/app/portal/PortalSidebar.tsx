@@ -37,8 +37,7 @@ import {
   Command,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getOpenTasksCount } from "@/app/actions/tasks";
-import { getUnreadConversationsCount } from "@/app/actions/messages";
+import { usePortalBadgeCounts } from "@/app/portal/PortalBadgeCountsContext";
 import clsx from "clsx";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 
@@ -286,8 +285,7 @@ export function PortalSidebar({
     [isControlled, onMobileDrawerClose]
   );
 
-  const [openTasksCount, setOpenTasksCount] = useState<number | null>(null);
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number | null>(null);
+  const { openTasks: openTasksCount, unreadConversations: unreadMessagesCount } = usePortalBadgeCounts();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isLocalhost, setIsLocalhost] = useState(false);
@@ -305,20 +303,6 @@ export function PortalSidebar({
     if (isControlled) onMobileDrawerCloseRef.current?.();
     else setInternalMobileOpen(false);
   }, [pathname, isControlled]);
-
-  useEffect(() => {
-    getOpenTasksCount().then(setOpenTasksCount).catch(() => setOpenTasksCount(0));
-  }, [pathname]);
-  useEffect(() => {
-    getUnreadConversationsCount().then(setUnreadMessagesCount).catch(() => setUnreadMessagesCount(0));
-  }, [pathname]);
-  useEffect(() => {
-    const onRefresh = () => {
-      getUnreadConversationsCount().then(setUnreadMessagesCount).catch(() => setUnreadMessagesCount(0));
-    };
-    window.addEventListener("portal-messages-badge-refresh", onRefresh);
-    return () => window.removeEventListener("portal-messages-badge-refresh", onRefresh);
-  }, []);
 
   useEffect(() => {
     const supabase = createClient();

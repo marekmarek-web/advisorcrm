@@ -166,7 +166,10 @@ export function MessagesMobileScreen() {
 
   useEffect(() => {
     loadConversations(true);
-    const interval = setInterval(() => loadConversations(false), POLL_INTERVAL);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void loadConversations(false);
+    }, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [loadConversations]);
 

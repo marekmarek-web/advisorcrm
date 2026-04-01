@@ -47,13 +47,17 @@ export function useQuickActionsItems(
   const [ready, setReady] = useState(seeded);
 
   useEffect(() => {
+    if (seeded) {
+      setReady(true);
+      return;
+    }
     void getQuickActionsConfig().then((c) => {
       const n = normalizeQuickActionsConfig(c);
       setOrder(n.order);
       setVisible(n.visible);
       setReady(true);
     });
-  }, []);
+  }, [seeded]);
 
   const items = useMemo(
     () =>

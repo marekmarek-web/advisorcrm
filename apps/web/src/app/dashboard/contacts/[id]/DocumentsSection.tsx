@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   getDocumentsForContact,
   updateDocumentVisibleToClient,
@@ -23,26 +23,36 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
   const [search, setSearch] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
 
-  function load() {
-    setLoading(true);
-    setLoadError(null);
-    Promise.all([getDocumentsForContact(contactId), getContractsByContact(contactId)])
-      .then(([docs, cts]) => {
-        setList(docs);
-        setContracts(cts);
-        setVisibleToClient(
-          docs.reduce((acc, d) => ({ ...acc, [d.id]: !!d.visibleToClient }), {} as Record<string, boolean>)
-        );
-      })
-      .catch((err) => {
-        setList([]);
-        setContracts([]);
-        setLoadError(err instanceof Error ? err.message : "Nepodařilo se načíst dokumenty.");
-      })
-      .finally(() => setLoading(false));
-  }
+  const load = useCallback(
+    (opts?: { silent?: boolean }) => {
+      const silent = !!opts?.silent;
+      if (!silent) {
+        setLoading(true);
+      }
+      setLoadError(null);
+      Promise.all([getDocumentsForContact(contactId), getContractsByContact(contactId)])
+        .then(([docs, cts]) => {
+          setList(docs);
+          setContracts(cts);
+          setVisibleToClient(
+            docs.reduce((acc, d) => ({ ...acc, [d.id]: !!d.visibleToClient }), {} as Record<string, boolean>)
+          );
+        })
+        .catch((err) => {
+          setList([]);
+          setContracts([]);
+          setLoadError(err instanceof Error ? err.message : "Nepodařilo se načíst dokumenty.");
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
+        });
+    },
+    [contactId]
+  );
 
-  useEffect(() => load(), [contactId]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filtered = useMemo(
     () =>
@@ -69,7 +79,7 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
       return;
     }
     await deleteDocument(docId);
-    load();
+    load({ silent: true });
   }
 
   if (loading) return <p className="text-[color:var(--wp-text-muted)] text-sm">Načítám dokumenty…</p>;
@@ -172,7 +182,7 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
           id: c.id,
           label: `${c.segment} – ${c.partnerName ?? "—"} (${c.contractNumber ?? c.id.slice(0, 8)})`,
         }))}
-        onUploaded={() => load()}
+        onUploaded={() => load({ silent: true })}
         className="max-w-md"
       />
     </div>

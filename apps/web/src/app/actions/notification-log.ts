@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { db, notificationLog, contacts, eq, desc, and, gte } from "db";
+import { db, notificationLog, contacts, eq, desc, and, gte, sql } from "db";
 
 export type NotificationRow = {
   id: string;
@@ -55,8 +55,8 @@ export async function getNotificationBadgeCount(): Promise<number> {
   const auth = await requireAuthInAction();
   const since = new Date();
   since.setDate(since.getDate() - 7);
-  const rows = await db
-    .select({ id: notificationLog.id })
+  const [row] = await db
+    .select({ c: sql<number>`count(*)::int` })
     .from(notificationLog)
     .where(
       and(
@@ -64,5 +64,5 @@ export async function getNotificationBadgeCount(): Promise<number> {
         gte(notificationLog.sentAt, since)
       )
     );
-  return rows.length;
+  return Number(row?.c ?? 0);
 }

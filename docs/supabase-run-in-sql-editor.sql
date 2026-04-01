@@ -621,3 +621,6 @@ INSERT INTO partners (tenant_id, name, segment) SELECT NULL, 'NN Životní poji�
 INSERT INTO partners (tenant_id, name, segment) SELECT NULL, 'Generali Česká pojišťovna', 'ZP' WHERE NOT EXISTS (SELECT 1 FROM partners WHERE tenant_id IS NULL AND name = 'Generali Česká pojišťovna' AND segment = 'ZP');
 INSERT INTO partners (tenant_id, name, segment) SELECT NULL, 'Allianz', 'ZP' WHERE NOT EXISTS (SELECT 1 FROM partners WHERE tenant_id IS NULL AND name = 'Allianz' AND segment = 'ZP');
 INSERT INTO partners (tenant_id, name, segment) SELECT NULL, 'Kooperativa', 'ZP' WHERE NOT EXISTS (SELECT 1 FROM partners WHERE tenant_id IS NULL AND name = 'Kooperativa' AND segment = 'ZP');
+
+-- Performance: dashboard KPIs + message badge (idempotent)
+CREATE INDEX IF NOT EXISTS idx_messages_tenant_unread_client ON messages (tenant_id) WHERE sender_type = 'client' AND read_at IS NULL;
