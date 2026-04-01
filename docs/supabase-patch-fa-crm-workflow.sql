@@ -62,7 +62,7 @@ ALTER TABLE fa_plan_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fa_sync_log ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "fa_plan_items_tenant_isolation" ON fa_plan_items
-  USING (tenant_id = (current_setting('app.current_tenant_id', true))::uuid);
+  USING (tenant_id = (SELECT current_setting('app.current_tenant_id', true))::uuid);
 
 CREATE POLICY "fa_sync_log_tenant_isolation" ON fa_sync_log
-  USING (tenant_id = (current_setting('app.current_tenant_id', true))::uuid);
+  USING (tenant_id = (SELECT current_setting('app.current_tenant_id', true))::uuid);

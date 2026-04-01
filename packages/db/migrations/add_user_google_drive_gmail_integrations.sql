@@ -38,23 +38,23 @@ DROP POLICY IF EXISTS user_google_drive_integrations_delete_own ON user_google_d
 CREATE POLICY user_google_drive_integrations_select_own
   ON user_google_drive_integrations
   FOR SELECT
-  USING ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_drive_integrations_insert_own
   ON user_google_drive_integrations
   FOR INSERT
-  WITH CHECK ((auth.uid())::text = user_id);
+  WITH CHECK ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_drive_integrations_update_own
   ON user_google_drive_integrations
   FOR UPDATE
-  USING ((auth.uid())::text = user_id)
-  WITH CHECK ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id)
+  WITH CHECK ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_drive_integrations_delete_own
   ON user_google_drive_integrations
   FOR DELETE
-  USING ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id);
 
 -- ---------- Gmail ----------
 CREATE TABLE IF NOT EXISTS user_google_gmail_integrations (
@@ -89,20 +89,20 @@ DROP POLICY IF EXISTS user_google_gmail_integrations_delete_own ON user_google_g
 CREATE POLICY user_google_gmail_integrations_select_own
   ON user_google_gmail_integrations
   FOR SELECT
-  USING ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_gmail_integrations_insert_own
   ON user_google_gmail_integrations
   FOR INSERT
-  WITH CHECK ((auth.uid())::text = user_id);
+  WITH CHECK ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_gmail_integrations_update_own
   ON user_google_gmail_integrations
   FOR UPDATE
-  USING ((auth.uid())::text = user_id)
-  WITH CHECK ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id)
+  WITH CHECK ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_gmail_integrations_delete_own
   ON user_google_gmail_integrations
   FOR DELETE
-  USING ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id);

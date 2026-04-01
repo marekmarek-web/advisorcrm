@@ -86,9 +86,9 @@ CREATE TABLE IF NOT EXISTS mindmap_maps (
   entity_id uuid NOT NULL,
   viewport jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(tenant_id, entity_type, entity_id)
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS mindmap_maps_tenant_entity ON mindmap_maps (tenant_id, entity_type, entity_id);
 CREATE TABLE IF NOT EXISTS mindmap_nodes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   map_id uuid NOT NULL REFERENCES mindmap_maps(id) ON DELETE CASCADE,

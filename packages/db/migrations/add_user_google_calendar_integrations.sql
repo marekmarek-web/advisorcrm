@@ -42,20 +42,20 @@ DROP POLICY IF EXISTS user_google_calendar_integrations_delete_own ON user_googl
 CREATE POLICY user_google_calendar_integrations_select_own
   ON user_google_calendar_integrations
   FOR SELECT
-  USING ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_calendar_integrations_insert_own
   ON user_google_calendar_integrations
   FOR INSERT
-  WITH CHECK ((auth.uid())::text = user_id);
+  WITH CHECK ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_calendar_integrations_update_own
   ON user_google_calendar_integrations
   FOR UPDATE
-  USING ((auth.uid())::text = user_id)
-  WITH CHECK ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id)
+  WITH CHECK ((SELECT auth.uid())::text = user_id);
 
 CREATE POLICY user_google_calendar_integrations_delete_own
   ON user_google_calendar_integrations
   FOR DELETE
-  USING ((auth.uid())::text = user_id);
+  USING ((SELECT auth.uid())::text = user_id);

@@ -548,9 +548,10 @@ CREATE TABLE IF NOT EXISTS mindmap_maps (
   name text,
   viewport jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(tenant_id, entity_type, entity_id)
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+-- One unique index (avoid duplicate with UNIQUE constraint + Drizzle index; see migrations/supabase-performance-advisor-2026-04-01.sql)
+CREATE UNIQUE INDEX IF NOT EXISTS mindmap_maps_tenant_entity ON mindmap_maps (tenant_id, entity_type, entity_id);
 
 CREATE TABLE IF NOT EXISTS mindmap_nodes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
