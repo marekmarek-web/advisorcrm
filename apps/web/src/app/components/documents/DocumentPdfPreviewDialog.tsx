@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import { Maximize2, Minimize2, X } from "lucide-react";
-import { ProcessingStatusBadge } from "@/app/components/documents/ProcessingStatusBadge";
+import { ProcessingStatusBadge } from "./ProcessingStatusBadge";
 import type { DocumentRow } from "@/app/actions/documents";
 
 type DocumentPdfPreviewDialogProps = {

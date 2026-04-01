@@ -12,8 +12,7 @@ import { getContractsByContact } from "@/app/actions/contracts";
 import type { DocumentRow } from "@/app/actions/documents";
 import type { ContractRow } from "@/app/actions/contracts";
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
-import { ProcessingStatusBadge } from "@/app/components/documents/ProcessingStatusBadge";
-import { DocumentPdfPreviewDialog } from "@/app/components/documents/DocumentPdfPreviewDialog";
+import { DocumentPdfPreviewDialog, ProcessingStatusBadge } from "@/app/components/documents";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 
 async function fetchDocumentsBundle(contactId: string): Promise<{ docs: DocumentRow[]; contracts: ContractRow[] }> {
