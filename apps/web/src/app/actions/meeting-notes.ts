@@ -34,6 +34,52 @@ export async function getMeetingNotesList(contactId?: string): Promise<MeetingNo
   return rows.map((r) => ({ id: r.id, meetingAt: r.meetingAt, domain: r.domain, contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek", createdAt: r.createdAt }));
 }
 
+function previewTextFromMeetingNoteContent(content: unknown): string | null {
+  if (content == null || typeof content !== "object") return null;
+  const o = content as Record<string, unknown>;
+  const raw =
+    typeof o.obsah === "string"
+      ? o.obsah
+      : typeof o.body === "string"
+        ? o.body
+        : typeof o.summary === "string"
+          ? o.summary
+          : "";
+  const t = raw.trim();
+  if (!t) return null;
+  return t.length > 220 ? `${t.slice(0, 220)}…` : t;
+}
+
+export type MeetingNoteFeedItem = {
+  id: string;
+  meetingAt: Date;
+  domain: string;
+  preview: string | null;
+};
+
+/** Zápisky kontaktu s náhledem textu — feed v detailu nástěnky. */
+export async function getMeetingNotesFeedForContact(contactId: string): Promise<MeetingNoteFeedItem[]> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+  const rows = await db
+    .select({
+      id: meetingNotes.id,
+      meetingAt: meetingNotes.meetingAt,
+      domain: meetingNotes.domain,
+      content: meetingNotes.content,
+    })
+    .from(meetingNotes)
+    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.contactId, contactId)))
+    .orderBy(desc(meetingNotes.meetingAt))
+    .limit(40);
+  return rows.map((r) => ({
+    id: r.id,
+    meetingAt: r.meetingAt,
+    domain: r.domain,
+    preview: previewTextFromMeetingNoteContent(r.content),
+  }));
+}
+
 /** Pro Vision Board: zápisky včetně content pro náhled karet */
 export type MeetingNoteForBoard = MeetingNoteRow & {
   contactId?: string;
