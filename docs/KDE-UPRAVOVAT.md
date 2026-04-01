@@ -32,3 +32,7 @@ V Next.js není jeden soubor `index.html`. Obsah se skládá z komponent a layou
 - **Pipeline:** `apps/web/src/app/dashboard/pipeline/page.tsx`
 
 Po úpravě ulož soubor – při běžícím `pnpm dev` se stránka automaticky obnoví.
+
+## SQL migrace a Supabase SQL Editor
+
+- **Přehled doplnění (nejnovější vždy poslední v seznamu, odkazy na `.sql`):** [`docs/SQL-DOPOJENI.md`](./SQL-DOPOJENI.md)
