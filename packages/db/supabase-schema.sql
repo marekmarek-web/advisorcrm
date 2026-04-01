@@ -257,8 +257,20 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'contact_id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'client_id'
   ) THEN
     ALTER TABLE contracts RENAME COLUMN contact_id TO client_id;
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'contact_id'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'client_id'
+  ) THEN
+    UPDATE contracts SET client_id = COALESCE(client_id, contact_id);
+    ALTER TABLE contracts DROP COLUMN contact_id;
   END IF;
 END $$;
 
