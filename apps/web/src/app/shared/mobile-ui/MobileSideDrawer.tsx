@@ -125,7 +125,7 @@ function buildSections(showTeamOverview: boolean, roleName: RoleName): DrawerSec
       id: "sec-system",
       title: "Systém",
       items: [
-        { href: "/portal/notifications", label: "Notifikace", Icon: Bell },
+        { href: "/portal/notifications", label: "Klientské požadavky", Icon: Bell },
         { href: "/portal/setup", label: "Nastavení", Icon: Settings },
       ],
     },

@@ -12,6 +12,7 @@ export function ClientRequestForm() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [caseType, setCaseType] = useState<string>(CLIENT_REQUEST_TYPES[0].value);
+  const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ export function ClientRequestForm() {
     startTransition(async () => {
       const result = await createClientPortalRequest({
         caseType,
+        subject: subject.trim() || null,
         description: description.trim() || null,
       });
       if (result.success) {
@@ -34,6 +36,20 @@ export function ClientRequestForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="request-subject" className="block text-sm font-medium text-monday-text mb-1">
+          Předmět (nepovinné)
+        </label>
+        <input
+          id="request-subject"
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Stručný název požadavku"
+          className="w-full rounded-[var(--wp-radius-sm)] border border-monday-border bg-monday-surface px-3 py-2.5 text-monday-text text-sm min-h-[44px]"
+        />
+      </div>
+
       <div>
         <label htmlFor="caseType" className="block text-sm font-medium text-monday-text mb-1">
           O co jde?

@@ -29,7 +29,10 @@ const PREVIEW_MAX = 140;
 type Accent = "blue" | "emerald" | "violet" | "amber" | "rose" | "slate";
 
 type ToastRow = {
+  /** UI klíč / animace (`toast-` + notification id). */
   id: string;
+  /** Řádek advisor_notifications — pro mark-read API. */
+  notificationId: string;
   navigateHref: string;
   clientName: string;
   categoryLabel: string;
@@ -86,7 +89,8 @@ function notificationToToastRow(n: AdvisorInAppNotificationRow): ToastRow | null
     const previewText = clipPreview(preview || n.title);
     return {
       id: `toast-${n.id}`,
-      navigateHref: `/portal/pipeline/${n.relatedEntityId}`,
+      notificationId: n.id,
+      navigateHref: `/portal/notifications?n=${encodeURIComponent(n.id)}`,
       clientName: n.title,
       categoryLabel,
       preview: previewText,
@@ -116,6 +120,7 @@ function notificationToToastRow(n: AdvisorInAppNotificationRow): ToastRow | null
     }
     return {
       id: `toast-${n.id}`,
+      notificationId: n.id,
       navigateHref: `/portal/contacts/${contactId}?tab=podklady&materialRequest=${encodeURIComponent(n.relatedEntityId)}`,
       clientName: n.title,
       categoryLabel: "Odpověď na požadavek",
@@ -169,7 +174,7 @@ const ACCENT_PROGRESS: Record<Accent, string> = {
 
 export function AdvisorClientRequestToastStack() {
   const router = useRouter();
-  const { items: notifications, loading } = useAdvisorInAppNotifications();
+  const { items: notifications, loading, markRead } = useAdvisorInAppNotifications();
   const [toastRows, setToastRows] = useState<ToastRow[]>([]);
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const exitTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -208,11 +213,12 @@ export function AdvisorClientRequestToastStack() {
   );
 
   const openDetail = useCallback(
-    (href: string, toastId: string) => {
+    (href: string, toastId: string, notificationId: string) => {
+      void markRead(notificationId);
       router.push(href);
       dismiss(toastId);
     },
-    [router, dismiss]
+    [router, dismiss, markRead]
   );
 
   useEffect(() => {
@@ -259,11 +265,11 @@ export function AdvisorClientRequestToastStack() {
           key={t.id}
           role="button"
           tabIndex={0}
-          onClick={() => openDetail(t.navigateHref, t.id)}
+          onClick={() => openDetail(t.navigateHref, t.id, t.notificationId)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              openDetail(t.navigateHref, t.id);
+              openDetail(t.navigateHref, t.id, t.notificationId);
             }
           }}
           className={`pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-[24px] border border-white bg-white/95 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5 backdrop-blur-2xl ${
@@ -298,7 +304,7 @@ export function AdvisorClientRequestToastStack() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    openDetail(t.navigateHref, t.id);
+                    openDetail(t.navigateHref, t.id, t.notificationId);
                   }}
                   className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#0B1021] px-4 py-2.5 font-[family-name:var(--font-jakarta)] text-xs font-bold text-white transition-all hover:bg-black hover:shadow-lg"
                 >

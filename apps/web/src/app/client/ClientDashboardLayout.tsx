@@ -15,7 +15,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
-import type { MaterialRequestListItem } from "@/app/actions/advisor-material-requests";
+import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
 import { ClientZoneExportButton } from "./ClientZoneExportButton";
 import { NewRequestModal } from "./NewRequestModal";
 import { AiSupportButton } from "./AiSupportButton";
@@ -201,6 +201,38 @@ export function ClientDashboardLayout({
                 <li key={g}>{g}</li>
               ))}
             </ul>
+          )}
+        </div>
+      )}
+
+      {advisorMaterialRequests.length > 0 && (
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50/90 p-6 shadow-sm">
+          <h3 className="text-lg font-black text-slate-900 mb-2">Požadavky od poradce</h3>
+          <p className="text-sm text-slate-600 mb-4">
+            Máte nové úkoly — nahrajte podklady nebo odpovězte přímo v detailu.
+          </p>
+          <ul className="space-y-2">
+            {advisorMaterialRequests.slice(0, 5).map((r) => (
+              <li key={r.id}>
+                <Link
+                  href={`/client/pozadavky-poradce/${r.id}`}
+                  className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-white border border-amber-100 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-amber-100/50"
+                >
+                  <span className="line-clamp-2">{r.title}</span>
+                  <span className="text-xs text-slate-500 shrink-0">
+                    {r.categoryLabel}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {advisorMaterialRequests.length > 5 && (
+            <Link
+              href="/client/pozadavky-poradce"
+              className="mt-3 inline-block text-sm font-bold text-amber-900 underline"
+            >
+              Zobrazit všechny
+            </Link>
           )}
         </div>
       )}

@@ -63,6 +63,7 @@ import {
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
 import { AiSupportButton } from "@/app/client/AiSupportButton";
+import { ClientMaterialRequestToastStack } from "@/app/client/ClientMaterialRequestToastStack";
 import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 import type { ClientMobileInitialData } from "./client-mobile-initial-data";
 
@@ -104,6 +105,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestCaseType, setRequestCaseType] = useState("hypotéka");
+  const [requestSubject, setRequestSubject] = useState("");
   const [requestDescription, setRequestDescription] = useState("");
 
   const [composeBody, setComposeBody] = useState("");
@@ -176,6 +178,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
       try {
         const result = await createClientPortalRequest({
           caseType: requestCaseType,
+          subject: requestSubject.trim() || null,
           description: requestDescription.trim() || null,
         });
         if (!result.success) {
@@ -183,6 +186,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           return;
         }
         setRequestModalOpen(false);
+        setRequestSubject("");
         setRequestDescription("");
         setRequests(await getClientRequests());
       } catch (e) {
@@ -329,6 +333,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         : initialData.fullName;
 
   return (
+    <>
     <MobileAppShell>
       <MobileHeader
         title={headerTitle}
@@ -675,6 +680,13 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
               { id: "jiné", label: "Jiné" },
             ]}
           />
+          <input
+            type="text"
+            value={requestSubject}
+            onChange={(e) => setRequestSubject(e.target.value)}
+            className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm"
+            placeholder="Předmět (nepovinné)"
+          />
           <textarea rows={4} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Popis požadavku (nepovinné)" />
           <button type="button" onClick={createRequest} className="w-full min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-bold">
             Vytvořit požadavek
@@ -721,5 +733,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         <AiSupportButton anchorClassName="bottom-[calc(168px+var(--safe-area-bottom,0px))] right-4 max-[380px]:right-3" />
       ) : null}
     </MobileAppShell>
+    <ClientMaterialRequestToastStack />
+    </>
   );
 }

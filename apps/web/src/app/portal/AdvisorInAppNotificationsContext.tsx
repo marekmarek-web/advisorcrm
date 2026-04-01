@@ -10,7 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
+/** Záloha, když Realtime neběží nebo není nasazená migrace. */
 const POLL_MS = 45_000;
 const ADVISOR_TOAST_TYPES = "client_portal_request,client_material_response";
 
@@ -91,6 +94,48 @@ export function AdvisorInAppNotificationsProvider({ children }: { children: Reac
     };
   }, [load]);
 
+  /** Okamžité obnovení po INSERTu in-app notifikace (Supabase Realtime + RLS na advisor_notifications). */
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    if (!url) return;
+
+    const supabase = createClient();
+    let cancelled = false;
+    let channel: RealtimeChannel | null = null;
+
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id || cancelled) return;
+
+      const ch = supabase
+        .channel(`advisor-notifications-rt-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "advisor_notifications",
+            filter: `target_user_id=eq.${user.id}`,
+          },
+          () => {
+            if (!mounted.current) return;
+            void load();
+          }
+        );
+      if (cancelled) return;
+      channel = ch.subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
+    };
+  }, [load]);
+
   const unreadCount = useMemo(
     () => items.filter((i) => i.status === "unread").length,
     [items]
@@ -136,7 +181,9 @@ export function AdvisorInAppNotificationsProvider({ children }: { children: Reac
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: CLIENT_PORTAL_TYPE }),
+        body: JSON.stringify({
+          types: ADVISOR_TOAST_TYPES.split(",").map((s) => s.trim()).filter(Boolean),
+        }),
       });
       const data = (await res.json()) as { ok?: boolean };
       if (data.ok) {

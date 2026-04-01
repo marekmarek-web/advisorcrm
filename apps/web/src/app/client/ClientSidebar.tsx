@@ -16,6 +16,7 @@ import {
   X,
   ListTodo,
   Bell,
+  ClipboardList,
 } from "lucide-react";
 import { SignOutButton } from "@/app/components/SignOutButton";
 
@@ -41,6 +42,12 @@ const VIEWS: NavItem[] = [
   { href: "/client/payments", label: "Platby a příkazy", icon: CreditCard },
   { href: "/client/calculators", label: "Kalkulačky", icon: Calculator },
   { href: "/client/requests", label: "Moje požadavky", icon: ListTodo },
+  {
+    href: "/client/pozadavky-poradce",
+    label: "Od poradce",
+    icon: ClipboardList,
+    match: ["/client/pozadavky-poradce"],
+  },
   { href: "/client/messages", label: "Zprávy poradci", icon: MessageSquare },
   { href: "/client/documents", label: "Trezor dokumentů", icon: FolderOpen },
   {

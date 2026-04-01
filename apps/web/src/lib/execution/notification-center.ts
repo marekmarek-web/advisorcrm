@@ -132,16 +132,19 @@ export async function markNotificationRead(
 export async function markAllNotificationsReadForUser(
   tenantId: string,
   targetUserId: string,
-  options?: { type?: string },
+  options?: { type?: string; types?: string[] },
 ): Promise<boolean> {
   try {
-    const { db, advisorNotifications, eq, and } = await import("db");
+    const { db, advisorNotifications, eq, and, inArray } = await import("db");
     const conditions = [
       eq(advisorNotifications.tenantId, tenantId),
       eq(advisorNotifications.targetUserId, targetUserId),
       eq(advisorNotifications.status, "unread"),
     ];
-    if (options?.type?.trim()) {
+    const types = options?.types?.filter((t) => t.trim().length > 0) ?? [];
+    if (types.length > 0) {
+      conditions.push(inArray(advisorNotifications.type, types));
+    } else if (options?.type?.trim()) {
       conditions.push(eq(advisorNotifications.type, options.type.trim()));
     }
     await db.update(advisorNotifications).set({

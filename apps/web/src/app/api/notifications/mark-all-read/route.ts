@@ -11,13 +11,20 @@ export async function POST(request: Request) {
   if (!membership) return NextResponse.json({ error: "No membership" }, { status: 403 });
 
   let type: string | undefined;
+  let types: string[] | undefined;
   try {
-    const body = (await request.json()) as { type?: string };
+    const body = (await request.json()) as { type?: string; types?: string[] };
     type = typeof body?.type === "string" ? body.type : undefined;
+    types = Array.isArray(body?.types) ? body.types.filter((t): t is string => typeof t === "string") : undefined;
   } catch {
     type = undefined;
+    types = undefined;
   }
 
-  const ok = await markAllNotificationsReadForUser(membership.tenantId, userId, type ? { type } : undefined);
+  const ok = await markAllNotificationsReadForUser(
+    membership.tenantId,
+    userId,
+    types?.length ? { types } : type ? { type } : undefined
+  );
   return NextResponse.json({ ok });
 }

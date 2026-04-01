@@ -10,11 +10,13 @@ import {
   setAdvisorMaterialRequestStatus,
   addAdvisorMaterialRequestReply,
   linkMaterialRequestDocumentToClientVault,
+} from "@/app/actions/advisor-material-requests";
+import {
   MATERIAL_REQUEST_CATEGORY_IDS,
   materialRequestCategoryLabel,
-  type MaterialRequestListItem,
   type MaterialRequestDetail,
-} from "@/app/actions/advisor-material-requests";
+  type MaterialRequestListItem,
+} from "@/lib/advisor-material-requests/display";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 
@@ -332,22 +334,28 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
                       </a>
                       <div className="flex flex-wrap gap-2">
                         {a.attachmentRole === "client" ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => void promoteDoc(a.documentId, true)}
-                              className="text-xs font-bold min-h-[40px] px-2 rounded-lg bg-indigo-600 text-white"
-                            >
-                              Zobrazit v portálu
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void promoteDoc(a.documentId, false)}
-                              className="text-xs font-bold min-h-[40px] px-2 rounded-lg border border-[color:var(--wp-border)]"
-                            >
-                              Jen interně
-                            </button>
-                          </>
+                          a.visibleToClient ? (
+                            <span className="text-xs font-semibold text-emerald-700 min-h-[40px] inline-flex items-center">
+                              Viditelné klientovi v dokumentech
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => void promoteDoc(a.documentId, true)}
+                                className="text-xs font-bold min-h-[40px] px-2 rounded-lg bg-indigo-600 text-white"
+                              >
+                                Zobrazit v portálu
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void promoteDoc(a.documentId, false)}
+                                className="text-xs font-bold min-h-[40px] px-2 rounded-lg border border-[color:var(--wp-border)]"
+                              >
+                                Jen interně
+                              </button>
+                            </>
+                          )
                         ) : (
                           <span className="text-xs text-[color:var(--wp-text-secondary)]">Příloha poradce</span>
                         )}

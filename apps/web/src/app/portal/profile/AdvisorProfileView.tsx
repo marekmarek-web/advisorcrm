@@ -82,7 +82,7 @@ const TABS = [
   { id: "osobni", label: "Osobní údaje" },
   { id: "rezervace", label: "Rezervační systém" },
   { id: "integrace", label: "Integrace & Účty" },
-  { id: "notifikace", label: "Notifikace" },
+  { id: "notifikace", label: "Klientské požadavky" },
   { id: "fakturace", label: "Fakturace" },
 ] as const;
 
@@ -917,17 +917,25 @@ export function AdvisorProfileView({
           <div className="bg-[color:var(--wp-surface-card)] rounded-2xl sm:rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-8">
             <div className="flex items-center gap-3 mb-4">
               <Bell size={24} className="text-[color:var(--wp-text-tertiary)]" />
-              <h2 className="text-lg font-black text-[color:var(--wp-text)]">Notifikace a oznámení</h2>
+              <h2 className="text-lg font-black text-[color:var(--wp-text)]">Klientské požadavky a e-maily</h2>
             </div>
             <p className="text-[color:var(--wp-text-secondary)] text-sm mb-6 max-w-xl">
-              Přehled odeslaných e-mailů, notifikací a zpráv od klientů. Nastavení kanálů a šablon najdete v Nastavení.
+              Inbox požadavků z klientské zóny a samostatná historie odeslaných systémových e-mailů.
             </p>
-            <Link
-              href="/portal/notifications"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors min-h-[44px]"
-            >
-              <Bell size={18} /> Přejít do Oznámení
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/portal/notifications"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors min-h-[44px]"
+              >
+                <Bell size={18} /> Klientské požadavky
+              </Link>
+              <Link
+                href="/portal/settings/notification-log"
+                className="inline-flex items-center gap-2 px-5 py-2.5 border border-[color:var(--wp-surface-card-border)] rounded-xl text-sm font-bold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-link-hover-bg)] transition-colors min-h-[44px]"
+              >
+                Historie e-mailů
+              </Link>
+            </div>
           </div>
         )}
 

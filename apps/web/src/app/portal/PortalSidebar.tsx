@@ -143,7 +143,7 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
     id: "sec-system",
     section: "Systém",
     items: [
-      { href: "/portal/notifications", label: "Notifikace", Icon: Bell },
+      { href: "/portal/notifications", label: "Klientské požadavky", Icon: Bell },
       { href: "/portal/setup", label: "Nastavení", Icon: Settings, hoverAnim: "group-hover:rotate-90 duration-500" },
     ],
   },

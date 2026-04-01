@@ -4,7 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { tasks, advisorNotifications } from "db";
-import { and, eq, isNull, sql } from "db";
+import { and, eq, inArray, isNull, sql } from "db";
 
 export type PortalShellBadgeCounts = {
   openTasks: number;
@@ -49,7 +49,7 @@ export async function getPortalShellBadgeCounts(): Promise<PortalShellBadgeCount
           eq(advisorNotifications.tenantId, auth.tenantId),
           eq(advisorNotifications.targetUserId, auth.userId),
           eq(advisorNotifications.status, "unread"),
-          eq(advisorNotifications.type, "client_portal_request")
+          inArray(advisorNotifications.type, ["client_portal_request", "client_material_response"])
         )
       ),
   ]);

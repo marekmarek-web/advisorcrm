@@ -86,10 +86,10 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
     if (!selectedCaseType) return;
     setError(null);
     startTransition(async () => {
-      const payload = [requestTitle.trim(), description.trim()].filter(Boolean).join("\n");
       const result = await createClientPortalRequest({
         caseType: selectedCaseType,
-        description: payload || null,
+        subject: requestTitle.trim() || null,
+        description: description.trim() || null,
       });
       if (!result.success) {
         setError(result.error || "Požadavek se nepodařilo odeslat.");

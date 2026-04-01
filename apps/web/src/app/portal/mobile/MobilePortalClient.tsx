@@ -153,8 +153,8 @@ const SettingsProfileScreen = dynamic(
   () => import("./screens/SettingsProfileScreen").then((m) => m.SettingsProfileScreen),
   { loading: () => <RouteLoadingSkeleton /> },
 );
-const NotificationsInboxScreen = dynamic(
-  () => import("./screens/NotificationsInboxScreen").then((m) => m.NotificationsInboxScreen),
+const ClientPortalRequestsInboxLoader = dynamic(
+  () => import("../notifications/ClientPortalRequestsInboxLoader").then((m) => m.ClientPortalRequestsInboxLoader),
   { loading: () => <RouteLoadingSkeleton /> },
 );
 const AiAssistantChatScreen = dynamic(
@@ -280,7 +280,7 @@ const ROUTE_META: Array<{
   { test: (p) => p.startsWith("/portal/business-plan"), title: "Můj plán", subtitle: "Business plán" },
   { test: (p) => p.startsWith("/portal/team-overview"), title: "Týmový přehled", subtitle: "Týmové KPI a alerty" },
   { test: (p) => p.startsWith("/portal/setup") || p.startsWith("/portal/profile"), title: "Nastavení", subtitle: "Profil, preference, integrace" },
-  { test: (p) => p.startsWith("/portal/notifications"), title: "Notifikace", subtitle: "Inbox a log notifikací" },
+  { test: (p) => p.startsWith("/portal/notifications"), title: "Klientské požadavky", subtitle: "Inbox z klientského portálu" },
   { test: (p) => p.startsWith("/portal/calendar"), title: "Kalendář", subtitle: "Schůzky a události" },
   { test: (p) => p.startsWith("/portal/ai"), title: "AI Asistent", subtitle: "Váš CRM asistent s přístupem k datům" },
   { test: (p) => p.startsWith("/portal/production"), title: "Produkce", subtitle: "Uzavřené smlouvy a pojistné" },
@@ -777,7 +777,7 @@ export function MobilePortalClient({
     if (onBusinessPlanRoute) return <BusinessPlanScreen deviceClass={deviceClass} />;
     if (onTeamOverviewRoute) return <TeamOverviewScreen deviceClass={deviceClass} />;
     if (onSetupRoute) return <SettingsProfileScreen advisorName={advisorName} />;
-    if (onNotificationsRoute) return <NotificationsInboxScreen onBadgeCountChange={setNotificationBadgeCount} />;
+    if (onNotificationsRoute) return <ClientPortalRequestsInboxLoader />;
     if (onCalendarRoute)
       return (
         <CalendarScreen
@@ -986,7 +986,7 @@ export function MobilePortalClient({
               type="button"
               onClick={() => router.push("/portal/notifications")}
               className="relative min-h-[44px] min-w-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] grid place-items-center active:scale-95 transition-transform"
-              aria-label="Notifikace"
+              aria-label="Klientské požadavky"
             >
               <Bell size={18} />
               {notificationBadgeCount > 0 ? (

@@ -89,6 +89,7 @@ async function notifyAdvisorNewPortalRequest(params: {
         caseType: params.caseType,
         caseTypeLabel: params.caseTypeLabel,
         preview: params.descriptionPreview || "",
+        contactId: params.contactId,
       });
       await emitNotification({
         tenantId: params.tenantId,
@@ -104,6 +105,11 @@ async function notifyAdvisorNewPortalRequest(params: {
     } catch {
       /* best-effort */
     }
+  } else if (process.env.NODE_ENV === "development") {
+    console.warn(
+      "[notifyAdvisorNewPortalRequest] Přeskakuji in-app notifikaci — chybí cílový poradce (getTargetAdvisorUserIdForContact).",
+      { tenantId: params.tenantId, contactId: params.contactId, opportunityId: params.opportunityId }
+    );
   }
 }
 
@@ -225,14 +231,8 @@ export async function getAdvisorClientPortalRequestsInbox(): Promise<AdvisorClie
     }
 
     const custom = (opp.customFields as Record<string, unknown> | null) ?? {};
-    const isPortal =
-      custom.client_portal_request === true || String(custom.client_portal_request) === "true";
     const clientName = [opp.firstName, opp.lastName].filter(Boolean).join(" ").trim() || "Klient";
-    const { subject, body, preview } = getPortalRequestDisplayFields(
-      isPortal ? custom : {},
-      opp.title,
-      opp.caseType
-    );
+    const { subject, body, preview } = getPortalRequestDisplayFields(custom, opp.title, opp.caseType);
 
     const statusKey = stageToClientStatus(opp.sortOrder ?? 0, opp.closedAt ?? null);
 
@@ -280,26 +280,29 @@ export async function getClientRequests(): Promise<ClientRequestItem[]> {
       and(
         eq(opportunities.tenantId, auth.tenantId),
         eq(opportunities.contactId, auth.contactId)
-      )    )
-    .orderBy(asc(opportunityStages.sortOrder));
+      )
+    )
+    .orderBy(desc(opportunities.updatedAt));
 
-  return rows.map((r) => {
-    const statusKey = stageToClientStatus(
-      r.sortOrder ?? 0,
-      r.closedAt ?? null
-    );
-    const custom = (r.customFields as Record<string, unknown> | null) ?? {};
-    const description = (custom.client_description as string) ?? null;
-    return {
-      id: r.id,
-      title: r.title,
-      caseTypeLabel: caseTypeToLabel(r.caseType ?? ""),
-      statusKey,
-      statusLabel: getClientStatusLabel(statusKey),
-      updatedAt: r.updatedAt,
-      description: description || null,
-    };
-  });
+  return rows
+    .filter((r) => {
+      const c = (r.customFields as Record<string, unknown> | null)?.client_portal_request;
+      return c === true || c === "true";
+    })
+    .map((r) => {
+      const statusKey = stageToClientStatus(r.sortOrder ?? 0, r.closedAt ?? null);
+      const custom = (r.customFields as Record<string, unknown> | null) ?? {};
+      const { subject, body } = getPortalRequestDisplayFields(custom, r.title, r.caseType);
+      return {
+        id: r.id,
+        title: subject,
+        caseTypeLabel: caseTypeToLabel(r.caseType ?? ""),
+        statusKey,
+        statusLabel: getClientStatusLabel(statusKey),
+        updatedAt: r.updatedAt,
+        description: body,
+      };
+    });
 }
 
 /**
@@ -308,6 +311,8 @@ export async function getClientRequests(): Promise<ClientRequestItem[]> {
  */
 export async function createClientPortalRequest(params: {
   caseType: string;
+  /** Předmět / název požadavku (stejné pole jako v klientském průvodci). */
+  subject?: string | null;
   description?: string | null;
 }): Promise<{ success: true; id: string } | { success: false; error: string }> {
   const auth = await requireAuthInAction();
@@ -330,7 +335,9 @@ export async function createClientPortalRequest(params: {
   if (!firstStage) return { success: false, error: "Žádný krok pipeline není k dispozici. Kontaktujte poradce." };
 
   const caseTypeLabel = caseTypeToLabel(params.caseType);
-  const title = `Požadavek z portálu: ${caseTypeLabel}`;
+  const subjectTrim = params.subject?.trim() ?? "";
+  const descTrim = params.description?.trim() ?? "";
+  const title = subjectTrim || `Požadavek z portálu: ${caseTypeLabel}`;
 
   const [row] = await db
     .insert(opportunities)
@@ -342,7 +349,8 @@ export async function createClientPortalRequest(params: {
       stageId: firstStage.id,
       customFields: {
         client_portal_request: true,
-        client_description: params.description?.trim() ?? null,
+        client_request_subject: subjectTrim || null,
+        client_description: descTrim || null,
       },
     })
     .returning({ id: opportunities.id });
@@ -373,13 +381,14 @@ export async function createClientPortalRequest(params: {
     // non-fatal
   }
 
+  const previewBits = [subjectTrim, descTrim].filter(Boolean);
   notifyAdvisorNewPortalRequest({
     tenantId: auth.tenantId,
     contactId,
     opportunityId: newId,
     caseType: params.caseType.trim() || "jiné",
     caseTypeLabel,
-    descriptionPreview: params.description?.trim() ?? "",
+    descriptionPreview: previewBits.join(" — ") || "",
   }).catch(() => {});
 
   return { success: true, id: newId };

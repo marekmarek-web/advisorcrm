@@ -86,7 +86,7 @@ const TOOL_SECTIONS: ToolSection[] = [
   {
     title: "Systém",
     items: [
-      { label: "Notifikace", href: "/portal/notifications", icon: Bell },
+      { label: "Klientské požadavky", href: "/portal/notifications", icon: Bell },
       { label: "Nastavení", href: "/portal/setup", icon: Settings },
     ],
   },

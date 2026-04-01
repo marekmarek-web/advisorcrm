@@ -95,12 +95,10 @@ export function NotificationBell() {
   }, [open, close]);
 
   async function onItemClick(n: AdvisorInAppNotificationRow) {
-    if (n.relatedEntityType === "opportunity" && n.relatedEntityId) {
-      router.push(`/portal/pipeline/${n.relatedEntityId}`);
-    }
     if (n.status === "unread") {
       await markRead(n.id);
     }
+    router.push(`/portal/notifications?n=${encodeURIComponent(n.id)}`);
     close();
   }
 
