@@ -112,7 +112,7 @@ export function MindmapListClient({
     setError(null);
     try {
       const { mapId } = await createStandaloneMap(name);
-      router.refresh();
+      onRefresh?.();
       setNewMapName("");
       router.push(`/portal/mindmap/${mapId}`);
     } catch (e) {

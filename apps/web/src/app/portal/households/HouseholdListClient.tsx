@@ -3,11 +3,11 @@
 import { useState, useMemo, useTransition, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { Home, Plus, ChevronDown, ChevronUp, User, Baby, Filter, Building2 } from "lucide-react";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
-import { deleteHousehold } from "@/app/actions/households";
+import { deleteHousehold, getHouseholdsWithMembers } from "@/app/actions/households";
 import type { HouseholdRowWithMembers, HouseholdMemberSummary } from "@/app/actions/households";
 import {
   ListPageShell,
@@ -57,17 +57,24 @@ function MetricCard({
   );
 }
 
-export function HouseholdListClient({ list }: { list: HouseholdRowWithMembers[] }) {
+export function HouseholdListClient({ list: initialList }: { list: HouseholdRowWithMembers[] }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const toast = useToast();
 
+  const { data: list = initialList } = useQuery({
+    queryKey: queryKeys.households.listWithMembers(),
+    queryFn: () => getHouseholdsWithMembers(),
+    initialData: initialList,
+    staleTime: 60_000,
+  });
+
   const refreshListAndCaches = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.households.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.pipeline.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
-    router.refresh();
-  }, [queryClient, router]);
+  }, [queryClient]);
   const [pending, startTransition] = useTransition();
   const [showWizard, setShowWizard] = useState(false);
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);

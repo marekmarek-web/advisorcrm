@@ -18,4 +18,19 @@ export const queryKeys = {
     board: () => ["pipeline", "board"] as const,
     openForSelect: ["pipeline", "openForSelect"] as const,
   },
+  /** Kalendář – invalidovat celý `calendar.all` po mutacích / sync. */
+  calendar: {
+    all: ["calendar"] as const,
+    eventsRange: (startIso: string, endIso: string) =>
+      [...queryKeys.calendar.all, "events", startIso, endIso] as const,
+  },
+  /** Finanční analýzy – seznam na /portal/analyses */
+  analyses: {
+    all: ["financialAnalyses"] as const,
+    list: () => [...queryKeys.analyses.all, "list"] as const,
+  },
+  households: {
+    all: ["households"] as const,
+    listWithMembers: () => [...queryKeys.households.all, "listWithMembers"] as const,
+  },
 } as const;

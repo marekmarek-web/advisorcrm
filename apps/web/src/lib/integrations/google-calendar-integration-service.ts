@@ -12,6 +12,7 @@ import { GoogleInvalidGrantError } from "./google-oauth";
 const LOG_PREFIX = "[google-calendar-integration]";
 
 function log(message: string, meta?: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== "development") return;
   const payload = meta ? ` ${JSON.stringify(meta)}` : "";
   // eslint-disable-next-line no-console
   console.log(`${LOG_PREFIX} ${message}${payload}`);

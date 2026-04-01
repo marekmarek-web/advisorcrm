@@ -1,9 +1,7 @@
 import { Suspense } from "react";
-import {
-  listFinancialAnalyses,
-  type FinancialAnalysisListItem,
-} from "@/app/actions/financial-analyses";
+import { listFinancialAnalyses } from "@/app/actions/financial-analyses";
 import { translateFinancialAnalysisActionError } from "@/lib/analyses/financial/financialAnalysisErrors";
+import { serializeFinancialAnalysesForClient } from "./analyses-page-utils";
 import AnalysesPageClient from "./AnalysesPageClient";
 
 function AnalysesPageSkeleton() {
@@ -29,26 +27,6 @@ function AnalysesPageSkeleton() {
   );
 }
 
-function toIso(d: Date | string | null | undefined): string | null | undefined {
-  if (d === undefined) return undefined;
-  if (d === null) return null;
-  if (d instanceof Date) return d.toISOString();
-  return typeof d === "string" ? d : null;
-}
-
-/** Explicitní serializace přes hranici RSC → klient (Date → ISO). */
-function serializeAnalysesForClient(
-  list: Awaited<ReturnType<typeof listFinancialAnalyses>>
-): FinancialAnalysisListItem[] {
-  return list.map((a) => ({
-    ...a,
-    createdAt: toIso(a.createdAt) ?? String(a.createdAt),
-    updatedAt: toIso(a.updatedAt) ?? String(a.updatedAt),
-    lastExportedAt: toIso(a.lastExportedAt) ?? null,
-    lastRefreshedFromSharedAt: toIso(a.lastRefreshedFromSharedAt),
-  }));
-}
-
 async function AnalysesData() {
   let analyses: Awaited<ReturnType<typeof listFinancialAnalyses>> = [];
   let loadError: string | null = null;
@@ -65,7 +43,7 @@ async function AnalysesData() {
 
   return (
     <AnalysesPageClient
-      analyses={serializeAnalysesForClient(analyses)}
+      analyses={serializeFinancialAnalysesForClient(analyses)}
       loadError={loadError}
     />
   );

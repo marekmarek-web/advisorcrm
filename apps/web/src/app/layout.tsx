@@ -21,7 +21,7 @@ const plusJakarta = Plus_Jakarta_Sans({
   weight: ["500", "600", "700", "800"],
   variable: "--font-jakarta",
   display: "swap",
-  /** Druhý font — neblokuje LCP; primární text je Source Sans. */
+  /** Druhý font — neblokuje LCP; primární text je Source Sans (`preload: true`). */
   preload: false,
 });
 

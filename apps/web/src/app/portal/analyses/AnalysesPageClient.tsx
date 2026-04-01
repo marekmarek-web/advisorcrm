@@ -2,7 +2,8 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import {
   BarChart2,
   Search,
@@ -22,20 +23,41 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
-import { deleteFinancialAnalysisPermanently, setFinancialAnalysisStatus } from "@/app/actions/financial-analyses";
-import { formatUpdated, TABS, matchesTab, isCompleted, type TabId } from "./analyses-page-utils";
+import {
+  deleteFinancialAnalysisPermanently,
+  listFinancialAnalyses,
+  setFinancialAnalysisStatus,
+} from "@/app/actions/financial-analyses";
+import {
+  formatUpdated,
+  serializeFinancialAnalysesForClient,
+  TABS,
+  matchesTab,
+  isCompleted,
+  type TabId,
+} from "./analyses-page-utils";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 
 export default function AnalysesPageClient({
-  analyses,
+  analyses: initialAnalyses,
   loadError = null,
 }: {
   analyses: FinancialAnalysisListItem[];
   loadError?: string | null;
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: analyses = initialAnalyses } = useQuery({
+    queryKey: queryKeys.analyses.list(),
+    queryFn: async () => {
+      const raw = await listFinancialAnalyses();
+      return serializeFinancialAnalysesForClient(raw);
+    },
+    initialData: initialAnalyses,
+    staleTime: 60_000,
+    enabled: loadError == null,
+  });
   const toast = useToast();
   const confirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,7 +118,7 @@ export default function AnalysesPageClient({
     setArchivingId(id);
     try {
       await setFinancialAnalysisStatus(id, "archived");
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.analyses.all });
     } finally {
       setArchivingId(null);
     }
@@ -110,7 +132,7 @@ export default function AnalysesPageClient({
       await deleteFinancialAnalysisPermanently(id);
       setPermanentDeleteTarget(null);
       setOpenMenuId(null);
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.analyses.all });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Smazání se nepodařilo.";
       toast.showToast(msg, "error");

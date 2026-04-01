@@ -68,6 +68,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
   const [pending, startTransition] = useTransition();
 
   const refreshHouseholdAndCaches = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.households.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.pipeline.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
@@ -130,6 +131,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
     startTransition(async () => {
       await deleteHousehold(household.id);
       setDeleteModalOpen(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.households.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.pipeline.all });
       router.push("/portal/households");

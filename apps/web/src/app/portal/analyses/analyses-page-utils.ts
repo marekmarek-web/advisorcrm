@@ -1,5 +1,25 @@
 import type { FinancialAnalysisListItem } from "@/app/actions/financial-analyses";
 
+function toIso(d: Date | string | null | undefined): string | null | undefined {
+  if (d === undefined) return undefined;
+  if (d === null) return null;
+  if (d instanceof Date) return d.toISOString();
+  return typeof d === "string" ? d : null;
+}
+
+/** Stejná serializace jako u RSC ([page.tsx](page.tsx)) – Date → ISO pro klient. */
+export function serializeFinancialAnalysesForClient(
+  list: FinancialAnalysisListItem[]
+): FinancialAnalysisListItem[] {
+  return list.map((a) => ({
+    ...a,
+    createdAt: toIso(a.createdAt as Date | string) ?? String(a.createdAt),
+    updatedAt: toIso(a.updatedAt as Date | string) ?? String(a.updatedAt),
+    lastExportedAt: toIso(a.lastExportedAt as Date | string | null) ?? null,
+    lastRefreshedFromSharedAt: toIso(a.lastRefreshedFromSharedAt as Date | string | null | undefined),
+  }));
+}
+
 export function formatUpdated(updatedAt: Date | string): string {
   const d = updatedAt instanceof Date ? updatedAt : new Date(updatedAt);
   const now = new Date();

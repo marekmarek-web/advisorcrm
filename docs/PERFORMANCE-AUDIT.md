@@ -173,6 +173,27 @@ Změřte na produkčním buildu nebo preview; zapisujte LCP, INP, CLS (Google po
 
 **Lighthouse / analyze:** tabulku v sekci „Šablona Lighthouse“ doplňte po měření v cílovém prostředí. Bundle: `pnpm --filter web analyze` (webpack, viz Fáze 0) generuje `apps/web/.next/analyze/nodejs.html` a `edge.html` – slouží k orientaci ve velkých chunky; čísla závisí na lokálním buildu.
 
+### Výkon – fáze 4 (navazující)
+
+| Oblast | Změna |
+|--------|--------|
+| Kalendář | [`queryKeys.calendar`](../apps/web/src/lib/query-keys.ts) + `useQuery` pro `listEvents` v [`PortalCalendarView`](../apps/web/src/app/portal/PortalCalendarView.tsx) (`placeholderData: keepPreviousData`, `staleTime` 45 s); po CRUD / Google sync `invalidateQueries` na `queryKeys.calendar.all`. |
+| Finanční analýzy | [`queryKeys.analyses`](../apps/web/src/lib/query-keys.ts) + `useQuery` v [`AnalysesPageClient`](../apps/web/src/app/portal/analyses/AnalysesPageClient.tsx); po archivaci/smazání invalidace místo plného `router.refresh`. Serializace sdílena v [`analyses-page-utils`](../apps/web/src/app/portal/analyses/analyses-page-utils.ts). |
+| Mindmap seznam | Po vytvoření volné mapy [`onRefresh`](../apps/web/src/app/portal/mindmap/page.tsx) místo `router.refresh` ([`MindmapListClient`](../apps/web/src/app/portal/mindmap/MindmapListClient.tsx)). |
+| Domácnosti | [`queryKeys.households`](../apps/web/src/lib/query-keys.ts) + `useQuery` v [`HouseholdListClient`](../apps/web/src/app/portal/households/HouseholdListClient.tsx); wizard/smazání invaliduje `households` + existující cache bez `router.refresh` na seznamu. [`HouseholdDetailView`](../apps/web/src/app/portal/households/[id]/HouseholdDetailView.tsx) doplňuje invalidaci `households` při úpravách. |
+| Integrace Google (server) | Diagnostické `log()` v calendar/drive/gmail integration services jen v `NODE_ENV === "development"` (chyby `logError` zůstávají). |
+| Fonty (root layout) | [`layout.tsx`](../apps/web/src/app/layout.tsx): upřesněný komentář k preload (`Source_Sans_3` primární, `Plus_Jakarta_Sans` bez preload). |
+
+**`router.refresh()` – záměrně ponechané (bez TanStack klíče nebo nutný RSC detail):** odhlášení ([`UserMenu`](../apps/web/src/app/components/UserMenu.tsx), [`SignOutButton`](../apps/web/src/app/components/SignOutButton.tsx)); uložení profilu v Nastavení ([`SetupView`](../apps/web/src/app/portal/setup/SetupView.tsx)); klientská zóna (upload, profil, notifikace); detail obchodu ([`DealDetailHeader`](../apps/web/src/app/portal/pipeline/[id]/DealDetailHeader.tsx)) a vlastní pole příležitosti ([`OpportunityCustomFieldsTab`](../apps/web/src/app/portal/pipeline/[id]/OpportunityCustomFieldsTab.tsx)) kde invalidace doplňuje cache a `router.refresh` synchronizuje RSC props; [`HouseholdDetailView`](../apps/web/src/app/portal/households/[id]/HouseholdDetailView.tsx) po úpravách domácnosti na stejné route.
+
+#### Návrh streamu pro interní chat asistenta (volitelná další PR)
+
+- **Současný stav:** [`POST /api/ai/assistant/chat`](../apps/web/src/app/api/ai/assistant/chat/route.ts) vrací JSON (`message`, `suggestedActions`, `warnings`, …).
+- **Směr streamu:** odpověď jako `text/event-stream` nebo Vercel AI SDK `toDataStreamResponse`; klient v [`AiAssistantDrawer`](../apps/web/src/app/portal/AiAssistantDrawer.tsx) připojuje obsah k poslední zprávě asistenta z `ReadableStream`.
+- **Po dokončení:** stejné invalidace dotazů jako po dnešním JSON odpovědi (např. kontakty); compliance copy beze změny ([aidvisor-compliance](../.cursor/rules/aidvisor-compliance.mdc)).
+
+**Lighthouse / analyze:** stejně jako výše – tabulku doplňte po měření; jeden běh `pnpm --filter web analyze` z `apps/web` pro orientaci ve velikosti bundle.
+
 ---
 
 ## Závěr

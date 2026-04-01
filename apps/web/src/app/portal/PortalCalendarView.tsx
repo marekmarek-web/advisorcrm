@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, Plus, Edit2, Trash2, Mail, X, RefreshCw, MapPin, Link2, AlignLeft, User, Briefcase, Bell, Check, Info, Flag, CheckSquare, Send, Clock, Video, ArrowRight } from "lucide-react";
 import { listEvents, createEvent, updateEvent, deleteEvent, createFollowUp, type EventRow } from "@/app/actions/events";
 import { getContactsList, type ContactRow } from "@/app/actions/contacts";
@@ -919,9 +921,7 @@ export function PortalCalendarView() {
   }, []);
   const [mode, setMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [events, setEvents] = useState<EventRow[]>([]);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<(EventFormData & { id?: string }) | null>(null);
   const [detailEvent, setDetailEvent] = useState<EventRow | null>(null);
   const [detailAnchor, setDetailAnchor] = useState<EventDetailAnchorRect | null>(null);
@@ -985,19 +985,25 @@ export function PortalCalendarView() {
   const rangeStart = useMemo(() => new Date(rangeStartIso), [rangeStartIso]);
   const rangeEnd = useMemo(() => new Date(rangeEndIso), [rangeEndIso]);
 
-  const [calendarLoadError, setCalendarLoadError] = useState(false);
+  const queryClient = useQueryClient();
+  const {
+    data: events = [],
+    isLoading: loading,
+    isError: calendarLoadError,
+    refetch: refetchEvents,
+  } = useQuery({
+    queryKey: queryKeys.calendar.eventsRange(rangeStartIso, rangeEndIso),
+    queryFn: () => listEvents({ start: rangeStartIso, end: rangeEndIso }),
+    staleTime: 45_000,
+    placeholderData: keepPreviousData,
+  });
+
+  const invalidateCalendarEvents = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.calendar.all });
+  }, [queryClient]);
+
   const [calendarSyncLoading, setCalendarSyncLoading] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
-  const loadEvents = useCallback(() => {
-    setLoading(true);
-    setCalendarLoadError(false);
-    listEvents({ start: rangeStartIso, end: rangeEndIso })
-      .then((data) => { setEvents(data); setCalendarLoadError(false); })
-      .catch(() => { setEvents([]); setCalendarLoadError(true); })
-      .finally(() => setLoading(false));
-  }, [rangeStartIso, rangeEndIso]);
-
-  useEffect(() => { loadEvents(); }, [loadEvents]);
   useEffect(() => { getContactsList().then(setContacts).catch(() => setContacts([])); }, []);
   useEffect(() => {
     fetch("/api/calendar/status")
@@ -1032,7 +1038,7 @@ export function PortalCalendarView() {
       };
       const syncOk = res.ok && data.ok === true;
       if (syncOk) {
-        loadEvents();
+        invalidateCalendarEvents();
         toast.showToast(
           data.created !== undefined || data.updated !== undefined
             ? `Synchronizováno: ${data.created ?? 0} nových, ${data.updated ?? 0} upraveno.`
@@ -1054,7 +1060,7 @@ export function PortalCalendarView() {
     } finally {
       setCalendarSyncLoading(false);
     }
-  }, [rangeStartIso, rangeEndIso, loadEvents, toast]);
+  }, [rangeStartIso, rangeEndIso, invalidateCalendarEvents, toast]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   useEffect(() => { getOpenOpportunitiesList().then(setOpportunities).catch(() => setOpportunities([])); }, []);
 
@@ -1108,8 +1114,8 @@ export function PortalCalendarView() {
       });
       toast.showToast("Aktivita vytvořena");
     }
-    loadEvents();
-  }, [loadEvents, toast]);
+    invalidateCalendarEvents();
+  }, [invalidateCalendarEvents, toast]);
 
   function eventRowToCreatePayload(ev: EventRow): Parameters<typeof createEvent>[0] {
     const start = new Date(ev.startAt);
@@ -1136,16 +1142,16 @@ export function PortalCalendarView() {
       await deleteEvent(ev.id);
       setModal(null);
       closeEventDetail();
-      loadEvents();
+      invalidateCalendarEvents();
       toast.showToast("Událost byla smazána", "success", 6000, {
         actionLabel: "Vrátit zpět",
         onAction: async () => {
           await createEvent(payload);
-          loadEvents();
+          invalidateCalendarEvents();
         },
       });
     },
-    [loadEvents, toast, closeEventDetail],
+    [invalidateCalendarEvents, toast, closeEventDetail],
   );
 
   const handleDeleteById = useCallback(
@@ -1157,11 +1163,11 @@ export function PortalCalendarView() {
         await deleteEvent(id);
         setModal(null);
         closeEventDetail();
-        loadEvents();
+        invalidateCalendarEvents();
         toast.showToast("Událost byla smazána");
       }
     },
-    [events, handleDeleteEvent, loadEvents, toast, closeEventDetail],
+    [events, handleDeleteEvent, invalidateCalendarEvents, toast, closeEventDetail],
   );
 
   const handleFollowUp = useCallback(
@@ -1179,22 +1185,22 @@ export function PortalCalendarView() {
           contactId: source?.contactId || undefined,
         });
         setModal(null);
-        loadEvents();
+        invalidateCalendarEvents();
         if (type === "task") loadDayTasks(selectedDate);
         toast.showToast("Návazný úkol byl vytvořen.", "success");
       } catch (err) {
         toast.showToast(err instanceof Error ? err.message : "Nepodařilo se vytvořit návazný úkol.", "error");
       }
     },
-    [events, loadEvents, loadDayTasks, selectedDate, toast]
+    [events, invalidateCalendarEvents, loadDayTasks, selectedDate, toast]
   );
 
   const handleMarkEventDone = useCallback(async (ev: EventRow) => {
     await updateEvent(ev.id, { status: "done" });
     toast.showToast("Událost označena jako hotová");
     closeEventDetail();
-    loadEvents();
-  }, [loadEvents, toast, closeEventDetail]);
+    invalidateCalendarEvents();
+  }, [invalidateCalendarEvents, toast, closeEventDetail]);
 
   const handleEventMove = useCallback(
     async (eventId: string, targetDateStr: string, startMinutesFromMidnight: number) => {
@@ -1216,12 +1222,12 @@ export function PortalCalendarView() {
           }),
         });
         toast.showToast("Aktivita přesunuta", "success");
-        loadEvents();
+        invalidateCalendarEvents();
       } catch {
         toast.showToast("Nepodařilo se přesunout aktivitu.", "error");
       }
     },
-    [events, loadEvents, toast],
+    [events, invalidateCalendarEvents, toast],
   );
 
   const handleEventResize = useCallback(
@@ -1244,12 +1250,12 @@ export function PortalCalendarView() {
       try {
         await updateEvent(eventId, { endAt: nextEnd.toISOString() });
         toast.showToast("Délka aktivity upravena", "success");
-        loadEvents();
+        invalidateCalendarEvents();
       } catch {
         toast.showToast("Nepodařilo se upravit délku aktivity.", "error");
       }
     },
-    [events, loadEvents, toast],
+    [events, invalidateCalendarEvents, toast],
   );
 
   const handleDetailEventTypeChange = useCallback(
@@ -1260,12 +1266,12 @@ export function PortalCalendarView() {
           current && current.id === eventId ? { ...current, eventType: nextType } : current,
         );
         toast.showToast("Typ aktivity upraven", "success");
-        loadEvents();
+        invalidateCalendarEvents();
       } catch {
         toast.showToast("Nepodařilo se změnit typ aktivity.", "error");
       }
     },
-    [loadEvents, toast],
+    [invalidateCalendarEvents, toast],
   );
 
   function navigate(dir: -1 | 1) {
@@ -1526,7 +1532,7 @@ export function PortalCalendarView() {
                 <p className="text-sm font-medium text-amber-800">Nepodařilo se načíst události.</p>
                 <button
                   type="button"
-                  onClick={() => loadEvents()}
+                  onClick={() => void refetchEvents()}
                   className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 text-sm font-semibold rounded-lg transition-colors"
                 >
                   Zkusit znovu
