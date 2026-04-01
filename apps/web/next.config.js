@@ -20,7 +20,12 @@ const nextConfig = {
   experimental: {
     ...(nextMajor < 15
       ? {
-          serverComponentsExternalPackages: ["postgres"],
+          serverComponentsExternalPackages: [
+            "postgres",
+            "@napi-rs/canvas",
+            "pdf-parse",
+            "pdfjs-dist",
+          ],
         }
       : {}),
     serverActions: {
@@ -28,7 +33,11 @@ const nextConfig = {
     },
   },
   // Keep postgres external across Next 14+.
-  ...(nextMajor >= 15 ? { serverExternalPackages: ["postgres"] } : {}),
+  ...(nextMajor >= 15
+    ? {
+        serverExternalPackages: ["postgres", "@napi-rs/canvas", "pdf-parse", "pdfjs-dist"],
+      }
+    : {}),
   // Required in Next 16 when custom webpack config is present.
   ...(nextMajor >= 16 ? { turbopack: {} } : {}),
   webpack: (config, { isServer }) => {

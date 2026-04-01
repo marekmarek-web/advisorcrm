@@ -1,11 +1,11 @@
 /**
  * Server-side PDF text extraction when Adobe preprocessing is disabled or returns no text.
- * Uses pdf-parse (PDF.js) so the AI pipeline gets a text hint instead of relying only on file_url vision.
+ * Uses pdf-parse (PDF.js). Musí načíst polyfilly dřív než `pdf-parse` — jinak pdfjs-dist na Node
+ * vyhodí DOMMatrix is not defined (Vercel serverless).
  */
-
 import "server-only";
 
-import { PDFParse } from "pdf-parse";
+import { installPdfJsNodePolyfills } from "./pdfjs-node-polyfills";
 
 const FIRST_PAGES = 30;
 /** Ignore tiny garbage strings (corrupt / empty PDF). */
@@ -25,7 +25,10 @@ function buildTimeoutError(stage: "fetch" | "parse"): Error {
  * Fetches a PDF from an HTTPS URL (e.g. Supabase signed URL) and extracts plain text from the first N pages.
  */
 export async function extractTextFromPdfUrl(url: string): Promise<string | null> {
-  let parser: PDFParse | null = null;
+  await installPdfJsNodePolyfills();
+  const { PDFParse } = await import("pdf-parse");
+
+  let parser: InstanceType<typeof PDFParse> | null = null;
   let fetchTimeoutId: ReturnType<typeof setTimeout> | undefined;
   let parseTimeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
