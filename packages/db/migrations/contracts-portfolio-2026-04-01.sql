@@ -72,8 +72,9 @@ BEGIN
   END IF;
 END $$;
 
+-- Sloupec klienta je client_id (Drizzle); starý název contact_id byl přejmenován (contracts-contact-id-to-client-id.sql).
 CREATE INDEX IF NOT EXISTS contracts_client_portfolio_idx
-  ON contracts (tenant_id, contact_id)
+  ON contracts (tenant_id, client_id)
   WHERE archived_at IS NULL AND visible_to_client = true AND portfolio_status IN ('active', 'ended');
 
 COMMENT ON COLUMN contracts.visible_to_client IS 'When true, contract appears in client portal portfolio (if status allows).';

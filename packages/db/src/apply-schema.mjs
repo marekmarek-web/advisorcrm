@@ -310,7 +310,7 @@ BEGIN
     ALTER TABLE contracts ADD CONSTRAINT contracts_source_contract_review_id_fkey FOREIGN KEY (source_contract_review_id) REFERENCES contract_upload_reviews(id) ON DELETE SET NULL;
   END IF;
 END $$;
-CREATE INDEX IF NOT EXISTS contracts_client_portfolio_idx ON contracts (tenant_id, contact_id) WHERE archived_at IS NULL AND visible_to_client = true AND portfolio_status IN ('active', 'ended');
+CREATE INDEX IF NOT EXISTS contracts_client_portfolio_idx ON contracts (tenant_id, client_id) WHERE archived_at IS NULL AND visible_to_client = true AND portfolio_status IN ('active', 'ended');
 `;
 
 // Globální partneři (tenant_id NULL) – vidí je každý tenant v dropdownu (po jednom, aby nepadl multi-statement)
