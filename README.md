@@ -58,6 +58,12 @@ CRM pro finanční poradce v ČR – MVP dle specifikace (domácnosti, pipeline,
    ```
    Vloží globální partnery a produkty (ČSOB, Uniqa, Direct, Pillow, ČPP, Kooperativa, Allianz, MetLife, Conseq, INVESTIKA, …). Pravidla `excludePartners` v katalogu se respektují.
 
+   **Kontrola katalogu vůči DB:** Porovnání JSON ↔ Postgres (globální řádky) bez zápisu:
+   ```bash
+   pnpm run db:catalog-diff
+   ```
+   Vyžaduje `DATABASE_URL` (např. z `apps/web/.env.local`). Diagnostické dotazy jsou také v [`packages/db/migrations/catalog-audit-global-partners-products.sql`](packages/db/migrations/catalog-audit-global-partners-products.sql).
+
 4. **Seed (demo data)**
    ```bash
    pnpm seed

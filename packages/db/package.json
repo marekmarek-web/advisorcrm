@@ -13,6 +13,7 @@
     "apply-schema": "node src/apply-schema.mjs",
     "seed-partners": "node src/seed-partners.mjs",
     "seed-catalog": "node src/seed-catalog.mjs",
+    "catalog-diff": "node src/catalog-db-diff.mjs",
     "merge-top-lists": "node src/merge-top-lists-into-catalog.mjs",
     "push": "tsx node_modules/drizzle-kit/bin.cjs push",
     "studio": "tsx node_modules/drizzle-kit/bin.cjs studio",

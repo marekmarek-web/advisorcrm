@@ -3,7 +3,7 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
-import { contracts, partners, products, documents } from "db";
+import { contracts, partners, products, documents, contacts } from "db";
 import { eq, and, asc, or, isNull, inArray } from "db";
 import { contractSegments } from "db";
 import { logActivity } from "./activity";
@@ -212,6 +212,107 @@ function pgNotNullViolationColumn(e: unknown): string | null {
   return m?.[1] ?? null;
 }
 
+function pgErrorMeta(e: unknown): { code?: string; detail?: string; constraint?: string } {
+  if (typeof e !== "object" || e === null) return {};
+  const o = e as Record<string, unknown>;
+  return {
+    code: typeof o.code === "string" ? o.code : undefined,
+    detail: typeof o.detail === "string" ? o.detail : undefined,
+    constraint: typeof o.constraint === "string" ? o.constraint : undefined,
+  };
+}
+
+/** Čitelná hláška z Postgres FK detailu (klient / partner / produkt). */
+function fkViolationUserMessage(detail: string | undefined): string | null {
+  if (!detail) return null;
+  const d = detail.toLowerCase();
+  if (d.includes("client_id") || d.includes("contact_id")) {
+    return "Klient není v databázi nebo neodpovídá workspace. Obnovte stránku a zkuste znovu.";
+  }
+  if (d.includes("partner_id")) {
+    return "Partner není v databázi. Vyberte partnera z katalogu znovu.";
+  }
+  if (d.includes("product_id")) {
+    return "Produkt není v databázi. Vyberte produkt z katalogu znovu.";
+  }
+  return null;
+}
+
+type RefCheck = { ok: true } | { ok: false; message: string };
+
+/** Před INSERT/UPDATE smlouvy: klient v tenantovi, partner a produkt z globálního nebo tenant katalogu, produkt patří k partnerovi. */
+async function assertContractPartnerProductRefs(opts: {
+  tenantId: string;
+  contactId?: string;
+  partnerId?: string | null;
+  productId?: string | null;
+}): Promise<RefCheck> {
+  if (opts.contactId?.trim()) {
+    const [c] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, opts.contactId.trim()), eq(contacts.tenantId, opts.tenantId)))
+      .limit(1);
+    if (!c) {
+      return {
+        ok: false,
+        message:
+          "Klient neexistuje nebo nepatří do tohoto workspace. Obnovte stránku a zkuste znovu.",
+      };
+    }
+  }
+
+  const pid = opts.partnerId?.trim() || "";
+  const prid = opts.productId?.trim() || "";
+
+  if (pid) {
+    const [p] = await db
+      .select({ id: partners.id })
+      .from(partners)
+      .where(
+        and(eq(partners.id, pid), or(isNull(partners.tenantId), eq(partners.tenantId, opts.tenantId)))
+      )
+      .limit(1);
+    if (!p) {
+      return {
+        ok: false,
+        message:
+          "Vybraný partner není v katalogu nebo nepatří do tohoto workspace. Vyberte partnera znovu.",
+      };
+    }
+  }
+
+  if (prid) {
+    const rows = await db
+      .select({ partnerId: products.partnerId })
+      .from(products)
+      .innerJoin(partners, eq(products.partnerId, partners.id))
+      .where(
+        and(
+          eq(products.id, prid),
+          or(isNull(partners.tenantId), eq(partners.tenantId, opts.tenantId))
+        )
+      )
+      .limit(1);
+    if (!rows.length) {
+      return {
+        ok: false,
+        message:
+          "Vybraný produkt neexistuje nebo nepatří do tohoto workspace. Vyberte produkt znovu.",
+      };
+    }
+    if (pid && rows[0].partnerId !== pid) {
+      return {
+        ok: false,
+        message:
+          "Produkt neodpovídá vybranému partnerovi. Zvolte produkt znovu v seznamu u partnera.",
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 /**
  * Vrací výsledek místo throw u očekávaných chyb — v produkci Next.js jinak skryje zprávu z Server Action
  * a klient uvidí jen obecný „Server Components render“ text.
@@ -284,6 +385,16 @@ export async function createContract(
       };
     }
 
+    const refCheck = await assertContractPartnerProductRefs({
+      tenantId: auth.tenantId,
+      contactId,
+      partnerId: normalized.partnerId ?? null,
+      productId: normalized.productId ?? null,
+    });
+    if (!refCheck.ok) {
+      return { ok: false, message: refCheck.message };
+    }
+
     const [row] = await db
       .insert(contracts)
       .values({
@@ -320,10 +431,15 @@ export async function createContract(
     return { ok: true, id: newId };
   } catch (e) {
     if (isRedirectError(e)) throw e;
-    console.error("[createContract]", e);
     const msg = e instanceof Error ? e.message : String(e);
+    const meta = pgErrorMeta(e);
+    console.error("[createContract]", { ...meta, message: msg, err: e });
     if (msg.includes("foreign key") || msg.includes("violates foreign key")) {
-      return { ok: false, message: "Kontakt nebo vybraný partner/produkt neexistuje. Zkontrolujte údaje." };
+      const fkMsg = fkViolationUserMessage(meta.detail);
+      return {
+        ok: false,
+        message: fkMsg ?? "Kontakt nebo vybraný partner/produkt neexistuje. Zkontrolujte údaje.",
+      };
     }
     const code = pgErrorCode(e);
     if (code === "42703") {
@@ -335,9 +451,12 @@ export async function createContract(
       return { ok: false, message: hint };
     }
     if (code === "23503") {
+      const fkMsg = fkViolationUserMessage(meta.detail);
       return {
         ok: false,
-        message: "Neplatná vazba v databázi (klient nebo partner/produkt). Zkontrolujte výběr v CRM.",
+        message:
+          fkMsg ??
+          "Neplatná vazba v databázi (klient nebo partner/produkt). Zkontrolujte výběr v CRM.",
       };
     }
     if (code === "23502") {
@@ -445,6 +564,19 @@ export async function updateContract(
       if (pr) productName = pr.name;
     }
 
+    if (!auth.tenantId?.trim()) {
+      throw new Error("Chybí workspace (tenant). Obnovte stránku nebo dokončete registraci.");
+    }
+
+    const updateRef = await assertContractPartnerProductRefs({
+      tenantId: auth.tenantId,
+      partnerId: normalized.partnerId ?? null,
+      productId: normalized.productId ?? null,
+    });
+    if (!updateRef.ok) {
+      throw new Error(updateRef.message);
+    }
+
     const portfolioPatch: Record<string, unknown> = {};
     if (form.visibleToClient !== undefined) portfolioPatch.visibleToClient = form.visibleToClient;
     if (form.portfolioStatus !== undefined) {
@@ -482,7 +614,8 @@ export async function updateContract(
       await logActivity("contract", id, "update", { fields: Object.keys(form) });
     } catch {}
   } catch (e) {
-    console.error("[updateContract]", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[updateContract]", { ...pgErrorMeta(e), message: msg, err: e });
     throw new Error(e instanceof Error ? e.message : "Smlouvu se nepodařilo upravit.");
   }
 }
