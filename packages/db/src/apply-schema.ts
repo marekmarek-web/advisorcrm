@@ -177,6 +177,47 @@ CREATE TABLE IF NOT EXISTS contact_coverage (
   updated_by text,
   UNIQUE(tenant_id, contact_id, item_key)
 );
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS visible_to_client boolean DEFAULT false;
+CREATE TABLE IF NOT EXISTS reminders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  reminder_type text NOT NULL,
+  title text NOT NULL,
+  description text,
+  due_at timestamptz NOT NULL,
+  severity text NOT NULL DEFAULT 'medium',
+  related_entity_type text,
+  related_entity_id uuid,
+  suggestion_origin text NOT NULL DEFAULT 'rule',
+  status text NOT NULL DEFAULT 'pending',
+  snoozed_until timestamptz,
+  resolved_at timestamptz,
+  assigned_to uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_reminders_tenant ON reminders(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_reminders_assigned ON reminders(assigned_to, status);
+CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(due_at) WHERE status = 'pending';
+CREATE TABLE IF NOT EXISTS advisor_notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  type text NOT NULL,
+  title text NOT NULL,
+  body text,
+  severity text NOT NULL DEFAULT 'info',
+  target_user_id uuid NOT NULL,
+  channels jsonb NOT NULL DEFAULT '["in_app"]',
+  related_entity_type text,
+  related_entity_id uuid,
+  status text NOT NULL DEFAULT 'unread',
+  group_key text,
+  read_at timestamptz,
+  dismissed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_advisor_notif_target ON advisor_notifications(target_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_advisor_notif_group ON advisor_notifications(group_key);
 ALTER TABLE contact_coverage ADD COLUMN IF NOT EXISTS fa_analysis_id uuid REFERENCES financial_analyses(id) ON DELETE SET NULL;
 ALTER TABLE contact_coverage ADD COLUMN IF NOT EXISTS fa_item_id uuid REFERENCES fa_plan_items(id) ON DELETE SET NULL;
 `;

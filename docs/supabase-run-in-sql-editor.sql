@@ -322,6 +322,7 @@ CREATE TABLE IF NOT EXISTS document_versions (
 
 -- 8b. documents — rozšíření (soulad s aplikací / Drizzle; kanonicky i v packages/db/migrations/documents_schema_sync_2026.sql)
 ALTER TABLE documents
+  ADD COLUMN IF NOT EXISTS visible_to_client boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS document_type text,
   ADD COLUMN IF NOT EXISTS upload_source text DEFAULT 'web',
   ADD COLUMN IF NOT EXISTS sensitive boolean DEFAULT false,

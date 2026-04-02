@@ -7,6 +7,7 @@
 --   UPDATE documents SET upload_source = 'web' WHERE upload_source IS NULL;
 
 ALTER TABLE documents
+  ADD COLUMN IF NOT EXISTS visible_to_client boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS document_type text,
   ADD COLUMN IF NOT EXISTS upload_source text DEFAULT 'web',
   ADD COLUMN IF NOT EXISTS sensitive boolean DEFAULT false,

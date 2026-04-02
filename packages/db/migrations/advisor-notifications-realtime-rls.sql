@@ -1,4 +1,5 @@
 -- In-app notifikace pro poradce: Supabase Realtime na INSERT do advisor_notifications + RLS SELECT pro vlastní řádky.
+-- Tabulka musí existovat — pokud dostaneš „relation advisor_notifications does not exist“, nejdřív spusť production-schema-gaps-2026-04-02.sql (nebo add_reminders.sql).
 -- Spusť v Supabase: SQL Editor (projekt musí mít zapnuté Realtime).
 -- Pokud tabulka už v publikaci je, příkaz ADD TABLE může hlásit chybu — tu ignoruj nebo uprav.
 
