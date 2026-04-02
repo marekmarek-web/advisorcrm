@@ -1,58 +1,23 @@
-import { requireAuth } from "@/lib/auth/require-auth";
-import { db } from "db";
-import { contacts } from "db";
-import { eq, and } from "db";
-import { getClientPortfolioForContact } from "@/app/actions/contracts";
-import { getDocumentsForClient } from "@/app/actions/documents";
-import { getPaymentInstructionsForContact } from "@/app/actions/payment-pdf";
-import { getClientRequests } from "@/app/actions/client-portal-requests";
-import { getPortalNotificationsForClient } from "@/app/actions/portal-notifications";
 import { formatPortalNotificationBody } from "@/lib/client-portal/format-portal-notification-body";
-import { getClientDashboardMetrics } from "@/app/actions/client-dashboard";
-import { getClientFinancialSummaryForContact } from "@/app/actions/client-financial-summary";
-import { getAssignedAdvisorForClient } from "@/app/actions/client-dashboard";
-import { listClientMaterialRequests } from "@/app/actions/advisor-material-requests";
+import { loadClientPortalSessionBundle } from "@/lib/client-portal/client-portal-session-bundle";
+import { mapFinancialSummaryForClientDashboard } from "@/lib/client-portal/map-financial-summary-for-dashboard";
 import { ClientDashboardLayout } from "./ClientDashboardLayout";
 import { ClientWelcomeView } from "./ClientWelcomeView";
 
 export default async function ClientZonePage() {
-  const auth = await requireAuth();
-  if (auth.roleName !== "Client" || !auth.contactId) return null;
+  const bundle = await loadClientPortalSessionBundle();
 
-  const [contact] = await db
-    .select({
-      firstName: contacts.firstName,
-      lastName: contacts.lastName,
-      email: contacts.email,
-      notificationUnsubscribedAt: contacts.notificationUnsubscribedAt,
-    })
-    .from(contacts)
-    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, auth.contactId)))
-    .limit(1);
-
+  const contact = bundle.contact ?? undefined;
   const isUnsubscribed = !!contact?.notificationUnsubscribedAt;
 
-  const [
-    contractsList,
-    documentsList,
-    paymentInstructions,
-    requestsList,
-    quickStats,
-    notifications,
-    financialSummaryRaw,
-    advisor,
-    advisorMaterialRequests,
-  ] = await Promise.all([
-    getClientPortfolioForContact(auth.contactId),
-    getDocumentsForClient(auth.contactId),
-    getPaymentInstructionsForContact(auth.contactId),
-    getClientRequests(),
-    getClientDashboardMetrics(auth.contactId),
-    getPortalNotificationsForClient(),
-    getClientFinancialSummaryForContact(auth.contactId),
-    getAssignedAdvisorForClient(auth.contactId).catch(() => null),
-    listClientMaterialRequests().catch(() => []),
-  ]);
+  const contractsList = bundle.contracts;
+  const documentsList = bundle.documents;
+  const paymentInstructions = bundle.paymentInstructions;
+  const requestsList = bundle.requests;
+  const quickStats = bundle.quickStats;
+  const notifications = bundle.notifications;
+  const advisor = bundle.advisor;
+  const advisorMaterialRequests = bundle.advisorMaterialRequests;
 
   const isFirstRun = contractsList.length === 0 && documentsList.length === 0;
 
@@ -67,23 +32,7 @@ export default async function ClientZonePage() {
     );
   }
 
-  const financialSummary =
-    financialSummaryRaw.status === "missing" || !financialSummaryRaw.primaryAnalysisId
-      ? null
-      : {
-          scope: financialSummaryRaw.scope,
-          householdName: financialSummaryRaw.householdName,
-          income: financialSummaryRaw.income,
-          expenses: financialSummaryRaw.expenses,
-          surplus: financialSummaryRaw.surplus,
-          assets: financialSummaryRaw.assets,
-          liabilities: financialSummaryRaw.liabilities,
-          netWorth: financialSummaryRaw.netWorth,
-          reserveOk: financialSummaryRaw.reserveOk,
-          priorities: financialSummaryRaw.priorities,
-          gaps: financialSummaryRaw.gaps,
-          goalsCount: financialSummaryRaw.goalsCount,
-        };
+  const financialSummary = mapFinancialSummaryForClientDashboard(bundle.financialSummaryRaw);
 
   const openRequests = requestsList.filter(
     (r) => r.statusKey !== "done" && r.statusKey !== "cancelled"
@@ -92,9 +41,17 @@ export default async function ClientZonePage() {
 
   return (
     <ClientDashboardLayout
-      contact={contact ?? undefined}
+      contact={
+        contact
+          ? {
+              firstName: contact.firstName ?? "",
+              lastName: contact.lastName ?? "",
+              email: contact.email,
+            }
+          : undefined
+      }
       isUnsubscribed={isUnsubscribed}
-      authContactId={auth.contactId}
+      authContactId={bundle.contactId}
       quickStats={quickStats}
       openRequests={openRequests}
       contractsCount={contractsList.length}

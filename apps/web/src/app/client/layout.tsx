@@ -26,6 +26,20 @@ export default async function ClientZoneLayout({
     redirect("/prihlaseni?error=auth_error");
   }
 
+  const headerList = await headers();
+  const cookieStore = await cookies();
+  const mobileUiEnabled = isMobileUiV1EnabledForRequest({
+    userAgent: headerList.get("user-agent"),
+    cookieStore,
+  });
+  const pathname = headerList.get("x-pathname") ?? "";
+  const useFullClientShellOnMobile =
+    pathname.startsWith("/client/calculators") || pathname.startsWith("/client/calculators/");
+
+  if (mobileUiEnabled && auth.contactId && !useFullClientShellOnMobile) {
+    return <ClientMobileApp />;
+  }
+
   let unreadNotificationsCount = 0;
   let contact: { firstName: string | null; lastName: string | null } | null = null;
   let advisor: Awaited<ReturnType<typeof getAssignedAdvisorForClient>> = null;
@@ -54,27 +68,6 @@ export default async function ClientZoneLayout({
   const fullName = contact
     ? `${contact.firstName} ${contact.lastName}`.trim()
     : "Klient";
-
-  const headerList = await headers();
-  const cookieStore = await cookies();
-  const mobileUiEnabled = isMobileUiV1EnabledForRequest({
-    userAgent: headerList.get("user-agent"),
-    cookieStore,
-  });
-  const pathname = headerList.get("x-pathname") ?? "";
-  const useFullClientShellOnMobile =
-    pathname.startsWith("/client/calculators") || pathname.startsWith("/client/calculators/");
-
-  if (mobileUiEnabled && auth.contactId && !useFullClientShellOnMobile) {
-    return (
-      <ClientMobileApp
-        contactId={auth.contactId}
-        fullName={fullName}
-        unreadNotificationsCount={unreadNotificationsCount}
-        advisor={advisor}
-      />
-    );
-  }
 
   return (
     <ClientPortalShell
