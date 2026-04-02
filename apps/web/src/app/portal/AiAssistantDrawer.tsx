@@ -53,6 +53,13 @@ type ChatMessage =
       reviewId?: string;
       draftActions?: DraftAction[];
       clientMatchCandidates?: ClientCandidate[];
+      executionState?: {
+        status: "draft" | "awaiting_confirmation" | "executing" | "completed" | "partial_failure";
+        planId?: string;
+        totalSteps?: number;
+        pendingSteps?: number;
+      } | null;
+      contextState?: { channel: string | null; lockedClientId: string | null } | null;
     };
 
 type UploadPhase = "idle" | "uploading" | "processing";
@@ -96,6 +103,24 @@ function formatUploadSuccessMessage(detail: {
   return lines.join("\n");
 }
 
+function executionLabel(
+  state: NonNullable<Exclude<ChatMessage, { role: "user" }>["executionState"]>,
+): { tone: string; text: string } {
+  if (state.status === "awaiting_confirmation") {
+    return { tone: "amber", text: "Čeká na potvrzení" };
+  }
+  if (state.status === "executing") {
+    return { tone: "indigo", text: "Právě provádím kroky" };
+  }
+  if (state.status === "partial_failure") {
+    return { tone: "rose", text: "Částečně selhalo" };
+  }
+  if (state.status === "completed") {
+    return { tone: "emerald", text: "Provedeno" };
+  }
+  return { tone: "slate", text: "Návrh akcí" };
+}
+
 export function AiAssistantDrawer() {
   const { open, setOpen } = useAiAssistantDrawer();
   const { isNative } = useNativePlatform();
@@ -124,6 +149,9 @@ export function AiAssistantDrawer() {
   const [importContactsMapping, setImportContactsMapping] = useState<ColumnMapping>(DEFAULT_CONTACT_IMPORT_MAPPING);
   const [importContactsResult, setImportContactsResult] = useState<{ imported: number; skipped: number; errors: { row: number; message: string }[] } | null>(null);
   const [importContactsLoading, setImportContactsLoading] = useState(false);
+  const latestAssistantContext = [...messages]
+    .reverse()
+    .find((m) => m.role === "assistant" && m.contextState)?.contextState;
 
   useEffect(() => {
     if (!open) return;
@@ -205,6 +233,8 @@ export function AiAssistantDrawer() {
             content: complete.message ?? "",
             suggestedActions: mapActionPayloadsToSuggestedActions(complete.suggestedActions ?? []),
             warnings: complete.warnings ?? [],
+            executionState: complete.executionState ?? null,
+            contextState: complete.contextState ?? null,
           };
         }
         return next;
@@ -766,6 +796,15 @@ export function AiAssistantDrawer() {
         {/* Chat history */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-4 space-y-3">
+            {latestAssistantContext?.lockedClientId && (
+              <div className="sticky top-0 z-10 py-2">
+                <div className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700">
+                  <span>Kontext lock aktivní</span>
+                  <span>•</span>
+                  <span>klient {latestAssistantContext.lockedClientId.slice(0, 8)}…</span>
+                </div>
+              </div>
+            )}
             {messages.length === 0 && uploadPhase === "idle" && (
               <p className="text-sm text-[color:var(--wp-text-secondary)] font-medium py-2">
                 Napište zprávu nebo nahrajte PDF. Po zpracování vám nabídneme další kroky.
@@ -784,6 +823,35 @@ export function AiAssistantDrawer() {
                   }`}
                 >
                   <p className={`whitespace-pre-wrap ${m.role === "user" ? "text-white" : "text-[color:var(--wp-text-secondary)]"}`}>{m.content}</p>
+                  {m.role === "assistant" && m.executionState && (
+                    <div className="mt-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2">
+                      {(() => {
+                        const lbl = executionLabel(m.executionState);
+                        const toneClass =
+                          lbl.tone === "amber"
+                            ? "text-amber-700"
+                            : lbl.tone === "emerald"
+                              ? "text-emerald-700"
+                              : lbl.tone === "rose"
+                                ? "text-rose-700"
+                                : "text-indigo-700";
+                        return (
+                          <div className={`text-xs font-bold ${toneClass}`}>
+                            {lbl.text}
+                            {m.executionState.totalSteps ? ` • ${m.executionState.totalSteps} kroků` : ""}
+                            {(m.executionState.pendingSteps ?? 0) > 0
+                              ? ` • čeká: ${m.executionState.pendingSteps}`
+                              : ""}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {m.role === "assistant" && m.contextState?.lockedClientId && (
+                    <div className="mt-2 text-[11px] font-semibold text-[color:var(--wp-text-tertiary)]">
+                      Aktivní lock klienta: {m.contextState.lockedClientId.slice(0, 8)}…
+                    </div>
+                  )}
                   {m.role === "assistant" && m.warnings && m.warnings.length > 0 && (
                     <div className="flex items-center gap-2 mt-2 text-amber-700 text-xs font-medium">
                       <AlertCircle size={14} />

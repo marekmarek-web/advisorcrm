@@ -40,6 +40,16 @@ export type AssistantResponse = {
   confidence: number;
   sourcesSummary: string[];
   sessionId: string;
+  executionState?: {
+    status: "draft" | "awaiting_confirmation" | "executing" | "completed" | "partial_failure";
+    planId?: string;
+    totalSteps?: number;
+    pendingSteps?: number;
+  } | null;
+  contextState?: {
+    channel: string | null;
+    lockedClientId: string | null;
+  } | null;
 };
 
 type ToolCall = {

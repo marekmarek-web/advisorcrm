@@ -137,9 +137,24 @@ export async function POST(request: Request) {
         "Asistent je stále zamčený na původního klienta. Pro bezpečné přepnutí použijte příkaz „přepni klienta\".",
       );
     }
+    const plan = session.lastExecutionPlan;
+    const pendingSteps = plan?.steps.filter((s) => s.status === "requires_confirmation").length ?? 0;
+    const executionState: AssistantResponse["executionState"] = plan
+      ? {
+          status: plan.status === "draft" ? "draft" : plan.status,
+          planId: plan.planId,
+          totalSteps: plan.steps.length,
+          pendingSteps,
+        }
+      : null;
     const persistedResponse: AssistantResponse = {
       ...response,
       warnings: [...new Set(conflictWarnings)],
+      executionState,
+      contextState: {
+        channel: session.activeChannel ?? null,
+        lockedClientId: session.lockedClientId ?? null,
+      },
     };
 
     await upsertConversationFromSession(session, {

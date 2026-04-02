@@ -44,6 +44,13 @@ interface ChatMessage {
   suggestedActions?: SuggestedAction[];
   referencedEntities?: ReferencedEntity[];
   warnings?: string[];
+  executionState?: {
+    status: "draft" | "awaiting_confirmation" | "executing" | "completed" | "partial_failure";
+    planId?: string;
+    totalSteps?: number;
+    pendingSteps?: number;
+  } | null;
+  contextState?: { channel: string | null; lockedClientId: string | null } | null;
 }
 
 interface SuggestedAction {
@@ -55,6 +62,24 @@ interface SuggestedAction {
 interface ReferencedEntity {
   type: string;
   id: string;
+}
+
+function executionBadge(
+  state: NonNullable<ChatMessage["executionState"]>,
+): { text: string; className: string } {
+  if (state.status === "awaiting_confirmation") {
+    return { text: "Čeká na potvrzení", className: "text-amber-700 bg-amber-50 border-amber-200" };
+  }
+  if (state.status === "executing") {
+    return { text: "Probíhá provedení", className: "text-indigo-700 bg-indigo-50 border-indigo-200" };
+  }
+  if (state.status === "partial_failure") {
+    return { text: "Částečně selhalo", className: "text-rose-700 bg-rose-50 border-rose-200" };
+  }
+  if (state.status === "completed") {
+    return { text: "Provedeno", className: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+  }
+  return { text: "Návrh akcí", className: "text-slate-700 bg-slate-50 border-slate-200" };
 }
 
 /* ------------------------------------------------------------------ */
@@ -124,6 +149,18 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           <p className={cx("text-sm leading-relaxed whitespace-pre-wrap", isUser ? "text-white" : "text-[color:var(--wp-text)]")}>
             {msg.text}
           </p>
+          {!isUser && msg.executionState ? (
+            <div className={cx("mt-2 inline-flex items-center gap-2 rounded-lg border px-2 py-1 text-[11px] font-bold", executionBadge(msg.executionState).className)}>
+              <span>{executionBadge(msg.executionState).text}</span>
+              {msg.executionState.totalSteps ? <span>• {msg.executionState.totalSteps} kroků</span> : null}
+              {(msg.executionState.pendingSteps ?? 0) > 0 ? <span>• čeká {msg.executionState.pendingSteps}</span> : null}
+            </div>
+          ) : null}
+          {!isUser && msg.contextState?.lockedClientId ? (
+            <p className="mt-1 text-[10px] text-[color:var(--wp-text-tertiary)] font-semibold">
+              Zamčený klient: {msg.contextState.lockedClientId.slice(0, 8)}…
+            </p>
+          ) : null}
           <p className={cx("text-[10px] mt-1", isUser ? "text-indigo-200" : "text-[color:var(--wp-text-tertiary)]")}>
             {msg.timestamp.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
           </p>
@@ -380,6 +417,8 @@ export function AiAssistantChatScreen() {
                   suggestedActions: mapActionPayloadsToSuggestedActions(complete.suggestedActions ?? []),
                   referencedEntities: complete.referencedEntities ?? [],
                   warnings: complete.warnings ?? [],
+                  executionState: complete.executionState ?? null,
+                  contextState: complete.contextState ?? null,
                 }
               : m
           )
@@ -489,6 +528,8 @@ export function AiAssistantChatScreen() {
                 suggestedActions: mapActionPayloadsToSuggestedActions(complete.suggestedActions ?? []),
                 referencedEntities: complete.referencedEntities ?? [],
                 warnings: complete.warnings ?? [],
+                executionState: complete.executionState ?? null,
+                contextState: complete.contextState ?? null,
               }
             : m
         )
@@ -554,6 +595,9 @@ export function AiAssistantChatScreen() {
   }
 
   const isEmpty = messages.length === 0;
+  const latestContextState = [...messages]
+    .reverse()
+    .find((m) => m.contextState?.lockedClientId)?.contextState;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -587,6 +631,16 @@ export function AiAssistantChatScreen() {
                   <ChevronRight size={15} className="text-[color:var(--wp-text-tertiary)] flex-shrink-0" />
                 </button>
               ))}
+            </div>
+          </div>
+        ) : null}
+
+        {latestContextState?.lockedClientId ? (
+          <div className="sticky top-0 z-10">
+            <div className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700">
+              <span>Kontext lock</span>
+              <span>•</span>
+              <span>{latestContextState.lockedClientId.slice(0, 8)}…</span>
             </div>
           </div>
         ) : null}
