@@ -25,6 +25,11 @@ import { caseTypeToLabel } from "@/lib/client-portal/case-type-labels";
 import { getTargetAdvisorUserIdForContact } from "@/app/actions/client-dashboard";
 import { getPortalRequestDisplayFields } from "@/lib/client-portal/portal-request-display";
 import { parseClientPortalNotificationBody } from "@/lib/advisor-in-app/parse-client-portal-notification-body";
+import {
+  ADVISOR_PORTAL_HANDLING_KEY,
+  parseAdvisorPortalHandling,
+  type AdvisorPortalRequestHandling,
+} from "@/lib/client-portal/advisor-portal-handling";
 
 async function notifyAdvisorNewPortalRequest(params: {
   tenantId: string;
@@ -114,18 +119,6 @@ async function notifyAdvisorNewPortalRequest(params: {
 }
 
 const CLIENT_PORTAL_NOTIFICATION_TYPE = "client_portal_request";
-
-/** Operativní štítek inboxu poradce (uloženo v opportunities.customFields). */
-export const ADVISOR_PORTAL_HANDLING_KEY = "client_portal_advisor_handling" as const;
-export type AdvisorPortalRequestHandling = "waiting" | "resolved";
-
-export function parseAdvisorPortalHandling(
-  custom: Record<string, unknown>
-): AdvisorPortalRequestHandling | null {
-  const v = custom[ADVISOR_PORTAL_HANDLING_KEY];
-  if (v === "waiting" || v === "resolved") return v;
-  return null;
-}
 
 function inboxStatusLabelForAdvisor(
   custom: Record<string, unknown>,

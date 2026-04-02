@@ -28,10 +28,8 @@ import {
   getAdvisorClientPortalRequestsInbox,
   setAdvisorPortalRequestHandling,
 } from "@/app/actions/client-portal-requests";
-import type {
-  AdvisorClientPortalInboxItem,
-  AdvisorPortalRequestHandling,
-} from "@/app/actions/client-portal-requests";
+import type { AdvisorClientPortalInboxItem } from "@/app/actions/client-portal-requests";
+import type { AdvisorPortalRequestHandling } from "@/lib/client-portal/advisor-portal-handling";
 import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 import { useToast } from "@/app/components/Toast";
 
