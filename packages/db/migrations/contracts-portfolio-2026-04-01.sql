@@ -1,5 +1,11 @@
 -- Portfolio metadata on contracts: client visibility, source lineage, normalized attributes.
 -- Run in Supabase SQL Editor or via db:apply-schema pipeline.
+--
+-- Důležité: spusť celý soubor od začátku. CREATE INDEX níže používá visible_to_client,
+-- portfolio_status a archived_at — bez předchozích ALTER TABLE ADD COLUMN skript spadne (42703).
+
+ALTER TABLE contracts
+  ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 
 ALTER TABLE contracts
   ADD COLUMN IF NOT EXISTS visible_to_client boolean NOT NULL DEFAULT true;
