@@ -14,7 +14,17 @@ import { createOpportunity as createOpportunityAction, updateOpportunity as upda
 import { createTask as createTaskAction, updateTask as updateTaskAction } from "@/app/actions/tasks";
 import { createEvent as createEventAction } from "@/app/actions/events";
 import { createMeetingNote as createMeetingNoteAction, updateMeetingNote as updateMeetingNoteAction } from "@/app/actions/meeting-notes";
-import { createAdvisorMaterialRequest } from "@/app/actions/advisor-material-requests";
+import {
+  createAdvisorMaterialRequest,
+  linkMaterialRequestDocumentToClientVault,
+} from "@/app/actions/advisor-material-requests";
+import { updateDocumentVisibleToClient } from "@/app/actions/documents";
+import { createPortalNotification } from "@/app/actions/portal-notifications";
+import {
+  approveContractReview,
+  applyContractReviewDrafts,
+  linkContractReviewFileToContactDocuments,
+} from "@/app/actions/contract-review";
 import { createDraft } from "@/app/actions/communication-drafts";
 import { approveContractForClientPortal, updateContract } from "@/app/actions/contracts";
 import { sendMessage } from "@/app/actions/messages";
@@ -511,6 +521,115 @@ export function registerAssistantWriteAdapters(): void {
       return okResult(id, "message");
     } catch (e) {
       return errResult(e instanceof Error ? e.message : "Chyba odeslání zprávy.");
+    }
+  });
+
+  registerWriteAdapter("approveAiContractReview", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const reviewId = strParam(params, "reviewId");
+      if (!reviewId) return errResult("Chybí reviewId (AI kontrola smlouvy).");
+      const res = await approveContractReview(reviewId);
+      if (!res.ok) return errResult(res.error);
+      return okResult(reviewId, "contract_review");
+    } catch (e) {
+      return errResult(e instanceof Error ? e.message : "Chyba schválení kontroly.");
+    }
+  });
+
+  registerWriteAdapter("applyAiContractReviewToCrm", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const reviewId = strParam(params, "reviewId");
+      if (!reviewId) return errResult("Chybí reviewId.");
+      const res = await applyContractReviewDrafts(reviewId);
+      if (!res.ok) return errResult(res.error);
+      return okResult(reviewId, "contract_review", ["Schválená kontrola zapsána do CRM."]);
+    } catch (e) {
+      return errResult(e instanceof Error ? e.message : "Chyba aplikace kontroly.");
+    }
+  });
+
+  registerWriteAdapter("linkAiContractReviewToDocuments", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const reviewId = strParam(params, "reviewId");
+      if (!reviewId) return errResult("Chybí reviewId.");
+      const visible = params.visibleToClient === true;
+      const res = await linkContractReviewFileToContactDocuments(reviewId, { visibleToClient: visible });
+      if (!res.ok) return errResult(res.error);
+      const docId = res.documentId ?? reviewId;
+      return okResult(docId, "document", visible ? ["Dokument je u klienta viditelný v portálu."] : []);
+    } catch (e) {
+      return errResult(e instanceof Error ? e.message : "Chyba propojení souboru z kontroly.");
+    }
+  });
+
+  registerWriteAdapter("setDocumentVisibleToClient", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const documentId = strParam(params, "documentId");
+      if (!documentId) return errResult("Chybí documentId.");
+      const hide = params.visibleToClient === false || strParam(params, "visibleToClient") === "false";
+      await updateDocumentVisibleToClient(documentId, !hide);
+      return okResult(documentId, "document");
+    } catch (e) {
+      return errResult(e instanceof Error ? e.message : "Chyba viditelnosti dokumentu.");
+    }
+  });
+
+  registerWriteAdapter("linkDocumentToMaterialRequest", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const requestId = strParam(params, "materialRequestId");
+      const documentId = strParam(params, "documentId");
+      if (!requestId || !documentId) return errResult("Chybí materialRequestId nebo documentId.");
+      const hide = params.visibleToClient === false || strParam(params, "visibleToClient") === "false";
+      const res = await linkMaterialRequestDocumentToClientVault(requestId, documentId, {
+        visibleToClient: !hide,
+      });
+      if (!res.ok) return errResult(res.error);
+      return okResult(documentId, "document");
+    } catch (e) {
+      return errResult(e instanceof Error ? e.message : "Chyba vazby k materiálovému požadavku.");
+    }
+  });
+
+  registerWriteAdapter("createClientPortalNotification", async (params, ctx) => {
+    try {
+      const { tenantId } = await assertCtx(ctx);
+      const contactId = strParam(params, "contactId");
+      const title = strParam(params, "portalNotificationTitle");
+      const body = strParam(params, "portalNotificationBody") ?? null;
+      if (!contactId || !title) return errResult("Chybí contactId nebo nadpis notifikace.");
+      const allowed = new Set([
+        "new_message",
+        "request_status_change",
+        "new_document",
+        "important_date",
+        "advisor_material_request",
+      ]);
+      const typeRaw = strParam(params, "portalNotificationType") ?? "new_message";
+      const type = allowed.has(typeRaw)
+        ? (typeRaw as
+            | "new_message"
+            | "request_status_change"
+            | "new_document"
+            | "important_date"
+            | "advisor_material_request")
+        : "new_message";
+      await createPortalNotification({
+        tenantId,
+        contactId,
+        type,
+        title,
+        body,
+        relatedEntityType: strParam(params, "relatedEntityType") ?? null,
+        relatedEntityId: strParam(params, "relatedEntityId") ?? null,
+      });
+      return okResult(contactId, "portal_notification");
+    } catch (e) {
+      return errResult(e instanceof Error ? e.message : "Chyba vytvoření notifikace.");
     }
   });
 }

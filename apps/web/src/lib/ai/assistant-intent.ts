@@ -48,6 +48,11 @@ export const canonicalIntentSchema = z.object({
   clientRef: z.string().nullable().default(null),
   opportunityRef: z.string().nullable().default(null),
   documentRef: z.string().nullable().default(null),
+  reviewRef: z.string().nullable().default(null),
+  materialRequestRef: z.string().nullable().default(null),
+  reviewLinkVisibleToClient: z.boolean().default(false),
+  portalNotificationTitle: z.string().nullable().default(null),
+  portalNotificationType: z.string().nullable().default(null),
   requestedActions: z.array(z.enum(CANONICAL_INTENT_TYPES)).default(["general_chat"]),
   amount: z.number().nullable().default(null),
   ltv: z.number().nullable().default(null),
@@ -77,6 +82,11 @@ export const CANONICAL_INTENT_JSON_SCHEMA: Record<string, unknown> = {
     clientRef: { type: ["string", "null"] },
     opportunityRef: { type: ["string", "null"] },
     documentRef: { type: ["string", "null"] },
+    reviewRef: { type: ["string", "null"] },
+    materialRequestRef: { type: ["string", "null"] },
+    reviewLinkVisibleToClient: { type: "boolean" },
+    portalNotificationTitle: { type: ["string", "null"] },
+    portalNotificationType: { type: ["string", "null"] },
     requestedActions: { type: "array", items: { type: "string", enum: [...CANONICAL_INTENT_TYPES] } },
     amount: { type: ["number", "null"] },
     ltv: { type: ["number", "null"] },
@@ -100,6 +110,11 @@ export const CANONICAL_INTENT_JSON_SCHEMA: Record<string, unknown> = {
     "clientRef",
     "opportunityRef",
     "documentRef",
+    "reviewRef",
+    "materialRequestRef",
+    "reviewLinkVisibleToClient",
+    "portalNotificationTitle",
+    "portalNotificationType",
     "requestedActions",
     "amount",
     "ltv",
@@ -192,6 +207,15 @@ function buildExtractedFacts(raw: CanonicalIntentRaw) {
   if (raw.contractNumber) facts.push({ key: "contractNumber", value: raw.contractNumber, source: "user_text" });
   if (raw.taskTitle) facts.push({ key: "taskTitle", value: raw.taskTitle, source: "user_text" });
   if (raw.noteContent) facts.push({ key: "noteContent", value: raw.noteContent, source: "user_text" });
+  if (raw.reviewRef) facts.push({ key: "reviewId", value: raw.reviewRef, source: "user_text" });
+  if (raw.materialRequestRef) facts.push({ key: "materialRequestId", value: raw.materialRequestRef, source: "user_text" });
+  if (raw.reviewLinkVisibleToClient) facts.push({ key: "visibleToClient", value: true, source: "user_text" });
+  if (raw.portalNotificationTitle) {
+    facts.push({ key: "portalNotificationTitle", value: raw.portalNotificationTitle, source: "user_text" });
+  }
+  if (raw.portalNotificationType) {
+    facts.push({ key: "portalNotificationType", value: raw.portalNotificationType, source: "user_text" });
+  }
   return facts;
 }
 
@@ -203,11 +227,32 @@ function buildTemporalExpressions(raw: CanonicalIntentRaw) {
 }
 
 const WRITE_INTENTS = new Set<CanonicalIntentType>([
-  "create_opportunity", "update_opportunity", "create_task", "create_followup",
-  "schedule_meeting", "create_note", "append_note", "attach_document",
-  "classify_document", "request_client_documents", "create_client_request",
-  "create_material_request", "update_portfolio", "publish_portfolio_item",
-  "create_service_case", "create_reminder", "draft_portal_message", "send_portal_message" as CanonicalIntentType,
+  "create_opportunity",
+  "update_opportunity",
+  "update_client_request",
+  "create_task",
+  "create_followup",
+  "schedule_meeting",
+  "create_note",
+  "append_note",
+  "attach_document",
+  "attach_document_to_opportunity",
+  "classify_document",
+  "request_client_documents",
+  "create_client_request",
+  "create_material_request",
+  "link_document_to_material_request",
+  "update_portfolio",
+  "publish_portfolio_item",
+  "create_service_case",
+  "create_reminder",
+  "draft_portal_message",
+  "send_portal_message",
+  "approve_ai_contract_review",
+  "apply_ai_review_to_crm",
+  "link_ai_review_to_document_vault",
+  "show_document_to_client",
+  "notify_client_portal",
 ]);
 
 export function intentRequiresConfirmation(intentType: CanonicalIntentType): boolean {

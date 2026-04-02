@@ -12,26 +12,36 @@ import type {
   WriteActionType,
 } from "./assistant-domain-model";
 import type { EntityResolutionResult } from "./assistant-entity-resolution";
+import type { AssistantSession } from "./assistant-session";
 
 const INTENT_TO_WRITE_ACTION: Partial<Record<CanonicalIntentType, WriteActionType>> = {
   create_opportunity: "createOpportunity",
   update_opportunity: "updateOpportunity",
+  update_client_request: "updateClientRequest",
   create_task: "createTask",
   create_followup: "createFollowUp",
   schedule_meeting: "scheduleCalendarEvent",
   create_note: "createMeetingNote",
   append_note: "appendMeetingNote",
   attach_document: "attachDocumentToClient",
+  attach_document_to_opportunity: "attachDocumentToOpportunity",
   classify_document: "classifyDocument",
   request_client_documents: "createMaterialRequest",
   create_client_request: "createClientRequest",
   create_material_request: "createMaterialRequest",
+  link_document_to_material_request: "linkDocumentToMaterialRequest",
   prepare_email: "draftEmail",
   draft_portal_message: "draftClientPortalMessage",
+  send_portal_message: "sendPortalMessage",
   update_portfolio: "updatePortfolioItem",
   publish_portfolio_item: "publishPortfolioItem",
   create_service_case: "createClientRequest",
   create_reminder: "createReminder",
+  approve_ai_contract_review: "approveAiContractReview",
+  apply_ai_review_to_crm: "applyAiContractReviewToCrm",
+  link_ai_review_to_document_vault: "linkAiContractReviewToDocuments",
+  show_document_to_client: "setDocumentVisibleToClient",
+  notify_client_portal: "createClientPortalNotification",
 };
 
 const READ_ONLY_INTENTS = new Set<CanonicalIntentType>([
@@ -47,6 +57,12 @@ const READ_ONLY_INTENTS = new Set<CanonicalIntentType>([
 const HIGH_RISK_ACTIONS = new Set<WriteActionType>([
   "publishPortfolioItem",
   "sendPortalMessage",
+  "approveAiContractReview",
+  "applyAiContractReviewToCrm",
+  "linkAiContractReviewToDocuments",
+  "createClientPortalNotification",
+  "setDocumentVisibleToClient",
+  "linkDocumentToMaterialRequest",
 ]);
 
 type ConfirmationPolicy = "always" | "high_risk_only" | "never";
@@ -60,6 +76,7 @@ function buildStepParams(
   intent: CanonicalIntent,
   resolution: EntityResolutionResult,
   action: WriteActionType,
+  session?: AssistantSession | null,
 ): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   const contactId = resolution.client?.entityId;
@@ -82,6 +99,37 @@ function buildStepParams(
     }
   }
 
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!params.documentId && intent.targetDocument?.ref && uuidRe.test(intent.targetDocument.ref)) {
+    params.documentId = intent.targetDocument.ref;
+  }
+  if (!params.opportunityId && intent.targetOpportunity?.ref && uuidRe.test(intent.targetOpportunity.ref)) {
+    params.opportunityId = intent.targetOpportunity.ref;
+  }
+
+  const reviewActions = new Set<WriteActionType>([
+    "approveAiContractReview",
+    "applyAiContractReviewToCrm",
+    "linkAiContractReviewToDocuments",
+  ]);
+  if (reviewActions.has(action) && !params.reviewId && session?.activeReviewId) {
+    params.reviewId = session.activeReviewId;
+  }
+  if (!params.documentId && session?.lockedDocumentId) {
+    params.documentId = session.lockedDocumentId;
+  }
+  if (action === "setDocumentVisibleToClient" && params.visibleToClient === undefined) {
+    params.visibleToClient = true;
+  }
+  if (action === "createClientPortalNotification") {
+    if (!params.portalNotificationTitle && typeof params.taskTitle === "string" && params.taskTitle.trim()) {
+      params.portalNotificationTitle = params.taskTitle;
+    }
+    if (!params.portalNotificationBody && typeof params.noteContent === "string" && params.noteContent.trim()) {
+      params.portalNotificationBody = params.noteContent;
+    }
+  }
+
   return params;
 }
 
@@ -93,12 +141,21 @@ function computeMissingFields(
   const required: Record<string, string[]> = {
     createOpportunity: ["contactId"],
     updateOpportunity: ["opportunityId"],
+    updateClientRequest: ["opportunityId"],
     createTask: ["contactId"],
     createFollowUp: ["contactId"],
     scheduleCalendarEvent: ["contactId"],
     createMeetingNote: ["contactId"],
     attachDocumentToClient: ["contactId", "documentId"],
+    attachDocumentToOpportunity: ["opportunityId", "documentId"],
     classifyDocument: ["documentId"],
+    triggerDocumentReview: ["documentId"],
+    approveAiContractReview: ["reviewId"],
+    applyAiContractReviewToCrm: ["reviewId"],
+    linkAiContractReviewToDocuments: ["reviewId"],
+    setDocumentVisibleToClient: ["documentId"],
+    linkDocumentToMaterialRequest: ["materialRequestId", "documentId"],
+    createClientPortalNotification: ["contactId", "portalNotificationTitle"],
     createClientRequest: ["contactId"],
     createMaterialRequest: ["contactId"],
     draftEmail: ["contactId"],
@@ -119,6 +176,7 @@ function computeMissingFields(
 export function buildExecutionPlan(
   intent: CanonicalIntent,
   resolution: EntityResolutionResult,
+  session?: AssistantSession | null,
 ): ExecutionPlan {
   const planId = `plan_${randomUUID().slice(0, 8)}`;
   const steps: ExecutionStep[] = [];
@@ -145,7 +203,7 @@ export function buildExecutionPlan(
     const writeAction = INTENT_TO_WRITE_ACTION[actionIntent];
     if (!writeAction) continue;
 
-    const params = buildStepParams(intent, resolution, writeAction);
+    const params = buildStepParams(intent, resolution, writeAction, session);
     const missing = computeMissingFields(writeAction, params);
     const policy = getConfirmationPolicy(writeAction);
 
@@ -171,7 +229,7 @@ export function buildExecutionPlan(
       steps.push({
         stepId: `step_${randomUUID().slice(0, 8)}`,
         action: "createFollowUp",
-        params: { ...buildStepParams(intent, resolution, "createFollowUp") },
+        params: { ...buildStepParams(intent, resolution, "createFollowUp", session) },
         label: "Vytvořit follow-up úkol",
         requiresConfirmation: true,
         isReadOnly: false,
@@ -219,6 +277,12 @@ function buildStepLabel(action: WriteActionType, params: Record<string, unknown>
     draftEmail: "Připravit email",
     draftClientPortalMessage: "Připravit zprávu klientovi",
     sendPortalMessage: "Odeslat portálovou zprávu",
+    approveAiContractReview: "Schválit AI kontrolu smlouvy",
+    applyAiContractReviewToCrm: "Aplikovat schválenou AI kontrolu do CRM",
+    linkAiContractReviewToDocuments: "Propojit soubor z AI kontroly do dokumentů klienta",
+    setDocumentVisibleToClient: "Zobrazit dokument klientovi v portálu",
+    linkDocumentToMaterialRequest: "Přiřadit dokument k materiálovému požadavku",
+    createClientPortalNotification: "Poslat upozornění do klientského portálu",
   };
 
   let label = labels[action] ?? action;

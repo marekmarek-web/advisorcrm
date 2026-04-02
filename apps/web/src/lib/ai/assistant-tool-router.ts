@@ -558,7 +558,7 @@ export async function routeAssistantMessageCanonical(
   }
 
   const patchedIntent = patchIntentWithResolutions(canonicalIntent, resolution);
-  const plan = buildExecutionPlan(patchedIntent, resolution);
+  const plan = buildExecutionPlan(patchedIntent, resolution, session);
 
   if (plan.steps.length === 0) {
     return routeAssistantMessage(message, session, activeContext, {

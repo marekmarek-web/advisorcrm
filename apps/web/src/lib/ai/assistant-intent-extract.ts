@@ -12,6 +12,7 @@ import {
 } from "./assistant-intent";
 import type { CanonicalIntent } from "./assistant-domain-model";
 import { enrichCanonicalIntentWithPlaybooks } from "./playbooks";
+import { ASSISTANT_PORTAL_CHANNEL_POLICY_TEXT } from "./assistant-portal-channel-policy";
 
 const INTENT_SYSTEM = `Jsi extraktor strukturovaného záměru pro interního asistenta poradce v CRM Aidvisora.
 Vrať JSON přesně podle schématu.
@@ -48,7 +49,16 @@ Typy záměrů:
 - prepare_email: připravit email
 - draft_portal_message: zpráva klientovi přes portál
 - update_portfolio / publish_portfolio_item: portfolio operace
-- review_extraction: kontrola extrakce dokumentu
+- review_extraction: kontrola extrakce dokumentu (jen čtení / návod; zápis přes schválení níže)
+- approve_ai_contract_review: schválit AI kontrolu nahrané smlouvy (review queue)
+- apply_ai_review_to_crm: zapsat schválenou AI kontrolu do CRM (po schválení)
+- link_ai_review_to_document_vault: propojit soubor z AI kontroly do dokumentů klienta; reviewLinkVisibleToClient=true pokud má být vidět v portálu
+- show_document_to_client: zviditelnit existující dokument klientovi v portálu
+- attach_document_to_opportunity: připojit dokument k obchodu (potřebuje documentRef + opportunityRef)
+- link_document_to_material_request: přiřadit dokument k materiálovému požadavku (materialRequestRef + documentRef)
+- notify_client_portal: systémová notifikace klientovi (portalNotificationTitle, volitelně noteContent jako text, portalNotificationType)
+- send_portal_message: odeslat zprávu klientovi přes portál (ne jen notifikace)
+- update_client_request: upravit existující klientský požadavek (obchod s client_portal_request)
 - create_service_case: servisní požadavek
 - create_reminder: připomínka
 - search_contacts: hledání kontaktů
@@ -61,7 +71,13 @@ productDomain: hypo, uver, investice, dip, dps, zivotni_pojisteni, majetek, odpo
 
 requestedActions: pole všech záměrů, které uživatel zmínil (mohou být i vícero).
 
-clientRef: jméno/reference klienta; opportunityRef: reference obchodu; documentRef: reference dokumentu.
+clientRef: jméno/reference klienta; opportunityRef: reference obchodu; documentRef: UUID dokumentu.
+reviewRef: UUID položky AI kontroly smlouvy (contract review), pokud uživatel pracuje s konkrétní kontrolou.
+materialRequestRef: UUID materiálového požadavku.
+reviewLinkVisibleToClient: true pokud má být soubor z kontroly po propojení viditelný klientovi.
+portalNotificationTitle / portalNotificationType: pro notify_client_portal (typ: new_message | request_status_change | new_document | important_date | advisor_material_request).
+
+${ASSISTANT_PORTAL_CHANNEL_POLICY_TEXT}
 
 Čísla: amount (Kč), ltv (0-100), rateGuess (sazba), premium (pojistné).
 contractNumber: číslo smlouvy, pokud zmíněno.
