@@ -2,7 +2,7 @@
  * Vloží globální partnery (ŽP) do DB – aby v dropdownu „Partner“ u smluv něco bylo.
  * Načte DATABASE_URL z apps/web/.env.local. Spustit: node packages/db/src/seed-partners.mjs
  */
-import postgres from "postgres";
+import postgres from "./postgres-from-root.mjs";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";

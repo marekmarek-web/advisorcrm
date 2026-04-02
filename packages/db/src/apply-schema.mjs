@@ -6,9 +6,7 @@
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const postgres = require("postgres");
+import postgres from "./postgres-from-root.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

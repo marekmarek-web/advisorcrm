@@ -3,7 +3,7 @@
  * Respektuje rules.excludePartners. Načte DATABASE_URL z apps/web/.env.local.
  * Spustit: pnpm run db:seed-catalog  nebo  node packages/db/src/seed-catalog.mjs
  */
-import postgres from "postgres";
+import postgres from "./postgres-from-root.mjs";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";

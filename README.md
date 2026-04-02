@@ -58,6 +58,10 @@ CRM pro finanční poradce v ČR – MVP dle specifikace (domácnosti, pipeline,
    ```
    Vloží globální partnery a produkty (ČSOB, Uniqa, Direct, Pillow, ČPP, Kooperativa, Allianz, MetLife, Conseq, INVESTIKA, …). Pravidla `excludePartners` v katalogu se respektují.
 
+   **Stejná instituce vícekrát v tabulce `partners`:** je to záměr. Rozlišuje sloupec **`segment`** (kódy jako `ZP` životní pojištění, `MAJ` majetek, `ODP` odpovědnost, `AUTO_PR` / `AUTO_HAV` auto, `HYPO` hypotéky, `UVER` úvěry, `INV` investice, …). Jedna banka nebo pojišťovna má tedy více řádků s různým segmentem; produkty jsou vázané na konkrétní `partner_id`. V SQL reportech seskupujte podle `(name, segment)`, ne jen podle názvu instituce. Sloupec v DB je `name`, ne `partner_name` na `partners` (u smluv může být `partner_name` jako kopie pro zobrazení).
+
+   Skripty `db:seed-catalog`, `db:catalog-diff` a `db:apply-schema` načítají klienta `postgres` z kořenového `node_modules` přes [`packages/db/src/postgres-from-root.mjs`](packages/db/src/postgres-from-root.mjs), aby spolehlivě fungovaly v pnpm monorepu (prázdný symlink `postgres` pod `packages/db`).
+
    **Kontrola katalogu vůči DB:** Porovnání JSON ↔ Postgres (globální řádky) bez zápisu:
    ```bash
    pnpm run db:catalog-diff

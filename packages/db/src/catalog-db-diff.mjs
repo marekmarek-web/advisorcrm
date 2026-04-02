@@ -4,7 +4,7 @@
  * Načte DATABASE_URL z apps/web/.env.local (stejně jako seed-catalog.mjs).
  * Spustit: pnpm run db:catalog-diff   (z kořene repa)
  */
-import postgres from "postgres";
+import postgres from "./postgres-from-root.mjs";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
