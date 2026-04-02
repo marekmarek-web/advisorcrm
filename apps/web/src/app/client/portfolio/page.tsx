@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { getClientPortfolioForContact } from "@/app/actions/contracts";
+import { getClientVisiblePortfolioDocumentNames } from "@/app/actions/documents";
 import {
   aggregatePortfolioMetrics,
   PORTFOLIO_GROUP_LABELS,
@@ -59,6 +60,13 @@ export default async function ClientPortfolioPage() {
   if (auth.roleName !== "Client" || !auth.contactId) return null;
 
   const contracts = await getClientPortfolioForContact(auth.contactId);
+  const sourceDocIds = [
+    ...new Set(contracts.map((c) => c.sourceDocumentId).filter((id): id is string => !!id)),
+  ];
+  const visibleSourceDocs =
+    sourceDocIds.length > 0
+      ? await getClientVisiblePortfolioDocumentNames(auth.contactId, sourceDocIds)
+      : {};
   const metrics = aggregatePortfolioMetrics(contracts);
 
   const grouped = new Map<PortfolioUiGroup, typeof contracts>();
@@ -198,6 +206,14 @@ export default async function ClientPortfolioPage() {
                               ) : null}
                             </div>
                           )}
+                          {contract.sourceDocumentId && visibleSourceDocs[contract.sourceDocumentId] ? (
+                            <a
+                              href={`/api/documents/${contract.sourceDocumentId}/download`}
+                              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 text-xs font-black uppercase tracking-widest text-indigo-700 hover:bg-indigo-100 transition-colors"
+                            >
+                              Související dokument ({visibleSourceDocs[contract.sourceDocumentId].name})
+                            </a>
+                          ) : null}
                         </div>
                       </article>
                     );

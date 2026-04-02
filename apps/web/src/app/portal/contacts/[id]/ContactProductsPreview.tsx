@@ -2,11 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Briefcase, ChevronRight } from "lucide-react";
+import { Briefcase, ChevronRight, ExternalLink } from "lucide-react";
 import { getContractsByContact } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
 
 const PREVIEW_COUNT = 4;
+
+function sourceKindLabel(kind: string): string {
+  switch (kind) {
+    case "document":
+      return "Dokument";
+    case "ai_review":
+      return "AI kontrola";
+    case "import":
+      return "Import";
+    default:
+      return "Ručně";
+  }
+}
 
 export function ContactProductsPreview({ contactId }: { contactId: string }) {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
@@ -66,6 +79,29 @@ export function ContactProductsPreview({ contactId }: { contactId: string }) {
                   </h3>
                   <p className="text-xs font-bold text-[color:var(--wp-text-secondary)] truncate">
                     {c.partnerName ?? "—"}
+                  </p>
+                  <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>Zdroj: {sourceKindLabel(c.sourceKind)}</span>
+                    {c.sourceDocumentId ? (
+                      <a
+                        href={`/api/documents/${c.sourceDocumentId}/download`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-indigo-600 font-semibold inline-flex items-center gap-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Dokument <ExternalLink className="w-3 h-3" aria-hidden />
+                      </a>
+                    ) : null}
+                    {c.sourceContractReviewId ? (
+                      <Link
+                        href={`/portal/contracts/review/${c.sourceContractReviewId}`}
+                        className="text-indigo-600 font-semibold inline-flex items-center gap-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        AI kontrola <ExternalLink className="w-3 h-3" aria-hidden />
+                      </Link>
+                    ) : null}
                   </p>
                 </div>
               </div>

@@ -4,15 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { fetchContactDocumentsBundle } from "@/app/dashboard/contacts/contact-documents-bundle";
+import Link from "next/link";
 import {
   getContractSegments,
   updateContract,
   deleteContract,
+  approveContractForClientPortal,
 } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
 import {
   getPotentialDuplicateContractPairs,
-  type DuplicateContractPair,
+  mergeDuplicateContracts,
 } from "@/app/actions/contract-dedup";
 import { ProductPicker } from "@/app/components/aidvisora/ProductPicker";
 import type { ProductPickerValue } from "@/app/components/aidvisora/ProductPicker";
@@ -24,7 +26,7 @@ import { NewContractWizard } from "@/app/components/aidvisora/NewContractWizard"
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { ContractParametersFields } from "@/app/components/aidvisora/ContractParametersFields";
-import { FileText } from "lucide-react";
+import { ExternalLink, FileText } from "lucide-react";
 import {
   initialContractFormState,
   resetContractFormForNewSegment,
@@ -32,6 +34,19 @@ import {
 } from "@/lib/contracts/contract-form-payload";
 import type { ContractFormState } from "@/lib/contracts/contract-form-payload";
 import { getSegmentUiGroup } from "@/lib/contracts/contract-segment-wizard-config";
+
+function sourceKindLabel(kind: string): string {
+  switch (kind) {
+    case "document":
+      return "Dokument";
+    case "ai_review":
+      return "AI kontrola";
+    case "import":
+      return "Import";
+    default:
+      return "Ručně";
+  }
+}
 
 export function ContractsSection({ contactId }: { contactId: string }) {
   const queryClient = useQueryClient();
@@ -62,6 +77,8 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   });
 
   const list = bundleData?.contracts ?? [];
+  const pendingList = list.filter((c) => c.portfolioStatus === "pending_review");
+  const mainList = list.filter((c) => c.portfolioStatus !== "pending_review");
   const loadError = bundleIsError
     ? bundleErr instanceof Error
       ? bundleErr.message
@@ -81,6 +98,8 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   const [pickerValue, setPickerValue] = useState<ProductPickerValue>({ partnerId: "", productId: "" });
   const [visibleToClientEdit, setVisibleToClientEdit] = useState(true);
   const [portfolioStatusEdit, setPortfolioStatusEdit] = useState("active");
+  const [publishBusyId, setPublishBusyId] = useState<string | null>(null);
+  const [mergeBusyKey, setMergeBusyKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -136,6 +155,30 @@ export function ContractsSection({ contactId }: { contactId: string }) {
           ? err.message
           : "Smlouvu se nepodařilo uložit. Zkontrolujte vyplněné údaje a zkuste to znovu.";
       setSubmitError(message);
+    }
+  }
+
+  async function handleApproveForClient(contractId: string) {
+    setPublishBusyId(contractId);
+    try {
+      await approveContractForClientPortal(contractId);
+      invalidateContractsData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPublishBusyId(null);
+    }
+  }
+
+  async function handleMergePair(keepId: string, removeId: string, pairKey: string) {
+    setMergeBusyKey(pairKey);
+    try {
+      await mergeDuplicateContracts(keepId, removeId);
+      invalidateContractsData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setMergeBusyKey(null);
     }
   }
 
@@ -205,20 +248,134 @@ export function ContractsSection({ contactId }: { contactId: string }) {
       {dupPairs.length > 0 ? (
         <div className="mb-4 rounded-[var(--wp-radius)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-semibold mb-2">Možné duplicity (zkontrolujte ručně)</p>
-          <ul className="space-y-2 list-disc list-inside">
-            {dupPairs.map((p, idx) => (
-              <li key={idx}>
-                {p.reason === "same_contract_number" ? "Stejné číslo smlouvy" : "Stejný partner, produkt a segment"}:{" "}
-                <span className="font-mono text-xs">{p.contractA.contractNumber || p.contractA.id.slice(0, 8)}</span> vs{" "}
-                <span className="font-mono text-xs">{p.contractB.contractNumber || p.contractB.id.slice(0, 8)}</span>
+          <ul className="space-y-3">
+            {dupPairs.map((p, idx) => {
+              const pairKey = `dup-${idx}`;
+              return (
+                <li key={pairKey} className="rounded-[var(--wp-radius)] border border-amber-200/80 bg-white/80 px-3 py-2">
+                  <p className="text-sm">
+                    {p.reason === "same_contract_number" ? "Stejné číslo smlouvy" : "Stejný partner, produkt a segment"}:{" "}
+                    <span className="font-mono text-xs">{p.contractA.contractNumber || p.contractA.id.slice(0, 8)}</span> vs{" "}
+                    <span className="font-mono text-xs">{p.contractB.contractNumber || p.contractB.id.slice(0, 8)}</span>
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={mergeBusyKey !== null}
+                      onClick={() => void handleMergePair(p.contractA.id, p.contractB.id, `${pairKey}-a`)}
+                      className="rounded-[var(--wp-radius)] border border-amber-300 bg-amber-100/80 px-3 py-2 text-xs font-semibold text-amber-950 min-h-[44px] hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      {mergeBusyKey === `${pairKey}-a` ? "Slučuji…" : "Sloučit: ponechat první"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={mergeBusyKey !== null}
+                      onClick={() => void handleMergePair(p.contractB.id, p.contractA.id, `${pairKey}-b`)}
+                      className="rounded-[var(--wp-radius)] border border-amber-300 bg-amber-100/80 px-3 py-2 text-xs font-semibold text-amber-950 min-h-[44px] hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      {mergeBusyKey === `${pairKey}-b` ? "Slučuji…" : "Sloučit: ponechat druhou"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+      {pendingList.length > 0 ? (
+        <div className="mb-4 rounded-[var(--wp-radius)] border border-indigo-200 bg-indigo-50/60 px-4 py-3">
+          <p className="text-sm font-semibold text-indigo-950 mb-2">Čeká na publikaci do klientské zóny</p>
+          <ul className="space-y-3">
+            {pendingList.map((c) => (
+              <li
+                key={c.id}
+                className="flex flex-col gap-2 rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] px-4 py-3 text-sm sm:flex-row sm:items-start sm:justify-between"
+              >
+                <span className="min-w-0">
+                  {c.contractNumber ? (
+                    <>
+                      <span className="font-medium text-[color:var(--wp-text)]">č. {c.contractNumber}</span>
+                      <span className="text-[color:var(--wp-text-muted)]"> · </span>
+                    </>
+                  ) : null}
+                  {segmentLabel(c.segment)} – {c.partnerName || c.productName || "—"}
+                  {c.premiumAmount && getSegmentUiGroup(c.segment) !== "lending"
+                    ? ` • ${Number(c.premiumAmount).toLocaleString("cs-CZ")} Kč`
+                    : ""}
+                  {c.partnerName && (
+                    <ZpRatingBadge partnerName={c.partnerName} productName={c.productName ?? undefined} segment={c.segment} />
+                  )}
+                  <span className="block text-[11px] text-[color:var(--wp-text-muted)] mt-1">
+                    Zdroj evidence: {sourceKindLabel(c.sourceKind)}
+                    {c.sourceDocumentId ? (
+                      <>
+                        {" · "}
+                        <a
+                          href={`/api/documents/${c.sourceDocumentId}/download`}
+                          className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Dokument <ExternalLink className="w-3 h-3" aria-hidden />
+                        </a>
+                      </>
+                    ) : null}
+                    {c.sourceContractReviewId ? (
+                      <>
+                        {" · "}
+                        <Link
+                          href={`/portal/contracts/review/${c.sourceContractReviewId}`}
+                          className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
+                        >
+                          AI kontrola <ExternalLink className="w-3 h-3" aria-hidden />
+                        </Link>
+                      </>
+                    ) : null}
+                    {c.extractionConfidence ? (
+                      <span
+                        className="ml-1 cursor-help border-b border-dotted border-[color:var(--wp-text-muted)]"
+                        title={`Interní: úroveň jistoty extrakce ${c.extractionConfidence}`}
+                      >
+                        (interní jistota)
+                      </span>
+                    ) : null}
+                  </span>
+                </span>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => void handleApproveForClient(c.id)}
+                    disabled={publishBusyId === c.id}
+                    className="rounded-[var(--wp-radius)] bg-emerald-600 text-white px-3 py-2 text-sm font-semibold min-h-[44px] hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    {publishBusyId === c.id ? "Zveřejňuji…" : "Schválit pro klienta"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(c)}
+                    className="px-3 py-2 rounded-[var(--wp-radius)] text-[var(--wp-accent)] font-medium hover:bg-[color:var(--wp-surface-muted)] min-h-[44px] border border-[color:var(--wp-border)]"
+                  >
+                    Upravit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmId(c.id)}
+                    className="px-3 py-2 rounded-[var(--wp-radius)] text-red-600 font-medium hover:bg-red-50 min-h-[44px]"
+                  >
+                    Smazat
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         </div>
       ) : null}
       <ul className="space-y-3 mb-4">
-        {list.map((c) => (
-          <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm min-h-[44px]">
+        {mainList.map((c) => (
+          <li
+            key={c.id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm min-h-[44px]"
+          >
             <span className="min-w-0">
               {c.contractNumber ? (
                 <>
@@ -234,6 +391,45 @@ export function ContractsSection({ contactId }: { contactId: string }) {
               <span className="block text-[11px] text-[color:var(--wp-text-muted)] mt-1">
                 {c.visibleToClient === false ? "Skryto v klientské zóně" : "V klientské zóně"}
                 {c.portfolioStatus && c.portfolioStatus !== "active" ? ` · ${c.portfolioStatus}` : ""}
+                {" · "}
+                Zdroj: {sourceKindLabel(c.sourceKind)}
+                {c.sourceDocumentId ? (
+                  <>
+                    {" · "}
+                    <a
+                      href={`/api/documents/${c.sourceDocumentId}/download`}
+                      className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Dokument <ExternalLink className="w-3 h-3" aria-hidden />
+                    </a>
+                  </>
+                ) : null}
+                {c.sourceContractReviewId ? (
+                  <>
+                    {" · "}
+                    <Link
+                      href={`/portal/contracts/review/${c.sourceContractReviewId}`}
+                      className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
+                    >
+                      AI kontrola <ExternalLink className="w-3 h-3" aria-hidden />
+                    </Link>
+                  </>
+                ) : null}
+                {c.advisorConfirmedAt ? (
+                  <span className="block sm:inline sm:ml-1">
+                    Potvrzeno {new Date(c.advisorConfirmedAt).toLocaleString("cs-CZ")}
+                  </span>
+                ) : null}
+                {c.extractionConfidence ? (
+                  <span
+                    className="ml-1 cursor-help border-b border-dotted border-[color:var(--wp-text-muted)]"
+                    title={`Interní: úroveň jistoty extrakce ${c.extractionConfidence}`}
+                  >
+                    (interní jistota)
+                  </span>
+                ) : null}
               </span>
             </span>
             <div className="flex gap-2 shrink-0">

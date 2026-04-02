@@ -3,6 +3,7 @@ import { contacts, contracts, tasks, auditLog, clientPaymentSetups, type ClientP
 import { eq, and, isNotNull } from "db";
 import type { ContractReviewRow } from "./review-queue-repository";
 import type { ApplyResultPayload } from "./review-queue-repository";
+import { buildPortfolioAttributesFromExtracted } from "@/lib/portfolio/build-portfolio-attributes-from-extract";
 
 export type ApplyContractReviewInput = {
   reviewId: string;
@@ -14,20 +15,6 @@ export type ApplyContractReviewInput = {
 export type ApplyContractReviewResult =
   | { ok: true; payload: ApplyResultPayload }
   | { ok: false; error: string };
-
-function buildPortfolioAttributesFromExtracted(extracted: unknown): Record<string, unknown> {
-  if (!extracted || typeof extracted !== "object") return {};
-  const p = extracted as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
-  const loan = p.loanAmount ?? p.loanPrincipal ?? p.principalAmount ?? p.creditAmount;
-  if (loan != null && loan !== "") out.loanPrincipal = typeof loan === "string" ? loan : String(loan);
-  const sum = p.sumInsured ?? p.totalCoverage ?? p.insuredAmount;
-  if (sum != null && sum !== "") out.sumInsured = typeof sum === "string" ? sum : String(sum);
-  if (p.insuredPersons != null) out.insuredPersons = p.insuredPersons;
-  if (p.vehicleRegistration != null) out.vehicleRegistration = String(p.vehicleRegistration);
-  if (p.propertyAddress != null) out.propertyAddress = String(p.propertyAddress);
-  return out;
-}
 
 function normalizeExtractionConfidence(c: number | null | undefined): string | null {
   if (c == null || !Number.isFinite(c)) return null;

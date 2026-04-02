@@ -3,7 +3,7 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
-import { contracts, partners, products } from "db";
+import { contracts, partners, products, documents } from "db";
 import { eq, and, asc, or, isNull, inArray } from "db";
 import { contractSegments } from "db";
 import { logActivity } from "./activity";
@@ -499,4 +499,37 @@ export async function deleteContract(id: string) {
     console.error("[deleteContract]", e);
     throw new Error(e instanceof Error ? e.message : "Smlouvu se nepodařilo smazat.");
   }
+}
+
+/** Zveřejní smlouvu v klientském portfoliu po kontrole (čekající návrh z dokumentu / AI). */
+export async function approveContractForClientPortal(contractId: string) {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+  const [row] = await db
+    .select({ sourceDocumentId: contracts.sourceDocumentId })
+    .from(contracts)
+    .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, contractId)))
+    .limit(1);
+  await db
+    .update(contracts)
+    .set({
+      visibleToClient: true,
+      portfolioStatus: "active",
+      advisorConfirmedAt: new Date(),
+      confirmedByUserId: auth.userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.id, contractId)));
+  if (row?.sourceDocumentId) {
+    await db
+      .update(documents)
+      .set({
+        businessStatus: "applied_to_client_portal",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.id, row.sourceDocumentId)));
+  }
+  try {
+    await logActivity("contract", contractId, "publish_portfolio", {});
+  } catch {}
 }

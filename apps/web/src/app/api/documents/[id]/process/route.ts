@@ -4,6 +4,7 @@ import { getMembership } from "@/lib/auth/get-membership";
 import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { db, documents, eq, and } from "db";
 import { processDocument } from "@/lib/documents/processing/orchestrator";
+import { syncPortfolioDraftFromProcessedDocument } from "@/lib/portfolio/from-document-extraction";
 import { logAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +68,14 @@ export async function POST(
     },
     user.id
   );
+
+  if (result.success && result.extractJsonPath) {
+    try {
+      await syncPortfolioDraftFromProcessedDocument(id, { advisorUserId: user.id });
+    } catch (e) {
+      console.warn("[documents/process] portfolio sync from extraction failed", id, e);
+    }
+  }
 
   return NextResponse.json({
     success: result.success,

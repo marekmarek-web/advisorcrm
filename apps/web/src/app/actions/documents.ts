@@ -4,7 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { documents, contacts, contracts } from "db";
-import { eq, and, desc } from "db";
+import { eq, and, desc, inArray } from "db";
 import { createAdminClient } from "@/lib/supabase/server";
 import { logActivity } from "./activity";
 import { logAudit } from "@/lib/audit";
@@ -131,6 +131,31 @@ export async function getDocumentsForClient(contactId: string): Promise<Document
       )
     );
   return rows;
+}
+
+/** Pro Moje portfolio (klient): jen názvy dokumentů, které jsou u kontaktu a sdílené do portálu. */
+export async function getClientVisiblePortfolioDocumentNames(
+  contactId: string,
+  documentIds: string[]
+): Promise<Record<string, { name: string }>> {
+  const auth = await requireAuthInAction();
+  if (auth.roleName !== "Client" || !auth.contactId || auth.contactId !== contactId) throw new Error("Forbidden");
+  const uniq = [...new Set(documentIds.filter(Boolean))];
+  if (uniq.length === 0) return {};
+  const rows = await db
+    .select({ id: documents.id, name: documents.name })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.tenantId, auth.tenantId),
+        eq(documents.contactId, contactId),
+        eq(documents.visibleToClient, true),
+        inArray(documents.id, uniq)
+      )
+    );
+  const out: Record<string, { name: string }> = {};
+  for (const r of rows) out[r.id] = { name: r.name };
+  return out;
 }
 
 export async function uploadDocument(
