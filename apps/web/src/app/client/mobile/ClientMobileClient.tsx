@@ -7,7 +7,10 @@ import {
   Bell,
   Briefcase,
   Calculator,
+  Calendar,
+  CheckCircle2,
   ChevronRight,
+  ClipboardList,
   CreditCard,
   FileText,
   FolderOpen,
@@ -78,11 +81,52 @@ import {
 import { AiSupportButton } from "@/app/client/AiSupportButton";
 import { ClientMaterialRequestToastStack } from "@/app/client/ClientMaterialRequestToastStack";
 import { ClientRequestCancelButton } from "@/app/client/requests/ClientRequestCancelButton";
+import { listClientMaterialRequests } from "@/app/actions/advisor-material-requests";
+import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
 import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 import type { ClientMobileInitialData } from "./client-mobile-initial-data";
 
 function fmtMoney(v: number): string {
   return `${v.toLocaleString("cs-CZ")} Kč`;
+}
+
+function materialRequestStatusLabel(status: string): string {
+  const m: Record<string, string> = {
+    new: "Nový",
+    seen: "Zobrazeno",
+    answered: "Odpovězeno",
+    needs_more: "Potřeba doplnit",
+    done: "Vyřízeno",
+    closed: "Uzavřeno",
+  };
+  return m[status] ?? status;
+}
+
+function materialRequestStatusTone(status: string): "success" | "warning" | "info" {
+  if (status === "done" || status === "closed") return "success";
+  if (status === "needs_more") return "warning";
+  return "info";
+}
+
+function notificationRoute(n: { type: string; relatedEntityType: string | null; relatedEntityId: string | null }): string | null {
+  if (n.type === "new_message") return "/client/messages";
+  if (n.type === "new_document") return "/client/documents";
+  if (n.type === "advisor_material_request") {
+    return n.relatedEntityId
+      ? `/client/pozadavky-poradce/${n.relatedEntityId}`
+      : "/client/pozadavky-poradce";
+  }
+  if (n.type === "request_status_change") return "/client/requests";
+  return null;
+}
+
+function notificationIcon(type: string) {
+  if (type === "new_message") return MessageSquare;
+  if (type === "new_document") return FileText;
+  if (type === "advisor_material_request") return ClipboardList;
+  if (type === "request_status_change") return CheckCircle2;
+  if (type === "important_date") return Calendar;
+  return Bell;
 }
 
 /* ------------------------------------------------------------------ */
@@ -537,6 +581,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
 
   const [quickStats] = useState(initialData.quickStats);
   const [requests, setRequests] = useState<ClientRequestItem[]>(initialData.requests);
+  const [advisorMaterialRequests, setAdvisorMaterialRequests] = useState<MaterialRequestListItem[]>(initialData.advisorMaterialRequests);
   const [contracts, setContracts] = useState<ContractRow[]>(initialData.contracts);
   const [documents, setDocuments] = useState<DocumentRow[]>(initialData.documents);
   const [notifications, setNotifications] = useState<PortalNotificationRow[]>(initialData.notifications);
@@ -544,6 +589,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
   const [messages, setMessages] = useState<MessageRow[]>([]);
 
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(initialData.unreadNotificationsCount);
+  // exposed via setter used in notification tap handler above
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(initialData.unreadMessagesCount);
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -557,7 +603,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
   const messageBottomRef = useRef<HTMLDivElement>(null);
 
   const [documentsSearch, setDocumentsSearch] = useState("");
-  const [requestsFilter, setRequestsFilter] = useState<"all" | "open" | "done">("all");
+  const [requestsFilter, setRequestsFilter] = useState<"all" | "mine" | "advisor">("all");
   const [profileDraft, setProfileDraft] = useState({
     email: initialData.profile?.email ?? "",
     phone: initialData.profile?.phone ?? "",
@@ -576,6 +622,23 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
 
   useEffect(() => {
     setTab(toTab(pathname));
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!pathname.startsWith("/client/requests") && toTab(pathname) !== "requests") return;
+    startTransition(async () => {
+      try {
+        const [nextRequests, nextMaterial] = await Promise.all([
+          getClientRequests().catch(() => null),
+          listClientMaterialRequests().catch(() => null),
+        ]);
+        if (nextRequests) setRequests(nextRequests);
+        if (nextMaterial) setAdvisorMaterialRequests(nextMaterial);
+      } catch {
+        /* ignore */
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
@@ -738,16 +801,20 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
   }, [documents, documentsSearch]);
 
   const filteredRequests = useMemo(() => {
-    if (requestsFilter === "all") return requests;
-    if (requestsFilter === "open") {
-      return requests.filter((r) => r.statusKey !== "done" && r.statusKey !== "cancelled");
-    }
-    return requests.filter((r) => r.statusKey === "done");
+    if (requestsFilter === "advisor") return [];
+    return requests;
   }, [requests, requestsFilter]);
 
+  const filteredMaterialRequests = useMemo(() => {
+    if (requestsFilter === "mine") return [];
+    return advisorMaterialRequests;
+  }, [advisorMaterialRequests, requestsFilter]);
+
   const openRequestCount = useMemo(
-    () => requests.filter((r) => r.statusKey !== "done" && r.statusKey !== "cancelled").length,
-    [requests]
+    () =>
+      requests.filter((r) => r.statusKey !== "done" && r.statusKey !== "cancelled").length +
+      advisorMaterialRequests.filter((r) => r.status !== "done" && r.status !== "closed").length,
+    [requests, advisorMaterialRequests]
   );
 
   const navItems = [
@@ -903,53 +970,103 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           <>
             <FilterChips
               value={requestsFilter}
-              onChange={(id) => setRequestsFilter(id as "all" | "open" | "done")}
+              onChange={(id) => setRequestsFilter(id as "all" | "mine" | "advisor")}
               options={[
-                { id: "all", label: "Vše", badge: requests.length },
+                { id: "all", label: "Vše", badge: requests.length + advisorMaterialRequests.length },
+                { id: "mine", label: "Moje", badge: requests.length },
                 {
-                  id: "open",
-                  label: "Otevřené",
-                  badge: openRequestCount,
+                  id: "advisor",
+                  label: "Od poradce",
+                  badge: advisorMaterialRequests.filter((r) => r.status !== "done" && r.status !== "closed").length || undefined,
                   tone: "warning",
                 },
-                { id: "done", label: "Dokončené", badge: requests.filter((r) => r.statusKey === "done").length },
               ]}
             />
-            {filteredRequests.length === 0 ? (
-              <EmptyState title="Žádné požadavky" description="Vytvořte nový požadavek pro poradce." />
-            ) : (
-              filteredRequests.map((request) => {
-                const canCancel = request.statusKey !== "done" && request.statusKey !== "cancelled";
-                return (
-                  <RequestStatusCard
-                    key={request.id}
-                    title={`${request.title} • ${request.caseTypeLabel}`}
-                    description={request.description}
-                    statusLabel={request.statusLabel}
-                    statusTone={
-                      request.statusKey === "done"
-                        ? "success"
-                        : request.statusKey === "cancelled"
-                          ? "warning"
-                          : "info"
-                    }
-                    footer={
-                      canCancel ? (
-                        <ClientRequestCancelButton
-                          requestId={request.id}
-                          onAfterCancel={async () => {
-                            try {
-                              setRequests(await getClientRequests());
-                            } catch {
-                              /* ignore */
-                            }
-                          }}
-                        />
-                      ) : undefined
-                    }
-                  />
-                );
-              })
+
+            {/* Klientské požadavky (moje) */}
+            {requestsFilter !== "advisor" && (
+              filteredRequests.length === 0 && requestsFilter === "mine" ? (
+                <EmptyState title="Žádné vlastní požadavky" description="Vytvořte nový požadavek pro poradce." />
+              ) : (
+                filteredRequests.map((request) => {
+                  const canCancel = request.statusKey !== "done" && request.statusKey !== "cancelled";
+                  return (
+                    <RequestStatusCard
+                      key={request.id}
+                      title={`${request.title} • ${request.caseTypeLabel}`}
+                      description={request.description}
+                      statusLabel={request.statusLabel}
+                      statusTone={
+                        request.statusKey === "done"
+                          ? "success"
+                          : request.statusKey === "cancelled"
+                            ? "warning"
+                            : "info"
+                      }
+                      footer={
+                        canCancel ? (
+                          <ClientRequestCancelButton
+                            requestId={request.id}
+                            onAfterCancel={async () => {
+                              try {
+                                setRequests(await getClientRequests());
+                              } catch {
+                                /* ignore */
+                              }
+                            }}
+                          />
+                        ) : undefined
+                      }
+                    />
+                  );
+                })
+              )
+            )}
+
+            {/* Požadavky od poradce (advisor material requests) */}
+            {requestsFilter !== "mine" && (
+              filteredMaterialRequests.length === 0 && requestsFilter === "advisor" ? (
+                <EmptyState title="Žádné požadavky od poradce" description="Poradce zatím nepožaduje žádné podklady." />
+              ) : (
+                filteredMaterialRequests.map((mr) => (
+                  <button
+                    key={mr.id}
+                    type="button"
+                    onClick={() => router.push(`/client/pozadavky-poradce/${mr.id}`)}
+                    className="w-full text-left"
+                  >
+                    <MobileCard className="p-3.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0 flex-1">
+                          <div className="shrink-0 mt-0.5 w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 grid place-items-center">
+                            <ClipboardList size={15} className="text-violet-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-violet-600">{mr.categoryLabel}</p>
+                            <p className="text-sm font-bold text-slate-900 leading-snug">{mr.title}</p>
+                            {mr.dueAt && (
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Termín: {new Date(mr.dueAt).toLocaleDateString("cs-CZ")}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <StatusBadge tone={materialRequestStatusTone(mr.status)}>
+                            {materialRequestStatusLabel(mr.status)}
+                          </StatusBadge>
+                          <ChevronRight size={14} className="text-slate-400" />
+                        </div>
+                      </div>
+                    </MobileCard>
+                  </button>
+                ))
+              )
+            )}
+
+            {/* Prázdný stav pro Vše */}
+            {requestsFilter === "all" && filteredRequests.length === 0 && filteredMaterialRequests.length === 0 && (
+              <EmptyState title="Žádné požadavky" description="Vytvořte nový požadavek nebo počkejte na podklady od poradce." />
             )}
           </>
         ) : null}
@@ -959,38 +1076,59 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         ) : null}
 
         {onNotificationsRoute ? (
-          <MobileSection title="Oznámení">
+          <MobileSection title="Notifikační centrum">
             {notifications.length === 0 ? (
-              <EmptyState title="Žádná oznámení" />
+              <EmptyState title="Žádná oznámení" description="Nové zprávy, dokumenty a požadavky od poradce se zobrazí zde." />
             ) : (
-              notifications.map((notification) => (
-                <MobileCard key={notification.id} className="p-3.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-bold">{notification.title}</p>
-                      {notification.body ? (
-                        <p className="text-xs text-slate-500 mt-1">
-                          {formatPortalNotificationBody(notification.type, notification.body)}
-                        </p>
-                      ) : null}
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        {new Date(notification.createdAt).toLocaleString("cs-CZ")}
-                      </p>
-                    </div>
-                    {!notification.readAt ? (
-                      <button
-                        type="button"
-                        onClick={() => markNotificationAsRead(notification.id)}
-                        className="min-h-[32px] rounded-lg border border-slate-200 px-2 text-[11px] font-bold"
-                      >
-                        Přečíst
-                      </button>
-                    ) : (
-                      <StatusBadge tone="success">Přečteno</StatusBadge>
-                    )}
-                  </div>
-                </MobileCard>
-              ))
+              notifications.map((notification) => {
+                const route = notificationRoute(notification);
+                const IconComponent = notificationIcon(notification.type);
+                const isUnread = !notification.readAt;
+                return (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    className="w-full text-left"
+                    onClick={async () => {
+                      if (isUnread) {
+                        await markNotificationAsRead(notification.id);
+                        setNotifications((prev) =>
+                          prev.map((n) => n.id === notification.id ? { ...n, readAt: new Date() } : n)
+                        );
+                        setUnreadNotificationsCount((c) => Math.max(0, c - 1));
+                      }
+                      if (route) router.push(route);
+                    }}
+                  >
+                    <MobileCard className={`p-3.5 ${isUnread ? "border-indigo-200 bg-indigo-50/40" : ""}`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`shrink-0 mt-0.5 w-9 h-9 rounded-xl border grid place-items-center ${isUnread ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-slate-100 border-slate-200 text-slate-500"}`}>
+                          <IconComponent size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className={`text-sm font-bold leading-snug ${isUnread ? "text-slate-900" : "text-slate-700"}`}>
+                              {notification.title}
+                            </p>
+                            {isUnread && (
+                              <span className="shrink-0 w-2 h-2 rounded-full bg-indigo-500" />
+                            )}
+                          </div>
+                          {notification.body ? (
+                            <p className="text-xs text-slate-500 line-clamp-2">
+                              {formatPortalNotificationBody(notification.type, notification.body)}
+                            </p>
+                          ) : null}
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            {new Date(notification.createdAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                        </div>
+                        {route && <ChevronRight size={14} className="text-slate-400 shrink-0 mt-1" />}
+                      </div>
+                    </MobileCard>
+                  </button>
+                );
+              })
             )}
           </MobileSection>
         ) : null}
