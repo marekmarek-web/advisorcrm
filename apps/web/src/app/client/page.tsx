@@ -84,7 +84,9 @@ export default async function ClientZonePage() {
           goalsCount: financialSummaryRaw.goalsCount,
         };
 
-  const openRequests = requestsList.filter((r) => r.statusKey !== "done");
+  const openRequests = requestsList.filter(
+    (r) => r.statusKey !== "done" && r.statusKey !== "cancelled"
+  );
   const latestNotification = notifications[0] ?? null;
 
   return (

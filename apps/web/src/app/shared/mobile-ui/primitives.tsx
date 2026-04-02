@@ -1024,12 +1024,18 @@ export function RequestStatusCard({
   description,
   statusLabel,
   done,
+  statusTone,
+  footer,
 }: {
   title: string;
   description?: string | null;
   statusLabel: string;
+  /** @deprecated prefer statusTone */
   done?: boolean;
+  statusTone?: "neutral" | "success" | "warning" | "danger" | "info";
+  footer?: ReactNode;
 }) {
+  const tone = statusTone ?? (done ? "success" : "info");
   return (
     <MobileCard className="p-3.5">
       <div className="flex items-start justify-between gap-2">
@@ -1037,8 +1043,9 @@ export function RequestStatusCard({
           <p className="text-sm font-bold text-[color:var(--wp-text)]">{title}</p>
           {description ? <p className="text-xs text-[color:var(--wp-text-secondary)] mt-1">{description}</p> : null}
         </div>
-        <StatusBadge tone={done ? "success" : "info"}>{statusLabel}</StatusBadge>
+        <StatusBadge tone={tone}>{statusLabel}</StatusBadge>
       </div>
+      {footer ? <div className="mt-3 border-t border-[color:var(--wp-surface-card-border)] pt-3">{footer}</div> : null}
     </MobileCard>
   );
 }

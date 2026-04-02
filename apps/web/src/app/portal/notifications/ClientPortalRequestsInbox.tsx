@@ -24,7 +24,14 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { sendMessage } from "@/app/actions/messages";
 import { createTask } from "@/app/actions/tasks";
-import type { AdvisorClientPortalInboxItem } from "@/app/actions/client-portal-requests";
+import {
+  getAdvisorClientPortalRequestsInbox,
+  setAdvisorPortalRequestHandling,
+} from "@/app/actions/client-portal-requests";
+import type {
+  AdvisorClientPortalInboxItem,
+  AdvisorPortalRequestHandling,
+} from "@/app/actions/client-portal-requests";
 import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 import { useToast } from "@/app/components/Toast";
 
@@ -114,6 +121,7 @@ export function ClientPortalRequestsInbox({ initialItems }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [pending, startTransition] = useTransition();
   const [taskPending, setTaskPending] = useState(false);
+  const [handlingSaving, setHandlingSaving] = useState(false);
 
   const selected = useMemo(
     () => items.find((i) => i.notificationId === selectedId) ?? null,
@@ -175,6 +183,29 @@ export function ClientPortalRequestsInbox({ initialItems }: Props) {
       }
     },
     [items, markReadApi]
+  );
+
+  const applyAdvisorHandling = useCallback(
+    async (h: AdvisorPortalRequestHandling | null) => {
+      const oppId = selected?.opportunityId;
+      if (!oppId || selected?.opportunityMissing) return;
+      setHandlingSaving(true);
+      try {
+        const res = await setAdvisorPortalRequestHandling(oppId, h);
+        if (!res.success) {
+          toast.showToast(res.error, "error");
+          return;
+        }
+        toast.showToast("Stav požadavku byl uložen.", "success");
+        const data = await getAdvisorClientPortalRequestsInbox();
+        setItems(normalizeInboxItems(data));
+      } catch (e) {
+        toast.showToast(e instanceof Error ? e.message : "Uložení se nepodařilo.", "error");
+      } finally {
+        setHandlingSaving(false);
+      }
+    },
+    [selected?.opportunityId, selected?.opportunityMissing, toast]
   );
 
   async function onGenerateBrief() {
@@ -450,12 +481,61 @@ export function ClientPortalRequestsInbox({ initialItems }: Props) {
                         href={`/portal/pipeline/${selected.opportunityId}`}
                         className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[color:var(--wp-text)] px-4 text-sm font-semibold text-white hover:opacity-90"
                       >
-                        Otevřít v pipeline
+                        Otevřít v Obchody
                         <Briefcase className="h-4 w-4" aria-hidden />
                       </Link>
                     ) : null}
                   </div>
                 </div>
+                {selected.opportunityId && !selected.opportunityMissing ? (
+                  <div className="mt-4 border-t border-[color:var(--wp-surface-card-border)] pt-4">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">
+                      Stav požadavku v inboxu
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={handlingSaving}
+                        onClick={() => void applyAdvisorHandling("waiting")}
+                        className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold transition-colors ${
+                          selected.advisorHandling === "waiting"
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)] hover:bg-[color:var(--wp-link-hover-bg)]"
+                        }`}
+                      >
+                        {handlingSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                        Čeká se
+                      </button>
+                      <button
+                        type="button"
+                        disabled={handlingSaving}
+                        onClick={() => void applyAdvisorHandling("resolved")}
+                        className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold transition-colors ${
+                          selected.advisorHandling === "resolved"
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)] hover:bg-[color:var(--wp-link-hover-bg)]"
+                        }`}
+                      >
+                        Vyřešeno
+                      </button>
+                      <button
+                        type="button"
+                        disabled={handlingSaving}
+                        onClick={() => void applyAdvisorHandling(null)}
+                        className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold transition-colors ${
+                          selected.advisorHandling === null
+                            ? "border-2 border-[color:var(--wp-text)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)]"
+                            : "border border-dashed border-[color:var(--wp-surface-card-border)] bg-transparent text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
+                        }`}
+                      >
+                        Podle obchodu
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-[color:var(--wp-text-tertiary)]">
+                      Volitelný štítek pro váš přehled; nemění automaticky fázi obchodu v nástěnce.
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-6 sm:px-8 max-lg:min-h-0 max-lg:flex-none">

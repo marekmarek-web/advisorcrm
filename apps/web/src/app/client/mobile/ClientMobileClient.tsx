@@ -64,6 +64,7 @@ import {
 } from "@/app/shared/mobile-ui/primitives";
 import { AiSupportButton } from "@/app/client/AiSupportButton";
 import { ClientMaterialRequestToastStack } from "@/app/client/ClientMaterialRequestToastStack";
+import { ClientRequestCancelButton } from "@/app/client/requests/ClientRequestCancelButton";
 import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 import type { ClientMobileInitialData } from "./client-mobile-initial-data";
 
@@ -296,15 +297,22 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
 
   const filteredRequests = useMemo(() => {
     if (requestsFilter === "all") return requests;
-    if (requestsFilter === "open") return requests.filter((r) => r.statusKey !== "done");
+    if (requestsFilter === "open") {
+      return requests.filter((r) => r.statusKey !== "done" && r.statusKey !== "cancelled");
+    }
     return requests.filter((r) => r.statusKey === "done");
   }, [requests, requestsFilter]);
+
+  const openRequestCount = useMemo(
+    () => requests.filter((r) => r.statusKey !== "done" && r.statusKey !== "cancelled").length,
+    [requests]
+  );
 
   const navItems = [
     { id: "home", label: "Přehled", icon: LayoutDashboard },
     { id: "messages", label: "Zprávy", icon: MessageSquare, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
     { id: "documents", label: "Dokumenty", icon: FileText },
-    { id: "requests", label: "Požadavky", icon: ListTodo, badge: requests.filter((r) => r.statusKey !== "done").length || undefined },
+    { id: "requests", label: "Požadavky", icon: ListTodo, badge: openRequestCount || undefined },
     { id: "menu", label: "Profil", icon: User, badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined },
   ];
 
@@ -529,22 +537,50 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
               onChange={(id) => setRequestsFilter(id as "all" | "open" | "done")}
               options={[
                 { id: "all", label: "Vše", badge: requests.length },
-                { id: "open", label: "Otevřené", badge: requests.filter((r) => r.statusKey !== "done").length, tone: "warning" },
+                {
+                  id: "open",
+                  label: "Otevřené",
+                  badge: openRequestCount,
+                  tone: "warning",
+                },
                 { id: "done", label: "Dokončené", badge: requests.filter((r) => r.statusKey === "done").length },
               ]}
             />
             {filteredRequests.length === 0 ? (
               <EmptyState title="Žádné požadavky" description="Vytvořte nový požadavek pro poradce." />
             ) : (
-              filteredRequests.map((request) => (
-                <RequestStatusCard
-                  key={request.id}
-                  title={`${request.title} • ${request.caseTypeLabel}`}
-                  description={request.description}
-                  statusLabel={request.statusLabel}
-                  done={request.statusKey === "done"}
-                />
-              ))
+              filteredRequests.map((request) => {
+                const canCancel = request.statusKey !== "done" && request.statusKey !== "cancelled";
+                return (
+                  <RequestStatusCard
+                    key={request.id}
+                    title={`${request.title} • ${request.caseTypeLabel}`}
+                    description={request.description}
+                    statusLabel={request.statusLabel}
+                    statusTone={
+                      request.statusKey === "done"
+                        ? "success"
+                        : request.statusKey === "cancelled"
+                          ? "warning"
+                          : "info"
+                    }
+                    footer={
+                      canCancel ? (
+                        <ClientRequestCancelButton
+                          requestId={request.id}
+                          onAfterCancel={async () => {
+                            try {
+                              setRequests(await getClientRequests());
+                            } catch {
+                              /* ignore */
+                            }
+                          }}
+                        />
+                      ) : undefined
+                    }
+                  />
+                );
+              })
             )}
           </>
         ) : null}

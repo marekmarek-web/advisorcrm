@@ -115,6 +115,33 @@ async function notifyAdvisorNewPortalRequest(params: {
 
 const CLIENT_PORTAL_NOTIFICATION_TYPE = "client_portal_request";
 
+/** Operativní štítek inboxu poradce (uloženo v opportunities.customFields). */
+export const ADVISOR_PORTAL_HANDLING_KEY = "client_portal_advisor_handling" as const;
+export type AdvisorPortalRequestHandling = "waiting" | "resolved";
+
+export function parseAdvisorPortalHandling(
+  custom: Record<string, unknown>
+): AdvisorPortalRequestHandling | null {
+  const v = custom[ADVISOR_PORTAL_HANDLING_KEY];
+  if (v === "waiting" || v === "resolved") return v;
+  return null;
+}
+
+function inboxStatusLabelForAdvisor(
+  custom: Record<string, unknown>,
+  sortOrder: number,
+  closedAt: Date | null
+): { statusKey: ClientStatusKey; statusLabel: string } {
+  const statusKey = stageToClientStatus(sortOrder, closedAt, custom);
+  if (custom.client_portal_cancelled === true || custom.client_portal_cancelled === "true") {
+    return { statusKey, statusLabel: getClientStatusLabel("cancelled") };
+  }
+  const h = parseAdvisorPortalHandling(custom);
+  if (h === "waiting") return { statusKey, statusLabel: "Čeká se" };
+  if (h === "resolved") return { statusKey, statusLabel: "Vyřešeno" };
+  return { statusKey, statusLabel: getClientStatusLabel(statusKey) };
+}
+
 export type AdvisorClientPortalInboxItem = {
   notificationId: string;
   notificationStatus: string;
@@ -129,6 +156,8 @@ export type AdvisorClientPortalInboxItem = {
   bodyText: string | null;
   statusKey: ClientStatusKey;
   statusLabel: string;
+  /** Null = zobrazený stav vychází z pipeline / uzavření, ne z ručního štítku. */
+  advisorHandling: AdvisorPortalRequestHandling | null;
   opportunityMissing: boolean;
 };
 
@@ -226,6 +255,7 @@ export async function getAdvisorClientPortalRequestsInbox(): Promise<AdvisorClie
         bodyText: preview || null,
         statusKey: "accepted" as ClientStatusKey,
         statusLabel: getClientStatusLabel("accepted"),
+        advisorHandling: null,
         opportunityMissing: true,
       };
     }
@@ -234,7 +264,7 @@ export async function getAdvisorClientPortalRequestsInbox(): Promise<AdvisorClie
     const clientName = [opp.firstName, opp.lastName].filter(Boolean).join(" ").trim() || "Klient";
     const { subject, body, preview } = getPortalRequestDisplayFields(custom, opp.title, opp.caseType);
 
-    const statusKey = stageToClientStatus(opp.sortOrder ?? 0, opp.closedAt ?? null);
+    const { statusKey, statusLabel } = inboxStatusLabelForAdvisor(custom, opp.sortOrder ?? 0, opp.closedAt ?? null);
 
     return {
       notificationId: n.id,
@@ -249,7 +279,8 @@ export async function getAdvisorClientPortalRequestsInbox(): Promise<AdvisorClie
       preview,
       bodyText: body,
       statusKey,
-      statusLabel: getClientStatusLabel(statusKey),
+      statusLabel,
+      advisorHandling: parseAdvisorPortalHandling(custom),
       opportunityMissing: false,
     };
   });
@@ -290,8 +321,8 @@ export async function getClientRequests(): Promise<ClientRequestItem[]> {
       return c === true || c === "true";
     })
     .map((r) => {
-      const statusKey = stageToClientStatus(r.sortOrder ?? 0, r.closedAt ?? null);
       const custom = (r.customFields as Record<string, unknown> | null) ?? {};
+      const statusKey = stageToClientStatus(r.sortOrder ?? 0, r.closedAt ?? null, custom);
       const { subject, body } = getPortalRequestDisplayFields(custom, r.title, r.caseType);
       return {
         id: r.id,
@@ -392,4 +423,126 @@ export async function createClientPortalRequest(params: {
   }).catch(() => {});
 
   return { success: true, id: newId };
+}
+
+/**
+ * Poradce: nastaví operativní štítek inboxu (Čeká se / Vyřešeno) nebo ho zruší (null).
+ */
+export async function setAdvisorPortalRequestHandling(
+  opportunityId: string,
+  handling: AdvisorPortalRequestHandling | null
+): Promise<{ success: true } | { success: false; error: string }> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "opportunities:write")) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  const [row] = await db
+    .select({ id: opportunities.id, customFields: opportunities.customFields })
+    .from(opportunities)
+    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
+    .limit(1);
+
+  if (!row) return { success: false, error: "Obchod nebyl nalezen." };
+
+  const custom: Record<string, unknown> = {
+    ...((row.customFields as Record<string, unknown> | null) ?? {}),
+  };
+  const isPortal = custom.client_portal_request === true || custom.client_portal_request === "true";
+  if (!isPortal) {
+    return { success: false, error: "Tento záznam není požadavkem z klientského portálu." };
+  }
+
+  if (handling === null) {
+    delete custom[ADVISOR_PORTAL_HANDLING_KEY];
+  } else {
+    custom[ADVISOR_PORTAL_HANDLING_KEY] = handling;
+  }
+
+  await db
+    .update(opportunities)
+    .set({ customFields: custom, updatedAt: new Date() })
+    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
+
+  try {
+    await logActivity("opportunity", opportunityId, "update", {
+      source: "advisor_portal_handling",
+      handling,
+    });
+  } catch {
+    /* non-fatal */
+  }
+
+  return { success: true };
+}
+
+/**
+ * Klient zruší vlastní požadavek z portálu → uzavření obchodu s příznakem v customFields.
+ */
+export async function cancelClientPortalRequest(
+  opportunityId: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  const auth = await requireAuthInAction();
+  const canCancel =
+    auth.roleName === "Client" &&
+    auth.contactId &&
+    (hasPermission(auth.roleName, "client_zone:request_cancel") ||
+      hasPermission(auth.roleName, "client_zone:*"));
+  if (!canCancel || !auth.contactId) return { success: false, error: "Forbidden" };
+
+  const [row] = await db
+    .select({
+      id: opportunities.id,
+      contactId: opportunities.contactId,
+      closedAt: opportunities.closedAt,
+      customFields: opportunities.customFields,
+    })
+    .from(opportunities)
+    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
+    .limit(1);
+
+  if (!row || row.contactId !== auth.contactId) {
+    return { success: false, error: "Požadavek nebyl nalezen." };
+  }
+
+  const custom: Record<string, unknown> = {
+    ...((row.customFields as Record<string, unknown> | null) ?? {}),
+  };
+  if (!(custom.client_portal_request === true || custom.client_portal_request === "true")) {
+    return { success: false, error: "Tento záznam není požadavkem z portálu." };
+  }
+  if (row.closedAt) return { success: false, error: "Požadavek už je uzavřený." };
+
+  custom.client_portal_cancelled = true;
+  const now = new Date();
+  await db
+    .update(opportunities)
+    .set({
+      closedAt: now,
+      closedAs: "lost",
+      customFields: custom,
+      updatedAt: now,
+    })
+    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
+
+  try {
+    await logActivity("opportunity", opportunityId, "update", { source: "client_portal_cancel" });
+  } catch {
+    /* non-fatal */
+  }
+
+  try {
+    await db.insert(auditLog).values({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: "portal_request_cancel",
+      entityType: "opportunity",
+      entityId: opportunityId,
+      meta: { contactId: auth.contactId },
+    });
+  } catch {
+    /* non-fatal */
+  }
+
+  return { success: true };
 }

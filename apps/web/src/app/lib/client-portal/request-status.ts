@@ -8,6 +8,7 @@ export const CLIENT_STATUS_LABELS = {
   waiting_for_info: "Čekáme na doplnění",
   meeting: "Domlouváme schůzku",
   done: "Dokončeno",
+  cancelled: "Zrušeno",
 } as const;
 
 export type ClientStatusKey = keyof typeof CLIENT_STATUS_LABELS;
@@ -17,13 +18,19 @@ export type ClientStatusKey = keyof typeof CLIENT_STATUS_LABELS;
  * sortOrder 0 = první stage (Lead / Začínáme) → Přijato
  * sortOrder 1 často = Kvalifikace / čeká na podklady → Čekáme na doplnění
  * 2–3 → Řešíme, 4 → Domlouváme schůzku, 5+ → Řešíme
- * closedAt set → Dokončeno
+ * closedAt + zrušení klientem (customFields) → Zrušeno
+ * closedAt jinak → Dokončeno
  */
 export function stageToClientStatus(
   stageSortOrder: number,
-  closedAt: Date | null
+  closedAt: Date | null,
+  customFields?: Record<string, unknown> | null
 ): ClientStatusKey {
-  if (closedAt) return "done";
+  if (closedAt) {
+    const c = customFields?.client_portal_cancelled;
+    if (c === true || c === "true") return "cancelled";
+    return "done";
+  }
   switch (stageSortOrder) {
     case 0:
       return "accepted";

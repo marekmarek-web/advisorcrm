@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { CheckCircle2, Clock, Plus } from "lucide-react";
+import { Ban, CheckCircle2, Clock, Plus } from "lucide-react";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { getClientRequests } from "@/app/actions/client-portal-requests";
+import { ClientRequestCancelButton } from "./ClientRequestCancelButton";
 import { RequestsPageClientActions } from "./requests-client-actions";
 
 export default async function ClientRequestsPage() {
@@ -9,8 +10,11 @@ export default async function ClientRequestsPage() {
   if (auth.roleName !== "Client" || !auth.contactId) return null;
 
   const requestsList = await getClientRequests();
-  const openRequests = requestsList.filter((item) => item.statusKey !== "done");
-  const closedRequests = requestsList.filter((item) => item.statusKey === "done");
+  const activeRequests = requestsList.filter(
+    (item) => item.statusKey !== "done" && item.statusKey !== "cancelled"
+  );
+  const cancelledRequests = requestsList.filter((item) => item.statusKey === "cancelled");
+  const completedRequests = requestsList.filter((item) => item.statusKey === "done");
 
   return (
     <div className="space-y-8 client-fade-in">
@@ -31,12 +35,12 @@ export default async function ClientRequestsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {openRequests.map((r) => (
+          {activeRequests.map((r) => (
             <div
               key={r.id}
-              className="bg-white p-6 rounded-[24px] border border-indigo-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5"
+              className="bg-white p-6 rounded-[24px] border border-indigo-200 shadow-sm flex flex-col gap-5 md:flex-row md:items-center md:justify-between"
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 min-w-0 flex-1">
                 <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center border border-amber-100 flex-shrink-0">
                   <Clock size={20} />
                 </div>
@@ -59,10 +63,39 @@ export default async function ClientRequestsPage() {
                   </p>
                 </div>
               </div>
+              <ClientRequestCancelButton requestId={r.id} />
             </div>
           ))}
 
-          {closedRequests.map((r) => (
+          {cancelledRequests.map((r) => (
+            <div
+              key={r.id}
+              className="bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 opacity-90"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center border border-slate-200 flex-shrink-0">
+                  <Ban size={20} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+                    {r.statusLabel}
+                  </span>
+                  <h3 className="font-bold text-lg text-slate-900">{r.title}</h3>
+                  <p className="text-sm font-medium text-slate-500 mt-1">{r.caseTypeLabel}</p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Zrušeno{" "}
+                    {new Date(r.updatedAt).toLocaleDateString("cs-CZ", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {completedRequests.map((r) => (
             <div
               key={r.id}
               className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 opacity-80"
