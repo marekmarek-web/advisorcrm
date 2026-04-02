@@ -1,34 +1,34 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { getAdvisorClientPortalRequestsInbox } from "@/app/actions/client-portal-requests";
 import type { AdvisorClientPortalInboxItem } from "@/app/actions/client-portal-requests";
 import { ClientPortalRequestsInbox } from "./ClientPortalRequestsInbox";
-import { LoadingSkeleton } from "@/app/shared/mobile-ui/primitives";
+import { ErrorState, LoadingSkeleton } from "@/app/shared/mobile-ui/primitives";
 
 export function ClientPortalRequestsInboxLoader() {
   const [items, setItems] = useState<AdvisorClientPortalInboxItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await getAdvisorClientPortalRequestsInbox();
-        if (!cancelled) setItems(data);
-      } catch {
-        if (!cancelled) setError("Požadavky se nepodařilo načíst.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async () => {
+    setError(null);
+    setItems(null);
+    try {
+      const data = await getAdvisorClientPortalRequestsInbox();
+      setItems(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Požadavky se nepodařilo načíst.");
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   if (error) {
     return (
-      <div className="p-4 text-center text-sm text-rose-600">
-        {error}
+      <div className="p-4">
+        <ErrorState title={error} onRetry={load} />
       </div>
     );
   }

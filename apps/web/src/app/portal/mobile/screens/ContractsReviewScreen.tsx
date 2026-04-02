@@ -39,6 +39,7 @@ import {
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
+import { confidenceToPercentForUi } from "@/lib/ai/review-ui-confidence";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -74,6 +75,141 @@ type ReviewDetail = {
 };
 
 type StatusFilter = "all" | "pending" | "done" | "failed";
+
+type ExtractedFieldCell = { value?: unknown; status?: string; confidence?: number };
+
+const TECHNICAL_PAYLOAD_KEYS = new Set([
+  "extractedFields",
+  "documentClassification",
+  "documentMeta",
+  "parties",
+  "evidence",
+  "contentFlags",
+  "serviceTerms",
+  "financialTerms",
+  "reviewWarnings",
+  "candidateMatches",
+  "dataCompleteness",
+  "suggestedActions",
+  "sectionSensitivity",
+  "relationshipInference",
+]);
+
+function humanizeFieldKey(key: string): string {
+  const s = key.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatExtractedCellValue(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "—";
+    if (value.every((x) => x != null && (typeof x === "string" || typeof x === "number"))) {
+      return value.map(String).join(", ");
+    }
+    return `${value.length} položek`;
+  }
+  if (typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if ("value" in o) return formatExtractedCellValue(o.value);
+    const keys = Object.keys(o);
+    if (keys.length <= 5) {
+      return keys
+        .slice(0, 5)
+        .map((k) => `${humanizeFieldKey(k)}: ${formatExtractedCellValue(o[k])}`)
+        .join(" · ");
+    }
+    return "Složitý objekt (detail na desktopu)";
+  }
+  return String(value);
+}
+
+function buildMobileExtractedRows(payload: Record<string, unknown> | null | undefined): {
+  rows: Array<{ key: string; label: string; value: string; status?: string }>;
+  technicalTopLevelCount: number;
+} {
+  if (!payload || typeof payload !== "object") return { rows: [], technicalTopLevelCount: 0 };
+
+  const rows: Array<{ key: string; label: string; value: string; status?: string }> = [];
+  const ef = payload.extractedFields;
+  if (ef && typeof ef === "object" && !Array.isArray(ef)) {
+    for (const [key, cell] of Object.entries(ef as Record<string, unknown>)) {
+      if (key.startsWith("_")) continue;
+      const c = cell as ExtractedFieldCell;
+      const display = formatExtractedCellValue(c?.value);
+      if (display === "—") continue;
+      rows.push({
+        key,
+        label: humanizeFieldKey(key),
+        value: display,
+        status: typeof c?.status === "string" ? c.status : undefined,
+      });
+    }
+  }
+
+  let technicalTopLevelCount = 0;
+  for (const k of Object.keys(payload)) {
+    if (k.startsWith("_") || k === "extractedFields") continue;
+    if (TECHNICAL_PAYLOAD_KEYS.has(k)) continue;
+    const v = payload[k];
+    if (v != null && v !== "") technicalTopLevelCount += 1;
+  }
+
+  return { rows, technicalTopLevelCount };
+}
+
+function parseDraftActionRow(action: unknown): { label: string; type?: string } | null {
+  if (action == null) return null;
+  if (typeof action === "string") {
+    const t = action.trim();
+    return t ? { label: t.slice(0, 240) } : null;
+  }
+  if (typeof action === "object") {
+    const o = action as Record<string, unknown>;
+    const label = typeof o.label === "string" && o.label.trim() ? o.label.trim() : null;
+    const type = typeof o.type === "string" ? o.type : undefined;
+    if (label) return { label: label.slice(0, 240), type };
+    if (type) return { label: humanizeFieldKey(type), type };
+  }
+  return null;
+}
+
+function collectDraftActionsForMobile(detail: ReviewDetail): Array<{ label: string; type?: string }> {
+  const out: Array<{ label: string; type?: string }> = [];
+  const seen = new Set<string>();
+  const push = (label: string, type?: string) => {
+    const k = `${type ?? ""}:${label}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push({ label, type });
+  };
+
+  for (const a of detail.draftActions ?? []) {
+    const row = parseDraftActionRow(a);
+    if (row) push(row.label, row.type);
+  }
+
+  const sug = detail.extractedPayload?.suggestedActions;
+  if (Array.isArray(sug)) {
+    for (const a of sug) {
+      const row = parseDraftActionRow(a);
+      if (row) push(row.label, row.type);
+    }
+  }
+
+  return out;
+}
+
+function fieldStatusTone(status: string | undefined): "success" | "warning" | "danger" | "neutral" {
+  const s = (status ?? "").toLowerCase();
+  if (s.includes("fail") || s.includes("invalid") || s.includes("error")) return "danger";
+  if (s.includes("warn") || s.includes("uncertain") || s.includes("low")) return "warning";
+  if (s.includes("ok") || s.includes("success") || s.includes("valid")) return "success";
+  return "neutral";
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -172,9 +308,10 @@ function QueueCard({ item, onClick, active }: { item: ReviewListItem; onClick: (
               <StatusBadge tone={cfg.tone}>{cfg.label}</StatusBadge>
               <span className="text-[10px] text-[color:var(--wp-text-tertiary)] ml-auto">{formatRelativeDate(item.createdAt)}</span>
             </div>
-            {typeof item.confidence === "number" ? (
-              <ConfidenceBar value={item.confidence} />
-            ) : null}
+            {(() => {
+              const pct = confidenceToPercentForUi(item.confidence);
+              return pct != null ? <ConfidenceBar value={pct} /> : null;
+            })()}
             {item.errorMessage ? (
               <p className="text-[10px] text-rose-500 mt-1 truncate">{item.errorMessage}</p>
             ) : null}
@@ -218,9 +355,9 @@ function ReviewDetailPanel({
   const isApprovedOnly = detail.reviewStatus === "approved";
   const isApplied = detail.reviewStatus === "applied";
 
-  const extractedFields = detail.extractedPayload
-    ? Object.entries(detail.extractedPayload).filter(([, v]) => v != null && v !== "")
-    : [];
+  const confidencePct = confidenceToPercentForUi(detail.confidence);
+  const { rows: extractedRows, technicalTopLevelCount } = buildMobileExtractedRows(detail.extractedPayload);
+  const draftActionRows = collectDraftActionsForMobile(detail);
 
   return (
     <div className="space-y-3 pb-4">
@@ -236,19 +373,19 @@ function ReviewDetailPanel({
               <StatusBadge tone={cfg.tone}>{cfg.label}</StatusBadge>
               <span className="text-[10px] text-indigo-300">{formatRelativeDate(detail.createdAt)}</span>
             </div>
-            {typeof detail.confidence === "number" ? (
+            {confidencePct != null ? (
               <div className="mt-2">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-indigo-300">Confidence</span>
-                  <span className="text-xs font-black text-white">{detail.confidence}%</span>
+                  <span className="text-[10px] text-indigo-300">Jistota modelu</span>
+                  <span className="text-xs font-black text-white">{confidencePct}%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-[color:var(--wp-surface-card)]/20 overflow-hidden">
                   <div
                     className={cx(
                       "h-full rounded-full",
-                      detail.confidence >= 80 ? "bg-emerald-400" : detail.confidence >= 50 ? "bg-amber-400" : "bg-rose-400"
+                      confidencePct >= 80 ? "bg-emerald-400" : confidencePct >= 50 ? "bg-amber-400" : "bg-rose-400"
                     )}
-                    style={{ width: `${detail.confidence}%` }}
+                    style={{ width: `${confidencePct}%` }}
                   />
                 </div>
               </div>
@@ -333,51 +470,92 @@ function ReviewDetailPanel({
         </MobileCard>
       ) : null}
 
-      {/* Extracted data */}
-      {extractedFields.length > 0 ? (
+      {/* Extracted data (envelope extractedFields, not raw JSON keys) */}
+      {extractedRows.length > 0 ? (
         <MobileCard className="p-3.5">
           <div className="flex items-center gap-2 mb-2.5">
             <Zap size={14} className="text-[color:var(--wp-text-tertiary)]" />
             <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
-              Extrahovaná data ({extractedFields.length} polí)
+              Extrahovaná data ({extractedRows.length} polí)
             </p>
           </div>
           <div className="divide-y divide-[color:var(--wp-surface-card-border)]">
-            {extractedFields.slice(0, 12).map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between gap-2 py-2">
-                <span className="text-xs text-[color:var(--wp-text-secondary)] truncate">{key}</span>
-                <span className="text-xs font-bold text-[color:var(--wp-text)] text-right truncate max-w-[55%]">
-                  {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                </span>
-              </div>
-            ))}
-            {extractedFields.length > 12 ? (
+            {extractedRows.slice(0, 18).map((row) => {
+              const tone = fieldStatusTone(row.status);
+              return (
+                <div key={row.key} className="flex flex-col gap-0.5 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[color:var(--wp-text-secondary)] truncate">{row.label}</span>
+                    {row.status ? (
+                      <StatusBadge
+                        tone={
+                          tone === "success"
+                            ? "success"
+                            : tone === "warning"
+                              ? "warning"
+                              : tone === "danger"
+                                ? "danger"
+                                : "neutral"
+                        }
+                      >
+                        {row.status}
+                      </StatusBadge>
+                    ) : null}
+                  </div>
+                  <p className="text-xs font-semibold text-[color:var(--wp-text)] leading-snug break-words">
+                    {row.value}
+                  </p>
+                </div>
+              );
+            })}
+            {extractedRows.length > 18 ? (
               <p className="text-[10px] text-[color:var(--wp-text-tertiary)] pt-2">
-                …a dalších {extractedFields.length - 12} polí
+                …a dalších {extractedRows.length - 18} polí
               </p>
             ) : null}
           </div>
+          {technicalTopLevelCount > 0 ? (
+            <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-2 pt-2 border-t border-[color:var(--wp-surface-card-border)]">
+              V dokumentu je navíc {technicalTopLevelCount} technických polí (metadata) — upravte na desktopu.
+            </p>
+          ) : null}
+        </MobileCard>
+      ) : detail.extractedPayload && Object.keys(detail.extractedPayload).length > 0 ? (
+        <MobileCard className="p-3.5 border-amber-200 bg-amber-50/40">
+          <p className="text-xs font-bold text-amber-900">Extrahovaná pole zatím nejsou ve čitelné podobě</p>
+          <p className="text-[11px] text-amber-800/90 mt-1">
+            Zkuste otevřít revizi na desktopu, nebo počkejte na dokončení extrakce.
+          </p>
         </MobileCard>
       ) : null}
 
-      {/* Draft actions */}
-      {detail.draftActions?.length ? (
+      {/* Draft / suggested actions */}
+      {draftActionRows.length > 0 ? (
         <MobileCard className="p-3.5">
           <div className="flex items-center gap-2 mb-2">
             <Shield size={14} className="text-[color:var(--wp-text-tertiary)]" />
             <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
-              Navrhované akce ({detail.draftActions.length})
+              Navrhované akce ({draftActionRows.length})
             </p>
           </div>
-          <div className="space-y-1.5">
-            {detail.draftActions.slice(0, 6).map((action, i) => (
-              <div key={i} className="text-xs text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] rounded-lg px-2.5 py-2">
-                {typeof action === "object" && action !== null
-                  ? JSON.stringify(action).slice(0, 80)
-                  : String(action).slice(0, 80)}
-              </div>
+          <ul className="space-y-2">
+            {draftActionRows.slice(0, 10).map((row, i) => (
+              <li
+                key={`${row.type ?? "a"}-${i}`}
+                className="flex items-start gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/60 px-3 py-2.5"
+              >
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-[10px] font-black text-indigo-700">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-[color:var(--wp-text)] leading-snug">{row.label}</p>
+                  {row.type ? (
+                    <p className="text-[10px] text-[color:var(--wp-text-tertiary)] font-mono mt-0.5 truncate">{row.type}</p>
+                  ) : null}
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </MobileCard>
       ) : null}
 
@@ -477,7 +655,13 @@ export function ContractsReviewScreen({
       const res = await fetch(`/api/contracts/review${query}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Načtení seznamu revizí selhalo.");
-      setItems((json.items || []) as ReviewListItem[]);
+      const rawItems = (json.items || []) as ReviewListItem[];
+      setItems(
+        rawItems.map((row) => ({
+          ...row,
+          confidence: confidenceToPercentForUi(row.confidence),
+        })),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Načtení seznamu revizí selhalo.");
     }
@@ -488,7 +672,11 @@ export function ContractsReviewScreen({
       const res = await fetch(`/api/contracts/review/${id}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Načtení detailu selhalo.");
-      setDetail(json as ReviewDetail);
+      const raw = json as ReviewDetail;
+      setDetail({
+        ...raw,
+        confidence: confidenceToPercentForUi(raw.confidence),
+      });
       setDetailOpen(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Načtení detailu selhalo.");

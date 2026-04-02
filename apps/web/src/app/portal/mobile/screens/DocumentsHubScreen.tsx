@@ -868,6 +868,7 @@ export function DocumentsHubScreen({
           open={detailOpen}
           onClose={() => { setDetailOpen(false); setSelectedDoc(null); }}
           title={selectedDoc.name}
+          reserveMobileBottomNav
         >
           <DocumentDetailPanel
             doc={selectedDoc}

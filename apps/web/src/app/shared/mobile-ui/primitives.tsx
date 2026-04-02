@@ -472,13 +472,19 @@ export function BottomSheet({
   onClose,
   title,
   children,
+  /** Spodní navigace portálu (~104px) + FAB — aby šly odkliknout poslední akce v listu. */
+  reserveMobileBottomNav = false,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  reserveMobileBottomNav?: boolean;
 }) {
   const labelId = `bs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
+  const scrollPad = reserveMobileBottomNav
+    ? "pb-[max(1.25rem,calc(104px+var(--safe-area-bottom)+1.25rem))]"
+    : "pb-[max(1rem,calc(var(--safe-area-bottom)+0.5rem))]";
   return (
     <OverlayContainer open={open} onClose={onClose} labelId={labelId}>
       <div className="flex min-h-0 flex-1 flex-col">
@@ -495,7 +501,7 @@ export function BottomSheet({
             <X size={16} />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(var(--safe-area-bottom)+0.5rem))]">
+        <div className={cx("min-h-0 flex-1 overflow-y-auto overscroll-contain p-4", scrollPad)}>
           {children}
         </div>
       </div>
