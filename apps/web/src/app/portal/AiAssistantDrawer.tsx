@@ -103,14 +103,14 @@ function formatUploadSuccessMessage(detail: {
   return lines.join("\n");
 }
 
-type AssistantChatMessage = Extract<ChatMessage, { role: "assistant" }>;
-
-function isAssistantWithContext(
-  m: ChatMessage,
-): m is AssistantChatMessage & {
-  contextState: NonNullable<AssistantChatMessage["contextState"]>;
-} {
-  return m.role === "assistant" && m.contextState != null;
+/** Poslední assistant zpráva s neprázdným `contextState` (zpětná procházka bez `find` union bugů). */
+function getLatestAssistantContextFromMessages(messages: ChatMessage[]) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "assistant") continue;
+    if (m.contextState != null) return m.contextState;
+  }
+  return undefined;
 }
 
 function executionLabel(
@@ -159,7 +159,7 @@ export function AiAssistantDrawer() {
   const [importContactsMapping, setImportContactsMapping] = useState<ColumnMapping>(DEFAULT_CONTACT_IMPORT_MAPPING);
   const [importContactsResult, setImportContactsResult] = useState<{ imported: number; skipped: number; errors: { row: number; message: string }[] } | null>(null);
   const [importContactsLoading, setImportContactsLoading] = useState(false);
-  const latestAssistantContext = [...messages].reverse().find(isAssistantWithContext)?.contextState;
+  const latestAssistantContext = getLatestAssistantContextFromMessages(messages);
 
   useEffect(() => {
     if (!open) return;
