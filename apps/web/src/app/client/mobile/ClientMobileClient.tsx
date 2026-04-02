@@ -16,8 +16,10 @@ import {
   FolderOpen,
   LayoutDashboard,
   ListTodo,
+  LogOut,
   MessageSquare,
   Paperclip,
+  Pencil,
   Plus,
   Send,
   Settings,
@@ -25,6 +27,7 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
+import { signOutAndRedirectClient } from "@/lib/auth/sign-out-client";
 import {
   createClientPortalRequest,
   getClientRequests,
@@ -636,6 +639,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
     city: initialData.profile?.city ?? "",
     zip: initialData.profile?.zip ?? "",
   });
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberRole, setNewMemberRole] = useState("partner");
@@ -1215,65 +1219,117 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         ) : null}
 
         {(onProfileRoute || tab === "menu") && !onPortfolioRoute && !onNotificationsRoute ? (
-          <MobileSection title="Profil a domácnost">
-            <MobileCard>
-              <p className="text-sm font-bold">{initialData.fullName}</p>
-              <p className="text-xs text-slate-500 mt-1">Nastavení klientského profilu</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <ProfileFieldRow label="E-mail" value={profileDraft.email} />
-                <ProfileFieldRow label="Telefon" value={profileDraft.phone} />
+          <MobileSection title="Můj účet">
+            {/* ── Přehled účtu ── */}
+            <MobileCard className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="shrink-0 w-12 h-12 rounded-2xl bg-slate-800 text-white flex items-center justify-center font-black text-base">
+                    {`${initialData.profile?.firstName?.[0] ?? ""}${initialData.profile?.lastName?.[0] ?? ""}`.toUpperCase() || "K"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-slate-900 truncate">{initialData.fullName}</p>
+                    {profileDraft.email && (
+                      <p className="text-xs text-slate-500 font-medium truncate">{profileDraft.email}</p>
+                    )}
+                    {profileDraft.phone && (
+                      <p className="text-xs text-slate-500 font-medium">{profileDraft.phone}</p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setProfileEditOpen((v) => !v)}
+                  className="shrink-0 min-h-[40px] min-w-[40px] rounded-xl border border-slate-200 grid place-items-center text-slate-500 hover:bg-slate-100 transition-colors"
+                  aria-label="Upravit kontaktní údaje"
+                >
+                  <Pencil size={15} />
+                </button>
               </div>
-            </MobileCard>
-            <MobileCard className="space-y-2">
-              <input value={profileDraft.email} onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="E-mail" />
-              <input value={profileDraft.phone} onChange={(e) => setProfileDraft((prev) => ({ ...prev, phone: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="Telefon" />
-              <input value={profileDraft.street} onChange={(e) => setProfileDraft((prev) => ({ ...prev, street: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="Ulice" />
-              <div className="grid grid-cols-2 gap-2">
-                <input value={profileDraft.city} onChange={(e) => setProfileDraft((prev) => ({ ...prev, city: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="Město" />
-                <input value={profileDraft.zip} onChange={(e) => setProfileDraft((prev) => ({ ...prev, zip: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" placeholder="PSČ" />
-              </div>
-              <button type="button" onClick={saveProfile} className="w-full min-h-[44px] rounded-xl bg-indigo-600 text-white text-sm font-bold">
-                Uložit profil
-              </button>
+
+              {profileEditOpen && (
+                <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                  <input value={profileDraft.email} onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="E-mail" />
+                  <input value={profileDraft.phone} onChange={(e) => setProfileDraft((prev) => ({ ...prev, phone: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Telefon" />
+                  <input value={profileDraft.street} onChange={(e) => setProfileDraft((prev) => ({ ...prev, street: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Ulice" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={profileDraft.city} onChange={(e) => setProfileDraft((prev) => ({ ...prev, city: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="Město" />
+                    <input value={profileDraft.zip} onChange={(e) => setProfileDraft((prev) => ({ ...prev, zip: e.target.value }))} className="w-full min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400" placeholder="PSČ" />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button type="button" onClick={async () => { await saveProfile(); setProfileEditOpen(false); }} className="flex-1 min-h-[44px] rounded-xl bg-indigo-600 text-white text-sm font-black">
+                      Uložit
+                    </button>
+                    <button type="button" onClick={() => setProfileEditOpen(false)} className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-sm font-bold text-slate-600">
+                      Zrušit
+                    </button>
+                  </div>
+                </div>
+              )}
             </MobileCard>
 
+            {/* ── Domácnost ── */}
             <MobileSection
               title="Domácnost"
               action={
-                <button type="button" onClick={() => setAddMemberOpen(true)} className="min-h-[32px] rounded-lg border border-slate-200 px-2.5 text-xs font-bold">
-                  Přidat člena
+                <button type="button" onClick={() => setAddMemberOpen(true)} className="min-h-[32px] rounded-lg border border-slate-200 px-2.5 text-xs font-black">
+                  + Přidat
                 </button>
               }
             >
               {!household || household.members.length === 0 ? (
-                <EmptyState title="Domácnost je prázdná" />
+                <EmptyState title="Domácnost je prázdná" description="Přidejte partnera nebo dítě." />
               ) : (
-                household.members.map((member) => (
-                  <MobileCard key={member.id} className="p-3.5">
-                    <p className="text-sm font-bold">{member.firstName} {member.lastName}</p>
-                    <p className="text-xs text-slate-500 mt-1">{member.role || "member"}</p>
-                  </MobileCard>
-                ))
+                household.members.map((member) => {
+                  const role = member.role?.toLowerCase() || "member";
+                  const roleLabel = role === "child" ? "Dítě" : role === "partner" ? "Partner" : role === "primary" ? "Hlavní člen" : "Člen";
+                  return (
+                    <MobileCard key={member.id} className="p-3.5 flex items-center gap-3">
+                      <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-black ${role === "child" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}>
+                        {`${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}`}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{member.firstName} {member.lastName}</p>
+                        <p className="text-xs text-slate-500 font-medium">{roleLabel}{member.birthDate ? ` · ${new Date(member.birthDate).getFullYear()}` : ""}</p>
+                      </div>
+                    </MobileCard>
+                  );
+                })
               )}
             </MobileSection>
 
-            <MobileSection title="Další moduly">
+            {/* ── Moduly ── */}
+            <MobileSection title="Rychlý přístup">
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[48px] rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center justify-center gap-2">
-                  <Briefcase size={16} /> Portfolio
+                <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                  <Briefcase size={16} className="text-indigo-500" /> Portfolio
                 </button>
-                <button type="button" onClick={() => router.push("/client/notifications")} className="min-h-[48px] rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center justify-center gap-2">
-                  <Settings size={16} /> Oznámení
+                <button type="button" onClick={() => router.push("/client/notifications")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                  <Bell size={16} className="text-rose-500" /> Oznámení
+                  {unreadNotificationsCount > 0 && (
+                    <span className="bg-rose-500 text-white text-[10px] font-black rounded-full w-4 h-4 grid place-items-center">
+                      {unreadNotificationsCount > 9 ? "9+" : unreadNotificationsCount}
+                    </span>
+                  )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => router.push("/client/calculators")}
-                  className="min-h-[48px] col-span-2 rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center justify-center gap-2"
-                >
-                  <Calculator size={16} /> Kalkulačky
+                <button type="button" onClick={() => router.push("/client/payments")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                  <CreditCard size={16} className="text-emerald-500" /> Platby
+                </button>
+                <button type="button" onClick={() => router.push("/client/calculators")} className="min-h-[52px] rounded-xl border border-slate-200 bg-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                  <Calculator size={16} className="text-amber-500" /> Kalkulačky
                 </button>
               </div>
             </MobileSection>
+
+            {/* ── Odhlásit se ── */}
+            <button
+              type="button"
+              onClick={() => signOutAndRedirectClient(router)}
+              className="w-full min-h-[52px] flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 text-sm font-black hover:bg-rose-100 transition-all"
+            >
+              <LogOut size={16} />
+              Odhlásit se
+            </button>
           </MobileSection>
         ) : null}
       </MobileScreen>
