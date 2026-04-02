@@ -13,5 +13,11 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     exclude: ["**/node_modules/**", "**/tests/e2e/**", "**/.next/**"],
+    /** ESM-only deps must be inlined when Vitest resolves from apps/web without hoisted symlinks. */
+    server: {
+      deps: {
+        inline: ["date-fns", "date-fns-tz"],
+      },
+    },
   },
 });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import { getOrCreateSession } from "@/lib/ai/assistant-session";
+import { getOrCreateSession, lockAssistantClient } from "@/lib/ai/assistant-session";
 import {
   routeAssistantMessage,
   routeAssistantMessageCanonical,
@@ -11,6 +11,7 @@ import {
 import {
   appendConversationMessage,
   loadConversationHydration,
+  loadResumableExecutionPlanSnapshot,
   upsertConversationFromSession,
 } from "@/lib/ai/assistant-conversation-repository";
 import { ASSISTANT_CHANNELS, type AssistantChannel, type AssistantMode } from "@/lib/ai/assistant-domain-model";
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
     const hydrated = await loadConversationHydration(session.sessionId, tenantId, userId);
     if (hydrated) {
       if (hydrated.lockedContactId) {
-        session.lockedClientId = hydrated.lockedContactId;
+        lockAssistantClient(session, hydrated.lockedContactId);
       }
       if (hydrated.channel) {
         session.activeChannel = hydrated.channel;
@@ -112,6 +113,11 @@ export async function POST(request: Request) {
         session.assistantMode = hydrated.assistantMode as AssistantMode;
         session.contextLock.assistantMode = session.assistantMode;
       }
+    }
+
+    const resumablePlan = await loadResumableExecutionPlanSnapshot(session.sessionId);
+    if (resumablePlan) {
+      session.lastExecutionPlan = resumablePlan;
     }
     session.activeChannel = channel;
     session.contextLock.activeChannel = channel;

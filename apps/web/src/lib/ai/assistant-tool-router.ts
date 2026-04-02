@@ -1,5 +1,5 @@
 /**
- * Assistant tool router â€” intent-first CRM writes, optional tools, no default dashboard.
+ * Assistant tool router — intent-first CRM writes, optional tools, no default dashboard.
  */
 
 import { createResponseSafe } from "@/lib/openai";
@@ -61,7 +61,7 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Robust [TOOL:name {...}] parser â€” supports nested JSON objects. */
+/** Robust [TOOL:name {...}] parser — supports nested JSON objects. */
 export function parseModelToolCalls(text: string): ToolCall[] {
   const calls: ToolCall[] = [];
   const prefix = "[TOOL:";
@@ -125,7 +125,7 @@ function buildToolInstructions(): string {
     const paramStr = paramKeys.length > 0 ? ` params: {${paramKeys.join(", ")}}` : "";
     return `- ${t.name}: ${t.description}${paramStr}`;
   });
-  return `DostupnĂ© nĂˇstroje:\n${lines.join("\n")}\n\nPro pouĹľitĂ­ nĂˇstroje vloĹľ: [TOOL:nazev {\"param\": \"hodnota\"}]`;
+  return `Dostupné nástroje:\n${lines.join("\n")}\n\nPro použití nástroje vlož: [TOOL:nazev {\"param\": \"hodnota\"}]`;
 }
 
 async function buildAssistantChatContext(
@@ -150,7 +150,9 @@ async function buildAssistantChatContext(
     const payment = await buildPaymentDetailContext(tenantId, activeContext.paymentContactId);
     sections.push(`\nKontext plateb:\n${payment.summaryText}`);
   }
-  return sections.length > 0 ? sections.join("\n") : "(Ĺ˝ĂˇdnĂ˝ dodateÄŤnĂ˝ kontext â€” dashboard se nepĹ™iklĂˇdĂˇ, pokud o nÄ›j uĹľivatel nepoĹľĂˇdĂˇ.)";
+  return sections.length > 0
+    ? sections.join("\n")
+    : "(Žádný dodatečný kontext — dashboard se nepřikládá, pokud o něj uživatel nepožádá.)";
 }
 
 async function resolveContactForAssistantWrites(
@@ -242,7 +244,7 @@ export async function routeAssistantMessage(
 
     if (!write.ok) {
       return {
-        message: `ZĂˇpis do CRM se nepodaĹ™il: ${write.error}`,
+        message: `Zápis do CRM se nepodařil: ${write.error}`,
         referencedEntities: [],
         suggestedActions: [],
         warnings: [],
@@ -255,13 +257,13 @@ export async function routeAssistantMessage(
     session.lockedDealId = write.dealId;
 
     const lines = [
-      "ZĂˇznam do CRM probÄ›hl (ovÄ›Ĺ™enĂ© identifikĂˇtory z databĂˇze).",
+      "Záznam do CRM proběhl (ověřené identifikátory z databáze).",
       `dealId: ${write.dealId}`,
       `taskId: ${write.taskId}`,
-      `TermĂ­n Ăşkolu (datum, 10:00 Europe/Prague): ${write.dueDate}`,
+      `Termín úkolu (datum, 10:00 Europe/Prague): ${write.dueDate}`,
     ];
     if (intent.noEmail) {
-      lines.push("E-mail nebyl generovĂˇn (dle zadĂˇnĂ­).");
+      lines.push("E-mail nebyl generován (dle zadání).");
     }
 
     return {
@@ -285,30 +287,30 @@ export async function routeAssistantMessage(
 
   const activeContactLine =
     effectiveContext.clientId != null && effectiveContext.clientId !== ""
-      ? `AktivnĂ­ kontakt v CRM (contactId pro nĂˇstroje getClientSummary, createEmailDraft, getPaymentSetupDetail, createTaskDraft): ${effectiveContext.clientId}. NepiĹˇ uĹľivateli, aby ruÄŤnÄ› zadĂˇval UUID â€” pouĹľij toto ID v [TOOL:...].`
-      : "AktivnĂ­ kontakt z URL nenĂ­ k dispozici â€” pokud potĹ™ebujeĹˇ ID kontaktu, zavolej nejdĹ™Ă­v [TOOL:searchContacts {\"query\": \"...\"}]. PĹ™i vĂ­ce shodĂˇch vyber s pomocĂ­ hintĹŻ nebo nech uĹľivatele vybrat podle e-mailu/mÄ›sta; nikdy neĹľĂˇdej o technickĂ© UUID.";
+      ? `Aktivní kontakt v CRM (contactId pro nástroje getClientSummary, createEmailDraft, getPaymentSetupDetail, createTaskDraft): ${effectiveContext.clientId}. Nepiš uživateli, aby ručně zadával UUID — použij toto ID v [TOOL:...].`
+      : "Aktivní kontakt z URL není k dispozici — pokud potřebuješ ID kontaktu, zavolej nejdřív [TOOL:searchContacts {\"query\": \"...\"}]. Při více shodách vyber s pomocí hintů nebo nech uživatele vybrat podle e-mailu/města; nikdy nežádej o technické UUID.";
 
   const noEmailLine = intent.noEmail
-    ? "UĹľivatel zakĂˇzal Ĺ™eĹˇit e-mail â€” negeneruj obsah e-mailu a nepouĹľĂ­vej nĂˇstroj createEmailDraft."
+    ? "Uživatel zakázal řešit e-mail — negeneruj obsah e-mailu a nepoužívej nástroj createEmailDraft."
     : "";
 
   const hardRules = [
-    "Nikdy netvrÄŹ, Ĺľe je nÄ›co â€žzavedenoâ€ś nebo uloĹľeno v CRM, pokud nemĂˇĹˇ potvrzenĂ˝ vĂ˝sledek zĂˇpisu (dealId/taskId) z tohoto bÄ›hu.",
-    "Dashboard souhrn nenĂ­ nĂˇhrada za zĂˇpis do CRM.",
+    "Nikdy netvrď, že je něco „zavedeno“ nebo uloženo v CRM, pokud nemáš potvrzený výsledek zápisu (dealId/taskId) z tohoto běhu.",
+    "Dashboard souhrn není náhrada za zápis do CRM.",
     noEmailLine,
   ]
     .filter(Boolean)
     .join("\n");
 
   const system = [
-    "Jsi asistent poradce v CRM. OdpovĂ­dej struÄŤnÄ› a v ÄŤeĹˇtinÄ›.",
-    "MĹŻĹľeĹˇ navrhovat konkrĂ©tnĂ­ kroky a pouĹľĂ­vat nĂˇstroje.",
+    "Jsi asistent poradce v CRM. Odpovídej stručně a v češtině.",
+    "Můžeš navrhovat konkrétní kroky a používat nástroje.",
     hardRules,
     activeContactLine,
     toolInstructions,
   ].join("\n\n");
 
-  const fullPrompt = `${system}\n\nKontext:\n${context}\n\nUĹľivatel: ${message}\n\nAsistent:`;
+  const fullPrompt = `${system}\n\nKontext:\n${context}\n\nUživatel: ${message}\n\nAsistent:`;
 
   const allWarnings: string[] = [];
   const allSources: string[] = [];
@@ -330,7 +332,7 @@ export async function routeAssistantMessage(
       if (tc.name === "createEmailDraft" && intent.noEmail) {
         responseMessage = responseMessage.replace(
           new RegExp(`\\[TOOL:${escapeRegExp(tc.name)}[^\\]]*\\]`),
-          "[RESULT:createEmailDraft] {\"skipped\":true,\"reason\":\"uĹľivatel zakĂˇzal e-mail\"}",
+          "[RESULT:createEmailDraft] {\"skipped\":true,\"reason\":\"uživatel zakázal e-mail\"}",
         );
         continue;
       }
@@ -348,7 +350,7 @@ export async function routeAssistantMessage(
       } catch {
         responseMessage = responseMessage.replace(
           new RegExp(`\\[TOOL:${escapeRegExp(tc.name)}[^\\]]*\\]`),
-          `[NĂˇstroj ${tc.name} selhal]`,
+          `[Nástroj ${tc.name} selhal]`,
         );
       }
     }
@@ -366,13 +368,13 @@ export async function routeAssistantMessage(
     const fallbackActions = buildSuggestedActionsFromUrgent(urgentItems);
 
     session.lastSuggestedActions = fallbackActions;
-    session.lastWarnings = ["SluĹľba AI doÄŤasnÄ› nedostupnĂˇ."];
+    session.lastWarnings = ["Služba AI dočasně nedostupná."];
 
     return {
-      message: "OdpovÄ›ÄŹ nenĂ­ k dispozici. Zkuste to pozdÄ›ji nebo vyberte akci nĂ­Ĺľe.",
+      message: "Odpověď není k dispozici. Zkuste to později nebo vyberte akci níže.",
       referencedEntities: [],
       suggestedActions: [],
-      warnings: ["SluĹľba AI doÄŤasnÄ› nedostupnĂˇ."],
+      warnings: ["Služba AI dočasně nedostupná."],
       confidence: 0,
       sourcesSummary: [],
       sessionId: session.sessionId,
@@ -557,7 +559,7 @@ export async function routeAssistantMessageCanonical(
 
   if (!resolution.client && canonicalIntent.targetClient) {
     return {
-      message: `Klient „${canonicalIntent.targetClient.ref}" nebyl nalezen. Zkontrolujte jméno nebo otevřete kartu klienta.`,
+      message: `Klient „${canonicalIntent.targetClient.ref}“ nebyl nalezen. Zkontrolujte jméno nebo otevřete kartu klienta.`,
       referencedEntities: [],
       suggestedActions: [],
       warnings: resolution.warnings,

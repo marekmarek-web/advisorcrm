@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
@@ -161,6 +161,16 @@ export function AiAssistantDrawer() {
   const [importContactsLoading, setImportContactsLoading] = useState(false);
   const latestAssistantContext = getLatestAssistantContextFromMessages(messages);
 
+  const assistantSessionIdRef = useRef<string | undefined>(undefined);
+  assistantSessionIdRef.current = assistantSessionId;
+
+  const awaitingConfirmationFromLatestTurn = useMemo(() => {
+    const last = messages[messages.length - 1];
+    return (
+      last?.role === "assistant" && last.executionState?.status === "awaiting_confirmation"
+    );
+  }, [messages]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -185,76 +195,85 @@ export function AiAssistantDrawer() {
     }
   }, []);
 
-  const handleSendChat = async () => {
-    const msg = input.trim();
-    if (!msg || chatLoading || chatSubmitLockRef.current) return;
-    chatSubmitLockRef.current = true;
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: msg },
-      { role: "assistant", content: "", suggestedActions: [], warnings: [] },
-    ]);
-    setInput("");
-    setChatLoading(true);
-    queueMicrotask(() => inputRef.current?.focus());
-    try {
-      const complete = await postAssistantChatStreaming(
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            buildAssistantChatRequestBody(msg, {
-              sessionId: assistantSessionId,
-              routeContactId,
-              channel: "web_drawer",
-            }),
-          ),
-        },
-        (chunk) => {
-          setMessages((prev) => {
-            const next = [...prev];
-            const last = next[next.length - 1];
-            if (last?.role === "assistant") {
-              next[next.length - 1] = {
-                ...last,
-                content: last.content + chunk,
-              };
-            }
-            return next;
-          });
+  const sendChatMessage = useCallback(
+    async (rawMsg: string) => {
+      const msg = rawMsg.trim();
+      if (!msg || chatLoading || chatSubmitLockRef.current) return;
+      chatSubmitLockRef.current = true;
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: msg },
+        { role: "assistant", content: "", suggestedActions: [], warnings: [] },
+      ]);
+      setChatLoading(true);
+      queueMicrotask(() => inputRef.current?.focus());
+      try {
+        const complete = await postAssistantChatStreaming(
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              buildAssistantChatRequestBody(msg, {
+                sessionId: assistantSessionIdRef.current,
+                routeContactId,
+                channel: "web_drawer",
+              }),
+            ),
+          },
+          (chunk) => {
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last?.role === "assistant") {
+                next[next.length - 1] = {
+                  ...last,
+                  content: last.content + chunk,
+                };
+              }
+              return next;
+            });
+          },
+        );
+        if (complete.sessionId) {
+          setAssistantSessionId(complete.sessionId);
+          try {
+            sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
+          } catch {
+            /* ignore */
+          }
         }
-      );
-      if (complete.sessionId) {
-        setAssistantSessionId(complete.sessionId);
-        try {
-          sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
-        } catch {
-          /* ignore */
-        }
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === "assistant") {
+            next[next.length - 1] = {
+              role: "assistant",
+              content: complete.message ?? "",
+              suggestedActions: mapActionPayloadsToSuggestedActions(complete.suggestedActions ?? []),
+              warnings: complete.warnings ?? [],
+              executionState: complete.executionState ?? null,
+              contextState: complete.contextState ?? null,
+            };
+          }
+          return next;
+        });
+      } catch {
+        toast.showToast("Odeslání zprávy selhalo.", "error");
+        setMessages((prev) => prev.slice(0, -2));
+        setInput(msg);
+      } finally {
+        setChatLoading(false);
+        chatSubmitLockRef.current = false;
       }
-      setMessages((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        if (last?.role === "assistant") {
-          next[next.length - 1] = {
-            role: "assistant",
-            content: complete.message ?? "",
-            suggestedActions: mapActionPayloadsToSuggestedActions(complete.suggestedActions ?? []),
-            warnings: complete.warnings ?? [],
-            executionState: complete.executionState ?? null,
-            contextState: complete.contextState ?? null,
-          };
-        }
-        return next;
-      });
-    } catch {
-      toast.showToast("Odeslání zprávy selhalo.", "error");
-      setMessages((prev) => prev.slice(0, -2));
-      setInput(msg);
-    } finally {
-      setChatLoading(false);
-      chatSubmitLockRef.current = false;
-    }
+    },
+    [chatLoading, routeContactId, toast],
+  );
+
+  const handleSendChat = () => {
+    const msg = input.trim();
+    if (!msg) return;
+    setInput("");
+    void sendChatMessage(msg);
   };
 
   const handleUrgent = async () => {
@@ -929,6 +948,24 @@ export function AiAssistantDrawer() {
 
           {/* Input area - reference */}
           <div className="shrink-0 p-4 pt-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80">
+            {awaitingConfirmationFromLatestTurn && !chatLoading ? (
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => void sendChatMessage("ano")}
+                  className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-colors"
+                >
+                  Ano — provést
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendChatMessage("ne")}
+                  className="flex-1 min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-sm font-bold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] transition-colors"
+                >
+                  Ne — zrušit
+                </button>
+              </div>
+            ) : null}
             <div className="flex gap-2">
               <input
                 ref={inputRef}

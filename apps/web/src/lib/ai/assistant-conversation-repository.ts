@@ -1,7 +1,8 @@
-import { db, assistantConversations, assistantMessages, and, eq, desc } from "db";
+import { db, assistantConversations, assistantMessages, and, eq, desc, isNotNull } from "db";
 import type { AssistantSession } from "./assistant-session";
 import type { AssistantChannel } from "./assistant-domain-model";
 import type { CanonicalIntent, ExecutionPlan } from "./assistant-domain-model";
+import { isResumableExecutionPlanStatus, normalizeExecutionPlanFromDb } from "./assistant-plan-snapshot";
 
 export type AssistantConversationHydration = {
   channel: AssistantChannel | null;
@@ -112,6 +113,25 @@ export async function appendConversationMessage(params: {
     referencedEntities: params.referencedEntities ?? null,
     meta: params.meta ?? null,
   });
+}
+
+/**
+ * Latest non-null execution plan snapshot from this conversation (assistant messages).
+ * Used to resume „ano/ne“ after server restart or another instance.
+ */
+export async function loadResumableExecutionPlanSnapshot(conversationId: string): Promise<ExecutionPlan | null> {
+  const [row] = await db
+    .select({ executionPlanSnapshot: assistantMessages.executionPlanSnapshot })
+    .from(assistantMessages)
+    .where(
+      and(eq(assistantMessages.conversationId, conversationId), isNotNull(assistantMessages.executionPlanSnapshot)),
+    )
+    .orderBy(desc(assistantMessages.createdAt))
+    .limit(1);
+
+  const plan = normalizeExecutionPlanFromDb(row?.executionPlanSnapshot ?? null);
+  if (!plan || !isResumableExecutionPlanStatus(plan)) return null;
+  return plan;
 }
 
 export async function loadRecentConversationMessages(

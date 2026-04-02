@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, useCallback } from "react";
+import { useEffect, useRef, useState, useTransition, useCallback, useMemo } from "react";
 import {
   Send,
   ChevronRight,
@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { postAssistantChatStreaming } from "@/lib/ai/assistant-chat-client";
 import {
@@ -62,6 +62,7 @@ interface SuggestedAction {
 interface ReferencedEntity {
   type: string;
   id: string;
+  label?: string;
 }
 
 function executionBadge(
@@ -98,15 +99,28 @@ const QUICK_STARTERS = [
 /*  Message bubble                                                     */
 /* ------------------------------------------------------------------ */
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+function MessageBubble({
+  msg,
+  onSuggestedAction,
+}: {
+  msg: ChatMessage;
+  onSuggestedAction?: (action: SuggestedAction) => void;
+}) {
   const isUser = msg.role === "user";
 
   function getEntityLink(entity: ReferencedEntity): string {
     switch (entity.type) {
-      case "review": return `/portal/contracts/review/${entity.id}`;
-      case "task": return `/portal/tasks`;
-      case "client": return `/portal/contacts/${entity.id}`;
-      default: return "#";
+      case "review":
+        return `/portal/contracts/review/${entity.id}`;
+      case "task":
+        return `/portal/tasks`;
+      case "client":
+      case "contact":
+        return `/portal/contacts/${entity.id}`;
+      case "opportunity":
+        return `/portal/pipeline/${entity.id}`;
+      default:
+        return "#";
     }
   }
 
@@ -121,10 +135,17 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
   function getEntityLabel(type: string): string {
     switch (type) {
-      case "review": return "AI smlouva";
-      case "task": return "Úkoly";
-      case "client": return "Klient";
-      default: return "Otevřít";
+      case "review":
+        return "AI smlouva";
+      case "task":
+        return "Úkoly";
+      case "client":
+      case "contact":
+        return "Klient";
+      case "opportunity":
+        return "Obchod";
+      default:
+        return "Otevřít";
     }
   }
 
@@ -185,7 +206,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                 className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg min-h-[28px]"
               >
                 {getEntityIcon(entity.type)}
-                <span>{getEntityLabel(entity.type)}</span>
+                <span>{entity.label?.trim() || getEntityLabel(entity.type)}</span>
                 <ChevronRight size={10} />
               </Link>
             ))}
@@ -195,14 +216,25 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         {/* Suggested actions */}
         {(msg.suggestedActions ?? []).length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {msg.suggestedActions!.slice(0, 4).map((action, i) => (
-              <span
-                key={i}
-                className="text-[11px] font-bold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-surface-card-border)] px-2.5 py-1 rounded-lg"
-              >
-                {action.label}
-              </span>
-            ))}
+            {msg.suggestedActions!.slice(0, 6).map((action, i) =>
+              onSuggestedAction ? (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onSuggestedAction(action)}
+                  className="text-[11px] font-bold text-indigo-800 bg-indigo-50 border border-indigo-200 px-2.5 py-1.5 rounded-lg min-h-[36px] text-left active:bg-indigo-100"
+                >
+                  {action.label.length > 40 ? `${action.label.slice(0, 38)}…` : action.label}
+                </button>
+              ) : (
+                <span
+                  key={i}
+                  className="text-[11px] font-bold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-surface-card-border)] px-2.5 py-1 rounded-lg"
+                >
+                  {action.label}
+                </span>
+              ),
+            )}
           </div>
         ) : null}
       </div>
@@ -294,8 +326,11 @@ function loadSession(): ChatMessage[] {
 
 export function AiAssistantChatScreen() {
   const pathname = usePathname();
+  const router = useRouter();
   const routeContactId = parsePortalContactIdFromPathname(pathname) ?? null;
   const [assistantSessionId, setAssistantSessionId] = useState<string | undefined>(undefined);
+  const assistantSessionIdRef = useRef<string | undefined>(undefined);
+  assistantSessionIdRef.current = assistantSessionId;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -334,6 +369,57 @@ export function AiAssistantChatScreen() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  const awaitingConfirmationFromLatestTurn = useMemo(() => {
+    const last = messages[messages.length - 1];
+    return (
+      last?.role === "assistant" && last.executionState?.status === "awaiting_confirmation"
+    );
+  }, [messages]);
+
+  const runDraftEmailForClient = useCallback(async (clientId: string) => {
+    const cid = clientId.trim();
+    if (!cid) return;
+    setDraftLoading(true);
+    setDraftEmail(null);
+    setDraftCopied(false);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/assistant/draft-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: cid, context: "follow_up" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Draft email selhal");
+      setDraftEmail(data.draft ?? data.email ?? "Nepodařilo se vygenerovat e-mail.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Draft email selhal.");
+    } finally {
+      setDraftLoading(false);
+    }
+  }, []);
+
+  const handleSuggestedAction = useCallback(
+    (action: SuggestedAction) => {
+      if (action.type === "open_review" && typeof action.payload.reviewId === "string") {
+        router.push(`/portal/contracts/review/${action.payload.reviewId}`);
+        return;
+      }
+      if (action.type === "view_client" && typeof action.payload.clientId === "string") {
+        router.push(`/portal/contacts/${action.payload.clientId}`);
+        return;
+      }
+      if (action.type === "open_task") {
+        router.push("/portal/tasks");
+        return;
+      }
+      if (action.type === "draft_email" && typeof action.payload.clientId === "string") {
+        void runDraftEmailForClient(action.payload.clientId);
+      }
+    },
+    [router, runDraftEmailForClient],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -386,7 +472,7 @@ export function AiAssistantChatScreen() {
             headers: { "content-type": "application/json" },
             body: JSON.stringify(
               buildAssistantChatRequestBody(trimmed, {
-                sessionId: assistantSessionId,
+                sessionId: assistantSessionIdRef.current,
                 routeContactId,
                 channel: "mobile",
               }),
@@ -497,7 +583,7 @@ export function AiAssistantChatScreen() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
             buildAssistantChatRequestBody(`Analyzuj nahraný soubor: ${docName}`, {
-              sessionId: assistantSessionId,
+              sessionId: assistantSessionIdRef.current,
               routeContactId,
               channel: "mobile",
             }),
@@ -547,28 +633,12 @@ export function AiAssistantChatScreen() {
   }
 
   async function handleDraftEmail() {
-    setDraftLoading(true);
-    setDraftEmail(null);
-    setDraftCopied(false);
-    try {
-      const lastClientRef = messages
-        .flatMap((m) => m.referencedEntities ?? [])
-        .filter((e) => e.type === "client")
-        .pop();
-      const clientId = routeContactId?.trim() || lastClientRef?.id || "";
-      const res = await fetch("/api/ai/assistant/draft-email", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clientId, context: "follow_up" }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Draft email selhal");
-      setDraftEmail(data.draft ?? data.email ?? "Nepodařilo se vygenerovat e-mail.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Draft email selhal.");
-    } finally {
-      setDraftLoading(false);
-    }
+    const lastClientRef = messages
+      .flatMap((m) => m.referencedEntities ?? [])
+      .filter((e) => e.type === "client" || e.type === "contact")
+      .pop();
+    const clientId = routeContactId?.trim() || lastClientRef?.id || "";
+    await runDraftEmailForClient(clientId);
   }
 
   function copyDraft() {
@@ -646,7 +716,7 @@ export function AiAssistantChatScreen() {
         ) : null}
 
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <MessageBubble key={msg.id} msg={msg} onSuggestedAction={handleSuggestedAction} />
         ))}
 
         {isTyping ? <TypingIndicator /> : null}
@@ -715,6 +785,25 @@ export function AiAssistantChatScreen() {
             </button>
           </div>
         )}
+
+        {awaitingConfirmationFromLatestTurn && !isTyping ? (
+          <div className="flex gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() => void sendMessage("ano")}
+              className="flex-1 min-h-[44px] rounded-2xl bg-emerald-600 text-white text-sm font-bold shadow-sm active:bg-emerald-700"
+            >
+              Ano — provést
+            </button>
+            <button
+              type="button"
+              onClick={() => void sendMessage("ne")}
+              className="flex-1 min-h-[44px] rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-sm font-bold text-[color:var(--wp-text-secondary)]"
+            >
+              Ne — zrušit
+            </button>
+          </div>
+        ) : null}
 
         <div className="flex items-end gap-2">
           <input
