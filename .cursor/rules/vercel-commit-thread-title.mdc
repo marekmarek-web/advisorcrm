@@ -1,0 +1,22 @@
+---
+description: Při commitech, které jdou na git a spouští Vercel deploy, musí první řádek zprávy odpovídat názvu aktuálního vlákna chatu v Cursoru (stejný text jako v poznámkách / deployment summary na Vercelu).
+alwaysApply: true
+---
+
+# Vercel / Git: první řádek commitu = název vlákna chatu
+
+Vercel u deploymentů typicky zobrazuje **první řádek git commit zprávy** (subject) jako popis buildu. Aby šlo nasazení snadno spárovat s konverzací:
+
+1. **Když agent dělá `git commit` po práci v Cursoru**, nastav **první řádek** (`subject`) commit message **přesně na název aktuálního chat vlákna** (thread title), jak ho uživatel vidí v postranním panelu konverzací — např. `AI asistent - UX`.
+2. **Další řádky** commit message (body) mohou obsahovat běžný popis změn, důvody, odkazy na soubory — jako doposud.
+3. Pokud název vlákna **není k dispozici** (např. anonymní session), použij srozumitelný subject v češtině jako první řádek a pokračuj body jako obvykle.
+
+**Příklad:**
+
+```
+AI asistent - UX
+
+feat(ai): interní asistent — kontext klienta z URL a searchContacts.
+```
+
+Tím bude **první věta / první řádek** u příslušného deploymentu na Vercelu odpovídat názvu vlákna, ve kterém práce vznikla.
