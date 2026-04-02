@@ -273,6 +273,53 @@ export function legacyIntentToCanonical(legacy: AssistantIntent): CanonicalInten
   };
 }
 
+/** Hypo/úvěr bundle: stejné ověřené chování jako executeMortgageDealAndFollowUpTask (customFields idempotence). */
+export function shouldUseMortgageVerifiedBundle(c: CanonicalIntent): boolean {
+  const wantsOpp = c.requestedActions.includes("create_opportunity");
+  const wantsFu = c.requestedActions.includes("create_followup");
+  if (!wantsOpp || !wantsFu) return false;
+  if (c.productDomain === "hypo" || c.productDomain === "uver") return true;
+  const hasHypoLex = c.extractedFacts.some(
+    (f) =>
+      f.key === "bank" ||
+      (f.key === "purpose" && typeof f.value === "string" && /hypot|úvěr|uver|ltv/i.test(f.value)),
+  );
+  return hasHypoLex;
+}
+
+/** Mapuje kanonický intent zpět na legacy AssistantIntent pro mortgage executor. */
+export function canonicalIntentToMortgageAssistantIntent(
+  c: CanonicalIntent,
+  opts?: { resolvedContactId?: string | null },
+): AssistantIntent {
+  const num = (key: string): number | null => {
+    const f = c.extractedFacts.find((x) => x.key === key)?.value;
+    return typeof f === "number" ? f : null;
+  };
+  const str = (key: string): string | null => {
+    const f = c.extractedFacts.find((x) => x.key === key)?.value;
+    return typeof f === "string" ? f : null;
+  };
+  const resolved = opts?.resolvedContactId;
+  return {
+    actions: ["create_opportunity", "create_followup_task"],
+    switchClient: c.switchClient,
+    clientRef:
+      resolved != null && resolved !== ""
+        ? null
+        : c.targetClient?.ref && !c.targetClient.resolved
+          ? c.targetClient.ref
+          : str("clientRef"),
+    amount: num("amount"),
+    ltv: num("ltv"),
+    purpose: str("purpose"),
+    bank: str("bank"),
+    rateGuess: num("rateGuess"),
+    noEmail: c.noEmail,
+    dueDateText: c.temporalExpressions[0]?.raw ?? null,
+  };
+}
+
 const PRAGUE = "Europe/Prague";
 
 export function computeNextTuesdayDatePrague(ref: Date = new Date()): string {

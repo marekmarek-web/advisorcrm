@@ -3,7 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getOrCreateSession } from "@/lib/ai/assistant-session";
-import { routeAssistantMessage, type AssistantResponse } from "@/lib/ai/assistant-tool-router";
+import {
+  routeAssistantMessage,
+  routeAssistantMessageCanonical,
+  type AssistantResponse,
+} from "@/lib/ai/assistant-tool-router";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +85,16 @@ export async function POST(request: Request) {
     const tenantId = membership.tenantId;
     const session = getOrCreateSession(sessionId, tenantId, userId);
 
-    const response: AssistantResponse = await routeAssistantMessage(message, session, activeContext, { roleName: membership.roleName });
+    const orchestration =
+      body.orchestration === "canonical" || body.useCanonicalOrchestration === true
+        ? "canonical"
+        : "legacy";
+    const response: AssistantResponse =
+      orchestration === "canonical"
+        ? await routeAssistantMessageCanonical(message, session, activeContext, {
+            roleName: membership.roleName,
+          })
+        : await routeAssistantMessage(message, session, activeContext, { roleName: membership.roleName });
 
     if (useStream) {
       return new Response(assistantResponseToSseStream(response), {

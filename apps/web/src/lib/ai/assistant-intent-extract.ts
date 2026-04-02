@@ -11,6 +11,7 @@ import {
   type CanonicalIntentRaw,
 } from "./assistant-intent";
 import type { CanonicalIntent } from "./assistant-domain-model";
+import { enrichCanonicalIntentWithPlaybooks } from "./playbooks";
 
 const INTENT_SYSTEM = `Jsi extraktor strukturovaného záměru pro interního asistenta poradce v CRM Aidvisora.
 Vrať JSON přesně podle schématu.
@@ -140,9 +141,9 @@ export async function extractCanonicalIntent(message: string): Promise<Canonical
       switchClient: raw.switchClient || flags.switchClient,
       noEmail: raw.noEmail || flags.noEmail,
     });
-    return canonical;
+    return enrichCanonicalIntentWithPlaybooks(canonical, message);
   } catch {
     const legacy = fallbackIntentFromHeuristics(message, flags);
-    return legacyIntentToCanonical(legacy);
+    return enrichCanonicalIntentWithPlaybooks(legacyIntentToCanonical(legacy), message);
   }
 }

@@ -4,7 +4,7 @@
  */
 
 import { randomUUID } from "crypto";
-import { db, executionActions, eq, and, sql } from "db";
+import { db, executionActions, eq, and } from "db";
 import type {
   ExecutionPlan,
   ExecutionStep,
@@ -14,7 +14,7 @@ import type {
 } from "./assistant-domain-model";
 import { logAudit } from "../audit";
 
-type ExecutionContext = {
+export type ExecutionContext = {
   tenantId: string;
   userId: string;
   sessionId: string;
@@ -183,10 +183,22 @@ function resolveDependencies(steps: ExecutionStep[]): ExecutionStep[][] {
   return waves;
 }
 
+let writeAdaptersLoad: Promise<void> | null = null;
+
+async function ensureAssistantWriteAdaptersLoaded(): Promise<void> {
+  if (writeAdaptersLoad) return writeAdaptersLoad;
+  writeAdaptersLoad = (async () => {
+    const { registerAssistantWriteAdapters } = await import("./assistant-write-adapters");
+    registerAssistantWriteAdapters();
+  })();
+  return writeAdaptersLoad;
+}
+
 export async function executePlan(
   plan: ExecutionPlan,
   ctx: ExecutionContext,
 ): Promise<ExecutionPlan> {
+  await ensureAssistantWriteAdaptersLoaded();
   const confirmedSteps = plan.steps.filter((s) => s.status === "confirmed");
   if (confirmedSteps.length === 0) return plan;
 

@@ -16,7 +16,12 @@ import {
 import { buildSuggestedActionsFromUrgent, computePriorityItems } from "./dashboard-priority";
 import type { ActionPayload } from "./action-catalog";
 import { extractAssistantIntent, extractCanonicalIntent } from "./assistant-intent-extract";
-import { intentWantsCrmWrites, intentWantsDashboard } from "./assistant-intent";
+import {
+  intentWantsCrmWrites,
+  intentWantsDashboard,
+  shouldUseMortgageVerifiedBundle,
+  canonicalIntentToMortgageAssistantIntent,
+} from "./assistant-intent";
 import { executeMortgageDealAndFollowUpTask } from "./assistant-crm-writes";
 import { searchContactsForAssistant } from "./assistant-contact-search";
 import type { RoleName } from "@/shared/rolePermissions";
@@ -25,6 +30,7 @@ import type { CanonicalIntent, ExecutionPlan, VerifiedAssistantResult } from "./
 import { resolveEntities, patchIntentWithResolutions } from "./assistant-entity-resolution";
 import { buildExecutionPlan, confirmAllSteps, allStepsReady, getPlanSummary, getStepsAwaitingConfirmation } from "./assistant-execution-plan";
 import { executePlan, buildVerifiedResult } from "./assistant-execution-engine";
+import { getPlaybookGuidanceLines } from "./playbooks";
 
 export type AssistantResponse = {
   message: string;
@@ -169,9 +175,11 @@ export async function routeAssistantMessage(
   message: string,
   session: AssistantSession,
   activeContext?: ActiveContext,
-  options?: { roleName?: RoleName },
+  options?: { roleName?: RoleName; skipIncrement?: boolean },
 ): Promise<AssistantResponse> {
-  incrementMessageCount(session);
+  if (!options?.skipIncrement) {
+    incrementMessageCount(session);
+  }
 
   const intent = await extractAssistantIntent(message);
   const roleName = options?.roleName ?? "Advisor";
@@ -443,10 +451,84 @@ export async function routeAssistantMessageCanonical(
   ]);
 
   if (READ_ONLY_INTENTS.has(canonicalIntent.intentType)) {
-    return routeAssistantMessage(message, session, activeContext, options);
+    return routeAssistantMessage(message, session, activeContext, {
+      roleName: options?.roleName,
+      skipIncrement: true,
+    });
   }
 
   const resolution = await resolveEntities(tenantId, canonicalIntent, session);
+
+  if (shouldUseMortgageVerifiedBundle(canonicalIntent)) {
+    if (resolution.client?.ambiguous) {
+      const altLines = resolution.client.alternatives.map((a, i) => `${i + 1}. ${a.label}`).join("\n");
+      return {
+        message: `Nalezeno více klientů. Upřesněte prosím:\n\n${resolution.client.displayLabel}\n${altLines}`,
+        referencedEntities: [],
+        suggestedActions: [],
+        warnings: resolution.warnings,
+        confidence: 0.5,
+        sourcesSummary: [],
+        sessionId: session.sessionId,
+      };
+    }
+    const contactId =
+      resolution.client?.entityId ?? session.lockedClientId ?? session.activeClientId ?? null;
+    if (!contactId) {
+      return {
+        message:
+          "Pro založení hypotéky a follow-upu chybí klient — otevřete kartu kontaktu nebo uveďte celé jméno ve zprávě.",
+        referencedEntities: [],
+        suggestedActions: [],
+        warnings: resolution.warnings,
+        confidence: 0.45,
+        sourcesSummary: [],
+        sessionId: session.sessionId,
+      };
+    }
+    lockAssistantClient(session, contactId);
+    const legacyIntent = canonicalIntentToMortgageAssistantIntent(canonicalIntent, {
+      resolvedContactId: contactId,
+    });
+    const write = await executeMortgageDealAndFollowUpTask({
+      tenantId,
+      userId: session.userId,
+      roleName,
+      contactId,
+      intent: legacyIntent,
+    });
+    if (!write.ok) {
+      return {
+        message: `Zápis do CRM se nepodařil: ${write.error}`,
+        referencedEntities: [],
+        suggestedActions: [],
+        warnings: [],
+        confidence: 0.35,
+        sourcesSummary: [],
+        sessionId: session.sessionId,
+      };
+    }
+    session.lockedDealId = write.dealId;
+    const lines = [
+      "Záznam do CRM proběhl (ověřené identifikátory z databáze).",
+      `dealId: ${write.dealId}`,
+      `taskId: ${write.taskId}`,
+      `Termín úkolu (datum, 10:00 Europe/Prague): ${write.dueDate}`,
+    ];
+    if (legacyIntent.noEmail) lines.push("E-mail nebyl generován (dle zadání).");
+    return {
+      message: lines.join("\n"),
+      referencedEntities: [
+        { type: "opportunity", id: write.dealId },
+        { type: "task", id: write.taskId },
+      ],
+      suggestedActions: [],
+      warnings: [],
+      confidence: 1,
+      sourcesSummary: [],
+      sessionId: session.sessionId,
+    };
+  }
 
   if (resolution.client?.ambiguous) {
     const altLines = resolution.client.alternatives
@@ -479,7 +561,10 @@ export async function routeAssistantMessageCanonical(
   const plan = buildExecutionPlan(patchedIntent, resolution);
 
   if (plan.steps.length === 0) {
-    return routeAssistantMessage(message, session, activeContext, options);
+    return routeAssistantMessage(message, session, activeContext, {
+      roleName: options?.roleName,
+      skipIncrement: true,
+    });
   }
 
   const awaiting = getStepsAwaitingConfirmation(plan);
@@ -487,8 +572,10 @@ export async function routeAssistantMessageCanonical(
     session.lastExecutionPlan = plan;
     const summary = getPlanSummary(plan);
     const clientLabel = resolution.client?.displayLabel ?? "neznámý klient";
+    const playbookLines = getPlaybookGuidanceLines(patchedIntent, message);
+    const playbookBlock = playbookLines.length > 0 ? `\n\n${playbookLines.join("\n")}` : "";
     return {
-      message: `Připravuji akce pro **${clientLabel}**:\n\n${summary}\n\nPotvrďte provedení odpovědí „ano" nebo zrušte odpovědí „ne".`,
+      message: `Připravuji akce pro **${clientLabel}**:\n\n${summary}${playbookBlock}\n\nPotvrďte provedení odpovědí „ano" nebo zrušte odpovědí „ne".`,
       referencedEntities: resolution.client ? [{ type: "contact", id: resolution.client.entityId, label: resolution.client.displayLabel }] : [],
       suggestedActions: [],
       warnings: resolution.warnings,

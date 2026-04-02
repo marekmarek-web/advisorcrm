@@ -3,12 +3,16 @@
  * Rule-based suggestions with dedup and dismiss/snooze support.
  */
 
+import type { CanonicalIntent } from "./assistant-domain-model";
+import { pickPlaybookForIntent } from "./playbooks";
+
 export type FollowUpSuggestionType =
   | "review_waiting_too_long"
   | "payment_setup_blocked"
   | "client_no_followup"
   | "change_document_unresolved"
-  | "apply_candidate_ready";
+  | "apply_candidate_ready"
+  | "playbook_context_hint";
 
 export type FollowUpSeverity = "high" | "medium" | "low";
 
@@ -175,4 +179,26 @@ export function generateFollowUpSuggestions(
 
 export function clearDedupeStore(): void {
   dedupeStore.clear();
+}
+
+/** Volitelné doplnění návrhů podle produktového playbooku (fáze 4). */
+export function augmentSuggestionsWithPlaybookContext(
+  suggestions: FollowUpSuggestion[],
+  ctx: { message: string; intent?: CanonicalIntent },
+): FollowUpSuggestion[] {
+  if (!ctx.intent) return suggestions;
+  const pb = pickPlaybookForIntent(ctx.intent, ctx.message);
+  if (!pb) return suggestions;
+  return [
+    ...suggestions,
+    {
+      type: "playbook_context_hint",
+      severity: "low",
+      title: `Playbook: ${pb.label}`,
+      description: `Typické kroky: ${pb.nextStepSuggestions.slice(0, 2).join(" ")}`,
+      entityLinks: [],
+      suggestedAction: pb.priorityMissingHints[0] ?? "Doplňte chybějící údaje.",
+      reasonCodes: [`PLAYBOOK_${pb.id}`],
+    },
+  ];
 }
