@@ -82,8 +82,23 @@ export function InvestmentCalculatorPage({
     [profile.name, profile.rate, initial, monthly, years, projection, startYear, backtestResult]
   );
 
+  const getHeroKpis = useCallback(
+    () => [
+      {
+        label: "Předpokládaná hodnota",
+        value: `${formatCurrency(Math.round(projection.totalBalance))} Kč`,
+      },
+      { label: "Váš vklad", value: `${formatCurrency(Math.round(projection.totalInvested))} Kč` },
+      { label: "Zhodnocení", value: `+${projection.totalGainPercent.toFixed(1)} %` },
+      { label: "Horizont", value: `${years} let` },
+    ],
+    [projection.totalBalance, projection.totalInvested, projection.totalGainPercent, years]
+  );
+
+  const isClientAudience = audience === "client";
+
   return (
-    <div className="pt-0 pb-44 lg:pb-0">
+    <div className={isClientAudience ? "pt-0 pb-4" : "pt-0 pb-44 lg:pb-0"}>
       <CalculatorPageShell>
         <div className="mb-3">
           <CalculatorPageHeader
@@ -98,7 +113,10 @@ export function InvestmentCalculatorPage({
               <CalculatorPdfExportButton
                 documentTitle="Investiční kalkulačka – přehled výpočtu"
                 filePrefix="investice"
+                eyebrow="Kalkulačka investic · 2026"
+                subtitle="Projekce hodnoty investice v čase při pravidelném investování a zvolené strategii."
                 getSections={getPdfSections}
+                getHeroKpis={getHeroKpis}
               />
             }
           />
@@ -129,7 +147,8 @@ export function InvestmentCalculatorPage({
             profileTitle={profile.name}
             profileDescription={profile.description}
           />
-          <div className="hidden lg:block sticky top-6">
+          {/* Client audience: always visible (no fixed dock); advisor: desktop-only sticky panel */}
+          <div className={isClientAudience ? "block" : "hidden lg:block sticky top-6"}>
             <InvestmentResultsPanel
               totalBalance={projection.totalBalance}
               totalInvested={projection.totalInvested}
@@ -164,14 +183,17 @@ export function InvestmentCalculatorPage({
         </div>
       </CalculatorPageShell>
 
-      <CalculatorMobileResultDock>
-        <InvestmentResultsPanel
-          totalBalance={projection.totalBalance}
-          totalInvested={projection.totalInvested}
-          totalGain={projection.totalGain}
-          totalGainPercent={projection.totalGainPercent}
-        />
-      </CalculatorMobileResultDock>
+      {/* Fixed mobile dock only for advisor view; client sees results inline above */}
+      {!isClientAudience && (
+        <CalculatorMobileResultDock>
+          <InvestmentResultsPanel
+            totalBalance={projection.totalBalance}
+            totalInvested={projection.totalInvested}
+            totalGain={projection.totalGain}
+            totalGainPercent={projection.totalGainPercent}
+          />
+        </CalculatorMobileResultDock>
+      )}
     </div>
   );
 }

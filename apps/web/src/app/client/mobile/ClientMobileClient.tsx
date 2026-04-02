@@ -38,6 +38,12 @@ import {
   type PortalNotificationRow,
 } from "@/app/actions/portal-notifications";
 import { formatPortalNotificationBody } from "@/lib/client-portal/format-portal-notification-body";
+import {
+  aggregatePortfolioMetrics,
+  PORTFOLIO_GROUP_LABELS,
+  segmentToPortfolioGroup,
+  type PortfolioUiGroup,
+} from "@/lib/client-portfolio/read-model";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
@@ -363,6 +369,162 @@ function toTab(pathname: string): TabId {
     return "menu";
   }
   return pathname.startsWith("/client") ? "home" : "menu";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Portfolio screen — seskupené podle read-modelu jako web             */
+/* ------------------------------------------------------------------ */
+
+const GROUP_ORDER: PortfolioUiGroup[] = [
+  "investments_pensions",
+  "loans",
+  "income_protection_life",
+  "children",
+  "property_liability",
+  "vehicles",
+  "travel",
+  "business",
+  "other",
+];
+
+function statusLabel(portfolioStatus: string, startDate: string | null): string {
+  if (portfolioStatus === "ended") return "Ukončené";
+  if (!startDate) return "V evidenci";
+  return "Aktivní";
+}
+
+function formatMoneyLine(monthly: string | null, annual: string | null): string {
+  const m = Number(monthly ?? "");
+  const y = Number(annual ?? "");
+  if (Number.isFinite(y) && y > 0) return `${y.toLocaleString("cs-CZ")} Kč / rok`;
+  if (Number.isFinite(m) && m > 0) return `${m.toLocaleString("cs-CZ")} Kč / měs.`;
+  return "Dle smlouvy";
+}
+
+function PortfolioScreen({ contracts }: { contracts: ClientMobileInitialData["contracts"] }) {
+  if (contracts.length === 0) {
+    return (
+      <EmptyState
+        title="Žádné produkty"
+        description="Jakmile poradce přidá a zveřejní smlouvy, zobrazí se zde seřazené podle kategorií."
+      />
+    );
+  }
+
+  const metrics = aggregatePortfolioMetrics(
+    contracts.map((c) => ({
+      segment: c.segment,
+      premiumAmount: c.premiumAmount,
+      premiumAnnual: c.premiumAnnual,
+      portfolioAttributes: c.portfolioAttributes,
+    }))
+  );
+
+  const grouped = new Map<PortfolioUiGroup, typeof contracts>();
+  for (const c of contracts) {
+    const g = segmentToPortfolioGroup(c.segment, c.portfolioAttributes);
+    const list = grouped.get(g) ?? [];
+    list.push(c);
+    grouped.set(g, list);
+  }
+
+  return (
+    <>
+      {/* KPI dlaždice — stejný zdroj jako web */}
+      <div className="grid grid-cols-2 gap-2">
+        {metrics.monthlyInvestments > 0 && (
+          <MobileCard className="p-3">
+            <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-black">Investice / měs.</p>
+            <p className="text-base font-black mt-0.5">{fmtMoney(metrics.monthlyInvestments)}</p>
+          </MobileCard>
+        )}
+        {metrics.monthlyInsurancePremiums > 0 && (
+          <MobileCard className="p-3">
+            <p className="text-[10px] uppercase tracking-wider text-amber-600 font-black">Pojistné / měs.</p>
+            <p className="text-base font-black mt-0.5">{fmtMoney(metrics.monthlyInsurancePremiums)}</p>
+          </MobileCard>
+        )}
+        {metrics.totalLoanPrincipal > 0 && (
+          <MobileCard className="p-3">
+            <p className="text-[10px] uppercase tracking-wider text-blue-600 font-black">Jistiny úvěrů</p>
+            <p className="text-base font-black mt-0.5">{fmtMoney(metrics.totalLoanPrincipal)}</p>
+          </MobileCard>
+        )}
+        <MobileCard className="p-3">
+          <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Položek</p>
+          <p className="text-base font-black mt-0.5">{metrics.activeContractCount}</p>
+        </MobileCard>
+      </div>
+
+      {/* Skupiny dle read-modelu */}
+      {GROUP_ORDER.map((groupKey) => {
+        const items = grouped.get(groupKey);
+        if (!items?.length) return null;
+        return (
+          <MobileSection key={groupKey} title={PORTFOLIO_GROUP_LABELS[groupKey]}>
+            {items.map((contract) => {
+              const st = statusLabel(contract.portfolioStatus, contract.startDate);
+              const stTone =
+                st === "Aktivní"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                  : st === "Ukončené"
+                    ? "bg-slate-100 text-slate-600 border-slate-200"
+                    : "bg-amber-50 text-amber-800 border-amber-100";
+              return (
+                <MobileCard key={contract.id} className="p-3.5">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                        {contract.productName || "Produkt"}
+                      </p>
+                      {contract.partnerName && (
+                        <p className="text-xs text-slate-500 truncate mt-0.5">{contract.partnerName}</p>
+                      )}
+                    </div>
+                    <span className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${stTone}`}>
+                      {st}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Platba</p>
+                      <p className="font-bold text-slate-900">{formatMoneyLine(contract.premiumAmount, contract.premiumAnnual)}</p>
+                    </div>
+                    {contract.contractNumber && (
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Číslo smlouvy</p>
+                        <p className="font-mono text-slate-700 truncate">{contract.contractNumber}</p>
+                      </div>
+                    )}
+                    {contract.startDate && (
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Od</p>
+                        <p className="font-bold text-slate-700">{new Date(contract.startDate).toLocaleDateString("cs-CZ")}</p>
+                      </div>
+                    )}
+                    {contract.anniversaryDate && (
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Výročí</p>
+                        <p className="font-bold text-slate-700">{new Date(contract.anniversaryDate).toLocaleDateString("cs-CZ")}</p>
+                      </div>
+                    )}
+                  </div>
+                  {contract.sourceDocumentId && (
+                    <a
+                      href={`/api/documents/${contract.sourceDocumentId}/download`}
+                      className="mt-2.5 inline-flex min-h-[36px] items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-xs font-black text-indigo-700"
+                    >
+                      Zobrazit dokument
+                    </a>
+                  )}
+                </MobileCard>
+              );
+            })}
+          </MobileSection>
+        );
+      })}
+    </>
+  );
 }
 
 export function ClientMobileClient({ initialData }: { initialData: ClientMobileInitialData }) {
@@ -793,21 +955,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         ) : null}
 
         {onPortfolioRoute ? (
-          <MobileSection title="Moje portfolio">
-            {contracts.length === 0 ? (
-              <EmptyState title="Žádné smlouvy" />
-            ) : (
-              contracts.map((contract) => (
-                <MobileCard key={contract.id} className="p-3.5">
-                  <p className="text-sm font-bold">{contract.productName || contract.partnerName || "Smlouva"}</p>
-                  <p className="text-xs text-slate-500 mt-1">Segment: {contract.segment}</p>
-                  <p className="text-xs text-slate-500">
-                    {contract.premiumAnnual ? `${Number(contract.premiumAnnual).toLocaleString("cs-CZ")} Kč ročně` : "—"}
-                  </p>
-                </MobileCard>
-              ))
-            )}
-          </MobileSection>
+          <PortfolioScreen contracts={contracts} />
         ) : null}
 
         {onNotificationsRoute ? (
@@ -847,7 +995,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           </MobileSection>
         ) : null}
 
-        {onProfileRoute || tab === "menu" ? (
+        {(onProfileRoute || tab === "menu") && !onPortfolioRoute && !onNotificationsRoute ? (
           <MobileSection title="Profil a domácnost">
             <MobileCard>
               <p className="text-sm font-bold">{initialData.fullName}</p>
@@ -958,19 +1106,22 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         </div>
       </BottomSheet>
 
-      <button
-        type="button"
-        onClick={() => {
-          if (tab === "requests") setRequestModalOpen(true);
-          else if (tab === "messages") setComposeBody((prev) => prev || "Dobrý den, ");
-          else router.push("/client/requests/new");
-        }}
-        className="fixed z-40 right-4 bottom-[calc(90px+var(--safe-area-bottom))] min-h-[52px] min-w-[52px] rounded-full bg-indigo-600 text-white shadow-lg"
-        aria-label="Nová akce"
-        title="Nová akce"
-      >
-        <Plus size={22} className="mx-auto" />
-      </button>
+      {/* FAB: visible only on tabs where it has clear meaning (home, messages, requests, documents) */}
+      {!onPortfolioRoute && !onNotificationsRoute && !onProfileRoute && tab !== "menu" ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (tab === "requests") setRequestModalOpen(true);
+            else if (tab === "messages") setComposeBody((prev) => prev || "Dobrý den, ");
+            else setRequestModalOpen(true);
+          }}
+          className="fixed z-40 right-4 bottom-[calc(90px+var(--safe-area-bottom))] min-h-[52px] min-w-[52px] rounded-full bg-indigo-600 text-white shadow-lg"
+          aria-label="Nový požadavek"
+          title="Nový požadavek"
+        >
+          <Plus size={22} className="mx-auto" />
+        </button>
+      ) : null}
 
       <MobileBottomNav items={navItems} activeId={tab} onSelect={(id) => navigate(id as TabId)} />
 

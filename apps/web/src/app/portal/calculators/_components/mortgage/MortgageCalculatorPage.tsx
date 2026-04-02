@@ -28,6 +28,7 @@ import {
   normalizedOffersToBankEntries,
   rankOffersByScenario,
 } from "@/lib/calculators/mortgage/rates";
+import { formatCurrency, formatRate } from "@/lib/calculators/mortgage/formatters";
 import { buildMortgagePdfSections } from "@/lib/calculators/pdf";
 import { CalculatorPdfExportButton } from "@/components/calculators/CalculatorPdfExportButton";
 
@@ -137,8 +138,20 @@ export function MortgageCalculatorPage({
     [state, result, offers, ratesMeta]
   );
 
+  const getHeroKpis = useCallback(
+    () => [
+      { label: "Měsíční splátka", value: `${formatCurrency(result.monthlyPayment)} Kč` },
+      { label: "LTV", value: `${result.displayLtv} %` },
+      { label: "Úrok (model)", value: `${formatRate(result.finalRate)} p.a.` },
+      { label: "Jistina", value: `${formatCurrency(result.borrowingAmount)} Kč` },
+    ],
+    [result]
+  );
+
+  const isClientAudience = audience === "client";
+
   return (
-    <div className="pt-0 pb-56 lg:pb-0">
+    <div className={isClientAudience ? "pt-0 pb-4" : "pt-0 pb-56 lg:pb-0"}>
       <CalculatorPageShell>
         <div className="mb-3">
           <CalculatorPageHeader
@@ -153,7 +166,10 @@ export function MortgageCalculatorPage({
               <CalculatorPdfExportButton
                 documentTitle="Hypotéka a úvěr – přehled výpočtu"
                 filePrefix="hypoteka"
+                eyebrow="Kalkulačka hypoték a úvěrů · 2026"
+                subtitle="Zjistěte přesnou měsíční splátku a srovnejte aktuální nabídky bank."
                 getSections={getPdfSections}
+                getHeroKpis={getHeroKpis}
               />
             }
           />
@@ -185,7 +201,8 @@ export function MortgageCalculatorPage({
             }
             onTypeChange={(type) => setState((s) => ({ ...s, type }))}
           />
-          <div className="hidden lg:block sticky top-6">
+          {/* Client audience: always visible inline; advisor: desktop-only sticky */}
+          <div className={isClientAudience ? "block" : "hidden lg:block sticky top-6"}>
             <MortgageResultsPanel result={result} />
           </div>
         </div>
@@ -211,9 +228,12 @@ export function MortgageCalculatorPage({
         )}
       </CalculatorPageShell>
 
-      <CalculatorMobileResultDock>
-        <MortgageResultsPanel result={result} />
-      </CalculatorMobileResultDock>
+      {/* Fixed mobile dock only for advisor view; client sees results inline */}
+      {!isClientAudience && (
+        <CalculatorMobileResultDock>
+          <MortgageResultsPanel result={result} />
+        </CalculatorMobileResultDock>
+      )}
     </div>
   );
 }
