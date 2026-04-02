@@ -7,6 +7,7 @@ import { getDocumentsForClient } from "@/app/actions/documents";
 import { getPaymentInstructionsForContact } from "@/app/actions/payment-pdf";
 import { getClientRequests } from "@/app/actions/client-portal-requests";
 import { getPortalNotificationsForClient } from "@/app/actions/portal-notifications";
+import { formatPortalNotificationBody } from "@/lib/client-portal/format-portal-notification-body";
 import { getClientDashboardMetrics } from "@/app/actions/client-dashboard";
 import { getClientFinancialSummaryForContact } from "@/app/actions/client-financial-summary";
 import { getAssignedAdvisorForClient } from "@/app/actions/client-dashboard";
@@ -103,7 +104,10 @@ export default async function ClientZonePage() {
         latestNotification
           ? {
               title: latestNotification.title,
-              body: latestNotification.body,
+              body: formatPortalNotificationBody(
+                latestNotification.type,
+                latestNotification.body
+              ),
             }
           : null
       }

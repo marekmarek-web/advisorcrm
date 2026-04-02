@@ -86,11 +86,7 @@ export async function createAdvisorMaterialRequest(params: {
       contactId: params.contactId,
       type: "advisor_material_request",
       title: "Nový požadavek na podklady",
-      body: JSON.stringify({
-        requestId: id,
-        title: params.title.trim(),
-        preview: description ?? params.title.trim(),
-      }),
+      body: initialBody,
       relatedEntityType: "advisor_material_request",
       relatedEntityId: id,
     });
@@ -298,7 +294,7 @@ export async function addAdvisorMaterialRequestReply(
       contactId: req.contactId,
       type: "advisor_material_request",
       title: "Doplňující informace od poradce",
-      body: JSON.stringify({ requestId, title: "", preview: trimmed.slice(0, 280) }),
+      body: trimmed.slice(0, 280),
       relatedEntityType: "advisor_material_request",
       relatedEntityId: requestId,
     });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { markPortalNotificationRead } from "@/app/actions/portal-notifications";
 import type { PortalNotificationRow } from "@/app/actions/portal-notifications";
+import { formatPortalNotificationBody } from "@/lib/client-portal/format-portal-notification-body";
 
 export function ClientNotificationsList({
   initialNotifications,
@@ -46,7 +47,7 @@ export function ClientNotificationsList({
               <p className="font-medium text-monday-text">{n.title}</p>
               {n.body && (
                 <p className="mt-1 text-sm text-monday-text-muted line-clamp-2">
-                  {n.body}
+                  {formatPortalNotificationBody(n.type, n.body)}
                 </p>
               )}
               <p className="mt-1 text-xs text-monday-text-muted">

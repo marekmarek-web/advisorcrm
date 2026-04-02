@@ -31,6 +31,7 @@ import {
   markPortalNotificationRead,
   type PortalNotificationRow,
 } from "@/app/actions/portal-notifications";
+import { formatPortalNotificationBody } from "@/lib/client-portal/format-portal-notification-body";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
@@ -613,7 +614,11 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-bold">{notification.title}</p>
-                      {notification.body ? <p className="text-xs text-slate-500 mt-1">{notification.body}</p> : null}
+                      {notification.body ? (
+                        <p className="text-xs text-slate-500 mt-1">
+                          {formatPortalNotificationBody(notification.type, notification.body)}
+                        </p>
+                      ) : null}
                       <p className="text-[11px] text-slate-400 mt-1">
                         {new Date(notification.createdAt).toLocaleString("cs-CZ")}
                       </p>
@@ -627,7 +632,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
                         Přečíst
                       </button>
                     ) : (
-                      <StatusBadge tone="success">read</StatusBadge>
+                      <StatusBadge tone="success">Přečteno</StatusBadge>
                     )}
                   </div>
                 </MobileCard>
