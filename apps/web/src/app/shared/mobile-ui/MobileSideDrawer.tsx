@@ -27,6 +27,7 @@ import {
   LogOut,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { hasPermission, type RoleName } from "@/shared/rolePermissions";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
@@ -40,8 +41,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 function GoogleDriveLogo({ size = 18, className }: { size?: number; className?: string }) {
   return (
     <span className={className} style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logos/google-drive.png" alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+      <Image src="/logos/google-drive.png" alt="" width={size} height={size} className="max-h-full max-w-full object-contain" />
     </span>
   );
 }
@@ -49,8 +49,7 @@ function GoogleDriveLogo({ size = 18, className }: { size?: number; className?: 
 function GmailLogo({ size = 18, className }: { size?: number; className?: string }) {
   return (
     <span className={className} style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logos/gmail.png" alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+      <Image src="/logos/gmail.png" alt="" width={size} height={size} className="max-h-full max-w-full object-contain" />
     </span>
   );
 }

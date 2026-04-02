@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   User,
   Bell,
@@ -378,10 +379,9 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
           <div className="flex items-center gap-4">
             {/* Avatar */}
             <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 rounded-2xl bg-indigo-100 border-2 border-indigo-200 overflow-hidden flex items-center justify-center">
+              <div className="relative w-16 h-16 rounded-2xl bg-indigo-100 border-2 border-indigo-200 overflow-hidden flex items-center justify-center">
                 {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  <Image src={avatarUrl} alt="Avatar" fill sizes="64px" className="object-cover" />
                 ) : (
                   <span className="text-xl font-black text-indigo-600">{initials}</span>
                 )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getContact, getContactsList, updateContact, uploadContactAvatar, archiveContact, getContactDependencyCounts } from "@/app/actions/contacts";
 import { getHouseholdForContact, getHouseholdsList, setContactHousehold } from "@/app/actions/households";
 import { ArrowLeft, Flag, User, Home, RefreshCw } from "lucide-react";
@@ -245,9 +246,9 @@ export default function EditContactPage() {
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">Profilová fotka</label>
                 <div className="flex flex-wrap items-center gap-4">
-                  <div className="w-24 h-24 rounded-2xl bg-[color:var(--wp-surface-muted)] overflow-hidden flex items-center justify-center text-[color:var(--wp-text-tertiary)] text-2xl font-bold shrink-0">
+                  <div className="relative w-24 h-24 rounded-2xl bg-[color:var(--wp-surface-muted)] overflow-hidden flex items-center justify-center text-[color:var(--wp-text-tertiary)] text-2xl font-bold shrink-0">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                      <Image src={avatarUrl} alt="" fill sizes="96px" className="object-cover" />
                     ) : (
                       (form.firstName?.[0] ?? "") + (form.lastName?.[0] ?? "")
                     )}

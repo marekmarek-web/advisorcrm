@@ -107,27 +107,15 @@ interface AIIntegrationHealth {
 }
 
 const GoogleCalendarLogo = () => (
-  <img
-    src="/logos/google-calendar.png"
-    alt="Google Kalendář"
-    className="w-6 h-6 object-contain"
-  />
+  <Image src="/logos/google-calendar.png" alt="Google Kalendář" width={24} height={24} className="h-6 w-6 object-contain" />
 );
 
 const GoogleDriveLogo = () => (
-  <img
-    src="/logos/google-drive.png"
-    alt="Google Disk"
-    className="w-6 h-6 object-contain"
-  />
+  <Image src="/logos/google-drive.png" alt="Google Disk" width={24} height={24} className="h-6 w-6 object-contain" />
 );
 
 const GmailLogo = () => (
-  <img
-    src="/logos/gmail.png"
-    alt="Gmail"
-    className="w-6 h-6 object-contain"
-  />
+  <Image src="/logos/gmail.png" alt="Gmail" width={24} height={24} className="h-6 w-6 object-contain" />
 );
 
 const OpenAIIcon = () => (

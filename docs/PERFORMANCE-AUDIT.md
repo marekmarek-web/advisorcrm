@@ -110,6 +110,8 @@ Změřte na produkčním buildu nebo preview; zapisujte LCP, INP, CLS (Google po
 
 **PWA / Capacitor:** Skripty `cap:assets`, `brand:assets` v [`apps/web/package.json`](../apps/web/package.json) – držet ikony optimalizované (viz interní dokumentace mobilní aplikace).
 
+**Stav implementace (navazující pass):** konkrétní změny v sekci [Výkon – fáze 8 (navazující)](#výkon--fáze-8-navazující) níže.
+
 ---
 
 ## Fáze 9 – Capacitor a regresní kontrola
@@ -228,6 +230,23 @@ Změřte na produkčním buildu nebo preview; zapisujte LCP, INP, CLS (Google po
 **Lighthouse / analyze:** tabulku v sekci „Šablona Lighthouse“ (Fáze 0) doplňte po měření na `/portal/calculators/investment`, `/portal/tools/gmail` a `/portal/pipeline`. `pnpm --filter web build` může selhat na nezávislých chybách (např. Server Actions); pro bundle analýzu použijte `pnpm --filter web analyze` (webpack, viz Fáze 0).
 
 **P1:** indexy DB a middleware/proxy – stejně jako u předchozích fází ([`PERFORMANCE-EXPLAIN-HINTS.md`](PERFORMANCE-EXPLAIN-HINTS.md), Fáze 4).
+
+### Výkon – fáze 8 (navazující)
+
+| Oblast | Změna |
+|--------|--------|
+| Avatary / úprava kontaktu | [`portal/contacts/[id]/edit/page.tsx`](../apps/web/src/app/portal/contacts/[id]/edit/page.tsx): náhled avatara přes `next/image` (`fill`, `sizes`), stejné `remotePatterns` jako u detailu kontaktu. [`SettingsProfileScreen`](../apps/web/src/app/portal/mobile/screens/SettingsProfileScreen.tsx): avatar poradce přes `next/image`. |
+| Mobilní drawer + integrace | [`MobileSideDrawer`](../apps/web/src/app/shared/mobile-ui/MobileSideDrawer.tsx): loga Gmail / Drive `/logos/...` přes `next/image`. [`SetupView`](../apps/web/src/app/portal/setup/SetupView.tsx): integrovaná loga Google (`GoogleCalendarLogo` / `GoogleDriveLogo` / `GmailLogo`) přes `next/image` (24×24). |
+| Marketing – LCP | [`PremiumLandingPage`](../apps/web/src/app/components/PremiumLandingPage.tsx): u log v navigaci a patičce doplněn atribut `sizes` u `next/image` (vhodnější výběr šířky na úzkém viewportu). Ostatní velké assety již přes `Image` / vektorové prvky; žádné další `<img>` v této komponentě. |
+| Náhledy uploadů | [`DocumentUploadZone`](../apps/web/src/app/components/upload/DocumentUploadZone.tsx): **beze změny** – náhled zůstává u `<img>` (často `blob:` / `data:` URL vhodnější pro okamžitý náhled bez optimalizéru). |
+| PWA | [`public/site.webmanifest`](../apps/web/public/site.webmanifest): ikony 192 / 512 WebP + PNG; root [`layout.tsx`](../apps/web/src/app/layout.tsx) odkazuje `manifest: "/site.webmanifest"`. Service worker v této iteraci nezaváděn. |
+| Capacitor | Skripty [`cap:assets`](../apps/web/package.json), `brand:assets` – generace assetů pro nativní obaly; po změnách ikon spustit dle interního postupu. |
+
+**Lighthouse / analyze:** doplňte řádky ve šabloně (Fáze 0) pro úvodní stránku po úpravě `sizes`; `pnpm --filter web analyze` (webpack, Fáze 0) pro srovnání bundle.
+
+**P2:** srovnání Turbopack vs webpack analyzer (`next experimental-analyze`) – viz backlog výše; bez povinné změny build pipeline.
+
+**P1 (middleware/proxy):** beze změny oproti předchozím fázím.
 
 ---
 

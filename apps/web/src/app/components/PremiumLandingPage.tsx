@@ -620,6 +620,7 @@ export default function PremiumLandingPage() {
               width={220}
               height={48}
               priority
+              sizes="(max-width: 640px) 55vw, 220px"
               className="h-10 w-auto max-w-[min(220px,55vw)] object-contain object-left brightness-0 invert sm:h-11"
             />
           </Link>
@@ -1831,6 +1832,7 @@ export default function PremiumLandingPage() {
                   width={220}
                   height={48}
                   loading="lazy"
+                  sizes="(max-width: 768px) 50vw, 220px"
                   className="h-10 w-auto max-w-[220px] object-contain object-left brightness-0 invert"
                 />
               </Link>
