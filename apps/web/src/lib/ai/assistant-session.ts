@@ -64,9 +64,9 @@ export function getOrCreateSession(
 }
 
 export type ActiveContext = {
-  clientId?: string;
-  reviewId?: string;
-  paymentContactId?: string;
+  clientId?: string | null;
+  reviewId?: string | null;
+  paymentContactId?: string | null;
 };
 
 export function updateSessionContext(
@@ -74,9 +74,15 @@ export function updateSessionContext(
   activeContext?: ActiveContext,
 ): void {
   if (!activeContext) return;
-  if (activeContext.clientId) session.activeClientId = activeContext.clientId;
-  if (activeContext.reviewId) session.activeReviewId = activeContext.reviewId;
-  if (activeContext.paymentContactId) session.activePaymentContactId = activeContext.paymentContactId;
+  if ("clientId" in activeContext) {
+    session.activeClientId = activeContext.clientId ?? undefined;
+  }
+  if ("reviewId" in activeContext) {
+    session.activeReviewId = activeContext.reviewId ?? undefined;
+  }
+  if ("paymentContactId" in activeContext) {
+    session.activePaymentContactId = activeContext.paymentContactId ?? undefined;
+  }
 }
 
 export function incrementMessageCount(session: AssistantSession): void {

@@ -96,12 +96,24 @@ export async function routeAssistantMessage(
     roleName: "Advisor",
   };
 
-  const context = await buildContextForMessage(tenantId, activeContext);
+  const effectiveContext: ActiveContext = {
+    clientId: session.activeClientId,
+    reviewId: session.activeReviewId,
+    paymentContactId: session.activePaymentContactId,
+  };
+
+  const context = await buildContextForMessage(tenantId, effectiveContext);
   const toolInstructions = buildToolInstructions();
+
+  const activeContactLine =
+    effectiveContext.clientId != null && effectiveContext.clientId !== ""
+      ? `Aktivní kontakt v CRM (contactId pro nástroje getClientSummary, createEmailDraft, getPaymentSetupDetail, createTaskDraft): ${effectiveContext.clientId}. Nepiš uživateli, aby ručně zadával UUID — použij toto ID v [TOOL:...].`
+      : "Aktivní kontakt z URL není k dispozici — pokud potřebuješ ID kontaktu, zavolej nejdřív [TOOL:searchContacts {\"query\": \"...\"}]. Při více shodách vyber s pomocí hintů nebo nech uživatele vybrat podle e-mailu/města; nikdy nežádej o technické UUID.";
 
   const system = [
     "Jsi asistent poradce v CRM. Odpovídej stručně a v češtině.",
     "Můžeš navrhovat konkrétní kroky a používat nástroje.",
+    activeContactLine,
     toolInstructions,
   ].join("\n\n");
 

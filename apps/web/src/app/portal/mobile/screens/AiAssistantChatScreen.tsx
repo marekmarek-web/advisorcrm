@@ -15,9 +15,16 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { postAssistantChatStreaming } from "@/lib/ai/assistant-chat-client";
+import {
+  buildAssistantChatRequestBody,
+  parsePortalContactIdFromPathname,
+} from "@/lib/ai/assistant-chat-request";
 import { mapActionPayloadsToSuggestedActions } from "@/lib/ai/map-action-payload-to-suggested";
+
+const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -249,6 +256,9 @@ function loadSession(): ChatMessage[] {
 }
 
 export function AiAssistantChatScreen() {
+  const pathname = usePathname();
+  const routeContactId = parsePortalContactIdFromPathname(pathname) ?? null;
+  const [assistantSessionId, setAssistantSessionId] = useState<string | undefined>(undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -265,6 +275,15 @@ export function AiAssistantChatScreen() {
   useEffect(() => {
     const restored = loadSession();
     if (restored.length > 0) setMessages(restored);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const s = sessionStorage.getItem(AI_ASSISTANT_API_SESSION_KEY);
+      if (s) setAssistantSessionId(s);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -328,7 +347,12 @@ export function AiAssistantChatScreen() {
           {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ message: trimmed }),
+            body: JSON.stringify(
+              buildAssistantChatRequestBody(trimmed, {
+                sessionId: assistantSessionId,
+                routeContactId,
+              }),
+            ),
           },
           (chunk) => {
             setMessages((prev) =>
@@ -338,6 +362,14 @@ export function AiAssistantChatScreen() {
             );
           }
         );
+        if (complete.sessionId) {
+          setAssistantSessionId(complete.sessionId);
+          try {
+            sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
+          } catch {
+            /* ignore */
+          }
+        }
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -387,7 +419,8 @@ export function AiAssistantChatScreen() {
         .flatMap((m) => m.referencedEntities ?? [])
         .filter((e) => e.type === "client")
         .pop();
-      const clientId = lastClientRef?.id?.trim() ?? "";
+      const clientId =
+        (routeContactId?.trim() || lastClientRef?.id?.trim()) ?? "";
       if (!clientId) {
         setError(
           "Soubor lze nahrát do trezoru klienta jen v kontextu klienta. Otevřete detail klienta a nahrajte dokument v záložce Dokumenty, nebo v chatu použijte odkaz na klienta z odpovědi asistenta."
@@ -422,7 +455,12 @@ export function AiAssistantChatScreen() {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message: `Analyzuj nahraný soubor: ${docName}` }),
+          body: JSON.stringify(
+            buildAssistantChatRequestBody(`Analyzuj nahraný soubor: ${docName}`, {
+              sessionId: assistantSessionId,
+              routeContactId,
+            }),
+          ),
         },
         (chunk) => {
           setMessages((prev) =>
@@ -432,6 +470,14 @@ export function AiAssistantChatScreen() {
           );
         }
       );
+      if (complete.sessionId) {
+        setAssistantSessionId(complete.sessionId);
+        try {
+          sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
+        } catch {
+          /* ignore */
+        }
+      }
       setMessages((prev) =>
         prev.map((m) =>
           m.id === streamId
@@ -466,7 +512,7 @@ export function AiAssistantChatScreen() {
         .flatMap((m) => m.referencedEntities ?? [])
         .filter((e) => e.type === "client")
         .pop();
-      const clientId = lastClientRef?.id ?? "";
+      const clientId = routeContactId?.trim() || lastClientRef?.id || "";
       const res = await fetch("/api/ai/assistant/draft-email", {
         method: "POST",
         headers: { "content-type": "application/json" },

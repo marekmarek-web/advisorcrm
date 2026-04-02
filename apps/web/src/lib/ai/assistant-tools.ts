@@ -162,6 +162,35 @@ async function handleCreateEmailDraft(
   };
 }
 
+async function handleSearchContacts(
+  params: Record<string, unknown>,
+  ctx: ToolHandlerContext,
+): Promise<ToolResult> {
+  const query = typeof params.query === "string" ? params.query : "";
+  if (!query.trim()) {
+    return { data: { error: "query required", matches: [] }, sourceReferences: [], warnings: [] };
+  }
+  const { searchContactsForAssistant } = await import("./assistant-contact-search");
+  const matches = await searchContactsForAssistant(ctx.tenantId, query.trim(), 12);
+  return {
+    data: {
+      count: matches.length,
+      matches: matches.map((m) => ({
+        contactId: m.id,
+        displayName: m.displayName,
+        hint: m.hint,
+      })),
+    },
+    sourceReferences: matches.slice(0, 3).map((m) => ({
+      sourceType: "client" as const,
+      sourceId: m.id,
+      freshness: "live" as const,
+      visibilityScope: "tenant" as const,
+    })),
+    warnings: [],
+  };
+}
+
 async function handlePrepareContractApply(
   params: Record<string, unknown>,
   ctx: ToolHandlerContext,
@@ -191,6 +220,13 @@ export const ASSISTANT_TOOLS: AssistantTool[] = [
     description: "Získá shrnutí dashboardu poradce: urgentní položky, review, úkoly, blokované platby.",
     parameters: {},
     handler: handleGetDashboardSummary,
+  },
+  {
+    name: "searchContacts",
+    description:
+      "Vyhledá kontakty podle jména nebo části jména, e-mailu či telefonu v rámci tenantu. Při více shodách vrať seznam s krátkým rozlišením (hint); uživatele nenuť zadávat UUID.",
+    parameters: { query: { type: "string", description: "Hledaný text (jméno, příjmení, e-mail, telefon)" } },
+    handler: handleSearchContacts,
   },
   {
     name: "getClientSummary",

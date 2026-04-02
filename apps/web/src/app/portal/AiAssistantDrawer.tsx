@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -32,7 +32,13 @@ import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 import { isLikelyPdfUpload } from "@/lib/security/file-signature";
 import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 import { postAssistantChatStreaming } from "@/lib/ai/assistant-chat-client";
+import {
+  buildAssistantChatRequestBody,
+  parsePortalContactIdFromPathname,
+} from "@/lib/ai/assistant-chat-request";
 import { mapActionPayloadsToSuggestedActions } from "@/lib/ai/map-action-payload-to-suggested";
+
+const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
 
 type DraftAction = { type: string; label: string; payload: Record<string, unknown> };
 type ClientCandidate = { clientId: string; displayName?: string };
@@ -94,8 +100,11 @@ export function AiAssistantDrawer() {
   const { open, setOpen } = useAiAssistantDrawer();
   const { isNative } = useNativePlatform();
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const routeContactId = parsePortalContactIdFromPathname(pathname) ?? null;
+  const [assistantSessionId, setAssistantSessionId] = useState<string | undefined>(undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -131,6 +140,15 @@ export function AiAssistantDrawer() {
     }
   }, [open, messages]);
 
+  useEffect(() => {
+    try {
+      const s = sessionStorage.getItem(AI_ASSISTANT_API_SESSION_KEY);
+      if (s) setAssistantSessionId(s);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const handleSendChat = async () => {
     const msg = input.trim();
     if (!msg || chatLoading || chatSubmitLockRef.current) return;
@@ -148,7 +166,12 @@ export function AiAssistantDrawer() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: msg }),
+          body: JSON.stringify(
+            buildAssistantChatRequestBody(msg, {
+              sessionId: assistantSessionId,
+              routeContactId,
+            }),
+          ),
         },
         (chunk) => {
           setMessages((prev) => {
@@ -164,6 +187,14 @@ export function AiAssistantDrawer() {
           });
         }
       );
+      if (complete.sessionId) {
+        setAssistantSessionId(complete.sessionId);
+        try {
+          sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
+        } catch {
+          /* ignore */
+        }
+      }
       setMessages((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
