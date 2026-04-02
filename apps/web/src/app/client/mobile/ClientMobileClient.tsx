@@ -3,16 +3,22 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  AlertCircle,
   Bell,
   Briefcase,
   Calculator,
+  ChevronRight,
+  CreditCard,
   FileText,
+  FolderOpen,
   LayoutDashboard,
   ListTodo,
   MessageSquare,
   Plus,
   Send,
   Settings,
+  Shield,
+  TrendingUp,
   User,
 } from "lucide-react";
 import {
@@ -68,6 +74,279 @@ import { ClientMaterialRequestToastStack } from "@/app/client/ClientMaterialRequ
 import { ClientRequestCancelButton } from "@/app/client/requests/ClientRequestCancelButton";
 import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 import type { ClientMobileInitialData } from "./client-mobile-initial-data";
+
+function fmtMoney(v: number): string {
+  return `${v.toLocaleString("cs-CZ")} Kč`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Dashboard home — plnohodnotný klientský přehled                    */
+/* ------------------------------------------------------------------ */
+
+function DashboardHome({
+  initialData,
+  quickStats,
+  contracts,
+  documents,
+  requests,
+  notifications,
+  unreadMessagesCount,
+  onNewRequest,
+  router,
+}: {
+  initialData: ClientMobileInitialData;
+  quickStats: ClientMobileInitialData["quickStats"];
+  contracts: ClientMobileInitialData["contracts"];
+  documents: ClientMobileInitialData["documents"];
+  requests: ClientMobileInitialData["requests"];
+  notifications: ClientMobileInitialData["notifications"];
+  unreadMessagesCount: number;
+  onNewRequest: () => void;
+  router: ReturnType<typeof import("next/navigation").useRouter>;
+}) {
+  const isFirstRun = contracts.length === 0 && documents.length === 0;
+  const openMaterialRequests = initialData.advisorMaterialRequests.filter(
+    (r) => r.status !== "done" && r.status !== "closed"
+  );
+  const openRequests = requests.filter(
+    (r) => r.statusKey !== "done" && r.statusKey !== "cancelled"
+  );
+  const unreadNotifications = notifications.filter((n) => !n.readAt);
+  const latestDocs = documents.slice(0, 3);
+  const hasPayments = initialData.paymentInstructions.length > 0;
+
+  const actionItems: { label: string; detail?: string; onClick: () => void }[] = [];
+  for (const mr of openMaterialRequests.slice(0, 3)) {
+    actionItems.push({
+      label: mr.title,
+      detail: mr.categoryLabel,
+      onClick: () => router.push(`/client/pozadavky-poradce/${mr.id}`),
+    });
+  }
+  if (unreadMessagesCount > 0) {
+    actionItems.push({
+      label: `${unreadMessagesCount} nepřečten${unreadMessagesCount === 1 ? "á zpráva" : unreadMessagesCount < 5 ? "é zprávy" : "ých zpráv"}`,
+      onClick: () => router.push("/client/messages"),
+    });
+  }
+  for (const n of unreadNotifications.slice(0, 2)) {
+    actionItems.push({
+      label: n.title,
+      detail: n.body ? formatPortalNotificationBody(n.type, n.body) : undefined,
+      onClick: () => router.push("/client/notifications"),
+    });
+  }
+
+  if (isFirstRun) {
+    return (
+      <>
+        <MobileCard className="p-5 bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-700/50">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Přístup aktivní</span>
+          </div>
+          <h2 className="text-xl font-black mb-1">Vítejte, {initialData.profile?.firstName || "Kliente"}</h2>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            Vaše klientská zóna je připravená. Najdete tu dokumenty, zprávy a vše důležité od poradce.
+          </p>
+        </MobileCard>
+
+        {initialData.advisor && (
+          <MobileCard className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-black shrink-0">
+              {initialData.advisor.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Váš poradce</p>
+              <p className="text-sm font-bold text-slate-900 truncate">{initialData.advisor.fullName}</p>
+              {initialData.advisor.email && <p className="text-xs text-slate-500 truncate">{initialData.advisor.email}</p>}
+            </div>
+            <button type="button" onClick={() => router.push("/client/messages")} className="shrink-0 min-h-[36px] min-w-[36px] rounded-lg border border-indigo-200 bg-indigo-50 grid place-items-center text-indigo-600">
+              <MessageSquare size={16} />
+            </button>
+          </MobileCard>
+        )}
+
+        {actionItems.length > 0 && (
+          <MobileSection title="Co je potřeba řešit">
+            {actionItems.map((item, i) => (
+              <button key={i} type="button" onClick={item.onClick} className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-left">
+                <AlertCircle size={16} className="shrink-0 text-amber-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-900 line-clamp-1">{item.label}</p>
+                  {item.detail && <p className="text-xs text-slate-500 line-clamp-1">{item.detail}</p>}
+                </div>
+                <ChevronRight size={14} className="shrink-0 text-slate-400" />
+              </button>
+            ))}
+          </MobileSection>
+        )}
+
+        <MobileSection title="Co můžete udělat">
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => router.push("/client/messages")} className="min-h-[52px] rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-bold">
+              Napsat poradci
+            </button>
+            <button type="button" onClick={onNewRequest} className="min-h-[52px] rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-bold">
+              Nový požadavek
+            </button>
+            <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
+              Dokumenty
+            </button>
+            <button type="button" onClick={() => router.push("/client/profile")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
+              Můj profil
+            </button>
+          </div>
+        </MobileSection>
+
+        <p className="text-xs text-slate-400 font-medium px-1 leading-relaxed">
+          Jakmile váš poradce přidá smlouvy a dokumenty, zobrazí se zde automaticky.
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* A. Uvítání + poradce */}
+      <MobileCard className="p-4">
+        <div className="flex items-center gap-3">
+          {initialData.advisor ? (
+            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-black shrink-0">
+              {initialData.advisor.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-black text-slate-900">
+              Dobrý den, {initialData.profile?.firstName || "Kliente"}
+            </p>
+            {initialData.advisor && (
+              <p className="text-xs text-slate-500 truncate">
+                Poradce: {initialData.advisor.fullName}
+              </p>
+            )}
+          </div>
+          <button type="button" onClick={() => router.push("/client/messages")} className="relative shrink-0 min-h-[40px] min-w-[40px] rounded-xl border border-indigo-200 bg-indigo-50 grid place-items-center text-indigo-600">
+            <MessageSquare size={16} />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 text-center">
+                {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </MobileCard>
+
+      {/* B. Finanční přehled */}
+      <MobileSection title="Finanční přehled">
+        <div className="grid grid-cols-3 gap-2">
+          <MobileCard className="p-3">
+            <TrendingUp size={14} className="text-emerald-500 mb-1" />
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Investice / m</p>
+            <p className="text-base font-black mt-0.5">{fmtMoney(quickStats.monthlyInvestments)}</p>
+          </MobileCard>
+          <MobileCard className="p-3">
+            <Shield size={14} className="text-amber-500 mb-1" />
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Pojistné / m</p>
+            <p className="text-base font-black mt-0.5">{fmtMoney(quickStats.monthlyInsurancePremiums)}</p>
+          </MobileCard>
+          <MobileCard className="p-3">
+            <Briefcase size={14} className="text-indigo-500 mb-1" />
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Smlouvy</p>
+            <p className="text-base font-black mt-0.5">{quickStats.activeContractCount}</p>
+          </MobileCard>
+        </div>
+      </MobileSection>
+
+      {/* C. Prioritní blok — „Co je potřeba řešit" */}
+      {actionItems.length > 0 && (
+        <MobileSection title="Co je potřeba řešit">
+          {actionItems.map((item, i) => (
+            <button key={i} type="button" onClick={item.onClick} className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-left">
+              <AlertCircle size={16} className="shrink-0 text-amber-600" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-slate-900 line-clamp-1">{item.label}</p>
+                {item.detail && <p className="text-xs text-slate-500 line-clamp-1">{item.detail}</p>}
+              </div>
+              <ChevronRight size={14} className="shrink-0 text-slate-400" />
+            </button>
+          ))}
+        </MobileSection>
+      )}
+
+      {/* D. Rychlé akce */}
+      <MobileSection title="Rychlé akce">
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={onNewRequest} className="min-h-[52px] rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+            <Plus size={15} /> Nový požadavek
+          </button>
+          <button type="button" onClick={() => router.push("/client/messages")} className="min-h-[52px] rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+            <MessageSquare size={15} /> Napsat poradci
+          </button>
+          <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+            <FolderOpen size={15} /> Trezor dokumentů
+          </button>
+          <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+            <Briefcase size={15} /> Moje portfolio
+          </button>
+          {hasPayments && (
+            <button type="button" onClick={() => router.push("/client/payments")} className="min-h-[52px] col-span-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-bold inline-flex items-center justify-center gap-1.5">
+              <CreditCard size={15} /> Platby a instrukce
+            </button>
+          )}
+        </div>
+      </MobileSection>
+
+      {/* E. Modulární obsah */}
+      {openRequests.length > 0 && (
+        <MobileSection
+          title="Aktivní požadavky"
+          action={
+            <button type="button" onClick={() => router.push("/client/requests")} className="text-xs font-bold text-indigo-600">
+              Vše
+            </button>
+          }
+        >
+          {openRequests.slice(0, 3).map((r) => (
+            <MobileCard key={r.id} className="p-3 flex items-center gap-3">
+              <ListTodo size={16} className="shrink-0 text-slate-400" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-slate-900 line-clamp-1">{r.title}</p>
+                <p className="text-xs text-slate-500">{r.caseTypeLabel} · {r.statusLabel}</p>
+              </div>
+            </MobileCard>
+          ))}
+        </MobileSection>
+      )}
+
+      {latestDocs.length > 0 && (
+        <MobileSection
+          title="Poslední dokumenty"
+          action={
+            <button type="button" onClick={() => router.push("/client/documents")} className="text-xs font-bold text-indigo-600">
+              Vše
+            </button>
+          }
+        >
+          {latestDocs.map((d) => (
+            <MobileCard key={d.id} className="p-3 flex items-center gap-3">
+              <FileText size={16} className="shrink-0 text-slate-400" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-slate-900 line-clamp-1">{d.name}</p>
+                <p className="text-xs text-slate-500">{new Date(d.createdAt).toLocaleDateString("cs-CZ")}</p>
+              </div>
+              <a href={`/api/documents/${d.id}/download`} className="shrink-0 text-xs font-bold text-indigo-600">
+                Stáhnout
+              </a>
+            </MobileCard>
+          ))}
+        </MobileSection>
+      )}
+    </>
+  );
+}
 
 type TabId = "home" | "messages" | "documents" | "requests" | "menu";
 
@@ -371,90 +650,17 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         {busy ? <LoadingSkeleton rows={2} /> : null}
 
         {tab === "home" && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute ? (
-          contracts.length === 0 && documents.length === 0 ? (
-            <>
-              <MobileCard className="p-5 bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-700/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Přístup aktivní</span>
-                </div>
-                <h2 className="text-xl font-black mb-1">Vítejte, {initialData.profile?.firstName || "Kliente"}</h2>
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  Vaše klientská zóna je připravená. Najdete tu dokumenty, zprávy a vše důležité od poradce.
-                </p>
-              </MobileCard>
-
-              <MobileSection title="Co můžete udělat">
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => router.push("/client/messages")} className="min-h-[52px] rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-bold">
-                    Napsat poradci
-                  </button>
-                  <button type="button" onClick={() => setRequestModalOpen(true)} className="min-h-[52px] rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-bold">
-                    Nový požadavek
-                  </button>
-                  <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
-                    Dokumenty
-                  </button>
-                  <button type="button" onClick={() => router.push("/client/profile")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
-                    Můj profil
-                  </button>
-                </div>
-              </MobileSection>
-
-              {initialData.advisor && (
-                <MobileCard className="p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Váš poradce</p>
-                  <p className="text-sm font-bold text-slate-900">{initialData.advisor.fullName}</p>
-                  {initialData.advisor.email && (
-                    <p className="text-xs text-slate-500 mt-0.5">{initialData.advisor.email}</p>
-                  )}
-                </MobileCard>
-              )}
-
-              <p className="text-xs text-slate-400 font-medium px-1 leading-relaxed">
-                Jakmile váš poradce přidá smlouvy a dokumenty, zobrazí se zde automaticky.
-              </p>
-            </>
-          ) : (
-            <>
-              <MobileSection title="Finanční přehled">
-                <div className="grid grid-cols-2 gap-2">
-                  <MobileCard className="p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">AUM</p>
-                    <p className="text-lg font-black mt-1">{quickStats.assetsUnderManagement.toLocaleString("cs-CZ")} Kč</p>
-                  </MobileCard>
-                  <MobileCard className="p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Měsíční investice</p>
-                    <p className="text-lg font-black mt-1">{quickStats.monthlyInvestments.toLocaleString("cs-CZ")} Kč</p>
-                  </MobileCard>
-                  <MobileCard className="p-3 col-span-2">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Měsíční pojistné</p>
-                    <p className="text-lg font-black mt-1">{quickStats.monthlyInsurancePremiums.toLocaleString("cs-CZ")} Kč</p>
-                    <p className="text-xs text-slate-500 mt-1">Položek v přehledu: {quickStats.activeContractCount}</p>
-                  </MobileCard>
-                </div>
-              </MobileSection>
-
-              <MobileSection title="Rychlé akce">
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setRequestModalOpen(true)} className="min-h-[52px] rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-bold">
-                    Nový požadavek
-                  </button>
-                  <button type="button" onClick={() => router.push("/client/messages")} className="min-h-[52px] rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-bold">
-                    Napsat poradci
-                  </button>
-                  <button type="button" onClick={() => router.push("/client/documents")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
-                    Otevřít trezor
-                  </button>
-                  <button type="button" onClick={() => router.push("/client/portfolio")} className="min-h-[52px] rounded-xl border border-slate-200 text-slate-700 text-sm font-bold">
-                    Moje portfolio
-                  </button>
-                </div>
-              </MobileSection>
-            </>
-          )
+          <DashboardHome
+            initialData={initialData}
+            quickStats={quickStats}
+            contracts={contracts}
+            documents={documents}
+            requests={requests}
+            notifications={notifications}
+            unreadMessagesCount={unreadMessagesCount}
+            onNewRequest={() => setRequestModalOpen(true)}
+            router={router}
+          />
         ) : null}
 
         {(tab === "messages" || pathname.startsWith("/client/messages")) && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute ? (
