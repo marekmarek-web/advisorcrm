@@ -57,6 +57,9 @@ describe("assistant-history-mapper", () => {
       expect(a.warnings).toEqual(["w1"]);
       expect(a.executionState?.status).toBe("awaiting_confirmation");
       expect(a.contextState?.lockedClientId).toBe("contact-99");
+      const prev = a.executionState?.stepPreviews?.[0];
+      expect(prev?.action).toBe("Úkol");
+      expect(prev?.action).not.toBe("createTask");
     }
   });
 });

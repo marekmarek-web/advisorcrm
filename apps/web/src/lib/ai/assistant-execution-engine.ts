@@ -49,6 +49,11 @@ export function registerWriteAdapter(action: WriteActionType, adapter: WriteAdap
 
 let executionActionsTableAvailable = true;
 
+/** Reset ledger availability flag between Vitest cases (module singleton). */
+export function resetExecutionActionsTableAvailabilityForTests(): void {
+  executionActionsTableAvailable = true;
+}
+
 function isRelationMissingError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   return err.message.includes("relation") && err.message.includes("does not exist");

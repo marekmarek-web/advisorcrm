@@ -193,12 +193,24 @@ describe("Red flag: incomplete_partial_failure", () => {
       const s0 = confirmed.steps[0]!;
       const s1 = confirmed.steps[1]!;
 
+      const rawSqlError = 'relation "execution_actions" does not exist';
       const partialPlan: ExecutionPlan = {
         ...confirmed,
         status: "partial_failure",
         steps: [
           { ...s0, status: "succeeded", result: { ok: true, outcome: "executed" as const, entityId: "e1", entityType: "task", warnings: [], error: null } },
-          { ...s1, status: "failed", result: { ok: false, outcome: "failed" as const, entityId: null, entityType: null, warnings: [], error: "Adapter error" } },
+          {
+            ...s1,
+            status: "failed",
+            result: {
+              ok: false,
+              outcome: "failed" as const,
+              entityId: null,
+              entityType: null,
+              warnings: [],
+              error: rawSqlError,
+            },
+          },
         ],
       };
 
@@ -209,6 +221,12 @@ describe("Red flag: incomplete_partial_failure", () => {
       expect(verified.stepOutcomes.length).toBe(2);
       expect(verified.stepOutcomes[0]!.status).toBe("succeeded");
       expect(verified.stepOutcomes[1]!.status).toBe("failed");
+
+      expect(verified.stepOutcomes[1]!.error).toBeTruthy();
+      expect(verified.stepOutcomes[1]!.error).not.toContain("execution_actions");
+      expect(verified.stepOutcomes[1]!.error).not.toContain("relation");
+      expect(verified.message).not.toContain("execution_actions");
+      expect(verified.message).not.toContain("relation \"");
 
       expect(verified.warnings.some(w => w.includes("selhal"))).toBe(true);
       expect(verified.message.includes("⚠")).toBe(true);
