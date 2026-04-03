@@ -3,19 +3,26 @@ import Capacitor
 import SendIntentPlugin
 
 /*
- Konzolové zprávy typu RTIInputSystemClient / WebKit.Networking jsou obvykle frameworkové (klávesnice, síťový proces WKWebView).
- UIScene lifecycle warning: Apple směřuje k povinné adopci scén; plná migrace (SceneDelegate + Info.plist) je samostatný nativní úkol.
+ Konzolový šum na iOS / simulátoru (často nejde „opravit“ v aplikaci):
+ - RTIInputSystemClient — relace klávesnice u WKWebView / textarea.
+ - WebKit.Networking, WebPrivacy „missing data“ — systémové služby / ochrana soukromí.
+ - CA Event / app launch measurements — metriky Apple.
+ - Autolayout u TUIKeyboard / „Unable to simultaneously satisfy constraints“ — interní klávesnice; systém si vybere rozbité constraint.
+ - CHHapticPattern / hapticpatternlibrary — simulátor bez haptiky nebo chybějící knihovna v systému.
+ - WEBP decode err=-50 — vadný nebo nepodporovaný obrázek v obsahu stránky (opravit konkrétní asset na webu).
 */
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    var window: UIWindow?
     let shareStore = ShareStore.store
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
         return true
+    }
+
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
