@@ -1,19 +1,19 @@
 import Link from "next/link";
-import { getNotificationLog } from "@/app/actions/notification-log";
+import { getNotificationLog, getNotificationLogStats } from "@/app/actions/notification-log";
 import { EmptyState } from "@/app/components/EmptyState";
-
-const STATUS_COLORS: Record<string, string> = {
-  sent: "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200",
-  failed: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200",
-  pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/50 dark:text-yellow-200",
-};
+import { NotificationLogClient } from "./NotificationLogClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function NotificationLogPage() {
   let notifications: Awaited<ReturnType<typeof getNotificationLog>> = [];
+  let stats: Awaited<ReturnType<typeof getNotificationLogStats>> = { sent: 0, failed: 0, pending: 0, total: 0 };
+
   try {
-    notifications = await getNotificationLog();
+    [notifications, stats] = await Promise.all([
+      getNotificationLog({ limit: 200 }),
+      getNotificationLogStats(),
+    ]);
   } catch {
     notifications = [];
   }
@@ -35,70 +35,22 @@ export default async function NotificationLogPage() {
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-[var(--wp-radius-sm)] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
-        {notifications.length === 0 ? (
-          <EmptyState
-            icon="🔔"
-            title="Žádné záznamy"
-            description="Historie odeslaných notifikací se zobrazí zde."
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]">
-                <tr>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
-                    Datum
-                  </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
-                    Příjemce
-                  </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
-                    Předmět
-                  </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
-                    Kanál
-                  </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
-                    Stav
-                  </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
-                    Kontakt
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[color:var(--wp-surface-card-border)]">
-                {notifications.map((n) => (
-                  <tr key={n.id} className="hover:bg-[color:var(--wp-surface-muted)] transition-colors">
-                    <td className="whitespace-nowrap px-4 py-2.5 text-[color:var(--wp-text-secondary)]">
-                      {new Date(n.sentAt).toLocaleString("cs-CZ", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="px-4 py-2.5 text-[color:var(--wp-text-secondary)]">{n.recipient ?? "–"}</td>
-                    <td className="px-4 py-2.5 text-[color:var(--wp-text-secondary)]">{n.subject ?? "–"}</td>
-                    <td className="px-4 py-2.5 capitalize text-[color:var(--wp-text-secondary)]">{n.channel}</td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`inline-block rounded-[var(--wp-radius-sm)] px-2 py-0.5 text-xs font-medium ${
-                          STATUS_COLORS[n.status] ?? "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)]"
-                        }`}
-                      >
-                        {n.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-[color:var(--wp-text-secondary)]">{n.contactName ?? "–"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Celkem (30d)", value: stats.total, color: "text-[color:var(--wp-text)]" },
+          { label: "Odesláno", value: stats.sent, color: "text-emerald-600" },
+          { label: "Selhalo", value: stats.failed, color: "text-red-600" },
+          { label: "Čeká", value: stats.pending, color: "text-amber-600" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-[color:var(--wp-text-secondary)]">{s.label}</p>
+            <p className={`mt-1 text-2xl font-black ${s.color}`}>{s.value}</p>
           </div>
-        )}
+        ))}
       </div>
+
+      <NotificationLogClient initialRows={notifications} />
     </div>
   );
 }

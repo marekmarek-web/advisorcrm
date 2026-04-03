@@ -47,6 +47,8 @@ import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
 import type { PublicBookingSettingsDTO } from "@/app/actions/public-booking-settings";
 import { PublicBookingSetupBlock } from "@/app/portal/setup/PublicBookingSetupBlock";
 import { queryKeys } from "@/lib/query-keys";
+import { getBillingOverview, type InvoiceRow } from "@/app/actions/billing";
+import { removeMember } from "@/app/actions/team";
 
 const TABS = [
   { id: "osobni", label: "Osobní údaje", keywords: ["osobní", "údaje", "fakturace", "heslo", "zabezpečení", "2fa", "rychlé", "demo"] },
@@ -359,6 +361,35 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
       setQuickSaving(false);
     }
   }, [quickOrder, quickVisible, toast]);
+
+  // --- Workspace completion status
+  const workspaceCompletionSteps = useMemo(() => [
+    { id: "name", label: "Jméno vyplněno", done: !!(initial.fullName?.trim()) },
+    { id: "phone", label: "Telefon vyplněn", done: !!(initial.phone?.trim()) },
+    { id: "company", label: "Workspace pojmenován", done: !!(initial.tenantName?.trim() && initial.tenantName !== "Můj workspace") },
+    { id: "billing", label: "Tarif nastaven", done: !!(initial.billing?.subscriptionStatus && initial.billing.subscriptionStatus !== "canceled") },
+    { id: "notification", label: "Notifikační e-mail", done: !!(initial.email?.trim()) },
+  ], [initial]);
+
+  const completionPct = useMemo(() => {
+    const done = workspaceCompletionSteps.filter((s) => s.done).length;
+    return Math.round((done / workspaceCompletionSteps.length) * 100);
+  }, [workspaceCompletionSteps]);
+
+  const workspaceReady = completionPct === 100;
+
+  // --- Invoice data (billing tab)
+  const [invoiceRows, setInvoiceRows] = useState<InvoiceRow[]>([]);
+  const [invoicesLoaded, setInvoicesLoaded] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "fakturace" && !invoicesLoaded) {
+      getBillingOverview()
+        .then((data) => { if (data) setInvoiceRows(data.invoices); })
+        .catch(() => {})
+        .finally(() => setInvoicesLoaded(true));
+    }
+  }, [activeTab, invoicesLoaded]);
 
   // --- Team invite
   const [inviteEmail, setInviteEmail] = useState("");
@@ -803,6 +834,32 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
             </div>
           </div>
         </div>
+
+        {/* Workspace completion banner */}
+        {!workspaceReady && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/30 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                  Workspace není plně nastaven — {completionPct}&nbsp;% dokončeno
+                </p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                  {workspaceCompletionSteps.map((s) => (
+                    <span key={s.id} className={`text-xs font-medium flex items-center gap-1 ${s.done ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+                      {s.done ? <CheckCircle size={12} /> : <AlertCircle size={12} />} {s.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="w-24 shrink-0">
+                <div className="h-2 rounded-full bg-amber-200 dark:bg-amber-900/50">
+                  <div className="h-2 rounded-full bg-amber-500 transition-all" style={{ width: `${completionPct}%` }} />
+                </div>
+                <p className="mt-1 text-right text-xs font-bold text-amber-700 dark:text-amber-400">{completionPct}&nbsp;%</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mb-8 overflow-x-auto rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 hide-scrollbar">
           <div className="flex items-center gap-4 border-b border-[color:var(--wp-surface-card-border)] sm:gap-8">
@@ -1300,7 +1357,25 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                           <td className="px-6 py-5 text-sm font-bold text-[color:var(--wp-text-secondary)] hidden md:table-cell">
                             {new Date(m.joinedAt).toLocaleDateString("cs-CZ")}
                           </td>
-                          <td className="px-6 sm:px-8 py-5 text-right text-[color:var(--wp-text-tertiary)]">{isCurrentUser ? "—" : <button type="button" className="text-xs font-bold text-rose-500 hover:text-rose-700 hover:underline">Odebrat</button>}</td>
+                          <td className="px-6 sm:px-8 py-5 text-right text-[color:var(--wp-text-tertiary)]">{isCurrentUser ? "—" : (
+                            <button
+                              type="button"
+                              className="text-xs font-bold text-rose-500 hover:text-rose-700 hover:underline"
+                              onClick={async () => {
+                                const confirmed = await confirm("Odebrat člena", `Opravdu chcete odebrat tohoto člena z workspace?`);
+                                if (!confirmed) return;
+                                const res = await removeMember(m.membershipId);
+                                if (res.ok) {
+                                  toast.showToast("Člen byl odebrán.");
+                                  setTeamMembers((prev) => prev.filter((x) => x.membershipId !== m.membershipId));
+                                } else {
+                                  toast.showToast(res.error ?? "Odebrání se nezdařilo.", "error");
+                                }
+                              }}
+                            >
+                              Odebrat
+                            </button>
+                          )}</td>
                         </tr>
                       );
                     })}
@@ -1381,15 +1456,54 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 )}
               </div>
               <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden h-full">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden h-full">
                 <div className="px-6 sm:px-8 py-6 border-b border-[color:var(--wp-surface-card-border)]/50">
-                  <h2 className="text-lg font-black text-[color:var(--wp-text)]">Historie plateb</h2>
+                  <h2 className="text-lg font-black text-[color:var(--wp-text)]">Historie faktur</h2>
                 </div>
-                <div className="p-4 sm:p-6">
-                  <p className="text-sm text-[color:var(--wp-text-secondary)] text-center py-4">
-                    Detail faktur a historii najdete ve Stripe Customer Portalu (tlačítko „Spravovat platby a faktury“ výše).
-                  </p>
+                <div className="overflow-x-auto">
+                  {!invoicesLoaded ? (
+                    <p className="p-6 text-sm text-[color:var(--wp-text-secondary)]">Načítám…</p>
+                  ) : invoiceRows.length === 0 ? (
+                    <p className="p-6 text-sm text-[color:var(--wp-text-secondary)] text-center py-4">
+                      Zatím žádné faktury. Aktivujte předplatné výše.
+                    </p>
+                  ) : (
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[color:var(--wp-surface-card-border)] text-left text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)]">
+                          <th className="px-4 py-2.5">Datum</th>
+                          <th className="px-4 py-2.5">Částka</th>
+                          <th className="px-4 py-2.5">Stav</th>
+                          <th className="px-4 py-2.5">PDF</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[color:var(--wp-surface-card-border)]">
+                        {invoiceRows.map((inv) => (
+                          <tr key={inv.id} className="hover:bg-[color:var(--wp-surface-muted)] transition-colors">
+                            <td className="px-4 py-2.5 text-[color:var(--wp-text-secondary)]">
+                              {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString("cs-CZ") : "—"}
+                            </td>
+                            <td className="px-4 py-2.5 font-medium text-[color:var(--wp-text)]">
+                              {inv.amount ? `${inv.amount} ${(inv.currency ?? "czk").toUpperCase()}` : "—"}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase ${inv.status === "paid" ? "bg-emerald-100 text-emerald-800" : inv.status === "open" ? "bg-amber-100 text-amber-800" : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]"}`}>
+                                {inv.status ?? "—"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {inv.invoiceUrl ? (
+                                <a href={inv.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">
+                                  <Download size={12} /> PDF
+                                </a>
+                              ) : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
-              </div>
             </div>
           </div>
         )}

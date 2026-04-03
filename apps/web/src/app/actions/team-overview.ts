@@ -849,3 +849,76 @@ export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDet
     alerts: memberAlerts,
   };
 }
+
+export type TeamGoalRow = {
+  id: string;
+  period: string;
+  goalType: string;
+  targetValue: number;
+  year: number;
+  month: number;
+};
+
+export async function listTeamGoals(year?: number, period?: string): Promise<TeamGoalRow[]> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName as RoleName, "team_goals:read")) return [];
+  const conditions = [eq(teamGoals.tenantId, auth.tenantId)];
+  if (year) conditions.push(eq(teamGoals.year, year));
+  if (period) conditions.push(eq(teamGoals.period, period));
+  const rows = await db
+    .select()
+    .from(teamGoals)
+    .where(and(...conditions))
+    .orderBy(asc(teamGoals.year), asc(teamGoals.month));
+  return rows.map((r) => ({
+    id: r.id,
+    period: r.period,
+    goalType: r.goalType,
+    targetValue: r.targetValue,
+    year: r.year,
+    month: r.month,
+  }));
+}
+
+export async function upsertTeamGoal(input: {
+  period: string;
+  goalType: string;
+  targetValue: number;
+  year: number;
+  month: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName as RoleName, "team_goals:write")) {
+    return { ok: false, error: "Nedostatečná oprávnění." };
+  }
+  const [existing] = await db
+    .select({ id: teamGoals.id })
+    .from(teamGoals)
+    .where(
+      and(
+        eq(teamGoals.tenantId, auth.tenantId),
+        eq(teamGoals.period, input.period),
+        eq(teamGoals.goalType, input.goalType),
+        eq(teamGoals.year, input.year),
+        eq(teamGoals.month, input.month),
+      )
+    )
+    .limit(1);
+  if (existing) {
+    await db.update(teamGoals).set({ targetValue: input.targetValue, updatedAt: new Date() }).where(eq(teamGoals.id, existing.id));
+  } else {
+    await db.insert(teamGoals).values({ tenantId: auth.tenantId, ...input });
+  }
+  return { ok: true };
+}
+
+export async function deleteTeamGoal(goalId: string): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName as RoleName, "team_goals:write")) {
+    return { ok: false, error: "Nedostatečná oprávnění." };
+  }
+  const [row] = await db.select({ tenantId: teamGoals.tenantId }).from(teamGoals).where(eq(teamGoals.id, goalId)).limit(1);
+  if (!row || row.tenantId !== auth.tenantId) return { ok: false, error: "Cíl nenalezen." };
+  await db.delete(teamGoals).where(eq(teamGoals.id, goalId));
+  return { ok: true };
+}
