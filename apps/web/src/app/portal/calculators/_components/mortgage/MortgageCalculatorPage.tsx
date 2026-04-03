@@ -155,12 +155,6 @@ export function MortgageCalculatorPage({
               <CalculatorPdfExportButton
                 documentTitle="Hypotéka a úvěr – přehled výpočtu"
                 filePrefix="hypoteka"
-                eyebrow="Kalkulačka hypoték a úvěrů · 2026"
-                subtitle={
-                  audience === "client"
-                    ? "Orientační měsíční splátka — bez srovnání nabídek bank. Ilustrativní výpočet, ne závazná nabídka."
-                    : "Zjistěte přesnou měsíční splátku a srovnejte aktuální nabídky bank."
-                }
                 getSections={getPdfSections}
               />
             }

@@ -100,12 +100,6 @@ export function InvestmentCalculatorPage({
               <CalculatorPdfExportButton
                 documentTitle="Investiční kalkulačka – přehled výpočtu"
                 filePrefix="investice"
-                eyebrow="Kalkulačka investic · 2026"
-                subtitle={
-                  audience === "client"
-                    ? "Orientační projekce v čase — ilustrativní výpočet. Individuální posouzení řeší váš poradce."
-                    : "Projekce hodnoty investice v čase při pravidelném investování a zvolené strategii."
-                }
                 getSections={getPdfSections}
               />
             }

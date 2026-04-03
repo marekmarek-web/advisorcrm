@@ -10,6 +10,7 @@ import { LifeRiskChart } from "./LifeRiskChart";
 import { DEFAULT_STATE } from "@/lib/calculators/life/life.config";
 import { runCalculations } from "@/lib/calculators/life/life.engine";
 import type { LifeState } from "@/lib/calculators/life/life.types";
+import { formatCurrency } from "@/lib/calculators/life/formatters";
 import { buildLifePdfSections } from "@/lib/calculators/pdf";
 import { CalculatorPdfExportButton } from "@/components/calculators/CalculatorPdfExportButton";
 
@@ -18,6 +19,15 @@ export function LifeCalculatorPage() {
   const result = useMemo(() => runCalculations(state), [state]);
 
   const getPdfSections = useCallback(() => buildLifePdfSections(state, result), [state, result]);
+
+  const getHeroKpis = useCallback(
+    () => [
+      { label: "Smrt", value: `${formatCurrency(result.deathCoverage)} Kč` },
+      { label: "Invalidita II–III", value: `${formatCurrency(result.capitalD3)} Kč` },
+      { label: "PN (denně)", value: `${formatCurrency(result.pnDailyNeed)} Kč` },
+    ],
+    [result]
+  );
 
   return (
     <div className="pt-0 pb-56 lg:pb-0">
@@ -32,6 +42,7 @@ export function LifeCalculatorPage() {
                 documentTitle="Životní pojištění – přehled výpočtu"
                 filePrefix="zivotni-pojisteni"
                 getSections={getPdfSections}
+                getHeroKpis={getHeroKpis}
               />
             }
           />

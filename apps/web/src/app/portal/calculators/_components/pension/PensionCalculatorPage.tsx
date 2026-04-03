@@ -9,6 +9,7 @@ import { PensionResultsPanel } from "./PensionResultsPanel";
 import { DEFAULT_STATE } from "@/lib/calculators/pension/pension.config";
 import { runCalculations } from "@/lib/calculators/pension/pension.engine";
 import type { PensionState } from "@/lib/calculators/pension/pension.types";
+import { formatCurrency } from "@/lib/calculators/pension/formatters";
 import { buildPensionPdfSections } from "@/lib/calculators/pdf";
 import { CalculatorPdfExportButton } from "@/components/calculators/CalculatorPdfExportButton";
 
@@ -17,6 +18,15 @@ export function PensionCalculatorPage() {
   const result = useMemo(() => runCalculations(state), [state]);
 
   const getPdfSections = useCallback(() => buildPensionPdfSections(state, result), [state, result]);
+
+  const getHeroKpis = useCallback(
+    () => [
+      { label: "Měsíční mezera", value: `${formatCurrency(result.monthlyGap)} Kč` },
+      { label: "Odhad důchodu", value: `${formatCurrency(result.estimatedPension)} Kč` },
+      { label: "Investice / měs.", value: `${formatCurrency(Math.round(result.monthlyInvestment))} Kč` },
+    ],
+    [result]
+  );
 
   return (
     <div className="pt-0 pb-56 lg:pb-0">
@@ -31,6 +41,7 @@ export function PensionCalculatorPage() {
                 documentTitle="Penzijní kalkulačka – přehled výpočtu"
                 filePrefix="penze"
                 getSections={getPdfSections}
+                getHeroKpis={getHeroKpis}
               />
             }
           />
