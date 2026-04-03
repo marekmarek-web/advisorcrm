@@ -1,6 +1,6 @@
 import "server-only";
 import type Stripe from "stripe";
-import { db, subscriptions, tenants, eq } from "db";
+import { db, subscriptions, invoices, tenants, eq } from "db";
 
 export async function resolveTenantIdForSubscription(
   sub: Stripe.Subscription
@@ -12,6 +12,17 @@ export async function resolveTenantIdForSubscription(
     typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
   if (!customerId) return null;
 
+  const [row] = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.stripeCustomerId, customerId))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+export async function resolveTenantIdByCustomer(
+  customerId: string,
+): Promise<string | null> {
   const [row] = await db
     .select({ id: tenants.id })
     .from(tenants)
@@ -54,6 +65,7 @@ export async function upsertSubscriptionFromStripe(
       plan,
       status: sub.status,
       currentPeriodEnd,
+      cancelAtPeriodEnd: sub.cancel_at_period_end ? "true" : "false",
     })
     .onConflictDoUpdate({
       target: subscriptions.stripeSubscriptionId,
@@ -61,7 +73,43 @@ export async function upsertSubscriptionFromStripe(
         plan,
         status: sub.status,
         currentPeriodEnd,
+        cancelAtPeriodEnd: sub.cancel_at_period_end ? "true" : "false",
         updatedAt: new Date(),
+      },
+    });
+}
+
+export async function upsertInvoiceFromStripe(
+  tenantId: string,
+  inv: Stripe.Invoice,
+): Promise<void> {
+  const amount = typeof inv.amount_due === "number" ? (inv.amount_due / 100).toFixed(2) : null;
+  const paidAt = inv.status === "paid" && inv.status_transitions?.paid_at
+    ? new Date(inv.status_transitions.paid_at * 1000)
+    : null;
+  const periodStart = inv.period_start ? new Date(inv.period_start * 1000) : null;
+  const periodEnd = inv.period_end ? new Date(inv.period_end * 1000) : null;
+
+  await db
+    .insert(invoices)
+    .values({
+      tenantId,
+      stripeInvoiceId: inv.id,
+      amount,
+      currency: inv.currency ?? "czk",
+      status: inv.status ?? "draft",
+      invoiceUrl: inv.hosted_invoice_url ?? null,
+      paidAt,
+      periodStart,
+      periodEnd,
+    })
+    .onConflictDoUpdate({
+      target: invoices.stripeInvoiceId,
+      set: {
+        amount,
+        status: inv.status ?? "draft",
+        invoiceUrl: inv.hosted_invoice_url ?? null,
+        paidAt,
       },
     });
 }

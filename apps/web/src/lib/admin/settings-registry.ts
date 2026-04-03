@@ -14,7 +14,10 @@ export type SettingDomain =
   | "automation_policies"
   | "mobile_capture_policies"
   | "feature_flags"
-  | "branding";
+  | "branding"
+  | "billing"
+  | "client_portal"
+  | "integrations";
 
 export type SettingType = "string" | "number" | "boolean" | "enum" | "json";
 
@@ -82,6 +85,20 @@ export const SETTINGS_REGISTRY: SettingDefinition[] = [
   { key: "mobile.scan_min_quality", domain: "mobile_capture_policies", type: "number", defaultValue: 0.3, min: 0, max: 1, description: "Minimum scan quality score" },
   { key: "mobile.require_ocr_fallback", domain: "mobile_capture_policies", type: "boolean", defaultValue: false, description: "Require OCR fallback for low quality scans" },
   { key: "mobile.allow_low_quality_continue", domain: "mobile_capture_policies", type: "boolean", defaultValue: true, description: "Allow continuing with low quality scan" },
+
+  // Billing
+  { key: "billing.grace_period_days", domain: "billing", type: "number", defaultValue: 7, min: 0, max: 30, description: "Days after subscription lapse before features are disabled" },
+  { key: "billing.require_active_subscription", domain: "billing", type: "boolean", defaultValue: false, description: "Require active subscription for paid features" },
+
+  // Client portal
+  { key: "client_portal.enabled", domain: "client_portal", type: "boolean", defaultValue: true, description: "Enable client portal for this workspace" },
+  { key: "client_portal.allow_document_upload", domain: "client_portal", type: "boolean", defaultValue: true, description: "Allow clients to upload documents" },
+  { key: "client_portal.allow_messaging", domain: "client_portal", type: "boolean", defaultValue: true, description: "Allow clients to send messages" },
+
+  // Integrations
+  { key: "integrations.google_calendar_enabled", domain: "integrations", type: "boolean", defaultValue: true, description: "Enable Google Calendar integration" },
+  { key: "integrations.google_drive_enabled", domain: "integrations", type: "boolean", defaultValue: true, description: "Enable Google Drive integration" },
+  { key: "integrations.google_gmail_enabled", domain: "integrations", type: "boolean", defaultValue: true, description: "Enable Gmail integration" },
 ];
 
 export function getSettingDefinition(key: string): SettingDefinition | undefined {

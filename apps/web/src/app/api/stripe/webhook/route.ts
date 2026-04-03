@@ -4,8 +4,10 @@ import { db, eq, stripeWebhookEvents } from "db";
 import { getStripe } from "@/lib/stripe/server";
 import {
   resolveTenantIdForSubscription,
+  resolveTenantIdByCustomer,
   setTenantStripeCustomer,
   upsertSubscriptionFromStripe,
+  upsertInvoiceFromStripe,
 } from "@/lib/stripe/subscription-sync";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +48,18 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
         await setTenantStripeCustomer(tenantId, cust);
       }
       await upsertSubscriptionFromStripe(tenantId, sub);
+      return;
+    }
+    case "invoice.payment_succeeded":
+    case "invoice.payment_failed":
+    case "invoice.finalized": {
+      const inv = event.data.object as Stripe.Invoice;
+      const customerId =
+        typeof inv.customer === "string" ? inv.customer : inv.customer?.id ?? null;
+      if (!customerId) return;
+      const tenantId = await resolveTenantIdByCustomer(customerId);
+      if (!tenantId) return;
+      await upsertInvoiceFromStripe(tenantId, inv);
       return;
     }
     default:
