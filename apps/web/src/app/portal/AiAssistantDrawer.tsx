@@ -9,11 +9,8 @@ import {
   Send,
   Loader2,
   UploadCloud,
-  FileText,
   AlertCircle,
-  MessageCircle,
   Zap,
-  UserPlus,
   Pencil,
 } from "lucide-react";
 import { useToast } from "@/app/components/Toast";
@@ -31,7 +28,6 @@ import { DEFAULT_CONTACT_IMPORT_MAPPING, type ColumnMapping } from "@/lib/contac
 import { ImportColumnMappingBlock } from "@/app/dashboard/contacts/ImportColumnMappingBlock";
 import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 import { isLikelyPdfUpload } from "@/lib/security/file-signature";
-import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 import { postAssistantChatStreaming } from "@/lib/ai/assistant-chat-client";
 import {
   buildAssistantChatRequestBody,
@@ -601,19 +597,14 @@ export function AiAssistantDrawer() {
         role="dialog"
         aria-label="Interní AI podpora pro CRM"
       >
-        {/* Header - reference style */}
-        <div className="shrink-0 px-4 py-4 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-white p-2 shadow-sm dark:bg-white">
-                <AiAssistantBrandIcon size={28} className="max-h-full max-w-full" />
+        {/* Header */}
+        <div className="shrink-0 px-4 py-3.5 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-white p-1.5 shadow-sm dark:bg-white">
+                <AiAssistantBrandIcon size={24} className="max-h-full max-w-full" />
               </div>
-              <div className="min-w-0">
-                <h2 className="text-xl font-black text-[color:var(--wp-text)] tracking-tight">Interní AI asistent</h2>
-                <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] mt-0.5">
-                  Extrakce smluv a administrativní nápověda v CRM — výhradně pro poradce.
-                </p>
-              </div>
+              <h2 className="text-lg font-black text-[color:var(--wp-text)] tracking-tight">AI Asistent</h2>
             </div>
             <button
               type="button"
@@ -626,46 +617,25 @@ export function AiAssistantDrawer() {
           </div>
         </div>
 
-        <div className="shrink-0 px-4 pt-2">
-          <AdvisorAiOutputNotice variant="compact" />
-        </div>
-
-        {/* Quick actions */}
-        <div className="shrink-0 px-4 py-3 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadPhase !== "idle"}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-sm font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap disabled:opacity-50"
-          >
-            <UploadCloud size={18} className="text-indigo-500" />
-            Nahrát smlouvu
-          </button>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.focus()}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-sm font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap"
-          >
-            <MessageCircle size={18} className="text-indigo-500" />
-            Dotaz na interní asistenta
-          </button>
+        {/* Quick actions — only most useful */}
+        <div className="shrink-0 px-4 pt-3 pb-2 flex gap-2">
           <button
             type="button"
             onClick={handleUrgent}
             disabled={chatLoading}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-sm font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-xs font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap disabled:opacity-50"
           >
-            <Zap size={18} className="text-indigo-500" />
-            Co je dnes urgentní
+            <Zap size={15} className="text-indigo-500" />
+            Co je dnes urgentní?
           </button>
           <button
             type="button"
-            onClick={handleImportContactsClick}
-            disabled={importContactsLoading}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-sm font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap disabled:opacity-50"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadPhase !== "idle"}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-xs font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap disabled:opacity-50"
           >
-            <UserPlus size={18} className="text-indigo-500" />
-            Import klientů
+            <UploadCloud size={15} className="text-indigo-500" />
+            Nahrát smlouvu
           </button>
         </div>
         <input
@@ -683,58 +653,55 @@ export function AiAssistantDrawer() {
           onChange={handleImportContactsFileChange}
         />
 
-        {/* Upload block - reference dropzone */}
-        <div className="shrink-0 px-4 pt-4 pb-3">
+        {/* Upload strip — compact */}
+        <div className="shrink-0 px-4 pb-2">
           <div
             ref={uploadZoneRef}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onClick={() => uploadPhase === "idle" && fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-[24px] p-6 bg-[color:var(--wp-surface-card)] text-center cursor-pointer transition-all ${
+            className={`border border-dashed rounded-xl px-4 py-2.5 flex items-center gap-2.5 transition-all ${
               uploadPhase === "idle"
-                ? "border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/30"
+                ? "border-indigo-200 bg-[color:var(--wp-surface-card)] hover:border-indigo-300 hover:bg-indigo-50/30 cursor-pointer"
                 : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 cursor-wait pointer-events-none"
             }`}
           >
             {uploadPhase === "idle" && !uploadError && (
               <>
-                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 mx-auto mb-3">
-                  <UploadCloud size={28} strokeWidth={1.5} />
-                </div>
-                <p className="text-sm font-black text-[color:var(--wp-text)] mb-1">{isNative ? "Nahrajte smlouvu" : "Přetáhněte smlouvu sem"}</p>
-                <p className="text-xs text-[color:var(--wp-text-secondary)] font-medium">{isNative ? "klepněte pro výběr souboru (PDF)" : "nebo klikněte pro výběr (PDF)"}</p>
+                <UploadCloud size={16} className="text-indigo-400 shrink-0" strokeWidth={1.8} />
+                <p className="text-xs text-[color:var(--wp-text-secondary)] font-medium">
+                  {isNative ? "Klepněte pro nahrání smlouvy (PDF)" : "Přetáhněte smlouvu sem nebo klikněte (PDF)"}
+                </p>
               </>
             )}
             {uploadPhase === "uploading" && (
-              <div className="flex flex-col items-center gap-2 py-2">
-                <Loader2 size={28} className="animate-spin text-indigo-500" />
-                <p className="text-sm font-bold text-[color:var(--wp-text-secondary)]">Nahrávám…</p>
-              </div>
+              <>
+                <Loader2 size={16} className="animate-spin text-indigo-500 shrink-0" />
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Nahrávám…</p>
+              </>
             )}
             {uploadPhase === "processing" && (
-              <div className="flex flex-col items-center gap-3 py-2">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              <>
+                <div className="flex gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
-                <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">AI čte dokument a extrahuje data…</p>
-              </div>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">AI extrahuje data ze smlouvy…</p>
+              </>
             )}
           </div>
           {uploadError && (
-            <div className="mt-2 rounded-2xl p-3 bg-rose-50 border border-rose-200 flex items-start gap-2">
-              <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-rose-800">{uploadError}</p>
-                <button
-                  type="button"
-                  onClick={() => { setUploadError(null); fileInputRef.current?.click(); }}
-                  className="text-xs font-bold text-rose-600 hover:underline mt-1"
-                >
-                  Zkusit znovu
-                </button>
-              </div>
+            <div className="mt-1.5 rounded-xl px-3 py-2 bg-rose-50 border border-rose-200 flex items-center gap-2">
+              <AlertCircle size={15} className="text-rose-600 shrink-0" />
+              <p className="text-xs font-bold text-rose-800 flex-1 min-w-0 truncate">{uploadError}</p>
+              <button
+                type="button"
+                onClick={() => { setUploadError(null); fileInputRef.current?.click(); }}
+                className="text-xs font-bold text-rose-600 hover:underline shrink-0"
+              >
+                Znovu
+              </button>
             </div>
           )}
         </div>
