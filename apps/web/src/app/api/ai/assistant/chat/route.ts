@@ -4,7 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getOrCreateSession, lockAssistantClient } from "@/lib/ai/assistant-session";
-import { runWithAssistantRunStore, getAssistantRunStore } from "@/lib/ai/assistant-run-context";
+import {
+  runWithAssistantRunStore,
+  getAssistantRunStore,
+} from "@/lib/ai/assistant-run-context";
 import { AssistantTelemetryAction, logAssistantTelemetry } from "@/lib/ai/assistant-telemetry";
 import {
   routeAssistantMessage,
@@ -19,6 +22,7 @@ import {
 } from "@/lib/ai/assistant-conversation-repository";
 import { ASSISTANT_CHANNELS, type AssistantChannel, type AssistantMode } from "@/lib/ai/assistant-domain-model";
 import { logAudit } from "@/lib/audit";
+import { captureAssistantApiError } from "@/lib/observability/assistant-sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +72,13 @@ function correlationHeaders(traceId: string, assistantRunId: string): Record<str
 }
 
 export async function POST(request: Request) {
+  const traceId =
+    request.headers.get("x-trace-id")?.trim() ||
+    request.headers.get("x-request-id")?.trim() ||
+    randomUUID();
+  const assistantRunId = randomUUID();
+  let tenantIdForSentry: string | undefined;
+
   try {
     let userId: string | null = request.headers.get(USER_ID_HEADER);
     if (!userId) {
@@ -96,11 +107,7 @@ export async function POST(request: Request) {
     }
 
     const tenantId = membership.tenantId;
-    const traceId =
-      request.headers.get("x-trace-id")?.trim() ||
-      request.headers.get("x-request-id")?.trim() ||
-      randomUUID();
-    const assistantRunId = randomUUID();
+    tenantIdForSentry = tenantId;
 
     return await runWithAssistantRunStore(
       { traceId, assistantRunId, tenantId, userId },
@@ -191,14 +198,24 @@ export async function POST(request: Request) {
           }
           const plan = session.lastExecutionPlan;
           const pendingSteps = plan?.steps.filter((s) => s.status === "requires_confirmation").length ?? 0;
-          const executionState: AssistantResponse["executionState"] = plan
+          const fromPlan = plan
             ? {
-                status: plan.status === "draft" ? "draft" : plan.status,
+                status: (plan.status === "draft" ? "draft" : plan.status) as NonNullable<
+                  AssistantResponse["executionState"]
+                >["status"],
                 planId: plan.planId,
                 totalSteps: plan.steps.length,
                 pendingSteps,
               }
             : null;
+          // Merge: router may attach stepPreviews / clientLabel (3H); session plan supplies authoritative counts.
+          const executionState: AssistantResponse["executionState"] =
+            !fromPlan && !response.executionState
+              ? null
+              : {
+                  ...(response.executionState ?? {}),
+                  ...(fromPlan ?? {}),
+                };
           const persistedResponse: AssistantResponse = {
             ...response,
             warnings: [...new Set(conflictWarnings)],
@@ -206,6 +223,7 @@ export async function POST(request: Request) {
             contextState: {
               channel: session.activeChannel ?? null,
               lockedClientId: session.lockedClientId ?? null,
+              lockedClientLabel: response.contextState?.lockedClientLabel ?? null,
             },
           };
 
@@ -283,6 +301,14 @@ export async function POST(request: Request) {
       },
     );
   } catch (err) {
+    const runStore = getAssistantRunStore();
+    captureAssistantApiError(err, {
+      traceId,
+      assistantRunId,
+      tenantId: tenantIdForSentry,
+      channel: runStore?.channel ?? undefined,
+      orchestration: runStore?.orchestration ?? undefined,
+    });
     const message = err instanceof Error ? err.message : "Odeslání zprávy selhalo.";
     return NextResponse.json({ error: message }, { status: 500 });
   }

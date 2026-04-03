@@ -14,6 +14,7 @@
     "start": "next start",
     "lint": "node -e \"console.log('Lint skipped: no ESLint config in apps/web.')\"",
     "test": "vitest run src",
+    "test:assistant-regression": "vitest run src/lib/ai/__tests__/assistant-release-gate.test.ts src/lib/ai/__tests__/assistant-regression-suite.test.ts src/lib/ai/__tests__/assistant-eval-harness.test.ts src/lib/ai/__tests__/assistant-hypo-edge-cases.test.ts src/lib/ai/__tests__/assistant-product-workflows.test.ts src/lib/ai/__tests__/assistant-execution-ui.test.ts src/lib/ai/__tests__/assistant-write-contract-plan.test.ts src/lib/ai/__tests__/assistant-context-safety.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts",
     "test:e2e": "playwright test",
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
