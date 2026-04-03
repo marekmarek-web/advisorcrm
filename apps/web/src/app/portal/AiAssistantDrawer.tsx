@@ -12,8 +12,6 @@ import {
   AlertCircle,
   Zap,
   Pencil,
-  Users,
-  ListTodo,
   Bell,
 } from "lucide-react";
 import { useToast } from "@/app/components/Toast";
@@ -34,6 +32,8 @@ import { isLikelyPdfUpload } from "@/lib/security/file-signature";
 import { postAssistantChatStreaming } from "@/lib/ai/assistant-chat-client";
 import {
   buildAssistantChatRequestBody,
+  buildAssistantConfirmExecutionBody,
+  buildAssistantCancelPlanBody,
   parsePortalContactIdFromPathname,
   parsePortalOpportunityIdFromPathname,
 } from "@/lib/ai/assistant-chat-request";
@@ -200,6 +200,10 @@ export function AiAssistantDrawer() {
   const [importContactsMapping, setImportContactsMapping] = useState<ColumnMapping>(DEFAULT_CONTACT_IMPORT_MAPPING);
   const [importContactsResult, setImportContactsResult] = useState<{ imported: number; skipped: number; errors: { row: number; message: string }[] } | null>(null);
   const [importContactsLoading, setImportContactsLoading] = useState(false);
+  /** 6C: výběr kroků pro potvrzení podle planId */
+  const [stepSelectionByPlanId, setStepSelectionByPlanId] = useState<Record<string, Record<string, boolean>>>(
+    {},
+  );
   const latestAssistantContext = getLatestAssistantContextFromMessages(messages);
   /** Spouští "Upravit zadání": vyplní input textem z poslední uživatelské zprávy a přesune fokus. */
   const handleEditIntent = useCallback(() => {
@@ -217,6 +221,37 @@ export function AiAssistantDrawer() {
       last?.role === "assistant" && last.executionState?.status === "awaiting_confirmation"
     );
   }, [messages]);
+
+  const awaitingPlanId = useMemo(() => {
+    const last = messages[messages.length - 1];
+    if (last?.role !== "assistant" || last.executionState?.status !== "awaiting_confirmation") return undefined;
+    return last.executionState.planId;
+  }, [messages]);
+
+  const confirmSelectionInvalid = useMemo(() => {
+    const last = messages[messages.length - 1];
+    if (last?.role !== "assistant" || last.executionState?.status !== "awaiting_confirmation") return false;
+    const previews = last.executionState.stepPreviews ?? [];
+    const pid = last.executionState.planId;
+    if (!pid || !previews.length || !previews.every((p) => p.stepId)) return false;
+    const n = Object.values(stepSelectionByPlanId[pid] ?? {}).filter(Boolean).length;
+    return n === 0;
+  }, [messages, stepSelectionByPlanId]);
+
+  useEffect(() => {
+    if (!awaitingPlanId) return;
+    const last = messages[messages.length - 1];
+    if (last?.role !== "assistant" || last.executionState?.planId !== awaitingPlanId) return;
+    const previews = last.executionState?.stepPreviews ?? [];
+    setStepSelectionByPlanId((prev) => {
+      if (prev[awaitingPlanId]) return prev;
+      const init: Record<string, boolean> = {};
+      for (const p of previews) {
+        if (p.stepId) init[p.stepId] = true;
+      }
+      return { ...prev, [awaitingPlanId]: init };
+    });
+  }, [messages, awaitingPlanId]);
 
   useEffect(() => {
     if (!open) return;
@@ -379,6 +414,180 @@ export function AiAssistantDrawer() {
     },
     [chatLoading, routeContactId, toast],
   );
+
+  /** 6F / 6C — potvrdit plán bez psaní „ano"; provede jen zaškrtnuté kroky. */
+  const submitPlanConfirmation = useCallback(async () => {
+    if (chatLoading || chatSubmitLockRef.current) return;
+    const last = messages[messages.length - 1];
+    const pid = last?.role === "assistant" ? last.executionState?.planId : undefined;
+    const previews = last?.role === "assistant" ? (last.executionState?.stepPreviews ?? []) : [];
+    if (last?.role !== "assistant" || last.executionState?.status !== "awaiting_confirmation" || !pid) return;
+
+    const canSelect = previews.length > 0 && previews.every((p) => p.stepId);
+    const picked = canSelect
+      ? Object.entries(stepSelectionByPlanId[pid] ?? {})
+          .filter(([, on]) => on)
+          .map(([id]) => id)
+      : undefined;
+    if (canSelect && (!picked || picked.length === 0)) return;
+
+    chatSubmitLockRef.current = true;
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "", suggestedActions: [], warnings: [] },
+    ]);
+    setChatLoading(true);
+    try {
+      const complete = await postAssistantChatStreaming(
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            buildAssistantConfirmExecutionBody({
+              sessionId: assistantSessionIdRef.current,
+              routeContactId,
+              routeOpportunityId,
+              channel: "web_drawer",
+              selectedStepIds: canSelect ? picked : undefined,
+            }),
+          ),
+        },
+        (chunk) => {
+          setMessages((prev) => {
+            const next = [...prev];
+            const tail = next[next.length - 1];
+            if (tail?.role === "assistant") {
+              next[next.length - 1] = { ...tail, content: tail.content + chunk };
+            }
+            return next;
+          });
+        },
+      );
+      if (complete.sessionId) {
+        setAssistantSessionId(complete.sessionId);
+        try {
+          sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
+        } catch {
+          /* ignore */
+        }
+      }
+      setMessages((prev) => {
+        const next = [...prev];
+        const tail = next[next.length - 1];
+        if (tail?.role === "assistant") {
+          next[next.length - 1] = {
+            role: "assistant",
+            content: complete.message ?? "",
+            suggestedActions: mapActionPayloadsToSuggestedActions(complete.suggestedActions ?? []),
+            warnings: complete.warnings ?? [],
+            executionState: complete.executionState ?? null,
+            contextState: complete.contextState ?? null,
+            stepOutcomes: complete.stepOutcomes ?? undefined,
+            suggestedNextSteps: complete.suggestedNextSteps ?? undefined,
+            hasPartialFailure: complete.hasPartialFailure ?? undefined,
+          };
+        }
+        return next;
+      });
+      if (pid) {
+        setStepSelectionByPlanId((prev) => {
+          const { [pid]: _removed, ...rest } = prev;
+          return rest;
+        });
+      }
+    } catch {
+      toast.showToast("Odeslání zprávy selhalo.", "error");
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
+      setChatLoading(false);
+      chatSubmitLockRef.current = false;
+    }
+  }, [
+    chatLoading,
+    messages,
+    routeContactId,
+    routeOpportunityId,
+    stepSelectionByPlanId,
+    toast,
+  ]);
+
+  const submitCancelPlan = useCallback(async () => {
+    if (chatLoading || chatSubmitLockRef.current) return;
+    const last = messages[messages.length - 1];
+    const pid = last?.role === "assistant" ? last.executionState?.planId : undefined;
+    if (last?.role !== "assistant" || last.executionState?.status !== "awaiting_confirmation") return;
+
+    chatSubmitLockRef.current = true;
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "", suggestedActions: [], warnings: [] },
+    ]);
+    setChatLoading(true);
+    try {
+      const complete = await postAssistantChatStreaming(
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            buildAssistantCancelPlanBody({
+              sessionId: assistantSessionIdRef.current,
+              routeContactId,
+              routeOpportunityId,
+              channel: "web_drawer",
+            }),
+          ),
+        },
+        (chunk) => {
+          setMessages((prev) => {
+            const next = [...prev];
+            const tail = next[next.length - 1];
+            if (tail?.role === "assistant") {
+              next[next.length - 1] = { ...tail, content: tail.content + chunk };
+            }
+            return next;
+          });
+        },
+      );
+      if (complete.sessionId) {
+        setAssistantSessionId(complete.sessionId);
+        try {
+          sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
+        } catch {
+          /* ignore */
+        }
+      }
+      setMessages((prev) => {
+        const next = [...prev];
+        const tail = next[next.length - 1];
+        if (tail?.role === "assistant") {
+          next[next.length - 1] = {
+            role: "assistant",
+            content: complete.message ?? "",
+            suggestedActions: mapActionPayloadsToSuggestedActions(complete.suggestedActions ?? []),
+            warnings: complete.warnings ?? [],
+            executionState: complete.executionState ?? null,
+            contextState: complete.contextState ?? null,
+            stepOutcomes: complete.stepOutcomes ?? undefined,
+            suggestedNextSteps: complete.suggestedNextSteps ?? undefined,
+            hasPartialFailure: complete.hasPartialFailure ?? undefined,
+          };
+        }
+        return next;
+      });
+      if (pid) {
+        setStepSelectionByPlanId((prev) => {
+          const { [pid]: _removed, ...rest } = prev;
+          return rest;
+        });
+      }
+    } catch {
+      toast.showToast("Odeslání zprávy selhalo.", "error");
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
+      setChatLoading(false);
+      chatSubmitLockRef.current = false;
+    }
+  }, [chatLoading, messages, routeContactId, routeOpportunityId, toast]);
 
   const handleSendChat = () => {
     const msg = input.trim();
@@ -802,28 +1011,6 @@ export function AiAssistantDrawer() {
             <Bell size={15} className="text-indigo-500" />
             Připomeň mi
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              router.push("/portal/contacts");
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-xs font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap"
-          >
-            <Users size={15} className="text-indigo-500" />
-            Klienti
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              router.push("/portal/tasks");
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] text-xs font-bold shadow-sm hover:bg-[color:var(--wp-surface-muted)] transition-colors whitespace-nowrap"
-          >
-            <ListTodo size={15} className="text-indigo-500" />
-            Úkoly
-          </button>
         </div>
         <input
           ref={fileInputRef}
@@ -1056,6 +1243,26 @@ export function AiAssistantDrawer() {
                             stepPreviews={m.executionState.stepPreviews!}
                             clientLabel={m.executionState.clientLabel}
                             isDraft={m.executionState.status === "draft"}
+                            selectable={m.executionState.status === "awaiting_confirmation"}
+                            stepSelection={
+                              m.executionState.planId
+                                ? stepSelectionByPlanId[m.executionState.planId]
+                                : undefined
+                            }
+                            onToggleStep={
+                              m.executionState.planId
+                                ? (stepId) => {
+                                    const planKey = m.executionState!.planId!;
+                                    setStepSelectionByPlanId((prev) => {
+                                      const cur = prev[planKey] ?? {};
+                                      return {
+                                        ...prev,
+                                        [planKey]: { ...cur, [stepId]: !cur[stepId] },
+                                      };
+                                    });
+                                  }
+                                : undefined
+                            }
                           />
                         )}
                     </>
@@ -1146,14 +1353,15 @@ export function AiAssistantDrawer() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => void sendChatMessage("ano")}
-                    className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-colors"
+                    onClick={() => void submitPlanConfirmation()}
+                    disabled={chatLoading || confirmSelectionInvalid}
+                    className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Potvrdit a provést
                   </button>
                   <button
                     type="button"
-                    onClick={() => void sendChatMessage("ne")}
+                    onClick={() => void submitCancelPlan()}
                     className="min-h-[44px] px-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-sm font-bold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] transition-colors"
                     aria-label="Zrušit plán"
                   >
@@ -1195,7 +1403,7 @@ export function AiAssistantDrawer() {
               </button>
             </div>
             <p className="text-xs text-[color:var(--wp-text-secondary)] mt-1.5">
-              Např. přiřaď smlouvu ke klientovi, vytvoř úkol, připrav email…
+              Nový dotaz nebo úprava zadání — potvrzení plánu je pouze tlačítkem výše, ne přes tento řádek.
             </p>
           </div>
         </div>
