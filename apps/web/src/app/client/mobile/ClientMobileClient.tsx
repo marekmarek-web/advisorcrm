@@ -668,7 +668,9 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
   const pathBase = pathname.split("?")[0] ?? pathname;
   const screenKey = `${pathBase}|${tab}|${String(onPortfolioRoute)}|${String(onNotificationsRoute)}|${String(onProfileRoute)}`;
   /** Deep routes (portfolio, notifications) are not primary tabs — no misleading “home” highlight. */
-  const navActiveId = onPortfolioRoute || onNotificationsRoute ? null : tab;
+  // No tab highlighted on portfolio/notifications deep routes, or during the brief window
+  // before window.location.replace fires on non-SPA paths (prevents false "Přehled" flash).
+  const navActiveId = onPortfolioRoute || onNotificationsRoute || !isClientMobileSpaPath(pathname) ? null : tab;
 
   const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
 
