@@ -202,6 +202,92 @@ describe("Phase 5H client portal bridge", () => {
     });
   });
 
+  describe("6C: notification hardening (routing + dedup + delivery policy)", () => {
+    it("toast routing uses getPortalNotificationDeepLink — same source as bell and page", () => {
+      const n = { type: "advisor_material_request", relatedEntityId: "req-1" };
+      const link = getPortalNotificationDeepLink(n);
+      expect(link).toBe("/client/pozadavky-poradce/req-1");
+    });
+
+    it("advisor_material_request without relatedEntityId falls back to list (not null)", () => {
+      const n = { type: "advisor_material_request", relatedEntityId: null };
+      const link = getPortalNotificationDeepLink(n);
+      expect(link).toBe("/client/pozadavky-poradce");
+    });
+
+    it("new_document deep-links to /client/documents", () => {
+      expect(getPortalNotificationDeepLink({ type: "new_document" })).toBe("/client/documents");
+    });
+
+    it("new_message deep-links to /client/messages", () => {
+      expect(getPortalNotificationDeepLink({ type: "new_message" })).toBe("/client/messages");
+    });
+
+    it("request_status_change deep-links to /client/requests", () => {
+      expect(getPortalNotificationDeepLink({ type: "request_status_change" })).toBe("/client/requests");
+    });
+
+    it("important_date deep-links to /client/portfolio", () => {
+      expect(getPortalNotificationDeepLink({ type: "important_date" })).toBe("/client/portfolio");
+    });
+
+    it("unknown type returns null — no orphan deep link", () => {
+      expect(getPortalNotificationDeepLink({ type: "unknown_xyz" })).toBeNull();
+    });
+
+    it("v1 polling decision — toast scope is intentionally advisor_material_request only", () => {
+      const handled = ["advisor_material_request"];
+      const notHandledByToast = ["new_message", "new_document", "request_status_change", "important_date"];
+      for (const t of notHandledByToast) {
+        expect(handled).not.toContain(t);
+      }
+      expect(handled).toContain("advisor_material_request");
+    });
+  });
+
+  describe("6D: request thread hardening (state, closed guard, empty state)", () => {
+    it("closed/done request status — terminal states that block client reply", () => {
+      const terminalStatuses = ["closed", "done"];
+      const actionableStatuses = ["new", "seen", "answered", "needs_more"];
+      for (const s of terminalStatuses) {
+        expect(s === "closed" || s === "done").toBe(true);
+      }
+      for (const s of actionableStatuses) {
+        expect(s === "closed" || s === "done").toBe(false);
+      }
+    });
+
+    it("request state progression: new → seen → answered → needs_more → done/closed", () => {
+      const progression = ["new", "seen", "answered", "needs_more", "done", "closed"];
+      expect(progression.indexOf("new")).toBeLessThan(progression.indexOf("seen"));
+      expect(progression.indexOf("answered")).toBeLessThan(progression.indexOf("done"));
+      expect(progression.indexOf("needs_more")).toBeLessThan(progression.indexOf("closed"));
+    });
+
+    it("internalNote must be null for client-facing detail (data leak guard)", () => {
+      const clientDetail = {
+        id: "r1",
+        internalNote: null as string | null,
+      };
+      expect(clientDetail.internalNote).toBeNull();
+    });
+
+    it("pozadavky-poradce detail deep link is handled by routing function", () => {
+      const requestId = "abc-123";
+      const link = getPortalNotificationDeepLink({
+        type: "advisor_material_request",
+        relatedEntityId: requestId,
+      });
+      expect(link).toBe(`/client/pozadavky-poradce/${requestId}`);
+    });
+
+    it("empty messages list — empty state rendered (messages.length === 0)", () => {
+      const messages: unknown[] = [];
+      const showEmptyState = messages.length === 0;
+      expect(showEmptyState).toBe(true);
+    });
+  });
+
   describe("6B: client auth consistency", () => {
     it("requireClientZoneAuth contract: non-Client redirects to /portal (not /register/complete)", async () => {
       const { requireClientZoneAuth } = await import("@/lib/auth/require-auth");

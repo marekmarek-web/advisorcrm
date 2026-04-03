@@ -59,24 +59,28 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
 
       <section aria-label="Historie">
         <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-3">Komunikace</h2>
-        <ul className="space-y-3">
-          {detail.messages.map((m) => (
-            <li
-              key={m.id}
-              className={`rounded-xl px-3 py-2 text-sm ${
-                m.authorRole === "advisor"
-                  ? "bg-indigo-50 border border-indigo-100"
-                  : "bg-slate-50 border border-slate-200"
-              }`}
-            >
-              <p className="text-[10px] font-bold text-slate-400 mb-1">
-                {m.authorRole === "advisor" ? "Poradce" : "Vy"} ·{" "}
-                {new Date(m.createdAt).toLocaleString("cs-CZ")}
-              </p>
-              <p className="whitespace-pre-wrap text-slate-800">{m.body}</p>
-            </li>
-          ))}
-        </ul>
+        {detail.messages.length === 0 ? (
+          <p className="text-sm text-slate-500">Zatím žádné zprávy.</p>
+        ) : (
+          <ul className="space-y-3">
+            {detail.messages.map((m) => (
+              <li
+                key={m.id}
+                className={`rounded-xl px-3 py-2 text-sm ${
+                  m.authorRole === "advisor"
+                    ? "bg-indigo-50 border border-indigo-100"
+                    : "bg-slate-50 border border-slate-200"
+                }`}
+              >
+                <p className="text-[10px] font-bold text-slate-400 mb-1">
+                  {m.authorRole === "advisor" ? "Poradce" : "Vy"} ·{" "}
+                  {new Date(m.createdAt).toLocaleString("cs-CZ")}
+                </p>
+                <p className="whitespace-pre-wrap text-slate-800">{m.body}</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section>

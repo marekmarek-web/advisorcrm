@@ -473,6 +473,7 @@ export async function respondClientMaterialRequest(
       id: advisorMaterialRequests.id,
       contactId: advisorMaterialRequests.contactId,
       tenantId: advisorMaterialRequests.tenantId,
+      status: advisorMaterialRequests.status,
     })
     .from(advisorMaterialRequests)
     .where(
@@ -484,6 +485,9 @@ export async function respondClientMaterialRequest(
     )
     .limit(1);
   if (!req) return { ok: false, error: "Požadavek nenalezen." };
+  if (req.status === "closed" || req.status === "done") {
+    return { ok: false, error: "Požadavek je uzavřen a nelze na něj odpovídat." };
+  }
 
   if (trimmed.length > 0) {
     await db.insert(advisorMaterialRequestMessages).values({

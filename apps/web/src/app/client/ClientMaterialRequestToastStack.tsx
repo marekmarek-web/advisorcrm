@@ -4,12 +4,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getPortalNotificationsForClient, markPortalNotificationRead } from "@/app/actions/portal-notifications";
+import { getPortalNotificationDeepLink } from "@/lib/client-portal/portal-notification-routing";
 import { X } from "lucide-react";
 
 type ToastItem = { id: string; notificationId: string; title: string; href: string };
 
 /**
- * Toast pro klienta při nové notifikaci typu požadavek od poradce (stejný zdroj jako přehled oznámení).
+ * Toast pro klienta při nové nepřečtené notifikaci od poradce.
+ *
+ * Scope (v1 conscious decision): zobrazuje pouze `advisor_material_request` notifikace.
+ * Ostatní typy (new_message, new_document, request_status_change) se zobrazují
+ * pouze přes bell badge a stránku /client/notifications — toast je určen
+ * pro "immediate action required" požadavky, kde klient potřebuje okamžitou akci.
+ *
+ * Polling: 35 s interval je vědomé v1 release rozhodnutí. Nahradit WebSocket/SSE
+ * push delivery v případě, že by polling způsoboval zjevné problémy (latence, load).
+ *
+ * Deep-link routing: používá sdílenou `getPortalNotificationDeepLink` —
+ * stejný zdroj jako bell, toast a notifications page.
  */
 export function ClientMaterialRequestToastStack() {
   const router = useRouter();
@@ -27,15 +39,8 @@ export function ClientMaterialRequestToastStack() {
         if (n.type !== "advisor_material_request" || n.readAt) continue;
         if (shownRef.current.has(n.id)) continue;
         shownRef.current.add(n.id);
-        let requestId = n.relatedEntityId ?? "";
-        try {
-          const b = JSON.parse(n.body || "{}") as { requestId?: string };
-          if (typeof b.requestId === "string" && b.requestId) requestId = b.requestId;
-        } catch {
-          /* ignore */
-        }
-        if (!requestId) continue;
-        const href = `/client/pozadavky-poradce/${requestId}`;
+        const href = getPortalNotificationDeepLink(n);
+        if (!href) continue;
         setToasts((prev) => [
           ...prev.slice(-4),
           {
