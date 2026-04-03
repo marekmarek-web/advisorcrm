@@ -299,6 +299,25 @@ export async function patchAssistantConversationDisplayTitleForUser(
   return { ok: true };
 }
 
+/** Smaže konverzaci včetně zpráv (FK `assistant_messages` má onDelete cascade). */
+export async function deleteAssistantConversationForUser(
+  conversationId: string,
+  tenantId: string,
+  userId: string,
+): Promise<{ deleted: boolean }> {
+  const deletedRows = await db
+    .delete(assistantConversations)
+    .where(
+      and(
+        eq(assistantConversations.id, conversationId),
+        eq(assistantConversations.tenantId, tenantId),
+        eq(assistantConversations.userId, userId),
+      ),
+    )
+    .returning({ id: assistantConversations.id });
+  return { deleted: deletedRows.length > 0 };
+}
+
 export type AssistantMessageHistoryDbRow = {
   id: string;
   role: "user" | "assistant" | "system";

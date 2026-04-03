@@ -13,6 +13,7 @@ import {
   Zap,
   Pencil,
   Bell,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/app/components/Toast";
 import { useAiAssistantDrawer } from "./AiAssistantDrawerContext";
@@ -51,6 +52,7 @@ import {
   listAdvisorAssistantConversations,
   loadAdvisorAssistantConversationHistory,
   renameAdvisorAssistantConversation,
+  deleteAdvisorAssistantConversation,
   type AdvisorAssistantConversationListItemDto,
 } from "@/app/actions/assistant-conversations";
 import {
@@ -307,6 +309,26 @@ export function AiAssistantDrawer() {
     }
     toast.showToast("Název uložen.", "success");
   }, [assistantSessionId, assistantConversationsList, toast]);
+
+  const handleDeleteAssistantConversation = useCallback(async () => {
+    if (!assistantSessionId) return;
+    if (!window.confirm("Smazat tuto konverzaci včetně historie? Tuto akci nelze vrátit zpět.")) {
+      return;
+    }
+    const res = await deleteAdvisorAssistantConversation(assistantSessionId);
+    if (!res.ok) {
+      toast.showToast(res.error, "error");
+      return;
+    }
+    startNewAssistantConversation();
+    try {
+      const refreshed = await listAdvisorAssistantConversations();
+      setAssistantConversationsList(refreshed);
+    } catch {
+      /* ignore */
+    }
+    toast.showToast("Konverzace byla smazána.", "success");
+  }, [assistantSessionId, startNewAssistantConversation, toast]);
 
   useEffect(() => {
     if (!open) return;
@@ -1008,6 +1030,16 @@ export function AiAssistantDrawer() {
               title="Přejmenovat konverzaci"
             >
               <Pencil size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDeleteAssistantConversation()}
+              disabled={!assistantSessionId || conversationPickerLoading || chatLoading}
+              className="shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Smazat konverzaci"
+              title="Smazat konverzaci"
+            >
+              <Trash2 size={16} />
             </button>
             {conversationPickerLoading && (
               <Loader2 size={16} className="animate-spin text-indigo-500 shrink-0" aria-hidden />

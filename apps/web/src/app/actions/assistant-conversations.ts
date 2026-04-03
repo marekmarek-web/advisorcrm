@@ -1,10 +1,12 @@
 "use server";
 
+import { clearSession } from "@/lib/ai/assistant-session";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import {
   listAssistantConversationsForUser,
   loadAssistantConversationHistoryMessagesForUser,
   patchAssistantConversationDisplayTitleForUser,
+  deleteAssistantConversationForUser,
 } from "@/lib/ai/assistant-conversation-repository";
 import {
   mapAssistantHistoryRowsToClientPayload,
@@ -63,6 +65,28 @@ export async function renameAdvisorAssistantConversation(
   }
   const t = title?.trim() ?? "";
   return patchAssistantConversationDisplayTitleForUser(id, auth.tenantId, auth.userId, t === "" ? null : t);
+}
+
+export type DeleteAdvisorAssistantConversationResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/** Smaže konverzaci a její historii (pouze vlastní v rámci tenantu). */
+export async function deleteAdvisorAssistantConversation(
+  conversationId: string,
+): Promise<DeleteAdvisorAssistantConversationResult> {
+  const auth = await requireAuthInAction();
+  assertAdvisorRole(auth.roleName);
+  const id = conversationId.trim();
+  if (!id) {
+    return { ok: false, error: "Chybí ID konverzace." };
+  }
+  const { deleted } = await deleteAssistantConversationForUser(id, auth.tenantId, auth.userId);
+  if (!deleted) {
+    return { ok: false, error: "Konverzace nenalezena." };
+  }
+  clearSession(id);
+  return { ok: true };
 }
 
 export type LoadAdvisorAssistantHistoryResult =

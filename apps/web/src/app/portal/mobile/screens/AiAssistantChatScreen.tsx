@@ -15,6 +15,7 @@ import {
   Check,
   X,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -41,6 +42,7 @@ import {
   listAdvisorAssistantConversations,
   loadAdvisorAssistantConversationHistory,
   renameAdvisorAssistantConversation,
+  deleteAdvisorAssistantConversation,
   type AdvisorAssistantConversationListItemDto,
 } from "@/app/actions/assistant-conversations";
 import {
@@ -1061,6 +1063,26 @@ export function AiAssistantChatScreen() {
     }
   }, [assistantSessionId, assistantConversationsList]);
 
+  const handleDeleteAssistantConversation = useCallback(async () => {
+    if (!assistantSessionId) return;
+    if (!window.confirm("Smazat tuto konverzaci včetně historie? Tuto akci nelze vrátit zpět.")) {
+      return;
+    }
+    setError(null);
+    const res = await deleteAdvisorAssistantConversation(assistantSessionId);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    startNewAssistantConversation();
+    try {
+      const refreshed = await listAdvisorAssistantConversations();
+      setAssistantConversationsList(refreshed);
+    } catch {
+      /* ignore */
+    }
+  }, [assistantSessionId, startNewAssistantConversation]);
+
   function clearChat() {
     startNewAssistantConversation();
   }
@@ -1220,6 +1242,16 @@ export function AiAssistantChatScreen() {
             title="Přejmenovat konverzaci"
           >
             <Pencil size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleDeleteAssistantConversation()}
+            disabled={!assistantSessionId || conversationPickerLoading || isTyping}
+            className="shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-rose-600 active:bg-rose-50 disabled:opacity-40"
+            aria-label="Smazat konverzaci"
+            title="Smazat konverzaci"
+          >
+            <Trash2 size={14} />
           </button>
           {conversationPickerLoading ? <Loader2 size={14} className="animate-spin text-indigo-500 shrink-0" /> : null}
         </div>
