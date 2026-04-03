@@ -61,7 +61,7 @@ Typy záměrů:
 - notify_client_portal: systémová notifikace klientovi (portalNotificationTitle, volitelně noteContent jako text, portalNotificationType)
 - send_portal_message: odeslat zprávu klientovi přes portál (ne jen notifikace)
 - update_client_request: upravit existující klientský požadavek (obchod s client_portal_request)
-- create_service_case: servisní požadavek
+- create_service_case: servisní případ nebo požadavek ke stávající smlouvě (výročí, změna, doplnění, reklamace) — productDomain určuje typ smlouvy (servis, dps, zivotni_pojisteni, …)
 - create_reminder: připomínka
 - search_contacts: hledání kontaktů
 - dashboard_summary: shrnutí dashboardu
@@ -94,7 +94,9 @@ function fallbackIntentFromHeuristics(
   const lower = message.toLowerCase();
   const wantsMortgageFlow =
     (/hypoték|obchod|pipeline|případ|opportunit/i.test(message) || /vytvoř|založ|zaeviduj/i.test(lower)) &&
-    (/follow|úkol|follow-up|příští\s+úter/i.test(lower) || /follow-up/i.test(message));
+    (/follow|úkol|follow-up|příští\s+úter/i.test(lower) || /follow-up/i.test(message)) &&
+    // avoid triggering mortgage flow for non-mortgage domains (servis, penze, investice, pojištění…)
+    !/servis|výročí|penzijní|investiční|pojišt|cestovní|firemní/i.test(lower);
   const nameMatch = message.match(
     /([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ][a-záčďéěíňóřšťúůýž]+)\s+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ][a-záčďéěíňóřšťúůýž]+)/u,
   );

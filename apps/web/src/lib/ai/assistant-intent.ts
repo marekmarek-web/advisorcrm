@@ -293,7 +293,14 @@ export function legacyIntentToCanonical(legacy: AssistantIntent): CanonicalInten
     intentType = "multi_action";
   }
 
-  const domain = resolveProductDomain(legacy.purpose) ?? (legacy.bank ? "hypo" : null);
+  // Bank alone is not sufficient to infer hypo — resolve domain from purpose text first;
+  // only fall back to hypo if both bank and purpose are present and purpose suggests mortgage.
+  const purposeDomain = resolveProductDomain(legacy.purpose);
+  const bankImpliesHypo =
+    !!legacy.bank &&
+    !!legacy.purpose &&
+    /hypot|úvěr|uver|ltv|byt|koupě|rekonstrukce/i.test(legacy.purpose);
+  const domain = purposeDomain ?? (bankImpliesHypo ? "hypo" : null);
 
   return {
     intentType,

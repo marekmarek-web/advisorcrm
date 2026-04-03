@@ -37,7 +37,7 @@ const INTENT_TO_WRITE_ACTION: Partial<Record<CanonicalIntentType, WriteActionTyp
   send_portal_message: "sendPortalMessage",
   update_portfolio: "updatePortfolioItem",
   publish_portfolio_item: "publishPortfolioItem",
-  create_service_case: "createClientRequest",
+  create_service_case: "createServiceCase",
   create_reminder: "createReminder",
   approve_ai_contract_review: "approveAiContractReview",
   apply_ai_review_to_crm: "applyAiContractReviewToCrm",
@@ -187,6 +187,7 @@ type FieldRequirement = string | string[];
 const REQUIRED_FIELDS: Record<string, FieldRequirement[]> = {
   createOpportunity: ["contactId"],
   updateOpportunity: ["opportunityId"],
+  createServiceCase: ["contactId", ["subject", "description", "noteContent"]],
   updateClientRequest: ["opportunityId"],
   createTask: ["contactId"],
   updateTask: ["taskId"],
@@ -215,10 +216,36 @@ const REQUIRED_FIELDS: Record<string, FieldRequirement[]> = {
   sendPortalMessage: ["contactId", ["portalMessageBody", "noteContent"]],
 };
 
+/**
+ * Advisory field hints per (action, productDomain). These are informational only —
+ * they do NOT affect plan status. Returned by computeWriteActionMissingFields when
+ * productDomain is passed, but callers that determine plan status should only use the
+ * structural fields (no domain arg).
+ * Domain hints are surfaced separately via the playbook bridge in userConstraints.
+ */
+const DOMAIN_ADVISORY_HINTS: Partial<
+  Record<WriteActionType, Partial<Record<string, string[]>>>
+> = {
+  createOpportunity: {
+    hypo: ["amount|purpose"],
+    uver: ["amount|purpose"],
+    investice: ["purpose|investmentGoal"],
+    dip: ["purpose|investmentGoal"],
+    dps: ["purpose|investmentGoal"],
+    zivotni_pojisteni: ["insuranceType|purpose"],
+    majetek: ["insuranceType|purpose"],
+    odpovednost: ["insuranceType|purpose"],
+    auto: ["insuranceType|purpose"],
+    cestovni: ["insuranceType|purpose"],
+    firma_pojisteni: ["insuranceType|purpose"],
+  },
+};
+
 /** Exported for tests and tooling — same rules as planner slot-filling. */
 export function computeWriteActionMissingFields(
   action: WriteActionType,
   params: Record<string, unknown>,
+  productDomain?: string | null,
 ): string[] {
   const missing: string[] = [];
   const fields = REQUIRED_FIELDS[action] ?? [];
@@ -230,6 +257,19 @@ export function computeWriteActionMissingFields(
       if (!params[req]) missing.push(req);
     }
   }
+
+  // Advisory domain hints: soft signals surfaced to help advisor fill slots.
+  if (productDomain) {
+    const domainHints = DOMAIN_ADVISORY_HINTS[action]?.[productDomain] ?? [];
+    for (const hint of domainHints) {
+      const keys = hint.split("|");
+      const anyPresent = keys.some((k) => !!params[k]);
+      if (!anyPresent && !missing.includes(hint)) {
+        missing.push(hint);
+      }
+    }
+  }
+
   return missing;
 }
 
@@ -303,6 +343,7 @@ export function buildExecutionPlan(
 
   applyMultiActionOpportunityChaining(steps, intent);
 
+  // Use structural fields only for plan status — advisory domain hints don't block execution.
   const missingAny = steps.some((s) => computeWriteActionMissingFields(s.action, s.params).length > 0);
 
   return {
@@ -322,6 +363,7 @@ function buildStepLabel(action: WriteActionType, params: Record<string, unknown>
   const labels: Record<string, string> = {
     createOpportunity: "Vytvořit obchod",
     updateOpportunity: "Aktualizovat obchod",
+    createServiceCase: "Vytvořit servisní případ",
     createTask: "Vytvořit úkol",
     createFollowUp: "Vytvořit follow-up úkol",
     scheduleCalendarEvent: "Naplánovat schůzku",

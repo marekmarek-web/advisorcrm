@@ -113,6 +113,49 @@ export function registerAssistantWriteAdapters(): void {
     }
   });
 
+  /**
+   * Service case: creates an opportunity record with service-specific customFields
+   * (service_case: true). Requires contactId + subject/description/noteContent.
+   * Distinct from createClientRequest (portal-facing) and createOpportunity (new deals).
+   */
+  registerWriteAdapter("createServiceCase", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const contactId = strParam(params, "contactId");
+      if (!contactId) return errResult("Chybí contactId.");
+      const subject =
+        strParam(params, "subject") ??
+        strParam(params, "description") ??
+        strParam(params, "noteContent") ??
+        strParam(params, "taskTitle");
+      if (!subject) return errResult("Chybí popis servisního požadavku (subject, description nebo noteContent).");
+      const stageId = strParam(params, "stageId") ?? (await firstPipelineStageId(ctx.tenantId));
+      if (!stageId) return errResult("V workspace není žádný stupeň pipeline.");
+      const domain = productDomainFromParams(params);
+      const caseType = domain ? caseTypeForProductDomain(domain as never) : strParam(params, "caseType") ?? "servis";
+      const title = strParam(params, "title") ?? `Servisní případ: ${subject}`;
+      const id = await createOpportunityAction({
+        title,
+        caseType,
+        contactId,
+        stageId,
+        expectedCloseDate: strParam(params, "expectedCloseDate"),
+      });
+      if (!id) return errResult("Servisní případ se nepodařilo vytvořit.");
+      await updateOpportunityAction(id, {
+        customFields: {
+          service_case: true,
+          service_case_subject: subject,
+          service_case_description: strParam(params, "description") ?? null,
+          advisor_created_service_case: true,
+        },
+      });
+      return okResult(id, "opportunity", ["Vytvořen servisní případ (obchod v pipeline se servisním označením)."]);
+    } catch (e) {
+      return errResult(e instanceof Error ? e.message : "Chyba při vytváření servisního případu.");
+    }
+  });
+
   registerWriteAdapter("updateOpportunity", async (params, ctx) => {
     try {
       await assertCtx(ctx);

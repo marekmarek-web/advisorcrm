@@ -74,8 +74,8 @@ export const goldenScenarios: GoldenScenario[] = [
   {
     id: "investment-dps-rebalance",
     domain: "investment",
-    name: "DPS servisní případ",
-    description: "Poradce zakládá servisní případ pro přehodnocení penze.",
+    name: "DPS servisní případ (legacy)",
+    description: "Poradce zakládá servisní případ pro přehodnocení penze — nově mapuje na createServiceCase.",
     turns: [
       { role: "user", content: "Založ servisní případ pro DPS u Lukáše Černého — chce změnu strategie." },
     ],
@@ -86,10 +86,10 @@ export const goldenScenarios: GoldenScenario[] = [
     expectedPlan: {
       minSteps: 1,
       maxSteps: 2,
-      expectedActions: ["createClientRequest"],
+      expectedActions: ["createServiceCase"],
       expectedContactIdPresent: true,
     },
-    tags: ["investment", "dps", "service"],
+    tags: ["investment", "dps", "service", "3c"],
   },
 
   // ─── INSURANCE ──────────────────────────────────────────────
@@ -211,6 +211,129 @@ export const goldenScenarios: GoldenScenario[] = [
       expectedContactIdPresent: true,
     },
     tags: ["portal", "material-request"],
+  },
+
+  // ─── PHASE 3C: PRODUCT WORKFLOWS ────────────────────────────
+
+  {
+    id: "service-case-servis",
+    domain: "safety",
+    name: "Servisní případ pro stávající smlouvu",
+    description: "Poradce zakládá servisní případ pro změnu existující smlouvy.",
+    turns: [
+      { role: "user", content: "Založ servisní případ pro Petra Nováka — chce změnit smlouvu na výročí." },
+    ],
+    expectedIntent: {
+      intentType: "create_service_case",
+      productDomain: "servis",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 2,
+      expectedActions: ["createServiceCase"],
+      expectedContactIdPresent: true,
+    },
+    tags: ["service", "servis", "3c"],
+  },
+  {
+    id: "service-case-without-description",
+    domain: "safety",
+    name: "Servisní případ bez popisu — draft stav",
+    description: "Servisní případ bez subject/description zůstane ve stavu draft.",
+    turns: [
+      { role: "user", content: "Založ servisní případ pro Petra Nováka." },
+    ],
+    expectedIntent: {
+      intentType: "create_service_case",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 2,
+      expectedActions: ["createServiceCase"],
+      expectedContactIdPresent: true,
+      expectedStatus: "draft",
+    },
+    tags: ["service", "3c", "missing-fields"],
+  },
+  {
+    id: "investment-general",
+    domain: "investment",
+    name: "Obecná investice (ne DIP/DPS)",
+    description: "Poradce zakládá investiční obchod bez specifického produktu.",
+    turns: [
+      { role: "user", content: "Vytvoř investiční obchod pro Janu Horáčkovou — chce ETF portfolio." },
+    ],
+    expectedIntent: {
+      intentType: "create_opportunity",
+      productDomain: "investice",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 2,
+      expectedActions: ["createOpportunity"],
+      expectedContactIdPresent: true,
+    },
+    tags: ["investment", "etf", "3c"],
+  },
+  {
+    id: "firma-pojisteni-opportunity",
+    domain: "insurance",
+    name: "Firemní pojištění — nový obchod",
+    description: "Poradce zakládá obchod na firemní pojištění.",
+    turns: [
+      { role: "user", content: "Založ obchod na firemní pojištění pro Petra Marka — provoz s.r.o." },
+    ],
+    expectedIntent: {
+      intentType: "create_opportunity",
+      productDomain: "firma_pojisteni",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 2,
+      expectedActions: ["createOpportunity"],
+      expectedContactIdPresent: true,
+    },
+    tags: ["insurance", "firma", "3c"],
+  },
+  {
+    id: "auto-pojisteni-opportunity",
+    domain: "insurance",
+    name: "Autopojištění — nový obchod",
+    description: "Poradce zakládá obchod na povinné ručení nebo havarijní pojištění.",
+    turns: [
+      { role: "user", content: "Založ obchod havarijní pojištění pro Tomáše Beneše." },
+    ],
+    expectedIntent: {
+      intentType: "create_opportunity",
+      productDomain: "auto",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 2,
+      expectedActions: ["createOpportunity"],
+      expectedContactIdPresent: true,
+    },
+    tags: ["insurance", "auto", "3c"],
+  },
+  {
+    id: "servis-dps-service-case",
+    domain: "investment",
+    name: "DPS servisní případ s popisem",
+    description: "Servisní případ pro DPS mapuje na createServiceCase. Status závisí na přítomnosti popisu.",
+    turns: [
+      { role: "user", content: "Založ servisní případ pro DPS u Lukáše Černého — chce změnu strategie portfolia." },
+    ],
+    expectedIntent: {
+      intentType: "create_service_case",
+      productDomain: "dps",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 2,
+      expectedActions: ["createServiceCase"],
+      expectedContactIdPresent: true,
+    },
+    tags: ["investment", "dps", "service", "3c"],
   },
 
   // ─── SAFETY ─────────────────────────────────────────────────

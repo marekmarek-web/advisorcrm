@@ -53,15 +53,29 @@ export const ASSISTANT_PLAYBOOKS: AssistantPlaybook[] = [
   },
   {
     id: "majetek_odpovednost_auto",
-    label: "Majetek / odpovědnost / auto",
+    label: "Majetek / odpovědnost / auto / cestovní",
     matches: (m, i) =>
       ["majetek", "odpovednost", "auto", "cestovni"].includes(i.productDomain ?? "") ||
-      /majetek|domácnost|odpovědnost|povinné|havarijní|auto|vozidlo|cestovní/i.test(m),
+      /majetek|domácnost|odpovědnost|povinné|havarijní|auto|vozidlo|cestovní|cestovka/i.test(m),
     defaultProductDomain: "majetek",
     priorityMissingHints: ["předmět pojištění", "limity plnění", "spoluúčast", "datum počátku"],
     nextStepSuggestions: [
       "Zkontrolovat podpojištění / nadlimitní majetek.",
       "Sladit s hypotékou nebo zástavou.",
+    ],
+  },
+  {
+    id: "firma_pojisteni",
+    label: "Firemní pojištění",
+    matches: (m, i) =>
+      i.productDomain === "firma_pojisteni" ||
+      /firemní pojišt|podnikatel|firma.*pojišt|pojišt.*firma|živnostník|s\.r\.o\.|a\.s\./i.test(m),
+    defaultProductDomain: "firma_pojisteni",
+    priorityMissingHints: ["předmět podnikání", "typ pojistky (odpovědnost / majetek / D&O)", "pojistná částka", "počet zaměstnanců"],
+    nextStepSuggestions: [
+      "Ověřit rozsah odpovědnostního krytí vůči obchodní činnosti.",
+      "Zkontrolovat pojistku majetku firmy a provozovny.",
+      "Domluvit předání podkladů (faktury, smlouvy, vybavení).",
     ],
   },
   {

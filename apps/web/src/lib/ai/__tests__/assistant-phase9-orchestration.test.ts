@@ -113,7 +113,7 @@ describe("buildExecutionPlan — dokument / portfolio / AI review / portál", ()
     expect(plan.steps[0]?.params.contactId).toBe(CONTACT_ID);
   });
 
-  it("servisní případ (investice) mapuje na createClientRequest", () => {
+  it("servisní případ (investice) mapuje na createServiceCase", () => {
     const plan = buildExecutionPlan(
       intent({
         intentType: "create_service_case",
@@ -123,7 +123,7 @@ describe("buildExecutionPlan — dokument / portfolio / AI review / portál", ()
       }),
       resolutionWithClient(),
     );
-    expect(plan.steps.some((s) => s.action === "createClientRequest")).toBe(true);
+    expect(plan.steps.some((s) => s.action === "createServiceCase")).toBe(true);
     expect(plan.steps[0]?.params.productDomain).toBe("investice");
   });
 
