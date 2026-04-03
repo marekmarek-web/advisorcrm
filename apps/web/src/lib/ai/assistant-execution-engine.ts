@@ -393,11 +393,12 @@ export function buildVerifiedResult(
     for (const step of plan.steps) {
       const resultOutcome = step.result?.outcome;
       const isIdempotent = resultOutcome === "idempotent_hit" || resultOutcome === "duplicate_hit";
+      const isSkipped = step.status === "skipped" || resultOutcome === "skipped";
       const outcome: VerifiedAssistantResult["stepOutcomes"][number] = {
         stepId: step.stepId,
         action: step.action,
         label: step.label,
-        status: step.status === "skipped"
+        status: isSkipped
           ? "skipped"
           : isIdempotent
             ? "idempotent_hit"
@@ -424,10 +425,14 @@ export function buildVerifiedResult(
       if (step.status === "failed" && step.result?.error) {
         warnings.push(`Krok „${step.label}" selhal: ${step.result.error}`);
       }
+      if (isSkipped) {
+        warnings.push(`Krok „${step.label}" přeskočen — závislý krok selhal.`);
+      }
     }
 
     const succeeded = plan.steps.filter((s) => s.status === "succeeded").length;
     const failed = plan.steps.filter((s) => s.status === "failed").length;
+    const skipped = plan.steps.filter((s) => s.status === "skipped").length;
     const total = plan.steps.length;
     if (succeeded > 0 && succeeded < total) {
       suggestions.push("Zkontrolujte selhané kroky a zkuste je znovu.");
@@ -437,6 +442,9 @@ export function buildVerifiedResult(
     }
     if (failed > 0) {
       suggestions.push(`${failed} z ${total} kroků selhalo.`);
+    }
+    if (skipped > 0) {
+      suggestions.push(`${skipped} z ${total} kroků přeskočeno kvůli selhání závislosti.`);
     }
   }
 

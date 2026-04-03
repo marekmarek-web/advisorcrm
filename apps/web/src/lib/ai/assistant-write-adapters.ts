@@ -72,6 +72,14 @@ function productDomainFromParams(params: Record<string, unknown>): string | null
   return typeof d === "string" && d ? d : null;
 }
 
+async function assertDocumentWrite(ctx: ExecutionContext) {
+  const auth = await assertCtx(ctx);
+  if (!hasPermission(auth.roleName, "documents:write")) {
+    throw new Error("Chybí oprávnění documents:write.");
+  }
+  return auth;
+}
+
 export function registerAssistantWriteAdapters(): void {
   registerWriteAdapter("createOpportunity", async (params, ctx) => {
     try {
@@ -282,14 +290,16 @@ export function registerAssistantWriteAdapters(): void {
 
   registerWriteAdapter("attachDocumentToClient", async (params, ctx) => {
     try {
-      await assertCtx(ctx);
+      await assertDocumentWrite(ctx);
       const documentId = strParam(params, "documentId");
       const contactId = strParam(params, "contactId");
       if (!documentId || !contactId) return errResult("Chybí documentId nebo contactId.");
-      await db
+      const rows = await db
         .update(documents)
         .set({ contactId, updatedAt: new Date() })
-        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)));
+        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)))
+        .returning({ id: documents.id });
+      if (rows.length === 0) return errResult("Dokument nenalezen nebo nepatří do tohoto workspace.");
       return okResult(documentId, "document");
     } catch (e) {
       return errResult(e instanceof Error ? e.message : "Chyba při vazbě dokumentu.");
@@ -298,14 +308,16 @@ export function registerAssistantWriteAdapters(): void {
 
   registerWriteAdapter("attachDocumentToOpportunity", async (params, ctx) => {
     try {
-      await assertCtx(ctx);
+      await assertDocumentWrite(ctx);
       const documentId = strParam(params, "documentId");
       const opportunityId = strParam(params, "opportunityId");
       if (!documentId || !opportunityId) return errResult("Chybí documentId nebo opportunityId.");
-      await db
+      const rows = await db
         .update(documents)
         .set({ opportunityId, updatedAt: new Date() })
-        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)));
+        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)))
+        .returning({ id: documents.id });
+      if (rows.length === 0) return errResult("Dokument nenalezen nebo nepatří do tohoto workspace.");
       return okResult(documentId, "document");
     } catch (e) {
       return errResult(e instanceof Error ? e.message : "Chyba při vazbě dokumentu k obchodu.");
@@ -314,14 +326,16 @@ export function registerAssistantWriteAdapters(): void {
 
   registerWriteAdapter("classifyDocument", async (params, ctx) => {
     try {
-      await assertCtx(ctx);
+      await assertDocumentWrite(ctx);
       const documentId = strParam(params, "documentId");
       const documentType = strParam(params, "documentType") ?? strParam(params, "classification");
       if (!documentId || !documentType) return errResult("Chybí documentId nebo documentType.");
-      await db
+      const rows = await db
         .update(documents)
         .set({ documentType, updatedAt: new Date() })
-        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)));
+        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)))
+        .returning({ id: documents.id });
+      if (rows.length === 0) return errResult("Dokument nenalezen nebo nepatří do tohoto workspace.");
       return okResult(documentId, "document");
     } catch (e) {
       return errResult(e instanceof Error ? e.message : "Chyba klasifikace dokumentu.");
@@ -330,17 +344,19 @@ export function registerAssistantWriteAdapters(): void {
 
   registerWriteAdapter("triggerDocumentReview", async (params, ctx) => {
     try {
-      await assertCtx(ctx);
+      await assertDocumentWrite(ctx);
       const documentId = strParam(params, "documentId");
       if (!documentId) return errResult("Chybí documentId.");
-      await db
+      const rows = await db
         .update(documents)
         .set({
           businessStatus: "pending_review",
           processingStatus: "review_required",
           updatedAt: new Date(),
         })
-        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)));
+        .where(and(eq(documents.tenantId, ctx.tenantId), eq(documents.id, documentId)))
+        .returning({ id: documents.id });
+      if (rows.length === 0) return errResult("Dokument nenalezen nebo nepatří do tohoto workspace.");
       return okResult(documentId, "document", ["Stav nastaven na kontrolu — dokončete review v UI dokumentů."]);
     } catch (e) {
       return errResult(e instanceof Error ? e.message : "Chyba při označení dokumentu.");
