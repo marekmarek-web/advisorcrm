@@ -47,6 +47,12 @@ import {
   WarningsBlock,
 } from "./AssistantExecutionUI";
 import type { StepOutcomeSummary, StepPreviewItem } from "@/lib/ai/assistant-execution-ui";
+import {
+  listAdvisorAssistantConversations,
+  loadAdvisorAssistantConversationHistory,
+  type AdvisorAssistantConversationListItemDto,
+} from "@/app/actions/assistant-conversations";
+import type { AdvisorAssistantHistoryMessageDto } from "@/lib/ai/assistant-history-mapper";
 
 const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
 
@@ -54,10 +60,11 @@ type DraftAction = { type: string; label: string; payload: Record<string, unknow
 type ClientCandidate = { clientId: string; displayName?: string };
 
 type ChatMessage =
-  | { role: "user"; content: string }
+  | { role: "user"; content: string; stableKey?: string }
   | {
       role: "assistant";
       content: string;
+      stableKey?: string;
       suggestedActions?: SuggestedAction[];
       warnings?: string[];
       reviewId?: string;
@@ -80,6 +87,30 @@ type ChatMessage =
       suggestedNextSteps?: string[];
       hasPartialFailure?: boolean;
     };
+
+function historyDtoToChatMessages(dtos: AdvisorAssistantHistoryMessageDto[]): ChatMessage[] {
+  return dtos.map((d) => {
+    if (d.kind === "user") {
+      return { role: "user", content: d.content, stableKey: d.stableKey };
+    }
+    return {
+      role: "assistant",
+      content: d.content,
+      stableKey: d.stableKey,
+      suggestedActions: [],
+      warnings: d.warnings,
+      executionState: d.executionState ?? undefined,
+      contextState: d.contextState ?? undefined,
+    };
+  });
+}
+
+function formatAssistantConversationLabel(c: AdvisorAssistantConversationListItemDto): string {
+  const d = new Date(c.updatedAtIso);
+  const when = Number.isNaN(d.getTime()) ? "" : d.toLocaleString("cs-CZ", { dateStyle: "short", timeStyle: "short" });
+  const ch = c.channel?.replace(/_/g, " ") ?? "konverzace";
+  return `${when} · ${ch}`;
+}
 
 type UploadPhase = "idle" | "uploading" | "processing";
 
@@ -146,6 +177,11 @@ export function AiAssistantDrawer() {
   const routeOpportunityId = parsePortalOpportunityIdFromPathname(pathname) ?? null;
   const [assistantSessionId, setAssistantSessionId] = useState<string | undefined>(undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [assistantConversationsList, setAssistantConversationsList] = useState<
+    AdvisorAssistantConversationListItemDto[]
+  >([]);
+  const [conversationPickerLoading, setConversationPickerLoading] = useState(false);
+  const [historyHydrationLoading, setHistoryHydrationLoading] = useState(false);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
@@ -205,6 +241,54 @@ export function AiAssistantDrawer() {
       /* ignore */
     }
   }, []);
+
+  const startNewAssistantConversation = useCallback(() => {
+    setMessages([]);
+    setAssistantSessionId(undefined);
+    try {
+      sessionStorage.removeItem(AI_ASSISTANT_API_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setConversationPickerLoading(true);
+    setHistoryHydrationLoading(true);
+    void (async () => {
+      try {
+        let sid: string | undefined;
+        try {
+          sid = sessionStorage.getItem(AI_ASSISTANT_API_SESSION_KEY) ?? undefined;
+        } catch {
+          /* ignore */
+        }
+        if (!sid) sid = assistantSessionIdRef.current;
+        if (sid) {
+          setAssistantSessionId((prev) => prev ?? sid);
+        }
+        const list = await listAdvisorAssistantConversations();
+        if (cancelled) return;
+        setAssistantConversationsList(list);
+        if (sid) {
+          const hist = await loadAdvisorAssistantConversationHistory(sid);
+          if (!cancelled && hist.ok) {
+            setMessages(historyDtoToChatMessages(hist.messages));
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setConversationPickerLoading(false);
+          setHistoryHydrationLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const prevRouteContactIdRef = useRef<string | null>(routeContactId);
   useEffect(() => {
@@ -650,6 +734,52 @@ export function AiAssistantDrawer() {
               <X size={22} />
             </button>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label htmlFor="aidv-assistant-conversation-select" className="text-xs font-bold text-[color:var(--wp-text-secondary)] shrink-0">
+              Konverzace (7 dní)
+            </label>
+            <select
+              id="aidv-assistant-conversation-select"
+              className="flex-1 min-w-[180px] min-h-[40px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 py-1.5 text-xs font-medium text-[color:var(--wp-text)]"
+              disabled={conversationPickerLoading || chatLoading}
+              value={assistantSessionId ?? "__new__"}
+              onChange={async (e) => {
+                const v = e.target.value;
+                if (v === "__new__") {
+                  startNewAssistantConversation();
+                  return;
+                }
+                setAssistantSessionId(v);
+                try {
+                  sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, v);
+                } catch {
+                  /* ignore */
+                }
+                setHistoryHydrationLoading(true);
+                const hist = await loadAdvisorAssistantConversationHistory(v);
+                setHistoryHydrationLoading(false);
+                if (hist.ok) {
+                  setMessages(historyDtoToChatMessages(hist.messages));
+                } else {
+                  toast.showToast(hist.error, "error");
+                }
+              }}
+            >
+              <option value="__new__">Nová konverzace</option>
+              {assistantSessionId &&
+                !assistantConversationsList.some((c) => c.id === assistantSessionId) && (
+                  <option value={assistantSessionId}>Aktuální (mimo seznam 7 dní)</option>
+                )}
+              {assistantConversationsList.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {formatAssistantConversationLabel(c)}
+                </option>
+              ))}
+            </select>
+            {conversationPickerLoading && (
+              <Loader2 size={16} className="animate-spin text-indigo-500 shrink-0" aria-hidden />
+            )}
+          </div>
         </div>
 
         {/* Rychlé akce pro poradce (nahrání jen v pásu níže — bez duplicity) */}
@@ -883,7 +1013,9 @@ export function AiAssistantDrawer() {
 
         {/* Chat history */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-4 space-y-3">
+          <div
+            className={`flex-1 overflow-y-auto px-4 space-y-3 ${historyHydrationLoading ? "opacity-60 pointer-events-none" : ""}`}
+          >
             {latestAssistantContext?.lockedClientId && (
               <div className="sticky top-0 z-10 py-2">
                 <ContextLockBadge
@@ -899,7 +1031,7 @@ export function AiAssistantDrawer() {
             )}
             {messages.map((m, i) => (
               <div
-                key={i}
+                key={m.role === "user" || m.role === "assistant" ? (m.stableKey ?? `live-${i}`) : `row-${i}`}
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div

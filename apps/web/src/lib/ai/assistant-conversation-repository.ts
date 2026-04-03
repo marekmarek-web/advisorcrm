@@ -1,5 +1,6 @@
-import { db, assistantConversations, assistantMessages, and, eq, desc, isNotNull } from "db";
+import { db, assistantConversations, assistantMessages, and, eq, desc, isNotNull, gte } from "db";
 import type { AssistantSession } from "./assistant-session";
+import type { AssistantConversationRow } from "./assistant-history-mapper";
 import type { AssistantChannel } from "./assistant-domain-model";
 import type { CanonicalIntent, ExecutionPlan } from "./assistant-domain-model";
 import { isResumableExecutionPlanStatus, normalizeExecutionPlanFromDb } from "./assistant-plan-snapshot";
@@ -134,6 +135,10 @@ export async function loadResumableExecutionPlanSnapshot(conversationId: string)
   return plan;
 }
 
+/**
+ * Poslední zprávy podle ID konverzace (bez kontroly tenant/user).
+ * Pro poradce v UI použijte {@link loadAssistantConversationHistoryMessagesForUser}.
+ */
 export async function loadRecentConversationMessages(
   conversationId: string,
   limit = 20,
@@ -163,4 +168,114 @@ export async function loadRecentConversationMessages(
     content: r.content,
     createdAt: r.createdAt,
   }));
+}
+
+/** Advisor: konverzace uživatele v tenantovi aktualizované od `since` (např. posledních 7 dní). */
+export async function listAssistantConversationsForUser(
+  tenantId: string,
+  userId: string,
+  options?: { since?: Date; limit?: number },
+): Promise<
+  {
+    id: string;
+    channel: string | null;
+    lockedContactId: string | null;
+    updatedAt: Date;
+    createdAt: Date;
+  }[]
+> {
+  const since = options?.since ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const limit = Math.min(Math.max(options?.limit ?? 40, 1), 60);
+  return db
+    .select({
+      id: assistantConversations.id,
+      channel: assistantConversations.channel,
+      lockedContactId: assistantConversations.lockedContactId,
+      updatedAt: assistantConversations.updatedAt,
+      createdAt: assistantConversations.createdAt,
+    })
+    .from(assistantConversations)
+    .where(
+      and(
+        eq(assistantConversations.tenantId, tenantId),
+        eq(assistantConversations.userId, userId),
+        gte(assistantConversations.updatedAt, since),
+      ),
+    )
+    .orderBy(desc(assistantConversations.updatedAt))
+    .limit(limit);
+}
+
+export type AssistantMessageHistoryDbRow = {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  createdAt: Date;
+  meta: Record<string, unknown> | null;
+  executionPlanSnapshot: unknown;
+};
+
+/**
+ * Posledních `limit` zpráv konverzace (nejnovější první), pouze pokud konverzace patří tenant+user.
+ * Pro zobrazení chronologicky se pole na konci obrátí.
+ */
+export async function loadAssistantConversationHistoryMessagesForUser(
+  conversationId: string,
+  tenantId: string,
+  userId: string,
+  limit = 60,
+): Promise<{ conversation: AssistantConversationRow | null; messages: AssistantMessageHistoryDbRow[] }> {
+  const [conv] = await db
+    .select({
+      id: assistantConversations.id,
+      channel: assistantConversations.channel,
+      lockedContactId: assistantConversations.lockedContactId,
+      updatedAt: assistantConversations.updatedAt,
+    })
+    .from(assistantConversations)
+    .where(
+      and(
+        eq(assistantConversations.id, conversationId),
+        eq(assistantConversations.tenantId, tenantId),
+        eq(assistantConversations.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!conv) {
+    return { conversation: null, messages: [] };
+  }
+
+  const conversation: AssistantConversationRow = {
+    id: conv.id,
+    channel: conv.channel,
+    lockedContactId: conv.lockedContactId,
+    updatedAt: conv.updatedAt,
+  };
+
+  const cap = Math.max(1, Math.min(limit, 100));
+  const rows = await db
+    .select({
+      id: assistantMessages.id,
+      role: assistantMessages.role,
+      content: assistantMessages.content,
+      createdAt: assistantMessages.createdAt,
+      meta: assistantMessages.meta,
+      executionPlanSnapshot: assistantMessages.executionPlanSnapshot,
+    })
+    .from(assistantMessages)
+    .where(eq(assistantMessages.conversationId, conversationId))
+    .orderBy(desc(assistantMessages.createdAt))
+    .limit(cap);
+
+  const messages: AssistantMessageHistoryDbRow[] = rows.map((r) => ({
+    id: r.id,
+    role: r.role as "user" | "assistant" | "system",
+    content: r.content,
+    createdAt: r.createdAt,
+    meta: (r.meta as Record<string, unknown> | null) ?? null,
+    executionPlanSnapshot: r.executionPlanSnapshot,
+  }));
+
+  return { conversation, messages: messages.reverse() };
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition, useCallback, useMemo } from
 import {
   Send,
   ChevronRight,
+  Loader2,
   RotateCcw,
   CheckSquare,
   User,
@@ -34,8 +35,21 @@ import {
   WarningsBlock,
 } from "@/app/portal/AssistantExecutionUI";
 import type { StepOutcomeSummary, StepPreviewItem } from "@/lib/ai/assistant-execution-ui";
+import {
+  listAdvisorAssistantConversations,
+  loadAdvisorAssistantConversationHistory,
+  type AdvisorAssistantConversationListItemDto,
+} from "@/app/actions/assistant-conversations";
+import type { AdvisorAssistantHistoryMessageDto } from "@/lib/ai/assistant-history-mapper";
 
 const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
+
+function formatAssistantConversationLabel(c: AdvisorAssistantConversationListItemDto): string {
+  const d = new Date(c.updatedAtIso);
+  const when = Number.isNaN(d.getTime()) ? "" : d.toLocaleString("cs-CZ", { dateStyle: "short", timeStyle: "short" });
+  const ch = c.channel?.replace(/_/g, " ") ?? "konverzace";
+  return `${when} · ${ch}`;
+}
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -71,6 +85,28 @@ interface ChatMessage {
   stepOutcomes?: StepOutcomeSummary[];
   suggestedNextSteps?: string[];
   hasPartialFailure?: boolean;
+}
+
+function historyDtoToMobileMessages(dtos: AdvisorAssistantHistoryMessageDto[]): ChatMessage[] {
+  return dtos.map((d) => {
+    if (d.kind === "user") {
+      return {
+        id: `db-${d.stableKey}`,
+        role: "user",
+        text: d.content,
+        timestamp: new Date(d.createdAtIso),
+      };
+    }
+    return {
+      id: `db-${d.stableKey}`,
+      role: "assistant",
+      text: d.content,
+      timestamp: new Date(d.createdAtIso),
+      warnings: d.warnings,
+      executionState: d.executionState ?? undefined,
+      contextState: d.contextState ?? undefined,
+    };
+  });
 }
 
 interface SuggestedAction {
@@ -359,6 +395,11 @@ export function AiAssistantChatScreen() {
   const [assistantSessionId, setAssistantSessionId] = useState<string | undefined>(undefined);
   const assistantSessionIdRef = useRef<string | undefined>(undefined);
   assistantSessionIdRef.current = assistantSessionId;
+  const [assistantConversationsList, setAssistantConversationsList] = useState<
+    AdvisorAssistantConversationListItemDto[]
+  >([]);
+  const [conversationPickerLoading, setConversationPickerLoading] = useState(false);
+  const [historyHydrationLoading, setHistoryHydrationLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -373,17 +414,43 @@ export function AiAssistantChatScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const restored = loadSession();
-    if (restored.length > 0) setMessages(restored);
-  }, []);
+    let cancelled = false;
+    setConversationPickerLoading(true);
+    setHistoryHydrationLoading(true);
+    void (async () => {
+      try {
+        let sid: string | undefined;
+        try {
+          sid = sessionStorage.getItem(AI_ASSISTANT_API_SESSION_KEY) ?? undefined;
+        } catch {
+          /* ignore */
+        }
+        if (sid) setAssistantSessionId(sid);
 
-  useEffect(() => {
-    try {
-      const s = sessionStorage.getItem(AI_ASSISTANT_API_SESSION_KEY);
-      if (s) setAssistantSessionId(s);
-    } catch {
-      /* ignore */
-    }
+        const list = await listAdvisorAssistantConversations();
+        if (cancelled) return;
+        setAssistantConversationsList(list);
+
+        if (sid) {
+          const hist = await loadAdvisorAssistantConversationHistory(sid);
+          if (!cancelled && hist.ok && hist.messages.length > 0) {
+            setMessages(historyDtoToMobileMessages(hist.messages));
+            return;
+          }
+        }
+
+        const restored = loadSession();
+        if (!cancelled && restored.length > 0) setMessages(restored);
+      } finally {
+        if (!cancelled) {
+          setConversationPickerLoading(false);
+          setHistoryHydrationLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const prevRouteContactIdRef = useRef<string | null>(routeContactId);
@@ -711,12 +778,26 @@ export function AiAssistantChatScreen() {
     }
   }
 
-  function clearChat() {
+  const startNewAssistantConversation = useCallback(() => {
     setMessages([]);
+    setAssistantSessionId(undefined);
     setError(null);
     setDraftEmail(null);
-    try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem(AI_ASSISTANT_API_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
     inputRef.current?.focus();
+  }, []);
+
+  function clearChat() {
+    startNewAssistantConversation();
   }
 
   const isEmpty = messages.length === 0;
@@ -731,7 +812,9 @@ export function AiAssistantChatScreen() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Message list */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-4">
+      <div
+        className={`flex-1 min-h-0 overflow-y-auto px-2 py-2 sm:px-4 sm:py-4 space-y-4 ${historyHydrationLoading ? "opacity-60 pointer-events-none" : ""}`}
+      >
         {isEmpty ? (
           <div className="space-y-4 pt-1 sm:space-y-6 sm:pt-4">
             <div className="text-center space-y-2">
@@ -813,6 +896,50 @@ export function AiAssistantChatScreen() {
 
       {/* Input bar */}
       <div className="flex-shrink-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 pt-2 pb-[max(0.75rem,var(--safe-area-bottom))]">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <label htmlFor="aidv-mobile-assistant-conv" className="text-[10px] font-bold text-[color:var(--wp-text-tertiary)] shrink-0">
+            Konverzace (7 dní)
+          </label>
+          <select
+            id="aidv-mobile-assistant-conv"
+            className="flex-1 min-w-0 min-h-[36px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2 py-1 text-[11px] font-medium text-[color:var(--wp-text)]"
+            disabled={conversationPickerLoading || isTyping}
+            value={assistantSessionId ?? "__new__"}
+            onChange={async (e) => {
+              const v = e.target.value;
+              if (v === "__new__") {
+                startNewAssistantConversation();
+                return;
+              }
+              setAssistantSessionId(v);
+              try {
+                sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, v);
+              } catch {
+                /* ignore */
+              }
+              setHistoryHydrationLoading(true);
+              const hist = await loadAdvisorAssistantConversationHistory(v);
+              setHistoryHydrationLoading(false);
+              if (hist.ok) {
+                setMessages(historyDtoToMobileMessages(hist.messages));
+              } else {
+                setError(hist.error);
+              }
+            }}
+          >
+            <option value="__new__">Nová konverzace</option>
+            {assistantSessionId &&
+              !assistantConversationsList.some((c) => c.id === assistantSessionId) && (
+                <option value={assistantSessionId}>Aktuální (mimo seznam 7 dní)</option>
+              )}
+            {assistantConversationsList.map((c) => (
+              <option key={c.id} value={c.id}>
+                {formatAssistantConversationLabel(c)}
+              </option>
+            ))}
+          </select>
+          {conversationPickerLoading ? <Loader2 size={14} className="animate-spin text-indigo-500 shrink-0" /> : null}
+        </div>
         {!isEmpty ? (
           <div className="flex items-center justify-between mb-2">
             <button
