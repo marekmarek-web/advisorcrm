@@ -77,6 +77,8 @@ function intentFromScenario(scenario: typeof goldenScenarios[number]): Canonical
             createClientPortalNotification: "notify_client_portal",
             scheduleCalendarEvent: "schedule_meeting",
             createMeetingNote: "create_note",
+            createInternalNote: "create_internal_note",
+            triggerDocumentReview: "request_document_review",
           };
           return (reverseMap[a] ?? scenario.expectedIntent.intentType) as any;
         })

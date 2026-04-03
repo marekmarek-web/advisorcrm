@@ -85,6 +85,7 @@ export const ASSISTANT_PLAYBOOKS: AssistantPlaybook[] = [
       i.intentType === "create_task" ||
       i.intentType === "create_followup" ||
       i.intentType === "create_note" ||
+      i.intentType === "create_internal_note" ||
       /schůzk|schuzk|úkol|ukol|follow|poznám|zápis|brief/i.test(m),
     defaultProductDomain: null,
     priorityMissingHints: ["datum a čas", "účastníci", "agenda", "vazba na klienta"],

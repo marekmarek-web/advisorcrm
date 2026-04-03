@@ -30,8 +30,12 @@ vi.mock("db", () => ({
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 import { emptyCanonicalIntent, type CanonicalIntent } from "../assistant-domain-model";
 import type { EntityResolutionResult } from "../assistant-entity-resolution";
-import { buildExecutionPlan, confirmAllSteps, getStepsAwaitingConfirmation } from "../assistant-execution-plan";
-import { buildVerifiedResult } from "../assistant-execution-engine";
+import {
+  buildExecutionPlan,
+  confirmAllSteps,
+  getStepsAwaitingConfirmation,
+} from "../assistant-execution-plan";
+import { buildVerifiedResult, mergeWriteStepParamsFromCompletedDependencies } from "../assistant-execution-engine";
 import { getOrCreateSession, updateSessionContext, lockAssistantClient } from "../assistant-session";
 
 const CONTACT_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
@@ -152,6 +156,62 @@ describe("buildExecutionPlan — dokument / portfolio / AI review / portál", ()
     expect(step?.action).toBe("linkDocumentToMaterialRequest");
     expect(step?.params.documentId).toBe(DOC_ID);
     expect(step?.params.materialRequestId).toBe(MATERIAL_REQ_ID);
+  });
+});
+
+describe("3D-2 multi_action — opportunity chaining", () => {
+  it("create_opportunity before create_task adds dependsOn for new opportunity id injection", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "multi_action",
+        requestedActions: ["create_opportunity", "create_task"],
+        productDomain: "hypo",
+        extractedFacts: [{ key: "taskTitle", value: "Doplnit podklady", source: "user_text" }],
+      }),
+      resolutionWithClient(),
+    );
+    const opp = plan.steps.find((s) => s.action === "createOpportunity");
+    const task = plan.steps.find((s) => s.action === "createTask");
+    expect(opp).toBeDefined();
+    expect(task).toBeDefined();
+    expect(task?.dependsOn).toContain(opp!.stepId);
+    expect(task?.params.opportunityId).toBeUndefined();
+  });
+});
+
+describe("mergeWriteStepParamsFromCompletedDependencies", () => {
+  it("injects opportunityId from succeeded createOpportunity", () => {
+    const oppStep = {
+      stepId: "opp1",
+      action: "createOpportunity" as const,
+      params: { contactId: CONTACT_ID },
+      label: "O",
+      requiresConfirmation: true,
+      isReadOnly: false,
+      dependsOn: [],
+      status: "succeeded" as const,
+      result: {
+        ok: true,
+        outcome: "executed" as const,
+        entityId: OPP_ID,
+        entityType: "opportunity",
+        warnings: [],
+        error: null,
+      },
+    };
+    const taskStep = {
+      stepId: "t1",
+      action: "createTask" as const,
+      params: { contactId: CONTACT_ID, taskTitle: "X" },
+      label: "T",
+      requiresConfirmation: true,
+      isReadOnly: false,
+      dependsOn: ["opp1"],
+      status: "confirmed" as const,
+      result: null,
+    };
+    const merged = mergeWriteStepParamsFromCompletedDependencies(taskStep, [oppStep, taskStep]);
+    expect(merged.opportunityId).toBe(OPP_ID);
   });
 });
 

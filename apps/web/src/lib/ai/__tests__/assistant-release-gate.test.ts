@@ -77,6 +77,8 @@ function intentFromGolden(scenario: typeof goldenScenarios[number]): CanonicalIn
             createClientPortalNotification: "notify_client_portal",
             scheduleCalendarEvent: "schedule_meeting",
             createMeetingNote: "create_note",
+            createInternalNote: "create_internal_note",
+            triggerDocumentReview: "request_document_review",
             createReminder: "create_reminder",
           };
           return (reverseMap[a] ?? scenario.expectedIntent.intentType) as any;
@@ -169,6 +171,8 @@ describe("Phase 2H: Release Gate", () => {
               approveAiContractReview: "approve_ai_contract_review",
               applyAiContractReviewToCrm: "apply_ai_review_to_crm",
               createClientPortalNotification: "notify_client_portal",
+              createInternalNote: "create_internal_note",
+              triggerDocumentReview: "request_document_review",
               createReminder: "create_reminder",
             };
             return (reverseMap[a] ?? f.expectedIntent.intentType ?? "general_chat") as any;

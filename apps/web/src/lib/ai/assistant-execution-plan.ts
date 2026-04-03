@@ -22,10 +22,12 @@ const INTENT_TO_WRITE_ACTION: Partial<Record<CanonicalIntentType, WriteActionTyp
   create_followup: "createFollowUp",
   schedule_meeting: "scheduleCalendarEvent",
   create_note: "createMeetingNote",
+  create_internal_note: "createInternalNote",
   append_note: "appendMeetingNote",
   attach_document: "attachDocumentToClient",
   attach_document_to_opportunity: "attachDocumentToOpportunity",
   classify_document: "classifyDocument",
+  request_document_review: "triggerDocumentReview",
   request_client_documents: "createMaterialRequest",
   create_client_request: "createClientRequest",
   create_material_request: "createMaterialRequest",
@@ -130,7 +132,49 @@ function buildStepParams(
     }
   }
 
+  if (action === "scheduleCalendarEvent") {
+    const rd = typeof params.resolvedDate === "string" ? params.resolvedDate.trim() : "";
+    if (!params.startAt && rd) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(rd)) {
+        params.startAt = `${rd}T09:00:00.000Z`;
+      } else if (/\d{4}-\d{2}-\d{2}T/.test(rd)) {
+        params.startAt = rd;
+      }
+    }
+  }
+
   return params;
+}
+
+/** Write actions that can receive opportunityId from a preceding createOpportunity in multi_action (3D-2). */
+const MULTI_ACTION_OPPORTUNITY_CHILD_ACTIONS = new Set<WriteActionType>([
+  "createTask",
+  "createFollowUp",
+  "scheduleCalendarEvent",
+  "createMeetingNote",
+  "createInternalNote",
+  "createMaterialRequest",
+]);
+
+/**
+ * When multi_action includes createOpportunity, later steps without opportunityId
+ * depend on it so the engine can run waves in order and inject the new id.
+ */
+export function applyMultiActionOpportunityChaining(steps: ExecutionStep[], intent: CanonicalIntent): void {
+  if (intent.intentType !== "multi_action") return;
+  const oppIdx = steps.findIndex((s) => s.action === "createOpportunity");
+  if (oppIdx < 0) return;
+  const oppStep = steps[oppIdx];
+  if (!oppStep) return;
+  for (let i = oppIdx + 1; i < steps.length; i++) {
+    const s = steps[i]!;
+    if (!MULTI_ACTION_OPPORTUNITY_CHILD_ACTIONS.has(s.action)) continue;
+    const oid = s.params.opportunityId;
+    if (oid != null && oid !== "") continue;
+    if (!s.dependsOn.includes(oppStep.stepId)) {
+      s.dependsOn = [...s.dependsOn, oppStep.stepId];
+    }
+  }
 }
 
 /**
@@ -150,7 +194,7 @@ const REQUIRED_FIELDS: Record<string, FieldRequirement[]> = {
   scheduleCalendarEvent: ["contactId", ["startAt", "resolvedDate"]],
   createMeetingNote: ["contactId"],
   appendMeetingNote: ["meetingNoteId"],
-  createInternalNote: [],
+  createInternalNote: ["contactId"],
   attachDocumentToClient: ["contactId", "documentId"],
   attachDocumentToOpportunity: ["opportunityId", "documentId"],
   classifyDocument: ["documentId", ["documentType", "classification"]],
@@ -256,6 +300,8 @@ export function buildExecutionPlan(
       });
     }
   }
+
+  applyMultiActionOpportunityChaining(steps, intent);
 
   const missingAny = steps.some((s) => computeWriteActionMissingFields(s.action, s.params).length > 0);
 

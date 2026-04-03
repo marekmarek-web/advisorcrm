@@ -158,6 +158,27 @@ export function idempotentHitResultFromLedgerPayload(
   };
 }
 
+/**
+ * Injects opportunityId from a succeeded createOpportunity predecessor (3D-2 multi_action).
+ * Exported for unit tests.
+ */
+export function mergeWriteStepParamsFromCompletedDependencies(
+  step: ExecutionStep,
+  allSteps: ExecutionStep[],
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...step.params };
+  for (const depId of step.dependsOn) {
+    const dep = allSteps.find((s) => s.stepId === depId);
+    if (!dep?.result?.ok || !dep.result.entityId) continue;
+    if (dep.action !== "createOpportunity") continue;
+    if (dep.result.entityType && dep.result.entityType !== "opportunity") continue;
+    const cur = merged.opportunityId;
+    if (cur != null && cur !== "") continue;
+    merged.opportunityId = dep.result.entityId;
+  }
+  return merged;
+}
+
 async function recordExecution(
   step: ExecutionStep,
   ctx: ExecutionContext,
@@ -348,12 +369,16 @@ export async function executePlan(
           return;
         }
 
-        updatedSteps[idx] = { ...updatedSteps[idx]!, status: "executing" };
-        const result = await executeStep(step, ctx, planLedger);
+        const baseStep = updatedSteps[idx]!;
+        const mergedParams = mergeWriteStepParamsFromCompletedDependencies(baseStep, updatedSteps);
+        const stepToRun = { ...baseStep, params: mergedParams };
+        updatedSteps[idx] = { ...baseStep, status: "executing", params: mergedParams };
+        const result = await executeStep(stepToRun, ctx, planLedger);
         updatedSteps[idx] = {
           ...updatedSteps[idx]!,
           status: result.ok ? "succeeded" : "failed",
           result,
+          params: mergedParams,
         };
         if (!result.ok) {
           anyFailed = true;

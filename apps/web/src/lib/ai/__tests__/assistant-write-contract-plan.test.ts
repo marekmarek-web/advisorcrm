@@ -87,6 +87,21 @@ describe("buildExecutionPlan — missing fields → draft", () => {
     expect(computeWriteActionMissingFields(step!.action, step!.params)).toContain("startAt|resolvedDate");
   });
 
+  it("schedule_meeting with resolved date-only derives startAt and awaits confirmation", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "schedule_meeting",
+        requestedActions: ["schedule_meeting"],
+        temporalExpressions: [{ raw: "pátek", resolved: "2026-04-10", confidence: 1 }],
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.status).toBe("awaiting_confirmation");
+    const step = plan.steps.find((s) => s.action === "scheduleCalendarEvent");
+    expect(step?.params.startAt).toBe("2026-04-10T09:00:00.000Z");
+    expect(computeWriteActionMissingFields(step!.action, step!.params)).toHaveLength(0);
+  });
+
   it("append_note without meetingNoteId stays draft", () => {
     const plan = buildExecutionPlan(
       intent({
@@ -100,6 +115,35 @@ describe("buildExecutionPlan — missing fields → draft", () => {
     const step = plan.steps[0];
     expect(step?.action).toBe("appendMeetingNote");
     expect(computeWriteActionMissingFields(step!.action, step!.params)).toContain("meetingNoteId");
+  });
+
+  it("create_internal_note maps to createInternalNote with contactId", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "create_internal_note",
+        requestedActions: ["create_internal_note"],
+        extractedFacts: [{ key: "noteContent", value: "Interní info", source: "user_text" }],
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.steps[0]?.action).toBe("createInternalNote");
+    expect(plan.steps[0]?.params.contactId).toBe(CONTACT_ID);
+    expect(plan.steps[0]?.params.noteContent).toBe("Interní info");
+    expect(plan.status).toBe("awaiting_confirmation");
+  });
+
+  it("request_document_review maps to triggerDocumentReview", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "request_document_review",
+        requestedActions: ["request_document_review"],
+        targetDocument: { ref: DOC_ID, resolved: true },
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.steps[0]?.action).toBe("triggerDocumentReview");
+    expect(plan.steps[0]?.params.documentId).toBe(DOC_ID);
+    expect(plan.status).toBe("awaiting_confirmation");
   });
 
   it("classify_document with type resolves to awaiting_confirmation", () => {

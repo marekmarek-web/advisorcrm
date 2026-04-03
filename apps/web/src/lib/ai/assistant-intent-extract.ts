@@ -39,8 +39,10 @@ Typy záměrů:
 - create_followup: vytvořit follow-up úkol s termínem
 - schedule_meeting: naplánovat schůzku
 - create_note / append_note: poznámka ke klientovi
+- create_internal_note: interní poznámka (vidí jen tým, doména interní)
 - attach_document: připojit dokument
 - classify_document: klasifikovat dokument
+- request_document_review: označit dokument ke kontrole / spustit review workflow (zápis stavu dokumentu)
 - request_client_documents: vyžádat podklady od klienta
 - create_client_request: požadavek klienta
 - create_material_request: materiálový požadavek
