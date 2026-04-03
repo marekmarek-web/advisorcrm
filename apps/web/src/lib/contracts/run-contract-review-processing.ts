@@ -24,7 +24,9 @@ import {
   isAiReviewLlmPostprocessEnabled,
   parseAiReviewClientMatchKind,
   runAiReviewClientMatchLlm,
+  runAdvisorDocumentSummaryForAdvisorLlm,
 } from "@/lib/ai/ai-review-llm-postprocess";
+import { getAiReviewPromptId } from "@/lib/ai/prompt-model-registry";
 
 export type RunContractReviewProcessingParams = {
   id: string;
@@ -331,8 +333,62 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     processingStage: "finalizing",
   }).catch(() => {});
 
+  let advisorSummaryTrace: Record<string, unknown> = {};
+  const traceRaw = pipelineResult.extractionTrace as Record<string, unknown> | undefined;
+  if (getAiReviewPromptId("documentSummaryForAdvisor")) {
+    const docSummaryPayload = {
+      documentClassification: data.documentClassification,
+      documentMeta: data.documentMeta,
+      extractedFieldKeys: Object.keys(data.extractedFields ?? {}),
+      parties: data.parties ?? {},
+      sensitivityProfile: data.sensitivityProfile ?? null,
+    };
+    const reviewPayload = {
+      processingStatus: pipelineResult.processingStatus,
+      reasonsForReview,
+      validationWarnings: pipelineResult.validationWarnings,
+      confidence: pipelineResult.confidence,
+      llmReviewDecisionText:
+        typeof traceRaw?.llmReviewDecisionText === "string"
+          ? String(traceRaw.llmReviewDecisionText).slice(0, 8000)
+          : undefined,
+    };
+    const clientMatchPayload = {
+      candidates: clientMatchCandidates.slice(0, 8).map((c) => ({
+        clientId: c.clientId,
+        displayName: c.displayName,
+        score: c.score,
+        reasons: c.reasons,
+      })),
+      llmClientMatchKind: llmClientMatchKind ?? undefined,
+      llmClientMatchTextHead: clientMatchLlm?.ok ? clientMatchLlm.text.slice(0, 4000) : undefined,
+    };
+    const advStarted = Date.now();
+    const advRes = await runAdvisorDocumentSummaryForAdvisorLlm({
+      documentSummaryPayloadJson: JSON.stringify(docSummaryPayload),
+      reviewDecisionPayloadJson: JSON.stringify(reviewPayload),
+      clientMatchPayloadJson: JSON.stringify(clientMatchPayload),
+    });
+    if (advRes.ok) {
+      advisorSummaryTrace = {
+        advisorDocumentSummary: {
+          text: advRes.text.slice(0, 48_000),
+          generatedAt: new Date().toISOString(),
+          durationMs: advRes.durationMs,
+        },
+        advisorDocumentSummaryTotalMs: Date.now() - advStarted,
+      };
+    } else {
+      advisorSummaryTrace = {
+        advisorDocumentSummaryError: advRes.error?.slice(0, 500) ?? "prompt_call_failed",
+        advisorDocumentSummaryDurationMs: advRes.durationMs,
+      };
+    }
+  }
+
   const mergedTrace = {
     ...pipelineResult.extractionTrace,
+    ...advisorSummaryTrace,
     preprocessDurationMs,
     pipelineDurationMs,
     clientMatchDurationMs,

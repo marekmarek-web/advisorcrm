@@ -66,6 +66,12 @@ export const AI_REVIEW_PROMPT_REQUIRED_VARS: Partial<Record<AiReviewPromptKey, r
     "preprocess_warnings",
   ],
   clientMatch: ["extracted_client_payload", "existing_client_candidates"],
+  /** Must match Prompt Builder template variable ids. */
+  documentSummaryForAdvisor: [
+    "document_summary_payload",
+    "review_decision_payload",
+    "client_match_payload",
+  ],
 };
 
 export function getRequiredVarsForAiReviewPrompt(key: AiReviewPromptKey): readonly string[] | undefined {
@@ -132,6 +138,11 @@ function defaultStringForRequiredVar(name: string, ctx: Record<string, string>):
       return ctx.extracted_client_payload?.trim() || ctx.extraction_parties_json?.trim() || "{}";
     case "db_candidates_json":
       return ctx.existing_client_candidates?.trim() || ctx.db_candidates_json?.trim() || "[]";
+    case "document_summary_payload":
+    case "review_decision_payload":
+      return "{}";
+    case "client_match_payload":
+      return '{"candidates":[]}';
     default:
       return "(none)";
   }

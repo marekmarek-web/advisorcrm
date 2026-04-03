@@ -1239,6 +1239,9 @@ export function mapApiToExtractionDocument(
   const norm = insights?.normalizedPipelineClassification;
   const baseType = (detail.detectedDocumentType as string) ?? "Neznámý typ";
   const trace = detail.extractionTrace as Record<string, unknown> | undefined;
+  const advisorSummary = trace?.advisorDocumentSummary as { text?: unknown } | undefined;
+  const llmExecutiveBrief =
+    typeof advisorSummary?.text === "string" ? advisorSummary.text : undefined;
   const aiRaw = trace?.aiClassifierJson as Record<string, string> | undefined;
   let documentTypeLabel = humanPrimaryTypeHeading(baseType);
   if (aiRaw && (aiRaw.documentType || aiRaw.productFamily)) {
@@ -1257,6 +1260,7 @@ export function mapApiToExtractionDocument(
           | Array<{ code?: string; message: string }>
           | undefined,
         extractionTrace: trace,
+        llmExecutiveBrief,
       })
     : undefined;
 

@@ -1,6 +1,7 @@
 /**
- * Optional LLM steps: review decision and client match (Prompt Builder).
- * Disabled by default — enable with AI_REVIEW_LLM_POSTPROCESS=true.
+ * Optional LLM steps: review decision, client match, advisor document summary (Prompt Builder).
+ * Review decision / client match: enable with AI_REVIEW_LLM_POSTPROCESS=true.
+ * Advisor summary: runs when OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID is set.
  */
 
 import { createAiReviewResponseFromPrompt } from "@/lib/openai";
@@ -73,5 +74,38 @@ export async function runAiReviewClientMatchLlm(params: {
   );
   const durationMs = Date.now() - started;
   if (!res.ok) return { ok: false, durationMs };
+  return { ok: true, text: res.text, durationMs };
+}
+
+/**
+ * Narrative advisor summary from extraction + review state + client match (Prompt Builder).
+ * Runs only when `OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID` is set.
+ */
+export async function runAdvisorDocumentSummaryForAdvisorLlm(params: {
+  documentSummaryPayloadJson: string;
+  reviewDecisionPayloadJson: string;
+  clientMatchPayloadJson: string;
+}): Promise<{ ok: true; text: string; durationMs: number } | { ok: false; durationMs: number; error?: string }> {
+  const started = Date.now();
+  const promptId = getAiReviewPromptId("documentSummaryForAdvisor");
+  if (!promptId) return { ok: false, durationMs: Date.now() - started };
+  const document_summary_payload = capAiReviewPromptString(params.documentSummaryPayloadJson);
+  const review_decision_payload = capAiReviewPromptString(params.reviewDecisionPayloadJson);
+  const client_match_payload = capAiReviewPromptString(params.clientMatchPayloadJson);
+  const res = await createAiReviewResponseFromPrompt(
+    {
+      promptKey: "documentSummaryForAdvisor",
+      promptId,
+      version: getAiReviewPromptVersion("documentSummaryForAdvisor"),
+      variables: {
+        document_summary_payload,
+        review_decision_payload,
+        client_match_payload,
+      },
+    },
+    { store: false, routing: { category: "ai_review", maxOutputTokens: 8192 } }
+  );
+  const durationMs = Date.now() - started;
+  if (!res.ok) return { ok: false, durationMs, error: res.error };
   return { ok: true, text: res.text, durationMs };
 }

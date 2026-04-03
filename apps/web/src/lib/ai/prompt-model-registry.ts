@@ -33,6 +33,7 @@ export const AI_REVIEW_PROMPT_KEYS = [
   "confirmationDocumentExtraction",
   "reviewDecision",
   "clientMatch",
+  "documentSummaryForAdvisor",
 ] as const;
 
 export type AiReviewPromptKey = (typeof AI_REVIEW_PROMPT_KEYS)[number];
@@ -59,12 +60,14 @@ const AI_REVIEW_ENV_KEYS: Record<AiReviewPromptKey, string> = {
   confirmationDocumentExtraction: "OPENAI_PROMPT_AI_REVIEW_CONFIRMATION_DOCUMENT_ID",
   reviewDecision: "OPENAI_PROMPT_AI_REVIEW_REVIEW_DECISION_ID",
   clientMatch: "OPENAI_PROMPT_AI_REVIEW_CLIENT_MATCH_ID",
+  documentSummaryForAdvisor: "OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID",
 };
 
 const AI_REVIEW_VERSION_KEYS: Partial<Record<AiReviewPromptKey, string>> = {
   docClassifierV2: "OPENAI_PROMPT_AI_REVIEW_DOC_CLASSIFIER_VERSION",
   reviewDecision: "OPENAI_PROMPT_AI_REVIEW_REVIEW_DECISION_VERSION",
   clientMatch: "OPENAI_PROMPT_AI_REVIEW_CLIENT_MATCH_VERSION",
+  documentSummaryForAdvisor: "OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_VERSION",
 };
 
 export type AiReviewRegistryEntry = {
@@ -204,6 +207,13 @@ export const AI_REVIEW_REGISTRY: Record<AiReviewPromptKey, AiReviewRegistryEntry
     envKey: AI_REVIEW_ENV_KEYS.clientMatch,
     versionEnvKey: AI_REVIEW_VERSION_KEYS.clientMatch,
     purpose: "LLM client match suggestion",
+  },
+  documentSummaryForAdvisor: {
+    key: "documentSummaryForAdvisor",
+    category: "ai_review",
+    envKey: AI_REVIEW_ENV_KEYS.documentSummaryForAdvisor,
+    versionEnvKey: AI_REVIEW_VERSION_KEYS.documentSummaryForAdvisor,
+    purpose: "Narrative document summary for advisor (post extraction + match)",
   },
 };
 

@@ -135,11 +135,20 @@ type BuildArgs = {
   reasonsForReview?: string[];
   validationWarnings?: Array<{ code?: string; message: string }>;
   extractionTrace?: Record<string, unknown>;
+  /** Z `extraction_trace.advisorDocumentSummary.text` po dokončení pipeline. */
+  llmExecutiveBrief?: string;
 };
 
 export function buildAdvisorReviewViewModel(args: BuildArgs): AdvisorReviewViewModel {
-  const { envelope, aiClassifierJson, detectedDocumentTypeLabel, reasonsForReview, validationWarnings, extractionTrace } =
-    args;
+  const {
+    envelope,
+    aiClassifierJson,
+    detectedDocumentTypeLabel,
+    reasonsForReview,
+    validationWarnings,
+    extractionTrace,
+    llmExecutiveBrief,
+  } = args;
   const primary = envelope.documentClassification.primaryType as PrimaryDocumentType;
 
   let recognition = detectedDocumentTypeLabel?.trim() || "";
@@ -166,12 +175,14 @@ export function buildAdvisorReviewViewModel(args: BuildArgs): AdvisorReviewViewM
 
   const uniqueManual = [...new Set(manualChecklist.map((s) => s.trim()).filter(Boolean))].slice(0, 24);
 
+  const brief = llmExecutiveBrief?.trim();
   return {
     recognition,
     client: clientLine(envelope),
     product: productLine(envelope),
     payments: formatMoneyLine(envelope),
     healthSensitive: sensitivityLine(envelope),
+    ...(brief ? { llmExecutiveBrief: brief } : {}),
     manualChecklist: uniqueManual,
     workActions: mergeWorkActions(envelope),
     debugSnapshot: buildDebugSnapshot(envelope, {

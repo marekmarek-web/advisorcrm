@@ -29,6 +29,7 @@ import {
   ListChecks,
   Wrench,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { getDocumentTypeLabel } from "@/lib/ai/document-messages";
@@ -293,6 +294,16 @@ function AdvisorOverviewCard({ doc }: { doc: ExtractionDocument }) {
       <p className="text-xs text-[color:var(--wp-text-tertiary)] mb-4 leading-relaxed">
         Strukturovaný výstup z extrakce — interní podklad, ne náhrada vašeho posouzení.
       </p>
+      {ar.llmExecutiveBrief ? (
+        <div className="mb-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 p-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2 flex items-center gap-2">
+            <Sparkles size={14} className="text-indigo-500" /> Shrnutí (AI)
+          </p>
+          <div className="text-sm font-medium text-[color:var(--wp-text)] leading-relaxed break-words whitespace-pre-wrap">
+            {ar.llmExecutiveBrief}
+          </div>
+        </div>
+      ) : null}
       <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 px-4">
         {row(<FileText size={18} />, "Rozpoznání dokumentu", ar.recognition)}
         {row(<User size={18} />, "Klient", ar.client)}

@@ -7,11 +7,13 @@ vi.mock("@/lib/openai", () => ({
 describe("AI Review Prompt Builder calls (mock OpenAI wrapper)", () => {
   const prevRd = process.env.OPENAI_PROMPT_AI_REVIEW_REVIEW_DECISION_ID;
   const prevCm = process.env.OPENAI_PROMPT_AI_REVIEW_CLIENT_MATCH_ID;
+  const prevAdvisorSummary = process.env.OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID;
 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.OPENAI_PROMPT_AI_REVIEW_REVIEW_DECISION_ID = "pmpt_review_decision_test";
     process.env.OPENAI_PROMPT_AI_REVIEW_CLIENT_MATCH_ID = "pmpt_client_match_test";
+    process.env.OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID = "pmpt_document_summary_advisor_test";
   });
 
   afterEach(() => {
@@ -19,6 +21,8 @@ describe("AI Review Prompt Builder calls (mock OpenAI wrapper)", () => {
     else process.env.OPENAI_PROMPT_AI_REVIEW_REVIEW_DECISION_ID = prevRd;
     if (prevCm === undefined) delete process.env.OPENAI_PROMPT_AI_REVIEW_CLIENT_MATCH_ID;
     else process.env.OPENAI_PROMPT_AI_REVIEW_CLIENT_MATCH_ID = prevCm;
+    if (prevAdvisorSummary === undefined) delete process.env.OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID;
+    else process.env.OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID = prevAdvisorSummary;
   });
 
   it("runAiReviewDecisionLlm passes reviewDecision variables aligned with registry", async () => {
@@ -82,5 +86,40 @@ describe("AI Review Prompt Builder calls (mock OpenAI wrapper)", () => {
       }),
       expect.objectContaining({ routing: expect.objectContaining({ category: "ai_review" }) })
     );
+  });
+
+  it("runAdvisorDocumentSummaryForAdvisorLlm passes Prompt Builder variable keys", async () => {
+    const openai = await import("@/lib/openai");
+    const { runAdvisorDocumentSummaryForAdvisorLlm } = await import("../ai-review-llm-postprocess");
+    await runAdvisorDocumentSummaryForAdvisorLlm({
+      documentSummaryPayloadJson: '{"a":1}',
+      reviewDecisionPayloadJson: '{"b":2}',
+      clientMatchPayloadJson: '{"c":3}',
+    });
+    expect(openai.createAiReviewResponseFromPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptKey: "documentSummaryForAdvisor",
+        variables: {
+          document_summary_payload: '{"a":1}',
+          review_decision_payload: '{"b":2}',
+          client_match_payload: '{"c":3}',
+        },
+      }),
+      expect.objectContaining({ routing: expect.objectContaining({ category: "ai_review" }) })
+    );
+  });
+
+  it("runAdvisorDocumentSummaryForAdvisorLlm does not call OpenAI when prompt ID is unset", async () => {
+    const openai = await import("@/lib/openai");
+    vi.clearAllMocks();
+    delete process.env.OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID;
+    const { runAdvisorDocumentSummaryForAdvisorLlm } = await import("../ai-review-llm-postprocess");
+    const res = await runAdvisorDocumentSummaryForAdvisorLlm({
+      documentSummaryPayloadJson: "{}",
+      reviewDecisionPayloadJson: "{}",
+      clientMatchPayloadJson: "{}",
+    });
+    expect(res.ok).toBe(false);
+    expect(openai.createAiReviewResponseFromPrompt).not.toHaveBeenCalled();
   });
 });

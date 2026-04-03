@@ -104,4 +104,24 @@ describe("mapApiToExtractionDocument envelope path", () => {
     expect(vm.payments).toContain("1537");
     expect(vm.workActions.length).toBeGreaterThan(0);
   });
+
+  it("mapApiToExtractionDocument maps advisorDocumentSummary trace to llmExecutiveBrief", () => {
+    const doc = mapApiToExtractionDocument(
+      {
+        id: "1",
+        fileName: "uniq.pdf",
+        processingStatus: "extracted",
+        reviewStatus: "pending",
+        confidence: 0.9,
+        extractedPayload: envelope as unknown as Record<string, unknown>,
+        inputMode: "text_pdf",
+        pipelineInsights: { textCoverageEstimate: 0.92 },
+        extractionTrace: {
+          advisorDocumentSummary: { text: "Stručné shrnutí dokumentu pro poradce." },
+        },
+      },
+      ""
+    );
+    expect(doc.advisorReview?.llmExecutiveBrief).toBe("Stručné shrnutí dokumentu pro poradce.");
+  });
 });

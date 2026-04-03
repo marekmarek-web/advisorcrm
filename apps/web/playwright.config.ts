@@ -6,6 +6,10 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const ci = !!process.env.CI;
 const webServerCommand = ci ? "pnpm start" : "pnpm dev";
 
+const advisorE2E = !!(
+  process.env.E2E_ADVISOR_EMAIL?.trim() && process.env.E2E_ADVISOR_PASSWORD
+);
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -17,7 +21,32 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      testIgnore: advisorE2E
+        ? /portal-ai-assistant-smoke\.spec\.ts$|advisor-auth\.setup\.ts$/
+        : undefined,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    ...(advisorE2E
+      ? [
+          {
+            name: "setup",
+            testMatch: /advisor-auth\.setup\.ts$/,
+          },
+          {
+            name: "chromium-advisor",
+            dependencies: ["setup"],
+            testMatch: /portal-ai-assistant-smoke\.spec\.ts$/,
+            use: {
+              ...devices["Desktop Chrome"],
+              storageState: "playwright/.auth/advisor.json",
+            },
+          },
+        ]
+      : []),
+  ],
   webServer: {
     command: webServerCommand,
     url: baseURL,

@@ -108,6 +108,8 @@ export type AdvisorReviewViewModel = {
   product: string;
   payments: string;
   healthSensitive: string;
+  /** Volitelné narrative shrnutí z Prompt Builder (`documentSummaryForAdvisor`). */
+  llmExecutiveBrief?: string;
   manualChecklist: string[];
   workActions: DraftAction[];
   debugSnapshot: Record<string, unknown>;

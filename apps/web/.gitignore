@@ -1,1 +1,4 @@
 .vercel
+
+# Playwright advisor auth (from E2E_ADVISOR_* global setup)
+playwright/.auth/
