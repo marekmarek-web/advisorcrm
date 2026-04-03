@@ -99,6 +99,10 @@ export async function applyContractReview(
     return { ok: true, payload: row.applyResultPayload };
   }
 
+  if (row.reviewStatus !== "approved") {
+    return { ok: false, error: "Publish guard: review musí být schválena před aplikací do CRM." };
+  }
+
   const draftActions = row.draftActions as Array<{
     type: string;
     label: string;

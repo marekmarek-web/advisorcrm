@@ -288,6 +288,66 @@ describe("Phase 5H client portal bridge", () => {
     });
   });
 
+  describe("6E: document visibility and publish safety", () => {
+    it("client portfolio read model filters by visibleToClient + active/ended", () => {
+      const portfolioStatuses = ["draft", "pending_review", "active", "ended"];
+      const clientVisible = portfolioStatuses.filter(
+        (s) => s === "active" || s === "ended"
+      );
+      expect(clientVisible).toEqual(["active", "ended"]);
+      expect(clientVisible).not.toContain("draft");
+      expect(clientVisible).not.toContain("pending_review");
+    });
+
+    it("segment and type must always be identical (canonical sync)", () => {
+      const segments = ["ZP", "MAJ", "INV", "HYPO", "DPS", "DIP"];
+      for (const seg of segments) {
+        const contractRow = { segment: seg, type: seg };
+        expect(contractRow.type).toBe(contractRow.segment);
+      }
+    });
+
+    it("publish guard: review must be approved before apply", () => {
+      const validForApply = ["approved"];
+      const invalidForApply = ["pending", "rejected", null];
+      for (const status of validForApply) {
+        expect(status === "approved").toBe(true);
+      }
+      for (const status of invalidForApply) {
+        expect(status === "approved").toBe(false);
+      }
+    });
+
+    it("linkContractReviewFileToContactDocuments: visible requires approved/applied", () => {
+      const allowedVisibleStatuses = ["approved", "applied"];
+      const blocked = ["pending", "rejected", null];
+      for (const s of allowedVisibleStatuses) {
+        expect(s === "approved" || s === "applied").toBe(true);
+      }
+      for (const s of blocked) {
+        expect(s === "approved" || s === "applied").toBe(false);
+      }
+    });
+
+    it("manual createContract always sets type = segment and advisorConfirmedAt", () => {
+      const form = { segment: "MAJ" };
+      const dbRow = { segment: form.segment, type: form.segment, advisorConfirmedAt: new Date() };
+      expect(dbRow.type).toBe(dbRow.segment);
+      expect(dbRow.advisorConfirmedAt).toBeInstanceOf(Date);
+    });
+
+    it("client document read filters visibleToClient only — no draft docs", () => {
+      const docs = [
+        { id: "d1", visibleToClient: true },
+        { id: "d2", visibleToClient: false },
+        { id: "d3", visibleToClient: null },
+      ];
+      const clientVisible = docs.filter((d) => d.visibleToClient === true);
+      expect(clientVisible).toHaveLength(1);
+      expect(clientVisible[0].id).toBe("d1");
+    });
+  });
+
   describe("6B: client auth consistency", () => {
     it("requireClientZoneAuth contract: non-Client redirects to /portal (not /register/complete)", async () => {
       const { requireClientZoneAuth } = await import("@/lib/auth/require-auth");

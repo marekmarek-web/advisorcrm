@@ -349,6 +349,9 @@ export async function linkContractReviewFileToContactDocuments(
   }
   const contactId = row.matchedClientId;
   const visible = options?.visibleToClient ?? false;
+  if (visible && row.reviewStatus !== "approved" && row.reviewStatus !== "applied") {
+    return { ok: false, error: "Publish guard: dokument nelze zveřejnit bez schválené review." };
+  }
 
   const [dup] = await db
     .select({ id: documents.id })
