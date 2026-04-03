@@ -9,7 +9,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const nextCoreWebVitals = require("eslint-config-next/core-web-vitals");
 const nextTypescript = require("eslint-config-next/typescript");
 
-/** Debt: tighten to "error" incrementally (P1.1 bounded gate). */
+/**
+ * CI gate: `pnpm lint` uses `--quiet` (errors only). Full warnings: `pnpm lint:report`.
+ * Debt inventory and tightening policy: ../../docs/lint-debt.md (Phase 6G).
+ */
 const eslintConfig = [
   ...nextCoreWebVitals,
   ...nextTypescript,
