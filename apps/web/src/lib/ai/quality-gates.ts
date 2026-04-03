@@ -68,6 +68,17 @@ const UNSUPPORTED_FOR_DIRECT_APPLY = new Set([
   "income_document",
 ]);
 
+/**
+ * Document primary types that are payment instructions.
+ * When they appear on a NON-payment_instructions extraction route,
+ * it means the document was misclassified as a contract → hard block.
+ * On the normal `payment_instructions` route they go through the payment gate, not this set.
+ */
+const PAYMENT_INSTRUCTION_TYPES = new Set([
+  "payment_instruction",
+  "payment_instructions",
+]);
+
 function hasVal(v: unknown): boolean {
   return v != null && String(v).trim() !== "";
 }
@@ -159,6 +170,21 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
   }
 
   const extractionRoute = trace?.extractionRoute;
+
+  // Extra guard: payment instruction classified on a non-payment route → hard block.
+  // Catches (a) normalizedPipelineClassification = "payment_instruction" and
+  // (b) envelope documentClassification.primaryType = "payment_instruction"
+  // when the pipeline route is not "payment_instructions".
+  const primaryTypeFromEnvelope =
+    typeof docClass?.primaryType === "string" ? docClass.primaryType : "";
+  const isPaymentType =
+    PAYMENT_INSTRUCTION_TYPES.has(normalizedType) ||
+    PAYMENT_INSTRUCTION_TYPES.has(docType) ||
+    PAYMENT_INSTRUCTION_TYPES.has(primaryTypeFromEnvelope);
+  if (isPaymentType && extractionRoute !== "payment_instructions") {
+    blocked.push("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
+  }
+
   const payPayload = extractPaymentFromRow(row);
   if (payPayload) {
     if (extractionRoute === "payment_instructions") {

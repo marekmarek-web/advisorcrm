@@ -16,6 +16,8 @@ import {
   canonicalClientRequestSubject,
   canonicalMaterialRequestTitle,
   canonicalDealDetailLine,
+  canonicalMeetingTitle,
+  canonicalPortalMessageTemplate,
 } from "./assistant-canonical-names";
 import { createOpportunity as createOpportunityAction, updateOpportunity as updateOpportunityAction } from "@/app/actions/pipeline";
 import { createTask as createTaskAction, updateTask as updateTaskAction } from "@/app/actions/tasks";
@@ -313,7 +315,11 @@ export function registerAssistantWriteAdapters(): void {
       if (!startAt) {
         return errResult("Chybí začátek události (ISO 8601 s časovou zónou, např. …+01:00 nebo Z).");
       }
-      const title = strParam(params, "title") ?? strParam(params, "taskTitle") ?? "Schůzka";
+      const title = canonicalMeetingTitle({
+        productDomain: productDomainFromParams(params),
+        existingTitle: strParam(params, "title") ?? strParam(params, "taskTitle"),
+        purpose: strParam(params, "purpose"),
+      });
       const id = await createEventAction({
         title,
         startAt,
@@ -647,11 +653,15 @@ export function registerAssistantWriteAdapters(): void {
       await assertCtx(ctx);
       const contactId = strParam(params, "contactId");
       if (!contactId) return errResult("Chybí contactId.");
+      const body = canonicalPortalMessageTemplate({
+        productDomain: productDomainFromParams(params),
+        existingBody: strParam(params, "noteContent") ?? strParam(params, "body"),
+      });
       const row = await createDraft({
         contactId,
         draftType: "client_portal",
         subject: strParam(params, "subject") ?? "Zpráva klientovi",
-        body: strParam(params, "noteContent") ?? strParam(params, "body") ?? "",
+        body,
         metadata: { source: "assistant" },
       });
       return okResult(String(row.id), "communication_draft");
@@ -663,7 +673,11 @@ export function registerAssistantWriteAdapters(): void {
   registerWriteAdapter("sendPortalMessage", async (params, ctx) => {
     try {
       const contactId = strParam(params, "contactId");
-      const body = strParam(params, "portalMessageBody") ?? strParam(params, "noteContent");
+      const rawBody = strParam(params, "portalMessageBody") ?? strParam(params, "noteContent");
+      const body = canonicalPortalMessageTemplate({
+        productDomain: productDomainFromParams(params),
+        existingBody: rawBody,
+      }) || rawBody;
       if (!contactId) return requiresInputResult("Chybí ID klienta (contactId). Vyberte klienta nebo zadejte kontext.");
       if (!body) return requiresInputResult("Chybí text portálové zprávy. Doplňte obsah zprávy.");
       await assertCtx(ctx);

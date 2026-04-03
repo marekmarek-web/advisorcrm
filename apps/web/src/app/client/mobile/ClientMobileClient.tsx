@@ -115,6 +115,7 @@ function notificationRoute(n: { type: string; relatedEntityType: string | null; 
       : "/client/pozadavky-poradce";
   }
   if (n.type === "request_status_change") return "/client/requests";
+  if (n.type === "important_date") return "/client/portfolio";
   return null;
 }
 
@@ -701,7 +702,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         /* ignore */
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pathname]);
 
   useEffect(() => {

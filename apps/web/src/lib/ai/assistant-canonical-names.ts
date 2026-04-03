@@ -53,6 +53,37 @@ function isMonthlyPeriodicity(periodicity: unknown): boolean {
 
 // ─── Deal / opportunity title ─────────────────────────────────────────────────
 
+/**
+ * Purpose prefixes that REPLACE the standard product label prefix.
+ * Only purposes that genuinely change the product identity are included.
+ * "koupě nemovitosti", "refinancování zástavy" etc. stay as "Hypotéka" — they describe
+ * the purpose of the same product, not a different product.
+ */
+const PURPOSE_RENAME_PREFIX: Record<string, { replace?: Record<string, string>; default?: string }> = {
+  refinancovani:         { replace: { hypo: "Refinancování hypotéky", uver: "Refinancování úvěru" } },
+  refinancování:        { replace: { hypo: "Refinancování hypotéky", uver: "Refinancování úvěru" } },
+  refinancovani_hypoteky: { replace: { hypo: "Refinancování hypotéky" } },
+  konsolidace:           { replace: { uver: "Konsolidace úvěrů" }, default: "Konsolidace" },
+  konsolidácia:          { replace: { uver: "Konsolidace úvěrů" }, default: "Konsolidace" },
+};
+
+/**
+ * Returns a domain-specific rename prefix for the product title, or null if no renaming applies.
+ * For example: purpose="refinancování" + domain="hypo" → "Refinancování hypotéky"
+ */
+function purposeRenamePrefix(purpose: string | null | undefined, domain: string | null | undefined): string | null {
+  if (!purpose) return null;
+  const key = purpose.trim().toLowerCase()
+    .normalize("NFC")
+    .replace(/\s+/g, "_")
+    .replace(/[áa]/g, "a").replace(/[íi]/g, "i").replace(/[éě]/g, "e")
+    .replace(/[ůú]/g, "u").replace(/[óo]/g, "o");
+  const entry = PURPOSE_RENAME_PREFIX[key];
+  if (!entry) return null;
+  if (domain && entry.replace?.[domain]) return entry.replace[domain]!;
+  return entry.default ?? null;
+}
+
 const DEAL_TITLE_WITH_AMOUNT: Partial<Record<string, (a: string) => string>> = {
   hypo: (a) => `Hypotéka ${a}`,
   uver: (a) => `Spotřebitelský úvěr ${a}`,
@@ -86,6 +117,12 @@ export function canonicalDealTitle(params: {
 }): string {
   const domain = params.productDomain ?? null;
   const amount = formatCzechAmount(params.amount);
+  const renamePrefix = purposeRenamePrefix(params.purpose, domain);
+
+  // If purpose renames the product (e.g. "Refinancování hypotéky"), use that as title base
+  if (renamePrefix) {
+    return amount ? `${renamePrefix} ${amount}` : renamePrefix;
+  }
 
   if (domain && amount) {
     if (
@@ -221,6 +258,69 @@ export function canonicalMaterialRequestTitle(params: {
   return MATERIAL_REQUEST_BY_DOMAIN[domain ?? ""] ?? "Podklady od klienta";
 }
 
+// ─── Meeting title ───────────────────────────────────────────────────────────
+
+const MEETING_TITLE_BY_DOMAIN: Partial<Record<string, string>> = {
+  hypo: "Schůzka ke hypotéce",
+  uver: "Schůzka k úvěru",
+  investice: "Schůzka k investici",
+  dip: "Schůzka k DIP",
+  dps: "Schůzka k penzijnímu spoření",
+  zivotni_pojisteni: "Schůzka k životnímu pojištění",
+  majetek: "Schůzka k pojištění majetku",
+  auto: "Schůzka k pojištění vozidla",
+  firma_pojisteni: "Schůzka k firemnímu pojištění",
+  servis: "Schůzka – servis",
+};
+
+/**
+ * Returns a canonical meeting title.
+ * "Schůzka ke hypotéce" — no internal abbreviations.
+ */
+export function canonicalMeetingTitle(params: {
+  productDomain?: string | null;
+  existingTitle?: string | null;
+  purpose?: string | null;
+}): string {
+  const existing = params.existingTitle?.trim();
+  if (existing && !looksInternalOrRaw(existing)) return existing;
+  const domain = params.productDomain ?? null;
+  if (domain && MEETING_TITLE_BY_DOMAIN[domain]) {
+    return MEETING_TITLE_BY_DOMAIN[domain]!;
+  }
+  const purpose = params.purpose?.trim();
+  if (purpose && !looksInternalOrRaw(purpose)) return `Schůzka – ${purpose}`;
+  return "Schůzka";
+}
+
+// ─── Portal message template ──────────────────────────────────────────────────
+
+const PORTAL_MESSAGE_BY_DOMAIN: Partial<Record<string, string>> = {
+  hypo: "Dobrý den, pro zpracování hypotéky potřebuji od Vás potřebné podklady. Jakmile je obdržím, připravím pro Vás další kroky.",
+  uver: "Dobrý den, pro přípravu úvěru potřebuji doplňující informace. Prosím o zaslání podkladů.",
+  investice: "Dobrý den, připravuji pro Vás investiční řešení. Potřebuji ověřit několik informací — prosím o odpověď.",
+  dip: "Dobrý den, pro nastavení DIP potřebuji vaše doplňující informace. Jsem k dispozici pro dotazy.",
+  dps: "Dobrý den, pro nastavení penzijního spoření prosím o zaslání podkladů.",
+  zivotni_pojisteni: "Dobrý den, pro přípravu životního pojištění potřebuji od Vás doplňující informace.",
+  majetek: "Dobrý den, pro zpracování pojištění majetku prosím o zaslání podkladů a informací.",
+};
+
+/**
+ * Returns a canonical portal message body template — professional Czech.
+ * If an explicit body is provided and does not look internal, it is returned as-is.
+ */
+export function canonicalPortalMessageTemplate(params: {
+  productDomain?: string | null;
+  existingBody?: string | null;
+  noteContent?: string | null;
+}): string {
+  const existing = (params.existingBody ?? params.noteContent)?.trim();
+  if (existing && !looksInternalOrRaw(existing) && existing.length > 10) return existing;
+  const domain = params.productDomain ?? null;
+  return PORTAL_MESSAGE_BY_DOMAIN[domain ?? ""] ??
+    "Dobrý den, mám pro Vás aktuální informace. Prosím o odpověď na zprávu.";
+}
+
 // ─── Deal detail line (for step preview description and board card subtitle) ──
 
 /**
@@ -231,8 +331,11 @@ export function canonicalMaterialRequestTitle(params: {
 export function canonicalDealDetailLine(params: Record<string, unknown>): string | null {
   const parts: string[] = [];
 
-  const rate = strOr(params, "interestRate", "rate");
-  if (rate) parts.push(`Sazba ${rate}`);
+  const rate = strOr(params, "interestRate", "rate", "rateGuess");
+  if (rate) {
+    const formatted = typeof rate === "string" && rate.includes("%") ? rate : `${rate} %`;
+    parts.push(`Sazba ${formatted}`);
+  }
 
   const bank = strOr(params, "bank", "institution", "provider");
   if (bank) parts.push(bank);
