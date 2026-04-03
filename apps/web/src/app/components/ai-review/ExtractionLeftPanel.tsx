@@ -30,6 +30,9 @@ import {
   Wrench,
   ExternalLink,
   Sparkles,
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
 } from "lucide-react";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { getDocumentTypeLabel } from "@/lib/ai/document-messages";
@@ -44,6 +47,7 @@ import type {
   FieldFilter,
   FieldStatus,
   ExtractionReviewState,
+  PaymentSyncPreview,
 } from "@/lib/ai-review/types";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -311,6 +315,9 @@ function AdvisorOverviewCard({ doc }: { doc: ExtractionDocument }) {
         {row(<CreditCard size={18} />, "Platby", ar.payments)}
         {row(<Stethoscope size={18} />, "Zdravotní / citlivé údaje", ar.healthSensitive)}
       </div>
+      {ar.paymentSyncPreview ? (
+        <PaymentSyncPreviewCard preview={ar.paymentSyncPreview} />
+      ) : null}
       {ar.manualChecklist.length > 0 ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
           <p className="text-[10px] font-black uppercase tracking-widest text-amber-900 mb-2 flex items-center gap-2">
@@ -324,6 +331,90 @@ function AdvisorOverviewCard({ doc }: { doc: ExtractionDocument }) {
             ))}
           </ul>
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* ─── Payment Sync Preview Card ────────────────────────────────── */
+
+function PaymentSyncPreviewCard({ preview }: { preview: PaymentSyncPreview }) {
+  const isSyncing = preview.status === "will_sync";
+  const isDraft = preview.status === "will_draft";
+  const isBlocked = preview.status === "blocked_missing_fields";
+  const isSkipped = preview.status === "skipped_modelation";
+
+  const borderCls = isSyncing
+    ? "border-emerald-200 bg-emerald-50/60"
+    : isDraft
+      ? "border-amber-200 bg-amber-50/60"
+      : isBlocked
+        ? "border-rose-200 bg-rose-50/60"
+        : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40";
+
+  const iconEl = isSyncing ? (
+    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+  ) : isDraft ? (
+    <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+  ) : isBlocked ? (
+    <XCircle size={15} className="text-rose-600 shrink-0" />
+  ) : (
+    <MinusCircle size={15} className="text-[color:var(--wp-text-tertiary)] shrink-0" />
+  );
+
+  const labelCls = isSyncing
+    ? "text-emerald-900"
+    : isDraft
+      ? "text-amber-900"
+      : isBlocked
+        ? "text-rose-900"
+        : "text-[color:var(--wp-text-secondary)]";
+
+  return (
+    <div className={`mt-3 rounded-xl border p-3 ${borderCls}`}>
+      <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2 flex items-center gap-1.5">
+        <CreditCard size={12} /> Co se propíše při schválení
+      </p>
+      <p className={`text-xs font-bold flex items-start gap-1.5 leading-snug ${labelCls}`}>
+        {iconEl}
+        <span>{preview.summary}</span>
+      </p>
+      {preview.presentFields.length > 0 && (isSyncing || isDraft) ? (
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
+          {preview.presentFields.map((f) => (
+            <div key={f.label} className="flex flex-col">
+              <span className="text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+                {f.label}
+              </span>
+              <span className="text-[11px] font-bold text-[color:var(--wp-text)] truncate" title={f.value}>
+                {f.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {preview.missingFields.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {preview.missingFields.map((f) => (
+            <span
+              key={f.label}
+              className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800"
+            >
+              <XCircle size={10} />
+              {f.label}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {preview.warnings.length > 0 ? (
+        <ul className="mt-2 space-y-0.5">
+          {preview.warnings.map((w, i) => (
+            <li key={i} className="text-[10px] text-amber-800 leading-snug flex items-start gap-1">
+              <AlertTriangle size={10} className="shrink-0 mt-0.5" />
+              <span>{w}</span>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

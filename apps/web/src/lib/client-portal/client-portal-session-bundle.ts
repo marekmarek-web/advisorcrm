@@ -18,6 +18,22 @@ import { getClientHouseholdForContact, type ClientHouseholdDetail } from "@/app/
 import { getUnreadAdvisorMessagesForClientCount } from "@/app/actions/messages";
 import type { PaymentInstruction } from "@/app/actions/payment-pdf";
 import { getPaymentInstructionsForContact } from "@/app/actions/payment-pdf";
+/**
+ * Phase 3E — Payment publish bridge integration point.
+ *
+ * Current state (Phase 3): getPaymentInstructionsForContact() reads from
+ * contracts → payment_accounts (legacy static mapping). client_payment_setups
+ * (populated by AI Review apply) is NOT yet exposed to the client portal.
+ *
+ * Phase 5 bridge (future): Replace or supplement getPaymentInstructionsForContact()
+ * with a query on client_payment_setups WHERE status = 'active'.
+ * The `clientVisibility` field in /api/clients/[id]/payment-setups signals readiness.
+ *
+ * Acceptance conditions for Phase 5:
+ * - client_payment_setups.status = 'active' after advisor approval
+ * - client_payment_setups.needsHumanReview = false
+ * - Integration test: AI Review apply → payment setup → visible in client portal payments tab
+ */
 import {
   getPortalNotificationsForClient,
   getPortalNotificationsUnreadCount,

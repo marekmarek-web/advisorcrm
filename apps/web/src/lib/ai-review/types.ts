@@ -101,6 +101,29 @@ export type DraftAction = {
   payload: Record<string, unknown>;
 };
 
+/**
+ * Payment sync preview for advisor — built from canonical payment payload
+ * before any apply action, so advisor sees exactly what will be written.
+ */
+export type PaymentSyncStatus =
+  | "will_sync"
+  | "will_draft"
+  | "blocked_missing_fields"
+  | "skipped_modelation"
+  | "no_payment_data";
+
+export type PaymentSyncPreview = {
+  status: PaymentSyncStatus;
+  /** Human-readable summary line for the advisor. */
+  summary: string;
+  /** Fields that are present and will be written. */
+  presentFields: Array<{ label: string; value: string }>;
+  /** Fields that are required but missing. */
+  missingFields: Array<{ label: string }>;
+  /** Warning messages from quality-gates (humanized). */
+  warnings: string[];
+};
+
 /** Advisor-facing structured summary (main panel, not raw schema dump). */
 export type AdvisorReviewViewModel = {
   recognition: string;
@@ -113,6 +136,8 @@ export type AdvisorReviewViewModel = {
   manualChecklist: string[];
   workActions: DraftAction[];
   debugSnapshot: Record<string, unknown>;
+  /** Phase 3D: payment sync preview built from canonical payload. */
+  paymentSyncPreview?: PaymentSyncPreview;
 };
 
 export type ApplyResultPayload = {

@@ -4,7 +4,14 @@ import type { DraftActionBase } from "../ai/review-queue";
 import { getDocumentTypeLabel } from "../ai/document-messages";
 import { getReasonMessage } from "../ai/reason-codes";
 import { formatAiClassifierForAdvisor } from "./czech-labels";
-import type { AdvisorReviewViewModel, DraftAction } from "./types";
+import type { AdvisorReviewViewModel, DraftAction, PaymentSyncPreview } from "./types";
+import {
+  buildCanonicalPaymentPayload,
+  isPaymentSyncReady,
+  hasPaymentTarget,
+  missingRequiredPaymentFields,
+  PAYMENT_FIELD_SPECS,
+} from "../ai/payment-field-contract";
 
 function fv(env: DocumentReviewEnvelope, key: string): unknown {
   return env.extractedFields[key]?.value;
@@ -145,6 +152,100 @@ function buildDeterministicBrief(env: DocumentReviewEnvelope, recognition: strin
   return parts.length > 0 ? parts.join(". ") + "." : undefined;
 }
 
+const PAYMENT_GATE_MESSAGES: Record<string, string> = {
+  PAYMENT_MISSING_AMOUNT: "Chybí částka — platbu nelze zpracovat bez výše.",
+  PAYMENT_MISSING_TARGET: "Chybí IBAN nebo číslo účtu — platbu nelze spárovat s příjemcem.",
+  PAYMENT_MISSING_FREQUENCY: "Frekvence platby není uvedena — ověřte v dokumentu.",
+  PAYMENT_MISSING_IDENTIFIER: "Chybí variabilní nebo konstantní symbol.",
+  PAYMENT_MISSING_INSTITUTION: "Není uveden poskytovatel ani produkt.",
+  PAYMENT_NEEDS_HUMAN_REVIEW: "Platební údaje vyžadují ruční kontrolu.",
+  PAYMENT_LOW_CONFIDENCE: "Nízká jistota platebních údajů — ověřte oproti originálu.",
+};
+
+function humanizePaymentGateCode(code: string): string {
+  return PAYMENT_GATE_MESSAGES[code] ?? code;
+}
+
+/**
+ * Phase 3D: build advisor-facing preview of what will happen to payment data
+ * when the review is applied. Built from the canonical payment contract so
+ * it reflects the same logic as the actual apply path.
+ */
+function buildPaymentSyncPreview(envelope: DocumentReviewEnvelope): PaymentSyncPreview {
+  const lifecycle = envelope.documentClassification.lifecycleStatus;
+  const isModelation = lifecycle === "modelation" || lifecycle === "illustration";
+
+  if (isModelation) {
+    return {
+      status: "skipped_modelation",
+      summary: "Dokument je modelace — platební instrukce se nezapisují do klientského záznamu.",
+      presentFields: [],
+      missingFields: [],
+      warnings: [],
+    };
+  }
+
+  const cp = buildCanonicalPaymentPayload(envelope);
+  const hasAnyPayment = cp.amount || cp.iban || cp.accountNumber || cp.variableSymbol;
+
+  if (!hasAnyPayment) {
+    return {
+      status: "no_payment_data",
+      summary: "Žádné platební údaje nebyly nalezeny.",
+      presentFields: [],
+      missingFields: [],
+      warnings: [],
+    };
+  }
+
+  const missing = missingRequiredPaymentFields(cp);
+  const syncReady = isPaymentSyncReady(cp);
+
+  const presentFields: PaymentSyncPreview["presentFields"] = [];
+  for (const spec of PAYMENT_FIELD_SPECS) {
+    if (spec.tier === "note_only") continue;
+    const val = cp[spec.canonical];
+    if (val) presentFields.push({ label: spec.label, value: val });
+  }
+
+  const warnings: string[] = [];
+  if (!cp.variableSymbol && !cp.constantSymbol) {
+    warnings.push(humanizePaymentGateCode("PAYMENT_MISSING_IDENTIFIER"));
+  }
+  if (!cp.paymentFrequency) {
+    warnings.push(humanizePaymentGateCode("PAYMENT_MISSING_FREQUENCY"));
+  }
+  if (!cp.provider && !cp.productName) {
+    warnings.push(humanizePaymentGateCode("PAYMENT_MISSING_INSTITUTION"));
+  }
+
+  if (!syncReady) {
+    const hasTarget = hasPaymentTarget(cp);
+    const status = hasTarget || cp.amount ? "will_draft" : "blocked_missing_fields";
+    const missingLabels = missing.map((s) => ({ label: s.label }));
+    const summaryParts: string[] = [];
+    if (!cp.amount) summaryParts.push("částka");
+    if (!hasTarget) summaryParts.push("číslo účtu nebo IBAN");
+    return {
+      status,
+      summary: `Platební instrukce se uloží jako návrh (chybí: ${summaryParts.join(", ")}).`,
+      presentFields,
+      missingFields: missingLabels,
+      warnings,
+    };
+  }
+
+  const targetPart = cp.iban ? `IBAN: ${cp.iban}` : `${cp.accountNumber}/${cp.bankCode}`;
+  const amtPart = cp.currency ? `${cp.amount} ${cp.currency}` : cp.amount;
+  return {
+    status: "will_sync",
+    summary: `${amtPart} → ${targetPart}${cp.variableSymbol ? ` VS ${cp.variableSymbol}` : ""}`,
+    presentFields,
+    missingFields: [],
+    warnings,
+  };
+}
+
 function mergeWorkActions(envelope: DocumentReviewEnvelope): DraftAction[] {
   const deterministic = buildAllDraftActions(envelope) as DraftAction[];
   const fromLlm: DraftAction[] = (envelope.suggestedActions ?? []).map((a, i) => ({
@@ -237,6 +338,8 @@ export function buildAdvisorReviewViewModel(args: BuildArgs): AdvisorReviewViewM
   const uniqueManual = [...new Set(manualChecklist.map((s) => s.trim()).filter(Boolean))].slice(0, 24);
 
   const brief = sanitizeAdvisorBrief(llmExecutiveBrief, envelope) ?? buildDeterministicBrief(envelope, recognition);
+  const paymentSyncPreview = buildPaymentSyncPreview(envelope);
+
   return {
     recognition,
     client: clientLine(envelope),
@@ -251,5 +354,6 @@ export function buildAdvisorReviewViewModel(args: BuildArgs): AdvisorReviewViewM
       validationWarnings,
       extractionTrace,
     }),
+    paymentSyncPreview: paymentSyncPreview.status !== "no_payment_data" ? paymentSyncPreview : undefined,
   };
 }
