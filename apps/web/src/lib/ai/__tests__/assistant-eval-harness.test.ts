@@ -66,6 +66,7 @@ function intentFromScenario(scenario: typeof goldenScenarios[number]): Canonical
       ? scenario.expectedPlan.expectedActions.map(a => {
           const reverseMap: Record<string, string> = {
             createOpportunity: "create_opportunity",
+            updateOpportunity: "update_opportunity",
             createTask: "create_task",
             createFollowUp: "create_followup",
             createClientRequest: "create_client_request",
@@ -80,6 +81,10 @@ function intentFromScenario(scenario: typeof goldenScenarios[number]): Canonical
             createMeetingNote: "create_note",
             createInternalNote: "create_internal_note",
             triggerDocumentReview: "request_document_review",
+            attachDocumentToClient: "attach_document",
+            attachDocumentToOpportunity: "attach_document_to_opportunity",
+            sendPortalMessage: "send_portal_message",
+            createReminder: "create_reminder",
           };
           return (reverseMap[a] ?? scenario.expectedIntent.intentType) as any;
         })
@@ -211,6 +216,34 @@ describe("Phase 2E: Assistant Eval Harness", () => {
 
         if (scenario.expectedPlan) {
           const plan = buildExecutionPlan(intent, resolution);
+          steps.push(...evaluatePlan(plan, scenario.expectedPlan));
+        }
+
+        const passed = steps.every(s => s.passed);
+        allResults.push({ scenarioId: scenario.id, domain: scenario.domain, name: scenario.name, passed, steps, durationMs: Date.now() - start });
+        expect(passed).toBe(true);
+      });
+    }
+  });
+
+  describe("write workflow scenarios", () => {
+    const wwScenarios = goldenScenarios.filter(s => s.domain === "write_workflows");
+
+    for (const scenario of wwScenarios) {
+      it(scenario.name, () => {
+        const start = Date.now();
+        const steps: ScenarioEvalResult["steps"] = [];
+        const intent = intentFromScenario(scenario);
+        const resolution = makeResolution({ clientId: CONTACT_A, clientLabel: "Jan Novák" });
+        const session = getOrCreateSession(undefined, TENANT, USER);
+        if (scenario.tags.includes("document-attach") || scenario.tags.includes("document-attach-opportunity") || scenario.tags.includes("document-review")) {
+          session.lockedDocumentId = "doc-ww-test";
+        }
+
+        steps.push(...evaluateIntent(intent, scenario.expectedIntent));
+
+        if (scenario.expectedPlan) {
+          const plan = buildExecutionPlan(intent, resolution, session);
           steps.push(...evaluatePlan(plan, scenario.expectedPlan));
         }
 

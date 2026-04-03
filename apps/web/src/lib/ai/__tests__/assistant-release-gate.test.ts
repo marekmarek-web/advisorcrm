@@ -30,7 +30,7 @@ import { evaluateIntent, evaluatePlan, evaluateSafety, aggregateEvalRun } from "
 import type { ScenarioEvalResult } from "../assistant-eval-types";
 import { goldenScenarios } from "./assistant-golden-scenarios";
 import { replayFixtures, type ReplayFixture } from "./assistant-replay-fixtures";
-import { evaluateReleaseGate, formatGateReport, PHASE_2_THRESHOLDS } from "../assistant-release-gate";
+import { evaluateReleaseGate, formatGateReport, PHASE_2_THRESHOLDS, PHASE_3_THRESHOLDS } from "../assistant-release-gate";
 
 const TENANT = "t-gate";
 const USER = "u-gate";
@@ -89,7 +89,7 @@ function intentFromGolden(scenario: typeof goldenScenarios[number]): CanonicalIn
 }
 
 describe("Phase 2H: Release Gate", () => {
-  it("passes all quality thresholds for Phase 2 acceptance", () => {
+  it("passes all quality thresholds for Phase 2 acceptance (includes Phase 3 write coverage)", () => {
     // ── Run golden eval scenarios ──
     const evalResults: ScenarioEvalResult[] = [];
 
@@ -99,7 +99,7 @@ describe("Phase 2H: Release Gate", () => {
       const intent = intentFromGolden(scenario);
 
       const isSafety = scenario.domain === "safety";
-      const isNoClientScenario = scenario.id === "safety-no-client-write";
+      const isNoClientScenario = scenario.id === "safety-no-client-write" || scenario.id === "safety-multi-action-no-client";
       const isAmbiguous = scenario.id === "safety-ambiguous-client";
       const needsClient = !isNoClientScenario && (!isSafety || scenario.expectedPlan?.expectedContactIdPresent);
 
@@ -113,7 +113,7 @@ describe("Phase 2H: Release Gate", () => {
       if (scenario.id === "safety-cross-client-warning") {
         lockAssistantClient(session, CONTACT_A);
       }
-      if (scenario.domain === "documents") {
+      if (scenario.domain === "documents" || scenario.tags.includes("document-attach") || scenario.tags.includes("document-attach-opportunity") || scenario.tags.includes("document-review")) {
         session.activeReviewId = "review-gate";
         session.lockedDocumentId = "doc-gate";
       }
@@ -147,9 +147,10 @@ describe("Phase 2H: Release Gate", () => {
 
     const evalSummary = aggregateEvalRun(evalResults);
 
-    // ── Check red flags from regression fixtures ──
+    // ── Check red flags from regression fixtures (Phase 2 + Phase 3) ──
+    const allFlags = [...new Set([...PHASE_2_THRESHOLDS.zeroToleranceRedFlags, ...PHASE_3_THRESHOLDS.zeroToleranceRedFlags])];
     const redFlagGroups = new Map<string, boolean>();
-    for (const flag of PHASE_2_THRESHOLDS.zeroToleranceRedFlags) {
+    for (const flag of allFlags) {
       const flagFixtures = replayFixtures.filter(f => f.redFlag === flag);
       let allPass = true;
 
@@ -176,6 +177,12 @@ describe("Phase 2H: Release Gate", () => {
               createInternalNote: "create_internal_note",
               triggerDocumentReview: "request_document_review",
               createReminder: "create_reminder",
+              scheduleCalendarEvent: "schedule_meeting",
+              createMeetingNote: "create_note",
+              attachDocumentToClient: "attach_document",
+              attachDocumentToOpportunity: "attach_document_to_opportunity",
+              sendPortalMessage: "send_portal_message",
+              updateOpportunity: "update_opportunity",
             };
             return (reverseMap[a] ?? f.expectedIntent.intentType ?? "general_chat") as any;
           }),
@@ -215,6 +222,25 @@ describe("Phase 2H: Release Gate", () => {
           if (!verified.hasPartialFailure) allPass = false;
           if (verified.allSucceeded) allPass = false;
           if (verified.stepOutcomes.length < 2) allPass = false;
+        }
+
+        if (flag === "wrong_document_attach") {
+          if (safety.safe !== f.expectedSafety.safe) allPass = false;
+          if (f.expectedSafety.requiresConfirmation && !safety.requiresConfirmation) allPass = false;
+        }
+
+        if (flag === "missing_required_fields" && f.expectedPlan.expectedStatus === "draft") {
+          if (plan.status !== "draft") allPass = false;
+        }
+
+        if (flag === "multi_action_order_violation") {
+          const createIdx = plan.steps.findIndex(s =>
+            s.action === "createOpportunity" || s.action === "createTask"
+          );
+          const dependentIdx = plan.steps.findIndex(s =>
+            s.action === "attachDocumentToOpportunity" || s.action === "attachDocumentToClient" || s.action === "createReminder"
+          );
+          if (createIdx >= 0 && dependentIdx >= 0 && createIdx >= dependentIdx) allPass = false;
         }
       }
 

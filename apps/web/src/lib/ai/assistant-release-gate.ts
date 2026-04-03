@@ -31,6 +31,28 @@ export const PHASE_2_THRESHOLDS: ReleaseGateThresholds = {
   minGoldenScenarioCount: 12,
 };
 
+/**
+ * Phase 3 thresholds: adds write_workflows domain and three new red flags.
+ * minGoldenScenarioCount / minRegressionFixtureCount raised to match expanded coverage.
+ */
+export const PHASE_3_THRESHOLDS: ReleaseGateThresholds = {
+  minEvalPassRate: 0.9,
+  minDomainPassRate: 0.8,
+  requiredDomains: ["mortgage", "investment", "insurance", "documents", "client_portal", "safety", "write_workflows"],
+  zeroToleranceRedFlags: [
+    "wrong_client_write",
+    "fake_confirmation",
+    "duplicate_create",
+    "broken_context_lock",
+    "incomplete_partial_failure",
+    "wrong_document_attach",
+    "missing_required_fields",
+    "multi_action_order_violation",
+  ],
+  minRegressionFixtureCount: 18,
+  minGoldenScenarioCount: 25,
+};
+
 export type GateCheckResult = {
   passed: boolean;
   checks: GateCheck[];
@@ -122,10 +144,10 @@ export function evaluateReleaseGate(
   };
 }
 
-export function formatGateReport(result: GateCheckResult): string {
+export function formatGateReport(result: GateCheckResult, label = "PHASE 2 RELEASE GATE REPORT"): string {
   const lines: string[] = [];
   lines.push("═══════════════════════════════════════════");
-  lines.push("  PHASE 2 RELEASE GATE REPORT");
+  lines.push(`  ${label}`);
   lines.push("═══════════════════════════════════════════");
   lines.push(`  Overall: ${result.passed ? "✅ PASS" : "❌ FAIL"}`);
   lines.push("");

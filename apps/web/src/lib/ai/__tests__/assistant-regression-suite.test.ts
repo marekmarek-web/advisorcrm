@@ -260,6 +260,80 @@ describe("Happy path replay fixtures", () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// RED FLAG: wrong_document_attach (Phase 3I)
+// ─────────────────────────────────────────────────────────────
+describe("Red flag: wrong_document_attach", () => {
+  const fixtures = replayFixtures.filter(f => f.redFlag === "wrong_document_attach");
+
+  for (const f of fixtures) {
+    it(f.name, () => {
+      const session = buildSessionForFixture(f);
+      const intent = intentFromFixture(f);
+      const plan = buildExecutionPlan(intent, f.resolution, session);
+      const safety = verifyWriteContextSafety(session, f.resolution, plan);
+
+      expect(safety.safe).toBe(f.expectedSafety.safe);
+      if (f.expectedSafety.blockedReason) {
+        expect(safety.blockedReason).toBe(f.expectedSafety.blockedReason);
+      }
+      if (f.expectedSafety.requiresConfirmation) {
+        expect(safety.requiresConfirmation).toBe(true);
+      }
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// RED FLAG: missing_required_fields (Phase 3I)
+// ─────────────────────────────────────────────────────────────
+describe("Red flag: missing_required_fields", () => {
+  const fixtures = replayFixtures.filter(f => f.redFlag === "missing_required_fields");
+
+  for (const f of fixtures) {
+    it(f.name, () => {
+      const session = buildSessionForFixture(f);
+      const intent = intentFromFixture(f);
+      const plan = buildExecutionPlan(intent, f.resolution, session);
+
+      if (f.expectedPlan.expectedStatus === "draft") {
+        expect(plan.status).toBe("draft");
+      }
+      expect(plan.steps.length).toBeGreaterThanOrEqual(f.expectedPlan.minSteps);
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// RED FLAG: multi_action_order_violation (Phase 3I)
+// ─────────────────────────────────────────────────────────────
+describe("Red flag: multi_action_order_violation", () => {
+  const fixtures = replayFixtures.filter(f => f.redFlag === "multi_action_order_violation");
+
+  for (const f of fixtures) {
+    it(`${f.name} — steps respect dependency ordering`, () => {
+      const session = buildSessionForFixture(f);
+      const intent = intentFromFixture(f);
+      const plan = buildExecutionPlan(intent, f.resolution, session);
+
+      expect(plan.steps.length).toBeGreaterThanOrEqual(f.expectedPlan.minSteps);
+      for (const expectedAction of f.expectedPlan.expectedActions) {
+        expect(plan.steps.some(s => s.action === expectedAction)).toBe(true);
+      }
+
+      const createIdx = plan.steps.findIndex(s =>
+        s.action === "createOpportunity" || s.action === "createTask"
+      );
+      const dependentIdx = plan.steps.findIndex(s =>
+        s.action === "attachDocumentToOpportunity" || s.action === "attachDocumentToClient" || s.action === "createReminder"
+      );
+      if (createIdx >= 0 && dependentIdx >= 0) {
+        expect(createIdx).toBeLessThan(dependentIdx);
+      }
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // EDGE CASES
 // ─────────────────────────────────────────────────────────────
 describe("Edge case replay fixtures", () => {
@@ -301,6 +375,9 @@ describe("Regression coverage summary", () => {
     expect(redFlags.has("duplicate_create")).toBe(true);
     expect(redFlags.has("broken_context_lock")).toBe(true);
     expect(redFlags.has("incomplete_partial_failure")).toBe(true);
+    expect(redFlags.has("wrong_document_attach")).toBe(true);
+    expect(redFlags.has("missing_required_fields")).toBe(true);
+    expect(redFlags.has("multi_action_order_violation")).toBe(true);
 
     console.log(`=== REGRESSION COVERAGE ===`);
     console.log(`Total fixtures: ${replayFixtures.length}`);

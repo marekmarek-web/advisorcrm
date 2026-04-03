@@ -12,7 +12,8 @@ export type AssistantEvalDomain =
   | "insurance"
   | "documents"
   | "client_portal"
-  | "safety";
+  | "safety"
+  | "write_workflows";
 
 export type GoldenConversationTurn = {
   role: "user" | "assistant";
@@ -83,7 +84,7 @@ export type AssistantEvalRunSummary = {
 };
 
 export function emptyDomainStats(): Record<AssistantEvalDomain, { total: number; passed: number; failed: number }> {
-  const domains: AssistantEvalDomain[] = ["mortgage", "investment", "insurance", "documents", "client_portal", "safety"];
+  const domains: AssistantEvalDomain[] = ["mortgage", "investment", "insurance", "documents", "client_portal", "safety", "write_workflows"];
   const stats = {} as Record<AssistantEvalDomain, { total: number; passed: number; failed: number }>;
   for (const d of domains) stats[d] = { total: 0, passed: 0, failed: 0 };
   return stats;
