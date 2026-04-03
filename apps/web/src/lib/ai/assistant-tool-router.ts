@@ -87,6 +87,11 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Active assistant channel for API payloads — `AssistantSession` has no `context`; use locks + top-level fields. */
+function assistantSessionChannelForUi(session: AssistantSession): string | null {
+  return session.activeChannel ?? session.contextLock.activeChannel ?? null;
+}
+
 /** Robust [TOOL:name {...}] parser — supports nested JSON objects. */
 export function parseModelToolCalls(text: string): ToolCall[] {
   const calls: ToolCall[] = [];
@@ -715,7 +720,7 @@ export async function routeAssistantMessageCanonical(
         clientLabel: resolution.client?.displayLabel,
       },
       contextState: {
-        channel: session.activeChannel ?? session.contextLock.activeChannel ?? null,
+        channel: assistantSessionChannelForUi(session),
         lockedClientId: session.lockedClientId ?? null,
         lockedClientLabel: resolution.client?.displayLabel ?? null,
       },
