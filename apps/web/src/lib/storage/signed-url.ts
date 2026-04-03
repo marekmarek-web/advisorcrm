@@ -1,8 +1,10 @@
-type SignedUrlPurpose = "download" | "internal_processing";
+type SignedUrlPurpose = "download" | "internal_processing" | "advisor_document_preview";
 
 const EXPIRY_SECONDS: Record<SignedUrlPurpose, number> = {
   download: 90,
   internal_processing: 900,
+  /** Dlouhá platnost pro iframe náhled v AI Review (poradce drží stránku otevřenou). */
+  advisor_document_preview: 3600,
 };
 
 export async function createSignedStorageUrl(params: {

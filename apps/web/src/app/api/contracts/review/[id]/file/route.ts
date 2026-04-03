@@ -34,7 +34,7 @@ export async function GET(
       adminClient: admin,
       bucket: "documents",
       path: row.storagePath,
-      purpose: "download",
+      purpose: "advisor_document_preview",
     });
 
     if (!signed.signedUrl) {

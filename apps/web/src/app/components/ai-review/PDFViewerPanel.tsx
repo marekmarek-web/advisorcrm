@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   FileText,
   ZoomIn,
@@ -11,6 +11,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import type { ExtractionDocument, FieldStatus } from "@/lib/ai-review/types";
 
@@ -32,6 +33,8 @@ type Props = {
   onPageChange: (page: number) => void;
   onFullscreenToggle: () => void;
   onHighlightClick: (fieldId: string, page?: number) => void;
+  /** Získá nový signed URL (např. po vypršení JWT v iframe). */
+  onRefreshPdf?: () => void | Promise<void>;
 };
 
 function buildHighlights(doc: ExtractionDocument): HighlightEntry[] {
@@ -72,12 +75,29 @@ export function PDFViewerPanel({
   onPageChange,
   onFullscreenToggle,
   onHighlightClick,
+  onRefreshPdf,
 }: Props) {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("ready");
   const [iframeError, setIframeError] = useState(false);
+  const [refreshBusy, setRefreshBusy] = useState(false);
   const highlights = buildHighlights(doc);
   const pageHighlights = highlights.filter((h) => h.page === activePage);
   const hasPdf = !!doc.pdfUrl && doc.pdfUrl.length > 0;
+
+  useEffect(() => {
+    setIframeError(false);
+  }, [doc.pdfUrl]);
+
+  const handleRefreshPdf = useCallback(async () => {
+    if (!onRefreshPdf) return;
+    setRefreshBusy(true);
+    try {
+      await Promise.resolve(onRefreshPdf());
+      setIframeError(false);
+    } finally {
+      setRefreshBusy(false);
+    }
+  }, [onRefreshPdf]);
 
   const zoomIn = useCallback(
     () => onZoomChange(Math.min(zoomLevel + 25, 200)),
@@ -149,6 +169,30 @@ export function PDFViewerPanel({
             >
               {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
+            {onRefreshPdf ? (
+              <>
+                <div className="w-px h-4 bg-[color:var(--wp-surface-card-border)] mx-0.5" />
+                <button
+                  type="button"
+                  onClick={() => void handleRefreshPdf()}
+                  disabled={refreshBusy}
+                  title="Nový odkaz na soubor (řeší vypršený náhled)"
+                  className="p-1.5 text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] rounded-lg hover:text-[color:var(--wp-text)] transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={refreshBusy ? "animate-spin" : ""} />
+                </button>
+              </>
+            ) : null}
+            {hasPdf && !iframeError ? (
+              <button
+                type="button"
+                onClick={() => setIframeError(true)}
+                className="hidden sm:inline text-[10px] font-bold text-indigo-600 hover:text-indigo-800 px-2 max-w-[140px] leading-tight text-left"
+                title="Když místo PDF vidíte chybovou hlášku (např. vypršený token), klepněte zde a obnovte odkaz."
+              >
+                Chyba v náhledu?
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -185,10 +229,16 @@ export function PDFViewerPanel({
           >
             {hasPdf && !iframeError ? (
               <iframe
+                key={doc.pdfUrl}
                 src={doc.pdfUrl}
                 className="w-full min-h-[1000px]"
                 title="PDF náhled"
                 onError={() => setIframeError(true)}
+              />
+            ) : hasPdf && iframeError ? (
+              <PdfIframeErrorFallback
+                onRefresh={onRefreshPdf ? () => void handleRefreshPdf() : undefined}
+                refreshBusy={refreshBusy}
               />
             ) : (
               <SimulatedPDFPage
@@ -200,6 +250,38 @@ export function PDFViewerPanel({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PdfIframeErrorFallback({
+  onRefresh,
+  refreshBusy,
+}: {
+  onRefresh?: () => void;
+  refreshBusy: boolean;
+}) {
+  return (
+    <div className="min-h-[480px] p-8 md:p-12 flex flex-col items-center justify-center text-center text-[color:var(--wp-text-secondary)]">
+      <AlertCircle size={40} className="text-amber-500 mb-4 shrink-0" />
+      <p className="text-sm font-bold text-[color:var(--wp-text)] max-w-md leading-snug">
+        PDF se v tomto okně nepovedlo zobrazit
+      </p>
+      <p className="text-xs mt-2 max-w-md leading-relaxed">
+        Často jde o vypršený odkaz k souboru nebo dočasnou chybu úložiště. Kompletní přehled vyčtených údajů je v levém
+        panelu v záložce <span className="font-semibold">Pole k ověření</span>.
+      </p>
+      {onRefresh ? (
+        <button
+          type="button"
+          disabled={refreshBusy}
+          onClick={onRefresh}
+          className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-indigo-700 disabled:opacity-60"
+        >
+          <RefreshCw size={14} className={refreshBusy ? "animate-spin" : ""} />
+          Obnovit odkaz na PDF
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -228,9 +310,13 @@ function SimulatedPDFPage({
   return (
     <div className="min-h-[900px] p-8 md:p-12 relative font-sans text-[color:var(--wp-text-secondary)]">
       <div className="border-b-2 border-[color:var(--wp-surface-card-border)] pb-6 mb-8">
-        <h2 className="text-xl font-bold text-[color:var(--wp-text)]">Extrahovaná data z dokumentu</h2>
-        <p className="text-xs text-[color:var(--wp-text-secondary)] mt-1">
-          Klikněte na zvýrazněnou hodnotu pro zobrazení odpovídajícího pole
+        <h2 className="text-xl font-bold text-[color:var(--wp-text)]">Náhradní náhled podle stránek</h2>
+        <p className="text-xs text-[color:var(--wp-text-secondary)] mt-1 leading-relaxed">
+          Originální PDF zde není k dispozici — níže jsou jen pole se známou stránkou. Kompletní tabulku údajů najdete
+          vlevo v <span className="font-semibold">Pole k ověření</span> (nekopíruje celý seznam zleva).
+        </p>
+        <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-2">
+          Klik na hodnotu zvýrazní odpovídající pole v kontrolním panelu.
         </p>
       </div>
 

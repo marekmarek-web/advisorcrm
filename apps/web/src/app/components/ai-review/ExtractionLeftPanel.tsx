@@ -109,7 +109,7 @@ function recTypeBadge(type: AIRecommendation["type"]) {
     warning: { label: "Upozornění", cls: "bg-amber-100 text-amber-700" },
     insight: { label: "Zjištění", cls: "bg-indigo-100 text-indigo-700" },
     opportunity: { label: "Příležitost", cls: "bg-emerald-100 text-emerald-700" },
-    compliance: { label: "Compliance", cls: "bg-orange-100 text-orange-700" },
+    compliance: { label: "Kontrola", cls: "bg-orange-100 text-orange-700" },
     next_step: { label: "Další krok", cls: "bg-blue-100 text-blue-700" },
   };
   const v = map[type];
@@ -473,13 +473,16 @@ function AIRecommendationsCard({
     <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 rounded-[20px] border border-indigo-100 shadow-sm p-4 md:p-5 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
       <div className="relative z-10">
-        <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 mb-4 flex items-center gap-2">
+        <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 mb-1 flex items-center gap-2">
           <AiAssistantBrandIcon size={16} className="shrink-0" />
           Kontroly a akce
           <span className="ml-auto text-indigo-500 font-bold text-[10px] normal-case tracking-normal">
             {visible.length} aktivních
           </span>
         </h3>
+        <p className="text-[10px] text-indigo-700/80 font-medium leading-snug mb-4 pl-0.5">
+          Zkontrolujte body níže před schválením nebo zápisem do CRM. U úkolu můžete nechat sledovat doplnění.
+        </p>
 
         <div className="space-y-3">
           {visible.map((rec) => (
@@ -767,12 +770,14 @@ function ExtractedFieldRow({
         </div>
       )}
 
-      {field.sourceType && (
+      {field.sourceType && field.sourceType !== "ai" ? (
         <div className="mt-1 ml-1 text-[10px] text-[color:var(--wp-text-tertiary)] flex items-center gap-2">
-          <span>Zdroj: {field.sourceType.toUpperCase()}</span>
-          {field.page && <span>Strana {field.page}</span>}
+          <span>Zdroj: {field.sourceType}</span>
+          {field.page ? <span>Strana {field.page}</span> : null}
         </div>
-      )}
+      ) : field.page ? (
+        <div className="mt-1 ml-1 text-[10px] text-[color:var(--wp-text-tertiary)]">Strana {field.page}</div>
+      ) : null}
     </div>
   );
 }

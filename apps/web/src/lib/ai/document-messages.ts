@@ -129,15 +129,37 @@ export function buildHumanSummary(params: {
     parts.push("Některé údaje mají nižší jistotu čtení. Doporučuji ověřit klíčové položky.");
   }
 
-  // Review reasons
+  // Review reasons (never show raw snake_case codes to advisors)
   if (reasonsForReview && reasonsForReview.length > 0) {
     const relevant = reasonsForReview.filter((r) => !r.startsWith("low_") && r !== "model_flagged");
-    if (relevant.length > 0) {
-      parts.push(`Dokument vyžaduje kontrolu: ${relevant.slice(0, 3).join(", ")}.`);
+    const humanized = relevant
+      .map((r) => humanizeReviewReasonForAdvisorSummary(r))
+      .filter((s): s is string => Boolean(s));
+    if (humanized.length > 0) {
+      parts.push(`Kontrola: ${humanized.slice(0, 3).join(" ")}`);
     }
   }
 
   return parts.join(" ");
+}
+
+/** Maps internal pipeline reason codes to short Czech hints for the executive summary. */
+function humanizeReviewReasonForAdvisorSummary(code: string): string | null {
+  const t = code.trim();
+  const map: Record<string, string> = {
+    partial_extraction_coerced: "Část údajů byla dopočítána z kontextu — ověřte je v PDF.",
+    partial_extraction_merged_into_stub: "Výstup byl zjednodušen — zkontrolujte hodnoty oproti dokumentu.",
+    proposal_or_modelation_not_final_contract: "Dokument vypadá jako návrh nebo modelace, ne jako finální smlouva.",
+    proposal_not_final_contract: "Rozpoznání ukazuje spíš na návrh než na finální smlouvu.",
+    hybrid_contract_signals_detected: "V dokumentu jsou prvky smlouvy i modelace — ověřte typ dokumentu.",
+    scan_or_ocr_unusable: "OCR nemělo dost spolehlivý text — důkladně zkontrolujte pole.",
+    ambiguous_client_match: "V CRM je více možných klientů — vyberte správného.",
+    incomplete_payment_details: "Platební údaje nejsou kompletní — doplňte nebo ověřte.",
+  };
+  if (map[t]) return map[t];
+  if (/^[a-z][a-z0-9_]*$/i.test(t) && t.includes("_")) return null;
+  if (t.length > 0) return t;
+  return null;
 }
 
 /**

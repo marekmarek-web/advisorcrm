@@ -137,6 +137,12 @@ const FIELD_LABELS: Record<string, string> = {
   dateSigned: "Datum podpisu",
   signedDate: "Datum podpisu",
   documentDate: "Datum dokumentu",
+  /** LLM / legacy anglické klíče → čeština */
+  documentIssueDate: "Datum vystavení dokumentu",
+  effectiveDate: "Datum účinnosti",
+  modelationDate: "Datum modelace",
+  subtypeLabel: "Druh produktu (podtyp)",
+  subTypeLabel: "Druh produktu (podtyp)",
   issueDate: "Datum vystavení",
   analysisDate: "Datum analýzy",
   questionnaireDate: "Datum dotazníku",
@@ -982,6 +988,40 @@ function buildSummary(
 }
 
 /**
+ * Collapses duplicate rows with the same advisor-facing label and value (e.g. repeated „Číslo smlouvy“).
+ * Preference: canonical contractNumber over composite / proposal / modelation ids.
+ */
+function dedupeIdenticalLabelValueFieldsInGroups(groups: ExtractedGroup[]): ExtractedGroup[] {
+  function slotPriority(fieldId: string): number {
+    const leaf = fieldId.includes(".") ? (fieldId.split(".").pop() ?? fieldId) : fieldId;
+    if (leaf === "contractNumber") return 0;
+    if (leaf.includes("contractNumberOr") || leaf.includes("ProposalNumberOr")) return 1;
+    if (leaf === "proposalNumber") return 2;
+    if (leaf === "modelationId") return 3;
+    return 50;
+  }
+  return groups.map((g) => {
+    const buckets = new Map<string, ExtractedField[]>();
+    for (const f of g.fields) {
+      const key = `${f.label.trim().toLowerCase()}|||${f.value.trim().replace(/\s+/g, " ")}`;
+      const arr = buckets.get(key) ?? [];
+      arr.push(f);
+      buckets.set(key, arr);
+    }
+    const keep = new Set<string>();
+    for (const arr of buckets.values()) {
+      if (arr.length === 1) {
+        keep.add(arr[0]!.id);
+      } else {
+        const sorted = [...arr].sort((a, b) => slotPriority(a.id) - slotPriority(b.id));
+        keep.add(sorted[0]!.id);
+      }
+    }
+    return { ...g, fields: g.fields.filter((f) => keep.has(f.id)) };
+  });
+}
+
+/**
  * Apply inline review edits onto the API `extractedPayload` shape (section.key field ids from flattenPayload).
  */
 export function mergeFieldEditsIntoExtractedPayload(
@@ -1278,6 +1318,8 @@ export function mapApiToExtractionDocument(
       usedSyntheticGroups = true;
     }
   }
+
+  groups = dedupeIdenticalLabelValueFieldsInGroups(groups);
 
   const diagnostics = buildDiagnostics(detail, groups);
   const recommendations = buildRecommendations(detail, groups);

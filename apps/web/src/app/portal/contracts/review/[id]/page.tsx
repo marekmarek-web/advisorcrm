@@ -112,8 +112,12 @@ export default function ContractReviewDetailPage() {
     try {
       const res = await fetch(`/api/contracts/review/${id}/file`);
       if (res.ok) {
-        const { url } = await res.json();
-        if (url) setPdfUrl(url);
+        const data = (await res.json()) as { url?: string };
+        const url = data.url;
+        if (url) {
+          setPdfUrl(url);
+          setDoc((prev) => (prev ? { ...prev, pdfUrl: url } : prev));
+        }
       }
     } catch {
       /* PDF URL optional */
@@ -580,6 +584,7 @@ export default function ContractReviewDetailPage() {
         onConfirmCreateNew={handleConfirmCreateNew}
         isApproving={actionLoading === "approve"}
         actionLoading={actionLoading}
+        onRefreshPdf={loadPdf}
       />
     </div>
   );

@@ -161,6 +161,7 @@ type Props = {
   onConfirmCreateNew?: () => void;
   isApproving?: boolean;
   actionLoading?: string | null;
+  onRefreshPdf?: () => void | Promise<void>;
 };
 
 export function AIReviewExtractionShell({
@@ -175,6 +176,7 @@ export function AIReviewExtractionShell({
   onConfirmCreateNew,
   isApproving,
   actionLoading,
+  onRefreshPdf,
 }: Props) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -419,60 +421,68 @@ export function AIReviewExtractionShell({
             r.includes("offer_not_binding")
         );
         if (!showApplyIssues && !showPrepFailed && !showLowCov && !showProposal && !applyOverrideEnabled) return null;
+        const showFinalContractCta = hasProposalBarrier && !applyOverrideEnabled;
         return (
-          <div className="border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-1.5 md:px-6">
-            <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-x-3 gap-y-1">
-              {doc.applyGate && doc.applyGate.blockedReasons.length > 0 ? (
-                <span className="text-[11px] text-red-800 font-semibold">
-                  Blokace: {doc.applyGate.blockedReasons.map(humanizeApplyGateReason).join(" ")}
-                </span>
-              ) : null}
-              {effectiveApplyBarrierReasons.length > 0 ? (
-                <>
-                  <span className="text-[11px] text-amber-900 font-medium">
-                    Dokument je označen jako návrh / modelace. Pokud jde ve skutečnosti o finální smlouvu,
-                    potvrďte to ručně.
+          <div
+            className={`border-b px-4 py-3 md:px-6 ${
+              showFinalContractCta || applyOverrideEnabled
+                ? "border-amber-200 bg-amber-50"
+                : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]"
+            }`}
+          >
+            <div className="max-w-6xl mx-auto flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
+              <div className="min-w-0 flex flex-col gap-2 text-xs">
+                {doc.applyGate && doc.applyGate.blockedReasons.length > 0 ? (
+                  <span className="text-sm text-red-800 font-semibold leading-snug">
+                    Blokace: {doc.applyGate.blockedReasons.map(humanizeApplyGateReason).join(" ")}
                   </span>
-                  {hasProposalBarrier ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setApplyOverrideEnabled(true);
-                        toast.showToast("Dokument je ručně potvrzený jako finální smlouva.", "success");
-                      }}
-                      className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-colors hover:bg-emerald-100"
-                    >
-                      Potvrdit jako finální smlouvu
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-              {applyOverrideEnabled ? (
-                <span className="text-[11px] font-semibold text-emerald-700">
-                  Poradce potvrdil dokument jako finální smlouvu. Zápis do CRM je povolen ručně.
-                </span>
-              ) : null}
-              {doc.applyGate && doc.applyGate.warnings.length > 0 ? (
-                <span className="text-[11px] text-amber-800">
-                  {doc.applyGate.warnings.map(humanizeApplyGateReason).join(" ")}
-                </span>
-              ) : null}
-              {showPrepFailed ? (
-                <span className="text-[11px] text-amber-800">
-                  Preprocessing selhal — porovnejte extrakci s originálem.
-                </span>
-              ) : null}
-              {showLowCov ? (
-                <span className="text-[11px] text-amber-800">
-                  Nízké pokrytí textem (
-                  {Math.round((doc.pipelineInsights?.textCoverageEstimate ?? 0) * 100)} %) — zkontrolujte pole
-                  oproti dokumentu.
-                </span>
-              ) : null}
-              {showProposal ? (
-                <span className="text-[11px] font-semibold text-amber-900">
-                  Návrh / modelace — ne finální smlouva.
-                </span>
+                ) : null}
+                {effectiveApplyBarrierReasons.length > 0 ? (
+                  <p className="text-sm text-amber-950 font-medium leading-snug">
+                    Dokument je označen jako <strong>návrh / modelace</strong>. Pokud jde ve skutečnosti o finální
+                    smlouvu, potvrďte to — jinak zápis do CRM zůstane omezený.
+                  </p>
+                ) : null}
+                {applyOverrideEnabled ? (
+                  <span className="text-sm font-semibold text-emerald-800 leading-snug">
+                    Potvrzeno: dokument bereme jako finální smlouvu. Zápis do CRM je povolen (postupujte přes Schválit /
+                    Zapsat do CRM).
+                  </span>
+                ) : null}
+                {doc.applyGate && doc.applyGate.warnings.length > 0 ? (
+                  <span className="text-[11px] text-amber-900 leading-snug">
+                    {doc.applyGate.warnings.map(humanizeApplyGateReason).join(" ")}
+                  </span>
+                ) : null}
+                {showPrepFailed ? (
+                  <span className="text-[11px] text-amber-800 leading-snug">
+                    Preprocessing selhal — porovnejte extrakci s originálem.
+                  </span>
+                ) : null}
+                {showLowCov ? (
+                  <span className="text-[11px] text-amber-800 leading-snug">
+                    Nízké pokrytí textem (
+                    {Math.round((doc.pipelineInsights?.textCoverageEstimate ?? 0) * 100)} %) — zkontrolujte pole
+                    oproti dokumentu.
+                  </span>
+                ) : null}
+                {showProposal ? (
+                  <span className="text-sm font-semibold text-amber-950 leading-snug">
+                    Návrh / modelace — ne finální smlouva.
+                  </span>
+                ) : null}
+              </div>
+              {showFinalContractCta ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApplyOverrideEnabled(true);
+                    toast.showToast("Dokument je ručně potvrzený jako finální smlouva.", "success");
+                  }}
+                  className="shrink-0 inline-flex min-h-[44px] w-full md:w-auto items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-md transition-colors hover:bg-emerald-700"
+                >
+                  Potvrdit jako finální smlouvu
+                </button>
               ) : null}
             </div>
           </div>
@@ -737,6 +747,7 @@ export function AIReviewExtractionShell({
               dispatch({ type: "SET_FULLSCREEN", isFullscreen: !state.isFullscreen })
             }
             onHighlightClick={handleHighlightClick}
+            onRefreshPdf={onRefreshPdf}
           />
         </aside>
       </main>
