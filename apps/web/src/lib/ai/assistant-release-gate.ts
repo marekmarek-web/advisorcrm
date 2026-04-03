@@ -1,8 +1,8 @@
 /**
- * Phase 2H: release gate — quality thresholds and acceptance criteria
- * for Phase 2 of the AI assistant rebuild.
+ * Assistant release gate — quality thresholds for eval + regression checks.
  *
- * These thresholds are enforced in tests and can be wired into CI.
+ * `PHASE_3_THRESHOLDS` is the current default for {@link evaluateReleaseGate}.
+ * `PHASE_2_THRESHOLDS` is kept as a historical baseline only.
  */
 
 import type { AssistantEvalRunSummary, AssistantEvalDomain } from "./assistant-eval-types";
@@ -66,12 +66,15 @@ export type GateCheck = {
   blocking: boolean;
 };
 
+/**
+ * @param thresholds Defaults to {@link PHASE_3_THRESHOLDS}. {@link PHASE_2_THRESHOLDS} remains as historical baseline only.
+ */
 export function evaluateReleaseGate(
   evalSummary: AssistantEvalRunSummary,
   regressionFixtureCount: number,
   goldenScenarioCount: number,
   redFlagResults: { flag: string; allPassed: boolean }[],
-  thresholds: ReleaseGateThresholds = PHASE_2_THRESHOLDS,
+  thresholds: ReleaseGateThresholds = PHASE_3_THRESHOLDS,
 ): GateCheckResult {
   const checks: GateCheck[] = [];
 
@@ -144,7 +147,7 @@ export function evaluateReleaseGate(
   };
 }
 
-export function formatGateReport(result: GateCheckResult, label = "PHASE 2 RELEASE GATE REPORT"): string {
+export function formatGateReport(result: GateCheckResult, label = "PHASE 3 RELEASE GATE REPORT"): string {
   const lines: string[] = [];
   lines.push("═══════════════════════════════════════════");
   lines.push(`  ${label}`);

@@ -19,13 +19,14 @@ vi.mock("db", () => ({
 }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
 
-import { emptyCanonicalIntent, type CanonicalIntent, type ExecutionPlan } from "../assistant-domain-model";
+import { emptyCanonicalIntent, type CanonicalIntent, type ExecutionPlan, type WriteActionType } from "../assistant-domain-model";
 import { buildExecutionPlan, confirmAllSteps, getStepsAwaitingConfirmation } from "../assistant-execution-plan";
 import { buildVerifiedResult } from "../assistant-execution-engine";
 import { verifyWriteContextSafety } from "../assistant-context-safety";
 import { computeStepFingerprint, checkRecentFingerprint, recordFingerprint } from "../assistant-action-fingerprint";
 import { getOrCreateSession, lockAssistantClient } from "../assistant-session";
 import { replayFixtures, type ReplayFixture } from "./assistant-replay-fixtures";
+import { requestedActionsFromExpectedWriteActions } from "./assistant-write-action-to-intent";
 
 const TENANT = "t-regression";
 const USER = "u-regression";
@@ -36,28 +37,10 @@ function intentFromFixture(f: ReplayFixture): CanonicalIntent {
     ...base,
     ...f.expectedIntent,
     intentType: f.expectedIntent.intentType ?? base.intentType,
-    requestedActions: f.expectedPlan.expectedActions.map(a => {
-      const reverseMap: Record<string, string> = {
-        createOpportunity: "create_opportunity",
-        createTask: "create_task",
-        createFollowUp: "create_followup",
-        createServiceCase: "create_service_case",
-        createClientRequest: "create_client_request",
-        createMaterialRequest: "create_material_request",
-        classifyDocument: "classify_document",
-        setDocumentVisibleToClient: "show_document_to_client",
-        approveAiContractReview: "approve_ai_contract_review",
-        applyAiContractReviewToCrm: "apply_ai_review_to_crm",
-        createClientPortalNotification: "notify_client_portal",
-        scheduleCalendarEvent: "schedule_meeting",
-        createMeetingNote: "create_note",
-        createInternalNote: "create_internal_note",
-        triggerDocumentReview: "request_document_review",
-        createReminder: "create_reminder",
-        sendPortalMessage: "send_portal_message",
-      };
-      return (reverseMap[a] ?? f.expectedIntent.intentType ?? "general_chat") as any;
-    }),
+    requestedActions: requestedActionsFromExpectedWriteActions(
+      f.expectedPlan.expectedActions as WriteActionType[],
+      f.expectedIntent.intentType ?? "general_chat",
+    ),
   };
 }
 

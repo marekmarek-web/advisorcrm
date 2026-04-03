@@ -1,8 +1,6 @@
 /**
- * Phase 2H: release gate test — enforces quality thresholds
- * by running the full eval + regression suite and checking pass rates.
- *
- * This test is designed to fail CI if any blocking criteria is not met.
+ * Assistant release gate (Phase 3 thresholds) — runs golden eval + replay red-flag checks
+ * and enforces blocking quality criteria for CI.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -20,7 +18,7 @@ vi.mock("db", () => ({
 }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
 
-import { emptyCanonicalIntent, type CanonicalIntent, type ExecutionPlan } from "../assistant-domain-model";
+import { emptyCanonicalIntent, type CanonicalIntent, type ExecutionPlan, type WriteActionType } from "../assistant-domain-model";
 import { buildExecutionPlan, confirmAllSteps, getStepsAwaitingConfirmation } from "../assistant-execution-plan";
 import { buildVerifiedResult } from "../assistant-execution-engine";
 import { verifyWriteContextSafety } from "../assistant-context-safety";
@@ -30,14 +28,26 @@ import { evaluateIntent, evaluatePlan, evaluateSafety, aggregateEvalRun } from "
 import type { ScenarioEvalResult } from "../assistant-eval-types";
 import { goldenScenarios } from "./assistant-golden-scenarios";
 import { replayFixtures, type ReplayFixture } from "./assistant-replay-fixtures";
-import { evaluateReleaseGate, formatGateReport, PHASE_2_THRESHOLDS, PHASE_3_THRESHOLDS } from "../assistant-release-gate";
+import { evaluateReleaseGate, formatGateReport, PHASE_3_THRESHOLDS } from "../assistant-release-gate";
+import {
+  goldenScenarioNeedsTestOpportunity,
+  mergeGoldenIntentSlotsForScenario,
+  requestedActionsFromExpectedWriteActions,
+  TEST_OPPORTUNITY_ID,
+} from "./assistant-write-action-to-intent";
 
 const TENANT = "t-gate";
 const USER = "u-gate";
 const CONTACT_A = "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const CONTACT_B = "bbbb2222-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
-function makeResolution(opts: { clientId?: string; ambiguous?: boolean; alternatives?: { id: string; label: string }[]; confidence?: number } = {}) {
+function makeResolution(opts: {
+  clientId?: string;
+  opportunityId?: string;
+  ambiguous?: boolean;
+  alternatives?: { id: string; label: string }[];
+  confidence?: number;
+} = {}) {
   return {
     client: opts.clientId ? {
       entityType: "contact" as const,
@@ -47,7 +57,14 @@ function makeResolution(opts: { clientId?: string; ambiguous?: boolean; alternat
       ambiguous: opts.ambiguous ?? false,
       alternatives: opts.alternatives ?? [],
     } : null,
-    opportunity: null,
+    opportunity: opts.opportunityId ? {
+      entityType: "opportunity" as const,
+      entityId: opts.opportunityId,
+      displayLabel: "Test obchod",
+      confidence: 1.0,
+      ambiguous: false,
+      alternatives: [],
+    } : null,
     document: null,
     contract: null,
     warnings: [],
@@ -56,43 +73,24 @@ function makeResolution(opts: { clientId?: string; ambiguous?: boolean; alternat
 
 function intentFromGolden(scenario: typeof goldenScenarios[number]): CanonicalIntent {
   const base = emptyCanonicalIntent();
-  return {
+  let intent: CanonicalIntent = {
     ...base,
     intentType: scenario.expectedIntent.intentType,
     productDomain: scenario.expectedIntent.productDomain ?? null,
     requiresConfirmation: scenario.expectedIntent.requiresConfirmation ?? false,
     switchClient: scenario.expectedIntent.switchClient ?? false,
     requestedActions: scenario.expectedPlan?.expectedActions
-      ? scenario.expectedPlan.expectedActions.map(a => {
-          const reverseMap: Record<string, string> = {
-            createOpportunity: "create_opportunity",
-            createTask: "create_task",
-            createFollowUp: "create_followup",
-            createClientRequest: "create_client_request",
-            createServiceCase: "create_service_case",
-            createMaterialRequest: "create_material_request",
-            classifyDocument: "classify_document",
-            setDocumentVisibleToClient: "show_document_to_client",
-            approveAiContractReview: "approve_ai_contract_review",
-            applyAiContractReviewToCrm: "apply_ai_review_to_crm",
-            createClientPortalNotification: "notify_client_portal",
-            scheduleCalendarEvent: "schedule_meeting",
-            updateOpportunity: "update_opportunity",
-            sendPortalMessage: "send_portal_message",
-            createMeetingNote: "create_note",
-            createInternalNote: "create_internal_note",
-            triggerDocumentReview: "request_document_review",
-            attachDocumentToClient: "attach_document",
-            attachDocumentToOpportunity: "attach_document_to_opportunity",
-            createReminder: "create_reminder",
-          };
-          return (reverseMap[a] ?? scenario.expectedIntent.intentType) as any;
-        })
+      ? requestedActionsFromExpectedWriteActions(
+          scenario.expectedPlan.expectedActions as WriteActionType[],
+          scenario.expectedIntent.intentType,
+        )
       : [scenario.expectedIntent.intentType],
   };
+  intent = mergeGoldenIntentSlotsForScenario(scenario.id, intent);
+  return intent;
 }
 
-describe("Phase 2H: Release Gate", () => {
+describe("Assistant release gate (Phase 3)", () => {
   it("passes Phase 3 release gate (domains, red flags, eval thresholds)", () => {
     // ── Run golden eval scenarios ──
     const evalResults: ScenarioEvalResult[] = [];
@@ -107,11 +105,12 @@ describe("Phase 2H: Release Gate", () => {
       const isAmbiguous = scenario.id === "safety-ambiguous-client";
       const needsClient = !isNoClientScenario && (!isSafety || scenario.expectedPlan?.expectedContactIdPresent);
 
+      const opportunityId = goldenScenarioNeedsTestOpportunity(scenario.id) ? TEST_OPPORTUNITY_ID : undefined;
       const resolution = isAmbiguous
         ? makeResolution({ clientId: CONTACT_A, ambiguous: true, alternatives: [{ id: CONTACT_B, label: "Alt" }] })
         : needsClient || scenario.expectedPlan?.expectedContactIdPresent
-          ? makeResolution({ clientId: CONTACT_A })
-          : makeResolution();
+          ? makeResolution({ clientId: CONTACT_A, opportunityId })
+          : makeResolution({ opportunityId });
 
       const session = getOrCreateSession(undefined, TENANT, USER);
       if (scenario.id === "safety-cross-client-warning") {
@@ -151,8 +150,8 @@ describe("Phase 2H: Release Gate", () => {
 
     const evalSummary = aggregateEvalRun(evalResults);
 
-    // ── Check red flags from regression fixtures (Phase 2 + Phase 3) ──
-    const allFlags = [...new Set([...PHASE_2_THRESHOLDS.zeroToleranceRedFlags, ...PHASE_3_THRESHOLDS.zeroToleranceRedFlags])];
+    // ── Check red flags from regression fixtures (Phase 3 superset) ──
+    const allFlags = [...PHASE_3_THRESHOLDS.zeroToleranceRedFlags];
     const redFlagGroups = new Map<string, boolean>();
     for (const flag of allFlags) {
       const flagFixtures = replayFixtures.filter(f => f.redFlag === flag);
@@ -168,28 +167,10 @@ describe("Phase 2H: Release Gate", () => {
           ...emptyCanonicalIntent(),
           ...f.expectedIntent,
           intentType: f.expectedIntent.intentType ?? emptyCanonicalIntent().intentType,
-          requestedActions: f.expectedPlan.expectedActions.map(a => {
-            const reverseMap: Record<string, string> = {
-              createOpportunity: "create_opportunity", createTask: "create_task",
-              createFollowUp: "create_followup", createClientRequest: "create_client_request",
-              createServiceCase: "create_service_case",
-              createMaterialRequest: "create_material_request", classifyDocument: "classify_document",
-              setDocumentVisibleToClient: "show_document_to_client",
-              approveAiContractReview: "approve_ai_contract_review",
-              applyAiContractReviewToCrm: "apply_ai_review_to_crm",
-              createClientPortalNotification: "notify_client_portal",
-              createInternalNote: "create_internal_note",
-              triggerDocumentReview: "request_document_review",
-              createReminder: "create_reminder",
-              scheduleCalendarEvent: "schedule_meeting",
-              createMeetingNote: "create_note",
-              attachDocumentToClient: "attach_document",
-              attachDocumentToOpportunity: "attach_document_to_opportunity",
-              sendPortalMessage: "send_portal_message",
-              updateOpportunity: "update_opportunity",
-            };
-            return (reverseMap[a] ?? f.expectedIntent.intentType ?? "general_chat") as any;
-          }),
+          requestedActions: requestedActionsFromExpectedWriteActions(
+            f.expectedPlan.expectedActions as WriteActionType[],
+            f.expectedIntent.intentType ?? "general_chat",
+          ),
         };
 
         const plan = buildExecutionPlan(intent, f.resolution, session);
@@ -259,7 +240,6 @@ describe("Phase 2H: Release Gate", () => {
       replayFixtures.length,
       goldenScenarios.length,
       redFlagResults,
-      PHASE_3_THRESHOLDS,
     );
 
     const report = formatGateReport(gateResult, "PHASE 3 RELEASE GATE REPORT");

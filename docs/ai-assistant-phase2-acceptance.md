@@ -22,7 +22,40 @@
 
 ---
 
-## Release Gate Criteria
+## Phase 3 — Assistant eval & release gate (current)
+
+Phase 3 rozšiřuje gate o doménu **write_workflows** a tři další zero-tolerance red flagy. Konstanty a default prahy pro `evaluateReleaseGate()` jsou v [`apps/web/src/lib/ai/assistant-release-gate.ts`](apps/web/src/lib/ai/assistant-release-gate.ts) (`PHASE_3_THRESHOLDS`; výchozí argument funkce).
+
+### Blocking (zero tolerance)
+
+| Check                             | Threshold     | Notes |
+| --------------------------------- | ------------- | ----- |
+| Eval pass rate                    | >= 90%        |       |
+| Domain coverage (all **7**)       | >= 1 scenario | + `write_workflows` |
+| Domain pass rate (each)           | >= 80%        |       |
+| Red flag: wrong_client_write      | all replay pass |     |
+| Red flag: fake_confirmation       | all replay pass |     |
+| Red flag: duplicate_create        | all replay pass |     |
+| Red flag: broken_context_lock     | all replay pass |     |
+| Red flag: incomplete_partial_failure | all replay pass |  |
+| Red flag: wrong_document_attach   | all replay pass | Phase 3 |
+| Red flag: missing_required_fields | all replay pass | Phase 3 |
+| Red flag: multi_action_order_violation | all replay pass | Phase 3 |
+
+### Advisory
+
+| Check                    | Threshold (`PHASE_3`) | Příklad aktuálního stavu (golden/replay soubory) |
+| ------------------------ | --------------------- | ------------------------------------------------ |
+| Min regression fixtures  | >= 18                 | 30 replay fixture                                |
+| Min golden scenarios     | >= 25                 | 43 golden scénářů                                |
+
+**CI / lokálně:** `pnpm test:assistant-regression` v `apps/web` (gate + harness + regression + související assistant testy).
+
+**Test helper:** mapování write akce → intent pro golden/replay je centralizované v `apps/web/src/lib/ai/__tests__/assistant-write-action-to-intent.ts`.
+
+---
+
+## Release Gate Criteria (Phase 2 baseline — historické)
 
 ### Blocking (zero tolerance)
 
@@ -78,6 +111,7 @@
 - `apps/web/src/lib/ai/__tests__/assistant-regression-suite.test.ts` (2F)
 - `apps/web/src/lib/ai/__tests__/assistant-replay-fixtures.ts` (2F)
 - `apps/web/src/lib/ai/__tests__/assistant-release-gate.test.ts` (2H)
+- `apps/web/src/lib/ai/__tests__/assistant-write-action-to-intent.ts` (Phase 3 eval helper)
 
 ### Modified files
 

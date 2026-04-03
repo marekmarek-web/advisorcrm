@@ -18,7 +18,7 @@ vi.mock("db", () => ({
 }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
 
-import { emptyCanonicalIntent, type CanonicalIntent } from "../assistant-domain-model";
+import { emptyCanonicalIntent, type CanonicalIntent, type WriteActionType } from "../assistant-domain-model";
 import type { EntityResolutionResult } from "../assistant-entity-resolution";
 import { buildExecutionPlan } from "../assistant-execution-plan";
 import { verifyWriteContextSafety } from "../assistant-context-safety";
@@ -26,6 +26,12 @@ import { getOrCreateSession, lockAssistantClient } from "../assistant-session";
 import { evaluateIntent, evaluatePlan, evaluateSafety, aggregateEvalRun } from "../assistant-eval-runner";
 import type { ScenarioEvalResult } from "../assistant-eval-types";
 import { goldenScenarios } from "./assistant-golden-scenarios";
+import {
+  goldenScenarioNeedsTestOpportunity,
+  mergeGoldenIntentSlotsForScenario,
+  requestedActionsFromExpectedWriteActions,
+  TEST_OPPORTUNITY_ID,
+} from "./assistant-write-action-to-intent";
 
 const TENANT = "tenant-eval";
 const USER = "user-eval";
@@ -35,6 +41,7 @@ const CONTACT_B = "bbbb2222-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 function makeResolution(opts: {
   clientId?: string;
   clientLabel?: string;
+  opportunityId?: string;
   ambiguous?: boolean;
   alternatives?: { id: string; label: string }[];
   confidence?: number;
@@ -48,7 +55,14 @@ function makeResolution(opts: {
       ambiguous: opts.ambiguous ?? false,
       alternatives: opts.alternatives ?? [],
     } : null,
-    opportunity: null,
+    opportunity: opts.opportunityId ? {
+      entityType: "opportunity",
+      entityId: opts.opportunityId,
+      displayLabel: "Test obchod",
+      confidence: 1.0,
+      ambiguous: false,
+      alternatives: [],
+    } : null,
     document: null,
     contract: null,
     warnings: [],
@@ -56,40 +70,21 @@ function makeResolution(opts: {
 }
 
 function intentFromScenario(scenario: typeof goldenScenarios[number]): CanonicalIntent {
-  return {
+  let intent: CanonicalIntent = {
     ...emptyCanonicalIntent(),
     intentType: scenario.expectedIntent.intentType,
     productDomain: scenario.expectedIntent.productDomain ?? null,
     requiresConfirmation: scenario.expectedIntent.requiresConfirmation ?? false,
     switchClient: scenario.expectedIntent.switchClient ?? false,
     requestedActions: scenario.expectedPlan?.expectedActions
-      ? scenario.expectedPlan.expectedActions.map(a => {
-          const reverseMap: Record<string, string> = {
-            createOpportunity: "create_opportunity",
-            updateOpportunity: "update_opportunity",
-            createTask: "create_task",
-            createFollowUp: "create_followup",
-            createClientRequest: "create_client_request",
-            createServiceCase: "create_service_case",
-            createMaterialRequest: "create_material_request",
-            classifyDocument: "classify_document",
-            setDocumentVisibleToClient: "show_document_to_client",
-            approveAiContractReview: "approve_ai_contract_review",
-            applyAiContractReviewToCrm: "apply_ai_review_to_crm",
-            createClientPortalNotification: "notify_client_portal",
-            scheduleCalendarEvent: "schedule_meeting",
-            createMeetingNote: "create_note",
-            createInternalNote: "create_internal_note",
-            triggerDocumentReview: "request_document_review",
-            attachDocumentToClient: "attach_document",
-            attachDocumentToOpportunity: "attach_document_to_opportunity",
-            sendPortalMessage: "send_portal_message",
-            createReminder: "create_reminder",
-          };
-          return (reverseMap[a] ?? scenario.expectedIntent.intentType) as any;
-        })
+      ? requestedActionsFromExpectedWriteActions(
+          scenario.expectedPlan.expectedActions as WriteActionType[],
+          scenario.expectedIntent.intentType,
+        )
       : [scenario.expectedIntent.intentType],
   };
+  intent = mergeGoldenIntentSlotsForScenario(scenario.id, intent);
+  return intent;
 }
 
 describe("Phase 2E: Assistant Eval Harness", () => {
@@ -234,7 +229,12 @@ describe("Phase 2E: Assistant Eval Harness", () => {
         const start = Date.now();
         const steps: ScenarioEvalResult["steps"] = [];
         const intent = intentFromScenario(scenario);
-        const resolution = makeResolution({ clientId: CONTACT_A, clientLabel: "Jan Novák" });
+        const opportunityId = goldenScenarioNeedsTestOpportunity(scenario.id) ? TEST_OPPORTUNITY_ID : undefined;
+        const resolution = makeResolution({
+          clientId: CONTACT_A,
+          clientLabel: "Jan Novák",
+          opportunityId,
+        });
         const session = getOrCreateSession(undefined, TENANT, USER);
         if (scenario.tags.includes("document-attach") || scenario.tags.includes("document-attach-opportunity") || scenario.tags.includes("document-review")) {
           session.lockedDocumentId = "doc-ww-test";

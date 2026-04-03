@@ -621,6 +621,67 @@ export const goldenScenarios: GoldenScenario[] = [
     tags: ["write_workflows", "portal-message", "3i"],
   },
   {
+    id: "ww-schedule-calendar-slotted",
+    domain: "write_workflows",
+    name: "Naplánování schůzky — vyplněný čas (happy path)",
+    description: "Intent má resolved datum/čas; plán čeká na potvrzení.",
+    turns: [
+      { role: "user", content: "Naplánuj schůzku s Novákem na čtvrtek 14:00." },
+    ],
+    expectedIntent: {
+      intentType: "schedule_meeting",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 1,
+      expectedActions: ["scheduleCalendarEvent"],
+      expectedContactIdPresent: true,
+      expectedStatus: "awaiting_confirmation",
+    },
+    tags: ["write_workflows", "calendar", "3i", "happy-path"],
+  },
+  {
+    id: "ww-update-opportunity-slotted",
+    domain: "write_workflows",
+    name: "Aktualizace obchodu — vybraný obchod (happy path)",
+    description: "Rozlišení obsahuje opportunityId; plán čeká na potvrzení.",
+    turns: [
+      { role: "user", content: "Aktualizuj obchod — zvýš částku na 5M." },
+    ],
+    expectedIntent: {
+      intentType: "update_opportunity",
+      productDomain: "hypo",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 1,
+      expectedActions: ["updateOpportunity"],
+      expectedContactIdPresent: true,
+      expectedStatus: "awaiting_confirmation",
+    },
+    tags: ["write_workflows", "update", "3i", "happy-path"],
+  },
+  {
+    id: "ww-send-portal-message-slotted",
+    domain: "write_workflows",
+    name: "Portálová zpráva — vyplněný text (happy path)",
+    description: "Intent obsahuje text zprávy; plán čeká na potvrzení.",
+    turns: [
+      { role: "user", content: "Pošli Novákovi zprávu, že smlouva je připravena." },
+    ],
+    expectedIntent: {
+      intentType: "send_portal_message",
+    },
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 1,
+      expectedActions: ["sendPortalMessage"],
+      expectedContactIdPresent: true,
+      expectedStatus: "awaiting_confirmation",
+    },
+    tags: ["write_workflows", "portal-message", "3i", "happy-path"],
+  },
+  {
     id: "ww-attach-document-to-opportunity",
     domain: "write_workflows",
     name: "Přiřazení dokumentu k obchodu",
