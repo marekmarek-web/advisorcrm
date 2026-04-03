@@ -43,6 +43,12 @@ import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import { requireClientZoneAuth } from "@/lib/auth/require-auth";
 import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
 import type { ClientFinancialSummaryView } from "@/app/actions/client-financial-summary";
+import type { ClientPortalSessionBundle } from "./client-portal-session-bundle.model";
+
+export type {
+  ClientPortalContactRow,
+  ClientPortalSessionBundle,
+} from "./client-portal-session-bundle.model";
 
 const MISSING_FINANCIAL_SUMMARY: ClientFinancialSummaryView = {
   primaryAnalysisId: null,
@@ -63,51 +69,6 @@ const MISSING_FINANCIAL_SUMMARY: ClientFinancialSummaryView = {
   reserveGap: 0,
   priorities: [],
   gaps: [],
-};
-
-/** Jeden řádek kontaktu pro klientský portál (dashboard + mobilní profil). */
-export type ClientPortalContactRow = {
-  firstName: string | null;
-  lastName: string | null;
-  email: string | null;
-  phone: string | null;
-  street: string | null;
-  city: string | null;
-  zip: string | null;
-  notificationUnsubscribedAt: Date | null;
-};
-
-/**
- * Jednotný read-model pro klientskou zónu (web + mobil).
- *
- * Source of truth (stejné server actions jako dříve):
- * - Požadavky (opportunities): `getClientRequests`
- * - Oznámení v centru + badge v headeru: `portal_notifications` přes `getPortalNotificationsForClient` / `getPortalNotificationsUnreadCount`
- * - Nepřečtené zprávy od poradce: `getUnreadAdvisorMessagesForClientCount`
- * - Portfolio / dokumenty / domácnost / platby / podklady od poradce: příslušné akce v jednom paralelním načtení
- */
-export type ClientPortalSessionBundle = {
-  tenantId: string;
-  contactId: string;
-  fullName: string;
-  contact: ClientPortalContactRow | null;
-  advisor: ClientAdvisorInfo | null;
-  quickStats: {
-    assetsUnderManagement: number;
-    monthlyInvestments: number;
-    monthlyInsurancePremiums: number;
-    activeContractCount: number;
-  };
-  requests: ClientRequestItem[];
-  contracts: ContractRow[];
-  documents: DocumentRow[];
-  notifications: PortalNotificationRow[];
-  household: ClientHouseholdDetail | null;
-  unreadNotificationsCount: number;
-  unreadMessagesCount: number;
-  paymentInstructions: PaymentInstruction[];
-  advisorMaterialRequests: MaterialRequestListItem[];
-  financialSummaryRaw: ClientFinancialSummaryView;
 };
 
 const emptyQuickStats = {

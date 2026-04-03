@@ -7,7 +7,7 @@ import type { PortalNotificationRow } from "@/app/actions/portal-notifications";
 import type { ClientHouseholdDetail } from "@/app/actions/households";
 import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
-import type { ClientPortalSessionBundle } from "@/lib/client-portal/client-portal-session-bundle";
+import type { ClientPortalSessionBundle } from "@/lib/client-portal/client-portal-session-bundle.model";
 
 export type ClientMobileInitialData = {
   contactId: string;

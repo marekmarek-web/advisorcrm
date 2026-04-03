@@ -13,19 +13,10 @@ import {
 import { markPortalNotificationRead } from "@/app/actions/portal-notifications";
 import type { PortalNotificationRow } from "@/app/actions/portal-notifications";
 import { formatPortalNotificationBody } from "@/lib/client-portal/format-portal-notification-body";
+import { getPortalNotificationDeepLink } from "@/lib/client-portal/portal-notification-routing";
 
 export function getNotificationRoute(n: { type: string; relatedEntityId?: string | null }): string | null {
-  if (n.type === "new_message") return "/client/messages";
-  if (n.type === "new_document") return "/client/documents";
-  if (n.type === "advisor_material_request") {
-    return n.relatedEntityId
-      ? `/client/pozadavky-poradce/${n.relatedEntityId}`
-      : "/client/pozadavky-poradce";
-  }
-  if (n.type === "request_status_change") return "/client/requests";
-  // 5F: important_date now routes to portfolio as the most relevant context
-  if (n.type === "important_date") return "/client/portfolio";
-  return null;
+  return getPortalNotificationDeepLink(n);
 }
 
 function getIcon(type: string) {

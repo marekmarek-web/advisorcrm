@@ -100,16 +100,15 @@ export async function createPortalNotification(params: {
   relatedEntityType?: string | null;
   relatedEntityId?: string | null;
   /**
-   * 5C dedup window in minutes. When set, skips insert if an unread
-   * notification with the same type + relatedEntityId exists within this window.
-   * Defaults to 5 minutes for entity-scoped types.
+   * When > 0 (default: 5 if `relatedEntityId` is set, else 0), skips insert if an
+   * unread row already exists for the same tenant, contact, `type`, and `relatedEntityId`.
+   * Pass `0` to force insert even when a duplicate unread exists.
    */
   dedupWindowMinutes?: number;
 }): Promise<void> {
-  // 5C: Dedup — skip if identical unread notification was recently created
+  // 5C: Dedup — skip if an unread notification already exists for same type + entity
   const dedupMinutes = params.dedupWindowMinutes ?? (params.relatedEntityId ? 5 : 0);
   if (dedupMinutes > 0 && params.relatedEntityId) {
-    const cutoff = new Date(Date.now() - dedupMinutes * 60_000);
     const [existing] = await db
       .select({ id: portalNotifications.id })
       .from(portalNotifications)

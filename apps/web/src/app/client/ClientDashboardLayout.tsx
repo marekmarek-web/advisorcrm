@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { getPortalNotificationDeepLink } from "@/lib/client-portal/portal-notification-routing";
 import {
   Bell,
   Briefcase,
@@ -67,21 +68,6 @@ type ClientDashboardLayoutProps = {
 
 function formatMoney(value: number): string {
   return `${value.toLocaleString("cs-CZ")} Kč`;
-}
-
-/** 5F: resolve deep-link href from notification type for smart dashboard CTA */
-function getNotificationCtaHref(n: { type?: string; relatedEntityId?: string } | null): string | null {
-  if (!n?.type) return null;
-  if (n.type === "new_message") return "/client/messages";
-  if (n.type === "new_document") return "/client/documents";
-  if (n.type === "advisor_material_request") {
-    return n.relatedEntityId
-      ? `/client/pozadavky-poradce/${n.relatedEntityId}`
-      : "/client/pozadavky-poradce";
-  }
-  if (n.type === "request_status_change") return "/client/requests";
-  if (n.type === "important_date") return "/client/portfolio";
-  return null;
 }
 
 function getNotificationCtaLabel(type?: string): string {
@@ -343,7 +329,7 @@ export function ClientDashboardLayout({
             <div className="flex flex-wrap gap-3">
               {/* 5E/5F: smart CTA based on latest notification type */}
               {(() => {
-                const notifHref = getNotificationCtaHref(latestNotification);
+                const notifHref = getPortalNotificationDeepLink(latestNotification);
                 const primaryHref = notifHref ?? (highlightedRequest ? "/client/requests" : "/client/requests");
                 const primaryLabel = latestNotification
                   ? getNotificationCtaLabel(latestNotification.type)

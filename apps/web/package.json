@@ -18,6 +18,7 @@
     "test:ai-review-phase2-regression": "vitest run src/lib/ai/__tests__/phase-2-review-regression.test.ts src/lib/ai/__tests__/legacy-insurance-proposal-envelope.test.ts src/lib/ai/__tests__/quality-gates.test.ts src/lib/calculators/investment/__tests__/investment.backtest.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts",
     "test:ai-review-phase3-regression": "vitest run src/lib/ai/__tests__/phase-3-payment-sync-regression.test.ts src/lib/ai/__tests__/quality-gates.test.ts src/lib/calculators/investment/__tests__/investment.backtest.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts src/lib/observability/__tests__/contract-review-sentry.test.ts",
     "test:ai-review-phase4-regression": "vitest run src/lib/ai/__tests__/phase-4-review-workbench-regression.test.ts src/lib/ai/__tests__/phase-3-payment-sync-regression.test.ts src/lib/ai/__tests__/quality-gates.test.ts src/lib/observability/__tests__/contract-review-sentry.test.ts",
+    "test:client-portal-phase5-regression": "vitest run src/lib/client-portal/__tests__/phase-5-client-portal-bridge-regression.test.ts src/lib/observability/__tests__/contract-review-sentry.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts src/lib/calculators/investment/__tests__/investment.backtest.test.ts",
     "test:e2e": "playwright test",
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
