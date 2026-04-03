@@ -10,11 +10,11 @@ export function formatPercentCs(value: number, fractionDigits = 2): string {
   return `${value.toLocaleString("cs-CZ", { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })} %`;
 }
 
-export function buildCalculatorPdfFilename(prefix: string): string {
+export function buildCalculatorExportFilename(prefix: string, extension: "html" | "pdf"): string {
   const d = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
-  return `aidvisora-${prefix}-${stamp}.pdf`;
+  return `aidvisora-${prefix}-${stamp}.${extension}`;
 }
 
 export const CALCULATOR_PDF_DISCLAIMER_LINES = [

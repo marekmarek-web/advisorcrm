@@ -1,5 +1,5 @@
 /**
- * Shared structure for calculator PDF export (text sections → pdf-lib).
+ * Shared structure for calculator HTML/print export (sections → tabulky v reportu).
  */
 
 export interface CalculatorPdfRow {
