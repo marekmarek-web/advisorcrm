@@ -201,8 +201,8 @@ describe("Phase 2H: Release Gate", () => {
             ...confirmed,
             status: "partial_failure",
             steps: [
-              { ...confirmed.steps[0]!, status: "succeeded", result: { ok: true, entityId: "e1", entityType: "task", warnings: [], error: null } },
-              { ...confirmed.steps[1]!, status: "failed", result: { ok: false, entityId: null, entityType: null, warnings: [], error: "err" } },
+              { ...confirmed.steps[0]!, status: "succeeded", result: { ok: true, outcome: "executed" as const, entityId: "e1", entityType: "task", warnings: [], error: null } },
+              { ...confirmed.steps[1]!, status: "failed", result: { ok: false, outcome: "failed" as const, entityId: null, entityType: null, warnings: [], error: "err" } },
             ],
           };
           const verified = buildVerifiedResult("Test.", partialPlan);

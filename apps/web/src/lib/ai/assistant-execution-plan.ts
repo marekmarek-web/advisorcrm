@@ -133,42 +133,57 @@ function buildStepParams(
   return params;
 }
 
+/**
+ * Required fields per write action. Kept in sync with runtime adapters so
+ * the planner catches missing slots *before* execution hits a runtime error.
+ *
+ * "OR-groups" use `[["a","b"]]` — at least one of the group must be present.
+ */
+type FieldRequirement = string | string[];
+const REQUIRED_FIELDS: Record<string, FieldRequirement[]> = {
+  createOpportunity: ["contactId"],
+  updateOpportunity: ["opportunityId"],
+  updateClientRequest: ["opportunityId"],
+  createTask: ["contactId"],
+  updateTask: ["taskId"],
+  createFollowUp: ["contactId"],
+  scheduleCalendarEvent: ["contactId", ["startAt", "resolvedDate"]],
+  createMeetingNote: ["contactId"],
+  appendMeetingNote: ["meetingNoteId"],
+  createInternalNote: [],
+  attachDocumentToClient: ["contactId", "documentId"],
+  attachDocumentToOpportunity: ["opportunityId", "documentId"],
+  classifyDocument: ["documentId", ["documentType", "classification"]],
+  triggerDocumentReview: ["documentId"],
+  approveAiContractReview: ["reviewId"],
+  applyAiContractReviewToCrm: ["reviewId"],
+  linkAiContractReviewToDocuments: ["reviewId"],
+  setDocumentVisibleToClient: ["documentId"],
+  linkDocumentToMaterialRequest: ["materialRequestId", "documentId"],
+  createClientPortalNotification: ["contactId", "portalNotificationTitle"],
+  createClientRequest: ["contactId"],
+  createMaterialRequest: ["contactId"],
+  draftEmail: ["contactId"],
+  draftClientPortalMessage: ["contactId"],
+  publishPortfolioItem: ["contractId"],
+  updatePortfolioItem: ["contractId"],
+  createReminder: ["contactId"],
+  sendPortalMessage: ["contactId", ["portalMessageBody", "noteContent"]],
+};
+
 function computeMissingFields(
   action: WriteActionType,
   params: Record<string, unknown>,
 ): string[] {
   const missing: string[] = [];
-  const required: Record<string, string[]> = {
-    createOpportunity: ["contactId"],
-    updateOpportunity: ["opportunityId"],
-    updateClientRequest: ["opportunityId"],
-    createTask: ["contactId"],
-    createFollowUp: ["contactId"],
-    scheduleCalendarEvent: ["contactId"],
-    createMeetingNote: ["contactId"],
-    attachDocumentToClient: ["contactId", "documentId"],
-    attachDocumentToOpportunity: ["opportunityId", "documentId"],
-    classifyDocument: ["documentId"],
-    triggerDocumentReview: ["documentId"],
-    approveAiContractReview: ["reviewId"],
-    applyAiContractReviewToCrm: ["reviewId"],
-    linkAiContractReviewToDocuments: ["reviewId"],
-    setDocumentVisibleToClient: ["documentId"],
-    linkDocumentToMaterialRequest: ["materialRequestId", "documentId"],
-    createClientPortalNotification: ["contactId", "portalNotificationTitle"],
-    createClientRequest: ["contactId"],
-    createMaterialRequest: ["contactId"],
-    draftEmail: ["contactId"],
-    draftClientPortalMessage: ["contactId"],
-    publishPortfolioItem: ["contractId"],
-    updatePortfolioItem: ["contractId"],
-    createReminder: ["contactId"],
-    sendPortalMessage: ["contactId"],
-  };
-
-  const fields = required[action] ?? [];
-  for (const f of fields) {
-    if (!params[f]) missing.push(f);
+  const fields = REQUIRED_FIELDS[action] ?? [];
+  for (const req of fields) {
+    if (Array.isArray(req)) {
+      const anyPresent = req.some((k) => !!params[k]);
+      if (!anyPresent) missing.push(req.join("|"));
+    } else {
+      if (!params[req]) missing.push(req);
+    }
   }
   return missing;
 }

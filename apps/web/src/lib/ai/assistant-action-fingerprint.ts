@@ -6,24 +6,35 @@
 import { createHash } from "crypto";
 import type { ExecutionStep, WriteActionType } from "./assistant-domain-model";
 
-const FINGERPRINT_KEYS_BY_ACTION: Partial<Record<WriteActionType, string[]>> = {
+const FINGERPRINT_KEYS_BY_ACTION: Record<WriteActionType, string[]> = {
   createOpportunity: ["contactId", "productDomain", "caseType", "taskTitle"],
+  updateOpportunity: ["opportunityId", "title"],
   createTask: ["contactId", "taskTitle", "resolvedDate"],
+  updateTask: ["taskId", "taskTitle"],
   createFollowUp: ["contactId", "taskTitle", "resolvedDate"],
-  scheduleCalendarEvent: ["contactId", "taskTitle", "resolvedDate"],
+  scheduleCalendarEvent: ["contactId", "taskTitle", "startAt", "resolvedDate"],
   createMeetingNote: ["contactId", "noteContent"],
-  createClientRequest: ["contactId", "productDomain", "noteContent"],
-  createMaterialRequest: ["contactId", "noteContent"],
-  createClientPortalNotification: ["contactId", "portalNotificationTitle"],
-  createReminder: ["contactId", "taskTitle", "resolvedDate"],
-  draftEmail: ["contactId", "emailSubject"],
-  sendPortalMessage: ["contactId", "messageContent"],
-  classifyDocument: ["documentId", "documentType"],
-  publishPortfolioItem: ["contractId"],
+  appendMeetingNote: ["meetingNoteId", "noteContent"],
+  createInternalNote: ["contactId", "noteContent"],
+  attachDocumentToClient: ["contactId", "documentId"],
+  attachDocumentToOpportunity: ["opportunityId", "documentId"],
+  classifyDocument: ["documentId", "documentType", "classification"],
+  triggerDocumentReview: ["documentId"],
   approveAiContractReview: ["reviewId"],
   applyAiContractReviewToCrm: ["reviewId"],
   linkAiContractReviewToDocuments: ["reviewId"],
   setDocumentVisibleToClient: ["documentId"],
+  linkDocumentToMaterialRequest: ["materialRequestId", "documentId"],
+  createClientPortalNotification: ["contactId", "portalNotificationTitle"],
+  createClientRequest: ["contactId", "productDomain", "noteContent"],
+  updateClientRequest: ["opportunityId", "subject"],
+  createMaterialRequest: ["contactId", "noteContent"],
+  publishPortfolioItem: ["contractId"],
+  updatePortfolioItem: ["contractId"],
+  createReminder: ["contactId", "taskTitle", "resolvedDate"],
+  draftEmail: ["contactId", "subject"],
+  draftClientPortalMessage: ["contactId", "subject"],
+  sendPortalMessage: ["contactId", "portalMessageBody", "noteContent"],
 };
 
 /**

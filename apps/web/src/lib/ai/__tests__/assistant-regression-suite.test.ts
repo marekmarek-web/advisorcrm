@@ -210,8 +210,8 @@ describe("Red flag: incomplete_partial_failure", () => {
         ...confirmed,
         status: "partial_failure",
         steps: [
-          { ...s0, status: "succeeded", result: { ok: true, entityId: "e1", entityType: "task", warnings: [], error: null } },
-          { ...s1, status: "failed", result: { ok: false, entityId: null, entityType: null, warnings: [], error: "Adapter error" } },
+          { ...s0, status: "succeeded", result: { ok: true, outcome: "executed" as const, entityId: "e1", entityType: "task", warnings: [], error: null } },
+          { ...s1, status: "failed", result: { ok: false, outcome: "failed" as const, entityId: null, entityType: null, warnings: [], error: "Adapter error" } },
         ],
       };
 

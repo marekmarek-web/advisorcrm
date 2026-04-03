@@ -185,8 +185,11 @@ export type ExecutionStep = {
   result: ExecutionStepResult | null;
 };
 
+export type StepResultOutcome = "executed" | "idempotent_hit" | "duplicate_hit" | "failed";
+
 export type ExecutionStepResult = {
   ok: boolean;
+  outcome: StepResultOutcome;
   entityId: string | null;
   entityType: string | null;
   warnings: string[];

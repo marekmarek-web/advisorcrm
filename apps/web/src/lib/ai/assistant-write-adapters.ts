@@ -45,11 +45,11 @@ async function assertCtx(ctx: ExecutionContext): Promise<{
 }
 
 function okResult(entityId: string, entityType: string, warnings: string[] = []): ExecutionStepResult {
-  return { ok: true, entityId, entityType, warnings, error: null };
+  return { ok: true, outcome: "executed", entityId, entityType, warnings, error: null };
 }
 
 function errResult(error: string): ExecutionStepResult {
-  return { ok: false, entityId: null, entityType: null, warnings: [], error };
+  return { ok: false, outcome: "failed", entityId: null, entityType: null, warnings: [], error };
 }
 
 async function firstPipelineStageId(tenantId: string): Promise<string | null> {

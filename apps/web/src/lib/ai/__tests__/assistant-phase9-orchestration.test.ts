@@ -182,6 +182,7 @@ describe("buildVerifiedResult — partial failure a varování", () => {
           status: "succeeded" as const,
           result: {
             ok: true,
+            outcome: "idempotent_hit" as const,
             entityId: "11111111-1111-1111-1111-111111111111",
             entityType: "task",
             warnings: ["Akce již byla provedena (idempotentní)."],
@@ -193,6 +194,7 @@ describe("buildVerifiedResult — partial failure a varování", () => {
           status: "failed" as const,
           result: {
             ok: false,
+            outcome: "failed" as const,
             entityId: null,
             entityType: null,
             warnings: [],

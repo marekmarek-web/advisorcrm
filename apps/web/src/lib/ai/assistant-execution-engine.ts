@@ -89,6 +89,7 @@ async function recordExecution(
     },
     resultPayload: {
       ok: result.ok,
+      outcome: result.outcome,
       entityId: result.entityId,
       entityType: result.entityType,
       warnings: result.warnings,
@@ -106,12 +107,12 @@ async function executeStep(
   ctx: ExecutionContext,
 ): Promise<ExecutionStepResult> {
   if (step.status !== "confirmed") {
-    return { ok: false, entityId: null, entityType: null, warnings: [], error: `Step not confirmed: ${step.status}` };
+    return { ok: false, outcome: "failed", entityId: null, entityType: null, warnings: [], error: `Step not confirmed: ${step.status}` };
   }
 
   const adapter = writeAdapters.get(step.action);
   if (!adapter) {
-    return { ok: false, entityId: null, entityType: null, warnings: [], error: `No adapter for ${step.action}` };
+    return { ok: false, outcome: "failed", entityId: null, entityType: null, warnings: [], error: `No adapter for ${step.action}` };
   }
 
   const idempotencyKey = `${ctx.sessionId}:${step.stepId}`;
@@ -121,10 +122,12 @@ async function executeStep(
       stepId: step.stepId,
       action: step.action,
     });
+    const payload = existing.resultPayload as Record<string, unknown> | null;
     return {
       ok: true,
+      outcome: "idempotent_hit",
       entityId: existing.entityId,
-      entityType: step.action,
+      entityType: (payload?.entityType as string) ?? step.action,
       warnings: ["Akce již byla provedena (idempotentní)."],
       error: null,
     };
@@ -141,6 +144,7 @@ async function executeStep(
     });
     return {
       ok: true,
+      outcome: "duplicate_hit",
       entityId: fpCheck.existingActionId,
       entityType: step.action,
       warnings: ["Duplicitní akce detekována — přeskočeno."],
@@ -149,7 +153,11 @@ async function executeStep(
   }
 
   try {
-    const result = await adapter(step.params, ctx);
+    const adapterResult = await adapter(step.params, ctx);
+    const result: ExecutionStepResult = {
+      ...adapterResult,
+      outcome: adapterResult.outcome ?? (adapterResult.ok ? "executed" : "failed"),
+    };
     await recordExecution(step, ctx, result, idempotencyKey);
 
     if (result.ok) {
@@ -174,6 +182,7 @@ async function executeStep(
     const error = err instanceof Error ? err.message : "Unknown execution error";
     const failResult: ExecutionStepResult = {
       ok: false,
+      outcome: "failed",
       entityId: null,
       entityType: null,
       warnings: [],
@@ -282,7 +291,8 @@ export function buildVerifiedResult(
 
   if (plan) {
     for (const step of plan.steps) {
-      const isIdempotent = step.result?.warnings?.some(w => w.includes("idempotentní") || w.includes("Duplicitní")) ?? false;
+      const resultOutcome = step.result?.outcome;
+      const isIdempotent = resultOutcome === "idempotent_hit" || resultOutcome === "duplicate_hit";
       const outcome: VerifiedAssistantResult["stepOutcomes"][number] = {
         stepId: step.stepId,
         action: step.action,
