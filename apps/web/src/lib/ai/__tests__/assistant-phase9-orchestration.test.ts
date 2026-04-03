@@ -260,6 +260,7 @@ describe("buildVerifiedResult — partial failure a varování", () => {
             entityType: null,
             warnings: [],
             error: "Chybí oprávnění",
+            retryable: true,
           },
         },
       ],
@@ -267,7 +268,7 @@ describe("buildVerifiedResult — partial failure a varování", () => {
     const verified = buildVerifiedResult("Hotovo.", failedPlan);
     expect(verified.warnings.some((w) => w.includes("idempotentní"))).toBe(true);
     expect(verified.warnings.some((w) => w.includes("selhal"))).toBe(true);
-    expect(verified.suggestedNextSteps.some((s) => s.includes("selhané"))).toBe(true);
+    expect(verified.suggestedNextSteps.some((s) => s.toLowerCase().includes("selhané"))).toBe(true);
     expect(verified.confidence).toBeLessThan(0.9);
     expect(verified.referencedEntities.some((e) => e.id === "11111111-1111-1111-1111-111111111111")).toBe(true);
   });

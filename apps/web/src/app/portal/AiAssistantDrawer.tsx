@@ -184,6 +184,8 @@ export function AiAssistantDrawer() {
   const [historyHydrationLoading, setHistoryHydrationLoading] = useState(false);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  /** Drží panel s „Potvrdit“ viditelný během API volání (6J). */
+  const [confirmExecuteBusy, setConfirmExecuteBusy] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,6 +203,7 @@ export function AiAssistantDrawer() {
   const [importContactsResult, setImportContactsResult] = useState<{ imported: number; skipped: number; errors: { row: number; message: string }[] } | null>(null);
   const [importContactsLoading, setImportContactsLoading] = useState(false);
   const latestAssistantContext = getLatestAssistantContextFromMessages(messages);
+  const showStickyContextLock = Boolean(latestAssistantContext?.lockedClientId);
   /** Spouští "Upravit zadání": vyplní input textem z poslední uživatelské zprávy a přesune fokus. */
   const handleEditIntent = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
@@ -428,6 +431,7 @@ export function AiAssistantDrawer() {
       : undefined;
     if (canSelect && (!picked || picked.length === 0)) return;
 
+    setConfirmExecuteBusy(true);
     chatSubmitLockRef.current = true;
     setMessages((prev) => [
       ...prev,
@@ -496,6 +500,7 @@ export function AiAssistantDrawer() {
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setChatLoading(false);
+      setConfirmExecuteBusy(false);
       chatSubmitLockRef.current = false;
     }
   }, [chatLoading, messages, routeContactId, routeOpportunityId, stepSelectionByPlanId, toast]);
@@ -1241,7 +1246,16 @@ export function AiAssistantDrawer() {
                   {m.role === "assistant" && (m.stepOutcomes?.length ?? 0) > 0 && (
                     <StepOutcomeCard outcomes={m.stepOutcomes!} hasPartialFailure={m.hasPartialFailure} />
                   )}
-                  {m.role === "assistant" && m.contextState?.lockedClientId && (
+                  {m.role === "assistant" &&
+                    m.contextState?.lockedClientId &&
+                    !(
+                      showStickyContextLock &&
+                      m.contextState.lockedClientId === latestAssistantContext?.lockedClientId
+                    ) &&
+                    !(
+                      (m.executionState?.stepPreviews?.length ?? 0) > 0 &&
+                      Boolean(m.executionState?.clientLabel)
+                    ) && (
                     <div className="mt-1.5">
                       <ContextLockBadge
                         lockedClientId={m.contextState.lockedClientId}
@@ -1319,24 +1333,32 @@ export function AiAssistantDrawer() {
 
           {/* Input area - reference */}
           <div className="shrink-0 p-4 pt-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80">
-            {awaitingConfirmationFromLatestTurn && !chatLoading ? (
+            {(awaitingConfirmationFromLatestTurn || confirmExecuteBusy) ? (
               <div className="mb-2 space-y-1.5">
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => void submitPlanConfirmation()}
                     disabled={chatLoading || confirmSelectionInvalid}
-                    className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                   >
-                    Potvrdit a provést
+                    {chatLoading && confirmExecuteBusy ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin shrink-0" aria-hidden />
+                        Provádím…
+                      </>
+                    ) : (
+                      "Potvrdit a provést"
+                    )}
                   </button>
                   <button
                     type="button"
                     onClick={() => void submitCancelPlan()}
-                    className="min-h-[44px] px-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-sm font-bold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] transition-colors"
-                    aria-label="Zrušit plán"
+                    disabled={chatLoading && confirmExecuteBusy}
+                    className="min-h-[44px] px-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-sm font-bold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Zrušit plán akcí"
                   >
-                    Zrušit
+                    Zrušit plán
                   </button>
                 </div>
                 <button
@@ -1373,8 +1395,10 @@ export function AiAssistantDrawer() {
                 )}
               </button>
             </div>
-            <p className="text-xs text-[color:var(--wp-text-secondary)] mt-1.5">
-              Např. přiřaď smlouvu ke klientovi, vytvoř úkol, připrav email…
+            <p className="text-xs text-[color:var(--wp-text-secondary)] mt-1.5 leading-snug">
+              {awaitingConfirmationFromLatestTurn
+                ? "Nový dotaz můžete napsat až po potvrzení nebo zrušení plánu výše. Tip: upravte výběr kroků zaškrtávátky."
+                : "Např. přiřaď smlouvu ke klientovi, vytvoř úkol, připrav email…"}
             </p>
           </div>
         </div>

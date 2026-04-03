@@ -79,11 +79,17 @@ export function ContextLockBadge({ lockedClientId, lockedClientLabel, className 
   if (!lockedClientId) return null;
   const label = lockedClientLabel?.trim() || `${lockedClientId.slice(0, 8)}…`;
   return (
-    <div className={cx("inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700", className)}>
-      <User size={12} className="shrink-0" />
-      <span>Kontext lock</span>
-      <ChevronRight size={10} />
-      <span>{label}</span>
+    <div
+      className={cx(
+        "inline-flex items-center gap-1.5 rounded-xl border border-indigo-200/80 bg-indigo-50/90 px-3 py-1.5 text-[11px] font-bold text-indigo-800 shadow-sm",
+        className,
+      )}
+      title="Zámek kontextu — akce se vztahují k tomuto klientovi"
+    >
+      <User size={12} className="shrink-0 opacity-80" aria-hidden />
+      <span className="text-indigo-600/90">Aktivní klient</span>
+      <ChevronRight size={10} className="opacity-60" aria-hidden />
+      <span className="truncate max-w-[14rem]">{label}</span>
     </div>
   );
 }
@@ -117,31 +123,34 @@ export function ConfirmationPreviewPanel({
   const selectionEnabled = Boolean(selectable) && stepPreviews.every((s) => Boolean(s.stepId));
 
   return (
-    <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50/60 overflow-hidden">
+    <div className="mt-3 rounded-xl border border-amber-200/90 bg-gradient-to-b from-amber-50/80 to-amber-50/40 overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/60 border-b border-amber-200">
-        <ListChecks size={14} className="text-amber-700 shrink-0" />
+      <div className="flex items-center gap-2.5 px-3 py-2.5 bg-amber-100/50 border-b border-amber-200/80">
+        <ListChecks size={15} className="text-amber-800 shrink-0" aria-hidden />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-wider text-amber-700">
-            {isDraft ? "Chybějící informace" : "Co se provede"}
+          <p className="text-[11px] font-black uppercase tracking-wider text-amber-800">
+            {isDraft ? "Chybějící informace" : "Návrh akcí"}
           </p>
           {clientLabel && (
-            <p className="text-[10px] font-semibold text-amber-600 truncate">
-              {clientLabel}
+            <p className="text-[11px] font-semibold text-amber-700/95 truncate mt-0.5" title={clientLabel}>
+              Klient: {clientLabel}
             </p>
           )}
         </div>
-        <span className="text-[10px] font-bold text-amber-600 bg-amber-100 rounded px-1.5 py-0.5">
+        <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 border border-amber-200/60 rounded-lg px-2 py-0.5 tabular-nums shrink-0">
           {stepPreviews.length} {stepPreviews.length === 1 ? "krok" : stepPreviews.length < 5 ? "kroky" : "kroků"}
         </span>
       </div>
 
       {/* Advisory hints (missing fields, domain warnings) */}
       {advisoryHints.length > 0 && (
-        <div className="px-3 pt-2 space-y-1">
+        <div className="px-3 pt-2.5 space-y-1.5 border-b border-amber-100/80">
           {advisoryHints.map((hint, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber-700 font-medium">
-              <AlertCircle size={11} className="shrink-0 mt-0.5" />
+            <div
+              key={i}
+              className="flex items-start gap-2 text-[11px] text-amber-900 font-medium bg-amber-100/40 rounded-lg px-2 py-1.5 border border-amber-200/50"
+            >
+              <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-600" aria-hidden />
               <span>{hint}</span>
             </div>
           ))}
@@ -149,30 +158,38 @@ export function ConfirmationPreviewPanel({
       )}
 
       {/* Step list */}
-      <div className="px-3 py-2 space-y-1.5">
+      <div className="px-3 py-2.5 space-y-2">
         {stepPreviews.map((step, i) => {
           const sid = step.stepId;
           const rowKey = sid || `row-${i}`;
           const checked = sid ? (stepSelection[sid] ?? true) : true;
           return (
-            <div key={rowKey} className="flex items-start gap-2">
+            <div
+              key={rowKey}
+              className={cx(
+                "flex items-start gap-2.5 rounded-lg border px-2 py-2 transition-colors",
+                selectionEnabled && sid && !checked
+                  ? "border-amber-100/80 bg-amber-50/30 opacity-80"
+                  : "border-amber-200/50 bg-white/40",
+              )}
+            >
               {selectionEnabled && sid ? (
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={() => onToggleStep?.(sid)}
-                  className="mt-1 w-4 h-4 rounded border-amber-300 text-amber-700 focus:ring-amber-500 shrink-0"
+                  className="mt-1 w-4 h-4 rounded border-amber-300 text-amber-700 focus:ring-2 focus:ring-amber-400 focus:ring-offset-0 shrink-0"
                   aria-label={`Zařadit krok: ${step.label}`}
                 />
               ) : (
-                <span className="mt-0.5 w-4 h-4 rounded-full bg-amber-200 text-amber-800 text-[9px] font-black flex items-center justify-center shrink-0">
+                <span className="mt-0.5 w-5 h-5 rounded-full bg-amber-200/90 text-amber-900 text-[10px] font-black flex items-center justify-center shrink-0">
                   {i + 1}
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <span className="text-xs font-semibold text-amber-900">{step.label}</span>
+                <span className="text-[13px] font-semibold text-amber-950 leading-snug">{step.label}</span>
                 {step.contextHint ? (
-                  <span className="ml-1.5 text-[10px] font-semibold text-amber-600 bg-amber-100 rounded px-1 py-0.5">
+                  <span className="ml-2 align-middle text-[10px] font-semibold text-amber-800 bg-amber-100/90 border border-amber-200/60 rounded-md px-1.5 py-0.5">
                     {step.contextHint}
                   </span>
                 ) : null}

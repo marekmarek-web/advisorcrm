@@ -147,12 +147,15 @@ function MessageBubble({
   onNextStep,
   stepSelectionByPlanId,
   onToggleStepForPlan,
+  stickyLockedClientId,
 }: {
   msg: ChatMessage;
   onSuggestedAction?: (action: SuggestedAction) => void;
   onNextStep?: (text: string) => void;
   stepSelectionByPlanId?: Record<string, Record<string, boolean>>;
   onToggleStepForPlan?: (planId: string, stepId: string) => void;
+  /** Stejný klient jako horní sticky badge — duplicitní chip v bublině neukazujeme (6E). */
+  stickyLockedClientId?: string | null;
 }) {
   const isUser = msg.role === "user";
 
@@ -247,7 +250,12 @@ function MessageBubble({
                 )}
             </>
           ) : null}
-          {!isUser && msg.contextState?.lockedClientId ? (
+          {!isUser &&
+          msg.contextState?.lockedClientId &&
+          !(stickyLockedClientId && msg.contextState.lockedClientId === stickyLockedClientId) &&
+          !(
+            (msg.executionState?.stepPreviews?.length ?? 0) > 0 && Boolean(msg.executionState?.clientLabel)
+          ) ? (
             <div className="mt-1">
               <ContextLockBadge
                 lockedClientId={msg.contextState.lockedClientId}
@@ -425,6 +433,7 @@ export function AiAssistantChatScreen() {
   const chatSubmitLockRef = useRef(false);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [planConfirmBusy, setPlanConfirmBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [draftEmail, setDraftEmail] = useState<string | null>(null);
@@ -721,6 +730,7 @@ export function AiAssistantChatScreen() {
       : undefined;
     if (canSelect && (!picked || picked.length === 0)) return;
 
+    setPlanConfirmBusy(true);
     chatSubmitLockRef.current = true;
     const streamAssistantId = nextId();
     setMessages((prev) => [
@@ -785,6 +795,7 @@ export function AiAssistantChatScreen() {
       setMessages((prev) => prev.filter((m) => m.id !== streamAssistantId));
     } finally {
       setIsTyping(false);
+      setPlanConfirmBusy(false);
       chatSubmitLockRef.current = false;
     }
   }, [
@@ -1090,6 +1101,7 @@ export function AiAssistantChatScreen() {
           <MessageBubble
             key={msg.id}
             msg={msg}
+            stickyLockedClientId={latestContextState?.lockedClientId ?? null}
             onSuggestedAction={handleSuggestedAction}
             onNextStep={(text) => void sendMessage(text)}
             stepSelectionByPlanId={stepSelectionByPlanId}
@@ -1213,24 +1225,32 @@ export function AiAssistantChatScreen() {
           </div>
         )}
 
-        {awaitingConfirmationFromLatestTurn && !isTyping ? (
+        {(awaitingConfirmationFromLatestTurn || planConfirmBusy) ? (
           <div className="mb-2 space-y-1.5">
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => void submitPlanConfirmation()}
                 disabled={isTyping || confirmSelectionInvalid}
-                className="flex-1 min-h-[44px] rounded-2xl bg-emerald-600 text-white text-sm font-bold shadow-sm active:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 min-h-[44px] rounded-2xl bg-emerald-600 text-white text-sm font-bold shadow-sm active:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                Potvrdit a provést
+                {isTyping && planConfirmBusy ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin shrink-0" aria-hidden />
+                    Provádím…
+                  </>
+                ) : (
+                  "Potvrdit a provést"
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => void submitCancelPlan()}
-                className="min-h-[44px] px-4 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-sm font-bold text-[color:var(--wp-text-secondary)]"
-                aria-label="Zrušit plán"
+                disabled={isTyping && planConfirmBusy}
+                className="min-h-[44px] px-4 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] text-sm font-bold text-[color:var(--wp-text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Zrušit plán akcí"
               >
-                Zrušit
+                Zrušit plán
               </button>
             </div>
             <button

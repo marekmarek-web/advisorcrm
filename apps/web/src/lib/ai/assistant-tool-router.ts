@@ -35,6 +35,7 @@ import {
   getPlanSummary,
   getStepsAwaitingConfirmation,
   applyConfirmationSelection,
+  productDomainChipLabel,
 } from "./assistant-execution-plan";
 import { executePlan, buildVerifiedResult } from "./assistant-execution-engine";
 import { verifyWriteContextSafety, verifyTenantConsistency } from "./assistant-context-safety";
@@ -53,19 +54,8 @@ export type StepOutcomeSummary = {
   retryable?: boolean;
 };
 
-const DOMAIN_HINT_LABELS: Record<string, string> = {
-  hypo: "Hypotéka", uver: "Úvěr", investice: "Investice", dip: "DIP", dps: "DPS",
-  zivotni_pojisteni: "Životní pojištění", majetek: "Majetek", odpovednost: "Odpovědnost",
-  auto: "Auto", cestovni: "Cestovní pojištění", firma_pojisteni: "Firemní pojištění",
-  servis: "Servis", jine: "Jiné",
-};
-
 function stepPreviewContextHint(step: ExecutionStep): string | undefined {
-  const d = step.params.productDomain as string | undefined;
-  if (!d) return undefined;
-  const humanLabel = DOMAIN_HINT_LABELS[d] ?? d;
-  if (step.label.includes(`(${humanLabel})`)) return undefined;
-  return humanLabel;
+  return productDomainChipLabel(step.params.productDomain as string | undefined);
 }
 
 export type AssistantResponse = {

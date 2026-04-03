@@ -4,6 +4,7 @@
 import type { ExecutionPlan } from "./assistant-domain-model";
 import { normalizeExecutionPlanFromDb } from "./assistant-plan-snapshot";
 import type { StepPreviewItem } from "./assistant-execution-ui";
+import { productDomainChipLabel } from "./assistant-execution-plan";
 
 export type AssistantConversationRow = {
   id: string;
@@ -55,9 +56,11 @@ export type AdvisorAssistantHistoryMessageDto =
 
 function stepPreviewsFromPlan(plan: ExecutionPlan): StepPreviewItem[] {
   return plan.steps.map((s) => ({
+    stepId: s.stepId,
     label: s.label,
     action: s.action,
-    contextHint: undefined,
+    contextHint: productDomainChipLabel(s.params.productDomain as string | undefined),
+    domainGroup: (s.params.productDomain as string | undefined) ?? null,
   }));
 }
 

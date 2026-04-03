@@ -403,7 +403,16 @@ const PRODUCT_DOMAIN_LABELS: Record<string, string> = {
   jine: "Jiné",
 };
 
-function buildStepLabel(action: WriteActionType, params: Record<string, unknown>): string {
+/**
+ * Krátký název domény pro chip v náhledu akcí (6D) — bez duplicity v hlavním labelu kroku.
+ * `jine` se jako chip neukazuje (málo užitečné).
+ */
+export function productDomainChipLabel(domain: string | null | undefined): string | undefined {
+  if (domain == null || domain === "" || domain === "jine") return undefined;
+  return PRODUCT_DOMAIN_LABELS[domain] ?? domain;
+}
+
+function buildStepLabel(action: WriteActionType, _params: Record<string, unknown>): string {
   const labels: Record<string, string> = {
     createOpportunity: "Vytvořit obchod",
     updateOpportunity: "Aktualizovat obchod",
@@ -435,11 +444,7 @@ function buildStepLabel(action: WriteActionType, params: Record<string, unknown>
     createClientPortalNotification: "Poslat upozornění do klientského portálu",
   };
 
-  const label = labels[action] ?? action;
-  const domain = typeof params.productDomain === "string" ? params.productDomain : null;
-  if (!domain) return label;
-  const domainLabel = PRODUCT_DOMAIN_LABELS[domain] ?? domain;
-  return `${label} (${domainLabel})`;
+  return labels[action] ?? action;
 }
 
 export function getStepsAwaitingConfirmation(plan: ExecutionPlan): ExecutionStep[] {
@@ -510,6 +515,10 @@ export function allStepsReady(plan: ExecutionPlan): boolean {
 
 export function getPlanSummary(plan: ExecutionPlan): string {
   if (plan.steps.length === 0) return "Žádné akce k provedení.";
-  const lines = plan.steps.map((s, i) => `${i + 1}. ${s.label} [${s.status}]`);
+  const lines = plan.steps.map((s, i) => {
+    const chip = productDomainChipLabel(s.params.productDomain as string | undefined);
+    const domainSuffix = chip ? ` · ${chip}` : "";
+    return `${i + 1}. ${s.label}${domainSuffix} [${s.status}]`;
+  });
   return lines.join("\n");
 }
