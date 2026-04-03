@@ -38,6 +38,7 @@ import {
   productDomainChipLabel,
   buildStepDescription,
   buildValidationWarnings,
+  computeWriteActionMissingFields,
 } from "./assistant-execution-plan";
 import { executePlan, buildVerifiedResult } from "./assistant-execution-engine";
 import { verifyWriteContextSafety, verifyTenantConsistency } from "./assistant-context-safety";
@@ -847,15 +848,19 @@ export async function routeAssistantMessageCanonical(
     const clientLabel = resolution.client?.displayLabel ?? "neznámý klient";
     const playbookLines = getPlaybookGuidanceLines(patchedIntent, message);
     const playbookBlock = playbookLines.length > 0 ? `\n\n${playbookLines.join("\n")}` : "";
-    const stepPreviews: StepPreviewItem[] = plan.steps.map((s) => ({
-      stepId: s.stepId,
-      label: s.label,
-      action: s.label,
-      contextHint: stepPreviewContextHint(s),
-      description: buildStepDescription(s.action, s.params),
-      domainGroup: productDomainChipLabel(s.params.productDomain as string | undefined) ?? null,
-      validationWarnings: buildValidationWarnings(s.action, s.params),
-    }));
+    const stepPreviews: StepPreviewItem[] = plan.steps.map((s) => {
+      const missing = computeWriteActionMissingFields(s.action, s.params);
+      return {
+        stepId: s.stepId,
+        label: s.label,
+        action: s.label,
+        contextHint: stepPreviewContextHint(s),
+        description: buildStepDescription(s.action, s.params),
+        domainGroup: productDomainChipLabel(s.params.productDomain as string | undefined) ?? null,
+        validationWarnings: buildValidationWarnings(s.action, s.params),
+        preflightStatus: missing.length > 0 ? "needs_input" as const : "ready" as const,
+      };
+    });
     return {
       message: `Připravuji akce pro **${clientLabel}**:\n\n${summary}${playbookBlock}\n\nVyberte kroky v náhledu a potvrďte tlačítkem „Potvrdit a provést“ (popř. zrušte).`,
       referencedEntities: resolution.client ? [{ type: "contact", id: resolution.client.entityId, label: resolution.client.displayLabel }] : [],

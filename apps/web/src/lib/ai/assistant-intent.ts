@@ -59,6 +59,8 @@ export const canonicalIntentSchema = z.object({
   purpose: z.string().nullable().default(null),
   bank: z.string().nullable().default(null),
   rateGuess: z.number().nullable().default(null),
+  maturity: z.string().nullable().default(null),
+  periodicity: z.string().nullable().default(null),
   premium: z.number().nullable().default(null),
   contractNumber: z.string().nullable().default(null),
   meetingDateText: z.string().nullable().default(null),
@@ -93,6 +95,8 @@ export const CANONICAL_INTENT_JSON_SCHEMA: Record<string, unknown> = {
     purpose: { type: ["string", "null"] },
     bank: { type: ["string", "null"] },
     rateGuess: { type: ["number", "null"] },
+    maturity: { type: ["string", "null"] },
+    periodicity: { type: ["string", "null"] },
     premium: { type: ["number", "null"] },
     contractNumber: { type: ["string", "null"] },
     meetingDateText: { type: ["string", "null"] },
@@ -121,6 +125,8 @@ export const CANONICAL_INTENT_JSON_SCHEMA: Record<string, unknown> = {
     "purpose",
     "bank",
     "rateGuess",
+    "maturity",
+    "periodicity",
     "premium",
     "contractNumber",
     "meetingDateText",
@@ -213,7 +219,13 @@ function buildExtractedFacts(raw: CanonicalIntentRaw) {
   if (raw.ltv != null) facts.push({ key: "ltv", value: raw.ltv, source: "user_text" });
   if (raw.purpose) facts.push({ key: "purpose", value: raw.purpose, source: "user_text" });
   if (raw.bank) facts.push({ key: "bank", value: raw.bank, source: "user_text" });
-  if (raw.rateGuess != null) facts.push({ key: "rateGuess", value: raw.rateGuess, source: "user_text" });
+  if (raw.rateGuess != null) {
+    facts.push({ key: "rateGuess", value: raw.rateGuess, source: "user_text" });
+    // Normalized alias so detail line builders can use a consistent key
+    facts.push({ key: "interestRate", value: `${String(raw.rateGuess).replace(".", ",")} %`, source: "user_text" });
+  }
+  if (raw.maturity) facts.push({ key: "maturity", value: raw.maturity, source: "user_text" });
+  if (raw.periodicity) facts.push({ key: "periodicity", value: raw.periodicity, source: "user_text" });
   if (raw.premium != null) facts.push({ key: "premium", value: raw.premium, source: "user_text" });
   if (raw.contractNumber) facts.push({ key: "contractNumber", value: raw.contractNumber, source: "user_text" });
   if (raw.taskTitle) facts.push({ key: "taskTitle", value: raw.taskTitle, source: "user_text" });

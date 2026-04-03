@@ -73,6 +73,8 @@ export type StepPreviewItem = {
   description?: string;
   domainGroup?: string | null;
   validationWarnings?: string[];
+  /** Preflight state: ready (all params present), needs_input (missing critical fields), blocked (dependency). */
+  preflightStatus?: "ready" | "needs_input" | "blocked";
 };
 
 /** Rozšířený model akce dle plánu (6B) — odvozeno od `StepPreviewItem` + runtime stav jen na klientovi. */

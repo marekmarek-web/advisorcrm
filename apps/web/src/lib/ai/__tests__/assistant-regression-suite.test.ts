@@ -20,9 +20,10 @@ vi.mock("db", () => ({
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
 
 import { emptyCanonicalIntent, type CanonicalIntent, type ExecutionPlan, type WriteActionType } from "../assistant-domain-model";
-import { buildExecutionPlan, confirmAllSteps, applyConfirmationSelection, getStepsAwaitingConfirmation, buildStepDescription } from "../assistant-execution-plan";
-import { canonicalDealTitle, canonicalTaskTitle, canonicalClientRequestSubject, looksInternalOrRaw } from "../assistant-canonical-names";
+import { buildExecutionPlan, confirmAllSteps, applyConfirmationSelection, getStepsAwaitingConfirmation, buildStepDescription, computeWriteActionMissingFields } from "../assistant-execution-plan";
+import { canonicalDealTitle, canonicalTaskTitle, canonicalClientRequestSubject, canonicalDealDetailLine, looksInternalOrRaw } from "../assistant-canonical-names";
 import { opportunityTitleFromSlots } from "../assistant-case-type-map";
+import { toCanonicalIntent, coerceCanonicalIntentRaw } from "../assistant-intent";
 import { buildVerifiedResult } from "../assistant-execution-engine";
 import { verifyWriteContextSafety } from "../assistant-context-safety";
 import { computeStepFingerprint, checkRecentFingerprint, recordFingerprint } from "../assistant-action-fingerprint";
@@ -230,8 +231,9 @@ describe("Red flag: incomplete_partial_failure", () => {
       expect(verified.message).not.toContain("execution_actions");
       expect(verified.message).not.toContain("relation \"");
 
-      expect(verified.warnings.some(w => w.includes("selhal"))).toBe(true);
-      expect(verified.message.includes("⚠")).toBe(true);
+      // Step failure info is in stepOutcomes + summary message, not duplicated in warnings
+      expect(verified.stepOutcomes[1]!.error).toBeTruthy();
+      expect(verified.message.includes("selhalo") || verified.message.includes("⚠")).toBe(true);
       expect(verified.confidence).toBeLessThan(0.9);
     });
   }
@@ -572,6 +574,156 @@ describe("Canonical naming (9B–13F)", () => {
       // No detail line available — falls back to generic with chip
       expect(desc).toBeDefined();
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 14G: Fact-to-entity mapping regression
+// ─────────────────────────────────────────────────────────────
+describe("14G: Fact extraction → entity mapping", () => {
+  it("rateGuess is normalized to interestRate in extractedFacts", () => {
+    const raw = coerceCanonicalIntentRaw({
+      intentType: "create_opportunity",
+      productDomain: "hypo",
+      amount: 4000000,
+      rateGuess: 4.5,
+      bank: "Raiffeisenbank",
+    });
+    const intent = toCanonicalIntent(raw);
+    const rateGuess = intent.extractedFacts.find(f => f.key === "rateGuess");
+    const interestRate = intent.extractedFacts.find(f => f.key === "interestRate");
+    expect(rateGuess).toBeDefined();
+    expect(interestRate).toBeDefined();
+    expect(interestRate!.value).toMatch(/4,5/);
+  });
+
+  it("maturity and periodicity are extracted when present", () => {
+    const raw = coerceCanonicalIntentRaw({
+      intentType: "create_opportunity",
+      productDomain: "hypo",
+      maturity: "30 let",
+      periodicity: "měsíčně",
+    });
+    const intent = toCanonicalIntent(raw);
+    expect(intent.extractedFacts.find(f => f.key === "maturity")?.value).toBe("30 let");
+    expect(intent.extractedFacts.find(f => f.key === "periodicity")?.value).toBe("měsíčně");
+  });
+
+  it("canonicalDealDetailLine uses rateGuess as fallback", () => {
+    const detail = canonicalDealDetailLine({
+      rateGuess: 4.5,
+      bank: "Raiffeisenbank",
+      maturity: "30 let",
+    });
+    expect(detail).toMatch(/Sazba.*4\.5/);
+    expect(detail).toMatch(/Raiffeisenbank/);
+    expect(detail).toMatch(/splatnost 30 let/);
+  });
+
+  it("canonicalDealDetailLine with interestRate (formatted)", () => {
+    const detail = canonicalDealDetailLine({
+      interestRate: "4,5 %",
+      bank: "ČS",
+      maturity: "20",
+    });
+    expect(detail).toMatch(/Sazba 4,5 %/);
+    expect(detail).toMatch(/ČS/);
+    expect(detail).toMatch(/splatnost 20 let/);
+  });
+
+  it("full mortgage intent → plan step has detail description", () => {
+    const session = getOrCreateSession(undefined, TENANT, USER);
+    lockAssistantClient(session, "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    const intent: CanonicalIntent = {
+      ...emptyCanonicalIntent(),
+      intentType: "create_opportunity",
+      requestedActions: ["create_opportunity"],
+      productDomain: "hypo",
+      extractedFacts: [
+        { key: "amount", value: 4000000, source: "user_text" },
+        { key: "bank", value: "Raiffeisenbank", source: "user_text" },
+        { key: "interestRate", value: "4,5 %", source: "user_text" },
+        { key: "maturity", value: "30 let", source: "user_text" },
+      ],
+      temporalExpressions: [],
+    };
+    const resolution = {
+      client: { entityType: "contact" as const, entityId: "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa", displayLabel: "Novák", confidence: 1, ambiguous: false, alternatives: [] },
+      opportunity: null, document: null, contract: null, warnings: [],
+    };
+    const plan = buildExecutionPlan(intent, resolution, session);
+    const oppStep = plan.steps.find(s => s.action === "createOpportunity");
+    expect(oppStep).toBeDefined();
+    const desc = buildStepDescription("createOpportunity", oppStep!.params);
+    expect(desc).toMatch(/Raiffeisenbank/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 15H: Partial success UX + warning dedup regression
+// ─────────────────────────────────────────────────────────────
+describe("15H: Partial success UX", () => {
+  it("warnings do not duplicate step failure text", () => {
+    const session = getOrCreateSession(undefined, TENANT, USER);
+    lockAssistantClient(session, "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    const intent: CanonicalIntent = {
+      ...emptyCanonicalIntent(),
+      intentType: "create_task",
+      requestedActions: ["create_task"],
+      extractedFacts: [],
+      temporalExpressions: [],
+    };
+    const resolution = {
+      client: { entityType: "contact" as const, entityId: "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa", displayLabel: "Novák", confidence: 1, ambiguous: false, alternatives: [] },
+      opportunity: null, document: null, contract: null, warnings: [],
+    };
+    const plan = buildExecutionPlan(intent, resolution, session);
+    const confirmed = confirmAllSteps(plan);
+    const partialPlan: ExecutionPlan = {
+      ...confirmed,
+      status: "partial_failure",
+      steps: confirmed.steps.map((s, i) =>
+        i === 0
+          ? { ...s, status: "failed" as const, result: { ok: false, outcome: "failed" as const, entityId: null, entityType: null, warnings: [], error: "Test error" } }
+          : s,
+      ),
+    };
+    const verified = buildVerifiedResult("Done.", partialPlan);
+    // Error should be in stepOutcomes and message, NOT duplicated in warnings
+    expect(verified.stepOutcomes[0]?.error).toBe("Test error");
+    expect(verified.message).toMatch(/selhalo/);
+    const warningsWithSelhal = verified.warnings.filter(w => w.includes("selhal"));
+    expect(warningsWithSelhal.length).toBe(0);
+  });
+
+  it("adapter-level warnings are still propagated", () => {
+    const session = getOrCreateSession(undefined, TENANT, USER);
+    lockAssistantClient(session, "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    const intent: CanonicalIntent = {
+      ...emptyCanonicalIntent(),
+      intentType: "create_opportunity",
+      requestedActions: ["create_opportunity"],
+      productDomain: "hypo",
+      extractedFacts: [{ key: "ltv", value: 95, source: "user_text" }],
+      temporalExpressions: [],
+    };
+    const resolution = {
+      client: { entityType: "contact" as const, entityId: "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa", displayLabel: "Novák", confidence: 1, ambiguous: false, alternatives: [] },
+      opportunity: null, document: null, contract: null, warnings: [],
+    };
+    const plan = buildExecutionPlan(intent, resolution, session);
+    const confirmed = confirmAllSteps(plan);
+    const partialPlan: ExecutionPlan = {
+      ...confirmed,
+      status: "completed",
+      steps: confirmed.steps.map(s => ({
+        ...s,
+        status: "succeeded" as const,
+        result: { ok: true, outcome: "executed" as const, entityId: "e1", entityType: "opportunity", warnings: ["LTV 95 % přesahuje 90 %."], error: null },
+      })),
+    };
+    const verified = buildVerifiedResult("Done.", partialPlan);
+    expect(verified.warnings).toContain("LTV 95 % přesahuje 90 %.");
   });
 });
 

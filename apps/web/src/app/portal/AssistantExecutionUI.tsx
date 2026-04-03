@@ -180,14 +180,28 @@ export function ConfirmationPreviewPanel({
                   onChange={() => onToggleStep?.(sid)}
                   className="mt-1 w-4 h-4 rounded border-amber-300 text-amber-700 focus:ring-2 focus:ring-amber-400 focus:ring-offset-0 shrink-0"
                   aria-label={`Zařadit krok: ${step.label}`}
+                  disabled={step.preflightStatus === "needs_input"}
                 />
               ) : (
-                <span className="mt-0.5 w-5 h-5 rounded-full bg-amber-200/90 text-amber-900 text-[10px] font-black flex items-center justify-center shrink-0">
-                  {i + 1}
+                <span className={cx(
+                  "mt-0.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0",
+                  step.preflightStatus === "needs_input"
+                    ? "bg-rose-100 text-rose-700"
+                    : "bg-amber-200/90 text-amber-900",
+                )}>
+                  {step.preflightStatus === "needs_input" ? "!" : (i + 1)}
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <span className="text-[13px] font-semibold text-amber-950 leading-snug">{step.label}</span>
+                <span className={cx(
+                  "text-[13px] font-semibold leading-snug",
+                  step.preflightStatus === "needs_input" ? "text-rose-800" : "text-amber-950",
+                )}>{step.label}</span>
+                {step.preflightStatus === "needs_input" && (
+                  <span className="ml-2 align-middle text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-1.5 py-0.5">
+                    Chybí údaje
+                  </span>
+                )}
                 {step.contextHint ? (
                   <span className="ml-2 align-middle text-[10px] font-semibold text-amber-800 bg-amber-100/90 border border-amber-200/60 rounded-md px-1.5 py-0.5">
                     {step.contextHint}

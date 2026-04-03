@@ -81,7 +81,9 @@ portalNotificationTitle / portalNotificationType: pro notify_client_portal (typ:
 
 ${ASSISTANT_PORTAL_CHANNEL_POLICY_TEXT}
 
-Čísla: amount (Kč), ltv (0-100), rateGuess (sazba), premium (pojistné).
+Čísla: amount (Kč), ltv (0-100), rateGuess (sazba jako desetinné číslo, např. 4.5), premium (pojistné).
+maturity: splatnost/délka (textově, např. "30 let", "20 let", "5 let").
+periodicity: frekvence platby — "měsíčně", "ročně", "jednorázově".
 contractNumber: číslo smlouvy, pokud zmíněno.
 meetingDateText / dueDateText: textový fragment termínu.
 taskTitle: název úkolu; noteContent: obsah poznámky.

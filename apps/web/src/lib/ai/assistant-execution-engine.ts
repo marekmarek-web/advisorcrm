@@ -501,22 +501,11 @@ export function buildVerifiedResult(
           label: step.label,
         });
       }
+      // Only propagate adapter-level warnings (e.g. LTV above 90%).
+      // Step-level failure/requires_input messages are shown in StepOutcomeCard and
+      // summary message — do not duplicate them into WarningsBlock.
       if (step.result?.warnings) {
         warnings.push(...step.result.warnings);
-      }
-      if (step.status === "failed" && safeError) {
-        warnings.push(`Krok „${step.label}" selhal: ${safeError}`);
-      }
-      if (isRequiresInput && safeError) {
-        warnings.push(`Krok „${step.label}" vyžaduje doplnění: ${safeError}`);
-      }
-      if (isSkipped) {
-        const userDeselected =
-          step.result?.error === "Krok nebyl vybrán k provedení." ||
-          step.result?.error === "Nepožadováno uživatelem.";
-        if (!userDeselected) {
-          warnings.push(`Krok „${step.label}" přeskočen — závislý krok selhal.`);
-        }
       }
     }
 
