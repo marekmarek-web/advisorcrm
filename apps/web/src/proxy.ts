@@ -138,7 +138,7 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/portal") || pathname.startsWith("/client")) {
     forwardHeaders.set("x-pathname", pathname);
   }
-  let response = NextResponse.next({ request: { headers: forwardHeaders } });
+  const response = NextResponse.next({ request: { headers: forwardHeaders } });
   const supabase = createServerClient(supabaseUrl, supabasePublicKey, {
     cookies: {
       getAll() {

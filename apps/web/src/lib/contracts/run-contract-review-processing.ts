@@ -55,7 +55,6 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   let preprocessThrew = false;
   const preprocessStartedAt = Date.now();
   let preprocessDurationMs: number | undefined;
-  let pipelineDurationMs: number | undefined;
 
   try {
     adobePreprocessResult = await preprocessForAiExtraction(
@@ -193,7 +192,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     preprocessMeta,
     sourceFileName: path.basename(storagePath),
   });
-  pipelineDurationMs = Date.now() - pipelineStartedAt;
+  const pipelineDurationMs = Date.now() - pipelineStartedAt;
 
   if (!pipelineResult.ok) {
     const errDetail =

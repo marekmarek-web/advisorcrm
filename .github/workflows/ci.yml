@@ -33,6 +33,10 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: ESLint (apps/web)
+        working-directory: apps/web
+        run: pnpm lint
+
       - name: Compliance copy check (advisory)
         run: pnpm compliance:copy-check
         continue-on-error: true

@@ -1,4 +1,8 @@
 node_modules
+
+# IDE / local tool noise (see docs/repo-map.md)
+.idea/
+
 .next
 .turbo
 dist

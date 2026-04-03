@@ -42,8 +42,8 @@ function subscribe(listener: () => void) {
 async function resolveSendIntentPlugin(): Promise<SendIntentPlugin | null> {
   if (!Capacitor.isNativePlatform()) return null;
   try {
-    const module = await import("@supernotes/capacitor-send-intent");
-    return (module as { SendIntent?: SendIntentPlugin }).SendIntent ?? null;
+    const sendIntentModule = await import("@supernotes/capacitor-send-intent");
+    return (sendIntentModule as { SendIntent?: SendIntentPlugin }).SendIntent ?? null;
   } catch {
     return null;
   }

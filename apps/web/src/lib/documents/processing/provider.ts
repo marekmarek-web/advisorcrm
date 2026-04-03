@@ -21,7 +21,8 @@ export function getProcessingProvider(): DocumentProcessingProviderInterface {
       return _provider;
     }
 
-    // Lazy import to avoid loading Adobe SDK when not needed
+    // Lazy require: keep Adobe SDK off the hot path until Adobe is selected (sync factory API).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- intentional lazy CJS boundary
     const { AdobeProvider } = require("@/lib/documents/processing/adobe-provider") as {
       AdobeProvider: new () => DocumentProcessingProviderInterface;
     };
