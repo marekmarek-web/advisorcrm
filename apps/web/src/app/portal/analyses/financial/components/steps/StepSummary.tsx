@@ -11,6 +11,7 @@ import { getAdvisorReportBranding } from "@/app/actions/preferences";
 import clsx from "clsx";
 import { FileText, Printer, CloudUpload, StickyNote, Monitor } from "lucide-react";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import { embedLocalImages } from "@/lib/embedLocalImages";
 
 type ReportTheme = "elegant" | "modern";
 const FALLBACK_BRANDING = {
@@ -20,35 +21,6 @@ const FALLBACK_BRANDING = {
   phone: null as string | null,
   website: null as string | null,
 };
-
-async function embedLocalImages(html: string): Promise<string> {
-  const srcRe = /src="(\/[^"]+)"/g;
-  const urls = new Set<string>();
-  let m: RegExpExecArray | null;
-  while ((m = srcRe.exec(html)) !== null) urls.add(m[1]);
-  if (urls.size === 0) return html;
-
-  const cache = new Map<string, string>();
-  await Promise.all(
-    [...urls].map(async (url) => {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const buf = await blob.arrayBuffer();
-        const b64 = btoa(
-          new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""),
-        );
-        cache.set(url, `data:${blob.type || "image/png"};base64,${b64}`);
-      } catch { /* skip unreachable images */ }
-    }),
-  );
-
-  return html.replace(/src="(\/[^"]+)"/g, (_full, path: string) => {
-    const dataUri = cache.get(path);
-    return dataUri ? `src="${dataUri}"` : _full;
-  });
-}
 
 function ThemeSelector({ value, onChange }: { value: ReportTheme; onChange: (t: ReportTheme) => void }) {
   return (

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { FileDown, Loader2, Printer } from "lucide-react";
 import { getAdvisorReportBranding, type AdvisorReportBranding } from "@/app/actions/preferences";
-import { embedLocalImages } from "@/lib/reports/embedLocalImages";
+import { embedLocalImages } from "@/lib/embedLocalImages";
 import {
   buildCalculatorReportHTML,
   buildCalculatorExportFilename,
