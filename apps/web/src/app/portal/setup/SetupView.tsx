@@ -1362,7 +1362,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                               type="button"
                               className="text-xs font-bold text-rose-500 hover:text-rose-700 hover:underline"
                               onClick={async () => {
-                                const confirmed = await confirm("Odebrat člena", `Opravdu chcete odebrat tohoto člena z workspace?`);
+                                const confirmed = window.confirm(`Opravdu chcete odebrat tohoto člena z workspace?`);
                                 if (!confirmed) return;
                                 const res = await removeMember(m.membershipId);
                                 if (res.ok) {
@@ -1456,7 +1456,6 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 )}
               </div>
               <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden h-full">
-              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden h-full">
                 <div className="px-6 sm:px-8 py-6 border-b border-[color:var(--wp-surface-card-border)]/50">
                   <h2 className="text-lg font-black text-[color:var(--wp-text)]">Historie faktur</h2>
                 </div>
@@ -1504,6 +1503,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                     </table>
                   )}
                 </div>
+              </div>
             </div>
           </div>
         )}
