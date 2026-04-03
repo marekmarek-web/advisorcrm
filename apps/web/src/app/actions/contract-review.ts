@@ -312,6 +312,16 @@ export async function applyContractReviewDrafts(
     appliedAt: new Date(),
     applyResultPayload: bridgedPayload,
   });
+
+  // 5D: Auto-link the reviewed document into the client's document vault (visible)
+  if (row.matchedClientId) {
+    try {
+      await linkContractReviewFileToContactDocuments(id, { visibleToClient: true });
+    } catch {
+      /* best-effort — review already applied, doc linking is secondary */
+    }
+  }
+
   return { ok: true, payload: bridgedPayload };
 }
 
@@ -349,6 +359,31 @@ export async function linkContractReviewFileToContactDocuments(
     )
     .limit(1);
   if (dup) {
+    // 5D: If caller requests visibility but existing doc is hidden, upgrade it
+    if (visible) {
+      const [curr] = await db
+        .select({ vis: documents.visibleToClient })
+        .from(documents)
+        .where(eq(documents.id, dup.id))
+        .limit(1);
+      if (curr && !curr.vis) {
+        await db
+          .update(documents)
+          .set({ visibleToClient: true })
+          .where(eq(documents.id, dup.id));
+        try {
+          await notifyClientAdvisorSharedDocument({
+            tenantId: auth.tenantId,
+            contactId,
+            documentId: dup.id,
+            documentName: row.fileName,
+            reason: "visibility_on",
+          });
+        } catch {
+          /* best-effort */
+        }
+      }
+    }
     return { ok: true, documentId: dup.id };
   }
 

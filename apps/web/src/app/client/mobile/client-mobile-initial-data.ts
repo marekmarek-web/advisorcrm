@@ -1,4 +1,5 @@
 import type { ClientAdvisorInfo } from "@/app/actions/client-dashboard";
+import type { ClientFinancialSummaryView } from "@/app/actions/client-financial-summary";
 import type { ContractRow } from "@/app/actions/contracts";
 import type { DocumentRow } from "@/app/actions/documents";
 import type { PaymentInstruction } from "@/app/actions/payment-pdf";
@@ -38,6 +39,8 @@ export type ClientMobileInitialData = {
   paymentInstructions: PaymentInstruction[];
   /** Stejný zdroj jako web (`listClientMaterialRequests`). */
   advisorMaterialRequests: MaterialRequestListItem[];
+  /** 5G: Stejná finanční analýza jako web dashboard. */
+  financialSummaryRaw: ClientFinancialSummaryView | null;
 };
 
 export function toClientMobileInitialData(bundle: ClientPortalSessionBundle): ClientMobileInitialData {
@@ -67,5 +70,6 @@ export function toClientMobileInitialData(bundle: ClientPortalSessionBundle): Cl
     unreadMessagesCount: bundle.unreadMessagesCount,
     paymentInstructions: bundle.paymentInstructions,
     advisorMaterialRequests: bundle.advisorMaterialRequests,
+    financialSummaryRaw: bundle.financialSummaryRaw ?? null,
   };
 }

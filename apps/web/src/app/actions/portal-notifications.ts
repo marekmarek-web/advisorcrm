@@ -3,7 +3,7 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { db } from "db";
 import { portalNotifications } from "db";
-import { eq, and, desc, isNull } from "db";
+import { eq, and, desc, isNull, sql } from "db";
 import { sendPushForPortalNotification } from "@/lib/push/send";
 
 export type PortalNotificationRow = {
@@ -48,13 +48,13 @@ export async function getPortalNotificationsForClient(): Promise<
   return rows as PortalNotificationRow[];
 }
 
-/** Počet nepřečtených pro klienta. */
+/** Počet nepřečtených pro klienta — 5C: SQL count místo full-row select. */
 export async function getPortalNotificationsUnreadCount(): Promise<number> {
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || !auth.contactId) return 0;
 
-  const rows = await db
-    .select({ id: portalNotifications.id })
+  const [result] = await db
+    .select({ cnt: sql<number>`count(*)` })
     .from(portalNotifications)
     .where(
       and(
@@ -63,7 +63,7 @@ export async function getPortalNotificationsUnreadCount(): Promise<number> {
         isNull(portalNotifications.readAt)
       )
     );
-  return rows.length;
+  return Number(result?.cnt ?? 0);
 }
 
 /** Označit notifikaci jako přečtenou (pouze vlastní). */
@@ -99,7 +99,36 @@ export async function createPortalNotification(params: {
   body?: string | null;
   relatedEntityType?: string | null;
   relatedEntityId?: string | null;
+  /**
+   * 5C dedup window in minutes. When set, skips insert if an unread
+   * notification with the same type + relatedEntityId exists within this window.
+   * Defaults to 5 minutes for entity-scoped types.
+   */
+  dedupWindowMinutes?: number;
 }): Promise<void> {
+  // 5C: Dedup — skip if identical unread notification was recently created
+  const dedupMinutes = params.dedupWindowMinutes ?? (params.relatedEntityId ? 5 : 0);
+  if (dedupMinutes > 0 && params.relatedEntityId) {
+    const cutoff = new Date(Date.now() - dedupMinutes * 60_000);
+    const [existing] = await db
+      .select({ id: portalNotifications.id })
+      .from(portalNotifications)
+      .where(
+        and(
+          eq(portalNotifications.tenantId, params.tenantId),
+          eq(portalNotifications.contactId, params.contactId),
+          eq(portalNotifications.type, params.type),
+          eq(portalNotifications.relatedEntityId, params.relatedEntityId),
+          isNull(portalNotifications.readAt),
+        )
+      )
+      .limit(1);
+    if (existing && existing.id) {
+      // Recent unread notification for same entity already exists — skip
+      return;
+    }
+  }
+
   await db.insert(portalNotifications).values({
     tenantId: params.tenantId,
     contactId: params.contactId,

@@ -10,31 +10,13 @@ import {
 import { requireAuth } from "@/lib/auth/require-auth";
 import { getClientRequests } from "@/app/actions/client-portal-requests";
 import { listClientMaterialRequests } from "@/app/actions/advisor-material-requests";
-import { materialRequestCategoryLabel } from "@/lib/advisor-material-requests/display";
+import {
+  materialRequestCategoryLabel,
+  materialRequestStatusLabel,
+  materialRequestStatusClasses,
+} from "@/lib/advisor-material-requests/display";
 import { ClientRequestCancelButton } from "./ClientRequestCancelButton";
 import { RequestsPageClientActions } from "./requests-client-actions";
-
-function materialRequestStatusLabel(status: string): string {
-  const m: Record<string, string> = {
-    new: "Nový",
-    seen: "Zobrazeno",
-    answered: "Odpovězeno",
-    needs_more: "Potřeba doplnit",
-    done: "Vyřízeno",
-    closed: "Uzavřeno",
-  };
-  return m[status] ?? status;
-}
-
-function materialRequestStatusClasses(status: string): string {
-  if (status === "done" || status === "closed") {
-    return "bg-emerald-50 text-emerald-700 border-emerald-100";
-  }
-  if (status === "needs_more") {
-    return "bg-amber-50 text-amber-800 border-amber-100";
-  }
-  return "bg-indigo-50 text-indigo-700 border-indigo-100";
-}
 
 export default async function ClientRequestsPage() {
   const auth = await requireAuth();

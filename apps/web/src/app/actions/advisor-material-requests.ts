@@ -251,6 +251,15 @@ export async function setAdvisorMaterialRequestStatus(
     .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
     .limit(1);
   if (!row) return { ok: false, error: "Nenalezeno." };
+  const [prev] = await db
+    .select({
+      contactId: advisorMaterialRequests.contactId,
+      status: advisorMaterialRequests.status,
+    })
+    .from(advisorMaterialRequests)
+    .where(eq(advisorMaterialRequests.id, requestId))
+    .limit(1);
+
   await db
     .update(advisorMaterialRequests)
     .set({
@@ -259,6 +268,26 @@ export async function setAdvisorMaterialRequestStatus(
       updatedAt: new Date(),
     })
     .where(eq(advisorMaterialRequests.id, requestId));
+
+  // 5B: Notify client when advisor resolves or closes the request
+  if (prev && (status === "done" || status === "closed") && prev.status !== status) {
+    try {
+      await createPortalNotification({
+        tenantId: auth.tenantId,
+        contactId: prev.contactId,
+        type: "advisor_material_request",
+        title: status === "done" ? "Požadavek splněn" : "Požadavek uzavřen",
+        body: status === "done"
+          ? "Poradce označil váš požadavek na podklady jako splněný."
+          : "Poradce uzavřel požadavek na podklady.",
+        relatedEntityType: "advisor_material_request",
+        relatedEntityId: requestId,
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+
   return { ok: true };
 }
 

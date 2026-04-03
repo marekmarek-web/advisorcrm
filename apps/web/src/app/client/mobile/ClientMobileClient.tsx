@@ -88,25 +88,16 @@ import { AiSupportButton } from "@/app/client/AiSupportButton";
 import { ClientMaterialRequestToastStack } from "@/app/client/ClientMaterialRequestToastStack";
 import { ClientRequestCancelButton } from "@/app/client/requests/ClientRequestCancelButton";
 import { listClientMaterialRequests } from "@/app/actions/advisor-material-requests";
-import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
+import {
+  type MaterialRequestListItem,
+  materialRequestStatusLabel,
+} from "@/lib/advisor-material-requests/display";
 import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 import { useDeviceClass } from "@/lib/ui/useDeviceClass";
 import type { ClientMobileInitialData } from "./client-mobile-initial-data";
 
 function fmtMoney(v: number): string {
   return `${v.toLocaleString("cs-CZ")} Kč`;
-}
-
-function materialRequestStatusLabel(status: string): string {
-  const m: Record<string, string> = {
-    new: "Nový",
-    seen: "Zobrazeno",
-    answered: "Odpovězeno",
-    needs_more: "Potřeba doplnit",
-    done: "Vyřízeno",
-    closed: "Uzavřeno",
-  };
-  return m[status] ?? status;
 }
 
 function materialRequestStatusTone(status: string): "success" | "warning" | "info" {
@@ -937,9 +928,9 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
             aria-label="Notifikace"
           >
             <Bell size={18} />
-            {unreadNotificationsCount > 0 ? (
+            {(unreadNotificationsCount + unreadMessagesCount) > 0 ? (
               <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 text-center">
-                {unreadNotificationsCount > 9 ? "9+" : unreadNotificationsCount}
+                {(unreadNotificationsCount + unreadMessagesCount) > 9 ? "9+" : (unreadNotificationsCount + unreadMessagesCount)}
               </span>
             ) : null}
           </button>

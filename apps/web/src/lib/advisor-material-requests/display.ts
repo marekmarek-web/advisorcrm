@@ -23,6 +23,29 @@ export function materialRequestCategoryLabel(id: string): string {
   return m[id] ?? id;
 }
 
+/** 5B: Canonical status labels — single source of truth for all surfaces. */
+export function materialRequestStatusLabel(status: string): string {
+  const m: Record<string, string> = {
+    new: "Nový",
+    seen: "Zobrazeno",
+    answered: "Odpovězeno",
+    needs_more: "Čeká na doplnění",
+    done: "Vyřízeno",
+    closed: "Uzavřeno",
+  };
+  return m[status] ?? status;
+}
+
+export function materialRequestStatusClasses(status: string): string {
+  if (status === "done" || status === "closed") {
+    return "bg-emerald-50 text-emerald-700 border-emerald-100";
+  }
+  if (status === "needs_more") {
+    return "bg-amber-50 text-amber-800 border-amber-100";
+  }
+  return "bg-blue-50 text-blue-700 border-blue-100";
+}
+
 export type MaterialRequestListItem = {
   id: string;
   title: string;

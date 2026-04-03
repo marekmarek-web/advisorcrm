@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { getClientMaterialRequestDetail } from "@/app/actions/advisor-material-requests";
+import { materialRequestStatusLabel } from "@/lib/advisor-material-requests/display";
 import { ClientMaterialRequestRespondForm } from "./ClientMaterialRequestRespondForm";
 
 export default async function ClientAdvisorMaterialRequestDetailPage({
@@ -15,18 +16,6 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
   const { id } = await params;
   const detail = await getClientMaterialRequestDetail(id);
   if (!detail) notFound();
-
-  function statusCs(s: string): string {
-    const m: Record<string, string> = {
-      new: "Nový",
-      seen: "Zobrazeno",
-      answered: "Odpovězeno",
-      needs_more: "Čeká na doplnění",
-      done: "Splněno",
-      closed: "Uzavřeno",
-    };
-    return m[s] ?? s;
-  }
 
   function priorityCs(p: string): string {
     const m: Record<string, string> = {
@@ -45,7 +34,7 @@ export default async function ClientAdvisorMaterialRequestDetailPage({
       <header>
         <h1 className="text-2xl font-black text-slate-900">{detail.title}</h1>
         <p className="text-sm text-slate-500 mt-2">
-          {detail.categoryLabel} · {statusCs(detail.status)} · priorita {priorityCs(detail.priority)}
+          {detail.categoryLabel} · {materialRequestStatusLabel(detail.status)} · priorita {priorityCs(detail.priority)}
           {detail.dueAt ? ` · termín ${new Date(detail.dueAt).toLocaleDateString("cs-CZ")}` : ""}
         </p>
         {detail.description ? (

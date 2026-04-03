@@ -1,24 +1,13 @@
 import Link from "next/link";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { listClientMaterialRequests } from "@/app/actions/advisor-material-requests";
+import { materialRequestStatusLabel } from "@/lib/advisor-material-requests/display";
 
 export default async function ClientAdvisorMaterialRequestsPage() {
   const auth = await requireAuth();
   if (auth.roleName !== "Client" || !auth.contactId) return null;
 
   const rows = await listClientMaterialRequests();
-
-  function statusCs(s: string): string {
-    const m: Record<string, string> = {
-      new: "Nový",
-      seen: "Zobrazeno",
-      answered: "Odpovězeno",
-      needs_more: "Čeká na doplnění",
-      done: "Splněno",
-      closed: "Uzavřeno",
-    };
-    return m[s] ?? s;
-  }
 
   return (
     <div className="space-y-6">
@@ -40,7 +29,7 @@ export default async function ClientAdvisorMaterialRequestsPage() {
               >
                 <p className="font-bold text-slate-900">{r.title}</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  {r.categoryLabel} · {statusCs(r.status)}
+                  {r.categoryLabel} · {materialRequestStatusLabel(r.status)}
                   {r.dueAt ? ` · do ${new Date(r.dueAt).toLocaleDateString("cs-CZ")}` : ""}
                 </p>
               </Link>
