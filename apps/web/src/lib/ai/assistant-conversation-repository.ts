@@ -1,4 +1,5 @@
-import { db, assistantConversations, assistantMessages, and, eq, desc, isNotNull, gte } from "db";
+import { db, assistantConversations, assistantMessages, contacts, and, eq, desc, isNotNull, gte } from "db";
+import { ASSISTANT_CONVERSATION_DISPLAY_TITLE_MAX_LEN } from "./assistant-conversation-label";
 import type { AssistantSession } from "./assistant-session";
 import type { AssistantConversationRow } from "./assistant-history-mapper";
 import type { AssistantChannel } from "./assistant-domain-model";
@@ -52,7 +53,7 @@ export async function upsertConversationFromSession(
   const metadata = options?.metadata ?? null;
 
   const [existing] = await db
-    .select({ id: assistantConversations.id })
+    .select({ id: assistantConversations.id, metadata: assistantConversations.metadata })
     .from(assistantConversations)
     .where(
       and(
@@ -78,13 +79,18 @@ export async function upsertConversationFromSession(
     return;
   }
 
+  const prevMeta = (existing.metadata as Record<string, unknown> | null) ?? {};
+  const patch = options?.metadata ?? {};
+  const mergedMetadata =
+    Object.keys(patch).length > 0 ? { ...prevMeta, ...patch } : prevMeta;
+
   await db
     .update(assistantConversations)
     .set({
       channel,
       assistantMode: session.assistantMode,
       lockedContactId: session.lockedClientId ?? null,
-      metadata,
+      metadata: mergedMetadata,
       updatedAt: now,
     })
     .where(
@@ -170,31 +176,51 @@ export async function loadRecentConversationMessages(
   }));
 }
 
+export type AssistantConversationListRow = {
+  id: string;
+  channel: string | null;
+  lockedContactId: string | null;
+  lockedContactLabel: string | null;
+  displayTitle: string | null;
+  updatedAt: Date;
+  createdAt: Date;
+};
+
+function parseDisplayTitleFromMetadata(metadata: unknown): string | null {
+  const m = metadata as Record<string, unknown> | null | undefined;
+  const t = m?.displayTitle;
+  if (typeof t !== "string") return null;
+  const s = t.trim();
+  return s ? s : null;
+}
+
 /** Advisor: konverzace uživatele v tenantovi aktualizované od `since` (např. posledních 7 dní). */
 export async function listAssistantConversationsForUser(
   tenantId: string,
   userId: string,
   options?: { since?: Date; limit?: number },
-): Promise<
-  {
-    id: string;
-    channel: string | null;
-    lockedContactId: string | null;
-    updatedAt: Date;
-    createdAt: Date;
-  }[]
-> {
+): Promise<AssistantConversationListRow[]> {
   const since = options?.since ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const limit = Math.min(Math.max(options?.limit ?? 40, 1), 60);
-  return db
+  const rows = await db
     .select({
       id: assistantConversations.id,
       channel: assistantConversations.channel,
       lockedContactId: assistantConversations.lockedContactId,
+      metadata: assistantConversations.metadata,
       updatedAt: assistantConversations.updatedAt,
       createdAt: assistantConversations.createdAt,
+      contactFirstName: contacts.firstName,
+      contactLastName: contacts.lastName,
     })
     .from(assistantConversations)
+    .leftJoin(
+      contacts,
+      and(
+        eq(assistantConversations.lockedContactId, contacts.id),
+        eq(assistantConversations.tenantId, contacts.tenantId),
+      ),
+    )
     .where(
       and(
         eq(assistantConversations.tenantId, tenantId),
@@ -204,6 +230,73 @@ export async function listAssistantConversationsForUser(
     )
     .orderBy(desc(assistantConversations.updatedAt))
     .limit(limit);
+
+  return rows.map((r) => {
+    const parts = [r.contactFirstName, r.contactLastName].filter(
+      (x): x is string => typeof x === "string" && x.trim().length > 0,
+    );
+    const lockedContactLabel = parts.length > 0 ? parts.join(" ") : null;
+    return {
+      id: r.id,
+      channel: r.channel,
+      lockedContactId: r.lockedContactId,
+      lockedContactLabel,
+      displayTitle: parseDisplayTitleFromMetadata(r.metadata),
+      updatedAt: r.updatedAt,
+      createdAt: r.createdAt,
+    };
+  });
+}
+
+/** Nastaví nebo smaže vlastní název konverzace (metadata.displayTitle). */
+export async function patchAssistantConversationDisplayTitleForUser(
+  conversationId: string,
+  tenantId: string,
+  userId: string,
+  title: string | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const trimmed = title?.trim() ?? "";
+  const normalized =
+    trimmed.length > ASSISTANT_CONVERSATION_DISPLAY_TITLE_MAX_LEN
+      ? trimmed.slice(0, ASSISTANT_CONVERSATION_DISPLAY_TITLE_MAX_LEN)
+      : trimmed;
+
+  const [row] = await db
+    .select({ metadata: assistantConversations.metadata })
+    .from(assistantConversations)
+    .where(
+      and(
+        eq(assistantConversations.id, conversationId),
+        eq(assistantConversations.tenantId, tenantId),
+        eq(assistantConversations.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!row) {
+    return { ok: false, error: "Konverzace nenalezena." };
+  }
+
+  const prev = (row.metadata as Record<string, unknown> | null) ?? {};
+  const next: Record<string, unknown> = { ...prev };
+  if (normalized === "") {
+    delete next.displayTitle;
+  } else {
+    next.displayTitle = normalized;
+  }
+
+  await db
+    .update(assistantConversations)
+    .set({ metadata: next, updatedAt: new Date() })
+    .where(
+      and(
+        eq(assistantConversations.id, conversationId),
+        eq(assistantConversations.tenantId, tenantId),
+        eq(assistantConversations.userId, userId),
+      ),
+    );
+
+  return { ok: true };
 }
 
 export type AssistantMessageHistoryDbRow = {

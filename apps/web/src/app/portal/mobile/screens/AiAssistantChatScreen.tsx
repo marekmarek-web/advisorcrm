@@ -40,18 +40,16 @@ import type { StepOutcomeSummary, StepPreviewItem } from "@/lib/ai/assistant-exe
 import {
   listAdvisorAssistantConversations,
   loadAdvisorAssistantConversationHistory,
+  renameAdvisorAssistantConversation,
   type AdvisorAssistantConversationListItemDto,
 } from "@/app/actions/assistant-conversations";
+import {
+  formatAdvisorAssistantConversationListLabel,
+  ASSISTANT_CONVERSATION_DISPLAY_TITLE_MAX_LEN,
+} from "@/lib/ai/assistant-conversation-label";
 import type { AdvisorAssistantHistoryMessageDto } from "@/lib/ai/assistant-history-mapper";
 
 const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
-
-function formatAssistantConversationLabel(c: AdvisorAssistantConversationListItemDto): string {
-  const d = new Date(c.updatedAtIso);
-  const when = Number.isNaN(d.getTime()) ? "" : d.toLocaleString("cs-CZ", { dateStyle: "short", timeStyle: "short" });
-  const ch = c.channel?.replace(/_/g, " ") ?? "konverzace";
-  return `${when} · ${ch}`;
-}
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -1040,6 +1038,29 @@ export function AiAssistantChatScreen() {
     inputRef.current?.focus();
   }, []);
 
+  const handleRenameAssistantConversation = useCallback(async () => {
+    if (!assistantSessionId) return;
+    const current = assistantConversationsList.find((c) => c.id === assistantSessionId);
+    const defaultValue = current?.displayTitle ?? current?.lockedContactLabel ?? "";
+    const next = window.prompt(
+      `Název konverzace (max. ${ASSISTANT_CONVERSATION_DISPLAY_TITLE_MAX_LEN} znaků). Prázdné = výchozí podle klienta a času.`,
+      defaultValue,
+    );
+    if (next === null) return;
+    setError(null);
+    const res = await renameAdvisorAssistantConversation(assistantSessionId, next.trim() || null);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    try {
+      const refreshed = await listAdvisorAssistantConversations();
+      setAssistantConversationsList(refreshed);
+    } catch {
+      /* ignore */
+    }
+  }, [assistantSessionId, assistantConversationsList]);
+
   function clearChat() {
     startNewAssistantConversation();
   }
@@ -1186,10 +1207,20 @@ export function AiAssistantChatScreen() {
               )}
             {assistantConversationsList.map((c) => (
               <option key={c.id} value={c.id}>
-                {formatAssistantConversationLabel(c)}
+                {formatAdvisorAssistantConversationListLabel(c)}
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={() => void handleRenameAssistantConversation()}
+            disabled={!assistantSessionId || conversationPickerLoading || isTyping}
+            className="shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] active:bg-[color:var(--wp-surface-muted)] disabled:opacity-40"
+            aria-label="Přejmenovat konverzaci"
+            title="Přejmenovat konverzaci"
+          >
+            <Pencil size={14} />
+          </button>
           {conversationPickerLoading ? <Loader2 size={14} className="animate-spin text-indigo-500 shrink-0" /> : null}
         </div>
         {!isEmpty ? (

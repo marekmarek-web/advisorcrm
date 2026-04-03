@@ -50,8 +50,13 @@ import type { StepOutcomeSummary, StepPreviewItem } from "@/lib/ai/assistant-exe
 import {
   listAdvisorAssistantConversations,
   loadAdvisorAssistantConversationHistory,
+  renameAdvisorAssistantConversation,
   type AdvisorAssistantConversationListItemDto,
 } from "@/app/actions/assistant-conversations";
+import {
+  formatAdvisorAssistantConversationListLabel,
+  ASSISTANT_CONVERSATION_DISPLAY_TITLE_MAX_LEN,
+} from "@/lib/ai/assistant-conversation-label";
 import type { AdvisorAssistantHistoryMessageDto } from "@/lib/ai/assistant-history-mapper";
 
 const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
@@ -103,13 +108,6 @@ function historyDtoToChatMessages(dtos: AdvisorAssistantHistoryMessageDto[]): Ch
       contextState: d.contextState ?? undefined,
     };
   });
-}
-
-function formatAssistantConversationLabel(c: AdvisorAssistantConversationListItemDto): string {
-  const d = new Date(c.updatedAtIso);
-  const when = Number.isNaN(d.getTime()) ? "" : d.toLocaleString("cs-CZ", { dateStyle: "short", timeStyle: "short" });
-  const ch = c.channel?.replace(/_/g, " ") ?? "konverzace";
-  return `${when} · ${ch}`;
 }
 
 type UploadPhase = "idle" | "uploading" | "processing";
@@ -286,6 +284,29 @@ export function AiAssistantDrawer() {
       /* ignore */
     }
   }, []);
+
+  const handleRenameAssistantConversation = useCallback(async () => {
+    if (!assistantSessionId) return;
+    const current = assistantConversationsList.find((c) => c.id === assistantSessionId);
+    const defaultValue = current?.displayTitle ?? current?.lockedContactLabel ?? "";
+    const next = window.prompt(
+      `Název konverzace (max. ${ASSISTANT_CONVERSATION_DISPLAY_TITLE_MAX_LEN} znaků). Prázdné = výchozí podle klienta a času.`,
+      defaultValue,
+    );
+    if (next === null) return;
+    const res = await renameAdvisorAssistantConversation(assistantSessionId, next.trim() || null);
+    if (!res.ok) {
+      toast.showToast(res.error, "error");
+      return;
+    }
+    try {
+      const refreshed = await listAdvisorAssistantConversations();
+      setAssistantConversationsList(refreshed);
+    } catch {
+      /* ignore */
+    }
+    toast.showToast("Název uložen.", "success");
+  }, [assistantSessionId, assistantConversationsList, toast]);
 
   useEffect(() => {
     if (!open) return;
@@ -974,10 +995,20 @@ export function AiAssistantDrawer() {
                 )}
               {assistantConversationsList.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {formatAssistantConversationLabel(c)}
+                  {formatAdvisorAssistantConversationListLabel(c)}
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => void handleRenameAssistantConversation()}
+              disabled={!assistantSessionId || conversationPickerLoading || chatLoading}
+              className="shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Přejmenovat konverzaci"
+              title="Přejmenovat konverzaci"
+            >
+              <Pencil size={16} />
+            </button>
             {conversationPickerLoading && (
               <Loader2 size={16} className="animate-spin text-indigo-500 shrink-0" aria-hidden />
             )}

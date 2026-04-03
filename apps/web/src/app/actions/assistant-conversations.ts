@@ -4,6 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import {
   listAssistantConversationsForUser,
   loadAssistantConversationHistoryMessagesForUser,
+  patchAssistantConversationDisplayTitleForUser,
 } from "@/lib/ai/assistant-conversation-repository";
 import {
   mapAssistantHistoryRowsToClientPayload,
@@ -14,6 +15,8 @@ export type AdvisorAssistantConversationListItemDto = {
   id: string;
   channel: string | null;
   lockedContactId: string | null;
+  lockedContactLabel: string | null;
+  displayTitle: string | null;
   updatedAtIso: string;
   createdAtIso: string;
 };
@@ -36,9 +39,30 @@ export async function listAdvisorAssistantConversations(): Promise<AdvisorAssist
     id: r.id,
     channel: r.channel,
     lockedContactId: r.lockedContactId,
+    lockedContactLabel: r.lockedContactLabel,
+    displayTitle: r.displayTitle,
     updatedAtIso: r.updatedAt.toISOString(),
     createdAtIso: r.createdAt.toISOString(),
   }));
+}
+
+export type RenameAdvisorAssistantConversationResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/** Nastaví vlastní název vlákna (metadata.displayTitle) nebo ho smaže při prázdném řetězci / null. */
+export async function renameAdvisorAssistantConversation(
+  conversationId: string,
+  title: string | null,
+): Promise<RenameAdvisorAssistantConversationResult> {
+  const auth = await requireAuthInAction();
+  assertAdvisorRole(auth.roleName);
+  const id = conversationId.trim();
+  if (!id) {
+    return { ok: false, error: "Chybí ID konverzace." };
+  }
+  const t = title?.trim() ?? "";
+  return patchAssistantConversationDisplayTitleForUser(id, auth.tenantId, auth.userId, t === "" ? null : t);
 }
 
 export type LoadAdvisorAssistantHistoryResult =
