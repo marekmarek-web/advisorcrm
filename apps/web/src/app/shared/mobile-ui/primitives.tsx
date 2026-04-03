@@ -24,9 +24,9 @@ export function MobileAppShell({
         "flex flex-col bg-[color:var(--wp-bg)] text-[color:var(--wp-text)]",
         /* Phone/tablet: fill visual viewport so document/body never scrolls or rubber-bands behind the shell. */
         deviceClass === "phone" &&
-          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--safe-area-bottom))]",
+          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+max(0.5rem,var(--safe-area-bottom)))]",
         deviceClass === "tablet" &&
-          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-tablet)+var(--safe-area-bottom))]",
+          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-tablet)+max(0.5rem,var(--safe-area-bottom)))]",
         deviceClass === "desktop" && "min-h-[100dvh] pb-0",
         className
       )}
@@ -386,7 +386,7 @@ export function StickyActionBar({ children }: { children: ReactNode }) {
   return (
     <div
       className={cx(
-        "fixed inset-x-0 bottom-[calc(72px+var(--safe-area-bottom))] z-30 px-4",
+        "fixed inset-x-0 bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+max(0.5rem,var(--safe-area-bottom)))] z-30 px-4",
         "pointer-events-none"
       )}
     >
@@ -410,7 +410,7 @@ export function FloatingActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="fixed z-40 flex min-h-[52px] min-w-[52px] items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform active:scale-95 bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--aidv-mobile-fab-above-tabbar)+var(--safe-area-bottom))] right-[max(1rem,env(safe-area-inset-right,0px))]"
+      className="fixed z-40 flex min-h-[52px] min-w-[52px] items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform active:scale-95 bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--aidv-mobile-fab-above-tabbar)+max(0.5rem,var(--safe-area-bottom)))] right-[max(1rem,env(safe-area-inset-right,0px))]"
       aria-label={label}
       title={label}
     >
@@ -495,7 +495,7 @@ export function BottomSheet({
 }) {
   const labelId = `bs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   const scrollPad = reserveMobileBottomNav
-    ? "pb-[max(1.25rem,calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--safe-area-bottom)+1.25rem))]"
+    ? "pb-[max(1.25rem,calc(var(--aidv-mobile-tabbar-inner-h-phone)+max(0.5rem,var(--safe-area-bottom))+1.25rem))]"
     : "pb-[max(1rem,calc(var(--safe-area-bottom)+0.5rem))]";
   return (
     <OverlayContainer open={open} onClose={onClose} labelId={labelId}>
@@ -537,7 +537,7 @@ export function FullscreenSheet({
 }) {
   const labelId = `fs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   const scrollPad = reserveMobileBottomNav
-    ? "pb-[max(1.25rem,calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--safe-area-bottom)+1.25rem))]"
+    ? "pb-[max(1.25rem,calc(var(--aidv-mobile-tabbar-inner-h-phone)+max(0.5rem,var(--safe-area-bottom))+1.25rem))]"
     : "pb-[max(1rem,calc(var(--safe-area-bottom)+0.75rem))]";
   return (
     <OverlayContainer open={open} onClose={onClose} fullScreen labelId={labelId}>
@@ -1182,7 +1182,7 @@ export function Toast({
       role="status"
       aria-live="polite"
       className={cx(
-        "fixed bottom-[calc(96px+var(--safe-area-bottom))] inset-x-4 z-[201] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg",
+        "fixed bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+max(0.5rem,var(--safe-area-bottom))+0.75rem)] inset-x-4 z-[201] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg",
         "animate-in slide-in-from-bottom duration-300",
         variant === "success" && "bg-emerald-600 text-white",
         variant === "error" && "bg-rose-600 text-white",

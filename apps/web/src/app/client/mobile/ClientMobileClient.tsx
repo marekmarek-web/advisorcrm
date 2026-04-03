@@ -443,6 +443,25 @@ function toTab(pathname: string): TabId {
   return pathname.startsWith("/client") ? "home" : "menu";
 }
 
+/**
+ * Cesty, které PATŘÍ do mobilní SPA – ostatní se musí otevřít přes full-page navigation,
+ * protože Next.js App Router layout se při client-side přechodu znovu nespouští.
+ * Kalkulačky, platby, detaily požadavků a ostatní sub-pages potřebují čerstvý render layoutu.
+ */
+function isMobileSpaPath(pathname: string): boolean {
+  const p = pathname.split("?")[0] || "/client";
+  if (p === "/client") return true;
+  if (
+    p === "/client/messages" ||
+    p === "/client/documents" ||
+    p === "/client/profile" ||
+    p === "/client/notifications" ||
+    p === "/client/requests"
+  ) return true;
+  if (p.startsWith("/client/portfolio") || p.startsWith("/client/contracts")) return true;
+  return false;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Portfolio screen — seskupené podle read-modelu jako web             */
 /* ------------------------------------------------------------------ */
@@ -672,6 +691,18 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
 
   useEffect(() => {
     setTab(toTab(pathname));
+  }, [pathname]);
+
+  // Kalkulačky, platby, detaily požadavků a jiné non-SPA stránky potřebují full-page reload.
+  // Next.js App Router layout se při client-side navigaci nespouští znovu, takže server-side
+  // rozhodnutí "SPA vs. children" zůstane z předchozího requestu.
+  useEffect(() => {
+    if (!isMobileSpaPath(pathname)) {
+      const search = searchParams.toString();
+      window.location.replace(pathname + (search ? `?${search}` : ""));
+    }
+    // Intentionally depends only on pathname — a searchParams-only change doesn't trigger reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
@@ -972,8 +1003,8 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
               </div>
             )}
           </div>
-          {/* Compose area — always visible, never scrolls away */}
-          <div className="shrink-0 border-t border-slate-100 bg-white px-3 py-2.5">
+          {/* Compose area — always visible, pinned above bottom nav */}
+          <div className="shrink-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2">
             {composeFiles.length > 0 ? (
               <p className="text-[11px] text-slate-500 mb-1.5 px-1">
                 {composeFiles.length} {composeFiles.length === 1 ? "soubor vybrán" : "soubory vybrány"}
@@ -1413,7 +1444,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
             if (tab === "requests") setRequestModalOpen(true);
             else setRequestModalOpen(true);
           }}
-          className="fixed z-40 right-4 bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--aidv-mobile-fab-above-tabbar)+var(--safe-area-bottom))] min-h-[52px] min-w-[52px] rounded-full bg-indigo-600 text-white shadow-lg"
+          className="fixed z-40 right-4 bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--aidv-mobile-fab-above-tabbar)+max(0.5rem,var(--safe-area-bottom)))] min-h-[52px] min-w-[52px] rounded-full bg-indigo-600 text-white shadow-lg"
           aria-label="Nový požadavek"
           title="Nový požadavek"
         >

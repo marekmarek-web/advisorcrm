@@ -34,11 +34,12 @@
     --safe-area-right: env(safe-area-inset-right, 0px);
 
     /*
-      Mobilní spodní tab bar: výška obsahu (ikony + popisky), bez zdvojení safe-area.
-      Shell přidá var(--safe-area-bottom) jednou v padding-bottom; samotný <nav> má vlastní pb pro home indikátor.
+      Mobilní spodní tab bar: výška VNITŘNÍHO gridu (py-2 × 2 + min-h-button = 8+44+8 = 60 px).
+      Safe-area se přidá zvlášť přes max(0.5rem, safe-area-bottom) jak v <nav>, tak v shellu.
+      Tímto způsobem shell rezervuje přesně tolik prostoru kolik nav skutečně zabírá → žádný gap.
     */
-    --aidv-mobile-tabbar-inner-h-phone: 4.5rem;
-    --aidv-mobile-tabbar-inner-h-tablet: 4rem;
+    --aidv-mobile-tabbar-inner-h-phone: 3.75rem;
+    --aidv-mobile-tabbar-inner-h-tablet: 3.5rem;
     --aidv-mobile-fab-above-tabbar: 0.75rem;
     --aidv-mobile-secondary-fab-from-bottom: 10.5rem;
   }

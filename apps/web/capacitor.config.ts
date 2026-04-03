@@ -32,7 +32,12 @@ const config: CapacitorConfig = {
      */
     contentInset: "automatic",
     allowsLinkPreview: false,
-    scrollEnabled: true,
+    /**
+     * false: zakáže nativní scroll/bounce celého WKWebView dokumentu.
+     * Elementy s CSS overflow: auto/scroll scrollují dál — WKWebView bounce jen na root scrollu.
+     * Tím eliminujeme "gumový" scroll nad/pod app view při overscrollu.
+     */
+    scrollEnabled: false,
   },
   android: {
     allowMixedContent: isHttpServer,
