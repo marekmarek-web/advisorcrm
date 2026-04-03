@@ -715,7 +715,7 @@ export async function routeAssistantMessageCanonical(
         clientLabel: resolution.client?.displayLabel,
       },
       contextState: {
-        channel: session.context.channel ?? null,
+        channel: session.activeChannel ?? session.contextLock.activeChannel ?? null,
         lockedClientId: session.lockedClientId ?? null,
         lockedClientLabel: resolution.client?.displayLabel ?? null,
       },
