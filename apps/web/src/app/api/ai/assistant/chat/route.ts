@@ -209,12 +209,15 @@ export async function POST(request: Request) {
               }
             : null;
           // Merge: router may attach stepPreviews / clientLabel (3H); session plan supplies authoritative counts.
+          const rEs = response.executionState;
+          type ExecutionStateBody = NonNullable<AssistantResponse["executionState"]>;
           const executionState: AssistantResponse["executionState"] =
-            !fromPlan && !response.executionState
+            !fromPlan && !rEs
               ? null
               : {
-                  ...(response.executionState ?? {}),
+                  ...(rEs ?? {}),
                   ...(fromPlan ?? {}),
+                  status: (fromPlan?.status ?? rEs?.status ?? "draft") as ExecutionStateBody["status"],
                 };
           const persistedResponse: AssistantResponse = {
             ...response,
