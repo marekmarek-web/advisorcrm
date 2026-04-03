@@ -13,6 +13,12 @@ import type {
 } from "./assistant-domain-model";
 import type { EntityResolutionResult } from "./assistant-entity-resolution";
 import type { AssistantSession } from "./assistant-session";
+import {
+  canonicalTaskTitle,
+  canonicalClientRequestSubject,
+  canonicalMaterialRequestTitle,
+  canonicalDealDetailLine,
+} from "./assistant-canonical-names";
 
 /**
  * Canonical intent → write action mapping.
@@ -160,6 +166,36 @@ function buildStepParams(
       } else if (/\d{4}-\d{2}-\d{2}T/.test(rd)) {
         params.startAt = rd;
       }
+    }
+  }
+
+  // Inject canonical titles so write adapters get clean Czech names
+  if (action === "createTask" || action === "createFollowUp" || action === "createReminder") {
+    if (!params.taskTitle) {
+      params.taskTitle = canonicalTaskTitle({
+        action: action as "createTask" | "createFollowUp" | "createReminder",
+        productDomain: typeof params.productDomain === "string" ? params.productDomain : null,
+        existingTitle: typeof params.taskTitle === "string" ? params.taskTitle : null,
+        purpose: typeof params.purpose === "string" ? params.purpose : null,
+      });
+    }
+  }
+
+  if (action === "createClientRequest") {
+    if (!params.subject) {
+      params.subject = canonicalClientRequestSubject({
+        productDomain: typeof params.productDomain === "string" ? params.productDomain : null,
+        existingSubject: typeof params.subject === "string" ? params.subject : null,
+        taskTitle: typeof params.taskTitle === "string" ? params.taskTitle : null,
+      });
+    }
+  }
+
+  if (action === "createMaterialRequest") {
+    if (!params.title && !params.taskTitle) {
+      params.taskTitle = canonicalMaterialRequestTitle({
+        productDomain: typeof params.productDomain === "string" ? params.productDomain : null,
+      });
     }
   }
 
@@ -487,16 +523,43 @@ const STEP_DESCRIPTIONS: Partial<Record<WriteActionType, string>> = {
 };
 
 export function buildStepDescription(action: WriteActionType, params: Record<string, unknown>): string | undefined {
+  // For deal creation: show canonical detail line (bank, rate, maturity)
+  if (action === "createOpportunity") {
+    const detail = canonicalDealDetailLine(params);
+    if (detail) return detail;
+  }
+
+  // For tasks: show the actual task title as the description
+  if (action === "createTask" || action === "createFollowUp" || action === "createReminder") {
+    const t = typeof params.taskTitle === "string" ? params.taskTitle.trim() : null;
+    if (t) return t;
+  }
+
+  // For calendar event: show date + optional title
+  if (action === "scheduleCalendarEvent") {
+    const date = typeof params.resolvedDate === "string"
+      ? params.resolvedDate.split("T")[0]
+      : typeof params.startAt === "string"
+        ? params.startAt.split("T")[0]
+        : null;
+    const title = typeof params.title === "string" ? params.title.trim() : null;
+    if (date && title) return `${date} · ${title}`;
+    if (date) return date;
+  }
+
+  // For client requests: show the subject
+  if (action === "createClientRequest" || action === "createMaterialRequest") {
+    const sub = typeof params.subject === "string" ? params.subject.trim()
+      : typeof params.taskTitle === "string" ? params.taskTitle.trim() : null;
+    if (sub) return sub;
+  }
+
+  // Fallback: generic description with domain chip if available
   const base = STEP_DESCRIPTIONS[action];
   if (!base) return undefined;
 
   const domain = productDomainChipLabel(params.productDomain as string | undefined);
   if (domain) return `${base} (${domain})`;
-
-  const date = typeof params.resolvedDate === "string" ? params.resolvedDate.split("T")[0] : null;
-  if (date && (action === "scheduleCalendarEvent" || action === "createFollowUp")) {
-    return `${base} — ${date}`;
-  }
 
   return base;
 }

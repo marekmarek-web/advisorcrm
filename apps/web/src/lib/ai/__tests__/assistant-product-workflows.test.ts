@@ -277,7 +277,7 @@ describe("3F: create_client_request semantics", () => {
     expect(plan.steps[0]?.params.contactId).toBe(CONTACT_ID);
   });
 
-  it("create_client_request without subject/description/noteContent/taskTitle is draft", () => {
+  it("create_client_request without explicit subject uses canonical subject → awaiting_confirmation", () => {
     const plan = buildExecutionPlan(
       intent({
         intentType: "create_client_request",
@@ -285,13 +285,12 @@ describe("3F: create_client_request semantics", () => {
       }),
       resolutionWithClient(),
     );
-    expect(plan.status).toBe("draft");
+    // Canonical subject is injected from domain, so the plan is ready to confirm
+    expect(plan.status).toBe("awaiting_confirmation");
     const step = plan.steps[0];
     expect(step?.action).toBe("createClientRequest");
-    const missing = computeWriteActionMissingFields(step!.action, step!.params);
-    expect(
-      missing.some((m) => m.includes("subject") || m.includes("description") || m.includes("noteContent") || m.includes("taskTitle")),
-    ).toBe(true);
+    // Step has subject injected (canonical fallback)
+    expect(step?.params.subject).toBeTruthy();
   });
 
   it("create_service_case does NOT map to createClientRequest", () => {
@@ -319,7 +318,7 @@ describe("3F: create_client_request semantics", () => {
     expect(plan.steps[0]?.action).toBe("createMaterialRequest");
   });
 
-  it("create_material_request without title is draft", () => {
+  it("create_material_request without explicit title uses canonical title → awaiting_confirmation", () => {
     const plan = buildExecutionPlan(
       intent({
         intentType: "create_material_request",
@@ -327,12 +326,10 @@ describe("3F: create_client_request semantics", () => {
       }),
       resolutionWithClient(),
     );
-    expect(plan.status).toBe("draft");
+    // Canonical title injected as taskTitle, so OR-group satisfied
+    expect(plan.status).toBe("awaiting_confirmation");
     const step = plan.steps[0];
-    const missing = computeWriteActionMissingFields(step!.action, step!.params);
-    expect(
-      missing.some((m) => m.includes("taskTitle") || m.includes("title") || m.includes("description")),
-    ).toBe(true);
+    expect(step?.params.taskTitle).toBeTruthy();
   });
 
   it("computeWriteActionMissingFields: createClientRequest requires contactId + subject slot", () => {

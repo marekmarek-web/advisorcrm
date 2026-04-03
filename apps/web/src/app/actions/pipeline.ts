@@ -530,6 +530,7 @@ export async function createOpportunity(data: {
   stageId: string;
   expectedValue?: string;
   expectedCloseDate?: string;
+  customFields?: Record<string, unknown> | null;
 }) {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
@@ -551,6 +552,7 @@ export async function createOpportunity(data: {
       stageId: data.stageId,
       expectedValue: data.expectedValue || null,
       expectedCloseDate: data.expectedCloseDate || null,
+      ...(data.customFields ? { customFields: data.customFields } : {}),
     })
     .returning({ id: opportunities.id });
   const newId = row?.id ?? null;

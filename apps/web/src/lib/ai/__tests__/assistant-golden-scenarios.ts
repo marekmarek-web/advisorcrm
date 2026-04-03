@@ -776,8 +776,8 @@ export const goldenScenarios: GoldenScenario[] = [
   {
     id: "client-request-without-subject-draft",
     domain: "client_portal",
-    name: "Klientský požadavek bez předmětu — draft stav",
-    description: "Klientský požadavek bez subject/description/noteContent/taskTitle zůstane ve stavu draft.",
+    name: "Klientský požadavek bez předmětu — kanonický subject injektován",
+    description: "Klientský požadavek bez subject/description dostane kanonický subject a přejde do awaiting_confirmation.",
     turns: [
       { role: "user", content: "Založ klientský požadavek pro Marii Novákovou." },
     ],
@@ -789,9 +789,9 @@ export const goldenScenarios: GoldenScenario[] = [
       maxSteps: 2,
       expectedActions: ["createClientRequest"],
       expectedContactIdPresent: true,
-      expectedStatus: "draft",
+      expectedStatus: "awaiting_confirmation",
     },
-    tags: ["client-request", "portal", "3f", "missing-fields"],
+    tags: ["client-request", "portal", "3f"],
   },
   {
     id: "service-case-distinct-from-client-request",

@@ -246,6 +246,9 @@ function MessageBubble({
                         ? (stepId) => onToggleStepForPlan(msg.executionState!.planId!, stepId)
                         : undefined
                     }
+                    advisoryHints={(msg.executionState.stepPreviews ?? [])
+                      .filter(s => (s.validationWarnings?.length ?? 0) > 0)
+                      .flatMap(s => s.validationWarnings!.map(w => `${s.label}: ${w}`))}
                   />
                 )}
             </>

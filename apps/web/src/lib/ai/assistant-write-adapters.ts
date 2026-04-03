@@ -11,6 +11,12 @@ import type { ExecutionContext } from "./assistant-execution-engine";
 import { registerWriteAdapter } from "./assistant-execution-engine";
 import { caseTypeForProductDomain, opportunityTitleFromSlots } from "./assistant-case-type-map";
 import { mapErrorForAdvisor } from "./assistant-error-mapping";
+import {
+  canonicalTaskTitle,
+  canonicalClientRequestSubject,
+  canonicalMaterialRequestTitle,
+  canonicalDealDetailLine,
+} from "./assistant-canonical-names";
 import { createOpportunity as createOpportunityAction, updateOpportunity as updateOpportunityAction } from "@/app/actions/pipeline";
 import { createTask as createTaskAction, updateTask as updateTaskAction } from "@/app/actions/tasks";
 import { createEvent as createEventAction } from "@/app/actions/events";
@@ -107,7 +113,11 @@ export function registerAssistantWriteAdapters(): void {
           productDomain: (domain as never) ?? null,
           purpose,
           taskTitle: strParam(params, "taskTitle"),
+          amount: params.amount,
+          periodicity: strParam(params, "periodicity"),
         });
+      // Canonical detail line stored as aiSubtitle in customFields for board card display
+      const aiSubtitle = canonicalDealDetailLine(params as Record<string, unknown>);
       const id = await createOpportunityAction({
         title,
         caseType,
@@ -115,6 +125,7 @@ export function registerAssistantWriteAdapters(): void {
         stageId,
         expectedValue: strParam(params, "expectedValue") ?? (typeof params.amount === "number" ? String(params.amount) : undefined),
         expectedCloseDate: strParam(params, "expectedCloseDate"),
+        customFields: aiSubtitle ? { aiSubtitle } : undefined,
       });
       if (!id) return errResult("Obchod se nepodařilo vytvořit.");
       const warnings: string[] = [];
@@ -223,7 +234,12 @@ export function registerAssistantWriteAdapters(): void {
       await assertCtx(ctx);
       const contactId = strParam(params, "contactId");
       if (!contactId) return errResult("Chybí contactId.");
-      const title = strParam(params, "taskTitle") ?? strParam(params, "title") ?? "Úkol";
+      const title = canonicalTaskTitle({
+        action: "createTask",
+        productDomain: strParam(params, "productDomain"),
+        existingTitle: strParam(params, "taskTitle") ?? strParam(params, "title"),
+        purpose: strParam(params, "purpose"),
+      });
       const due =
         strParam(params, "resolvedDate") ??
         (typeof params.dueDate === "string" ? params.dueDate : undefined) ??
@@ -265,7 +281,12 @@ export function registerAssistantWriteAdapters(): void {
       await assertCtx(ctx);
       const contactId = strParam(params, "contactId");
       if (!contactId) return errResult("Chybí contactId.");
-      const title = strParam(params, "taskTitle") ?? strParam(params, "title") ?? "Follow-up";
+      const title = canonicalTaskTitle({
+        action: "createFollowUp",
+        productDomain: strParam(params, "productDomain"),
+        existingTitle: strParam(params, "taskTitle") ?? strParam(params, "title"),
+        purpose: strParam(params, "purpose"),
+      });
       const due =
         strParam(params, "resolvedDate") ??
         (typeof params.dueDate === "string" ? params.dueDate : undefined);
@@ -469,7 +490,11 @@ export function registerAssistantWriteAdapters(): void {
       if (!contactId) return errResult("Chybí contactId.");
       const domain = productDomainFromParams(params);
       const caseType = domain ? caseTypeForProductDomain(domain as never) : strParam(params, "caseType") ?? "jiné";
-      const subject = strParam(params, "subject") ?? strParam(params, "taskTitle") ?? "Požadavek klienta";
+      const subject = canonicalClientRequestSubject({
+        productDomain: typeof domain === "string" ? domain : null,
+        existingSubject: strParam(params, "subject"),
+        taskTitle: strParam(params, "taskTitle"),
+      });
       const description = strParam(params, "description") ?? strParam(params, "noteContent");
       const res = await createAdvisorClientRequest({
         tenantId: ctx.tenantId,
@@ -524,7 +549,12 @@ export function registerAssistantWriteAdapters(): void {
       await assertCtx(ctx);
       const contactId = strParam(params, "contactId");
       if (!contactId) return errResult("Chybí contactId.");
-      const title = strParam(params, "taskTitle") ?? strParam(params, "title") ?? "Podklady od klienta";
+      const domain = productDomainFromParams(params);
+      const title = canonicalMaterialRequestTitle({
+        productDomain: typeof domain === "string" ? domain : null,
+        existingTitle: strParam(params, "title"),
+        taskTitle: strParam(params, "taskTitle"),
+      });
       const category = strParam(params, "materialCategory") ?? "ostatni";
       const res = await createAdvisorMaterialRequest({
         contactId,
@@ -573,7 +603,11 @@ export function registerAssistantWriteAdapters(): void {
       await assertCtx(ctx);
       const contactId = strParam(params, "contactId");
       if (!contactId) return errResult("Chybí contactId.");
-      const title = `Připomínka: ${strParam(params, "taskTitle") ?? strParam(params, "title") ?? "termín"}`;
+      const title = canonicalTaskTitle({
+        action: "createReminder",
+        productDomain: strParam(params, "productDomain"),
+        existingTitle: strParam(params, "taskTitle") ?? strParam(params, "title"),
+      });
       const due =
         strParam(params, "resolvedDate") ??
         (typeof params.dueDate === "string" ? params.dueDate : undefined) ??

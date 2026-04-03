@@ -4,6 +4,7 @@
  */
 
 import type { ProductDomain } from "./assistant-domain-model";
+import { canonicalDealTitle, looksInternalOrRaw } from "./assistant-canonical-names";
 
 export const PRODUCT_DOMAIN_TO_CASE_TYPE: Record<ProductDomain, string> = {
   hypo: "hypo",
@@ -26,15 +27,28 @@ export function caseTypeForProductDomain(domain: ProductDomain | null | undefine
   return PRODUCT_DOMAIN_TO_CASE_TYPE[domain] ?? "jiné";
 }
 
+/**
+ * Builds canonical deal title for AI-created opportunities.
+ * Always produces clean Czech names like "Hypotéka 4 000 000 Kč".
+ * Never produces raw abbreviations like "hypo: purpose".
+ */
 export function opportunityTitleFromSlots(params: {
   productDomain: ProductDomain | null;
   purpose?: string | null;
   taskTitle?: string | null;
+  amount?: unknown;
+  periodicity?: string | null;
   contactLabel?: string;
 }): string {
-  const ct = caseTypeForProductDomain(params.productDomain);
-  if (params.taskTitle?.trim()) return params.taskTitle.trim();
-  if (params.purpose?.trim()) return `${ct}: ${params.purpose.trim()}`;
-  if (params.contactLabel?.trim()) return `${ct} — ${params.contactLabel.trim()}`;
-  return `Nový případ — ${ct}`;
+  // Use AI-extracted title if it looks clean and proper
+  const explicit = params.taskTitle?.trim();
+  if (explicit && !looksInternalOrRaw(explicit)) return explicit;
+
+  // Build canonical title from domain + amount
+  return canonicalDealTitle({
+    productDomain: params.productDomain,
+    amount: params.amount,
+    periodicity: params.periodicity,
+    purpose: params.purpose,
+  });
 }

@@ -20,7 +20,9 @@ vi.mock("db", () => ({
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
 
 import { emptyCanonicalIntent, type CanonicalIntent, type ExecutionPlan, type WriteActionType } from "../assistant-domain-model";
-import { buildExecutionPlan, confirmAllSteps, applyConfirmationSelection, getStepsAwaitingConfirmation } from "../assistant-execution-plan";
+import { buildExecutionPlan, confirmAllSteps, applyConfirmationSelection, getStepsAwaitingConfirmation, buildStepDescription } from "../assistant-execution-plan";
+import { canonicalDealTitle, canonicalTaskTitle, canonicalClientRequestSubject, looksInternalOrRaw } from "../assistant-canonical-names";
+import { opportunityTitleFromSlots } from "../assistant-case-type-map";
 import { buildVerifiedResult } from "../assistant-execution-engine";
 import { verifyWriteContextSafety } from "../assistant-context-safety";
 import { computeStepFingerprint, checkRecentFingerprint, recordFingerprint } from "../assistant-action-fingerprint";
@@ -455,6 +457,122 @@ describe("Edge case replay fixtures", () => {
       }
     });
   }
+});
+
+// ─────────────────────────────────────────────────────────────
+// 9B-13F: Canonical naming regression (no raw abbreviations)
+// ─────────────────────────────────────────────────────────────
+describe("Canonical naming (9B–13F)", () => {
+  describe("Deal titles (10C)", () => {
+    it("hypo + amount → Hypotéka X Kč", () => {
+      const t = canonicalDealTitle({ productDomain: "hypo", amount: 4000000 });
+      expect(t).toMatch(/Hypotéka/);
+      // No raw abbreviation like "hypo:" or standalone "hypo" slug
+      expect(t).not.toMatch(/^hypo\b/i);
+      expect(t).not.toMatch(/hypo:/i);
+    });
+
+    it("investice + monthly amount → Investice X Kč měsíčně", () => {
+      const t = canonicalDealTitle({ productDomain: "investice", amount: 10000, periodicity: "měsíčně" });
+      expect(t).toMatch(/Investice.*měsíčně/);
+      expect(t).not.toMatch(/invest[^i]/i);
+    });
+
+    it("zivotni_pojisteni without amount → Životní pojištění", () => {
+      const t = canonicalDealTitle({ productDomain: "zivotni_pojisteni" });
+      expect(t).toBe("Životní pojištění");
+    });
+
+    it("opportunityTitleFromSlots: raw taskTitle gets replaced with canonical name", () => {
+      const t = opportunityTitleFromSlots({ productDomain: "hypo", taskTitle: "hypo followup", amount: 3000000 });
+      expect(t).not.toMatch(/hypo follow/i);
+      expect(t).toMatch(/Hypotéka/);
+    });
+
+    it("opportunityTitleFromSlots: no internal caseType: purpose format", () => {
+      const t = opportunityTitleFromSlots({ productDomain: "hypo", purpose: "koupě nemovitosti" });
+      expect(t).not.toMatch(/hypo:/i);
+      expect(t).toMatch(/Hypotéka/);
+    });
+
+    it("opportunityTitleFromSlots: clean user-supplied title kept as-is", () => {
+      const t = opportunityTitleFromSlots({ productDomain: "hypo", taskTitle: "Refinancování hypotéky 2 500 000 Kč" });
+      expect(t).toBe("Refinancování hypotéky 2 500 000 Kč");
+    });
+  });
+
+  describe("Task titles (11D)", () => {
+    it("createTask hypo → Zkontrolovat podklady k hypotéce", () => {
+      const t = canonicalTaskTitle({ action: "createTask", productDomain: "hypo" });
+      expect(t).toMatch(/Zkontrolovat/);
+      expect(t).not.toMatch(/^hypo/i);
+    });
+
+    it("createFollowUp investice → Naplánovat schůzku k investici", () => {
+      const t = canonicalTaskTitle({ action: "createFollowUp", productDomain: "investice" });
+      expect(t).toMatch(/Naplánovat schůzku/);
+    });
+
+    it("raw taskTitle 'hypo followup' replaced", () => {
+      const t = canonicalTaskTitle({ action: "createTask", productDomain: "hypo", existingTitle: "hypo followup" });
+      expect(t).not.toMatch(/^hypo follow/i);
+    });
+
+    it("clean taskTitle kept", () => {
+      const t = canonicalTaskTitle({ action: "createTask", productDomain: "hypo", existingTitle: "Připravit analýzu pojistné ochrany" });
+      expect(t).toBe("Připravit analýzu pojistné ochrany");
+    });
+
+    it("looksInternalOrRaw catches abbreviations", () => {
+      expect(looksInternalOrRaw("hypo: follow")).toBe(true);
+      expect(looksInternalOrRaw("invest")).toBe(true);
+      expect(looksInternalOrRaw("Zkontrolovat podklady k hypotéce")).toBe(false);
+    });
+  });
+
+  describe("Client request subjects (12E)", () => {
+    it("hypo → Doložit podklady k hypotéce", () => {
+      const s = canonicalClientRequestSubject({ productDomain: "hypo" });
+      expect(s).toMatch(/Doložit podklady k hypotéce/);
+    });
+
+    it("raw taskTitle replaced", () => {
+      const s = canonicalClientRequestSubject({ productDomain: "hypo", taskTitle: "hypo docs" });
+      expect(s).not.toMatch(/hypo docs/i);
+    });
+
+    it("clean subject kept", () => {
+      const s = canonicalClientRequestSubject({ productDomain: "hypo", existingSubject: "Doložit výpisy z účtu za 3 měsíce" });
+      expect(s).toBe("Doložit výpisy z účtu za 3 měsíce");
+    });
+  });
+
+  describe("Step description (13F)", () => {
+    it("createOpportunity with bank+rate → detail line", () => {
+      const desc = buildStepDescription("createOpportunity", {
+        productDomain: "hypo",
+        bank: "Raiffeisenbank",
+        interestRate: "4,5 %",
+        maturity: "30 let",
+      });
+      expect(desc).toMatch(/Raiffeisenbank/);
+      expect(desc).toMatch(/4,5 %/);
+    });
+
+    it("createTask uses taskTitle as description", () => {
+      const desc = buildStepDescription("createTask", {
+        productDomain: "hypo",
+        taskTitle: "Zkontrolovat podklady k hypotéce",
+      });
+      expect(desc).toBe("Zkontrolovat podklady k hypotéce");
+    });
+
+    it("createOpportunity without detail → fallback generic description", () => {
+      const desc = buildStepDescription("createOpportunity", { productDomain: "hypo" });
+      // No detail line available — falls back to generic with chip
+      expect(desc).toBeDefined();
+    });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────

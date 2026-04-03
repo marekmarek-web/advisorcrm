@@ -1244,6 +1244,9 @@ export function AiAssistantDrawer() {
                             selectable={m.executionState.status === "awaiting_confirmation" && !!m.executionState.planId}
                             stepSelection={m.executionState.planId ? stepSelectionByPlanId[m.executionState.planId] ?? {} : {}}
                             onToggleStep={m.executionState.planId ? (stepId: string) => handleToggleStep(m.executionState!.planId!, stepId) : undefined}
+                            advisoryHints={(m.executionState.stepPreviews ?? [])
+                              .filter(s => (s.validationWarnings?.length ?? 0) > 0)
+                              .flatMap(s => s.validationWarnings!.map(w => `${s.label}: ${w}`))}
                           />
                         )}
                     </>

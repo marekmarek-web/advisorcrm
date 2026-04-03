@@ -282,6 +282,11 @@ const PipelineOpportunityCard = memo(function PipelineOpportunityCard({
         <h4 className="font-pipeline-display mb-1 text-[15px] font-bold leading-snug text-[color:var(--wp-text)] transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400">
           {opp.title}
         </h4>
+        {opp.customFields?.aiSubtitle && typeof opp.customFields.aiSubtitle === "string" && (
+          <p className="text-[11px] font-medium text-[color:var(--wp-text-secondary)] leading-snug mb-0.5 truncate" title={opp.customFields.aiSubtitle}>
+            {opp.customFields.aiSubtitle}
+          </p>
+        )}
         <div className="flex items-center gap-1.5 text-xs font-semibold text-[color:var(--wp-text-secondary)]">
           <User size={12} className="text-[color:var(--wp-text-tertiary)]" /> {opp.contactName || "Bez kontaktu"}
         </div>
