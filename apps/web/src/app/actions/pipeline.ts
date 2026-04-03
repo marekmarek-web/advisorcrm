@@ -54,6 +54,7 @@ export type OpportunityCard = {
   expectedValue: string | null;
   expectedCloseDate: string | null;
   assignedTo?: string | null;
+  customFields: Record<string, unknown> | null;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -141,6 +142,7 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
       expectedValue: opportunities.expectedValue,
       expectedCloseDate: opportunities.expectedCloseDate,
       assignedTo: opportunities.assignedTo,
+      customFields: opportunities.customFields,
       createdAt: opportunities.createdAt,
       updatedAt: opportunities.updatedAt,
       firstName: contacts.firstName,
@@ -170,6 +172,7 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
         expectedValue: o.expectedValue ?? null,
         expectedCloseDate: o.expectedCloseDate ?? null,
         assignedTo: o.assignedTo ?? null,
+        customFields: (o.customFields as Record<string, unknown> | null) ?? null,
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
       })),
@@ -227,6 +230,7 @@ export async function getPipelineByContact(contactId: string): Promise<StageWith
       expectedValue: opportunities.expectedValue,
       expectedCloseDate: opportunities.expectedCloseDate,
       assignedTo: opportunities.assignedTo,
+      customFields: opportunities.customFields,
       createdAt: opportunities.createdAt,
       updatedAt: opportunities.updatedAt,
       firstName: contacts.firstName,
@@ -257,6 +261,7 @@ export async function getPipelineByContact(contactId: string): Promise<StageWith
         expectedValue: o.expectedValue ?? null,
         expectedCloseDate: o.expectedCloseDate ?? null,
         assignedTo: o.assignedTo ?? null,
+        customFields: (o.customFields as Record<string, unknown> | null) ?? null,
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
       })),
