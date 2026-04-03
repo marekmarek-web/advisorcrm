@@ -24,6 +24,15 @@ function isUndefinedColumnError(err: unknown): boolean {
   return false;
 }
 
+/** AI pipeline card subtitle stored in opportunities.customFields.aiSubtitle */
+function extractAiSubtitleFromCustomFields(
+  customFields: Record<string, unknown> | null | undefined,
+): string | null {
+  if (customFields == null) return null;
+  const v = customFields["aiSubtitle"];
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
 const opportunityDetailCoreSelect = {
   id: opportunities.id,
   title: opportunities.title,
@@ -55,6 +64,8 @@ export type OpportunityCard = {
   expectedCloseDate: string | null;
   assignedTo?: string | null;
   customFields: Record<string, unknown> | null;
+  /** Denormalized from customFields.aiSubtitle for pipeline UI (avoids fragile Record access in components). */
+  aiSubtitle: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -163,19 +174,23 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
     sortOrder: st.sortOrder,
     opportunities: oppsWithContact
       .filter((o) => o.stageId === st.id)
-      .map((o) => ({
-        id: o.id,
-        title: o.title,
-        caseType: o.caseType ?? "",
-        contactId: o.contactId ?? null,
-        contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
-        expectedValue: o.expectedValue ?? null,
-        expectedCloseDate: o.expectedCloseDate ?? null,
-        assignedTo: o.assignedTo ?? null,
-        customFields: (o.customFields as Record<string, unknown> | null) ?? null,
-        createdAt: o.createdAt,
-        updatedAt: o.updatedAt,
-      })),
+      .map((o) => {
+        const customFields = (o.customFields as Record<string, unknown> | null) ?? null;
+        return {
+          id: o.id,
+          title: o.title,
+          caseType: o.caseType ?? "",
+          contactId: o.contactId ?? null,
+          contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
+          expectedValue: o.expectedValue ?? null,
+          expectedCloseDate: o.expectedCloseDate ?? null,
+          assignedTo: o.assignedTo ?? null,
+          customFields,
+          aiSubtitle: extractAiSubtitleFromCustomFields(customFields),
+          createdAt: o.createdAt,
+          updatedAt: o.updatedAt,
+        };
+      }),
   }));
 }
 
@@ -252,19 +267,23 @@ export async function getPipelineByContact(contactId: string): Promise<StageWith
     sortOrder: st.sortOrder,
     opportunities: oppsWithContact
       .filter((o) => o.stageId === st.id)
-      .map((o) => ({
-        id: o.id,
-        title: o.title,
-        caseType: o.caseType ?? "",
-        contactId: o.contactId ?? null,
-        contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
-        expectedValue: o.expectedValue ?? null,
-        expectedCloseDate: o.expectedCloseDate ?? null,
-        assignedTo: o.assignedTo ?? null,
-        customFields: (o.customFields as Record<string, unknown> | null) ?? null,
-        createdAt: o.createdAt,
-        updatedAt: o.updatedAt,
-      })),
+      .map((o) => {
+        const customFields = (o.customFields as Record<string, unknown> | null) ?? null;
+        return {
+          id: o.id,
+          title: o.title,
+          caseType: o.caseType ?? "",
+          contactId: o.contactId ?? null,
+          contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
+          expectedValue: o.expectedValue ?? null,
+          expectedCloseDate: o.expectedCloseDate ?? null,
+          assignedTo: o.assignedTo ?? null,
+          customFields,
+          aiSubtitle: extractAiSubtitleFromCustomFields(customFields),
+          createdAt: o.createdAt,
+          updatedAt: o.updatedAt,
+        };
+      }),
   }));
 }
 
