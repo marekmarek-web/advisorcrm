@@ -26,6 +26,7 @@ export const AssistantTelemetryAction = {
   DUPLICATE_DETECTED: "assistant.duplicate_detected",
   WRITE_PLAN_START: "assistant.write_plan_start",
   WRITE_PLAN_DONE: "assistant.write_plan_done",
+  DEPENDENCY_SKIPPED: "assistant.dependency_skipped",
   RUN_COMPLETE: "assistant.run_complete",
   RUN_ERROR: "assistant.run_error",
 } as const;

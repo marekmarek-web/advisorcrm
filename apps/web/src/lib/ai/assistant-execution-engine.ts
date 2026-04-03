@@ -6,9 +6,11 @@
 import { randomUUID } from "crypto";
 import { db, executionActions, eq, and } from "db";
 import type {
+  CanonicalIntentType,
   ExecutionPlan,
   ExecutionStep,
   ExecutionStepResult,
+  ProductDomain,
   WriteActionType,
   VerifiedAssistantResult,
 } from "./assistant-domain-model";
@@ -22,6 +24,15 @@ export type ExecutionContext = {
   sessionId: string;
   roleName: string;
   ipAddress?: string;
+};
+
+/** Bump when changing write contract shape stored in execution_actions metadata / resultPayload. */
+export const ASSISTANT_WRITE_CONTRACT_VERSION = 1;
+
+export type PlanLedgerContext = {
+  planId: string;
+  intentType: CanonicalIntentType;
+  productDomain: ProductDomain | null;
 };
 
 type WriteAdapter = (
@@ -64,14 +75,36 @@ async function checkIdempotency(
   return null;
 }
 
-async function recordExecution(
+export type AssistantLedgerInsertRow = {
+  id: string;
+  tenantId: string;
+  sourceType: "assistant";
+  sourceId: string;
+  actionType: WriteActionType;
+  executionMode: "assistant_confirmed";
+  status: "completed" | "failed";
+  executedAt: Date;
+  executedBy: string;
+  riskLevel: "medium" | "low";
+  metadata: Record<string, unknown>;
+  resultPayload: Record<string, unknown>;
+  failureCode: string | null;
+  retryCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/** Pure builder for `execution_actions` insert — tested without DB / adapters. */
+export function buildAssistantLedgerInsertRow(
   step: ExecutionStep,
   ctx: ExecutionContext,
   result: ExecutionStepResult,
   idempotencyKey: string,
-): Promise<void> {
-  const now = new Date();
-  await db.insert(executionActions).values({
+  ledger: { plan: PlanLedgerContext; fingerprint: string },
+  now: Date = new Date(),
+): AssistantLedgerInsertRow {
+  const { plan, fingerprint } = ledger;
+  return {
     id: idempotencyKey,
     tenantId: ctx.tenantId,
     sourceType: "assistant",
@@ -86,6 +119,11 @@ async function recordExecution(
       stepId: step.stepId,
       params: step.params,
       sessionId: ctx.sessionId,
+      planId: plan.planId,
+      intentType: plan.intentType,
+      productDomain: plan.productDomain,
+      fingerprint,
+      contractVersion: ASSISTANT_WRITE_CONTRACT_VERSION,
     },
     resultPayload: {
       ok: result.ok,
@@ -94,17 +132,47 @@ async function recordExecution(
       entityType: result.entityType,
       warnings: result.warnings,
       error: result.error,
+      fingerprint,
+      contractVersion: ASSISTANT_WRITE_CONTRACT_VERSION,
     },
     failureCode: result.error ? "adapter_error" : null,
     retryCount: 0,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+}
+
+/** Maps a completed ledger row to the in-memory result for idempotent replay. */
+export function idempotentHitResultFromLedgerPayload(
+  existing: { entityId: string; resultPayload: unknown },
+  stepAction: WriteActionType,
+): ExecutionStepResult {
+  const payload = existing.resultPayload as Record<string, unknown> | null;
+  return {
+    ok: true,
+    outcome: "idempotent_hit",
+    entityId: existing.entityId,
+    entityType: (payload?.entityType as string) ?? stepAction,
+    warnings: ["Akce již byla provedena (idempotentní)."],
+    error: null,
+  };
+}
+
+async function recordExecution(
+  step: ExecutionStep,
+  ctx: ExecutionContext,
+  result: ExecutionStepResult,
+  idempotencyKey: string,
+  ledger: { plan: PlanLedgerContext; fingerprint: string },
+): Promise<void> {
+  const now = new Date();
+  await db.insert(executionActions).values(buildAssistantLedgerInsertRow(step, ctx, result, idempotencyKey, ledger, now));
 }
 
 async function executeStep(
   step: ExecutionStep,
   ctx: ExecutionContext,
+  planLedger: PlanLedgerContext,
 ): Promise<ExecutionStepResult> {
   if (step.status !== "confirmed") {
     return { ok: false, outcome: "failed", entityId: null, entityType: null, warnings: [], error: `Step not confirmed: ${step.status}` };
@@ -122,15 +190,7 @@ async function executeStep(
       stepId: step.stepId,
       action: step.action,
     });
-    const payload = existing.resultPayload as Record<string, unknown> | null;
-    return {
-      ok: true,
-      outcome: "idempotent_hit",
-      entityId: existing.entityId,
-      entityType: (payload?.entityType as string) ?? step.action,
-      warnings: ["Akce již byla provedena (idempotentní)."],
-      error: null,
-    };
+    return idempotentHitResultFromLedgerPayload(existing, step.action);
   }
 
   const fingerprint = computeStepFingerprint(step);
@@ -152,13 +212,15 @@ async function executeStep(
     };
   }
 
+  const ledgerSnapshot = { plan: planLedger, fingerprint };
+
   try {
     const adapterResult = await adapter(step.params, ctx);
     const result: ExecutionStepResult = {
       ...adapterResult,
       outcome: adapterResult.outcome ?? (adapterResult.ok ? "executed" : "failed"),
     };
-    await recordExecution(step, ctx, result, idempotencyKey);
+    await recordExecution(step, ctx, result, idempotencyKey, ledgerSnapshot);
 
     if (result.ok) {
       recordFingerprint(ctx.sessionId, fingerprint, result.entityId ?? idempotencyKey);
@@ -171,6 +233,10 @@ async function executeStep(
         meta: {
           stepId: step.stepId,
           sessionId: ctx.sessionId,
+          planId: planLedger.planId,
+          intentType: planLedger.intentType,
+          fingerprint,
+          contractVersion: ASSISTANT_WRITE_CONTRACT_VERSION,
           params: step.params,
         },
         requestContext: ctx.ipAddress ? { ipAddress: ctx.ipAddress } : undefined,
@@ -188,7 +254,7 @@ async function executeStep(
       warnings: [],
       error,
     };
-    await recordExecution(step, ctx, failResult, idempotencyKey).catch(() => {});
+    await recordExecution(step, ctx, failResult, idempotencyKey, ledgerSnapshot).catch(() => {});
     return failResult;
   }
 }
@@ -242,24 +308,57 @@ export async function executePlan(
     actions: confirmedSteps.map((s) => s.action).slice(0, 16),
   });
 
+  const planLedger: PlanLedgerContext = {
+    planId: plan.planId,
+    intentType: plan.intentType,
+    productDomain: plan.productDomain,
+  };
+
   const waves = resolveDependencies(confirmedSteps);
   const updatedSteps = [...plan.steps];
   let anyFailed = false;
+  const failedOrSkippedStepIds = new Set<string>();
 
   for (const wave of waves) {
-    const results = await Promise.all(
+    await Promise.all(
       wave.map(async (step) => {
         const idx = updatedSteps.findIndex((s) => s.stepId === step.stepId);
         if (idx < 0) return;
 
+        const hasFailedDependency = step.dependsOn.some((dep) =>
+          failedOrSkippedStepIds.has(dep),
+        );
+        if (hasFailedDependency) {
+          const skipResult: ExecutionStepResult = {
+            ok: false,
+            outcome: "skipped",
+            entityId: null,
+            entityType: null,
+            warnings: [],
+            error: "Přeskočeno — závislý krok selhal.",
+          };
+          updatedSteps[idx] = { ...updatedSteps[idx]!, status: "skipped", result: skipResult };
+          failedOrSkippedStepIds.add(step.stepId);
+          anyFailed = true;
+          logAssistantTelemetry(AssistantTelemetryAction.DEPENDENCY_SKIPPED, {
+            stepId: step.stepId,
+            action: step.action,
+            failedDependencies: step.dependsOn.filter((d) => failedOrSkippedStepIds.has(d)),
+          });
+          return;
+        }
+
         updatedSteps[idx] = { ...updatedSteps[idx]!, status: "executing" };
-        const result = await executeStep(step, ctx);
+        const result = await executeStep(step, ctx, planLedger);
         updatedSteps[idx] = {
           ...updatedSteps[idx]!,
           status: result.ok ? "succeeded" : "failed",
           result,
         };
-        if (!result.ok) anyFailed = true;
+        if (!result.ok) {
+          anyFailed = true;
+          failedOrSkippedStepIds.add(step.stepId);
+        }
       }),
     );
   }
@@ -275,6 +374,7 @@ export async function executePlan(
     finalStatus: nextPlan.status,
     succeeded: updatedSteps.filter((s) => s.status === "succeeded").length,
     failed: updatedSteps.filter((s) => s.status === "failed").length,
+    skipped: updatedSteps.filter((s) => s.status === "skipped").length,
   });
 
   return nextPlan;

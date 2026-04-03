@@ -171,7 +171,8 @@ const REQUIRED_FIELDS: Record<string, FieldRequirement[]> = {
   sendPortalMessage: ["contactId", ["portalMessageBody", "noteContent"]],
 };
 
-function computeMissingFields(
+/** Exported for tests and tooling — same rules as planner slot-filling. */
+export function computeWriteActionMissingFields(
   action: WriteActionType,
   params: Record<string, unknown>,
 ): string[] {
@@ -220,7 +221,7 @@ export function buildExecutionPlan(
     if (!writeAction) continue;
 
     const params = buildStepParams(intent, resolution, writeAction, session);
-    const missing = computeMissingFields(writeAction, params);
+    const missing = computeWriteActionMissingFields(writeAction, params);
     const policy = getConfirmationPolicy(writeAction);
 
     const step: ExecutionStep = {
@@ -256,7 +257,7 @@ export function buildExecutionPlan(
     }
   }
 
-  const missingAny = steps.some((s) => computeMissingFields(s.action, s.params).length > 0);
+  const missingAny = steps.some((s) => computeWriteActionMissingFields(s.action, s.params).length > 0);
 
   return {
     planId,

@@ -34,7 +34,7 @@
 Legenda sloupců:
 
 - **Intent:** mapování `CanonicalIntentType` → akce v `assistant-execution-plan.ts` (`INTENT_TO_WRITE_ACTION`).
-- **Required (plan):** `computeMissingFields()` v `assistant-execution-plan.ts`.
+- **Required (plan):** `computeWriteActionMissingFields()` v `assistant-execution-plan.ts`.
 - **Fingerprint:** `assistant-action-fingerprint.ts` (prázdné = fallback `Object.keys(params).sort()`).
 - **Impl.:** `server action` = delegace na `@/app/actions/*`; `Drizzle` = přímý `db.update` v adapteru.
 
@@ -83,7 +83,7 @@ Legenda sloupců:
 
 1. **Intent gap:** `triggerDocumentReview` – adapter ano, žádný `INTENT_TO_WRITE_ACTION`.
 2. **Intent gap:** `createInternalNote` – adapter ano, žádný canonical intent.
-3. **Required fields:** `appendMeetingNote` – adapter vyžaduje `meetingNoteId`, `computeMissingFields` ho neuvádí.
+3. **Required fields:** `appendMeetingNote` – adapter vyžaduje `meetingNoteId` (v 3B sjednoceno v plánu přes `computeWriteActionMissingFields`).
 4. **Fingerprint gap:** mnoho akcí spadá do defaultního fingerprintu → vyšší riziko falešně „jiného“ kroku; doplnit v 3B konzistentně s parametry.
 5. **Dokumenty:** attach/classify/trigger review přes Drizzle – sjednotit s oprávněními a auditem UI cest (`app/actions/documents.ts` kde je relevantní).
 6. **Duplicitní produktové cesty:** `assistant-crm-writes.ts` vs canonical; `executeAiAction` vs canonical.
@@ -104,7 +104,7 @@ Legenda sloupců:
 ## 7. Související soubory (rychlá navigace)
 
 - `apps/web/src/lib/ai/assistant-domain-model.ts` – `WRITE_ACTION_TYPES`, intenty  
-- `apps/web/src/lib/ai/assistant-execution-plan.ts` – mapa intent → write, `computeMissingFields`, HIGH_RISK  
+- `apps/web/src/lib/ai/assistant-execution-plan.ts` – mapa intent → write, `computeWriteActionMissingFields`, HIGH_RISK  
 - `apps/web/src/lib/ai/assistant-write-adapters.ts` – implementace adapterů  
 - `apps/web/src/lib/ai/assistant-execution-engine.ts` – registry, idempotence  
 - `apps/web/src/lib/ai/assistant-action-fingerprint.ts` – fingerprint klíče  
