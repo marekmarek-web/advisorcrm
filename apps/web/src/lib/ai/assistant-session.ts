@@ -121,6 +121,7 @@ export function updateSessionContext(
   }
   if ("reviewId" in activeContext) {
     session.activeReviewId = activeContext.reviewId ?? undefined;
+    session.contextLock.lockedReviewId = activeContext.reviewId ?? null;
   }
   if ("paymentContactId" in activeContext) {
     session.activePaymentContactId = activeContext.paymentContactId ?? undefined;
@@ -144,6 +145,12 @@ export function lockAssistantDocument(session: AssistantSession, documentId: str
   session.contextLock.lockedDocumentId = documentId;
 }
 
+/** Zamkne AI contract review — synchronně s `contextLock.lockedReviewId` pro 2B safety. */
+export function lockAssistantReview(session: AssistantSession, reviewId: string): void {
+  session.activeReviewId = reviewId;
+  session.contextLock.lockedReviewId = reviewId;
+}
+
 export function setAssistantMode(session: AssistantSession, mode: AssistantMode): void {
   session.assistantMode = mode;
   session.contextLock.assistantMode = mode;
@@ -159,6 +166,7 @@ export function clearAssistantClientLock(session: AssistantSession): void {
   session.lockedDealId = undefined;
   session.lockedOpportunityId = undefined;
   session.lockedDocumentId = undefined;
+  session.activeReviewId = undefined;
   session.contextLock = defaultContextLock();
   session.contextLock.assistantMode = session.assistantMode;
 }

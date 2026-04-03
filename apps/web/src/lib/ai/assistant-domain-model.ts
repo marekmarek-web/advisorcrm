@@ -199,6 +199,8 @@ export type ExecutionPlan = {
   productDomain: ProductDomain | null;
   contactId: string | null;
   opportunityId: string | null;
+  /** Tenant, ve kterém byl plán sestaven; proti session při resume / safety kontrole. */
+  tenantId?: string | null;
   steps: ExecutionStep[];
   status: "draft" | "awaiting_confirmation" | "executing" | "completed" | "partial_failure";
   createdAt: Date;

@@ -30,7 +30,7 @@ import type { CanonicalIntent, ExecutionPlan, VerifiedAssistantResult } from "./
 import { resolveEntities, patchIntentWithResolutions } from "./assistant-entity-resolution";
 import { buildExecutionPlan, confirmAllSteps, allStepsReady, getPlanSummary, getStepsAwaitingConfirmation } from "./assistant-execution-plan";
 import { executePlan, buildVerifiedResult } from "./assistant-execution-engine";
-import { verifyWriteContextSafety } from "./assistant-context-safety";
+import { verifyWriteContextSafety, verifyTenantConsistency } from "./assistant-context-safety";
 import { getPlaybookGuidanceLines } from "./playbooks";
 import { AssistantTelemetryAction, logAssistantTelemetry } from "./assistant-telemetry";
 
@@ -620,6 +620,23 @@ export async function routeAssistantMessageCanonical(
       roleName: options?.roleName,
       skipIncrement: true,
     });
+  }
+
+  const tenantSafety = verifyTenantConsistency(session, plan);
+  if (!tenantSafety.safe) {
+    logAssistantTelemetry(AssistantTelemetryAction.CONTEXT_SAFETY_BLOCKED, {
+      planId: plan.planId,
+      reason: tenantSafety.blockedReason,
+    });
+    return {
+      message: tenantSafety.warnings.join("\n"),
+      referencedEntities: [],
+      suggestedActions: [],
+      warnings: tenantSafety.warnings,
+      confidence: 0.2,
+      sourcesSummary: [],
+      sessionId: session.sessionId,
+    };
   }
 
   const ctxSafety = verifyWriteContextSafety(session, resolution, plan);

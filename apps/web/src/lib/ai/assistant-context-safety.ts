@@ -4,8 +4,8 @@
  */
 
 import type { AssistantSession } from "./assistant-session";
-import type { EntityResolutionResult, ResolvedEntity } from "./assistant-entity-resolution";
-import type { ExecutionPlan } from "./assistant-domain-model";
+import type { EntityResolutionResult } from "./assistant-entity-resolution";
+import type { ExecutionPlan, WriteActionType } from "./assistant-domain-model";
 import { AssistantTelemetryAction, logAssistantTelemetry } from "./assistant-telemetry";
 
 export type ContextSafetyVerdict = {
@@ -14,6 +14,30 @@ export type ContextSafetyVerdict = {
   warnings: string[];
   blockedReason: string | null;
 };
+
+const REVIEW_ACTIONS = new Set<WriteActionType>([
+  "approveAiContractReview",
+  "applyAiContractReviewToCrm",
+  "linkAiContractReviewToDocuments",
+]);
+
+/** Akce, kde `documentId` v kroku musí sedět se zamčeným dokumentem (pokud lock existuje). */
+const DOCUMENT_LOCK_ACTIONS = new Set<WriteActionType>([
+  "classifyDocument",
+  "triggerDocumentReview",
+  "attachDocumentToClient",
+  "attachDocumentToOpportunity",
+  "setDocumentVisibleToClient",
+  "linkDocumentToMaterialRequest",
+]);
+
+function effectiveLockedReviewId(session: AssistantSession): string | null {
+  return session.contextLock.lockedReviewId ?? session.activeReviewId ?? null;
+}
+
+function effectiveLockedDocumentId(session: AssistantSession): string | null {
+  return session.lockedDocumentId ?? session.contextLock.lockedDocumentId ?? null;
+}
 
 /**
  * Validate that the resolved entity context is safe for the planned writes.
@@ -65,6 +89,50 @@ export function verifyWriteContextSafety(
     warnings.push("ID klienta v plánu neodpovídá resolved klientovi. Zápis blokován.");
   }
 
+  const lockedOpp = session.lockedOpportunityId ?? null;
+  const lockedReview = effectiveLockedReviewId(session);
+  const lockedDoc = effectiveLockedDocumentId(session);
+
+  for (const step of plan.steps) {
+    if (step.isReadOnly) continue;
+
+    const oppId = typeof step.params.opportunityId === "string" ? step.params.opportunityId : null;
+    if (lockedOpp && oppId && oppId !== lockedOpp) {
+      blocked = "OPPORTUNITY_LOCK_MISMATCH";
+      warnings.push(
+        "Krok plánu cílí na jiný obchod než je zamčený kontext — zápis blokován.",
+      );
+      break;
+    }
+
+    if (REVIEW_ACTIONS.has(step.action)) {
+      const rid = typeof step.params.reviewId === "string" ? step.params.reviewId : null;
+      if (lockedReview && rid && rid !== lockedReview) {
+        blocked = "REVIEW_LOCK_MISMATCH";
+        warnings.push(
+          "Krok cílí na jiné AI review než je zamčený kontext — zápis blokován.",
+        );
+        break;
+      }
+    }
+
+    if (DOCUMENT_LOCK_ACTIONS.has(step.action)) {
+      const did = typeof step.params.documentId === "string" ? step.params.documentId : null;
+      if (lockedDoc && did && did !== lockedDoc) {
+        blocked = "DOCUMENT_LOCK_MISMATCH";
+        warnings.push(
+          "Krok cílí na jiný dokument než je zamčený kontext — zápis blokován.",
+        );
+        break;
+      }
+    }
+  }
+
+  if (resolution.document?.ambiguous) {
+    needsConfirmation = true;
+    warnings.push("Dokument je nejednoznačný — ověřte správný soubor.");
+  }
+
   logAssistantTelemetry(AssistantTelemetryAction.ENTITY_RESOLUTION, {
     contextSafety: {
       safe: !blocked,
@@ -83,19 +151,32 @@ export function verifyWriteContextSafety(
 }
 
 /**
- * Pre-execution tenant guard: ensures plan context matches session tenant.
+ * Pre-execution tenant guard: persisted plan must match session tenant.
  */
-export function verifyTenantConsistency(
-  session: AssistantSession,
-  plan: ExecutionPlan,
-): boolean {
-  return true;
+export function verifyTenantConsistency(session: AssistantSession, plan: ExecutionPlan): ContextSafetyVerdict {
+  const tid = plan.tenantId;
+  if (tid == null || tid === "") {
+    return { safe: true, requiresConfirmation: false, warnings: [], blockedReason: null };
+  }
+  if (tid !== session.tenantId) {
+    return {
+      safe: false,
+      requiresConfirmation: false,
+      warnings: ["Plán patří jinému tenantovi než aktuální session — zápis blokován."],
+      blockedReason: "PLAN_TENANT_MISMATCH",
+    };
+  }
+  return { safe: true, requiresConfirmation: false, warnings: [], blockedReason: null };
 }
 
 /**
  * Validate that a session has a non-stale lock on a specific entity.
  */
-export function hasActiveLock(session: AssistantSession, entityType: "client" | "opportunity" | "document", entityId: string): boolean {
+export function hasActiveLock(
+  session: AssistantSession,
+  entityType: "client" | "opportunity" | "document" | "review",
+  entityId: string,
+): boolean {
   switch (entityType) {
     case "client":
       return session.lockedClientId === entityId;
@@ -103,6 +184,8 @@ export function hasActiveLock(session: AssistantSession, entityType: "client" | 
       return session.lockedOpportunityId === entityId;
     case "document":
       return session.lockedDocumentId === entityId;
+    case "review":
+      return session.contextLock.lockedReviewId === entityId || session.activeReviewId === entityId;
     default:
       return false;
   }
