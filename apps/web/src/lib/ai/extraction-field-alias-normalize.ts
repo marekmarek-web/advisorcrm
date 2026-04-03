@@ -4,6 +4,7 @@
  */
 
 import type { DocumentReviewEnvelope, ExtractedField, PrimaryDocumentType } from "./document-review-types";
+import { normalizeExtractedFieldDates } from "./canonical-date-normalize";
 
 function valuePresent(cell: ExtractedField | undefined): boolean {
   if (!cell) return false;
@@ -117,7 +118,10 @@ function deriveInvestmentStrategyFromNested(ef: Record<string, ExtractedField>):
   }
 }
 
-function salvageCanonicalFieldsFromTextishCells(ef: Record<string, ExtractedField>): void {
+function salvageCanonicalFieldsFromTextishCells(
+  ef: Record<string, ExtractedField>,
+  opts?: { skipContractNumberSalvage?: boolean }
+): void {
   const chunks = Object.values(ef)
     .flatMap((cell) => [asSearchableText(cell?.value), cell?.evidenceSnippet ?? ""])
     .map((chunk) => chunk.trim())
@@ -151,16 +155,20 @@ function salvageCanonicalFieldsFromTextishCells(ef: Record<string, ExtractedFiel
     }
   }
 
-  if (!valuePresent(ef.contractNumber)) {
+  if (!opts?.skipContractNumberSalvage && !valuePresent(ef.contractNumber)) {
     const contractMatch = blob.match(
       /(?:pojistná smlouva(?:\s+číslo)?|číslo smlouvy|číslo pojistné smlouvy|contract number|policy number)[:\s]*([A-Z0-9\/-]{5,})/i
     );
     if (contractMatch?.[1]) {
-      ef.contractNumber = {
-        value: contractMatch[1].trim(),
-        status: "inferred_low_confidence",
-        confidence: 0.68,
-      };
+      const candidate = contractMatch[1].trim();
+      const existingModelationId = ef.modelationId?.value != null ? String(ef.modelationId.value) : "";
+      if (candidate !== existingModelationId) {
+        ef.contractNumber = {
+          value: candidate,
+          status: "inferred_low_confidence",
+          confidence: 0.68,
+        };
+      }
     }
   }
 
@@ -191,19 +199,28 @@ function salvageCanonicalFieldsFromTextishCells(ef: Record<string, ExtractedFiel
   }
 }
 
-/** Fill composite required keys used in document-schema-registry. */
+/**
+ * Fill composite required keys used in document-schema-registry.
+ * Priority: contractNumber > proposalNumber > modelationId > weaker aliases.
+ * modelationId is never silently promoted to contractNumber.
+ */
 function mergeCompositeReferenceFields(ef: Record<string, ExtractedField>): void {
-  const refAliases = [
+  const strongContractAliases = [
     "contractNumber",
-    "proposalNumber",
     "policyNumber",
     "policyNo",
     "existingPolicyNumber",
-    "referenceNumber",
     "smlouvaCislo",
   ];
+  const weakerAliases = [
+    "proposalNumber",
+    "referenceNumber",
+    "businessCaseNumber",
+  ];
+  const orderedForComposite = [...strongContractAliases, ...weakerAliases, "modelationId"];
+
   if (!valuePresent(ef.proposalNumber_or_contractNumber)) {
-    for (const key of refAliases) {
+    for (const key of orderedForComposite) {
       const src = ef[key];
       if (valuePresent(src)) {
         ef.proposalNumber_or_contractNumber = cloneCellFrom(src);
@@ -212,7 +229,7 @@ function mergeCompositeReferenceFields(ef: Record<string, ExtractedField>): void
     }
   }
   if (!valuePresent(ef.contractNumber_or_proposalNumber)) {
-    for (const key of refAliases) {
+    for (const key of orderedForComposite) {
       const src = ef[key];
       if (valuePresent(src)) {
         ef.contractNumber_or_proposalNumber = cloneCellFrom(src);
@@ -234,6 +251,10 @@ function mergeCompositeReferenceFields(ef: Record<string, ExtractedField>): void
 function pullFromFinancialTerms(envelope: DocumentReviewEnvelope): void {
   const ef = envelope.extractedFields;
   const ft = envelope.financialTerms ?? {};
+  const primary = envelope.documentClassification.primaryType;
+  const skipContractNumber =
+    primary === "life_insurance_modelation" || primary === "investment_modelation";
+
   for (const [k, v] of Object.entries(ft)) {
     if (v == null) continue;
     const lk = k.toLowerCase();
@@ -250,6 +271,7 @@ function pullFromFinancialTerms(envelope: DocumentReviewEnvelope): void {
       ef.productName = { value: str, status: "extracted", confidence: 0.7 };
     }
     if (
+      !skipContractNumber &&
       !valuePresent(ef.contractNumber) &&
       (lk.includes("contract") || lk.includes("policy") || lk.includes("smlouv"))
     ) {
@@ -380,18 +402,25 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     "contractName",
   ]);
 
-  mergeFromAliases(ef, "contractNumber", [
-    "policyNumber",
-    "policyNo",
-    "smlouvaCislo",
-    "contractRef",
-    "referenceNumber",
-    "existingPolicyNumber",
-    "contractId",
-    "policyId",
-    "pojistnaSmlouvaCislo",
-    "contractNumberOrPolicyNumber",
-  ]);
+  const isModelationDoc =
+    primary === "life_insurance_modelation" || primary === "investment_modelation";
+
+  if (!isModelationDoc) {
+    mergeFromAliases(ef, "contractNumber", [
+      "policyNumber",
+      "policyNo",
+      "smlouvaCislo",
+      "contractRef",
+      "referenceNumber",
+      "existingPolicyNumber",
+      "contractId",
+      "policyId",
+      "pojistnaSmlouvaCislo",
+      "contractNumberOrPolicyNumber",
+    ]);
+  }
+
+  mergeFromAliases(ef, "modelationId", ["modelationNumber", "modelationReference"]);
 
   mergeFromAliases(ef, "policyStartDate", [
     "effectiveDate",
@@ -465,5 +494,8 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
   mergeCompositeReferenceFields(ef);
   pullFromFinancialTerms(envelope);
   applyPrimaryTypeSpecificAliases(primary, ef);
-  salvageCanonicalFieldsFromTextishCells(ef);
+  salvageCanonicalFieldsFromTextishCells(ef, {
+    skipContractNumberSalvage: isModelationDoc,
+  });
+  normalizeExtractedFieldDates(ef);
 }

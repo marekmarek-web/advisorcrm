@@ -4,6 +4,7 @@ import { eq, and, isNotNull } from "db";
 import type { ContractReviewRow } from "./review-queue-repository";
 import type { ApplyResultPayload } from "./review-queue-repository";
 import { buildPortfolioAttributesFromExtracted } from "@/lib/portfolio/build-portfolio-attributes-from-extract";
+import { normalizeDateToISO } from "./canonical-date-normalize";
 
 export type ApplyContractReviewInput = {
   reviewId: string;
@@ -132,7 +133,7 @@ export async function applyContractReview(
                 lastName,
                 email: (createClientAction.payload.email as string)?.trim() || null,
                 phone: (createClientAction.payload.phone as string)?.trim() || null,
-                birthDate: (createClientAction.payload.birthDate as string) || null,
+                birthDate: normalizeDateToISO(createClientAction.payload.birthDate as string) || null,
                 personalId: (createClientAction.payload.personalId as string)?.trim() || null,
                 street: (createClientAction.payload.address as string)?.trim() || null,
               })
@@ -208,7 +209,7 @@ export async function applyContractReview(
               partnerName: institutionName,
               productName,
               contractNumber,
-              startDate: (action.payload.effectiveDate as string)?.trim() || null,
+              startDate: normalizeDateToISO((action.payload.effectiveDate as string)?.trim()) || null,
               premiumAmount: premiumAmountRaw,
               premiumAnnual: premiumAnnualRaw,
               note: noteParts.length ? noteParts.join(" · ") : null,
@@ -342,8 +343,8 @@ export async function applyContractReview(
                 currency: (action.payload.currency as string)?.trim() || "CZK",
                 frequency: (action.payload.frequency as string)?.trim() || null,
                 firstPaymentDate:
-                  (action.payload.firstDueDate as string)?.trim() ||
-                  (action.payload.firstPaymentDate as string)?.trim() ||
+                  normalizeDateToISO((action.payload.firstDueDate as string)?.trim()) ||
+                  normalizeDateToISO((action.payload.firstPaymentDate as string)?.trim()) ||
                   null,
                 paymentInstructionsText: (action.payload.clientNote as string)?.trim() || null,
                 needsHumanReview: true,

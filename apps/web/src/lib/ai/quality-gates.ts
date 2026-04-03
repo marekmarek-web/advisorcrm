@@ -159,12 +159,15 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
   }
 
   const extractionRoute = trace?.extractionRoute;
-  if (extractionRoute === "payment_instructions") {
-    const payPayload = extractPaymentFromRow(row);
-    if (payPayload) {
+  const payPayload = extractPaymentFromRow(row);
+  if (payPayload) {
+    if (extractionRoute === "payment_instructions") {
       const payGate = evaluatePaymentApplyReadiness(payPayload);
       blocked.push(...payGate.blockedReasons);
       applyBarrier.push(...payGate.applyBarrierReasons);
+      warnings.push(...payGate.warnings);
+    } else {
+      const payGate = evaluatePaymentApplyReadiness(payPayload);
       warnings.push(...payGate.warnings);
     }
   }
@@ -224,6 +227,34 @@ export function evaluatePaymentApplyReadiness(p: PaymentApplyPayload): ApplyGate
 function extractPaymentFromRow(row: ContractReviewRow): PaymentApplyPayload | null {
   const payload = row.extractedPayload as Record<string, unknown> | null;
   if (!payload) return null;
+
+  const ef = payload.extractedFields as Record<string, { value?: unknown }> | undefined;
+  if (ef) {
+    const fv = (k: string) => {
+      const cell = ef[k];
+      return cell?.value != null ? String(cell.value).trim() : undefined;
+    };
+    const amount = fv("totalMonthlyPremium") || fv("premiumAmount") || fv("regularAmount") || fv("amount");
+    const target = fv("iban") || fv("bankAccount") || fv("accountNumber");
+    if (amount || target) {
+      return {
+        amount: amount as string | undefined,
+        currency: fv("currency") || undefined,
+        paymentFrequency: fv("paymentFrequency") || undefined,
+        iban: fv("iban") || fv("ibanMasked") || undefined,
+        accountNumber: fv("bankAccount") || fv("accountNumber") || undefined,
+        bankCode: fv("bankCode") || undefined,
+        variableSymbol: fv("variableSymbol") || undefined,
+        constantSymbol: fv("constantSymbol") || undefined,
+        institutionName: fv("insurer") || fv("institutionName") || undefined,
+        productName: fv("productName") || undefined,
+        confidence: typeof (ef.totalMonthlyPremium ?? ef.premiumAmount)?.value === "number"
+          ? undefined
+          : (row.confidence ?? undefined),
+      };
+    }
+  }
+
   const debug = payload.debug as Record<string, unknown> | undefined;
   const pay = debug?.paymentInstructionExtraction as Record<string, unknown> | undefined;
   if (!pay) return null;

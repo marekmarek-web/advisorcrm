@@ -161,9 +161,14 @@ function fieldValue(envelope: DocumentReviewEnvelope, key: string): unknown {
 function toLegacyProjection(envelope: DocumentReviewEnvelope): ExtractedContractSchema {
   const fullName = String(fieldValue(envelope, "fullName") ?? fieldValue(envelope, "clientFullName") ?? "");
   const names = fullName.split(" ");
+  const lifecycle = envelope.documentClassification.lifecycleStatus;
+  const isNonFinal =
+    lifecycle === "proposal" || lifecycle === "modelation" || lifecycle === "illustration" || lifecycle === "offer";
+  const contractNum = String(fieldValue(envelope, "contractNumber") ?? "");
+  const resolvedContractNumber = isNonFinal && !contractNum ? "" : contractNum;
   return {
     documentType: envelope.documentClassification.primaryType,
-    contractNumber: String(fieldValue(envelope, "contractNumber") ?? ""),
+    contractNumber: resolvedContractNumber,
     institutionName: String(
       fieldValue(envelope, "insurer") ??
         fieldValue(envelope, "institutionName") ??

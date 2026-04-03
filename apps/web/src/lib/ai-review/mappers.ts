@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import { buildHumanSummary, buildHumanErrorMessage, getDocumentTypeLabel } from "../ai/document-messages";
 import type { PrimaryDocumentType } from "../ai/document-review-types";
+import { isDateFieldKey, normalizeDateForAdvisorDisplay } from "../ai/canonical-date-normalize";
 import type { DocumentReviewEnvelope } from "../ai/document-review-types";
 import type { InputMode } from "../ai/input-mode-detection";
 import { formatAiClassifierForAdvisor } from "./czech-labels";
@@ -565,11 +566,26 @@ function fieldConfidence(
   globalConfidence: number
 ): number {
   if (fieldConfidenceMap) {
+    const fkLower = fieldKey.toLowerCase();
+    const exact = fieldConfidenceMap[fieldKey] ?? fieldConfidenceMap[fkLower];
+    if (typeof exact === "number") return Math.round(exact * 100);
+
+    const dotStripped = fkLower.replace(/^extractedfields\./, "");
+    const exact2 = fieldConfidenceMap[dotStripped];
+    if (typeof exact2 === "number") return Math.round(exact2 * 100);
+
+    let bestLen = 0;
+    let bestVal: number | undefined;
     for (const [section, val] of Object.entries(fieldConfidenceMap)) {
-      if (fieldKey.toLowerCase().includes(section.toLowerCase())) {
+      const sLower = section.toLowerCase();
+      if (fkLower === sLower || dotStripped === sLower) {
         return Math.round(val * 100);
       }
+      if (fkLower.endsWith(`.${sLower}`) || sLower.endsWith(`.${dotStripped}`)) {
+        if (sLower.length > bestLen) { bestLen = sLower.length; bestVal = val; }
+      }
     }
+    if (bestVal != null) return Math.round(bestVal * 100);
   }
   return Math.round(globalConfidence * 100);
 }
@@ -634,7 +650,9 @@ function flattenEnvelopeToGroups(
     for (const [fKey, fObj] of Object.entries(ef)) {
       if (!fObj || typeof fObj !== "object" || fKey.startsWith("_")) continue;
       const rawVal = fObj.value;
-      const strVal = formatExtractedValue(rawVal);
+      const strVal = isDateFieldKey(fKey)
+        ? normalizeDateForAdvisorDisplay(rawVal == null ? null : String(rawVal)) || formatExtractedValue(rawVal)
+        : formatExtractedValue(rawVal);
       const conf01 =
         typeof fObj.confidence === "number" && Number.isFinite(fObj.confidence)
           ? fObj.confidence
