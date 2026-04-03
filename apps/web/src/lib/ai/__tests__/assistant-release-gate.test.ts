@@ -77,9 +77,13 @@ function intentFromGolden(scenario: typeof goldenScenarios[number]): CanonicalIn
             applyAiContractReviewToCrm: "apply_ai_review_to_crm",
             createClientPortalNotification: "notify_client_portal",
             scheduleCalendarEvent: "schedule_meeting",
+            updateOpportunity: "update_opportunity",
+            sendPortalMessage: "send_portal_message",
             createMeetingNote: "create_note",
             createInternalNote: "create_internal_note",
             triggerDocumentReview: "request_document_review",
+            attachDocumentToClient: "attach_document",
+            attachDocumentToOpportunity: "attach_document_to_opportunity",
             createReminder: "create_reminder",
           };
           return (reverseMap[a] ?? scenario.expectedIntent.intentType) as any;
@@ -89,7 +93,7 @@ function intentFromGolden(scenario: typeof goldenScenarios[number]): CanonicalIn
 }
 
 describe("Phase 2H: Release Gate", () => {
-  it("passes all quality thresholds for Phase 2 acceptance (includes Phase 3 write coverage)", () => {
+  it("passes Phase 3 release gate (domains, red flags, eval thresholds)", () => {
     // ── Run golden eval scenarios ──
     const evalResults: ScenarioEvalResult[] = [];
 
@@ -255,9 +259,10 @@ describe("Phase 2H: Release Gate", () => {
       replayFixtures.length,
       goldenScenarios.length,
       redFlagResults,
+      PHASE_3_THRESHOLDS,
     );
 
-    const report = formatGateReport(gateResult);
+    const report = formatGateReport(gateResult, "PHASE 3 RELEASE GATE REPORT");
     console.log(report);
 
     // ── Assert gate passes ──

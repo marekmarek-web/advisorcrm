@@ -447,14 +447,21 @@ export const goldenScenarios: GoldenScenario[] = [
     id: "ww-schedule-calendar",
     domain: "write_workflows",
     name: "Naplánování schůzky v kalendáři",
-    description: "Poradce zakládá schůzku přes asistenta. Plan builder TBD in Phase 3D.",
+    description: "Poradce zakládá schůzku přes asistenta; bez vyplněného data/slotu zůstane plán ve stavu draft.",
     turns: [
       { role: "user", content: "Naplánuj schůzku s Petrou Dvořákovou na čtvrtek 14:00 — revize portfolia." },
     ],
     expectedIntent: {
       intentType: "schedule_meeting",
     },
-    tags: ["write_workflows", "calendar", "3i", "plan-not-yet-wired"],
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 1,
+      expectedActions: ["scheduleCalendarEvent"],
+      expectedContactIdPresent: true,
+      expectedStatus: "draft",
+    },
+    tags: ["write_workflows", "calendar", "3i"],
   },
   {
     id: "ww-create-meeting-note",
@@ -576,7 +583,7 @@ export const goldenScenarios: GoldenScenario[] = [
     id: "ww-update-existing-opportunity",
     domain: "write_workflows",
     name: "Aktualizace existujícího obchodu",
-    description: "Poradce chce aktualizovat stávající obchod (ne vytvořit nový). Plan builder TBD in Phase 3B.",
+    description: "Poradce chce aktualizovat stávající obchod; bez opportunityId zůstane plán ve stavu draft.",
     turns: [
       { role: "user", content: "Aktualizuj obchod Nováka — zvýšit částku hypotéky na 5M." },
     ],
@@ -584,20 +591,34 @@ export const goldenScenarios: GoldenScenario[] = [
       intentType: "update_opportunity",
       productDomain: "hypo",
     },
-    tags: ["write_workflows", "update", "3i", "plan-not-yet-wired"],
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 1,
+      expectedActions: ["updateOpportunity"],
+      expectedContactIdPresent: true,
+      expectedStatus: "draft",
+    },
+    tags: ["write_workflows", "update", "3i"],
   },
   {
     id: "ww-send-portal-message",
     domain: "write_workflows",
     name: "Odeslání zprávy klientovi přes portál",
-    description: "Poradce posílá zprávu klientovi do portálu. Plan builder TBD in Phase 3F.",
+    description: "Poradce posílá zprávu klientovi do portálu; bez textu zprávy zůstane plán ve stavu draft.",
     turns: [
       { role: "user", content: "Pošli zprávu Novákovi — informuj ho, že smlouva je připravena k podpisu." },
     ],
     expectedIntent: {
       intentType: "send_portal_message",
     },
-    tags: ["write_workflows", "portal-message", "3i", "plan-not-yet-wired"],
+    expectedPlan: {
+      minSteps: 1,
+      maxSteps: 1,
+      expectedActions: ["sendPortalMessage"],
+      expectedContactIdPresent: true,
+      expectedStatus: "draft",
+    },
+    tags: ["write_workflows", "portal-message", "3i"],
   },
   {
     id: "ww-attach-document-to-opportunity",
