@@ -662,8 +662,11 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
   const onProfileRoute = pathname.startsWith("/client/profile");
   const isMessagesActive =
     pathname.startsWith("/client/messages") && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute;
-  // Key to reset MobileScreen scroll position when the active section changes
-  const screenKey = `${tab}-${String(onPortfolioRoute)}-${String(onNotificationsRoute)}-${String(onProfileRoute)}`;
+  // Reset MobileScreen scroll when pathname or shell context changes (not only tab — avoids stale layout).
+  const pathBase = pathname.split("?")[0] ?? pathname;
+  const screenKey = `${pathBase}|${tab}|${String(onPortfolioRoute)}|${String(onNotificationsRoute)}|${String(onProfileRoute)}`;
+  /** Deep routes (portfolio, notifications) are not primary tabs — no misleading “home” highlight. */
+  const navActiveId = onPortfolioRoute || onNotificationsRoute ? null : tab;
 
   const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
 
@@ -1418,7 +1421,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         </button>
       ) : null}
 
-      <MobileBottomNav deviceClass={deviceClass} items={navItems} activeId={tab} onSelect={(id) => navigate(id as TabId)} />
+      <MobileBottomNav deviceClass={deviceClass} items={navItems} activeId={navActiveId} onSelect={(id) => navigate(id as TabId)} />
 
       {!isClientPortalAiDisabled() ? (
         <AiSupportButton anchorClassName="bottom-[calc(var(--aidv-mobile-secondary-fab-from-bottom)+var(--safe-area-bottom,0px))] right-4 max-[380px]:right-3" />
