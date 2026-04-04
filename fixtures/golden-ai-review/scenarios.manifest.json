@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "description": "Golden scenarios G01-G12 — Phase 1 index. PDFs optional; paths relative to repo root.",
+  "scenarios": [
+    {
+      "id": "G01",
+      "title": "Finální životní pojistná smlouva",
+      "documentFamily": "life_insurance",
+      "expectedPrimaryType": "life_insurance_final_contract",
+      "publishableAsContract": true,
+      "referenceFile": null
+    },
+    {
+      "id": "G02",
+      "title": "Modelace / návrh životního pojištění",
+      "documentFamily": "life_insurance",
+      "expectedPrimaryType": "life_insurance_modelation",
+      "publishableAsContract": false,
+      "referenceFile": "Test AI/33543904_Modelace zivotniho pojisteni.pdf"
+    },
+    {
+      "id": "G03",
+      "title": "Bundle smlouva + zdravotní dotazníky",
+      "documentFamily": "life_insurance",
+      "expectedPrimaryType": "life_insurance_investment_contract",
+      "publishableAsContract": "partial",
+      "referenceFile": "Test AI/Hanna Havdan GČP.pdf"
+    },
+    {
+      "id": "G04",
+      "title": "Více osob na smlouvě",
+      "documentFamily": "life_insurance",
+      "expectedPrimaryType": "life_insurance_proposal",
+      "publishableAsContract": true,
+      "referenceFile": "Test AI/Lehnert Metlife.pdf"
+    },
+    {
+      "id": "G05",
+      "title": "Investice / DIP / DPS",
+      "documentFamily": "investment",
+      "expectedPrimaryType": "investment_subscription_document",
+      "publishableAsContract": true,
+      "referenceFile": "Test AI/AMUNDI PLATFORMA - účet CZ KLASIK - DIP (4).pdf"
+    },
+    {
+      "id": "G06",
+      "title": "Spotřebitelský úvěr",
+      "documentFamily": "consumer_credit",
+      "expectedPrimaryType": "consumer_loan_contract",
+      "publishableAsContract": true,
+      "referenceFile": "Test AI/Smlouva_o_ČSOB_Spotřebitelském_úvěru.pdf"
+    },
+    {
+      "id": "G07",
+      "title": "Hypotéka / hypoteční návrh",
+      "documentFamily": "mortgage",
+      "expectedPrimaryType": "mortgage_document",
+      "publishableAsContract": true,
+      "referenceFile": "Test AI/1045978-001_D102_Smlouva o poskytnutí hypotečního úvěru_navrh.pdf"
+    },
+    {
+      "id": "G08",
+      "title": "Leasing / financování",
+      "documentFamily": "leasing",
+      "expectedPrimaryType": "generic_financial_document",
+      "publishableAsContract": true,
+      "referenceFile": "Test AI/ČSOB Leasing PBI.pdf"
+    },
+    {
+      "id": "G09",
+      "title": "Jen trezor — AML / servisní smlouva",
+      "documentFamily": "compliance",
+      "expectedPrimaryType": "consent_or_declaration",
+      "publishableAsContract": false,
+      "referenceFile": "Test AI/komis sml. aml fatca (1).pdf"
+    },
+    {
+      "id": "G10",
+      "title": "Assistant: upload → chat",
+      "documentFamily": "assistant_flow",
+      "expectedPrimaryType": null,
+      "publishableAsContract": null,
+      "referenceFile": null,
+      "assistantOnly": true
+    },
+    {
+      "id": "G11",
+      "title": "Assistant: více klientů v jednom vlákně",
+      "documentFamily": "assistant_flow",
+      "expectedPrimaryType": null,
+      "publishableAsContract": null,
+      "referenceFile": null,
+      "assistantOnly": true
+    },
+    {
+      "id": "G12",
+      "title": "Assistant: slang poradců",
+      "documentFamily": "assistant_flow",
+      "expectedPrimaryType": null,
+      "publishableAsContract": null,
+      "referenceFile": null,
+      "assistantOnly": true
+    }
+  ]
+}
