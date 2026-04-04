@@ -63,6 +63,8 @@ export const canonicalIntentSchema = z.object({
   periodicity: z.string().nullable().default(null),
   premium: z.number().nullable().default(null),
   contractNumber: z.string().nullable().default(null),
+  partnerName: z.string().nullable().default(null),
+  productName: z.string().nullable().default(null),
   meetingDateText: z.string().nullable().default(null),
   dueDateText: z.string().nullable().default(null),
   taskTitle: z.string().nullable().default(null),
@@ -99,6 +101,8 @@ export const CANONICAL_INTENT_JSON_SCHEMA: Record<string, unknown> = {
     periodicity: { type: ["string", "null"] },
     premium: { type: ["number", "null"] },
     contractNumber: { type: ["string", "null"] },
+    partnerName: { type: ["string", "null"] },
+    productName: { type: ["string", "null"] },
     meetingDateText: { type: ["string", "null"] },
     dueDateText: { type: ["string", "null"] },
     taskTitle: { type: ["string", "null"] },
@@ -129,6 +133,8 @@ export const CANONICAL_INTENT_JSON_SCHEMA: Record<string, unknown> = {
     "periodicity",
     "premium",
     "contractNumber",
+    "partnerName",
+    "productName",
     "meetingDateText",
     "dueDateText",
     "taskTitle",
@@ -228,6 +234,8 @@ function buildExtractedFacts(raw: CanonicalIntentRaw) {
   if (raw.periodicity) facts.push({ key: "periodicity", value: raw.periodicity, source: "user_text" });
   if (raw.premium != null) facts.push({ key: "premium", value: raw.premium, source: "user_text" });
   if (raw.contractNumber) facts.push({ key: "contractNumber", value: raw.contractNumber, source: "user_text" });
+  if (raw.partnerName) facts.push({ key: "partnerName", value: raw.partnerName, source: "user_text" });
+  if (raw.productName) facts.push({ key: "productName", value: raw.productName, source: "user_text" });
   if (raw.taskTitle) facts.push({ key: "taskTitle", value: raw.taskTitle, source: "user_text" });
   if (raw.noteContent) facts.push({ key: "noteContent", value: raw.noteContent, source: "user_text" });
   if (raw.reviewRef) facts.push({ key: "reviewId", value: raw.reviewRef, source: "user_text" });
@@ -278,6 +286,7 @@ const WRITE_INTENTS = new Set<CanonicalIntentType>([
   "link_ai_review_to_document_vault",
   "show_document_to_client",
   "notify_client_portal",
+  "create_contract",
 ]);
 
 export function intentRequiresConfirmation(intentType: CanonicalIntentType): boolean {

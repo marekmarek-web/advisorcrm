@@ -177,3 +177,54 @@ describe("buildExecutionPlan — append_note with meetingNoteId", () => {
     expect(plan.steps[0]?.params.meetingNoteId).toBe(NOTE_ID);
   });
 });
+
+describe("buildExecutionPlan — createContract (P1 task 8)", () => {
+  it("create_contract with productDomain derives segment and awaits confirmation", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "create_contract",
+        requestedActions: ["create_contract"],
+        productDomain: "zivotni_pojisteni",
+        extractedFacts: [
+          { key: "partnerName", value: "UNIQA", source: "user_text" },
+          { key: "productName", value: "Život & Radost", source: "user_text" },
+          { key: "premium", value: 1255, source: "user_text" },
+        ],
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.steps.length).toBe(1);
+    const step = plan.steps[0]!;
+    expect(step.action).toBe("createContract");
+    expect(step.params.segment).toBe("ZP");
+    expect(step.params.partnerName).toBe("UNIQA");
+    expect(step.params.contactId).toBe(CONTACT_ID);
+    expect(plan.status).toBe("awaiting_confirmation");
+  });
+
+  it("createContract missing segment stays draft", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "create_contract",
+        requestedActions: ["create_contract"],
+        productDomain: null,
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.status).toBe("draft");
+    const missing = computeWriteActionMissingFields("createContract", plan.steps[0]!.params);
+    expect(missing).toContain("segment");
+  });
+
+  it("createContract label is 'Založit smlouvu'", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "create_contract",
+        requestedActions: ["create_contract"],
+        productDomain: "dps",
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.steps[0]!.label).toBe("Založit smlouvu");
+  });
+});

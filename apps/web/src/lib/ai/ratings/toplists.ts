@@ -159,3 +159,54 @@ export function ratingQueryWouldNeedSegment(message: string): boolean {
 export function __testOnlySeedSegmentCodes(): string[] {
   return seed.segments.map((s) => s.code);
 }
+
+type CatalogEntry = { partner: string; category: string; products: string[] };
+const catalog = (catalogSeed as { catalog: CatalogEntry[] }).catalog ?? [];
+
+/**
+ * Validuje, zda partner (name) existuje v katalogu pro daný segment.
+ * Vrací `null` pokud validní, jinak chybovou hlášku.
+ */
+export function validatePartnerInCatalog(
+  partnerName: string,
+  segmentCode: string,
+): string | null {
+  const lower = partnerName.toLowerCase().trim();
+  const match = catalog.find(
+    (e) =>
+      e.category === segmentCode &&
+      e.partner.toLowerCase().trim() === lower,
+  );
+  if (match) return null;
+  const anySegment = catalog.find(
+    (e) => e.partner.toLowerCase().trim() === lower,
+  );
+  if (anySegment) {
+    return `Partner „${partnerName}" existuje v katalogu, ale ne pro segment ${segmentCode} (nalezen v ${anySegment.category}).`;
+  }
+  return `Partner „${partnerName}" nebyl nalezen v katalogu. Ověřte přesný název.`;
+}
+
+/**
+ * Validuje, zda produkt existuje u daného partnera + segmentu.
+ * Vrací `null` pokud validní, jinak chybovou hlášku.
+ */
+export function validateProductInCatalog(
+  partnerName: string,
+  productName: string,
+  segmentCode: string,
+): string | null {
+  const pLower = partnerName.toLowerCase().trim();
+  const prLower = productName.toLowerCase().trim();
+  const entry = catalog.find(
+    (e) =>
+      e.category === segmentCode &&
+      e.partner.toLowerCase().trim() === pLower,
+  );
+  if (!entry) return null;
+  const found = entry.products.some(
+    (p) => p.toLowerCase().trim() === prLower,
+  );
+  if (found) return null;
+  return `Produkt „${productName}" není v katalogu partnera „${partnerName}" (${segmentCode}). Dostupné: ${entry.products.slice(0, 5).join(", ")}.`;
+}

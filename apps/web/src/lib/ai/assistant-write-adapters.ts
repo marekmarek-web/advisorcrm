@@ -35,9 +35,12 @@ import {
   linkContractReviewFileToContactDocuments,
 } from "@/app/actions/contract-review";
 import { createDraft } from "@/app/actions/communication-drafts";
-import { approveContractForClientPortal, updateContract } from "@/app/actions/contracts";
+import { approveContractForClientPortal, updateContract, createContract as createContractAction } from "@/app/actions/contracts";
 import { sendMessage } from "@/app/actions/messages";
 import { createAdvisorClientRequest } from "../assistant/create-advisor-client-request";
+import { contractSegments } from "../../../../../../packages/db/src/schema/contracts";
+import { validatePartnerInCatalog, validateProductInCatalog } from "./ratings/toplists";
+import { resolveContractSegmentFromUserText, PRODUCT_DOMAIN_DEFAULT_SEGMENT, type ProductDomain } from "./assistant-domain-model";
 
 async function assertCtx(ctx: ExecutionContext): Promise<{
   tenantId: string;
@@ -799,6 +802,60 @@ export function registerAssistantWriteAdapters(): void {
       return okResult(contactId, "portal_notification");
     } catch (e) {
       return safeErr(e, "createClientPortalNotification");
+    }
+  });
+
+  registerWriteAdapter("createContract", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const contactId = strParam(params, "contactId");
+      if (!contactId) return errResult("Chybí contactId.");
+
+      let segment = strParam(params, "segment");
+      if (!segment) {
+        const domain = productDomainFromParams(params) as ProductDomain | null;
+        if (domain) segment = PRODUCT_DOMAIN_DEFAULT_SEGMENT[domain] ?? undefined;
+      }
+      if (!segment) {
+        const hint = strParam(params, "purpose") ?? strParam(params, "productDomain");
+        if (hint) segment = resolveContractSegmentFromUserText(hint) ?? undefined;
+      }
+      if (!segment || !contractSegments.includes(segment as (typeof contractSegments)[number])) {
+        return requiresInputResult(
+          `Neplatný nebo chybějící segment smlouvy${segment ? ` („${segment}")` : ""}. ` +
+          `Platné segmenty: ${contractSegments.join(", ")}.`,
+        );
+      }
+
+      const warnings: string[] = [];
+      const partnerName = strParam(params, "partnerName");
+      const productName = strParam(params, "productName");
+
+      if (partnerName) {
+        const partnerErr = validatePartnerInCatalog(partnerName, segment);
+        if (partnerErr) warnings.push(partnerErr);
+      }
+      if (partnerName && productName) {
+        const productErr = validateProductInCatalog(partnerName, productName, segment);
+        if (productErr) warnings.push(productErr);
+      }
+
+      const premium = strParam(params, "premiumAmount")
+        ?? (typeof params.premium === "number" ? String(params.premium) : undefined);
+
+      const res = await createContractAction(contactId, {
+        segment,
+        partnerName: partnerName ?? undefined,
+        productName: productName ?? undefined,
+        premiumAmount: premium,
+        contractNumber: strParam(params, "contractNumber"),
+        startDate: strParam(params, "startDate") ?? strParam(params, "resolvedDate"),
+        note: strParam(params, "noteContent") ?? strParam(params, "note"),
+      });
+      if (!res.ok) return errResult(res.message);
+      return okResult(res.id!, "contract", warnings);
+    } catch (e) {
+      return safeErr(e, "createContract");
     }
   });
 }

@@ -62,6 +62,7 @@ Typy záměrů:
 - send_portal_message: odeslat zprávu klientovi přes portál (ne jen notifikace)
 - update_client_request: upravit existující klientský požadavek (obchod s client_portal_request)
 - create_service_case: servisní případ nebo požadavek ke stávající smlouvě (výročí, změna, doplnění, reklamace) — productDomain určuje typ smlouvy (servis, dps, zivotni_pojisteni, …)
+- create_contract: založit/evidovat smlouvu klienta do portfolia (ne obchod/případ). Použij pokud uživatel chce „založit smlouvu", „zaevidovat smlouvu/pojistku/penzijko", „přidat do portfolia". Vyplň productDomain (a partnerName/productName pokud zmíněny).
 - create_reminder: připomínka
 - search_contacts: hledání kontaktů
 - dashboard_summary: shrnutí dashboardu
@@ -88,6 +89,8 @@ ${ASSISTANT_PORTAL_CHANNEL_POLICY_TEXT}
 maturity: splatnost/délka (textově, např. "30 let", "20 let", "5 let").
 periodicity: frekvence platby — "měsíčně", "ročně", "jednorázově".
 contractNumber: číslo smlouvy, pokud zmíněno.
+partnerName: název partnera / pojišťovny / banky / investiční společnosti, pokud zmíněn (např. "Allianz", "UNIQA", "Česká spořitelna").
+productName: název produktu / produktové řady, pokud zmíněn (např. "Život & Radost", "FLEXI", "mHypotéka").
 meetingDateText / dueDateText: textový fragment termínu.
 taskTitle: název úkolu; noteContent: obsah poznámky.
 confidence: 0.0-1.0 jak jistý jsi záměrem.`;
