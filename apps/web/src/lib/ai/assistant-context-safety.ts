@@ -55,7 +55,11 @@ export function verifyWriteContextSafety(
   const resolvedContactId = resolution.client?.entityId ?? null;
   const lockedContactId = session.lockedClientId ?? null;
 
-  if (!resolvedContactId && plan.steps.some(s => !s.isReadOnly)) {
+  const reviewOnlyPlan =
+    plan.steps.length > 0 &&
+    plan.steps.every((s) => s.isReadOnly || REVIEW_ACTIONS.has(s.action));
+
+  if (!resolvedContactId && plan.steps.some((s) => !s.isReadOnly) && !reviewOnlyPlan) {
     blocked = "NO_CLIENT_FOR_WRITE";
     warnings.push("Chybí klient pro zápis. Otevřete kartu kontaktu nebo upřesněte jméno.");
   }

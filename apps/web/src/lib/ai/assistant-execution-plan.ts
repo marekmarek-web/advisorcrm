@@ -888,3 +888,65 @@ export function getPlanSummary(plan: ExecutionPlan): string {
   });
   return lines.join("\n");
 }
+
+/**
+ * Deterministický plán po nahrání smlouvy (AI review): schválení → zápis do CRM → propojení dokumentů.
+ * Volá se z chat API přes `bootstrapPostUploadReviewPlan` bez LLM.
+ */
+export function buildPostUploadReviewPlan(
+  session: Pick<AssistantSession, "tenantId">,
+  reviewId: string,
+): ExecutionPlan {
+  const planId = `plan_${randomUUID().slice(0, 8)}`;
+  const sApprove = `step_${randomUUID().slice(0, 8)}`;
+  const sApply = `step_${randomUUID().slice(0, 8)}`;
+  const sLink = `step_${randomUUID().slice(0, 8)}`;
+
+  const steps: ExecutionStep[] = [
+    {
+      stepId: sApprove,
+      action: "approveAiContractReview",
+      params: { reviewId },
+      label: "Schválit AI kontrolu smlouvy",
+      requiresConfirmation: true,
+      isReadOnly: false,
+      dependsOn: [],
+      status: "requires_confirmation",
+      result: null,
+    },
+    {
+      stepId: sApply,
+      action: "applyAiContractReviewToCrm",
+      params: { reviewId },
+      label: "Aplikovat schválenou AI kontrolu do CRM",
+      requiresConfirmation: true,
+      isReadOnly: false,
+      dependsOn: [sApprove],
+      status: "requires_confirmation",
+      result: null,
+    },
+    {
+      stepId: sLink,
+      action: "linkAiContractReviewToDocuments",
+      params: { reviewId },
+      label: "Propojit soubor z AI kontroly do dokumentů klienta",
+      requiresConfirmation: true,
+      isReadOnly: false,
+      dependsOn: [sApply],
+      status: "requires_confirmation",
+      result: null,
+    },
+  ];
+
+  return {
+    planId,
+    intentType: "multi_action",
+    productDomain: null,
+    contactId: null,
+    opportunityId: null,
+    tenantId: session.tenantId,
+    steps,
+    status: "awaiting_confirmation",
+    createdAt: new Date(),
+  };
+}

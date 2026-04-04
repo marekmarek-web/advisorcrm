@@ -30,6 +30,8 @@ export type AssistantChatRequestBody = {
   /** 6F: confirm plan execution without typing yes in the message. */
   confirmExecution?: boolean;
   cancelExecution?: boolean;
+  /** P2: bez LLM načte deterministický plán schválení / aplikace / propojení po nahrání smlouvy. */
+  bootstrapPostUploadReviewPlan?: boolean;
   /** 6C: ExecutionStep.stepId values to run; omit to run all pending steps. */
   selectedStepIds?: string[];
   activeContext?: {
@@ -109,4 +111,22 @@ export function buildAssistantCancelPlanBody(opts: {
     channel: opts.channel,
   });
   return { ...base, message: "", cancelExecution: true };
+}
+
+/** P2: tělo požadavku pro načtení návrhu kroků (approve / apply / link) po nahrání PDF — vyžaduje `activeContext.reviewId`. */
+export function buildAssistantPostUploadReviewBootstrapBody(opts: {
+  sessionId?: string;
+  routeContactId: string | null;
+  routeOpportunityId?: string | null;
+  reviewId: string;
+  channel?: AssistantChatRequestBody["channel"];
+}): AssistantChatRequestBody {
+  const base = buildAssistantChatRequestBody("", {
+    sessionId: opts.sessionId,
+    routeContactId: opts.routeContactId,
+    routeOpportunityId: opts.routeOpportunityId,
+    reviewId: opts.reviewId,
+    channel: opts.channel ?? "web_drawer",
+  });
+  return { ...base, message: "", bootstrapPostUploadReviewPlan: true };
 }

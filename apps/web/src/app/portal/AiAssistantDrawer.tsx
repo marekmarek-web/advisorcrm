@@ -33,11 +33,13 @@ import { isLikelyPdfUpload } from "@/lib/security/file-signature";
 import {
   postAssistantChatStreaming,
   buildAssistantChatRequestBody,
+  buildAssistantPostUploadReviewBootstrapBody,
   buildAssistantConfirmExecutionBody,
   buildAssistantCancelPlanBody,
   parsePortalContactIdFromPathname,
   parsePortalOpportunityIdFromPathname,
 } from "@/lib/ai/assistant-chat-client";
+import type { AssistantResponse } from "@/lib/ai/assistant-tool-router";
 import { mapActionPayloadsToSuggestedActions } from "@/lib/ai/map-action-payload-to-suggested";
 import {
   ExecutionBadge,
@@ -151,7 +153,6 @@ function formatUploadSuccessMessage(detail: {
     const parts = [...missing, ...reasons];
     lines.push(`Chybějící / k ověření: ${parts.join(", ")}.`);
   }
-  lines.push("Možné další kroky v CRM (interní):");
   return lines.join("\n");
 }
 
@@ -821,7 +822,48 @@ export function AiAssistantDrawer() {
         setUploadPhase("idle");
         return;
       }
-      const content = formatUploadSuccessMessage(detail);
+      const summary = formatUploadSuccessMessage(detail);
+      setActiveReviewId(reviewId);
+
+      let bootstrapTail =
+        "Návrh kroků se nepodařilo načíst — použijte tlačítko „Otevřít review“ níže.";
+      let execState: AssistantResponse["executionState"] = null;
+      let ctxState: AssistantResponse["contextState"] = null;
+      let bootWarnings: string[] | undefined;
+      try {
+        const complete = await postAssistantChatStreaming(
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              buildAssistantPostUploadReviewBootstrapBody({
+                sessionId: assistantSessionIdRef.current,
+                routeContactId,
+                routeOpportunityId,
+                reviewId,
+                channel: "web_drawer",
+              }),
+            ),
+          },
+          () => {},
+        );
+        if (complete.sessionId) {
+          setAssistantSessionId(complete.sessionId);
+          try {
+            sessionStorage.setItem(AI_ASSISTANT_API_SESSION_KEY, complete.sessionId);
+          } catch {
+            /* ignore */
+          }
+        }
+        bootstrapTail = (complete.message ?? "").trim() || bootstrapTail;
+        execState = complete.executionState ?? null;
+        ctxState = complete.contextState ?? null;
+        bootWarnings = complete.warnings;
+      } catch {
+        /* keep bootstrapTail fallback */
+      }
+
+      const content = [summary, bootstrapTail].filter(Boolean).join("\n\n");
       setMessages((prev) => [
         ...prev,
         {
@@ -835,9 +877,11 @@ export function AiAssistantDrawer() {
               displayName: c.displayName,
             })
           ),
+          executionState: execState ?? undefined,
+          contextState: ctxState ?? undefined,
+          warnings: bootWarnings,
         },
       ]);
-      setActiveReviewId(reviewId);
     } catch {
       setUploadError("Zpracování souboru selhalo.");
       setMessages((prev) => prev.slice(0, -1));

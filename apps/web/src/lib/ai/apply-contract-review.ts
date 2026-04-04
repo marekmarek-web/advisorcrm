@@ -3,7 +3,10 @@ import { contacts, contracts, tasks, auditLog, clientPaymentSetups, contractSegm
 import { eq, and, isNotNull } from "db";
 import type { ContractReviewRow } from "./review-queue-repository";
 import type { ApplyResultPayload } from "./review-queue-repository";
-import { buildPortfolioAttributesFromExtracted } from "@/lib/portfolio/build-portfolio-attributes-from-extract";
+import {
+  buildPortfolioAttributesFromExtracted,
+  mergePortfolioAttributesForApply,
+} from "@/lib/portfolio/build-portfolio-attributes-from-extract";
 import { normalizeDateToISO } from "./canonical-date-normalize";
 import {
   buildCanonicalPaymentPayloadFromRaw,
@@ -213,7 +216,7 @@ export async function applyContractReview(
                 confirmedByUserId: userId,
                 visibleToClient: true,
                 portfolioStatus: "active",
-                portfolioAttributes: { ...prevAttrs, ...attrsFromReview },
+                portfolioAttributes: mergePortfolioAttributesForApply(prevAttrs, attrsFromReview),
                 extractionConfidence,
                 updatedAt: new Date(),
               })

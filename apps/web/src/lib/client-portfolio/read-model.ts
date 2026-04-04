@@ -3,6 +3,8 @@
  * Source of truth: normalized `contracts` rows approved for the client portal.
  */
 
+import type { PortfolioPersonEntry, PortfolioRiskEntry } from "@/lib/portfolio/build-portfolio-attributes-from-extract";
+
 export type PortfolioUiGroup =
   | "investments_pensions"
   | "loans"
@@ -128,3 +130,36 @@ export const PORTFOLIO_GROUP_LABELS: Record<PortfolioUiGroup, string> = {
   business: "Firemní pojištění",
   other: "Ostatní",
 };
+
+function isPortfolioPersonEntry(x: unknown): x is PortfolioPersonEntry {
+  if (!x || typeof x !== "object") return false;
+  const r = x as Record<string, unknown>;
+  return (
+    typeof r.role === "string" &&
+    ["policyholder", "insured", "child", "beneficiary", "other"].includes(r.role)
+  );
+}
+
+function isPortfolioRiskEntry(x: unknown): x is PortfolioRiskEntry {
+  if (!x || typeof x !== "object") return false;
+  const r = x as Record<string, unknown>;
+  return typeof r.label === "string" && r.label.trim().length > 0;
+}
+
+/** Osoby z `portfolio_attributes.persons` (P2 / AI review). */
+export function portfolioPersonsFromAttributes(
+  attributes: Record<string, unknown> | null | undefined,
+): PortfolioPersonEntry[] {
+  const raw = attributes?.persons;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isPortfolioPersonEntry);
+}
+
+/** Rizika / připojištění z `portfolio_attributes.risks` (P2 / AI review). */
+export function portfolioRisksFromAttributes(
+  attributes: Record<string, unknown> | null | undefined,
+): PortfolioRiskEntry[] {
+  const raw = attributes?.risks;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isPortfolioRiskEntry);
+}

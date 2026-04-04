@@ -132,6 +132,7 @@ export async function POST(request: Request) {
           const message = typeof body.message === "string" ? body.message.trim() : "";
           const confirmExecution = body.confirmExecution === true;
           const cancelExecution = body.cancelExecution === true;
+          const bootstrapPostUpload = body.bootstrapPostUploadReviewPlan === true;
           const selectedStepIdsRaw = body.selectedStepIds;
           const selectedStepIds = Array.isArray(selectedStepIdsRaw)
             ? selectedStepIdsRaw.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
               ? "canonical"
               : "legacy";
 
-          if (!message && !confirmExecution && !cancelExecution) {
+          if (!message && !confirmExecution && !cancelExecution && !bootstrapPostUpload) {
             return NextResponse.json(
               { error: "Chybí zpráva." },
               { status: 400, headers: correlationHeaders(traceId, assistantRunId) },
@@ -161,6 +162,27 @@ export async function POST(request: Request) {
 
           const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined;
           const activeContext = body.activeContext ?? {};
+
+          if (bootstrapPostUpload) {
+            const rid =
+              typeof activeContext?.reviewId === "string" ? activeContext.reviewId.trim() : "";
+            if (!rid) {
+              return NextResponse.json(
+                { error: "Chybí reviewId pro návrh kroků po nahrání smlouvy." },
+                { status: 400, headers: correlationHeaders(traceId, assistantRunId) },
+              );
+            }
+            if (orchestration !== "canonical") {
+              return NextResponse.json(
+                {
+                  error:
+                    "Návrh kroků po nahrání smlouvy je dostupný jen v kanonickém režimu asistenta.",
+                },
+                { status: 400, headers: correlationHeaders(traceId, assistantRunId) },
+              );
+            }
+          }
+
           const channel = normalizeChannel(body.channel, Boolean(activeContext?.clientId));
 
           const session = getOrCreateSession(sessionId, tenantId, userId);
@@ -239,6 +261,7 @@ export async function POST(request: Request) {
               orchestration === "canonical"
                 ? await routeAssistantMessageCanonical(message, session, activeContext, {
                     roleName: membership.roleName,
+                    bootstrapPostUploadReviewPlan: bootstrapPostUpload,
                   })
                 : await routeAssistantMessage(message, session, activeContext, { roleName: membership.roleName });
           }

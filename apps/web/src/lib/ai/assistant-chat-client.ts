@@ -69,6 +69,7 @@ export async function postAssistantChatStreaming(
 export type { AssistantChatRequestBody } from "./assistant-chat-request";
 export {
   buildAssistantChatRequestBody,
+  buildAssistantPostUploadReviewBootstrapBody,
   buildAssistantConfirmExecutionBody,
   buildAssistantCancelPlanBody,
   parsePortalContactIdFromPathname,

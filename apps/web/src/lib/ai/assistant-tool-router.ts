@@ -27,9 +27,10 @@ import { searchContactsForAssistant } from "./assistant-contact-search";
 import type { RoleName } from "@/shared/rolePermissions";
 import type { AssistantIntent } from "./assistant-intent";
 import type { CanonicalIntent, ExecutionPlan, ExecutionStep, VerifiedAssistantResult } from "./assistant-domain-model";
-import { resolveEntities, patchIntentWithResolutions } from "./assistant-entity-resolution";
+import { resolveEntities, patchIntentWithResolutions, emptyEntityResolution } from "./assistant-entity-resolution";
 import {
   buildExecutionPlan,
+  buildPostUploadReviewPlan,
   confirmAllSteps,
   allStepsReady,
   getPlanSummary,
@@ -41,7 +42,10 @@ import {
   computeWriteStepPreflight,
 } from "./assistant-execution-plan";
 import { executePlan, buildVerifiedResult } from "./assistant-execution-engine";
-import { verifyWriteContextSafety, verifyTenantConsistency } from "./assistant-context-safety";
+import {
+  verifyWriteContextSafety,
+  verifyTenantConsistency,
+} from "./assistant-context-safety";
 import { mapErrorForAdvisor } from "./assistant-error-mapping";
 import { getPlaybookGuidanceLines } from "./playbooks";
 import { AssistantTelemetryAction, logAssistantTelemetry } from "./assistant-telemetry";
@@ -581,6 +585,106 @@ export async function handleAssistantAwaitingConfirmation(
   }
 }
 
+async function respondPostUploadReviewBootstrap(
+  session: AssistantSession,
+  reviewId: string,
+): Promise<AssistantResponse> {
+  const plan = buildPostUploadReviewPlan(session, reviewId);
+  session.lastExecutionPlan = plan;
+
+  const resolution = emptyEntityResolution();
+  const tenantCheck = verifyTenantConsistency(session, plan);
+  if (!tenantCheck.safe) {
+    return {
+      message: tenantCheck.warnings.join("\n"),
+      referencedEntities: [],
+      suggestedActions: [],
+      warnings: tenantCheck.warnings,
+      confidence: 0.25,
+      sourcesSummary: [],
+      sessionId: session.sessionId,
+    };
+  }
+
+  const ctxSafety = verifyWriteContextSafety(session, resolution, plan);
+  if (!ctxSafety.safe) {
+    return {
+      message: ctxSafety.warnings.join("\n"),
+      referencedEntities: [],
+      suggestedActions: [],
+      warnings: ctxSafety.warnings,
+      confidence: 0.25,
+      sourcesSummary: [],
+      sessionId: session.sessionId,
+    };
+  }
+
+  const awaiting = getStepsAwaitingConfirmation(plan);
+  if (awaiting.length === 0) {
+    return {
+      message: "Nepodařilo se připravit kroky pro tuto kontrolu.",
+      referencedEntities: [],
+      suggestedActions: [],
+      warnings: [],
+      confidence: 0.3,
+      sourcesSummary: [],
+      sessionId: session.sessionId,
+    };
+  }
+
+  logAssistantTelemetry(AssistantTelemetryAction.AWAITING_CONFIRMATION, {
+    planId: plan.planId,
+    pendingSteps: awaiting.length,
+    path: "bootstrap_post_upload_review",
+  });
+
+  const stepPreviews: StepPreviewItem[] = plan.steps.map((s) => {
+    const pf = computeWriteStepPreflight(s.action, s.params);
+    const baseVw = buildValidationWarnings(s.action, s.params);
+    const extra =
+      pf.preflightStatus === "needs_input" && pf.advisorMessage && pf.missingFields.length === 0
+        ? [pf.advisorMessage]
+        : [];
+    return {
+      stepId: s.stepId,
+      label: s.label,
+      action: s.label,
+      contextHint: stepPreviewContextHint(s),
+      description: buildStepDescription(s.action, s.params),
+      domainGroup: productDomainChipLabel(s.params.productDomain as string | undefined) ?? null,
+      validationWarnings: [...baseVw, ...extra],
+      preflightStatus: pf.preflightStatus,
+      blockedReason: pf.preflightStatus === "blocked" ? pf.advisorMessage : undefined,
+    };
+  });
+
+  const clientLabel = "Smlouva z AI kontroly";
+
+  return {
+    message:
+      "Níže vyberte kroky a potvrďte je tlačítkem „Potvrdit a provést“ (po schválení se zapíší do CRM a propojí dokument).",
+    referencedEntities: [{ type: "contract_review", id: reviewId, label: clientLabel }],
+    suggestedActions: [],
+    warnings: [...resolution.warnings, ...ctxSafety.warnings],
+    confidence: 0.9,
+    sourcesSummary: [],
+    sessionId: session.sessionId,
+    executionState: {
+      status: "awaiting_confirmation",
+      planId: plan.planId,
+      totalSteps: plan.steps.length,
+      pendingSteps: awaiting.length,
+      stepPreviews,
+      clientLabel,
+    },
+    contextState: {
+      channel: assistantSessionChannelForUi(session),
+      lockedClientId: session.lockedClientId ?? null,
+      lockedClientLabel: null,
+    },
+  };
+}
+
 /**
  * V2 canonical pipeline: intent → entity resolution → execution plan → confirm → execute → verified result.
  * Falls back to legacy router for read-only / general_chat intents.
@@ -589,7 +693,7 @@ export async function routeAssistantMessageCanonical(
   message: string,
   session: AssistantSession,
   activeContext?: ActiveContext,
-  options?: { roleName?: RoleName },
+  options?: { roleName?: RoleName; bootstrapPostUploadReviewPlan?: boolean },
 ): Promise<AssistantResponse> {
   incrementMessageCount(session);
   const roleName = options?.roleName ?? "Advisor";
@@ -624,6 +728,16 @@ export async function routeAssistantMessageCanonical(
   }
   const skipClientFromUi = Boolean(session.lockedClientId) && !lockedDiffers;
   updateSessionContext(session, activeContext, { skipClientIdFromUi: skipClientFromUi });
+
+  if (options?.bootstrapPostUploadReviewPlan) {
+    const rid = activeContext?.reviewId?.trim();
+    if (rid) {
+      logAssistantTelemetry(AssistantTelemetryAction.ROUTE_CANONICAL, {
+        path: "bootstrap_post_upload_review",
+      });
+      return respondPostUploadReviewBootstrap(session, rid);
+    }
+  }
 
   const ratingReply = tryRatingLookupReply(message);
   if (ratingReply) {

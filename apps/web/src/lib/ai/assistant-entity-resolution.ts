@@ -25,8 +25,12 @@ export type EntityResolutionResult = {
   warnings: string[];
 };
 
-function emptyResolution(): EntityResolutionResult {
+export function emptyEntityResolution(): EntityResolutionResult {
   return { client: null, opportunity: null, document: null, contract: null, warnings: [] };
+}
+
+function emptyResolution(): EntityResolutionResult {
+  return emptyEntityResolution();
 }
 
 function isUuid(val: string): boolean {
