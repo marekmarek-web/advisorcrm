@@ -4,12 +4,8 @@
 import type { ExecutionPlan } from "./assistant-domain-model";
 import { normalizeExecutionPlanFromDb } from "./assistant-plan-snapshot";
 import type { StepPreviewItem } from "./assistant-execution-ui";
-import {
-  buildStepDescription,
-  buildValidationWarnings,
-  computeWriteStepPreflight,
-  productDomainChipLabel,
-} from "./assistant-execution-plan";
+/** Namespace import avoids duplicate named bindings if merges duplicate lines in `{ … }`. */
+import * as assistantExecutionPlan from "./assistant-execution-plan";
 import { sanitizeAssistantMessageForAdvisor, sanitizeWarningForAdvisor } from "./assistant-message-sanitizer";
 
 export type AssistantConversationRow = {
@@ -62,8 +58,8 @@ export type AdvisorAssistantHistoryMessageDto =
 
 function stepPreviewsFromPlan(plan: ExecutionPlan): StepPreviewItem[] {
   return plan.steps.map((s) => {
-    const pf = computeWriteStepPreflight(s.action, s.params);
-    const baseVw = buildValidationWarnings(s.action, s.params);
+    const pf = assistantExecutionPlan.computeWriteStepPreflight(s.action, s.params);
+    const baseVw = assistantExecutionPlan.buildValidationWarnings(s.action, s.params);
     const extra =
       pf.preflightStatus === "needs_input" && pf.advisorMessage && pf.missingFields.length === 0
         ? [pf.advisorMessage]
@@ -72,9 +68,12 @@ function stepPreviewsFromPlan(plan: ExecutionPlan): StepPreviewItem[] {
       stepId: s.stepId,
       label: s.label,
       action: s.label,
-      contextHint: productDomainChipLabel(s.params.productDomain as string | undefined),
-      description: buildStepDescription(s.action, s.params),
-      domainGroup: productDomainChipLabel(s.params.productDomain as string | undefined) ?? null,
+      contextHint: assistantExecutionPlan.productDomainChipLabel(
+        s.params.productDomain as string | undefined,
+      ),
+      description: assistantExecutionPlan.buildStepDescription(s.action, s.params),
+      domainGroup:
+        assistantExecutionPlan.productDomainChipLabel(s.params.productDomain as string | undefined) ?? null,
       validationWarnings: [...baseVw, ...extra],
       preflightStatus: pf.preflightStatus,
       blockedReason: pf.preflightStatus === "blocked" ? pf.advisorMessage : undefined,
