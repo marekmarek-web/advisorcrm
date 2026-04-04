@@ -590,7 +590,40 @@ async function respondPostUploadReviewBootstrap(
   session: AssistantSession,
   reviewId: string,
 ): Promise<AssistantResponse> {
-  const plan = buildPostUploadReviewPlan(session, reviewId);
+  // Phase 2+3: load publish hints and packet meta from the review row
+  let publishHints: import("./assistant-execution-plan").PostUploadReviewPlanOptions["publishHints"] = null;
+  let packetIsBundle = false;
+  let hasSensitiveAttachment = false;
+  try {
+    const { getContractReviewById } = await import("./review-queue-repository");
+    const row = await getContractReviewById(reviewId, session.tenantId);
+    const payload = row?.extractedPayload as Record<string, unknown> | null | undefined;
+    if (payload) {
+      const hints = payload.publishHints as Record<string, unknown> | null | undefined;
+      if (hints) {
+        publishHints = {
+          contractPublishable: hints.contractPublishable !== false,
+          needsSplit: hints.needsSplit === true,
+          sensitiveAttachmentOnly: hints.sensitiveAttachmentOnly === true,
+          needsManualValidation: hints.needsManualValidation === true,
+          reasons: Array.isArray(hints.reasons) ? (hints.reasons as string[]) : [],
+        };
+      }
+      const pm = payload.packetMeta as Record<string, unknown> | null | undefined;
+      if (pm) {
+        packetIsBundle = pm.isBundle === true;
+        hasSensitiveAttachment = pm.hasSensitiveAttachment === true;
+      }
+    }
+  } catch {
+    // best-effort; proceed with default (publishable) plan
+  }
+
+  const plan = buildPostUploadReviewPlan(session, reviewId, {
+    publishHints,
+    packetIsBundle,
+    hasSensitiveAttachment,
+  });
   session.lastExecutionPlan = plan;
 
   const resolution = emptyEntityResolution();

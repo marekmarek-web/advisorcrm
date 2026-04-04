@@ -266,6 +266,106 @@ export async function buildReviewDetailContext(
     facts.push({ key: "classification", value: insights.normalizedPipelineClassification, category: "pipeline" });
   }
 
+  // Phase 2+3: enrich context with canonical fields from extracted payload
+  try {
+    const payload = row.extractedPayload as Record<string, unknown> | null | undefined;
+    if (payload && typeof payload === "object") {
+      // Packet meta — bundle detection
+      const packetMeta = payload.packetMeta as Record<string, unknown> | null | undefined;
+      if (packetMeta?.isBundle) {
+        facts.push({ key: "isBundle", value: true, category: "packet" });
+        const candidateCount = typeof packetMeta.candidateCount === "number" ? packetMeta.candidateCount : 0;
+        if (candidateCount > 0) {
+          facts.push({ key: "bundleSubdocumentCount", value: candidateCount, category: "packet" });
+        }
+        if (packetMeta.hasSensitiveAttachment) {
+          facts.push({ key: "hasSensitiveAttachment", value: true, category: "packet" });
+          warnings.push("Upload obsahuje citlivou přílohu (zdravotní dotazník, AML). Zkontrolujte před apply.");
+        }
+        if (typeof packetMeta.primarySubdocumentType === "string") {
+          facts.push({ key: "primarySubdocumentType", value: packetMeta.primarySubdocumentType, category: "packet" });
+        }
+      }
+
+      // Publish hints
+      const publishHints = payload.publishHints as Record<string, unknown> | null | undefined;
+      if (publishHints) {
+        const contractPublishable = publishHints.contractPublishable === true;
+        const needsSplit = publishHints.needsSplit === true;
+        const sensitiveAttachmentOnly = publishHints.sensitiveAttachmentOnly === true;
+        facts.push({ key: "contractPublishable", value: contractPublishable, category: "publish" });
+        if (!contractPublishable) {
+          const reasons = Array.isArray(publishHints.reasons)
+            ? (publishHints.reasons as string[]).join(", ")
+            : "";
+          warnings.push(
+            `Smlouva není označena jako publikovatelná${reasons ? ` (${reasons})` : ""}. Apply bude vyžadovat ruční schválení.`
+          );
+        }
+        if (needsSplit) {
+          facts.push({ key: "needsSplit", value: true, category: "publish" });
+          warnings.push("Dokument obsahuje více sekcí — doporučeno zpracovat zvlášť před apply.");
+        }
+        if (sensitiveAttachmentOnly) {
+          facts.push({ key: "sensitiveAttachmentOnly", value: true, category: "publish" });
+          warnings.push("Dokument je vhodný pouze pro trezor — nepublikovat jako smlouvu klienta.");
+        }
+      }
+
+      // Participants — structured multi-person
+      const participants = payload.participants as Array<Record<string, unknown>> | null | undefined;
+      if (Array.isArray(participants) && participants.length > 0) {
+        facts.push({ key: "participantCount", value: participants.length, category: "participants" });
+        const roles = [...new Set(participants.map((p) => String(p.role ?? "other")))];
+        facts.push({ key: "participantRoles", value: roles.join(", "), category: "participants" });
+        const names = participants
+          .slice(0, 3)
+          .map((p) => `${String(p.fullName ?? "")} (${String(p.role ?? "")})`)
+          .filter((n) => n.trim() !== " ()");
+        if (names.length > 0) {
+          facts.push({ key: "participantNames", value: names.join("; "), category: "participants" });
+        }
+      }
+
+      // Insured risks — structured per-person
+      const insuredRisks = payload.insuredRisks as Array<Record<string, unknown>> | null | undefined;
+      if (Array.isArray(insuredRisks) && insuredRisks.length > 0) {
+        facts.push({ key: "insuredRisksCount", value: insuredRisks.length, category: "risks" });
+        const riskLabels = insuredRisks.slice(0, 5).map((r) => String(r.riskLabel ?? r.riskType ?? "—"));
+        facts.push({ key: "insuredRiskLabels", value: riskLabels.join(", "), category: "risks" });
+      }
+
+      // Investment data
+      const investmentData = payload.investmentData as Record<string, unknown> | null | undefined;
+      if (investmentData?.strategy) {
+        facts.push({ key: "investmentStrategy", value: String(investmentData.strategy), category: "investment" });
+      }
+      if (investmentData?.isModeledData) {
+        facts.push({ key: "investmentIsModeled", value: true, category: "investment" });
+      }
+
+      // Payment data
+      const paymentData = payload.paymentData as Record<string, unknown> | null | undefined;
+      if (paymentData) {
+        if (paymentData.variableSymbol) {
+          facts.push({ key: "variableSymbol", value: String(paymentData.variableSymbol), category: "payment" });
+        }
+        if (paymentData.paymentFrequency) {
+          facts.push({ key: "paymentFrequency", value: String(paymentData.paymentFrequency), category: "payment" });
+        }
+      }
+
+      // Health questionnaires
+      const healthQs = payload.healthQuestionnaires as Array<Record<string, unknown>> | null | undefined;
+      if (Array.isArray(healthQs) && healthQs.some((q) => q.questionnairePresent)) {
+        facts.push({ key: "healthQuestionnairePresent", value: true, category: "health" });
+        warnings.push("Dokument obsahuje zdravotní dotazník — sekce je citlivá a nesmí být přenášena jako část smlouvy.");
+      }
+    }
+  } catch {
+    // Phase 2+3 enrichment is best-effort; never block the context response
+  }
+
   refs.push({ sourceType: "review", sourceId: reviewId, freshness: "live", visibilityScope: "tenant" });
 
   const suggestedQuestions = [

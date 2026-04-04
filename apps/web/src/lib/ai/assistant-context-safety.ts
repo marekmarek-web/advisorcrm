@@ -137,6 +137,21 @@ export function verifyWriteContextSafety(
     warnings.push("Dokument je nejednoznačný — ověřte správný soubor.");
   }
 
+  // Phase 2+3: guard apply step if the review's publish hints say not publishable
+  for (const step of plan.steps) {
+    if (step.action === "applyAiContractReviewToCrm" && !step.isReadOnly) {
+      const stepResult = step.result as Record<string, unknown> | null | undefined;
+      if (stepResult?.status === "needs_input") {
+        // Already marked as needs_input by buildPostUploadReviewPlan — require confirmation
+        needsConfirmation = true;
+        const msg = typeof stepResult.message === "string" ? stepResult.message : null;
+        if (msg && !warnings.includes(msg)) {
+          warnings.push(msg);
+        }
+      }
+    }
+  }
+
   logAssistantTelemetry(AssistantTelemetryAction.ENTITY_RESOLUTION, {
     contextSafety: {
       safe: !blocked,

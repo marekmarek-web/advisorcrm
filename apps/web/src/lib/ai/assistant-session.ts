@@ -147,6 +147,8 @@ export function updateSessionContext(
       }
     } else if (!options?.skipClientIdFromUi) {
       session.activeClientId = incomingClientId;
+      // Incoming URL client clears stale disambiguation state
+      if (incomingClientId) session.pendingClientDisambiguation = false;
     }
   }
   if ("opportunityId" in activeContext) {
@@ -205,6 +207,8 @@ export function clearAssistantClientLock(session: AssistantSession): void {
   session.activeReviewId = undefined;
   session.contextLock = defaultContextLock();
   session.contextLock.assistantMode = session.assistantMode;
+  // Clear disambiguation state so the next message can resolve a fresh client
+  session.pendingClientDisambiguation = false;
 }
 
 export function incrementMessageCount(session: AssistantSession): void {

@@ -893,14 +893,54 @@ export function getPlanSummary(plan: ExecutionPlan): string {
  * Deterministický plán po nahrání smlouvy (AI review): schválení → zápis do CRM → propojení dokumentů.
  * Volá se z chat API přes `bootstrapPostUploadReviewPlan` bez LLM.
  */
+export type PostUploadReviewPlanOptions = {
+  /**
+   * Phase 2+3 publish hints — if provided, the plan is adjusted:
+   * - contractPublishable=false → applyAiContractReviewToCrm step is blocked with needs_input
+   * - needsSplit=true → a warning step is prepended
+   * - sensitiveAttachmentOnly=true → only the link step is offered (vault only)
+   */
+  publishHints?: {
+    contractPublishable?: boolean;
+    needsSplit?: boolean;
+    sensitiveAttachmentOnly?: boolean;
+    needsManualValidation?: boolean;
+    reasons?: string[];
+  } | null;
+  /** Packet metadata — if isBundle=true, adds a bundle warning to plan comments. */
+  packetIsBundle?: boolean;
+  hasSensitiveAttachment?: boolean;
+};
+
 export function buildPostUploadReviewPlan(
   session: Pick<AssistantSession, "tenantId">,
   reviewId: string,
+  options?: PostUploadReviewPlanOptions,
 ): ExecutionPlan {
   const planId = `plan_${randomUUID().slice(0, 8)}`;
   const sApprove = `step_${randomUUID().slice(0, 8)}`;
   const sApply = `step_${randomUUID().slice(0, 8)}`;
   const sLink = `step_${randomUUID().slice(0, 8)}`;
+
+  const hints = options?.publishHints;
+  const contractPublishable = hints?.contractPublishable !== false; // default true when hints absent
+  const sensitiveAttachmentOnly = hints?.sensitiveAttachmentOnly === true;
+  const needsSplit = hints?.needsSplit === true;
+  const needsManualValidation = hints?.needsManualValidation === true;
+
+  // Compute apply step status based on publish hints
+  const applyStatus: ExecutionStep["status"] = sensitiveAttachmentOnly || (!contractPublishable)
+    ? "needs_input"
+    : "requires_confirmation";
+
+  const applyBlockedReason =
+    sensitiveAttachmentOnly
+      ? "Dokument je označen pouze pro trezor — apply do CRM jako smlouva není doporučeno."
+      : !contractPublishable
+        ? `Smlouva není označena jako publikovatelná${hints?.reasons?.length ? ` (${hints.reasons.join(", ")})` : ""}. Potvrďte ruční override pro apply.`
+        : needsSplit
+          ? "Dokument obsahuje více sekcí — doporučeno rozdělit před apply."
+          : null;
 
   const steps: ExecutionStep[] = [
     {
@@ -918,12 +958,16 @@ export function buildPostUploadReviewPlan(
       stepId: sApply,
       action: "applyAiContractReviewToCrm",
       params: { reviewId },
-      label: "Aplikovat schválenou AI kontrolu do CRM",
+      label: applyBlockedReason
+        ? `Aplikovat AI kontrolu do CRM — vyžaduje ruční ověření`
+        : "Aplikovat schválenou AI kontrolu do CRM",
       requiresConfirmation: true,
       isReadOnly: false,
       dependsOn: [sApprove],
-      status: "requires_confirmation",
-      result: null,
+      status: applyStatus,
+      result: applyBlockedReason
+        ? { status: "needs_input", message: applyBlockedReason }
+        : null,
     },
     {
       stepId: sLink,
@@ -932,11 +976,16 @@ export function buildPostUploadReviewPlan(
       label: "Propojit soubor z AI kontroly do dokumentů klienta",
       requiresConfirmation: true,
       isReadOnly: false,
-      dependsOn: [sApply],
+      dependsOn: [sApprove],
       status: "requires_confirmation",
       result: null,
     },
   ];
+
+  const planStatus: ExecutionPlan["status"] =
+    needsManualValidation || needsSplit || !contractPublishable || sensitiveAttachmentOnly
+      ? "awaiting_confirmation"
+      : "awaiting_confirmation";
 
   return {
     planId,
@@ -946,7 +995,7 @@ export function buildPostUploadReviewPlan(
     opportunityId: null,
     tenantId: session.tenantId,
     steps,
-    status: "awaiting_confirmation",
+    status: planStatus,
     createdAt: new Date(),
   };
 }

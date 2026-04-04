@@ -61,6 +61,10 @@ const STATUS_BRACKET_RE =
   /\[(requires_confirmation|confirmed|executing|skipped|succeeded|failed|completed|awaiting_confirmation|draft)\]/gi;
 const RAW_ID_LINE_RE =
   /^(dealId|taskId|contactId|opportunityId|entityId|reviewId|sourceId|planId|sessionId|tenantId)\s*:\s*\S+\s*$/gm;
+
+/** Strips entire lines that start with Phase 2+3 internal field name dumps from model output. */
+const CANONICAL_DEBUG_LINE_RE =
+  /^(packetMeta|publishHints|participants|insuredRisks|healthQuestionnaires|investmentData|paymentData|bundleConfidence|detectionMethods|subdocumentCandidates)\s*:.*$/gm;
 const INTERNAL_DIAGNOSTIC_RE =
   /^(Volám|Hledám|Načítám|Spouštím|Kontroluji)\s[^\n]*\.{3}\s*$/gm;
 const MULTI_BLANK_RE = /\n{3,}/g;
@@ -99,6 +103,8 @@ export function sanitizeAssistantMessageForAdvisor(raw: string): string {
   text = text.replace(RAW_ID_LINE_RE, "");
   text = text.replace(INTERNAL_DIAGNOSTIC_RE, "");
   text = stripOrphanJsonBlocks(text);
+  // Strip lines that start with Phase 2+3 internal field names (model debug leak)
+  text = text.replace(CANONICAL_DEBUG_LINE_RE, "");
   text = text.replace(INLINE_UUID_RE, "");
   text = text.replace(ORPHAN_HEX_PREFIX_RE, "");
   text = text.replace(MULTI_BLANK_RE, "\n\n");
