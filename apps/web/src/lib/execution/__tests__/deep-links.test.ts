@@ -30,6 +30,10 @@ describe("resolveDeepLink", () => {
     expect(resolveDeepLink("escalation", "e1")).toBe("/portal/team-overview");
   });
 
+  it("maps opportunity to pipeline deal", () => {
+    expect(resolveDeepLink("opportunity", "opp-1")).toBe("/portal/pipeline/opp-1");
+  });
+
   it("falls back to /portal/today for unknown", () => {
     expect(resolveDeepLink("whatever", "x")).toBe("/portal/today");
   });

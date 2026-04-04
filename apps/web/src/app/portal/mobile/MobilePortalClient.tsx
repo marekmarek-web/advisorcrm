@@ -2,7 +2,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -69,6 +69,7 @@ import {
   useToast,
 } from "@/app/shared/mobile-ui/primitives";
 import { notifyRouteForWebview, notifyWebviewReady } from "@/app/shared/mobile-ui/webview-bridge";
+import { openIntegrationConnect } from "@/lib/native/open-integration-connect";
 import { useDeviceClass } from "@/lib/ui/useDeviceClass";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { TasksScreen } from "./screens/TasksScreen";
@@ -118,8 +119,8 @@ const PipelineScreen = dynamic(
   () => import("./screens/PipelineScreen").then((m) => m.PipelineScreen),
   { loading: () => <RouteLoadingSkeleton /> },
 );
-const ActionCenterScreen = dynamic(
-  () => import("./screens/ActionCenterScreen").then((m) => m.ActionCenterScreen),
+const ActionCenterPortalClient = dynamic(
+  () => import("../action-center/ActionCenterPortalClient").then((m) => m.ActionCenterPortalClient),
   { loading: () => <RouteLoadingSkeleton /> },
 );
 const ScanPage = dynamic(() => import("../scan/page"), {
@@ -351,6 +352,15 @@ export function MobilePortalClient({
   const searchParams = useSearchParams();
   const deviceClass = useDeviceClass();
   const { toast, showToast, dismissToast } = useToast();
+
+  useLayoutEffect(() => {
+    if (deviceClass === "desktop") {
+      document.documentElement.classList.remove("aidv-mobile-portal-viewport-lock");
+      return;
+    }
+    document.documentElement.classList.add("aidv-mobile-portal-viewport-lock");
+    return () => document.documentElement.classList.remove("aidv-mobile-portal-viewport-lock");
+  }, [deviceClass]);
   const [tab, setTab] = useState<TabId>(() => pathnameToBottomTab(pathname));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -738,12 +748,18 @@ export function MobilePortalClient({
     if (selectedHouseholdId) {
       return <HouseholdDetailScreen householdId={selectedHouseholdId} contacts={contacts} />;
     }
-    if (onAnalysesFinancialRoute) return <FinancialAnalysisWizardScreen />;
+    if (onAnalysesFinancialRoute) {
+      return (
+        <MobileShellErrorBoundary fallbackTitle="Finanční analýza se nepovedla zobrazit">
+          <FinancialAnalysisWizardScreen />
+        </MobileShellErrorBoundary>
+      );
+    }
     if (onMindmapMapRoute && mindmapMapId) return <MindmapMapMobileScreen mapId={mindmapMapId} />;
 
     // Pathname-based section / hub routes
     if (onHouseholdsListRoute) return <HouseholdsListMobileScreen />;
-    if (onActionCenterRoute) return <ActionCenterScreen />;
+    if (onActionCenterRoute) return <ActionCenterPortalClient />;
     if (onMindmapHubRoute) return <MindmapHubMobileScreen />;
     if (onMessagesRoute) return <MessagesMobileScreen />;
     if (onNotesRoute) return <NotesMobileScreen />;
@@ -823,29 +839,43 @@ export function MobilePortalClient({
           ) : null}
           <div className="grid grid-cols-1 gap-2">
             <MobileCard>
-              <p className="text-sm font-bold text-[color:var(--wp-text)]">Gmail Workspace</p>
+              <p className="text-sm font-bold text-[color:var(--wp-text)]">Gmail</p>
               <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
-                Na mobilu otevřete Gmail integraci přes Nastavení &gt; Integrace nebo desktop režim.
+                Přihlášení Google účtu pro integraci zpráv. V nativní aplikaci se otevře bezpečný prohlížeč.
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/portal/setup?tab=integrace&provider=gmail")}
-                className="mt-3 min-h-[44px] w-full rounded-xl border border-[color:var(--wp-border-strong)] text-sm font-bold text-[color:var(--wp-text-secondary)] active:scale-[0.99] transition-transform"
+                onClick={() => void openIntegrationConnect("/api/integrations/gmail/connect")}
+                className="mt-3 min-h-[44px] w-full rounded-xl bg-indigo-600 text-white text-sm font-bold active:scale-[0.99] transition-transform"
               >
-                Otevřít Gmail integraci
+                Připojit Gmail
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/portal/setup")}
+                className="mt-2 min-h-[40px] w-full rounded-xl border border-[color:var(--wp-surface-card-border)] text-xs font-bold text-[color:var(--wp-text-secondary)] active:scale-[0.99] transition-transform"
+              >
+                Nastavení integrací
               </button>
             </MobileCard>
             <MobileCard>
-              <p className="text-sm font-bold text-[color:var(--wp-text)]">Google Drive Workspace</p>
+              <p className="text-sm font-bold text-[color:var(--wp-text)]">Google Disk</p>
               <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
-                Na mobilu otevřete Drive integraci přes Nastavení &gt; Integrace nebo desktop režim.
+                Přihlášení pro náhledy a práci se soubory. Stav připojení upravíte i v Nastavení.
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/portal/setup?tab=integrace&provider=google-drive")}
-                className="mt-3 min-h-[44px] w-full rounded-xl border border-[color:var(--wp-border-strong)] text-sm font-bold text-[color:var(--wp-text-secondary)] active:scale-[0.99] transition-transform"
+                onClick={() => void openIntegrationConnect("/api/integrations/google-drive/connect")}
+                className="mt-3 min-h-[44px] w-full rounded-xl bg-indigo-600 text-white text-sm font-bold active:scale-[0.99] transition-transform"
               >
-                Otevřít Drive integraci
+                Připojit Disk
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/portal/setup")}
+                className="mt-2 min-h-[40px] w-full rounded-xl border border-[color:var(--wp-surface-card-border)] text-xs font-bold text-[color:var(--wp-text-secondary)] active:scale-[0.99] transition-transform"
+              >
+                Nastavení integrací
               </button>
             </MobileCard>
           </div>

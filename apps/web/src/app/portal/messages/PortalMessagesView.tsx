@@ -12,6 +12,7 @@ import {
   sendMessageWithAttachments,
   markMessagesRead,
   deleteConversationForContact,
+  deleteMessageForAdvisor,
   type MessageRow,
   type ConversationListItem,
   type MessageAttachmentRow,
@@ -26,20 +27,50 @@ function MessageBubble({
   m,
   attachments,
   isOwn,
+  onDeleteOne,
+  deletePending,
 }: {
   m: MessageRow;
   attachments: MessageAttachmentRow[];
   isOwn: boolean;
+  onDeleteOne?: (messageId: string) => void;
+  deletePending?: boolean;
 }) {
+  const showDel =
+    "opacity-100 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto";
   return (
-    <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+    <div className={`group flex items-end gap-1 ${isOwn ? "justify-end" : "justify-start"}`}>
+      {onDeleteOne && !isOwn ? (
+        <button
+          type="button"
+          disabled={deletePending}
+          onClick={() => onDeleteOne(m.id)}
+          className={`shrink-0 mb-1 p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 disabled:opacity-40 min-h-[36px] min-w-[36px] flex items-center justify-center ${showDel}`}
+          aria-label="Smazat zprávu"
+          title="Smazat zprávu"
+        >
+          <Trash2 size={16} />
+        </button>
+      ) : null}
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm relative ${
           isOwn
             ? "bg-indigo-600 text-white"
             : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)] border border-[color:var(--wp-surface-card-border)]"
         }`}
       >
+        {onDeleteOne && isOwn ? (
+          <button
+            type="button"
+            disabled={deletePending}
+            onClick={() => onDeleteOne(m.id)}
+            className={`absolute -top-1 -right-1 p-1 rounded-full bg-white/90 text-rose-600 shadow border border-rose-100 hover:bg-rose-50 disabled:opacity-40 ${showDel}`}
+            aria-label="Smazat zprávu"
+            title="Smazat zprávu"
+          >
+            <Trash2 size={14} />
+          </button>
+        ) : null}
         <p className="whitespace-pre-wrap break-words">{m.body}</p>
         {attachments.length > 0 && (
           <div className="mt-2 space-y-1">
@@ -83,9 +114,35 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleDeleteOneMessage(messageId: string) {
+    if (!window.confirm("Smazat tuto zprávu? Tuto akci nelze vrátit zpět.")) return;
+    if (!selectedContactId) return;
+    const cid = selectedContactId;
+    setDeletingMessageId(messageId);
+    startTransition(async () => {
+      try {
+        await deleteMessageForAdvisor(messageId);
+        setMsgAttachments((prev) => {
+          const next = { ...prev };
+          delete next[messageId];
+          return next;
+        });
+        const data = await getMessages(cid);
+        setMsgs(data);
+        await loadConversations();
+        window.dispatchEvent(new Event("portal-messages-badge-refresh"));
+      } catch {
+        setSendError("Zprávu se nepodařilo smazat.");
+      } finally {
+        setDeletingMessageId(null);
+      }
+    });
+  }
 
   function handleDeleteConversation() {
     if (!selectedContactId) return;
@@ -415,6 +472,8 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
                   m={m}
                   attachments={msgAttachments[m.id] ?? []}
                   isOwn={m.senderType === "advisor"}
+                  onDeleteOne={handleDeleteOneMessage}
+                  deletePending={deletingMessageId === m.id}
                 />
               ))}
               <div ref={bottomRef} />

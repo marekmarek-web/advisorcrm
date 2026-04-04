@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -70,6 +70,14 @@ function getSeverityTone(severity: string): "success" | "warning" | "danger" | "
   }
 }
 
+function quickActionNavigatesToItem(actionType: string): boolean {
+  return (
+    actionType === "open_detail" ||
+    actionType === "open_review" ||
+    actionType === "edit_draft"
+  );
+}
+
 export function ActionCenterScreen({
   initialItems = [],
   onNavigate,
@@ -82,6 +90,10 @@ export function ActionCenterScreen({
   const [items, setItems] = useState<ActionCenterItem[]>(initialItems);
   const [filter, setFilter] = useState<FilterType>("all");
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   const handleRefresh = useCallback(async () => {
     if (!onRefresh) return;
@@ -170,9 +182,13 @@ export function ActionCenterScreen({
                       {item.quickActions.map((qa) => (
                         <button
                           key={qa.actionType}
+                          type="button"
                           className="text-xs px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium"
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (onNavigate && quickActionNavigatesToItem(qa.actionType)) {
+                              onNavigate(item.deepLink);
+                            }
                           }}
                         >
                           {qa.label}

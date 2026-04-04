@@ -12,6 +12,8 @@ export function resolveDeepLink(entityType: string, entityId: string): string {
       return `/portal/contacts/${encodeURIComponent(entityId)}`;
     case "payment":
       return `/portal/contacts/${encodeURIComponent(entityId)}#payments`;
+    case "opportunity":
+      return `/portal/pipeline/${encodeURIComponent(entityId)}`;
     case "task":
       return `/portal/today`;
     case "draft":
@@ -21,6 +23,14 @@ export function resolveDeepLink(entityType: string, entityId: string): string {
     case "reminder":
       return `/portal/today`;
     case "notification":
+      return `/portal/today`;
+    case "calendar_event":
+      return `/portal/calendar`;
+    case "document":
+      return `/portal/today`;
+    case "contract":
+      return `/portal/today`;
+    case "advisor_material_request":
       return `/portal/today`;
     default:
       return "/portal/today";

@@ -3,6 +3,8 @@
  * Unified pending-actions surface for web and mobile.
  */
 
+import { resolveDeepLink } from "./deep-links";
+
 export type ActionCenterItemType =
   | "approval_pending" | "reminder_due" | "blocked_item"
   | "draft_awaiting" | "review_waiting" | "escalation";
@@ -72,14 +74,7 @@ export function buildQuickActions(type: ActionCenterItemType): QuickAction[] {
 }
 
 export function resolveDeepLinkForItem(entityType: string, entityId: string): string {
-  switch (entityType) {
-    case "review": return `/portal/contracts/review/${encodeURIComponent(entityId)}`;
-    case "client":
-    case "contact": return `/portal/contacts/${encodeURIComponent(entityId)}`;
-    case "payment": return `/portal/contacts/${encodeURIComponent(entityId)}#payments`;
-    case "escalation": return `/portal/team-overview`;
-    default: return "/portal/today";
-  }
+  return resolveDeepLink(entityType, entityId);
 }
 
 export async function getActionCenterItems(
@@ -105,7 +100,7 @@ export async function getActionCenterItems(
         entityType: r.relatedEntityType ?? "reminder",
         entityId: r.relatedEntityId ?? r.id,
         quickActions: buildQuickActions("reminder_due"),
-        deepLink: `/portal/today`,
+        deepLink: resolveDeepLinkForItem(r.relatedEntityType ?? "reminder", r.relatedEntityId ?? r.id),
         createdAt: r.createdAt,
       });
     }
@@ -130,7 +125,10 @@ export async function getActionCenterItems(
         entityType: n.relatedEntityType ?? "notification",
         entityId: n.relatedEntityId ?? n.id,
         quickActions: buildQuickActions(itemType),
-        deepLink: `/portal/today`,
+        deepLink: resolveDeepLinkForItem(
+          n.relatedEntityType ?? "notification",
+          n.relatedEntityId ?? n.id,
+        ),
         createdAt: n.createdAt,
       });
     }
@@ -149,11 +147,21 @@ export async function getActionCenterItems(
         entityType: e.entityType,
         entityId: e.entityId,
         quickActions: buildQuickActions("escalation"),
-        deepLink: `/portal/team-overview`,
+        deepLink: resolveDeepLinkForItem(e.entityType ?? "escalation", e.entityId),
         createdAt: e.createdAt,
       });
     }
   } catch { /* best-effort aggregation */ }
 
   return sortBySeverityAndDate(items);
+}
+
+/** JSON-safe payload for client components (RSC → client bridge). */
+export type ActionCenterItemSerialized = Omit<ActionCenterItem, "createdAt"> & { createdAt: string };
+
+export function serializeActionCenterItemsForClient(items: ActionCenterItem[]): ActionCenterItemSerialized[] {
+  return items.map((i) => ({
+    ...i,
+    createdAt: i.createdAt.toISOString(),
+  }));
 }

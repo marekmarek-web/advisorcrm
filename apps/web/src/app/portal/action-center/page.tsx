@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { ActionCenterScreen } from "../mobile/screens/ActionCenterScreen";
+import {
+  getActionCenterItems,
+  serializeActionCenterItemsForClient,
+} from "@/lib/execution/action-center";
+import { ActionCenterPortalClient } from "./ActionCenterPortalClient";
 
 function isRedirectError(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";
@@ -16,9 +20,12 @@ export default async function PortalActionCenterPage() {
   }
   if (auth.roleName === "Client") redirect("/client");
 
+  const rows = await getActionCenterItems(auth.tenantId, auth.userId);
+  const initialItems = serializeActionCenterItemsForClient(rows);
+
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full p-4">
-      <ActionCenterScreen />
+      <ActionCenterPortalClient initialItems={initialItems} hydratedFromServer />
     </div>
   );
 }

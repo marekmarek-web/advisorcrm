@@ -379,6 +379,24 @@ export async function getRecentConversations(limit = 5): Promise<RecentConversat
   }));
 }
 
+/** Smaže jednu zprávu v tenantu (přílohy cascade). Pouze poradce s contacts:write. */
+export async function deleteMessageForAdvisor(messageId: string): Promise<void> {
+  const auth = await requireAuthInAction();
+  if (auth.roleName === "Client") throw new Error("Forbidden");
+  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+
+  const [row] = await db
+    .select({ id: messages.id })
+    .from(messages)
+    .where(and(eq(messages.tenantId, auth.tenantId), eq(messages.id, messageId)))
+    .limit(1);
+  if (!row) throw new Error("Zpráva nebyla nalezena.");
+
+  await db
+    .delete(messages)
+    .where(and(eq(messages.tenantId, auth.tenantId), eq(messages.id, messageId)));
+}
+
 /** Smaže všechny zprávy v konverzaci s kontaktem (včetně příloh — cascade). Pouze poradce s contacts:write. */
 export async function deleteConversationForContact(contactId: string): Promise<void> {
   const auth = await requireAuthInAction();
