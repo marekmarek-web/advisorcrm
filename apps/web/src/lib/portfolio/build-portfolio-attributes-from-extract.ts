@@ -2,48 +2,24 @@
  * Jednotné mapování volitelných polí z extraktu do `contracts.portfolio_attributes`.
  * Nevyplňuje odhadované metriky — jen pokud extrakt pole spolehlivě dodává.
  * P2: strukturované osoby (`persons`) a rizika (`risks`) z envelope / extractedFields.
+ *
+ * Typy JSONB jsou kanonicky v `packages/db` (`schema/portfolio-attributes.ts`).
  */
 
-export type CoverageLineUi = { label?: string; amount?: string; description?: string };
+import type {
+  CoverageLineUi,
+  PortfolioPersonEntry,
+  PortfolioPersonRole,
+  PortfolioRiskEntry,
+} from "db";
 
-/** Role osoby v portfoliu (zjednodušený kanon pro UI a CRM). */
-export type PortfolioPersonRole =
-  | "policyholder"
-  | "insured"
-  | "child"
-  | "beneficiary"
-  | "other";
-
-export type PortfolioPersonEntry = {
-  role: PortfolioPersonRole;
-  name?: string;
-  birthDate?: string;
-  personalId?: string;
-};
-
-export type PortfolioRiskEntry = {
-  label: string;
-  amount?: string;
-  /** Jméno osoby nebo volný odkaz z extraktu */
-  personRef?: string;
-  description?: string;
-};
-
-/** Kanonický tvar portfolio_attributes (JSONB); index signature pro zpětnou kompatibilitu. */
-export type PortfolioAttributes = {
-  loanPrincipal?: string;
-  sumInsured?: string;
-  insuredPersons?: unknown;
-  persons?: PortfolioPersonEntry[];
-  risks?: PortfolioRiskEntry[];
-  coverageLines?: CoverageLineUi[];
-  vehicleRegistration?: string;
-  propertyAddress?: string;
-  subcategory?: string;
-  loanFixationUntil?: string;
-  loanMaturityDate?: string;
-  [key: string]: unknown;
-};
+export type {
+  CoverageLineUi,
+  PortfolioAttributes,
+  PortfolioPersonEntry,
+  PortfolioPersonRole,
+  PortfolioRiskEntry,
+} from "db";
 
 function unwrapExtractedCell(raw: unknown): unknown {
   if (raw == null || typeof raw !== "object") return raw;
@@ -288,6 +264,11 @@ export function buildPortfolioAttributesFromExtracted(extracted: unknown): Recor
   const persons = mergePersonLists([partiesPersons, insuredFromFlat]);
   if (persons.length > 0) out.persons = persons;
 
+  /**
+   * Dual-view z pole `coverages` (záměr, ne omyl): stejný zdroj se mapuje na
+   * `coverageLines` (přehled řádků pro UI) a současně na `risks` (struktura s personRef apod.).
+   * Pokud existuje jen `coverageLines`, rizika z něj neodvozujeme — rizika bereme z insuredRisks / riders / coverages.
+   */
   const risksMerged = mergeRiskLists([
     collectRisksFromList(unwrapExtractedCell(p.insuredRisks)),
     collectRisksFromList(unwrapExtractedCell(p.riders)),

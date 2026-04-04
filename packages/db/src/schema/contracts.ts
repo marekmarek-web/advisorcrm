@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { pgTable, uuid, text, timestamp, date, boolean, numeric, jsonb } from "drizzle-orm/pg-core";
 import { contacts } from "./contacts";
+import type { PortfolioAttributes } from "./portfolio-attributes";
 
 /** Lifecycle for portfolio / client zone (advisor workflow + client visibility rules). */
 export const portfolioStatuses = ["draft", "pending_review", "active", "ended"] as const;
@@ -94,7 +95,7 @@ export const contracts = pgTable("contracts", {
   portfolioAttributes: jsonb("portfolio_attributes")
     .notNull()
     .default(sql`'{}'::jsonb`)
-    .$type<Record<string, unknown>>(),
+    .$type<PortfolioAttributes>(),
   /** Internal 0–1 confidence from extraction; not exposed to client UI. */
   extractionConfidence: numeric("extraction_confidence", { precision: 5, scale: 4 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

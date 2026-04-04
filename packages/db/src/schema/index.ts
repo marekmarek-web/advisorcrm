@@ -14,6 +14,7 @@ export * from "./timeline";
 export * from "./audit-compliance";
 export * from "./subscriptions";
 export * from "./stripe-webhook-events";
+export * from "./portfolio-attributes";
 export * from "./contracts";
 export * from "./contract-upload-reviews";
 export * from "./client-payment-setups";
