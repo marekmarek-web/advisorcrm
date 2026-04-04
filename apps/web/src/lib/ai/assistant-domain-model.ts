@@ -74,6 +74,7 @@ export const CANONICAL_INTENT_TYPES = [
   "update_client_request",
   "create_service_case",
   "create_reminder",
+  "create_contract",
   "search_contacts",
   "dashboard_summary",
   "general_chat",
@@ -173,6 +174,7 @@ export const WRITE_ACTION_TYPES = [
   "draftEmail",
   "draftClientPortalMessage",
   "sendPortalMessage",
+  "createContract",
 ] as const;
 export type WriteActionType = (typeof WRITE_ACTION_TYPES)[number];
 

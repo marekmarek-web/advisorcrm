@@ -36,26 +36,8 @@ function isUuid(val: string): boolean {
 async function resolveClientRef(
   tenantId: string,
   ref: string,
-  session: AssistantSession,
+  _session: AssistantSession,
 ): Promise<ResolvedEntity | null> {
-  if (session.lockedClientId && !session.pendingClientDisambiguation) {
-    const rows = await db
-      .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName })
-      .from(contacts)
-      .where(and(eq(contacts.id, session.lockedClientId), eq(contacts.tenantId, tenantId)))
-      .limit(1);
-    if (rows[0]) {
-      return {
-        entityType: "contact",
-        entityId: rows[0].id,
-        displayLabel: `${rows[0].firstName} ${rows[0].lastName}`.trim(),
-        confidence: 1.0,
-        ambiguous: false,
-        alternatives: [],
-      };
-    }
-  }
-
   if (isUuid(ref)) {
     const rows = await db
       .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName })

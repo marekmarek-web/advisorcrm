@@ -30,6 +30,10 @@ export type ExecutionContext = {
 /** Bump when changing write contract shape stored in execution_actions metadata / resultPayload. */
 export const ASSISTANT_WRITE_CONTRACT_VERSION = 1;
 
+/** Shown in assistant UI when ledger writes were skipped (no raw DB errors). */
+export const ASSISTANT_LEDGER_DEGRADED_ADVISOR_WARNING =
+  "Evidence operací v databázi není k dispozici — akce proběhly, ale bez zápisu do knihy (žádná idempotence v DB). Po nasazení migrace `execution_actions` bude záznam opět plně funkční. Kontaktujte správce, pokud hláška přetrvává.";
+
 export type PlanLedgerContext = {
   planId: string;
   intentType: CanonicalIntentType;
@@ -437,6 +441,7 @@ export async function executePlan(
     ...plan,
     steps: updatedSteps,
     status: anyFailed ? "partial_failure" : "completed",
+    ...(!executionActionsTableAvailable ? { ledgerDegraded: true as const } : {}),
   };
 
   if (!executionActionsTableAvailable) {
@@ -452,6 +457,7 @@ export async function executePlan(
     succeeded: updatedSteps.filter((s) => s.status === "succeeded").length,
     failed: updatedSteps.filter((s) => s.status === "failed").length,
     skipped: updatedSteps.filter((s) => s.status === "skipped").length,
+    ...(executionActionsTableAvailable ? {} : { ledgerDegraded: true }),
   });
 
   return nextPlan;
@@ -536,6 +542,10 @@ export function buildVerifiedResult(
   const hasPartialFailure = plan?.status === "partial_failure";
 
   const summaryMessage = buildExecutionSummaryMessage(message, plan, stepOutcomes);
+
+  if (plan?.ledgerDegraded) {
+    warnings.unshift(ASSISTANT_LEDGER_DEGRADED_ADVISOR_WARNING);
+  }
 
   return {
     message: summaryMessage,

@@ -38,7 +38,6 @@ import {
   productDomainChipLabel,
   buildStepDescription,
   buildValidationWarnings,
-  computeWriteActionMissingFields,
   computeWriteStepPreflight,
 } from "./assistant-execution-plan";
 import { executePlan, buildVerifiedResult } from "./assistant-execution-engine";
@@ -865,7 +864,12 @@ export async function routeAssistantMessageCanonical(
     const playbookLines = getPlaybookGuidanceLines(patchedIntent, message);
     const playbookBlock = playbookLines.length > 0 ? `\n\n${playbookLines.join("\n")}` : "";
     const stepPreviews: StepPreviewItem[] = plan.steps.map((s) => {
-      const missing = computeWriteActionMissingFields(s.action, s.params);
+      const pf = computeWriteStepPreflight(s.action, s.params);
+      const baseVw = buildValidationWarnings(s.action, s.params);
+      const extra =
+        pf.preflightStatus === "needs_input" && pf.advisorMessage && pf.missingFields.length === 0
+          ? [pf.advisorMessage]
+          : [];
       return {
         stepId: s.stepId,
         label: s.label,
@@ -873,8 +877,9 @@ export async function routeAssistantMessageCanonical(
         contextHint: stepPreviewContextHint(s),
         description: buildStepDescription(s.action, s.params),
         domainGroup: productDomainChipLabel(s.params.productDomain as string | undefined) ?? null,
-        validationWarnings: buildValidationWarnings(s.action, s.params),
-        preflightStatus: missing.length > 0 ? "needs_input" as const : "ready" as const,
+        validationWarnings: [...baseVw, ...extra],
+        preflightStatus: pf.preflightStatus,
+        blockedReason: pf.preflightStatus === "blocked" ? pf.advisorMessage : undefined,
       };
     });
     return {

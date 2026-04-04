@@ -65,4 +65,36 @@ describe("assistant-history-mapper", () => {
       expect((prev?.validationWarnings?.length ?? 0)).toBeGreaterThan(0);
     }
   });
+
+  it("sanitizes persisted assistant content and warnings (no internal tokens in UI)", () => {
+    const conversation = {
+      id: "conv-1",
+      channel: "web_drawer",
+      lockedContactId: null,
+      updatedAt: new Date(),
+    };
+    const leak =
+      "Hotovo.\n[RESULT:createTask]{\"ok\":true}\n[TOOL:foo]\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    const rows = [
+      {
+        id: "m1",
+        role: "assistant" as const,
+        content: leak,
+        createdAt: new Date(),
+        meta: {
+          warnings: ["Chyba u klienta aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+        },
+        executionPlanSnapshot: null,
+      },
+    ];
+    const out = mapAssistantHistoryRowsToClientPayload(rows, conversation);
+    const a = out[0];
+    expect(a?.kind).toBe("assistant");
+    if (a?.kind === "assistant") {
+      expect(a.content).not.toContain("[RESULT:");
+      expect(a.content).not.toContain("[TOOL:");
+      expect(a.content).not.toContain("bbbbbbbb-bbbb");
+      expect(a.warnings.join(" ")).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}/i);
+    }
+  });
 });

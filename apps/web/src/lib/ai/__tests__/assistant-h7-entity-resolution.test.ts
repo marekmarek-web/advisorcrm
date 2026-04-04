@@ -67,15 +67,34 @@ describe("H7 entity resolution / disambiguation", () => {
     expect(res.client?.alternatives.length).toBeGreaterThan(0);
   });
 
-  it("when pendingClientDisambiguation is false, uses locked client from DB without search", async () => {
+  it("when targetClient ref is set, resolves via search even with session lock (P0 multi-client)", async () => {
     const session = getOrCreateSession("h7-locked", "tenant-h7", "user-h7");
     lockAssistantClient(session, LOCK_ID);
     session.pendingClientDisambiguation = false;
 
+    const otherId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    h7EntityHoisted.searchMock.mockResolvedValue([
+      { id: otherId, displayName: "Jiný Klient" },
+    ]);
+
     const intent = {
       ...emptyCanonicalIntent(),
-      targetClient: { ref: "ignored-name", resolved: false },
+      targetClient: { ref: "Jiný Klient", resolved: false },
     };
+
+    const res = await resolveEntities("tenant-h7", intent, session);
+
+    expect(h7EntityHoisted.searchMock).toHaveBeenCalled();
+    expect(res.client?.entityId).toBe(otherId);
+    expect(res.client?.ambiguous).toBe(false);
+  });
+
+  it("when no targetClient ref, uses locked client from DB without search", async () => {
+    const session = getOrCreateSession("h7-fallback-lock", "tenant-h7", "user-h7");
+    lockAssistantClient(session, LOCK_ID);
+    session.pendingClientDisambiguation = false;
+
+    const intent = emptyCanonicalIntent();
 
     const res = await resolveEntities("tenant-h7", intent, session);
 

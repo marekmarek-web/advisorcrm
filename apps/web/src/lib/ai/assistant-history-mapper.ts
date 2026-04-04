@@ -8,8 +8,10 @@ import {
   productDomainChipLabel,
   buildStepDescription,
   buildValidationWarnings,
-  computeWriteActionMissingFields,
+  computeWriteStepPreflight,
+  buildValidationWarnings,
 } from "./assistant-execution-plan";
+import { sanitizeAssistantMessageForAdvisor, sanitizeWarningForAdvisor } from "./assistant-message-sanitizer";
 
 export type AssistantConversationRow = {
   id: string;
@@ -61,7 +63,12 @@ export type AdvisorAssistantHistoryMessageDto =
 
 function stepPreviewsFromPlan(plan: ExecutionPlan): StepPreviewItem[] {
   return plan.steps.map((s) => {
-    const missing = computeWriteActionMissingFields(s.action, s.params);
+    const pf = computeWriteStepPreflight(s.action, s.params);
+    const baseVw = buildValidationWarnings(s.action, s.params);
+    const extra =
+      pf.preflightStatus === "needs_input" && pf.advisorMessage && pf.missingFields.length === 0
+        ? [pf.advisorMessage]
+        : [];
     return {
       stepId: s.stepId,
       label: s.label,
@@ -69,8 +76,9 @@ function stepPreviewsFromPlan(plan: ExecutionPlan): StepPreviewItem[] {
       contextHint: productDomainChipLabel(s.params.productDomain as string | undefined),
       description: buildStepDescription(s.action, s.params),
       domainGroup: productDomainChipLabel(s.params.productDomain as string | undefined) ?? null,
-      validationWarnings: buildValidationWarnings(s.action, s.params),
-      preflightStatus: missing.length > 0 ? ("needs_input" as const) : ("ready" as const),
+      validationWarnings: [...baseVw, ...extra],
+      preflightStatus: pf.preflightStatus,
+      blockedReason: pf.preflightStatus === "blocked" ? pf.advisorMessage : undefined,
     };
   });
 }
@@ -91,7 +99,10 @@ function executionStateFromPlan(plan: ExecutionPlan | null): AdvisorAssistantHis
 
 function warningsFromMeta(meta: Record<string, unknown> | null): string[] {
   if (!meta || !Array.isArray(meta.warnings)) return [];
-  return meta.warnings.filter((w): w is string => typeof w === "string");
+  return meta.warnings
+    .filter((w): w is string => typeof w === "string")
+    .map(sanitizeWarningForAdvisor)
+    .filter((w) => w.length > 0);
 }
 
 /**
@@ -129,7 +140,7 @@ export function mapAssistantHistoryRowsToClientPayload(
     out.push({
       kind: "assistant",
       stableKey: r.id,
-      content: r.content,
+      content: sanitizeAssistantMessageForAdvisor(r.content),
       createdAtIso: r.createdAt.toISOString(),
       warnings: warningsFromMeta(r.meta),
       executionState: executionStateFromPlan(plan),

@@ -188,6 +188,8 @@ export function AiAssistantDrawer() {
   const [confirmExecuteBusy, setConfirmExecuteBusy] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  /** Po nahrání smlouvy — posílá se v activeContext.reviewId, aby server zahrnul AI review do chatu. */
+  const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contactsImportFileRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -280,6 +282,7 @@ export function AiAssistantDrawer() {
   const startNewAssistantConversation = useCallback(() => {
     setMessages([]);
     setAssistantSessionId(undefined);
+    setActiveReviewId(null);
     try {
       sessionStorage.removeItem(AI_ASSISTANT_API_SESSION_KEY);
     } catch {
@@ -376,6 +379,7 @@ export function AiAssistantDrawer() {
     if (prev !== routeContactId) {
       setMessages([]);
       setAssistantSessionId(undefined);
+      setActiveReviewId(null);
       try { sessionStorage.removeItem(AI_ASSISTANT_API_SESSION_KEY); } catch { /* ignore */ }
     }
   }, [routeContactId]);
@@ -402,6 +406,7 @@ export function AiAssistantDrawer() {
                 sessionId: assistantSessionIdRef.current,
                 routeContactId,
                 routeOpportunityId,
+                reviewId: activeReviewId,
                 channel: "web_drawer",
               }),
             ),
@@ -456,7 +461,7 @@ export function AiAssistantDrawer() {
         chatSubmitLockRef.current = false;
       }
     },
-    [chatLoading, routeContactId, toast],
+    [chatLoading, routeContactId, routeOpportunityId, activeReviewId, toast],
   );
 
   const submitPlanConfirmation = useCallback(async () => {
@@ -491,6 +496,7 @@ export function AiAssistantDrawer() {
               sessionId: assistantSessionIdRef.current,
               routeContactId,
               routeOpportunityId,
+              reviewId: activeReviewId,
               channel: "web_drawer",
               selectedStepIds: canSelect ? picked : undefined,
             }),
@@ -546,7 +552,7 @@ export function AiAssistantDrawer() {
       setConfirmExecuteBusy(false);
       chatSubmitLockRef.current = false;
     }
-  }, [chatLoading, messages, routeContactId, routeOpportunityId, stepSelectionByPlanId, toast]);
+  }, [chatLoading, messages, routeContactId, routeOpportunityId, activeReviewId, stepSelectionByPlanId, toast]);
 
   const submitCancelPlan = useCallback(async () => {
     if (chatLoading || chatSubmitLockRef.current) return;
@@ -570,6 +576,7 @@ export function AiAssistantDrawer() {
               sessionId: assistantSessionIdRef.current,
               routeContactId,
               routeOpportunityId,
+              reviewId: activeReviewId,
               channel: "web_drawer",
             }),
           ),
@@ -623,7 +630,7 @@ export function AiAssistantDrawer() {
       setChatLoading(false);
       chatSubmitLockRef.current = false;
     }
-  }, [chatLoading, messages, routeContactId, routeOpportunityId, toast]);
+  }, [chatLoading, messages, routeContactId, routeOpportunityId, activeReviewId, toast]);
 
   const handleSendChat = () => {
     const msg = input.trim();
@@ -793,6 +800,7 @@ export function AiAssistantDrawer() {
             clientMatchCandidates: [],
           },
         ]);
+        setActiveReviewId(reviewId);
         setUploadPhase("idle");
         return;
       }
@@ -809,6 +817,7 @@ export function AiAssistantDrawer() {
             clientMatchCandidates: [],
           },
         ]);
+        setActiveReviewId(reviewId);
         setUploadPhase("idle");
         return;
       }
@@ -828,6 +837,7 @@ export function AiAssistantDrawer() {
           ),
         },
       ]);
+      setActiveReviewId(reviewId);
     } catch {
       setUploadError("Zpracování souboru selhalo.");
       setMessages((prev) => prev.slice(0, -1));
@@ -1004,6 +1014,7 @@ export function AiAssistantDrawer() {
                 const hist = await loadAdvisorAssistantConversationHistory(v);
                 setHistoryHydrationLoading(false);
                 if (hist.ok) {
+                  setActiveReviewId(null);
                   setMessages(historyDtoToChatMessages(hist.messages));
                 } else {
                   toast.showToast(hist.error, "error");

@@ -75,6 +75,8 @@ export type StepPreviewItem = {
   validationWarnings?: string[];
   /** Preflight state: ready (all params present), needs_input (missing critical fields), blocked (dependency). */
   preflightStatus?: "ready" | "needs_input" | "blocked";
+  /** When preflight is blocked (e.g. datetime without TZ) — shown in confirmation UI. */
+  blockedReason?: string;
 };
 
 /** Rozšířený model akce dle plánu (6B) — odvozeno od `StepPreviewItem` + runtime stav jen na klientovi. */

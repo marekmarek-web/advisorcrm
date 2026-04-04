@@ -46,6 +46,8 @@ export function buildAssistantChatRequestBody(
     sessionId?: string;
     routeContactId: string | null;
     routeOpportunityId?: string | null;
+    /** Poslední AI review po nahrání smlouvy — server/planner může navázat kontext review. */
+    reviewId?: string | null;
     orchestration?: "legacy" | "canonical";
     channel?: "web_drawer" | "mobile" | "contact_detail" | "dashboard" | "client_portal_bridge";
   },
@@ -58,9 +60,11 @@ export function buildAssistantChatRequestBody(
   if (opts.sessionId?.trim()) body.sessionId = opts.sessionId.trim();
   const cid = opts.routeContactId?.trim();
   const oid = opts.routeOpportunityId?.trim();
+  const rid = opts.reviewId?.trim();
   body.activeContext = {
     clientId: cid || null,
     opportunityId: oid || null,
+    reviewId: rid || null,
   };
   return body;
 }
@@ -70,6 +74,7 @@ export function buildAssistantConfirmExecutionBody(opts: {
   sessionId?: string;
   routeContactId: string | null;
   routeOpportunityId?: string | null;
+  reviewId?: string | null;
   channel?: AssistantChatRequestBody["channel"];
   selectedStepIds?: string[];
 }): AssistantChatRequestBody {
@@ -77,6 +82,7 @@ export function buildAssistantConfirmExecutionBody(opts: {
     sessionId: opts.sessionId,
     routeContactId: opts.routeContactId,
     routeOpportunityId: opts.routeOpportunityId,
+    reviewId: opts.reviewId,
     channel: opts.channel,
   });
   const out: AssistantChatRequestBody = {
@@ -92,12 +98,14 @@ export function buildAssistantCancelPlanBody(opts: {
   sessionId?: string;
   routeContactId: string | null;
   routeOpportunityId?: string | null;
+  reviewId?: string | null;
   channel?: AssistantChatRequestBody["channel"];
 }): AssistantChatRequestBody {
   const base = buildAssistantChatRequestBody("", {
     sessionId: opts.sessionId,
     routeContactId: opts.routeContactId,
     routeOpportunityId: opts.routeOpportunityId,
+    reviewId: opts.reviewId,
     channel: opts.channel,
   });
   return { ...base, message: "", cancelExecution: true };

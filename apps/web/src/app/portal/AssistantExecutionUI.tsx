@@ -163,6 +163,9 @@ export function ConfirmationPreviewPanel({
           const sid = step.stepId;
           const rowKey = sid || `row-${i}`;
           const checked = sid ? (stepSelection[sid] ?? true) : true;
+          const blocked = step.preflightStatus === "blocked";
+          const needsInput = step.preflightStatus === "needs_input";
+          const cannotRun = blocked || needsInput;
           return (
             <div
               key={rowKey}
@@ -180,29 +183,39 @@ export function ConfirmationPreviewPanel({
                   onChange={() => onToggleStep?.(sid)}
                   className="mt-1 w-4 h-4 rounded border-amber-300 text-amber-700 focus:ring-2 focus:ring-amber-400 focus:ring-offset-0 shrink-0"
                   aria-label={`Zařadit krok: ${step.label}`}
-                  disabled={step.preflightStatus === "needs_input"}
+                  disabled={cannotRun}
                   title={
-                    step.preflightStatus === "needs_input"
-                      ? "Krok nelze zařadit — chybí povinné údaje. Doplňte je v novém zadání."
-                      : undefined
+                    blocked
+                      ? (step.blockedReason ??
+                        "Krok nelze provést — opravte formát parametrů (např. datum s časovou zónou).")
+                      : needsInput
+                        ? "Krok nelze zařadit — chybí povinné údaje. Doplňte je v novém zadání."
+                        : undefined
                   }
                 />
               ) : (
                 <span className={cx(
                   "mt-0.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0",
-                  step.preflightStatus === "needs_input"
-                    ? "bg-rose-100 text-rose-700"
-                    : "bg-amber-200/90 text-amber-900",
+                  blocked
+                    ? "bg-slate-200 text-slate-800"
+                    : needsInput
+                      ? "bg-rose-100 text-rose-700"
+                      : "bg-amber-200/90 text-amber-900",
                 )}>
-                  {step.preflightStatus === "needs_input" ? "!" : (i + 1)}
+                  {cannotRun ? "!" : (i + 1)}
                 </span>
               )}
               <div className="min-w-0 flex-1">
                 <span className={cx(
                   "text-[13px] font-semibold leading-snug",
-                  step.preflightStatus === "needs_input" ? "text-rose-800" : "text-amber-950",
+                  needsInput ? "text-rose-800" : blocked ? "text-slate-800" : "text-amber-950",
                 )}>{step.label}</span>
-                {step.preflightStatus === "needs_input" && (
+                {blocked && (
+                  <span className="ml-2 align-middle text-[9px] font-bold text-slate-700 bg-slate-100 border border-slate-300 rounded-md px-1.5 py-0.5">
+                    Blokováno
+                  </span>
+                )}
+                {needsInput && (
                   <span className="ml-2 align-middle text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-1.5 py-0.5">
                     Chybí údaje
                   </span>
@@ -214,6 +227,12 @@ export function ConfirmationPreviewPanel({
                 ) : null}
                 {step.description ? (
                   <p className="text-[10px] text-amber-700/90 mt-0.5 font-medium">{step.description}</p>
+                ) : null}
+                {blocked && step.blockedReason ? (
+                  <p className="text-[10px] text-slate-800 mt-1 font-medium flex gap-1">
+                    <AlertCircle size={10} className="shrink-0 mt-0.5" />
+                    <span>{step.blockedReason}</span>
+                  </p>
                 ) : null}
                 {(step.validationWarnings?.length ?? 0) > 0 ? (
                   <ul className="mt-1 space-y-0.5">

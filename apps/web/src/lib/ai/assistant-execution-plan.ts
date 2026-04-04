@@ -19,6 +19,8 @@ import {
   canonicalMaterialRequestTitle,
   canonicalDealDetailLine,
 } from "./assistant-canonical-names";
+import { resolveContractSegmentFromUserText, PRODUCT_DOMAIN_DEFAULT_SEGMENT } from "./assistant-domain-model";
+import { hasExplicitIsoOffset } from "@/app/portal/calendar/date-utils";
 
 /**
  * Canonical intent → write action mapping.
@@ -67,6 +69,7 @@ const INTENT_TO_WRITE_ACTION: Partial<Record<CanonicalIntentType, WriteActionTyp
   link_ai_review_to_document_vault: "linkAiContractReviewToDocuments",
   show_document_to_client: "setDocumentVisibleToClient",
   notify_client_portal: "createClientPortalNotification",
+  create_contract: "createContract",
 };
 
 const READ_ONLY_INTENTS = new Set<CanonicalIntentType>([
@@ -155,6 +158,20 @@ function buildStepParams(
     }
     if (!params.portalNotificationBody && typeof params.noteContent === "string" && params.noteContent.trim()) {
       params.portalNotificationBody = params.noteContent;
+    }
+  }
+
+  if (action === "createContract") {
+    if (!params.segment && intent.productDomain) {
+      const seg = PRODUCT_DOMAIN_DEFAULT_SEGMENT[intent.productDomain];
+      if (seg) params.segment = seg;
+    }
+    if (!params.segment) {
+      const userText = intent.extractedFacts.find((f) => f.key === "purpose")?.value;
+      if (typeof userText === "string") {
+        const seg = resolveContractSegmentFromUserText(userText);
+        if (seg) params.segment = seg;
+      }
     }
   }
 
@@ -271,6 +288,7 @@ const REQUIRED_FIELDS: Record<string, FieldRequirement[]> = {
   updatePortfolioItem: ["contractId"],
   createReminder: ["contactId"],
   sendPortalMessage: ["contactId", ["portalMessageBody", "noteContent"]],
+  createContract: ["contactId", "segment"],
 };
 
 /**
@@ -328,6 +346,72 @@ export function computeWriteActionMissingFields(
   }
 
   return missing;
+}
+
+function strParamFromRecord(params: Record<string, unknown>, key: string): string | undefined {
+  const v = params[key];
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
+}
+
+export type WriteStepPreflightResult = {
+  preflightStatus: "ready" | "needs_input" | "blocked";
+  /** Same slot list as `computeWriteActionMissingFields` (structural gaps). */
+  missingFields: string[];
+  /** Extra human text for needs_input (e.g. date without time) or blocked (invalid / no TZ). */
+  advisorMessage?: string;
+};
+
+/**
+ * Structural missing fields + strict format rules (e.g. calendar start must be ISO with TZ).
+ * Used for step previews, history parity, and pre-execution gate.
+ */
+export function computeWriteStepPreflight(
+  action: WriteActionType,
+  params: Record<string, unknown>,
+  productDomain?: string | null,
+): WriteStepPreflightResult {
+  const missingFields = computeWriteActionMissingFields(action, params, productDomain);
+
+  if (action === "scheduleCalendarEvent") {
+    const startAt = strParamFromRecord(params, "startAt");
+    const resolvedDate = strParamFromRecord(params, "resolvedDate");
+    const dtRaw = startAt ?? resolvedDate;
+
+    if (dtRaw) {
+      const t = dtRaw.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+        return {
+          preflightStatus: "needs_input",
+          missingFields,
+          advisorMessage:
+            "Schůzka má zatím jen datum bez času — doplňte konkrétní čas začátku v ISO 8601 s časovou zónou (např. …T14:30:00+01:00).",
+        };
+      }
+      if (!hasExplicitIsoOffset(t)) {
+        return {
+          preflightStatus: "blocked",
+          missingFields,
+          advisorMessage:
+            "Začátek schůzky musí být v ISO 8601 s uvedenou časovou zónou (koncovka Z nebo ±HH:MM, např. +01:00 pro středoevropský čas).",
+        };
+      }
+      const d = new Date(t);
+      if (Number.isNaN(d.getTime())) {
+        return {
+          preflightStatus: "blocked",
+          missingFields,
+          advisorMessage: "Neplatný formát data a času začátku schůzky.",
+        };
+      }
+    }
+  }
+
+  if (missingFields.length > 0) {
+    return { preflightStatus: "needs_input", missingFields };
+  }
+  return { preflightStatus: "ready", missingFields };
 }
 
 export function buildExecutionPlan(
@@ -486,6 +570,7 @@ function buildStepLabel(action: WriteActionType, _params: Record<string, unknown
     setDocumentVisibleToClient: "Zobrazit dokument klientovi v portálu",
     linkDocumentToMaterialRequest: "Přiřadit dokument k materiálovému požadavku",
     createClientPortalNotification: "Poslat upozornění do klientského portálu",
+    createContract: "Založit smlouvu",
   };
 
   return labels[action] ?? action;
@@ -520,6 +605,7 @@ const STEP_DESCRIPTIONS: Partial<Record<WriteActionType, string>> = {
   setDocumentVisibleToClient: "Zpřístupní dokument klientovi v portálu",
   linkDocumentToMaterialRequest: "Propojí nahraný dokument s požadavkem na podklady",
   createClientPortalNotification: "Odešle upozornění klientovi do portálu",
+  createContract: "Založí novou smlouvu v portfoliu klienta",
 };
 
 export function buildStepDescription(action: WriteActionType, params: Record<string, unknown>): string | undefined {
@@ -545,6 +631,17 @@ export function buildStepDescription(action: WriteActionType, params: Record<str
     const title = typeof params.title === "string" ? params.title.trim() : null;
     if (date && title) return `${date} · ${title}`;
     if (date) return date;
+  }
+
+  if (action === "createContract") {
+    const parts: string[] = [];
+    const seg = typeof params.segment === "string" ? params.segment : null;
+    if (seg) parts.push(seg);
+    const pn = typeof params.partnerName === "string" ? params.partnerName.trim() : null;
+    if (pn) parts.push(pn);
+    const pr = typeof params.productName === "string" ? params.productName.trim() : null;
+    if (pr) parts.push(pr);
+    if (parts.length > 0) return parts.join(" – ");
   }
 
   // For client requests: show the subject
@@ -585,6 +682,10 @@ const FIELD_LABELS: Record<string, string> = {
   portalNotificationTitle: "nadpis upozornění",
   portalNotificationBody: "text upozornění",
   portalMessageBody: "text zprávy",
+  segment: "segment smlouvy",
+  partnerName: "partner / pojišťovna / banka",
+  productName: "produkt / produktová řada",
+  premiumAmount: "pojistné / splátka",
   amount: "částka",
   purpose: "účel",
   investmentGoal: "investiční cíl",
@@ -618,22 +719,46 @@ export function getStepsAwaitingConfirmation(plan: ExecutionPlan): ExecutionStep
  */
 function preflightCheckStep(step: ExecutionStep): ExecutionStep {
   if (step.status !== "requires_confirmation") return step;
-  const missing = computeWriteActionMissingFields(step.action, step.params);
-  if (missing.length === 0) return { ...step, status: "confirmed" as const };
-  const humanMissing = missing.map((f) => humanizeFieldRef(f)).join(", ");
-  return {
-    ...step,
-    status: "skipped" as const,
-    result: {
-      ok: false,
-      outcome: "requires_input" as const,
-      entityId: null,
-      entityType: null,
-      warnings: [],
-      error: `Chybí povinné údaje: ${humanMissing}. Doplňte je a zkuste znovu.`,
-      retryable: true,
-    },
-  };
+  const pf = computeWriteStepPreflight(step.action, step.params);
+  if (pf.preflightStatus === "blocked") {
+    return {
+      ...step,
+      status: "skipped" as const,
+      result: {
+        ok: false,
+        outcome: "requires_input" as const,
+        entityId: null,
+        entityType: null,
+        warnings: [],
+        error: pf.advisorMessage ?? "Krok nelze provést — neplatné parametry.",
+        retryable: true,
+      },
+    };
+  }
+  if (pf.preflightStatus === "needs_input") {
+    const humanMissing =
+      pf.missingFields.length > 0
+        ? pf.missingFields.map((f) => humanizeFieldRef(f)).join(", ")
+        : null;
+    const detail =
+      humanMissing != null
+        ? `Chybí povinné údaje: ${humanMissing}. Doplňte je a zkuste znovu.`
+        : (pf.advisorMessage ?? "Chybí povinné údaje. Doplňte je a zkuste znovu.");
+    return {
+      ...step,
+      status: "skipped" as const,
+      result: {
+        ok: false,
+        outcome: "requires_input" as const,
+        entityId: null,
+        entityType: null,
+        warnings: [],
+        error: detail,
+        retryable: true,
+      },
+    };
+  }
+  return { ...step, status: "confirmed" as const };
 }
 
 export function confirmAllSteps(plan: ExecutionPlan): ExecutionPlan {

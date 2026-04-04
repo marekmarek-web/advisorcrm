@@ -56,7 +56,7 @@ describe("buildAssistantChatRequestBody", () => {
       sessionId: "sess_1",
       orchestration: "canonical",
       channel: "web_drawer",
-      activeContext: { clientId: null, opportunityId: null },
+      activeContext: { clientId: null, opportunityId: null, reviewId: null },
     });
   });
 
@@ -72,6 +72,16 @@ describe("buildAssistantChatRequestBody", () => {
       routeOpportunityId: OPP_UUID,
     });
     expect(b.activeContext?.opportunityId).toBe(OPP_UUID);
+  });
+
+  it("includes reviewId in activeContext when provided", () => {
+    const rid = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    const b = buildAssistantChatRequestBody("Tady je smlouva", {
+      sessionId: "s",
+      routeContactId: null,
+      reviewId: rid,
+    });
+    expect(b.activeContext?.reviewId).toBe(rid);
   });
 });
 

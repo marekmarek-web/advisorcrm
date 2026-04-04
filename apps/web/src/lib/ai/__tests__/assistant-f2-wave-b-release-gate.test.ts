@@ -214,5 +214,9 @@ describe("F2 Wave B — execution runtime unavailable (ledger degraded)", () => 
     expect(out.status).toBe("completed");
     expect(out.steps[0]?.status).toBe("succeeded");
     expect(out.steps[0]?.result?.ok).toBe(true);
+    expect(out.ledgerDegraded).toBe(true);
+    const verified = buildVerifiedResult("Akce provedeny.", out);
+    expect(verified.warnings.some((w) => w.includes("Evidence operací"))).toBe(true);
+    expect(verified.warnings.join(" ")).not.toMatch(/relation|does not exist/i);
   });
 });
