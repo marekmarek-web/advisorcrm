@@ -5,7 +5,7 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission, type RoleName } from "@/shared/rolePermissions";
-import { db, documents, opportunities, opportunityStages, eq, and, asc } from "db";
+import { db, documents, opportunities, opportunityStages, eq, and, asc, contractSegments } from "db";
 import type { ExecutionStepResult } from "./assistant-domain-model";
 import type { ExecutionContext } from "./assistant-execution-engine";
 import { registerWriteAdapter } from "./assistant-execution-engine";
@@ -36,10 +36,12 @@ import {
 } from "@/app/actions/contract-review";
 import { createDraft } from "@/app/actions/communication-drafts";
 import { approveContractForClientPortal, updateContract, createContract as createContractAction } from "@/app/actions/contracts";
+import { upsertCoverageItem } from "@/app/actions/coverage";
 import { sendMessage } from "@/app/actions/messages";
 import { createAdvisorClientRequest } from "../assistant/create-advisor-client-request";
 import { contractSegments } from "../../../../../../packages/db/src/schema/contracts";
 import { validatePartnerInCatalog, validateProductInCatalog } from "./ratings/toplists";
+import { normalizeCoverageStatus } from "./assistant-coverage-item-resolve";
 import { resolveContractSegmentFromUserText, PRODUCT_DOMAIN_DEFAULT_SEGMENT, type ProductDomain } from "./assistant-domain-model";
 
 async function assertCtx(ctx: ExecutionContext): Promise<{
@@ -856,6 +858,31 @@ export function registerAssistantWriteAdapters(): void {
       return okResult(res.id!, "contract", warnings);
     } catch (e) {
       return safeErr(e, "createContract");
+    }
+  });
+
+  registerWriteAdapter("upsertContactCoverage", async (params, ctx) => {
+    try {
+      await assertCtx(ctx);
+      const contactId = strParam(params, "contactId");
+      const itemKey = strParam(params, "itemKey") ?? strParam(params, "coverageItemKey");
+      if (!contactId) return errResult("Chybí contactId.");
+      if (!itemKey) return errResult("Chybí položka pokrytí (itemKey). Upřesněte produkt (např. ODP, POV, životní pojištění).");
+
+      const rawStatus =
+        strParam(params, "status") ?? strParam(params, "coverageStatus") ?? "done";
+      const status = normalizeCoverageStatus(rawStatus);
+
+      const res = await upsertCoverageItem(contactId, itemKey, {
+        status,
+        notes: strParam(params, "noteContent") ?? strParam(params, "notes") ?? null,
+        linkedContractId: strParam(params, "linkedContractId") ?? null,
+        linkedOpportunityId: strParam(params, "linkedOpportunityId") ?? null,
+      });
+      if (!res.ok) return errResult(res.message);
+      return okResult(itemKey, "coverage_item", []);
+    } catch (e) {
+      return safeErr(e, "upsertContactCoverage");
     }
   });
 }

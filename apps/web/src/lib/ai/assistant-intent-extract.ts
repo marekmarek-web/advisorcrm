@@ -63,6 +63,7 @@ Typy záměrů:
 - update_client_request: upravit existující klientský požadavek (obchod s client_portal_request)
 - create_service_case: servisní případ nebo požadavek ke stávající smlouvě (výročí, změna, doplnění, reklamace) — productDomain určuje typ smlouvy (servis, dps, zivotni_pojisteni, …)
 - create_contract: založit/evidovat smlouvu klienta do portfolia (ne obchod/případ). Použij pokud uživatel chce „založit smlouvu", „zaevidovat smlouvu/pojistku/penzijko", „přidat do portfolia". Vyplň productDomain (a partnerName/productName pokud zmíněny).
+- update_coverage: nastavit stav položky pokrytí produktů (FA grid) — např. „ODP hotovo", „povko jako splněné", „nastav životko na neřeší". Vyplň coverageItemKey (nebo popis v purpose) a coverageStatus: done | in_progress | none | not_relevant | opportunity | waiting_signature (nebo česky: hotovo, neřeší, …).
 - create_reminder: připomínka
 - search_contacts: hledání kontaktů
 - dashboard_summary: shrnutí dashboardu
@@ -91,6 +92,8 @@ periodicity: frekvence platby — "měsíčně", "ročně", "jednorázově".
 contractNumber: číslo smlouvy, pokud zmíněno.
 partnerName: název partnera / pojišťovny / banky / investiční společnosti, pokud zmíněn (např. "Allianz", "UNIQA", "Česká spořitelna").
 productName: název produktu / produktové řady, pokud zmíněn (např. "Život & Radost", "FLEXI", "mHypotéka").
+coverageItemKey: technický klíč položky pokrytí, pokud ho uživatel zná; jinak popiš v purpose (ODP, POV, životní, DPS…).
+coverageStatus: cílový stav pokrytí (done / hotovo, none, not_relevant / neřeší, in_progress, opportunity, waiting_signature).
 meetingDateText / dueDateText: textový fragment termínu.
 taskTitle: název úkolu; noteContent: obsah poznámky.
 confidence: 0.0-1.0 jak jistý jsi záměrem.`;

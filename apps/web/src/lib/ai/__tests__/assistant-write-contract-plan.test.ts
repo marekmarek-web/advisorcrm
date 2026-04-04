@@ -228,3 +228,38 @@ describe("buildExecutionPlan — createContract (P1 task 8)", () => {
     expect(plan.steps[0]!.label).toBe("Založit smlouvu");
   });
 });
+
+describe("buildExecutionPlan — upsertContactCoverage (P1 task 9)", () => {
+  it("update_coverage resolves ODP slang to itemKey and awaits confirmation", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "update_coverage",
+        requestedActions: ["update_coverage"],
+        extractedFacts: [
+          { key: "coverageItemKey", value: "odp", source: "user_text" },
+          { key: "coverageStatus", value: "hotovo", source: "user_text" },
+        ],
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.steps[0]?.action).toBe("upsertContactCoverage");
+    expect(plan.steps[0]?.params.itemKey).toBe("Pojištění odpovědnosti");
+    expect(plan.steps[0]?.params.status).toBe("done");
+    expect(plan.status).toBe("awaiting_confirmation");
+  });
+
+  it("update_coverage without resolvable item stays draft", () => {
+    const plan = buildExecutionPlan(
+      intent({
+        intentType: "update_coverage",
+        requestedActions: ["update_coverage"],
+        extractedFacts: [],
+      }),
+      resolutionWithClient(),
+    );
+    expect(plan.status).toBe("draft");
+    expect(computeWriteActionMissingFields("upsertContactCoverage", plan.steps[0]!.params)).toContain(
+      "itemKey",
+    );
+  });
+});

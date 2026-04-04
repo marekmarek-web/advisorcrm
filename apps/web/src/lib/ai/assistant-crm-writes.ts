@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import type { AssistantIntent } from "./assistant-intent";
 import { computeNextTuesdayDatePrague } from "./assistant-intent";
 import { mapErrorForAdvisor } from "./assistant-error-mapping";
+import { canonicalDealTitle, canonicalDealDetailLine } from "./assistant-canonical-names";
 
 export type AssistantCrmWriteInput = {
   tenantId: string;
@@ -75,19 +76,6 @@ async function findOpportunityByIdempotency(
   };
 }
 
-function formatAmountCs(n: number): string {
-  return new Intl.NumberFormat("cs-CZ").format(n);
-}
-
-function buildDealTitle(params: {
-  amount: number;
-  contactDisplayName: string;
-  bank: string;
-  ltv: number;
-}): string {
-  return `Hypotéka ${formatAmountCs(params.amount)} — ${params.contactDisplayName} — ${params.bank} — LTV ${params.ltv}%`;
-}
-
 export async function executeMortgageDealAndFollowUpTask(
   input: AssistantCrmWriteInput,
 ): Promise<AssistantCrmWriteResult> {
@@ -128,10 +116,17 @@ export async function executeMortgageDealAndFollowUpTask(
     return { ok: false, error: "Kontakt nebyl nalezen v tenantovi.", idempotencyKey: "" };
   }
 
-  const contactDisplayName =
-    [contactRow.firstName, contactRow.lastName].filter(Boolean).join(" ").trim() || "Klient";
-
-  const title = buildDealTitle({ amount, contactDisplayName, bank, ltv });
+  const title = canonicalDealTitle({
+    productDomain: "hypo",
+    amount,
+    purpose,
+  });
+  const aiSubtitle = [
+    canonicalDealDetailLine({ bank, rateGuess: rate }),
+    ltv != null ? `LTV ${ltv} %` : null,
+  ]
+    .filter(Boolean)
+    .join(" \u00b7 ");
   const stablePayload = {
     tenantId,
     contactId,
@@ -180,6 +175,7 @@ export async function executeMortgageDealAndFollowUpTask(
     rate,
     note: "čekáme potvrzení",
     purpose,
+    ...(aiSubtitle ? { aiSubtitle } : {}),
     aiAssistant: {
       idempotencyKey,
       version: 1,
@@ -208,7 +204,7 @@ export async function executeMortgageDealAndFollowUpTask(
       return { ok: false, error: "Zápis obchodu se nepodařil.", idempotencyKey };
     }
 
-    const taskTitle = `Follow-up ${bank} nabídka (čekáme potvrzení, ${String(rate).replace(".", ",")}%)`;
+    const taskTitle = `Follow-up hypotéky · nabídka od ${bank} · sazba ${String(rate).replace(".", ",")} % · čekáme potvrzení`;
     const taskDescription = [
       "[Priorita: vysoká]",
       `Účel: ${purpose}.`,

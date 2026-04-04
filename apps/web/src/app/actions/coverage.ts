@@ -103,6 +103,35 @@ export async function getCoverageForContact(contactId: string): Promise<GetCover
   }
 }
 
+export type UpsertCoverageItemResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Upsert jedné položky pokrytí (unikát tenant + contact + itemKey).
+ * Vhodné pro volání z AI asistenta — vrací výsledek místo výjimky.
+ */
+export async function upsertCoverageItem(
+  contactId: string,
+  itemKey: string,
+  payload: {
+    status: string;
+    linkedContractId?: string | null;
+    linkedOpportunityId?: string | null;
+    notes?: string | null;
+    isRelevant?: boolean;
+  },
+): Promise<UpsertCoverageItemResult> {
+  try {
+    await setCoverageStatus(contactId, itemKey, payload);
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === "Forbidden") {
+      return { ok: false, message: "Nemáte oprávnění upravovat pokrytí klienta." };
+    }
+    return { ok: false, message: msg };
+  }
+}
+
 export async function setCoverageStatus(
   contactId: string,
   itemKey: string,

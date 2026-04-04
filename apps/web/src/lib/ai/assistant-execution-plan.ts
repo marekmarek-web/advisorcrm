@@ -20,6 +20,19 @@ import {
   canonicalDealDetailLine,
 } from "./assistant-canonical-names";
 import { resolveContractSegmentFromUserText, PRODUCT_DOMAIN_DEFAULT_SEGMENT } from "./assistant-domain-model";
+import {
+  resolveCoverageItemKeyFromText,
+  normalizeCoverageStatus,
+} from "./assistant-coverage-item-resolve";
+
+const COVERAGE_STATUS_WHITELIST = [
+  "done",
+  "in_progress",
+  "none",
+  "not_relevant",
+  "opportunity",
+  "waiting_signature",
+] as const;
 import { hasExplicitIsoOffset } from "@/app/portal/calendar/date-utils";
 
 /**
@@ -70,6 +83,7 @@ const INTENT_TO_WRITE_ACTION: Partial<Record<CanonicalIntentType, WriteActionTyp
   show_document_to_client: "setDocumentVisibleToClient",
   notify_client_portal: "createClientPortalNotification",
   create_contract: "createContract",
+  update_coverage: "upsertContactCoverage",
 };
 
 const READ_ONLY_INTENTS = new Set<CanonicalIntentType>([
@@ -159,6 +173,28 @@ function buildStepParams(
     if (!params.portalNotificationBody && typeof params.noteContent === "string" && params.noteContent.trim()) {
       params.portalNotificationBody = params.noteContent;
     }
+  }
+
+  if (action === "upsertContactCoverage") {
+    const covKey =
+      typeof params.coverageItemKey === "string" && params.coverageItemKey.trim()
+        ? params.coverageItemKey.trim()
+        : typeof params.itemKey === "string" && params.itemKey.trim()
+          ? params.itemKey.trim()
+          : undefined;
+    const purpose = typeof params.purpose === "string" ? params.purpose : "";
+    const note = typeof params.noteContent === "string" ? params.noteContent : "";
+    const taskTitle = typeof params.taskTitle === "string" ? params.taskTitle : "";
+    const mergedHint = [purpose, note, taskTitle, intent.subIntent ?? ""].filter(Boolean).join(" ");
+    const resolved = resolveCoverageItemKeyFromText(covKey, mergedHint);
+    if (resolved) params.itemKey = resolved;
+
+    const rawSt =
+      (typeof params.coverageStatus === "string" && params.coverageStatus.trim()
+        ? params.coverageStatus.trim()
+        : null) ??
+      (typeof params.status === "string" && params.status.trim() ? params.status.trim() : null);
+    params.status = rawSt ? normalizeCoverageStatus(rawSt) : "done";
   }
 
   if (action === "createContract") {
@@ -289,6 +325,7 @@ const REQUIRED_FIELDS: Record<string, FieldRequirement[]> = {
   createReminder: ["contactId"],
   sendPortalMessage: ["contactId", ["portalMessageBody", "noteContent"]],
   createContract: ["contactId", "segment"],
+  upsertContactCoverage: ["contactId", "itemKey"],
 };
 
 /**
@@ -373,6 +410,17 @@ export function computeWriteStepPreflight(
   productDomain?: string | null,
 ): WriteStepPreflightResult {
   const missingFields = computeWriteActionMissingFields(action, params, productDomain);
+
+  if (action === "upsertContactCoverage") {
+    const st = strParamFromRecord(params, "status");
+    if (st && !(COVERAGE_STATUS_WHITELIST as readonly string[]).includes(st)) {
+      return {
+        preflightStatus: "blocked",
+        missingFields,
+        advisorMessage: `Neplatný stav pokrytí „${st}". Povolené hodnoty: ${COVERAGE_STATUS_WHITELIST.join(", ")}.`,
+      };
+    }
+  }
 
   if (action === "scheduleCalendarEvent") {
     const startAt = strParamFromRecord(params, "startAt");
@@ -571,6 +619,7 @@ function buildStepLabel(action: WriteActionType, _params: Record<string, unknown
     linkDocumentToMaterialRequest: "Přiřadit dokument k materiálovému požadavku",
     createClientPortalNotification: "Poslat upozornění do klientského portálu",
     createContract: "Založit smlouvu",
+    upsertContactCoverage: "Uložit stav pokrytí produktu",
   };
 
   return labels[action] ?? action;
@@ -606,6 +655,7 @@ const STEP_DESCRIPTIONS: Partial<Record<WriteActionType, string>> = {
   linkDocumentToMaterialRequest: "Propojí nahraný dokument s požadavkem na podklady",
   createClientPortalNotification: "Odešle upozornění klientovi do portálu",
   createContract: "Založí novou smlouvu v portfoliu klienta",
+  upsertContactCoverage: "Uloží explicitní stav položky pokrytí (FA matice)",
 };
 
 export function buildStepDescription(action: WriteActionType, params: Record<string, unknown>): string | undefined {
@@ -631,6 +681,13 @@ export function buildStepDescription(action: WriteActionType, params: Record<str
     const title = typeof params.title === "string" ? params.title.trim() : null;
     if (date && title) return `${date} · ${title}`;
     if (date) return date;
+  }
+
+  if (action === "upsertContactCoverage") {
+    const ik = typeof params.itemKey === "string" ? params.itemKey.trim() : null;
+    const st = typeof params.status === "string" ? params.status.trim() : null;
+    if (ik && st) return `${ik} → ${st}`;
+    if (ik) return ik;
   }
 
   if (action === "createContract") {
@@ -686,6 +743,10 @@ const FIELD_LABELS: Record<string, string> = {
   partnerName: "partner / pojišťovna / banka",
   productName: "produkt / produktová řada",
   premiumAmount: "pojistné / splátka",
+  itemKey: "položka pokrytí",
+  coverageItemKey: "položka pokrytí",
+  coverageStatus: "stav pokrytí",
+  status: "stav",
   amount: "částka",
   purpose: "účel",
   investmentGoal: "investiční cíl",
