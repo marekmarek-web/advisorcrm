@@ -6,14 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { revokeAllStoredPushTokens, revokeStoredPushToken } from "@/lib/push/usePushNotifications";
 import clsx from "clsx";
-
-function getInitials(email: string | undefined): string {
-  if (!email) return "?";
-  const part = email.split("@")[0];
-  const parts = part.split(/[._-]/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
-  return part.slice(0, 2).toUpperCase();
-}
+import { displayNameFromUserMetadata, getUserMenuInitials } from "@/lib/user-initials";
 
 type UserMenuProps = {
   /** Kulatý trigger 48px jako main banner txt. */
@@ -32,7 +25,8 @@ export function UserMenu({ variant = "default" }: UserMenuProps) {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setInitials(getInitials(user?.email));
+      const displayName = displayNameFromUserMetadata(user?.user_metadata as Record<string, unknown> | undefined);
+      setInitials(getUserMenuInitials({ displayName, email: user?.email ?? null }));
     });
   }, []);
 

@@ -422,7 +422,8 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: relative;
-  z-index: 40;
+  z-index: 55;
+  overflow: visible;
 }
 
 /* Mobil: kompaktnější horní lišta (méně vertikálního „prázdna“) */

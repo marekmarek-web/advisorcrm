@@ -39,6 +39,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { usePortalBadgeCounts } from "@/app/portal/PortalBadgeCountsContext";
 import clsx from "clsx";
+import { displayNameFromUserMetadata, getUserMenuInitials } from "@/lib/user-initials";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 
 /** Zarovnáno s main banner txt (expanded 300px, collapsed 88px). */
@@ -199,14 +200,6 @@ function getOrderFromSections(sections: SectionConfig[]): { sectionId: string; h
   return sections.map((s) => ({ sectionId: s.id, hrefs: s.items.map((i) => i.href) }));
 }
 
-function getInitials(email: string | undefined): string {
-  if (!email) return "?";
-  const part = email.split("@")[0];
-  const parts = part.split(/[._-]/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
-  return part.slice(0, 2).toUpperCase();
-}
-
 function isItemActive(pathname: string, href: string): boolean {
   const hrefPath = href.split("?")[0]?.split("#")[0] ?? href;
   if (pathname === hrefPath) return true;
@@ -308,9 +301,8 @@ export function PortalSidebar({
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserEmail(user?.email ?? null);
-      const meta = user?.user_metadata;
-      const fullName = meta?.full_name || meta?.name || [meta?.first_name, meta?.last_name].filter(Boolean).join(" ");
-      if (fullName) setUserName(fullName);
+      const fromMeta = displayNameFromUserMetadata(user?.user_metadata as Record<string, unknown> | undefined);
+      if (fromMeta) setUserName(fromMeta);
     });
   }, []);
 
@@ -393,7 +385,7 @@ export function PortalSidebar({
 
       <aside
         className={[
-          "fixed z-drawer-panel flex flex-col shrink-0 transition-[width,transform] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "fixed z-drawer-panel flex flex-col shrink-0 transition-[width,transform] duration-500 ease-\\[cubic-bezier(0.16,1,0.3,1)\\]",
           "font-[family-name:var(--font-jakarta),ui-sans-serif,system-ui,sans-serif]",
           "bg-[color:var(--wp-sidebar-card-bg)] backdrop-blur-3xl",
           "max-md:left-0 max-md:top-0 max-md:bottom-0 max-md:border-r max-md:border-[color:var(--wp-sidebar-card-border)] max-md:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)]",
@@ -695,7 +687,7 @@ export function PortalSidebar({
             >
               <div className="flex items-center gap-3 overflow-hidden min-w-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-aidv-dashboard-cta to-aidv-accent-purple flex items-center justify-center text-white font-black text-sm shrink-0 shadow-inner">
-                  {getInitials(userName ?? userEmail ?? undefined)}
+                  {getUserMenuInitials({ displayName: userName, email: userEmail })}
                 </div>
                 {!collapsed && (
                   <div className="min-w-0">

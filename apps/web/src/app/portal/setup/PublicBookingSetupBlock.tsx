@@ -61,8 +61,9 @@ function buildAvailability(
 }
 
 const labelClass = "block text-[11px] font-black uppercase tracking-widest text-indigo-200 mb-2 ml-1";
+/** Světlé pole na fialovém panelu — kontrastní hodnoty v number/time inputech v prohlížeči. */
 const inputClass =
-  "w-full px-3 py-2.5 bg-[color:var(--wp-surface-card)]/10 border border-white/20 rounded-xl text-sm font-bold text-white outline-none focus:ring-2 focus:ring-white/30 min-h-[44px] placeholder:text-white/40";
+  "w-full px-3 py-2.5 rounded-xl border border-white/30 bg-white/95 text-sm font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-white/50 min-h-[44px] placeholder:text-slate-400 dark:bg-white/95 dark:text-slate-900";
 
 type Props = {
   initial: PublicBookingSettingsDTO;
@@ -150,8 +151,11 @@ export function PublicBookingSetupBlock({ initial, canonicalBaseUrl }: Props) {
         <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-3 flex items-center gap-2">
           Veřejný rezervační odkaz
         </h3>
-        <p className="text-sm font-bold text-indigo-50 mb-4 leading-relaxed">
+        <p className="text-sm font-bold text-indigo-50 mb-2 leading-relaxed">
           Klienti bez přihlášení vyberou termín; schůzka se zapíše do vašeho kalendáře v CRM. Slouží jen k domluvě administrativního termínu.
+        </p>
+        <p className="text-xs text-indigo-100/95 mb-4 leading-relaxed">
+          Odkaz pošlete klientovi e-mailem nebo jinou zprávou — otevře jednoduchou stránku (podobně jako Calendly), kde si zvolí volný čas a vyplní kontakt.
         </p>
         <p className="text-xs text-indigo-100/90 mb-4 leading-relaxed border border-white/15 rounded-xl p-3 bg-black/10">
           Obsazenost se bere z událostí uložených v Aidvisoře u vás jako poradce. Události pouze v Google Kalendáři (bez záznamu v CRM) se v nabídce volných slotů nemusí projevit.
@@ -169,8 +173,10 @@ export function PublicBookingSetupBlock({ initial, canonicalBaseUrl }: Props) {
 
         {enabled && (
           <>
-            <div className="bg-[color:var(--wp-surface-card)]/10 border border-white/20 p-3 rounded-xl flex items-center justify-between gap-2 backdrop-blur-md mb-3 min-h-[44px]">
-              <span className="text-xs font-medium truncate opacity-90">{fullLink || "Nejprve uložte nastavení — vygeneruje se odkaz."}</span>
+            <div className="bg-black/20 border border-white/25 p-3 rounded-xl flex items-center justify-between gap-2 backdrop-blur-md mb-3 min-h-[44px]">
+              <span className="min-w-0 text-xs font-semibold text-white break-all [overflow-wrap:anywhere]">
+                {fullLink || "Nejprve uložte nastavení — vygeneruje se odkaz."}
+              </span>
               <button
                 type="button"
                 onClick={handleCopyLink}

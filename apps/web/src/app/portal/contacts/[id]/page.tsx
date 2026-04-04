@@ -308,12 +308,12 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Kontakt";
 
   return (
-    <div className="min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-20 text-[color:var(--wp-text)]">
+    <div className="-mt-4 min-h-screen bg-[color:var(--wp-main-scroll-bg)] pb-20 pt-0 text-[color:var(--wp-text)] md:-mt-3 lg:-mt-3">
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
 
-      <header className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/90 px-4 py-4 backdrop-blur-md sm:px-6 md:px-8">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--wp-portal-header-border)] bg-[color:var(--wp-portal-header-bg)] px-4 py-3 backdrop-blur-md sm:px-6 md:px-8 md:py-3.5">
         <div className="flex items-center gap-4 sm:gap-6 min-w-0">
           <Link
             href="/portal/contacts"
