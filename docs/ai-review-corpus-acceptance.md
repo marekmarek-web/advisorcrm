@@ -2,6 +2,8 @@
 
 Interní checklist pro ruční nebo lokální regresi nad složkou s PDF **mimo git** (žádná PII v repozitáři).
 
+**Širší korpus (Fáze 1+):** evaluace a opravy AI Review / asistenta se řídí inventářem [ai-review-assistant-phase-1-corpus-inventory.md](./ai-review-assistant-phase-1-corpus-inventory.md) (27× `corpusDocuments` C001–C027 + scénáře G01–G12 v `scenarios.manifest.json`), nikoli pouze původní krátkou sadou z raného checklistu. [ai-assistant-stage5-acceptance.md](./ai-assistant-stage5-acceptance.md) nedefinuje rozsah tohoto korpusu.
+
 ## Očekávání
 
 - Dokument se **klasifikuje** na rozumný `primaryType` z `document-schema-registry`.
@@ -30,3 +32,10 @@ Spusťte pipeline z aplikace proti souborům ve vlastní složce; výsledné `ex
 
 - `extraction-field-alias-normalize.test.ts` — aliasy pro IŽP, návrh, úvěr, penzi.
 - Rozšiřovat pouze **anonymizované JSON fixture**, ne celé PDF.
+
+## Související dokumentace
+
+- [ai-review-assistant-phase-1-corpus-inventory.md](./ai-review-assistant-phase-1-corpus-inventory.md) — plný seznam C001–C027 a bucketů.
+- [ai-review-assistant-phase-1-corpus-buckets.md](./ai-review-assistant-phase-1-corpus-buckets.md) — minimální data podle `familyBucket`.
+- [ai-review-manual-corpus-checklist.md](./ai-review-manual-corpus-checklist.md) — tabulka PDF v `Test AI/` a šablona pro ruční zápis výsledků z dev logů.
+- [ai-review-prompt-inventory.md](./ai-review-prompt-inventory.md) — `AiReviewPromptKey` ↔ `ai uceni/` ↔ povinné proměnné Prompt Builderu.

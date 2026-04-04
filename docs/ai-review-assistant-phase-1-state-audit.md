@@ -5,6 +5,10 @@
 **Zdroj pravdy:** lokální kód (ne veřejný GitHub).  
 **Legenda:** Already exists | Already works | Broken | Missing | By design / neměnit | Do not rebuild
 
+## Source of truth korpus (Fáze 1+)
+
+Pro AI Review a AI asistenta v **dalších fázích** platí rozšířený reálný korpus: **`corpusDocuments` C001–C027** v [`fixtures/golden-ai-review/scenarios.manifest.json`](../fixtures/golden-ai-review/scenarios.manifest.json) (verze 2) + agregační scénáře **G01–G12**. Lidský přehled a tabulka: [ai-review-assistant-phase-1-corpus-inventory.md](./ai-review-assistant-phase-1-corpus-inventory.md). Minimální výstupy podle typu dokumentu: [ai-review-assistant-phase-1-corpus-buckets.md](./ai-review-assistant-phase-1-corpus-buckets.md). Nejedná se o „malý vzorek 9 PDF“ — ten byl nahrazen / rozšířen tímto inventářem.
+
 ---
 
 ## A) AI REVIEW

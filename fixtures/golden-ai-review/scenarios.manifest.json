@@ -1,6 +1,7 @@
 {
-  "version": 1,
-  "description": "Golden scenarios G01-G12 — Phase 1 index. PDFs optional; paths relative to repo root.",
+  "version": 2,
+  "description": "Phase 1: G01–G12 + corpusDocuments for Test AI/ (wide real corpus). Human table: docs/ai-review-assistant-phase-1-corpus-inventory.md",
+  "familyBucketDefinitionsDoc": "docs/ai-review-assistant-phase-1-corpus-buckets.md",
   "scenarios": [
     {
       "id": "G01",
@@ -8,7 +9,10 @@
       "documentFamily": "life_insurance",
       "expectedPrimaryType": "life_insurance_final_contract",
       "publishableAsContract": true,
-      "referenceFile": null
+      "referenceFile": "Test AI/30. Pojistná smlouva c. 3282140369.pdf",
+      "coversCorpusIds": [
+        "C002"
+      ]
     },
     {
       "id": "G02",
@@ -16,7 +20,13 @@
       "documentFamily": "life_insurance",
       "expectedPrimaryType": "life_insurance_modelation",
       "publishableAsContract": false,
-      "referenceFile": "Test AI/33543904_Modelace zivotniho pojisteni.pdf"
+      "referenceFile": "Test AI/33543904_Modelace zivotniho pojisteni.pdf",
+      "coversCorpusIds": [
+        "C003",
+        "C007",
+        "C011",
+        "C013"
+      ]
     },
     {
       "id": "G03",
@@ -24,7 +34,12 @@
       "documentFamily": "life_insurance",
       "expectedPrimaryType": "life_insurance_investment_contract",
       "publishableAsContract": "partial",
-      "referenceFile": "Test AI/Hanna Havdan GČP.pdf"
+      "referenceFile": "Test AI/Hanna Havdan GČP.pdf",
+      "coversCorpusIds": [
+        "C009",
+        "C014",
+        "C027"
+      ]
     },
     {
       "id": "G04",
@@ -32,7 +47,11 @@
       "documentFamily": "life_insurance",
       "expectedPrimaryType": "life_insurance_proposal",
       "publishableAsContract": true,
-      "referenceFile": "Test AI/Lehnert Metlife.pdf"
+      "referenceFile": "Test AI/Lehnert Metlife.pdf",
+      "coversCorpusIds": [
+        "C008",
+        "C009"
+      ]
     },
     {
       "id": "G05",
@@ -40,7 +59,14 @@
       "documentFamily": "investment",
       "expectedPrimaryType": "investment_subscription_document",
       "publishableAsContract": true,
-      "referenceFile": "Test AI/AMUNDI PLATFORMA - účet CZ KLASIK - DIP (4).pdf"
+      "referenceFile": "Test AI/AMUNDI PLATFORMA - účet CZ KLASIK - DIP (4).pdf",
+      "coversCorpusIds": [
+        "C004",
+        "C005",
+        "C018",
+        "C021",
+        "C022"
+      ]
     },
     {
       "id": "G06",
@@ -48,7 +74,10 @@
       "documentFamily": "consumer_credit",
       "expectedPrimaryType": "consumer_loan_contract",
       "publishableAsContract": true,
-      "referenceFile": "Test AI/Smlouva_o_ČSOB_Spotřebitelském_úvěru.pdf"
+      "referenceFile": "Test AI/Smlouva o ČSOB Spotřebitelském úvěru.pdf",
+      "coversCorpusIds": [
+        "C019"
+      ]
     },
     {
       "id": "G07",
@@ -56,7 +85,11 @@
       "documentFamily": "mortgage",
       "expectedPrimaryType": "mortgage_document",
       "publishableAsContract": true,
-      "referenceFile": "Test AI/1045978-001_D102_Smlouva o poskytnutí hypotečního úvěru_navrh.pdf"
+      "referenceFile": "Test AI/1045978-001_D102_Smlouva o poskytnutí hypotečního úvěru_navrh.pdf",
+      "coversCorpusIds": [
+        "C001",
+        "C024"
+      ]
     },
     {
       "id": "G08",
@@ -64,7 +97,10 @@
       "documentFamily": "leasing",
       "expectedPrimaryType": "generic_financial_document",
       "publishableAsContract": true,
-      "referenceFile": "Test AI/ČSOB Leasing PBI.pdf"
+      "referenceFile": "Test AI/ČSOB Leasing PBI.pdf",
+      "coversCorpusIds": [
+        "C025"
+      ]
     },
     {
       "id": "G09",
@@ -72,7 +108,13 @@
       "documentFamily": "compliance",
       "expectedPrimaryType": "consent_or_declaration",
       "publishableAsContract": false,
-      "referenceFile": "Test AI/komis sml. aml fatca (1).pdf"
+      "referenceFile": "Test AI/komis sml. aml fatca (1).pdf",
+      "coversCorpusIds": [
+        "C006",
+        "C020",
+        "C023",
+        "C016"
+      ]
     },
     {
       "id": "G10",
@@ -81,7 +123,8 @@
       "expectedPrimaryType": null,
       "publishableAsContract": null,
       "referenceFile": null,
-      "assistantOnly": true
+      "assistantOnly": true,
+      "coversCorpusIds": []
     },
     {
       "id": "G11",
@@ -90,7 +133,8 @@
       "expectedPrimaryType": null,
       "publishableAsContract": null,
       "referenceFile": null,
-      "assistantOnly": true
+      "assistantOnly": true,
+      "coversCorpusIds": []
     },
     {
       "id": "G12",
@@ -99,7 +143,829 @@
       "expectedPrimaryType": null,
       "publishableAsContract": null,
       "referenceFile": null,
-      "assistantOnly": true
+      "assistantOnly": true,
+      "coversCorpusIds": []
+    }
+  ],
+  "corpusDocuments": [
+    {
+      "id": "C001",
+      "familyBucket": "mortgage_or_mortgage_proposal",
+      "referenceFile": "Test AI/1045978-001_D102_Smlouva o poskytnutí hypotečního úvěru_navrh.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "mortgage_document",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "borrower",
+        "coBorrower",
+        "lender",
+        "collateral",
+        "loanPurpose"
+      ],
+      "expectedExtractedFields": [
+        "principal",
+        "interestRate",
+        "maturityMonths",
+        "fixation",
+        "drawingDate"
+      ],
+      "expectedForbiddenActions": [
+        "classify_as_consumer_loan_only",
+        "drop_co_borrower_when_present"
+      ],
+      "expectedReviewFlags": [
+        "review_required",
+        "multi_party_alignment"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G07"
+      ],
+      "corpusNote": "Hypoteční návrh; ověřit návrh vs čerpání."
+    },
+    {
+      "id": "C002",
+      "familyBucket": "final_life_contract",
+      "referenceFile": "Test AI/30. Pojistná smlouva c. 3282140369.pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "life_insurance_final_contract",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insuredPersons",
+        "insurer",
+        "product"
+      ],
+      "expectedExtractedFields": [
+        "contractNumber",
+        "institutionName",
+        "productName",
+        "effectiveDate",
+        "premiumAmount",
+        "paymentFrequency",
+        "risks"
+      ],
+      "expectedForbiddenActions": [
+        "apply_as_modelation_without_override",
+        "wrong_client_match_from_attachment"
+      ],
+      "expectedReviewFlags": [
+        "review_required_if_payment_incomplete"
+      ],
+      "expectedAssistantRelevance": "post_upload_plan",
+      "mapsToGoldenScenarioIds": [
+        "G01"
+      ]
+    },
+    {
+      "id": "C003",
+      "familyBucket": "life_modelation",
+      "referenceFile": "Test AI/33543904_Modelace zivotniho pojisteni.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "life_insurance_modelation",
+      "publishable": false,
+      "isPacket": false,
+      "expectedEntities": [
+        "participants",
+        "insurer",
+        "product"
+      ],
+      "expectedExtractedFields": [
+        "premiumAmount",
+        "productName",
+        "institutionName",
+        "illustrationDates"
+      ],
+      "expectedForbiddenActions": [
+        "publish_as_final_contract_without_override"
+      ],
+      "expectedReviewFlags": [
+        "apply_barrier_modelation",
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G02"
+      ]
+    },
+    {
+      "id": "C004",
+      "familyBucket": "investment_or_dip_or_dps",
+      "referenceFile": "Test AI/AMUNDI PLATFORMA - účet CZ KLASIK - DIP (4).pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "investment_subscription_document",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "investor",
+        "custodian",
+        "bankAccount"
+      ],
+      "expectedExtractedFields": [
+        "institutionName",
+        "strategyOrFund",
+        "contributionAmount",
+        "effectiveDate",
+        "iban"
+      ],
+      "expectedForbiddenActions": [
+        "classify_as_pure_life_insurance"
+      ],
+      "expectedReviewFlags": [
+        "review_required",
+        "hybrid_type_signals"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G05"
+      ],
+      "corpusNote": "DIP; rozlišit od pojistného produktu."
+    },
+    {
+      "id": "C005",
+      "familyBucket": "investment_or_dip_or_dps",
+      "referenceFile": "Test AI/DPPDP9-0009513230-20250325-100501.pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "pension_contract",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "participant",
+        "pensionFund"
+      ],
+      "expectedExtractedFields": [
+        "institutionName",
+        "contributionAmount",
+        "strategy",
+        "contractOrParticipantRef"
+      ],
+      "expectedForbiddenActions": [
+        "misclassify_as_consumer_loan"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G05"
+      ],
+      "corpusNote": "DPS smlouva."
+    },
+    {
+      "id": "C006",
+      "familyBucket": "service_or_aml_or_supporting_doc",
+      "referenceFile": "Test AI/Honzajk čpp změna.pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "insurance_policy_change_or_service_doc",
+      "publishable": false,
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "policyReference",
+        "changeDescription"
+      ],
+      "expectedForbiddenActions": [
+        "create_new_contract_as_greenfield"
+      ],
+      "expectedReviewFlags": [
+        "manual_review_required",
+        "reference_only"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G09"
+      ],
+      "corpusNote": "Změna / servis u stávající pojistky."
+    },
+    {
+      "id": "C007",
+      "familyBucket": "life_modelation",
+      "referenceFile": "Test AI/Honzajk_KNZ_1FG_modelace_251107_161032.pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "life_insurance_modelation",
+      "publishable": false,
+      "isPacket": false,
+      "expectedEntities": [
+        "participants",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "premiumAmount",
+        "productName",
+        "institutionName"
+      ],
+      "expectedForbiddenActions": [
+        "publish_as_final_contract_without_override"
+      ],
+      "expectedReviewFlags": [
+        "apply_barrier_modelation"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G02"
+      ]
+    },
+    {
+      "id": "C008",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Lehnert Metlife.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "life_insurance_proposal",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insuredAdults",
+        "insuredChildren",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "premiumAmount",
+        "smokerStatus",
+        "annualIncome",
+        "risks",
+        "productName"
+      ],
+      "expectedForbiddenActions": [
+        "merge_two_persons_into_one_name"
+      ],
+      "expectedReviewFlags": [
+        "multi_person_review_required"
+      ],
+      "expectedAssistantRelevance": "post_upload_plan",
+      "mapsToGoldenScenarioIds": [
+        "G04"
+      ],
+      "corpusNote": "Multi-person MetLife návrh."
+    },
+    {
+      "id": "C009",
+      "familyBucket": "life_bundle_with_questionnaires",
+      "referenceFile": "Test AI/Navrh_pojistne_smlouvy (1).pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "life_insurance_proposal",
+      "publishable": "partial",
+      "isPacket": true,
+      "expectedEntities": [
+        "policyholder",
+        "insuredAdults",
+        "insuredChildren",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "premiumAmount",
+        "risks",
+        "healthSectionSignals",
+        "proposalOrContractRef"
+      ],
+      "expectedForbiddenActions": [
+        "treat_health_appendix_as_portal_contract"
+      ],
+      "expectedReviewFlags": [
+        "mixed_sensitive_document",
+        "health_data_warnings"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G03",
+        "G04"
+      ],
+      "corpusNote": "Bundle: návrh + zdravotní části (master plán)."
+    },
+    {
+      "id": "C010",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Navrh_pojistne_smlouvy (2).pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "nonlife_insurance_contract",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "vehicle",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "licensePlate",
+        "vin",
+        "premiumAmount",
+        "coverageScope"
+      ],
+      "expectedForbiddenActions": [
+        "force_life_insurance_taxonomy"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [],
+      "corpusNote": "non_life motor (POV). Bucket life_proposal = insurance offer stage; taxonomie může být rozšířena ve Fázi 2."
+    },
+    {
+      "id": "C011",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Navrh_pojistne_smlouvy (3).pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "liability_insurance_offer",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "coverageLimits",
+        "premiumAmount",
+        "paymentAccount",
+        "variableSymbol"
+      ],
+      "expectedForbiddenActions": [
+        "map_motor_rules_onto_liability_doc"
+      ],
+      "expectedReviewFlags": [
+        "apply_barrier_proposal"
+      ],
+      "expectedAssistantRelevance": "post_upload_plan",
+      "mapsToGoldenScenarioIds": [
+        "G02"
+      ],
+      "corpusNote": "Návrh odpovědnosti (ČSOB dle master plánu)."
+    },
+    {
+      "id": "C012",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Navrh_pojistne_smlouvy (4).pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "nonlife_insurance_contract",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insuredProperty",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "propertyAddress",
+        "coverageLimits",
+        "premiumAmount"
+      ],
+      "expectedForbiddenActions": [
+        "map_to_life_segment_in_crm"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [],
+      "corpusNote": "non_life majetek/domácnost."
+    },
+    {
+      "id": "C013",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Navrh_pojistne_smlouvy_20251201152350427347.PDF",
+      "gitTracked": true,
+      "expectedPrimaryType": "life_insurance_proposal",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insuredPersons",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "premiumAmount",
+        "productName"
+      ],
+      "expectedForbiddenActions": [
+        "publish_as_final_without_confirmation"
+      ],
+      "expectedReviewFlags": [
+        "apply_barrier_proposal"
+      ],
+      "expectedAssistantRelevance": "post_upload_plan",
+      "mapsToGoldenScenarioIds": [
+        "G02"
+      ],
+      "corpusNote": "Velký export návrhu; stejná očekávání jako ostatní návrhy."
+    },
+    {
+      "id": "C014",
+      "familyBucket": "life_bundle_with_questionnaires",
+      "referenceFile": "Test AI/Pojistna_smlouva.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "life_insurance_proposal",
+      "publishable": "partial",
+      "isPacket": true,
+      "expectedEntities": [
+        "policyholder",
+        "insuredPersons",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "premiumAmount",
+        "healthSignals",
+        "paymentAccount",
+        "variableSymbol"
+      ],
+      "expectedForbiddenActions": [
+        "ignore_health_sensitivity"
+      ],
+      "expectedReviewFlags": [
+        "mixed_sensitive_document"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G03"
+      ],
+      "corpusNote": "Pillow úraz/nemoc + zdravotní části (master plán)."
+    },
+    {
+      "id": "C015",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Pojistna_smlouva_Bibiš.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "nonlife_insurance_contract",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "business",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "coverageLimits",
+        "turnover",
+        "premiumAmount"
+      ],
+      "expectedForbiddenActions": [
+        "apply_life_insurance_schema"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [],
+      "corpusNote": "Podnikatelská odpovědnost (neživot)."
+    },
+    {
+      "id": "C016",
+      "familyBucket": "service_or_aml_or_supporting_doc",
+      "referenceFile": "Test AI/RSR Quick s.r.o. DP 2024.pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "corporate_tax_return",
+      "publishable": false,
+      "isPacket": false,
+      "expectedEntities": [
+        "company",
+        "period"
+      ],
+      "expectedExtractedFields": [
+        "taxPeriod",
+        "identifierReferences"
+      ],
+      "expectedForbiddenActions": [
+        "publish_as_insurance_contract"
+      ],
+      "expectedReviewFlags": [
+        "reference_only",
+        "manual_review_required"
+      ],
+      "expectedAssistantRelevance": "low_direct_crm",
+      "mapsToGoldenScenarioIds": [
+        "G09"
+      ],
+      "corpusNote": "DP podklady; evidence / analýza, ne CRM smlouva."
+    },
+    {
+      "id": "C017",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Roman Koloburda UNIQA.pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "life_insurance_proposal",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insuredPersons",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "premiumAmount",
+        "productName"
+      ],
+      "expectedForbiddenActions": [
+        "commit_final_contract_without_verifying_header"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "post_upload_plan",
+      "mapsToGoldenScenarioIds": [],
+      "corpusNote": "Ověřit návrh vs finální smlouva podle záhlaví (checklist)."
+    },
+    {
+      "id": "C018",
+      "familyBucket": "investment_or_dip_or_dps",
+      "referenceFile": "Test AI/Smlouva (3).pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "pension_contract",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "participant",
+        "fund"
+      ],
+      "expectedExtractedFields": [
+        "institutionName",
+        "contributionAmount",
+        "strategy",
+        "nominatedPersons"
+      ],
+      "expectedForbiddenActions": [
+        "classify_as_life_insurance_contract"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G05"
+      ],
+      "corpusNote": "Conseq DPS (master plán)."
+    },
+    {
+      "id": "C019",
+      "familyBucket": "consumer_loan",
+      "referenceFile": "Test AI/Smlouva o ČSOB Spotřebitelském úvěru.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "consumer_loan_contract",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "borrower",
+        "lender"
+      ],
+      "expectedExtractedFields": [
+        "principal",
+        "aprOrRate",
+        "installment",
+        "termMonths",
+        "purpose"
+      ],
+      "expectedForbiddenActions": [
+        "classify_as_mortgage"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G06"
+      ],
+      "aliasFileNames": [
+        "Test AI/Smlouva_o_ČSOB_Spotřebitelském_úvěru.pdf"
+      ]
+    },
+    {
+      "id": "C020",
+      "familyBucket": "service_or_aml_or_supporting_doc",
+      "referenceFile": "Test AI/Smlouva-o-poskytovani-sluzeb-Chlumecky-Jiri.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "service_agreement",
+      "publishable": false,
+      "isPacket": false,
+      "expectedEntities": [
+        "client",
+        "provider"
+      ],
+      "expectedExtractedFields": [
+        "effectiveDate",
+        "scopeSummary"
+      ],
+      "expectedForbiddenActions": [
+        "auto_create_client_product_contract"
+      ],
+      "expectedReviewFlags": [
+        "manual_review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G09"
+      ],
+      "corpusNote": "CODYA servisní / rámcová investiční smlouva."
+    },
+    {
+      "id": "C021",
+      "familyBucket": "investment_or_dip_or_dps",
+      "referenceFile": "Test AI/Smlouva-o-upisu-CODYAMIX-Chlumecky-Jiri.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "investment_subscription_document",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "investor",
+        "fundPlatform"
+      ],
+      "expectedExtractedFields": [
+        "institutionName",
+        "isinOrFundName",
+        "account"
+      ],
+      "expectedForbiddenActions": [
+        "treat_as_life_policy"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G05"
+      ],
+      "corpusNote": "CODYA úpis."
+    },
+    {
+      "id": "C022",
+      "familyBucket": "investment_or_dip_or_dps",
+      "referenceFile": "Test AI/VL-202512.pdf",
+      "gitTracked": true,
+      "expectedPrimaryType": "pension_contract",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "participant"
+      ],
+      "expectedExtractedFields": [
+        "institutionName",
+        "productFramework"
+      ],
+      "expectedForbiddenActions": [
+        "confuse_pp_with_pure_investment"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G05"
+      ],
+      "corpusNote": "Penzijní rámec VL; rozlišit PP vs DPS."
+    },
+    {
+      "id": "C023",
+      "familyBucket": "service_or_aml_or_supporting_doc",
+      "referenceFile": "Test AI/komis sml. aml fatca (1).pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "consent_or_declaration",
+      "publishable": false,
+      "isPacket": false,
+      "expectedEntities": [
+        "clientRepresentative",
+        "intermediary"
+      ],
+      "expectedExtractedFields": [
+        "documentKind",
+        "signatureDate"
+      ],
+      "expectedForbiddenActions": [
+        "publish_as_standard_product_contract"
+      ],
+      "expectedReviewFlags": [
+        "manual_review_required",
+        "high_sensitivity"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G09"
+      ],
+      "corpusNote": "AML/FATCA / komisionářská dokumentace."
+    },
+    {
+      "id": "C024",
+      "familyBucket": "mortgage_or_mortgage_proposal",
+      "referenceFile": "Test AI/Úvěrová smlouva ČÚ 111 06034 25 (1).pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "mortgage_document",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "borrower",
+        "coBorrower",
+        "lender"
+      ],
+      "expectedExtractedFields": [
+        "principal",
+        "interestRate",
+        "fixation",
+        "purpose",
+        "security"
+      ],
+      "expectedForbiddenActions": [
+        "single_borrower_when_two_listed"
+      ],
+      "expectedReviewFlags": [
+        "review_required",
+        "multi_party_alignment"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G07"
+      ],
+      "corpusNote": "RB hypotéka / úvěr na bydlení; více stran."
+    },
+    {
+      "id": "C025",
+      "familyBucket": "leasing",
+      "referenceFile": "Test AI/ČSOB Leasing PBI.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "generic_financial_document",
+      "publishable": true,
+      "isPacket": false,
+      "expectedEntities": [
+        "lessee",
+        "lessor",
+        "vehicleOrAsset"
+      ],
+      "expectedExtractedFields": [
+        "financedAmount",
+        "vin",
+        "registrationPlate",
+        "businessPurpose"
+      ],
+      "expectedForbiddenActions": [
+        "map_to_consumer_loan_schema"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G08"
+      ],
+      "corpusNote": "Leasing / podnikatelské financování; POV/HAV v textu."
+    },
+    {
+      "id": "C026",
+      "familyBucket": "life_proposal",
+      "referenceFile": "Test AI/Čučka zamzam GČP.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "liability_insurance_offer",
+      "publishable": "partial",
+      "isPacket": false,
+      "expectedEntities": [
+        "policyholder",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "coverageLimits",
+        "coinsurance",
+        "premiumAmount"
+      ],
+      "expectedForbiddenActions": [
+        "treat_as_life"
+      ],
+      "expectedReviewFlags": [
+        "review_required"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [],
+      "corpusNote": "Generali odpovědnost při výkonu povolání (master plán)."
+    },
+    {
+      "id": "C027",
+      "familyBucket": "life_bundle_with_questionnaires",
+      "referenceFile": "Test AI/Hanna Havdan GČP.pdf",
+      "gitTracked": false,
+      "expectedPrimaryType": "life_insurance_investment_contract",
+      "publishable": "partial",
+      "isPacket": true,
+      "expectedEntities": [
+        "policyholder",
+        "insuredPersons",
+        "insurer"
+      ],
+      "expectedExtractedFields": [
+        "contractNumber",
+        "investmentStrategy",
+        "premiumAmount",
+        "healthSegments"
+      ],
+      "expectedForbiddenActions": [
+        "publish_health_bundle_as_single_visible_contract"
+      ],
+      "expectedReviewFlags": [
+        "mixed_sensitive_document",
+        "packet_segmentation_needed"
+      ],
+      "expectedAssistantRelevance": "review_detail_context",
+      "mapsToGoldenScenarioIds": [
+        "G03"
+      ],
+      "corpusNote": "Komplexní balík (master plán); soubor nemusí být fyzicky v každém git checkout – doplnit lokálně do Test AI/."
     }
   ]
 }

@@ -1,21 +1,25 @@
 # Golden dataset — AI Review + AI asistent
 
-**Fáze 1:** struktura a manifest; binární PDF drž lokálně (např. `Test AI/`) nebo v zabezpečeném úložišti.
+**Fáze 1:** manifest verze **2** — scénáře **G01–G12** + **`corpusDocuments` C001–C027** (širší reálný korpus `Test AI/`). Binární PDF často **nejsou v gitu**; drž je lokálně ve stejné cestě jako `referenceFile`.
 
 ## Soubory
 
 | Soubor | Účel |
 |--------|------|
-| `scenarios.manifest.json` | Strojový seznam scénářů G01–G12 pro budoucí eval harness. |
-| `docs/ai-review-assistant-phase-1-golden-dataset.md` (repo root) | Lidská pravda: očekávání, akce, zakázané akce. |
+| `scenarios.manifest.json` | `scenarios[]`, `corpusDocuments[]`, `version`, odkaz na docs bucketů. |
+| `regenerate-manifest.cjs` | Z kořene repa: `node fixtures/golden-ai-review/regenerate-manifest.cjs` — přepíše JSON a nastaví `gitTracked` přes `git ls-files -- Test AI/`. Uprav nejdřív pole `corpusDocuments` v tomto skriptu, pak ho spusť. |
+| `docs/ai-review-assistant-phase-1-corpus-inventory.md` | Lidská tabulka C001–C027. |
+| `docs/ai-review-assistant-phase-1-corpus-buckets.md` | Definice `familyBucket` + minimální výstupy. |
+| `docs/ai-review-assistant-phase-1-golden-dataset.md` | Narrativ G01–G12. |
 
-## Jak přidat PDF do scénáře
+## Jak přidat nebo změnit PDF
 
-1. Ulož soubor do `Test AI/` (nebo jiné neveřejné složky).  
-2. Doplň `referenceFile` v manifestu (relativní cesta od root repa).  
-3. Nespoléhej na commit binárek — tým si synchronizuje soubory zvlášť.
+1. Ulož soubor do `Test AI/`.  
+2. Uprav záznam v `regenerate-manifest.cjs` (pole `corpusDocuments` uvnitř `mk(...)` řádků) nebo přímo `scenarios.manifest.json` a udržuj konzistenci s inventory markdown.  
+3. Spusť `node fixtures/golden-ai-review/regenerate-manifest.cjs` pokud chceš přepočítat `gitTracked`.  
+4. Aktualizuj [ai-review-assistant-phase-1-corpus-inventory.md](../../docs/ai-review-assistant-phase-1-corpus-inventory.md), pokud se mění tabulka.
 
 ## Budoucí harness (Fáze 2+)
 
-- Načíst manifest → pro každý `id` spustit pipeline `runAiReviewV2Pipeline` / E2E upload.  
-- Porovnat výstup proti polím v markdown dokumentu a proti acceptance criteria v `docs/ai-review-assistant-phase-1-acceptance-criteria-phase-2plus.md`.
+- Načíst manifest → pro každé `corpusDocuments.id` spustit upload / pipeline a porovnat JSON výstup s `expectedPrimaryType`, `expectedExtractedFields` a zakázanými akcemi.  
+- Vitest: `golden-dataset-manifest.test.ts` kontroluje schéma manifestu.

@@ -2,14 +2,16 @@
 
 Konkrétní, testovatelné věty. Splnění = pro daný golden scénář (G01–G12) bez regrese.
 
+**Odkaz na korpus:** kde je v textu název souboru, eval prováděj primárně proti příslušnému ID **C001–C027** v [`fixtures/golden-ai-review/scenarios.manifest.json`](../fixtures/golden-ai-review/scenarios.manifest.json) — viz [ai-review-assistant-phase-1-corpus-inventory.md](./ai-review-assistant-phase-1-corpus-inventory.md). Např. bod 1 ↔ **C003**, bod 2 ↔ **C019**, bod 3 ↔ **C004**, bod 4 ↔ **C023**.
+
 ---
 
 ## Document type classification
 
-1. Pro `33543904_Modelace zivotniho pojisteni.pdf` musí `primaryType` být `life_insurance_modelation` (ne `life_insurance_final_contract`) a `lifecycleStatus` musí odpovídat modelaci.
-2. Pro CSOB spotřebitelský úvěr PDF musí být `primaryType` `consumer_loan_contract`, nikdy `mortgage_document`.
-3. Pro AMUNDI DIP PDF musí výstup nést investiční/DIP signál (`investment_subscription_document` nebo schválený hybridní mapping z `resolveHybridInvestmentDocumentType`), ne čisté `life_insurance_contract`.
-4. Pro `komis sml. aml fatca (1).pdf` musí být klasifikace v rodině compliance / servis (`consent_or_declaration`, `service_agreement`, nebo `generic_financial_document` s `documentIntent: manual_review_required`) — nikdy automaticky finální životní smlouva.
+1. Pro **C003** / `33543904_Modelace zivotniho pojisteni.pdf` musí `primaryType` být `life_insurance_modelation` (ne `life_insurance_final_contract`) a `lifecycleStatus` musí odpovídat modelaci.
+2. Pro **C019** / CSOB spotřebitelský úvěr PDF musí být `primaryType` `consumer_loan_contract`, nikdy `mortgage_document`.
+3. Pro **C004** / AMUNDI DIP PDF musí výstup nést investiční/DIP signál (`investment_subscription_document` nebo schválený hybridní mapping z `resolveHybridInvestmentDocumentType`), ne čisté `life_insurance_contract`.
+4. Pro **C023** / `komis sml. aml fatca (1).pdf` musí být klasifikace v rodině compliance / servis (`consent_or_declaration`, `service_agreement`, nebo `generic_financial_document` s `documentIntent: manual_review_required`) — nikdy automaticky finální životní smlouva.
 
 ## Packet / bundle segmentation
 
