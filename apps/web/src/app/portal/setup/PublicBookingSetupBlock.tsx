@@ -157,9 +157,18 @@ export function PublicBookingSetupBlock({ initial, canonicalBaseUrl }: Props) {
         <p className="text-xs text-indigo-100/95 mb-4 leading-relaxed">
           Odkaz pošlete klientovi e-mailem nebo jinou zprávou — otevře jednoduchou stránku (podobně jako Calendly), kde si zvolí volný čas a vyplní kontakt.
         </p>
-        <p className="text-xs text-indigo-100/90 mb-4 leading-relaxed border border-white/15 rounded-xl p-3 bg-black/10">
-          Obsazenost se bere z událostí uložených v Aidvisoře u vás jako poradce. Události pouze v Google Kalendáři (bez záznamu v CRM) se v nabídce volných slotů nemusí projevit.
+        <p className="text-xs text-indigo-100/90 mb-3 leading-relaxed border border-white/15 rounded-xl p-3 bg-black/10">
+          <strong className="font-bold text-white">Obsazenost:</strong> z událostí v kalendáři Aidvisory přiřazených vám. Máte-li v nastavení zapojený <strong className="font-bold text-white">Google Kalendář</strong>, slučujeme i jeho volno/obsazeno z Google API — klient vidí jen výsledné volné časy, nikoli názvy ani účastníky vašich jiných schůzek.
         </p>
+        <div className="text-xs text-indigo-100/95 mb-4 leading-relaxed border border-white/15 rounded-xl p-3 bg-black/10">
+          <p className="font-black uppercase tracking-widest text-indigo-200 mb-2">Jak odkaz zprovoznit</p>
+          <ol className="list-decimal list-inside space-y-1.5 font-semibold">
+            <li>Zaškrtněte „Zapnout veřejnou rezervaci“.</li>
+            <li>Nastavte délku slotu, dny a hodiny → klikněte <strong className="text-white">Uložit nastavení rezervací</strong>.</li>
+            <li>Zkopírujte odkaz výše a pošlete klientovi (e-mail, SMS).</li>
+            <li>Ověřte si stránku v anonymním okně prohlížeče — měly by se zobrazit volné termíny.</li>
+          </ol>
+        </div>
 
         <label className="flex items-center gap-3 cursor-pointer min-h-[44px] mb-4">
           <input

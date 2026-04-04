@@ -2,6 +2,9 @@ import "server-only";
 
 import { db, advisorPreferences, tenants, userProfiles, events, contacts, eq, and, lt, or, isNull, ne, sql } from "db";
 import type { BookingWeeklyAvailability } from "db";
+import { getValidAccessToken } from "@/lib/integrations/google-calendar-integration-service";
+import { queryFreeBusy } from "@/lib/integrations/google-calendar";
+import { addDaysPragueYmd, formatYmdInPrague, pragueWallToUtcMs, BOOKING_TIMEZONE } from "./prague-time";
 import type { BusyInterval } from "./slots";
 
 export type ResolvedPublicBookingAdvisor = {
@@ -62,6 +65,33 @@ export async function resolveEnabledPublicBooking(
   };
 }
 
+function eventRowToBusyInterval(
+  r: { startAt: Date; endAt: Date | null; allDay: boolean | null },
+  rangeStartMs: number,
+  rangeEndMs: number,
+): BusyInterval | null {
+  let startMs: number;
+  let endMs: number;
+
+  if (r.allDay) {
+    const ymd = formatYmdInPrague(r.startAt.getTime());
+    try {
+      startMs = pragueWallToUtcMs(ymd, "00:00");
+      endMs = pragueWallToUtcMs(addDaysPragueYmd(ymd, 1), "00:00");
+    } catch {
+      return null;
+    }
+  } else {
+    const end = r.endAt ?? new Date(r.startAt.getTime() + 60 * 60 * 1000);
+    startMs = r.startAt.getTime();
+    endMs = end.getTime();
+  }
+
+  if (endMs <= rangeStartMs || startMs >= rangeEndMs) return null;
+  return { startMs, endMs };
+}
+
+/** Události z CRM přiřazené poradci (včetně celodenních — celý den v Europe/Prague). Zrušené se nepočítají. */
 export async function loadBusyIntervalsForAdvisor(
   tenantId: string,
   userId: string,
@@ -72,6 +102,7 @@ export async function loadBusyIntervalsForAdvisor(
     .select({
       startAt: events.startAt,
       endAt: events.endAt,
+      allDay: events.allDay,
       status: events.status,
     })
     .from(events)
@@ -89,13 +120,71 @@ export async function loadBusyIntervalsForAdvisor(
   const rangeEndMs = rangeEndUtc.getTime();
 
   for (const r of rows) {
-    const end = r.endAt ?? new Date(r.startAt.getTime() + 60 * 60 * 1000);
-    const startMs = r.startAt.getTime();
-    const endMs = end.getTime();
-    if (endMs <= rangeStartMs || startMs >= rangeEndMs) continue;
-    out.push({ startMs, endMs });
+    const iv = eventRowToBusyInterval(r, rangeStartMs, rangeEndMs);
+    if (iv) out.push(iv);
   }
   return out;
+}
+
+/**
+ * Busy z Google Calendar (free/busy) — jen časové intervaly, bez názvů událostí.
+ * Při ne připojeném kalendáři nebo chybě API vrací prázdné pole.
+ */
+export async function loadGoogleFreeBusyIntervals(
+  tenantId: string,
+  userId: string,
+  rangeStartUtc: Date,
+  rangeEndUtc: Date,
+): Promise<BusyInterval[]> {
+  let accessToken: string;
+  let calendarId: string;
+  try {
+    const v = await getValidAccessToken(userId, tenantId);
+    accessToken = v.accessToken;
+    calendarId = v.calendarId;
+  } catch {
+    return [];
+  }
+
+  const timeMin = rangeStartUtc.toISOString();
+  const timeMax = rangeEndUtc.toISOString();
+
+  try {
+    const res = await queryFreeBusy(accessToken, {
+      timeMin,
+      timeMax,
+      items: [{ id: calendarId }],
+      timeZone: BOOKING_TIMEZONE,
+    });
+    const cal = res.calendars?.[calendarId];
+    if (cal?.errors?.length) return [];
+    const busy = cal?.busy ?? [];
+    const out: BusyInterval[] = [];
+    for (const b of busy) {
+      const startMs = new Date(b.start).getTime();
+      const endMs = new Date(b.end).getTime();
+      if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs) {
+        out.push({ startMs, endMs });
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** CRM + Google free/busy pro výpočet veřejných slotů. */
+export async function loadMergedBusyIntervalsForPublicBooking(
+  tenantId: string,
+  userId: string,
+  rangeStartUtc: Date,
+  rangeEndUtc: Date,
+): Promise<BusyInterval[]> {
+  const [crm, google] = await Promise.all([
+    loadBusyIntervalsForAdvisor(tenantId, userId, rangeStartUtc, rangeEndUtc),
+    loadGoogleFreeBusyIntervals(tenantId, userId, rangeStartUtc, rangeEndUtc),
+  ]);
+  return [...crm, ...google];
 }
 
 export async function findContactIdByEmail(tenantId: string, email: string): Promise<string | null> {

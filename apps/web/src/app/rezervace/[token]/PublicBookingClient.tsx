@@ -159,8 +159,14 @@ export function PublicBookingClient({ token }: { token: string }) {
           </p>
         </div>
       </div>
-      <p className="text-xs text-slate-500 mb-6">
+      <p className="text-xs text-slate-500 mb-3">
         Časy jsou v časovém pásmu {meta.timezone}. Tento formulář slouží jen k domluvě administrativního termínu, nejedná se o investiční doporučení.
+      </p>
+      <p className="text-xs text-slate-500 mb-3">
+        Zobrazují se jen <strong className="font-semibold text-slate-600">volné termíny</strong> — konkrétní obsazené schůzky (s kým nebo o čem jsou) se neukazují.
+      </p>
+      <p className="text-xs text-slate-500 mb-6">
+        Nejčasnější nabízené časy začínají nejdříve za 2 hodiny od teď (kvůli přípravě).
       </p>
 
       <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">1. Vyberte termín</h2>
