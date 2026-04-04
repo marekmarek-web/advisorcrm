@@ -39,7 +39,6 @@ import { approveContractForClientPortal, updateContract, createContract as creat
 import { upsertCoverageItem } from "@/app/actions/coverage";
 import { sendMessage } from "@/app/actions/messages";
 import { createAdvisorClientRequest } from "../assistant/create-advisor-client-request";
-import { contractSegments } from "../../../../../../packages/db/src/schema/contracts";
 import { validatePartnerInCatalog, validateProductInCatalog } from "./ratings/toplists";
 import { normalizeCoverageStatus } from "./assistant-coverage-item-resolve";
 import { resolveContractSegmentFromUserText, PRODUCT_DOMAIN_DEFAULT_SEGMENT, type ProductDomain } from "./assistant-domain-model";

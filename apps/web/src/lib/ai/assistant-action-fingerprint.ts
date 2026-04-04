@@ -36,6 +36,27 @@ const FINGERPRINT_KEYS_BY_ACTION: Record<WriteActionType, string[]> = {
   draftEmail: ["contactId", "subject"],
   draftClientPortalMessage: ["contactId", "subject"],
   sendPortalMessage: ["contactId", "portalMessageBody", "noteContent"],
+  createContract: [
+    "contactId",
+    "segment",
+    "partnerName",
+    "productName",
+    "premiumAmount",
+    "contractNumber",
+    "startDate",
+    "resolvedDate",
+  ],
+  upsertContactCoverage: [
+    "contactId",
+    "itemKey",
+    "coverageItemKey",
+    "status",
+    "coverageStatus",
+    "noteContent",
+    "notes",
+    "linkedContractId",
+    "linkedOpportunityId",
+  ],
 };
 
 /**
