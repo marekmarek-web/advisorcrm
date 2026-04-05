@@ -28,6 +28,11 @@ export const advisorPreferences = pgTable(
     birthdayReplyToEmail: text("birthday_reply_to_email"),
     /** premium_dark | birthday_gif — override workspace default. */
     birthdayEmailTheme: text("birthday_email_theme"),
+    /** Výběr a pořadí fondů z katalogu pro Finanční analýzu (viz fund-library). */
+    fundLibrary: jsonb("fund_library").$type<{
+      enabled: Record<string, boolean>;
+      order: string[];
+    }>(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
