@@ -52,3 +52,4 @@ export * from "./tenant-settings";
 export * from "./dead-letter-items";
 export * from "./portal-feedback";
 export * from "./assistant-conversations";
+export * from "./fund-add-requests";
