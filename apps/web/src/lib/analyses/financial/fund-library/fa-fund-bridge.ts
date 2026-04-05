@@ -95,6 +95,15 @@ function mergeAwards(catalog?: string, legacy?: string): string | undefined {
   return [...new Set(parts)].join(" · ");
 }
 
+/** Hero + 3× galerie vždy vyplněné (placeholdery), aby HTML/PDF nespoléhaly na optional řetězce. */
+function ensureFundDetailReportAssets(d: FundDetail): FundDetail {
+  const hero = d.heroImage?.trim() || FUND_PLACEHOLDER_HERO_PATH;
+  const galleryIn = (d.galleryImages ?? []).map((x) => String(x).trim()).filter(Boolean);
+  const gallery = [...galleryIn];
+  while (gallery.length < 3) gallery.push(FUND_PLACEHOLDER_GALLERY_PATH);
+  return { ...d, heroImage: hero, galleryImages: gallery.slice(0, 3) };
+}
+
 function mergeReportFundDetail(catalog: FundDetail, legacy: FundDetail): FundDetail {
   const parameters = { ...legacy.parameters, ...catalog.parameters };
   const paramsClean = Object.keys(parameters).length > 0 ? parameters : undefined;
@@ -158,6 +167,7 @@ function mergeReportFundDetail(catalog: FundDetail, legacy: FundDetail): FundDet
     currency: catalog.currency ?? legacy.currency,
     minInvestment: catalog.minInvestment ?? legacy.minInvestment,
     category: catalog.category ?? legacy.category,
+    summaryLine: catalog.summaryLine?.trim() || legacy.summaryLine?.trim() || undefined,
     heroImage,
     galleryImages,
     galleryType:
@@ -205,6 +215,7 @@ function buildDetailFromBaseFund(fund: BaseFund): FundDetail {
 
   return {
     name: ((fund.canonicalName?.trim() || fund.displayName || "").trim() || "—"),
+    summaryLine: subcat || undefined,
     manager: (fund.manager ?? fund.provider ?? "").trim() || "—",
     provider: fund.provider?.trim() || undefined,
     goal: fund.goal?.trim() || "—",
@@ -297,12 +308,12 @@ export function getFaFundDetailForReport(productKey: string): FundDetail | undef
   const legacyDirect = FUND_DETAILS[raw];
 
   if (!fund) {
-    return legacyDirect;
+    return legacyDirect ? ensureFundDetailReportAssets(legacyDirect) : undefined;
   }
 
   const fromCatalog = buildDetailFromBaseFund(fund);
   if (legacyFromCanonical) {
-    return mergeReportFundDetail(fromCatalog, legacyFromCanonical);
+    return ensureFundDetailReportAssets(mergeReportFundDetail(fromCatalog, legacyFromCanonical));
   }
-  return fromCatalog;
+  return ensureFundDetailReportAssets(fromCatalog);
 }

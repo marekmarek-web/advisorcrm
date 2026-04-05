@@ -449,6 +449,8 @@ export interface FundDetail {
   minInvestment?: string;
   /** Category for product pill */
   category?: string;
+  /** Krátká doprovodná linka (typicky podtyp fondu ze seedu), bez vymýšlení faktů */
+  summaryLine?: string;
   /** Optional visual for product detail header/body */
   heroImage?: string;
   /** Optional gallery visuals shown under the hero image */

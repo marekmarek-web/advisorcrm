@@ -59,6 +59,13 @@ describe("fund catalog integrity (Batch A–D integration)", () => {
     }
   });
 
+  it("legacy productKey bez katalogu: getFaFundDetailForReport doplní hero + galerii (fallback)", () => {
+    const d = getFaFundDetailForReport("ishares");
+    expect(d).toBeDefined();
+    expect(d?.heroImage?.trim().length ?? 0).toBeGreaterThan(0);
+    expect(d?.galleryImages?.length).toBe(3);
+  });
+
   it("aktuálně žádný fond nemá plně „brand“ vizuály (logo+hero+galerie mimo placeholder) — až po commitu assetů", () => {
     const full = BASE_FUNDS.filter((f) => fundHasFullyCommittedVisualPack(f.assets));
     expect(full.length, `Kompletní pack: ${full.map((x) => x.baseFundKey).join(", ")}`).toBe(0);

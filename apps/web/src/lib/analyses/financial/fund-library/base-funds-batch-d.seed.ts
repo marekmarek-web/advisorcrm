@@ -96,7 +96,7 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
         kind: "documents",
       },
     ],
-    assetTodo: [],
+    assetTodo: ["logo", "hero", "gallery (commitnuté soubory v public)"],
     notes: [
       "Legacy `productKey` zůstává `creif`; oficiální název zahrnuje EFEKTA Real Estate Fund.",
       "Since inception p.a. je dopočteno z oficiální kumulativní výkonnosti 64.52 % od založení.",
@@ -196,7 +196,7 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
         kind: "documents",
       },
     ],
-    assetTodo: [],
+    assetTodo: ["logo", "hero", "gallery (commitnuté soubory v public)"],
     notes: [
       "Jeden kanonický záznam `atris`; lump vs. monthly řeší `InvestmentEntry.type`, ne duplicitní base fondy.",
       "Alias `atris_realita` → `atris` v legacy mapě pro starší exporty.",
@@ -306,7 +306,7 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
         kind: "documents",
       },
     ],
-    assetTodo: [],
+    assetTodo: ["logo", "hero", "gallery (commitnuté soubory v public)"],
     notes: [
       "Tag `qualified_investor` v availability — filtrování FKI; oddělená UI skupina „FKI / alternativní“.",
       "Oficiální historická performance v seedu záměrně null; target yield není performance.",
