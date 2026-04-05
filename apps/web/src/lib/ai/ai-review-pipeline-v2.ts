@@ -68,6 +68,7 @@ import type {
 import { getPipelineVersionInfo } from "./pipeline-versioning";
 import type { DocumentReviewEnvelope } from "./document-review-types";
 import { resolveHybridInvestmentDocumentType } from "./ai-review-document-type-signals";
+import { applyProductFamilyTextOverride } from "./document-classification-overrides";
 import { resolveDocumentSchema } from "./document-schema-router";
 import {
   COMBINED_CLASSIFY_AND_EXTRACT_MIN_HINT_CHARS,
@@ -626,18 +627,49 @@ export async function runAiReviewV2Pipeline(
         combined.envelope,
         combinedClassification
       );
+
+      // Apply DIP/DPS/PP product family text override in combined extraction path.
+      // If text strongly signals DIP/DPS/PP but classification is life_insurance, correct primaryType.
+      const combinedFamilyOverride = applyProductFamilyTextOverride(
+        // Use life_insurance as the current family when the primary type is life-insurance-based
+        resolvedDocumentType.startsWith("life_insurance")
+          ? "life_insurance"
+          : resolvedDocumentType.startsWith("pension")
+            ? "dps"
+            : "unknown",
+        hint,
+      );
+      let finalDocumentType = resolvedDocumentType;
+      if (combinedFamilyOverride.overrideApplied && resolvedDocumentType.startsWith("life_insurance")) {
+        // Map corrected family → primaryType for the combined path
+        const familyToPrimary: Record<string, ContractDocumentType> = {
+          dip: "pension_contract",
+          dps: "pension_contract",
+          pp: "pension_contract",
+        };
+        const corrected = familyToPrimary[combinedFamilyOverride.productFamily];
+        if (corrected) {
+          finalDocumentType = corrected;
+          allReasons.push(`combined_dip_dps_type_override:${combinedFamilyOverride.overrideReason}`);
+          trace.warnings = [
+            ...(trace.warnings ?? []),
+            `combined_dip_dps_override:${resolvedDocumentType}->${corrected}`,
+          ];
+        }
+      }
+
       const resolvedClassification = classificationForResolvedDocumentType(
-        resolvedDocumentType,
+        finalDocumentType,
         combinedClassification
       );
-      const resolvedNormPipeline = mapPrimaryToPipelineClassification(resolvedDocumentType);
+      const resolvedNormPipeline = mapPrimaryToPipelineClassification(finalDocumentType);
       const resolvedExtractionRoute = resolveExtractionRoute(
         resolvedNormPipeline,
         resolvedClassification.confidence
       );
-      if (resolvedDocumentType !== combinedDocumentType) {
-        allReasons.push("hybrid_contract_signals_detected");
-        trace.documentType = resolvedDocumentType;
+      if (finalDocumentType !== combinedDocumentType) {
+        if (resolvedDocumentType !== combinedDocumentType) allReasons.push("hybrid_contract_signals_detected");
+        trace.documentType = finalDocumentType;
         trace.normalizedPipelineClassification = resolvedNormPipeline;
         trace.extractionRoute = resolvedExtractionRoute;
       }
@@ -649,7 +681,7 @@ export async function runAiReviewV2Pipeline(
         inputModeResult,
         extractionRoute: resolvedExtractionRoute,
         normPipeline: resolvedNormPipeline,
-        documentType: resolvedDocumentType,
+        documentType: finalDocumentType,
         options,
         textCov,
         trace,
@@ -727,9 +759,21 @@ export async function runAiReviewV2Pipeline(
   trace.classificationConfidence = classification.confidence;
   trace.rawClassification = `${ai.documentType}/${ai.productFamily}/${ai.productSubtype}`;
 
+  // Apply text-based product family override (DIP/DPS/PP) before router.
+  // Fixes cases where the LLM classifier returns productFamily="life_insurance" for DIP/DPS/PP documents.
+  const familyOverride = applyProductFamilyTextOverride(ai.productFamily, hint);
+  const effectiveProductFamily = familyOverride.productFamily;
+  if (familyOverride.overrideApplied) {
+    allReasons.push(`product_family_text_override:${familyOverride.overrideReason}`);
+    trace.warnings = [
+      ...(trace.warnings ?? []),
+      `product_family_overridden:${ai.productFamily}->${effectiveProductFamily}:${familyOverride.overrideReason}`,
+    ];
+  }
+
   const router = resolveAiReviewExtractionRoute({
     documentType: ai.documentType,
-    productFamily: ai.productFamily,
+    productFamily: effectiveProductFamily,
     productSubtype: ai.productSubtype,
     businessIntent: ai.businessIntent,
     recommendedRoute: ai.recommendedRoute,

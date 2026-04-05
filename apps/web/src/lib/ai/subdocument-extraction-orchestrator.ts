@@ -20,7 +20,9 @@
  * - Full page-level section text isolation: NOT YET (future iteration)
  */
 
-import { createResponseStructured } from "@/lib/openai";
+import { createResponseStructured, createAiReviewResponseFromPrompt } from "@/lib/openai";
+import { getAiReviewPromptId } from "./prompt-model-registry";
+import { buildAiReviewExtractionPromptVariables } from "./ai-review-prompt-variables";
 import type { DocumentReviewEnvelope } from "./document-review-types";
 import type {
   PacketMeta,
@@ -119,17 +121,47 @@ async function runHealthSectionExtractionPass(
   const confidence = Math.max(...healthCandidates.map((c) => c.confidence));
 
   try {
-    const prompt = buildHealthSectionExtractionPrompt(markdownText, candidates);
-    const response = await createResponseStructured<HealthSectionExtractionOutput>(
-      prompt,
-      HEALTH_SECTION_EXTRACTION_SCHEMA,
-      {
-        routing: { category: "ai_review" },
-        schemaName: "health_section_extraction",
-      },
-    );
+    const promptId = getAiReviewPromptId("healthSectionExtraction");
+    let output: HealthSectionExtractionOutput | null = null;
 
-    const output = response.parsed as HealthSectionExtractionOutput | null;
+    if (promptId) {
+      // Prompt Builder path — env-managed prompt version
+      const variables = buildAiReviewExtractionPromptVariables({
+        documentText: markdownText,
+        classificationReasons: candidates.map((c) => `${c.type}:${c.label}`),
+        adobeSignals: "",
+        filename: "bundle_document",
+      });
+      const pr = await createAiReviewResponseFromPrompt(
+        {
+          promptKey: "healthSectionExtraction",
+          promptId,
+          version: null,
+          variables,
+        },
+        { store: false, routing: { category: "ai_review" } },
+      );
+      if (!pr.ok) throw new Error(pr.error);
+      try {
+        output = JSON.parse(pr.text) as HealthSectionExtractionOutput;
+      } catch {
+        output = null;
+      }
+    } else {
+      // Fallback: hardcoded prompt + structured output
+      const prompt = buildHealthSectionExtractionPrompt(markdownText, candidates);
+      const response = await createResponseStructured<HealthSectionExtractionOutput>(
+        prompt,
+        HEALTH_SECTION_EXTRACTION_SCHEMA,
+        {
+          routing: { category: "ai_review" },
+          schemaName: "health_section_extraction",
+        },
+      );
+      output = response.parsed as HealthSectionExtractionOutput | null;
+    }
+
+    if (!output) output = null;
     if (!output || !output.healthSectionPresent) {
       return { type: "health_questionnaire", result: { healthSectionPresent: false, questionnaireEntries: [] }, confidence };
     }
@@ -363,17 +395,46 @@ async function runInvestmentSectionExtractionPass(
   const confidence = Math.max(...invCandidates.map((c) => c.confidence));
 
   try {
-    const prompt = buildInvestmentSectionExtractionPrompt(markdownText, candidates);
-    const response = await createResponseStructured<InvestmentSectionExtractionOutput>(
-      prompt,
-      INVESTMENT_SECTION_EXTRACTION_SCHEMA,
-      {
-        routing: { category: "ai_review" },
-        schemaName: "investment_section_extraction",
-      },
-    );
+    const promptId = getAiReviewPromptId("investmentSectionExtraction");
+    let output: InvestmentSectionExtractionOutput | null = null;
 
-    const output = response.parsed as InvestmentSectionExtractionOutput | null;
+    if (promptId) {
+      // Prompt Builder path — env-managed prompt version
+      const variables = buildAiReviewExtractionPromptVariables({
+        documentText: markdownText,
+        classificationReasons: candidates.map((c) => `${c.type}:${c.label}`),
+        adobeSignals: "",
+        filename: "bundle_document",
+      });
+      const pr = await createAiReviewResponseFromPrompt(
+        {
+          promptKey: "investmentSectionExtraction",
+          promptId,
+          version: null,
+          variables,
+        },
+        { store: false, routing: { category: "ai_review" } },
+      );
+      if (!pr.ok) throw new Error(pr.error);
+      try {
+        output = JSON.parse(pr.text) as InvestmentSectionExtractionOutput;
+      } catch {
+        output = null;
+      }
+    } else {
+      // Fallback: hardcoded prompt + structured output
+      const prompt = buildInvestmentSectionExtractionPrompt(markdownText, candidates);
+      const response = await createResponseStructured<InvestmentSectionExtractionOutput>(
+        prompt,
+        INVESTMENT_SECTION_EXTRACTION_SCHEMA,
+        {
+          routing: { category: "ai_review" },
+          schemaName: "investment_section_extraction",
+        },
+      );
+      output = response.parsed as InvestmentSectionExtractionOutput | null;
+    }
+
     if (!output || !output.investmentSectionPresent) {
       return {
         type: "investment_section",

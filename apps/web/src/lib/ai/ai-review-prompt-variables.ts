@@ -72,6 +72,13 @@ export const AI_REVIEW_PROMPT_REQUIRED_VARS: Partial<Record<AiReviewPromptKey, r
     "review_decision_payload",
     "client_match_payload",
   ],
+  /**
+   * Section extraction prompts for bundle documents.
+   * Uses the standard extraction variable set (extracted_text, classification_reasons, adobe_signals, filename).
+   * classification_reasons carries bundle context (candidate types, headings).
+   */
+  healthSectionExtraction: EXTRACTION_REQUIRED,
+  investmentSectionExtraction: EXTRACTION_REQUIRED,
 };
 
 export function getRequiredVarsForAiReviewPrompt(key: AiReviewPromptKey): readonly string[] | undefined {

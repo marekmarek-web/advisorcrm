@@ -34,6 +34,13 @@ export const AI_REVIEW_PROMPT_KEYS = [
   "reviewDecision",
   "clientMatch",
   "documentSummaryForAdvisor",
+  /**
+   * Section-extraction prompts for bundle documents.
+   * When env ID is configured, the orchestrator uses Prompt Builder.
+   * When not configured, the orchestrator falls back to the hardcoded prompt in subdocument-section-prompts.ts.
+   */
+  "healthSectionExtraction",
+  "investmentSectionExtraction",
 ] as const;
 
 export type AiReviewPromptKey = (typeof AI_REVIEW_PROMPT_KEYS)[number];
@@ -61,6 +68,8 @@ const AI_REVIEW_ENV_KEYS: Record<AiReviewPromptKey, string> = {
   reviewDecision: "OPENAI_PROMPT_AI_REVIEW_REVIEW_DECISION_ID",
   clientMatch: "OPENAI_PROMPT_AI_REVIEW_CLIENT_MATCH_ID",
   documentSummaryForAdvisor: "OPENAI_PROMPT_AI_REVIEW_DOCUMENT_SUMMARY_FOR_ADVISOR_ID",
+  healthSectionExtraction: "OPENAI_PROMPT_AI_REVIEW_HEALTH_SECTION_EXTRACTION_ID",
+  investmentSectionExtraction: "OPENAI_PROMPT_AI_REVIEW_INVESTMENT_SECTION_EXTRACTION_ID",
 };
 
 const AI_REVIEW_VERSION_KEYS: Partial<Record<AiReviewPromptKey, string>> = {
@@ -214,6 +223,18 @@ export const AI_REVIEW_REGISTRY: Record<AiReviewPromptKey, AiReviewRegistryEntry
     envKey: AI_REVIEW_ENV_KEYS.documentSummaryForAdvisor,
     versionEnvKey: AI_REVIEW_VERSION_KEYS.documentSummaryForAdvisor,
     purpose: "Narrative document summary for advisor (post extraction + match)",
+  },
+  healthSectionExtraction: {
+    key: "healthSectionExtraction",
+    category: "ai_review",
+    envKey: AI_REVIEW_ENV_KEYS.healthSectionExtraction,
+    purpose: "Focused health questionnaire extraction from bundle sections (fallback: hardcoded prompt)",
+  },
+  investmentSectionExtraction: {
+    key: "investmentSectionExtraction",
+    category: "ai_review",
+    envKey: AI_REVIEW_ENV_KEYS.investmentSectionExtraction,
+    purpose: "Focused investment/DIP/DPS section extraction from bundle sections (fallback: hardcoded prompt)",
   },
 };
 
