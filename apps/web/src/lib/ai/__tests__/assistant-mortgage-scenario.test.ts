@@ -103,8 +103,10 @@ describe("AI assistant mortgage + follow-up (bug scenario)", () => {
     expect(arg.contactId).toBe("cccccccc-cccc-cccc-cccc-cccccccccccc");
     expect(arg.intent.noEmail).toBe(true);
 
-    expect(response.message).toContain("11111111-1111-1111-1111-111111111111");
-    expect(response.message).toContain("22222222-2222-2222-2222-222222222222");
+    // IDs are returned in referencedEntities, not in the message text
+    const refs = response.referencedEntities ?? [];
+    expect(refs.some((e: { id: string }) => e.id === "11111111-1111-1111-1111-111111111111")).toBe(true);
+    expect(refs.some((e: { id: string }) => e.id === "22222222-2222-2222-2222-222222222222")).toBe(true);
     expect(response.message.toLowerCase()).not.toContain("dobrý den");
     expect(response.message.toLowerCase()).not.toContain("mailto:");
     expect(response.message).toMatch(/E-mail nebyl/);

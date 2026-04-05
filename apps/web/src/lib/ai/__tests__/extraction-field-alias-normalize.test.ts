@@ -103,7 +103,8 @@ describe("applyExtractedFieldAliasNormalizations", () => {
 
     expect(env.extractedFields.insurer?.value).toContain("Generali");
     expect(env.extractedFields.contractNumber?.value).toBe("3282880076");
-    expect(env.extractedFields.policyStartDate?.value).toBe("1. 6. 2026");
+    // normalizeExtractedFieldDates converts to ISO (internal/DB format); display is handled by mapper
+    expect(env.extractedFields.policyStartDate?.value).toBe("2026-06-01");
     expect(String(env.extractedFields.investmentStrategy?.value)).toContain("dynamický");
     expect(env.extractedFields.totalMonthlyPremium?.value).toBe("4 166 Kč");
 
@@ -135,7 +136,8 @@ describe("applyExtractedFieldAliasNormalizations", () => {
     expect(env.extractedFields.insurer?.value).toContain("Generali");
     expect(env.extractedFields.productName?.value).toBe("Bel Mondo 20");
     expect(env.extractedFields.contractNumber?.value).toBe("3282880076");
-    expect(env.extractedFields.policyStartDate?.value).toBe("1. 6. 2026");
+    // normalizeExtractedFieldDates converts to ISO (internal/DB format); display is handled by mapper
+    expect(env.extractedFields.policyStartDate?.value).toBe("2026-06-01");
   });
 
   it("fills proposalNumber_or_contractNumber for life_insurance_proposal", () => {

@@ -794,6 +794,10 @@ export async function runAiReviewV2Pipeline(
       ...(trace.warnings ?? []),
       `product_family_overridden:${ai.productFamily}->${effectiveProductFamily}:${familyOverride.overrideReason}`,
     ];
+    // Keep aiClassifierJson in sync so mappers use the corrected family for field label overrides
+    if (trace.aiClassifierJson) {
+      (trace.aiClassifierJson as Record<string, unknown>).productFamily = effectiveProductFamily;
+    }
   }
 
   const router = resolveAiReviewExtractionRoute({

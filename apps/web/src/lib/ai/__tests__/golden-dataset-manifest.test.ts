@@ -44,12 +44,12 @@ type Manifest = {
   }>;
 };
 
-describe("golden-dataset manifest (phase 1, corpus v2)", () => {
-  it("parses v2 with 12 scenarios and full corpusDocuments", () => {
+describe("golden-dataset manifest (phase 1, corpus v3)", () => {
+  it("parses v3 with 12 scenarios and full corpusDocuments", () => {
     const p = manifestPath();
     expect(existsSync(p)).toBe(true);
     const raw = JSON.parse(readFileSync(p, "utf8")) as Manifest;
-    expect(raw.version).toBe(2);
+    expect(raw.version).toBe(3);
     expect(Array.isArray(raw.scenarios)).toBe(true);
     expect(raw.scenarios.length).toBe(12);
     expect(Array.isArray(raw.corpusDocuments)).toBe(true);
