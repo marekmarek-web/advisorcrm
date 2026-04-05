@@ -57,6 +57,10 @@ export type HealthSectionExtractionOutput = {
 /**
  * Build a focused prompt for extracting health questionnaire data from a document.
  * The LLM is explicitly told to ONLY extract health questionnaire sections.
+ *
+ * The `documentText` should already be pre-sliced to the health section window
+ * by the orchestrator (via sliceSectionTextForType). This function further
+ * reinforces the isolation rules so the model doesn't contaminate output.
  */
 export function buildHealthSectionExtractionPrompt(
   documentText: string,
@@ -70,17 +74,25 @@ export function buildHealthSectionExtractionPrompt(
   const trimmedText = documentText.trim();
   const isNarrowedWindow = trimmedText.length < 20_000;
   const contextNote = isNarrowedWindow
-    ? "Obdržíš POUZE relevantní část dokumentu (sekci zdravotního dotazníku, ne celý dokument)."
-    : "Obdržíš celý text dokumentu.";
+    ? "Obdržíš POUZE zdravotní sekci dokumentu — text byl fyzicky izolován ze specifických stránek/bloků. Neobsahuje smlouvu ani jiné sekce."
+    : "Obdržíš celý text dokumentu. Zaměř se VÝHRADNĚ na zdravotní dotazníky nebo zdravotní prohlášení.";
 
   return `Jsi extrakční systém pro zdravotní dotazníky ve finančních dokumentech.
 
 Tvůj úkol: Identifikuj a extrahuj POUZE zdravotní dotazníky nebo zdravotní prohlášení.
 Ignoruj smlouvu, investiční sekci, AML formuláře a platební instrukce.
+NEEXTRAHUJ z tohoto vstupu contractual facts — číslo smlouvy, pojistné, pojistník ani rizika.
+Tyto informace patří do smluvní části, ne do zdravotního výstupu.
 
 ${contextNote}
 
-DŮLEŽITÉ PRAVIDLO EVIDENCE:
+KRITICKÁ PRAVIDLA IZOLACE:
+- Výstup zdravotní extrakce NESMÍ ovlivnit smluvní část (contract core extraction).
+- Jméno osoby uváděj pouze pokud je explicitně v zdravotní sekci — neodvozuj z titulní stránky smlouvy.
+- Pokud vidíš pojistné nebo číslo smlouvy, IGNORUJ je — nepatří do zdravotního výstupu.
+- healthSectionPresent nastav na true pouze pokud jsou v textu skutečné zdravotní otázky nebo prohlášení.
+
+PRAVIDLO EVIDENCE:
 Uváděj POUZE hodnoty explicitně přítomné v textu. Nepokládej domněnky o zdravotním stavu
 ani nevypočítávej chybějící hodnoty z jiných sekcí. Pokud je jméno osoby uvedeno explicitně
 v zdravotní sekci, uveď ho. Pokud není, nech participantName prázdný.
@@ -88,7 +100,7 @@ v zdravotní sekci, uveď ho. Pokud není, nech participantName prázdný.
 ${hintLines ? `Detekované sekce v dokumentu:\n${hintLines}\n` : ""}
 
 Pro každou nalezenou osobu v zdravotní sekci vyplň:
-- participantName: celé jméno osoby (nebo prázdný string, pokud není uvedeno)
+- participantName: celé jméno osoby (nebo prázdný string, pokud není uvedeno V ZDRAVOTNÍ SEKCI)
 - participantRole: role osoby (pojistník / pojištěný / dítě / jiný)
 - questionnairePresent: true pokud je zdravotní dotazník pro tuto osobu přítomný
 - sectionSummary: stručný popis (1–2 věty) co sekce obsahuje, bez zdravotních detailů
@@ -226,22 +238,29 @@ export function buildInvestmentSectionExtractionPrompt(
   const trimmedText = documentText.trim();
   const isNarrowedWindow = trimmedText.length < 20_000;
   const contextNote = isNarrowedWindow
-    ? "Obdržíš POUZE relevantní část dokumentu (investiční sekci, ne celý dokument)."
-    : "Obdržíš celý text dokumentu.";
+    ? "Obdržíš POUZE investiční sekci dokumentu — text byl fyzicky izolován ze specifických stránek/bloků. Ostatní sekce (smlouva, zdravotní dotazník) nejsou přítomny v tomto vstupu."
+    : "Obdržíš celý text dokumentu. Zaměř se VÝHRADNĚ na investiční sekci.";
 
   return `Jsi extrakční systém specializovaný na investiční produkty, DIP a DPS.
 
 Tvůj úkol: Identifikuj a extrahuj POUZE investiční data — strategie, fondy, alokace, investiční prémie, typ produktu.
 Ignoruj smlouvu pojištění osob, zdravotní dotazníky a AML formuláře.
+NEEXTRAHUJ z tohoto vstupu pojistná rizika, základní pojistné smlouvy ani zdravotní údaje.
 
 ${contextNote}
 
-DŮLEŽITÉ PRAVIDLO EVIDENCE:
+KRITICKÁ PRAVIDLA IZOLACE:
+- investmentStrategy, investmentFunds, fundAllocation taháš VÝHRADNĚ z investiční sekce.
+- Neodvozuj strategii z jiné části (např. pojistné smlouvy nebo titulní stránky).
+- isModeledData = true pokud jsou hodnoty z ilustrace / modelace / nezávazné kalkulace.
+- isContractualData = true POUZE pokud jde o podepsanou smlouvu (ne ilustraci, ne modelaci).
+- Pokud vidíš základní pojistnou smlouvu bez investiční složky, vrať investmentSectionPresent: false.
+
+PRAVIDLO EVIDENCE:
 Extrahuj VÝHRADNĚ hodnoty, které jsou explicitně uvedeny v textu před tebou.
 Nepokus se odvodit investiční strategii z jiné sekce dokumentu.
 Neodhaduj výši prémie z pojistné smlouvy — zadej pouze, pokud je v investiční sekci explicitně zmíněna.
 Pokud hodnota v textu chybí, nech pole null nebo prázdné.
-isContractualData = true POUZE pokud jde o podepsanou smlouvu (ne ilustraci, ne modelaci).
 
 ${hintLines ? `Detekované investiční sekce:\n${hintLines}\n` : ""}
 

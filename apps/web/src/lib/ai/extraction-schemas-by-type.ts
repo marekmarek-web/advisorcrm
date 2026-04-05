@@ -10,7 +10,9 @@ import { documentReviewEnvelopeSchema } from "./document-review-types";
 import {
   buildSchemaPrompt,
   safeParseReviewEnvelope,
+  type SchemaPromptBundleContext,
 } from "./document-schema-registry";
+export type { SchemaPromptBundleContext };
 import { resolveDocumentSchema } from "./document-schema-router";
 
 /** Legacy export kept for compatibility with older tests/UI pieces. */
@@ -50,10 +52,11 @@ export function getSchemaForDocumentType(
 
 export function buildExtractionPrompt(
   documentType: ContractDocumentType,
-  isScanFallback: boolean
+  isScanFallback: boolean,
+  bundleContext?: SchemaPromptBundleContext | null,
 ): string {
   const definition = resolveDocumentSchema(documentType);
-  return buildSchemaPrompt(definition, isScanFallback);
+  return buildSchemaPrompt(definition, isScanFallback, bundleContext);
 }
 
 const FILE_BASED_FIELD_LABELS: Record<string, string> = {
@@ -121,10 +124,21 @@ const FILE_BASED_FIELD_LABELS: Record<string, string> = {
   intermediaryName: "Zprostředkovatel",
   intermediaryCode: "Kód zprostředkovatele",
   intermediaryCompany: "Společnost zprostředkovatele",
+  intermediaryPhone: "Telefon zprostředkovatele",
+  intermediaryEmail: "E-mail zprostředkovatele",
   dateSigned: "Datum sjednání",
+  documentIssueDate: "Datum vyhotovení dokumentu",
+  modelationDate: "Datum modelace",
   requiredDocuments: "Požadované dokumenty",
   modelationId: "Číslo modelace",
   modelPremium: "Modelované pojistné",
+  productSummary: "Shrnutí produktu",
+  documentSummary: "Shrnutí dokumentu",
+  permanentAddress: "Trvalé bydliště",
+  firstName: "Jméno",
+  lastName: "Příjmení",
+  currency: "Měna",
+  selectedCoverages: "Zvolená rizika",
   insuredObject: "Předmět pojištění",
   insuredAddress: "Adresa pojištěného objektu",
 };
@@ -246,25 +260,81 @@ export function selectExcerptForExtraction(
   };
 }
 
+const SECTION_BLOCK_MAX = 16_000;
+
+/**
+ * Build a section-aware document block for the extraction prompt.
+ * When section texts are available (bundle document), emits labeled sections
+ * to reduce cross-section contamination. Falls back to single full-text block.
+ */
+function buildWrappedDocumentBlock(
+  fullText: string,
+  excerptOptions: ExcerptForExtractionOptions | undefined,
+  sectionTexts?: import("@/lib/ai/combined-extraction").BundleSectionTexts | null,
+): { block: string; truncated: boolean } {
+  if (!sectionTexts) {
+    const { text: body, truncated } = selectExcerptForExtraction(fullText, excerptOptions);
+    const suffix = truncated ? "\n\n[Text byl zkrácen pro extrakci — preferuj údaje z uvedených částí.]" : "";
+    return {
+      block: `<<<DOCUMENT_TEXT>>>\n${body}${suffix}\n<<<END_DOCUMENT_TEXT>>>`,
+      truncated,
+    };
+  }
+
+  const cap = (t: string) =>
+    t.length > SECTION_BLOCK_MAX ? t.slice(0, SECTION_BLOCK_MAX) + "\n…[zkráceno]" : t;
+
+  const sections: string[] = [];
+  if (sectionTexts.contractualText?.trim()) {
+    sections.push(`[SMLUVNÍ ČÁST]\n${cap(sectionTexts.contractualText.trim())}`);
+  }
+  if (sectionTexts.healthText?.trim()) {
+    sections.push(`[ZDRAVOTNÍ DOTAZNÍK — NEPOUŽÍVEJ jako zdroj contractual facts]\n${cap(sectionTexts.healthText.trim())}`);
+  }
+  if (sectionTexts.investmentText?.trim()) {
+    sections.push(`[INVESTIČNÍ SEKCE]\n${cap(sectionTexts.investmentText.trim())}`);
+  }
+  if (sectionTexts.paymentText?.trim()) {
+    sections.push(`[PLATEBNÍ SEKCE]\n${cap(sectionTexts.paymentText.trim())}`);
+  }
+  if (sectionTexts.attachmentText?.trim()) {
+    sections.push(`[PŘÍLOHA / AML — nesmí přepsat smluvní fakta]\n${cap(sectionTexts.attachmentText.trim())}`);
+  }
+
+  if (sections.length === 0) {
+    const { text: body, truncated } = selectExcerptForExtraction(fullText, excerptOptions);
+    return {
+      block: `<<<DOCUMENT_TEXT>>>\n${body}\n<<<END_DOCUMENT_TEXT>>>`,
+      truncated,
+    };
+  }
+
+  const { text: body, truncated } = selectExcerptForExtraction(fullText, excerptOptions);
+  const fullBlob = body.length > 0 ? `\n[CELÝ TEXT — záložní kontext]\n${body}` : "";
+  return {
+    block: `SEKCE DOKUMENTU:\n${sections.map((s, i) => `--- SEKCE ${i + 1} ---\n${s}`).join("\n\n")}${fullBlob}`,
+    truncated,
+  };
+}
+
 /**
  * Second-pass extraction from preprocess markdown/OCR text (no second PDF upload to the model).
  */
 export function wrapExtractionPromptWithDocumentText(
   extractionPrompt: string,
   documentMarkdown: string,
-  excerptOptions?: ExcerptForExtractionOptions
+  excerptOptions?: ExcerptForExtractionOptions,
+  sectionTexts?: import("@/lib/ai/combined-extraction").BundleSectionTexts | null,
 ): string {
-  const { text: body, truncated } = selectExcerptForExtraction(documentMarkdown, excerptOptions);
-  const suffix = truncated ? "\n\n[Text byl zkrácen pro extrakci — preferuj údaje z uvedených částí.]" : "";
+  const { block, truncated } = buildWrappedDocumentBlock(documentMarkdown, excerptOptions, sectionTexts);
+  const suffix = truncated && !sectionTexts ? "\n\n[Text byl zkrácen pro extrakci — preferuj údaje z uvedených částí.]" : "";
   return `${extractionPrompt}
 
 ---
 
 Níže je text dokumentu (převod z PDF / OCR). Extrahuj údaje výhradně z tohoto textu. Chybějící pole označ podle pravidel výše (missing / unknown).
 
-<<<DOCUMENT_TEXT>>>
-${body}${suffix}
-<<<END_DOCUMENT_TEXT>>>
+${block}${suffix}
 `;
 }
 

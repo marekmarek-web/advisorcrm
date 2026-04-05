@@ -13,6 +13,7 @@ import {
   validateExtractionByType,
   wrapExtractionPromptWithDocumentText,
   type ExtractedContractByType,
+  type SchemaPromptBundleContext,
 } from "./extraction-schemas-by-type";
 import { validateExtractedContract, validateDocumentEnvelope, type ValidationResult } from "./extraction-validation";
 import { decideReviewStatus, decideReviewStatusWithReason } from "./review-decision-engine";
@@ -1063,7 +1064,19 @@ export async function runAiReviewV2Pipeline(
   trace.selectedSchema = documentType;
   const mode = inputModeResult.extractionMode as string;
   const isScanFallback = mode === "vision_fallback" || mode === "ocr_enhanced";
-  const extractionPrompt = buildExtractionPrompt(documentType, isScanFallback);
+
+  // Build bundle context for schema-level extraction rules when section texts are available
+  const schemaBundleContext: SchemaPromptBundleContext | null = options?.bundleHint?.isBundle
+    ? {
+        hasSensitiveAttachment: options.bundleHint.hasSensitiveAttachment,
+        hasInvestmentSection: options.bundleHint.hasInvestmentSection,
+        candidateTypes: options.bundleHint.candidateTypes ?? [],
+        hasSectionTexts: !!(options.bundleSectionTexts &&
+          (options.bundleSectionTexts.contractualText || options.bundleSectionTexts.investmentText)),
+      }
+    : null;
+
+  const extractionPrompt = buildExtractionPrompt(documentType, isScanFallback, schemaBundleContext);
   const minTextChars = 800;
   const readabilityOk =
     typeof options?.preprocessMeta?.readabilityScore === "number" &&
@@ -1102,7 +1115,12 @@ export async function runAiReviewV2Pipeline(
       rawExtraction = pr.text;
     } else if (allowTextSecondPass) {
       trace.extractionSecondPass = "text";
-      const wrapped = wrapExtractionPromptWithDocumentText(extractionPrompt, documentTextForExtraction);
+      const wrapped = wrapExtractionPromptWithDocumentText(
+        extractionPrompt,
+        documentTextForExtraction,
+        undefined,
+        options?.bundleSectionTexts ?? null,
+      );
       rawExtraction = await createResponse(wrapped, { routing: { category: "ai_review" } });
     } else {
       trace.extractionSecondPass = "pdf";

@@ -510,7 +510,16 @@ export async function runContractUnderstandingPipeline(
   trace.selectedSchema = documentType;
 
   // Step 5: Structured extraction — either text-only (no PDF fallback) or single PDF pass.
-  const extractionPrompt = buildExtractionPrompt(documentType, isScanFallback);
+  const legacyBundleContext = options?.bundleHint?.isBundle
+    ? {
+        hasSensitiveAttachment: options.bundleHint.hasSensitiveAttachment,
+        hasInvestmentSection: options.bundleHint.hasInvestmentSection,
+        candidateTypes: options.bundleHint.candidateTypes ?? [],
+        hasSectionTexts: !!(options.bundleSectionTexts &&
+          (options.bundleSectionTexts.contractualText || options.bundleSectionTexts.investmentText)),
+      }
+    : null;
+  const extractionPrompt = buildExtractionPrompt(documentType, isScanFallback, legacyBundleContext);
   const hint = documentTextHint;
   const minTextChars = 800;
   const readabilityOk =
@@ -525,7 +534,12 @@ export async function runContractUnderstandingPipeline(
   try {
     if (allowTextSecondPass) {
       trace.extractionSecondPass = "text";
-      const wrapped = wrapExtractionPromptWithDocumentText(extractionPrompt, hint);
+      const wrapped = wrapExtractionPromptWithDocumentText(
+        extractionPrompt,
+        hint,
+        undefined,
+        options?.bundleSectionTexts ?? null,
+      );
       rawExtraction = await createResponse(wrapped, { routing: { category: "ai_review" } });
     } else {
       trace.extractionSecondPass = "pdf";

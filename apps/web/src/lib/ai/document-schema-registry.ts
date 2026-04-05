@@ -1418,9 +1418,21 @@ function getTypeSpecificAddendum(primaryType: string): string {
   return "";
 }
 
+/**
+ * Optional bundle context for type-specific schema prompts.
+ * When provided, the prompt includes section-aware extraction rules.
+ */
+export type SchemaPromptBundleContext = {
+  hasSensitiveAttachment?: boolean;
+  hasInvestmentSection?: boolean;
+  candidateTypes?: string[];
+  hasSectionTexts?: boolean;
+};
+
 export function buildSchemaPrompt(
   schemaDef: DocumentSchemaDefinition,
-  isScanFallback: boolean
+  isScanFallback: boolean,
+  bundleContext?: SchemaPromptBundleContext | null,
 ): string {
   const scanHint = isScanFallback
     ? "Dokument je pravděpodobně scan. U nečitelných dat použij status inferred_low_confidence nebo not_found. Pokud je kvalita nízká, přidej reviewWarning."
@@ -1428,6 +1440,9 @@ export function buildSchemaPrompt(
   const typeAddendum =
     getTypeSpecificAddendum(schemaDef.primaryType) +
     (PRIMARY_TYPES_WITH_CZECH_MARKET_ADDENDUM.has(schemaDef.primaryType) ? CZECH_PENSION_VS_INVESTMENT_ADDENDUM : "");
+
+  const bundleRules = buildBundleContextRules(schemaDef.primaryType, bundleContext);
+
   return `Jsi extrakční engine pro finanční dokumenty.\n${scanHint}\n\n` +
     `Dokument klasifikace:\n` +
     `- primaryType: ${schemaDef.primaryType}\n` +
@@ -1465,7 +1480,40 @@ export function buildSchemaPrompt(
     `- missing když je pole required, ale chybí v dokumentu.\n` +
     `- not_found když dokument je relevantní, ale údaj se nepodařilo najít.\n` +
     `Všechny textové hodnoty (reasons, reviewWarnings.message, suggestedActions.label apod.) piš VŽDY česky.\n` +
-    typeAddendum;
+    typeAddendum +
+    bundleRules;
+}
+
+/**
+ * Build section-aware extraction rules for bundle documents.
+ * Returns empty string for non-bundle or when no relevant context.
+ */
+function buildBundleContextRules(
+  primaryType: string,
+  bundleContext?: SchemaPromptBundleContext | null,
+): string {
+  if (!bundleContext) return "";
+
+  const rules: string[] = [];
+
+  if (bundleContext.hasSensitiveAttachment) {
+    rules.push("BUNDLE: Dokument obsahuje citlivou přílohu (zdravotní dotazník nebo AML formulář). Tato data nepatří do contractual extraction — nastav sectionSensitivity.health_section nebo sectionSensitivity.aml_section.");
+  }
+
+  if (bundleContext.hasSectionTexts) {
+    rules.push("SEKCE: Dostáváš oddělené textové bloky per sekci. Contractual facts (číslo smlouvy, pojistné, pojistník) taháš PRIMÁRNĚ ze SMLUVNÍ ČÁSTI. Zdravotní údaje NEPOUŽÍVEJ jako zdroj smluvních faktů.");
+  }
+
+  if (bundleContext.hasInvestmentSection) {
+    rules.push("INVESTICE: investmentStrategy, investmentFunds, investmentPremium taháš PRIMÁRNĚ z INVESTIČNÍ SEKCE. Pokud je přítomná v textu, ne z jiných sekcí.");
+  }
+
+  const isLifeInsurance = primaryType.startsWith("life_insurance") || primaryType === "life_insurance_investment_contract";
+  if (isLifeInsurance && bundleContext.candidateTypes?.includes("health_questionnaire")) {
+    rules.push("ZDRAVOTNÍ SEKCE: Zdravotní dotazník je součástí bundlu. NEEXTRAHUJ z něj contractual facts (pojistník, pojistné, rizika, číslo smlouvy) pokud nejsou explicitně potvrzené ve smluvní části. Nastav contentFlags.containsMultipleDocumentSections = true.");
+  }
+
+  return rules.length > 0 ? `\nBUNDLE PRAVIDLA:\n${rules.map((r) => `- ${r}`).join("\n")}\n` : "";
 }
 
 export type SafeParseReviewEnvelopeOptions = {
