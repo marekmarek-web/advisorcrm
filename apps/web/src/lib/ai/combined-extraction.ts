@@ -125,6 +125,27 @@ export type CombinedExtractionBundleHint = {
 };
 
 /**
+ * Pre-sliced section texts for bundle documents.
+ * When available, the extraction prompt uses labeled sections instead of one anonymous blob,
+ * reducing cross-section contamination.
+ *
+ * Each field is optional — populated only when the corresponding section was detected
+ * and sliced from the document. Missing fields fall back to the main document text blob.
+ */
+export type BundleSectionTexts = {
+  /** Text from contractual pages (final_contract or contract_proposal section). */
+  contractualText?: string | null;
+  /** Text from health questionnaire pages — must NOT be used as contractual fact source. */
+  healthText?: string | null;
+  /** Text from investment / DIP / DPS section pages. */
+  investmentText?: string | null;
+  /** Text from payment instruction section pages. */
+  paymentText?: string | null;
+  /** Text from attachment / AML / supporting section pages. */
+  attachmentText?: string | null;
+};
+
+/**
  * Build the bundle-aware preamble for the combined extraction prompt.
  * Returns an empty string when there is no bundle hint.
  */
@@ -174,14 +195,119 @@ Pravidla pro bundle:
 `;
 }
 
+/** Max chars per section slice in the bundle-context prompt (keeps total tokens in check). */
+const SECTION_MAX_CHARS = 18_000;
+
+/**
+ * Format section-aware document text block.
+ *
+ * When `sectionTexts` provides non-trivial sections, emits explicitly labeled sections
+ * so the model can attribute facts to the correct subdocument.
+ * Falls back to a single anonymous blob when sections aren't available.
+ */
+function buildSectionAwareDocumentBlock(
+  fullText: string,
+  sectionTexts?: BundleSectionTexts | null,
+): string {
+  const trimmed = fullText.trim();
+
+  if (!sectionTexts) {
+    return `TEXT DOKUMENTU:
+<<<DOCUMENT_TEXT>>>
+${trimmed}
+<<<END_DOCUMENT_TEXT>>>`;
+  }
+
+  const sections: string[] = [];
+
+  const cap = (t: string) =>
+    t.length > SECTION_MAX_CHARS ? t.slice(0, SECTION_MAX_CHARS) + "\n…[zkráceno]" : t;
+
+  if (sectionTexts.contractualText?.trim()) {
+    sections.push(`[SMLUVNÍ ČÁST — finální smlouva nebo návrh smlouvy]
+${cap(sectionTexts.contractualText.trim())}`);
+  }
+
+  if (sectionTexts.healthText?.trim()) {
+    sections.push(`[ZDRAVOTNÍ DOTAZNÍK — POUZE pro zdravotní prohlášení, NEPOUŽÍVEJ jako zdroj contractual facts]
+${cap(sectionTexts.healthText.trim())}`);
+  }
+
+  if (sectionTexts.investmentText?.trim()) {
+    sections.push(`[INVESTIČNÍ SEKCE — DIP / DPS / fondy / investiční strategie]
+${cap(sectionTexts.investmentText.trim())}`);
+  }
+
+  if (sectionTexts.paymentText?.trim()) {
+    sections.push(`[PLATEBNÍ SEKCE — platební instrukce / účet / variabilní symbol]
+${cap(sectionTexts.paymentText.trim())}`);
+  }
+
+  if (sectionTexts.attachmentText?.trim()) {
+    sections.push(`[PŘÍLOHA / AML / DOPROVODNÝ DOKUMENT — NEPOUŽÍVEJ jako zdroj smluvních dat]
+${cap(sectionTexts.attachmentText.trim())}`);
+  }
+
+  if (sections.length === 0) {
+    // All sections empty — fall back to full text blob
+    return `TEXT DOKUMENTU:
+<<<DOCUMENT_TEXT>>>
+${trimmed}
+<<<END_DOCUMENT_TEXT>>>`;
+  }
+
+  // Provide full text after sections as fallback context
+  const fullBlob = trimmed.length > 0
+    ? `\n[CELÝ TEXT DOKUMENTU — jako záložní kontext]\n${trimmed.length > SECTION_MAX_CHARS * 2 ? trimmed.slice(0, SECTION_MAX_CHARS * 2) + "\n…[zkráceno]" : trimmed}`
+    : "";
+
+  return `SEKCE DOKUMENTU (každá část je oddělená logická sekce):
+${sections.map((s, i) => `--- SEKCE ${i + 1} ---\n${s}`).join("\n\n")}
+${fullBlob}`;
+}
+
+/**
+ * Section-specific extraction rules appended when section texts are available.
+ * Instructs the model to prefer each section's content for the matching field type.
+ */
+function buildSectionSpecificRules(sectionTexts?: BundleSectionTexts | null): string {
+  if (!sectionTexts) return "";
+
+  const rules: string[] = [];
+
+  if (sectionTexts.contractualText?.trim()) {
+    rules.push("- contractNumber, insurer, productName, policyStartDate, policyEndDate, totalMonthlyPremium — taháš PRIMÁRNĚ ze SMLUVNÍ ČÁSTI.");
+  }
+  if (sectionTexts.healthText?.trim()) {
+    rules.push("- ZDRAVOTNÍ DOTAZNÍK slouží POUZE jako signál sectionSensitivity.health_section='health_data'. NEEXTRAHUJ z něj contractual facts (jméno pojistníka, pojistné, rizika) pokud nejsou explicitně potvrzené ve SMLUVNÍ ČÁSTI.");
+  }
+  if (sectionTexts.investmentText?.trim()) {
+    rules.push("- investmentStrategy, investmentFunds, fundAllocation, investmentPremium — taháš PRIMÁRNĚ z INVESTIČNÍ SEKCE.");
+  }
+  if (sectionTexts.paymentText?.trim()) {
+    rules.push("- bankAccount, variableSymbol, iban, paymentFrequency — taháš PRIMÁRNĚ z PLATEBNÍ SEKCE nebo SMLUVNÍ ČÁSTI.");
+  }
+  if (sectionTexts.attachmentText?.trim()) {
+    rules.push("- PŘÍLOHA / AML / DOPROVODNÝ DOKUMENT: tato část nesmí přepsat smluvní fakta. Nastav sensitiveAttachmentOnly=true pokud je to jediná přítomná sekce.");
+  }
+
+  return rules.length > 0
+    ? `\nPRAVIDLA PRO SEKCE:\n${rules.join("\n")}\n`
+    : "";
+}
+
 export function buildCombinedClassifyAndExtractPrompt(
   documentText: string,
   sourceFileName?: string | null,
   bundleHint?: CombinedExtractionBundleHint | null,
+  sectionTexts?: BundleSectionTexts | null,
 ): string {
   const trimmedText = documentText.trim();
   const fileName = sourceFileName?.trim() || "unknown";
   const bundlePreamble = bundleHint?.isBundle ? buildBundleAwarePreamble(bundleHint) : "";
+  const sectionRules = buildSectionSpecificRules(sectionTexts);
+  const documentBlock = buildSectionAwareDocumentBlock(trimmedText, sectionTexts);
+
   return `Jsi extrakční systém pro finanční dokumenty.
 ${bundlePreamble}
 
@@ -215,22 +341,21 @@ Pravidla:
 - documentClassification.reasons piš stručně česky.
 - documentMeta.scannedVsDigital nastav na "digital", pokud text působí jako strojově čitelný PDF převod.
 - suggestedActions mají být krátké a akční; payload nech jako objekt.
-
+${sectionRules}
 Soubor: ${fileName}
 
-TEXT DOKUMENTU:
-<<<DOCUMENT_TEXT>>>
-${trimmedText}
-<<<END_DOCUMENT_TEXT>>>`;
+${documentBlock}`;
 }
 
 export async function runCombinedClassifyAndExtract(params: {
   documentText: string;
   sourceFileName?: string | null;
   bundleHint?: CombinedExtractionBundleHint | null;
+  /** Pre-sliced section texts for bundle-context enrichment. Reduces cross-section contamination. */
+  sectionTexts?: BundleSectionTexts | null;
 }): Promise<{ raw: string; envelope: DocumentReviewEnvelope }> {
   const response = await createResponseStructured<unknown>(
-    buildCombinedClassifyAndExtractPrompt(params.documentText, params.sourceFileName, params.bundleHint),
+    buildCombinedClassifyAndExtractPrompt(params.documentText, params.sourceFileName, params.bundleHint, params.sectionTexts),
     combinedClassifyAndExtractJsonSchema,
     {
       routing: { category: "ai_review" },

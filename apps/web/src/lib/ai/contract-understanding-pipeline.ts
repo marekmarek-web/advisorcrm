@@ -166,6 +166,13 @@ export type ContractPipelineOptions = {
    * for the core extraction pipeline, enabling structured-source core extraction.
    */
   structuredSource?: StructuredSourceHint | null;
+  /**
+   * Pre-sliced section-specific texts for bundle-context prompt enrichment.
+   * When provided, the extraction prompt uses labeled sections (contractual, health,
+   * investment, payment, attachment) instead of one anonymous text blob.
+   * Reduces cross-section contamination at the LLM reasoning level.
+   */
+  bundleSectionTexts?: import("@/lib/ai/combined-extraction").BundleSectionTexts | null;
 };
 
 export async function runContractUnderstandingPipeline(

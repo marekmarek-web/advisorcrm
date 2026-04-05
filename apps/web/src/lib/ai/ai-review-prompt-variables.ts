@@ -190,7 +190,46 @@ export type BuildExtractionPromptVariablesParams = {
   filename: string;
   /** When true, also set document_text = extracted_text for older Prompt Builder templates */
   includeLegacyDocumentText?: boolean;
+  /**
+   * Pre-sliced section texts for bundle-context enrichment.
+   * When provided, adds section-specific variables to the Prompt Builder payload:
+   *   - contractual_section_text
+   *   - health_section_text
+   *   - investment_section_text
+   *   - payment_section_text
+   *   - attachment_section_text
+   *   - bundle_section_context (formatted summary of all available sections)
+   */
+  bundleSectionTexts?: import("@/lib/ai/combined-extraction").BundleSectionTexts | null;
 };
+
+const SECTION_VAR_MAX = 15_000;
+
+/** Format a bundle section context block for Prompt Builder variables. */
+function buildBundleSectionContextVar(
+  sectionTexts: import("@/lib/ai/combined-extraction").BundleSectionTexts,
+): string {
+  const cap = (t: string) =>
+    t.length > SECTION_VAR_MAX ? t.slice(0, SECTION_VAR_MAX) + "\n…[zkráceno]" : t;
+
+  const parts: string[] = [];
+  if (sectionTexts.contractualText?.trim()) {
+    parts.push(`[SMLUVNÍ ČÁST]\n${cap(sectionTexts.contractualText.trim())}`);
+  }
+  if (sectionTexts.healthText?.trim()) {
+    parts.push(`[ZDRAVOTNÍ DOTAZNÍK — nezdrojuj z toho contractual facts]\n${cap(sectionTexts.healthText.trim())}`);
+  }
+  if (sectionTexts.investmentText?.trim()) {
+    parts.push(`[INVESTIČNÍ SEKCE]\n${cap(sectionTexts.investmentText.trim())}`);
+  }
+  if (sectionTexts.paymentText?.trim()) {
+    parts.push(`[PLATEBNÍ SEKCE]\n${cap(sectionTexts.paymentText.trim())}`);
+  }
+  if (sectionTexts.attachmentText?.trim()) {
+    parts.push(`[PŘÍLOHA / AML / DOPROVODNÝ DOKUMENT — nezdrojuj z toho smluvní fakta]\n${cap(sectionTexts.attachmentText.trim())}`);
+  }
+  return parts.join("\n\n---\n\n");
+}
 
 /**
  * Builds variables for extraction/payment Prompt Builder prompts.
@@ -218,6 +257,27 @@ export function buildAiReviewExtractionPromptVariables(
   out.extractedText = out.extracted_text;
   out.classificationReasons = out.classification_reasons;
   out.adobeSignals = out.adobe_signals;
+
+  // Section-specific variables for bundle-context enrichment.
+  if (params.bundleSectionTexts) {
+    const cap = (t: string | null | undefined) =>
+      t?.trim()
+        ? (t.length > SECTION_VAR_MAX ? t.slice(0, SECTION_VAR_MAX) + "\n…[zkráceno]" : t.trim())
+        : "(not available)";
+    out.contractual_section_text = cap(params.bundleSectionTexts.contractualText);
+    out.health_section_text = cap(params.bundleSectionTexts.healthText);
+    out.investment_section_text = cap(params.bundleSectionTexts.investmentText);
+    out.payment_section_text = cap(params.bundleSectionTexts.paymentText);
+    out.attachment_section_text = cap(params.bundleSectionTexts.attachmentText);
+    out.bundle_section_context = buildBundleSectionContextVar(params.bundleSectionTexts);
+    // camelCase mirrors
+    out.contractualSectionText = out.contractual_section_text;
+    out.healthSectionText = out.health_section_text;
+    out.investmentSectionText = out.investment_section_text;
+    out.paymentSectionText = out.payment_section_text;
+    out.bundleSectionContext = out.bundle_section_context;
+  }
+
   return out;
 }
 

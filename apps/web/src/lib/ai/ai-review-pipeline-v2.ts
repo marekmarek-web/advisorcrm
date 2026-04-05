@@ -73,6 +73,7 @@ import { resolveDocumentSchema } from "./document-schema-router";
 import {
   COMBINED_CLASSIFY_AND_EXTRACT_MIN_HINT_CHARS,
   runCombinedClassifyAndExtract,
+  type BundleSectionTexts,
 } from "./combined-extraction";
 
 /**
@@ -618,6 +619,7 @@ export async function runAiReviewV2Pipeline(
         documentText: documentTextForExtraction,
         sourceFileName: options?.sourceFileName ?? null,
         bundleHint: options?.bundleHint ?? null,
+        sectionTexts: options?.bundleSectionTexts ?? null,
       });
       trace.extractionDurationMs = Date.now() - combinedStart;
 
@@ -1083,6 +1085,7 @@ export async function runAiReviewV2Pipeline(
         classificationReasons: classification.reasons,
         adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
         filename: options?.sourceFileName?.trim() || "unknown",
+        bundleSectionTexts: options?.bundleSectionTexts ?? null,
       });
       const pr = await createAiReviewResponseFromPrompt(
         {

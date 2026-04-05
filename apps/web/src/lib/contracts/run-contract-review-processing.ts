@@ -19,7 +19,8 @@ import {
 } from "@/lib/ai/client-matching";
 import { logOpenAICall } from "@/lib/openai";
 import { preprocessForAiExtraction } from "@/lib/documents/processing/preprocess-for-ai";
-import { buildPageTextMapFromMarkdown } from "@/lib/ai/section-text-slicer";
+import { buildPageTextMapFromMarkdown, sliceSectionTextForType } from "@/lib/ai/section-text-slicer";
+import type { BundleSectionTexts } from "@/lib/ai/combined-extraction";
 import { fetchPageTextMapByStoragePath, fetchAdobeStructuredDataByStoragePath, resolvePageTextMap } from "@/lib/documents/page-text-map-lookup";
 import { evaluateContractReviewScanGate } from "@/lib/contracts/contract-review-scan-gate";
 import {
@@ -260,12 +261,59 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
       }
     : null;
 
+  // ── Pre-extraction: Section-specific text slicing for bundle-context enrichment ──
+  // For bundle documents, build per-section text slices from enriched candidates.
+  // These are passed to the extraction prompt as labeled sections, reducing cross-section
+  // contamination at the LLM reasoning level.
+  let bundleSectionTexts: BundleSectionTexts | null = null;
+  if (earlyPacketMeta.isBundle && enrichedCandidates.length > 0) {
+    const sliceText = structuredSource?.fullText ?? adobePreprocessResult?.markdownContent ?? "";
+    const sliceTotalPages =
+      earlyStructuredResult?.totalPages ?? adobePreprocessResult?.pageCountEstimate ?? null;
+    // Build a page text map from structured result for slicing (or null for markdown fallback)
+    const slicePageMap = earlyStructuredResult?.ok
+      ? (buildPageMapFromStructuredData(earlyStructuredResult) as Record<number, string>)
+      : null;
+
+    const trySlice = (type: Parameters<typeof sliceSectionTextForType>[2]) => {
+      try {
+        const w = sliceSectionTextForType(
+          sliceText,
+          enrichedCandidates,
+          type,
+          sliceTotalPages,
+          slicePageMap,
+          earlyStructuredResult,
+        );
+        // Only return if method is better than full_text and has meaningful content
+        if (w.text.trim().length > 50 && w.method !== "full_text") {
+          return w.text;
+        }
+      } catch {}
+      return null;
+    };
+
+    const contractualText = trySlice("final_contract") ?? trySlice("contract_proposal");
+    const healthText = trySlice("health_questionnaire");
+    const investmentText = trySlice("investment_section");
+    const paymentText = trySlice("payment_instruction");
+    const attachmentText = trySlice("aml_fatca_form") ?? trySlice("annex");
+
+    // Only set bundleSectionTexts if at least one non-trivial section was isolated
+    const hasAnySectionText = [contractualText, healthText, investmentText, paymentText, attachmentText]
+      .some((t) => t && t.length > 50);
+    if (hasAnySectionText) {
+      bundleSectionTexts = { contractualText, healthText, investmentText, paymentText, attachmentText };
+    }
+  }
+
   const pipelineResult = await runContractUnderstandingPipeline(preprocessedUrl, mimeType, {
     ruleBasedTextHint: adobePreprocessResult?.markdownContent ?? null,
     preprocessMeta,
     sourceFileName: path.basename(storagePath),
     bundleHint,
     structuredSource,
+    bundleSectionTexts,
   });
   const pipelineDurationMs = Date.now() - pipelineStartedAt;
 
