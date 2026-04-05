@@ -2,7 +2,25 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db, messages, messageAttachments, tenants, contacts, eq, and, asc, isNull, sql } from "db";
+import {
+  db,
+  messages,
+  messageAttachments,
+  tenants,
+  contacts,
+  opportunities,
+  opportunityStages,
+  tasks,
+  advisorMaterialRequests,
+  eq,
+  and,
+  asc,
+  desc,
+  isNull,
+  isNotNull,
+  lt,
+  sql,
+} from "db";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
 import { newMessageAdvisorTemplate } from "@/lib/email/templates";
@@ -406,6 +424,132 @@ export async function deleteConversationForContact(contactId: string): Promise<v
   await db
     .delete(messages)
     .where(and(eq(messages.tenantId, auth.tenantId), eq(messages.contactId, contactId)));
+}
+
+export type ChatContextPrimaryOpportunity = {
+  id: string;
+  title: string;
+  caseType: string;
+  stageName: string;
+};
+
+/** Agregace pro pravý panel chatu (obchody, úkoly, podklady) — tenant + oprávnění v dotazech. */
+export type ChatContextPanelSnapshot = {
+  primaryOpportunity: ChatContextPrimaryOpportunity | null;
+  openOpportunitiesCount: number;
+  openTasksCount: number;
+  overdueTasksCount: number;
+  pendingMaterialRequestsCount: number;
+  /** Zda uživatel smí číst modul obchodů (jinak jsou počty 0 a nezobrazujeme „žádný obchod“). */
+  opportunitiesReadable: boolean;
+};
+
+const EMPTY_CHAT_CONTEXT_SNAPSHOT: ChatContextPanelSnapshot = {
+  primaryOpportunity: null,
+  openOpportunitiesCount: 0,
+  openTasksCount: 0,
+  overdueTasksCount: 0,
+  pendingMaterialRequestsCount: 0,
+  opportunitiesReadable: false,
+};
+
+export async function getChatContextPanelSnapshot(contactId: string): Promise<ChatContextPanelSnapshot> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+
+  const [c] = await db
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)))
+    .limit(1);
+  if (!c) throw new Error("Kontakt nenalezen.");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const canOpp = hasPermission(auth.roleName, "opportunities:read");
+
+  try {
+    const [oppRows, oppCountRow, tasksOpenRow, tasksOverRow, matRow] = await Promise.all([
+      canOpp
+        ? db
+            .select({
+              id: opportunities.id,
+              title: opportunities.title,
+              caseType: opportunities.caseType,
+              stageName: opportunityStages.name,
+              updatedAt: opportunities.updatedAt,
+            })
+            .from(opportunities)
+            .innerJoin(opportunityStages, eq(opportunities.stageId, opportunityStages.id))
+            .where(
+              and(
+                eq(opportunities.tenantId, auth.tenantId),
+                eq(opportunities.contactId, contactId),
+                isNull(opportunities.closedAt),
+              ),
+            )
+            .orderBy(desc(opportunities.updatedAt))
+        : Promise.resolve([] as { id: string; title: string; caseType: string | null; stageName: string; updatedAt: Date }[]),
+      canOpp
+        ? db
+            .select({ cnt: sql<number>`count(*)::int` })
+            .from(opportunities)
+            .where(
+              and(
+                eq(opportunities.tenantId, auth.tenantId),
+                eq(opportunities.contactId, contactId),
+                isNull(opportunities.closedAt),
+              ),
+            )
+        : Promise.resolve([{ cnt: 0 }]),
+      db
+        .select({ cnt: sql<number>`count(*)::int` })
+        .from(tasks)
+        .where(
+          and(eq(tasks.tenantId, auth.tenantId), eq(tasks.contactId, contactId), isNull(tasks.completedAt)),
+        ),
+      db
+        .select({ cnt: sql<number>`count(*)::int` })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.tenantId, auth.tenantId),
+            eq(tasks.contactId, contactId),
+            isNull(tasks.completedAt),
+            isNotNull(tasks.dueDate),
+            lt(tasks.dueDate, today),
+          ),
+        ),
+      db
+        .select({ cnt: sql<number>`count(*)::int` })
+        .from(advisorMaterialRequests)
+        .where(
+          and(
+            eq(advisorMaterialRequests.tenantId, auth.tenantId),
+            eq(advisorMaterialRequests.contactId, contactId),
+            sql`${advisorMaterialRequests.status} NOT IN ('done', 'closed')`,
+          ),
+        ),
+    ]);
+
+    const primary = oppRows[0];
+    return {
+      primaryOpportunity: primary
+        ? {
+            id: primary.id,
+            title: primary.title,
+            caseType: primary.caseType?.trim() || "",
+            stageName: primary.stageName,
+          }
+        : null,
+      openOpportunitiesCount: Number(oppCountRow[0]?.cnt ?? 0),
+      openTasksCount: Number(tasksOpenRow[0]?.cnt ?? 0),
+      overdueTasksCount: Number(tasksOverRow[0]?.cnt ?? 0),
+      pendingMaterialRequestsCount: Number(matRow[0]?.cnt ?? 0),
+      opportunitiesReadable: canOpp,
+    };
+  } catch {
+    return EMPTY_CHAT_CONTEXT_SNAPSHOT;
+  }
 }
 
 export async function markMessagesRead(contactId: string): Promise<void> {

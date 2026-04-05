@@ -39,6 +39,10 @@ export type ContactRow = {
   preferredGreetingName?: string | null;
   greetingStyle?: string | null;
   birthGreetingOptOut?: boolean;
+  /** Preferovaný čas kontaktu (volný text z CRM). */
+  bestContactTime?: string | null;
+  /** Kanál kontaktu (např. email, phone). */
+  preferredChannel?: string | null;
 };
 
 export async function getContactsList(): Promise<ContactRow[]> {
@@ -182,6 +186,8 @@ const contactDetailExtendedSelect = {
   preferredGreetingName: contacts.preferredGreetingName,
   greetingStyle: contacts.greetingStyle,
   birthGreetingOptOut: contacts.birthGreetingOptOut,
+  bestContactTime: contacts.bestContactTime,
+  preferredChannel: contacts.preferredChannel,
 } as const;
 
 async function loadContactWithAuth(auth: AuthContext, id: string): Promise<ContactRow | null> {
@@ -255,6 +261,8 @@ async function loadContactWithAuth(auth: AuthContext, id: string): Promise<Conta
       preferredGreetingName: (row.preferredGreetingName as string | null | undefined) ?? null,
       greetingStyle: (row.greetingStyle as string | null | undefined) ?? null,
       birthGreetingOptOut: Boolean(row.birthGreetingOptOut),
+      bestContactTime: (row.bestContactTime as string | null | undefined)?.trim() || null,
+      preferredChannel: (row.preferredChannel as string | null | undefined)?.trim() || null,
     };
   } catch (e) {
     if (isRedirectError(e)) throw e;

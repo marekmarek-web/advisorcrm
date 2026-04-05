@@ -6,11 +6,13 @@ import {
   getConversationsList,
   getMessages,
   getMessageAttachments,
+  getChatContextPanelSnapshot,
   sendMessage,
   sendMessageWithAttachments,
   markMessagesRead,
   deleteConversationForContact,
   deleteMessageForAdvisor,
+  type ChatContextPanelSnapshot,
   type MessageRow,
   type ConversationListItem,
   type MessageAttachmentRow,
@@ -74,6 +76,8 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
   const [meetingSheetOpen, setMeetingSheetOpen] = useState(false);
   const [taskSheetOpen, setTaskSheetOpen] = useState(false);
   const [contextSheetOpen, setContextSheetOpen] = useState(false);
+  const [crmSnapshot, setCrmSnapshot] = useState<ChatContextPanelSnapshot | null>(null);
+  const [crmLoading, setCrmLoading] = useState(false);
 
   searchRef.current = searchQuery.trim();
   conversationsRef.current = conversations;
@@ -146,6 +150,32 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     }
     void reloadActiveThread();
   }, [selectedContactId, reloadActiveThread]);
+
+  useEffect(() => {
+    if (!selectedContactId) {
+      setCrmSnapshot(null);
+      setCrmLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCrmLoading(true);
+    void getChatContextPanelSnapshot(selectedContactId)
+      .then((snap) => {
+        if (!cancelled) {
+          setCrmSnapshot(snap);
+          setCrmLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCrmSnapshot(null);
+          setCrmLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedContactId, msgs.length]);
 
   useEffect(() => {
     if (!selectedContactId) return;
@@ -347,14 +377,31 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     setContextSheetOpen(false);
   };
 
-  const contextPanelProps = {
-    contactName: contactName || "Kontakt",
-    contact: contactDetail,
-    lastMessagePreview: lastClientSnippet,
-    onAiSuggest: openAi,
-    onScheduleMeeting: openMeeting,
-    onCreateTask: openTask,
-  };
+  const contextPanelProps = useMemo(() => {
+    if (!selectedContactId) return null;
+    return {
+      contactId: selectedContactId,
+      contactName: contactName || "Kontakt",
+      contact: contactDetail,
+      lastMessagePreview: lastClientSnippet,
+      lastThreadActivityAt: lastActivitySource,
+      crmSnapshot,
+      crmLoading,
+      onNavigate: (href: string) => {
+        setContextSheetOpen(false);
+        router.push(href);
+      },
+    };
+  }, [
+    selectedContactId,
+    contactName,
+    contactDetail,
+    lastClientSnippet,
+    lastActivitySource,
+    crmSnapshot,
+    crmLoading,
+    router,
+  ]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#f4f6fb] p-3 md:min-h-[calc(100vh-8rem)] md:p-4 dark:bg-slate-950">
@@ -448,18 +495,18 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
         </main>
 
         <div className="hidden min-h-0 min-w-0 xl:block">
-          {selectedContactId ? (
+          {selectedContactId && contextPanelProps ? (
             <ConversationContextPanel {...contextPanelProps} />
           ) : (
             <aside className="flex h-full min-h-[240px] items-center justify-center rounded-[28px] border border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 px-6 text-center text-sm text-[color:var(--wp-text-secondary)] shadow-sm">
-              Vyberte konverzaci pro zobrazení kontextu, AI náhledu a kontaktu.
+              Vyberte konverzaci pro zobrazení rychlého kontextu, úkolů a kontaktu.
             </aside>
           )}
         </div>
       </div>
 
       <ChatModal open={contextSheetOpen} title="Kontext konverzace" onClose={() => setContextSheetOpen(false)}>
-        {selectedContactId ? <ConversationContextPanel {...contextPanelProps} asDiv /> : null}
+        {selectedContactId && contextPanelProps ? <ConversationContextPanel {...contextPanelProps} asDiv /> : null}
       </ChatModal>
 
       {selectedContactId ? (

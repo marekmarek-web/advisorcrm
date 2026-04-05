@@ -4,6 +4,12 @@ export function contactProfileHref(contactId: string): string {
   return `/portal/contacts/${contactId}`;
 }
 
+/** Záložka detailu klienta (`contact-detail-tabs`). */
+export function contactTabHref(contactId: string, tab: "podklady" | "ukoly" | "obchody" | "zapisky" | "prehled"): string {
+  const q = new URLSearchParams({ tab });
+  return `/portal/contacts/${contactId}?${q.toString()}`;
+}
+
 /** Desktop kalendář — `PortalCalendarView` zpracuje `new=1` a volitelně `contactId`. */
 export function calendarNewEventHref(contactId: string): string {
   const q = new URLSearchParams({ new: "1", contactId });
