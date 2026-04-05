@@ -5,11 +5,13 @@ import { db, tenants, advisorPreferences } from "db";
 import { eq, and } from "db";
 import { SetupView } from "./SetupView";
 import { getPublicBookingSettings } from "@/app/actions/public-booking-settings";
+import { getFundLibrarySetupSnapshot } from "@/lib/fund-library/setup-snapshot.server";
+import type { RoleName } from "@/shared/rolePermissions";
 
 export default async function SetupPage() {
   const auth = await requireAuth();
 
-  const [user, prefRows, tenantRows, billing, publicBooking] = await Promise.all([
+  const [user, prefRows, tenantRows, billing, publicBooking, fundLibrarySnapshot] = await Promise.all([
     getCachedSupabaseUser(),
     db
       .select({ phone: advisorPreferences.phone })
@@ -22,6 +24,7 @@ export default async function SetupPage() {
       roleName: auth.roleName,
     }),
     getPublicBookingSettings(),
+    getFundLibrarySetupSnapshot(auth.tenantId, auth.userId, auth.roleName as RoleName),
   ]);
 
   const canonicalBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
@@ -58,6 +61,7 @@ export default async function SetupPage() {
           bio: typeof meta.bio === "string" ? meta.bio : "",
           publicBooking,
           canonicalBaseUrl,
+          fundLibrarySnapshot,
         }}
       />
     </Suspense>

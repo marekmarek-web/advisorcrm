@@ -50,6 +50,8 @@ import { PublicBookingSetupBlock } from "@/app/portal/setup/PublicBookingSetupBl
 import { queryKeys } from "@/lib/query-keys";
 import { getBillingOverview, type InvoiceRow } from "@/app/actions/billing";
 import { removeMember } from "@/app/actions/team";
+import type { FundLibrarySetupSnapshot } from "@/lib/fund-library/fund-library-setup-types";
+import { FundLibrarySettings } from "@/app/portal/setup/FundLibrarySettings";
 
 const TABS = [
   { id: "osobni", label: "Osobní údaje", keywords: ["osobní", "údaje", "fakturace", "heslo", "zabezpečení", "2fa", "rychlé", "demo"] },
@@ -57,6 +59,7 @@ const TABS = [
   { id: "tym", label: "Tým", keywords: ["tým", "člen", "pozvat"] },
   { id: "fakturace", label: "Fakturace a Tarif", keywords: ["fakturace", "tarif", "platba", "faktura"] },
   { id: "notifikace", label: "Notifikace", keywords: ["notifikace", "email", "push"] },
+  { id: "fondy", label: "Knihovna fondů", keywords: ["fond", "fondy", "knihovna", "knihovna fondů", "etf", "investice", "portfolio"] },
   { id: "integrace", label: "Integrace", keywords: ["integrace", "google", "api", "kalendář"] },
 ] as const;
 
@@ -79,6 +82,7 @@ export type SetupInitial = {
   bio?: string;
   publicBooking: PublicBookingSettingsDTO;
   canonicalBaseUrl: string;
+  fundLibrarySnapshot: FundLibrarySetupSnapshot;
 };
 
 function parseFullName(full: string | null): { firstName: string; lastName: string } {
@@ -1669,6 +1673,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
             </div>
           </div>
         )}
+
+        {/* Tab: Knihovna fondů */}
+        {activeTab === "fondy" && <FundLibrarySettings snapshot={initial.fundLibrarySnapshot} />}
 
         {/* Tab: Integrace */}
         {activeTab === "integrace" && (

@@ -281,7 +281,7 @@ export function StepStrategy() {
                 <p className="mb-4">
                   V{" "}
                   <Link href="/portal/setup?tab=fondy" className="text-indigo-600 font-semibold underline-offset-2 hover:underline">
-                    Nastavení → Fondová knihovna
+                    Nastavení → Knihovna fondů
                   </Link>{" "}
                   zkontrolujte, které fondy firma povoluje a které máte zapnuté. Bez alespoň jednoho povoleného fondu zde nelze plánovat investice.
                 </p>

@@ -213,7 +213,7 @@ export function FundLibrarySettings({ snapshot }: Props) {
         <div>
           <h2 className="text-xl font-black text-[color:var(--wp-text)] mb-1 flex items-center gap-2">
             <Layers className="text-indigo-500 shrink-0" size={22} />
-            Fondová knihovna
+            Knihovna fondů
           </h2>
           <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">
             Nastavení pro Finanční analýzu — výběr fondů na úrovni firmy a vaše osobní pořadí.
