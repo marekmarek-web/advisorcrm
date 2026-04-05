@@ -24,6 +24,7 @@ import { createResponseStructured, createAiReviewResponseFromPrompt } from "@/li
 import { getAiReviewPromptId } from "./prompt-model-registry";
 import { buildAiReviewExtractionPromptVariables } from "./ai-review-prompt-variables";
 import { sliceSectionTextForType, describeSourceMode, buildPageTextMapFromMarkdown, type SectionTextWindow } from "./section-text-slicer";
+import type { AdobeStructuredResult } from "@/lib/adobe/structured-data-parser";
 import {
   inferFidelityFromContext,
   pickByFidelity,
@@ -130,19 +131,21 @@ async function runHealthSectionExtractionPass(
   warnings: string[],
   totalPages?: number | null,
   pageTextMap?: Record<number, string> | null,
+  structuredResult?: AdobeStructuredResult | null,
 ): Promise<SubdocumentSectionOutcome> {
   const healthCandidates = candidatesByType(candidates, "health_questionnaire", 0.4);
   if (healthCandidates.length === 0) {
     return { type: "skipped", reason: "no_health_candidates_above_threshold" };
   }
 
-  // Narrow the text to the health section window — exact_pages strategy when pageTextMap available
+  // Narrow to health section — prefer adobe_structured_pages, then exact_pages, then fallbacks
   const sectionWindow: SectionTextWindow = sliceSectionTextForType(
     markdownText,
     candidates,
     "health_questionnaire",
     totalPages,
     pageTextMap,
+    structuredResult,
   );
   const extractionText = sectionWindow.text;
 
@@ -434,6 +437,7 @@ async function runInvestmentSectionExtractionPass(
   warnings: string[],
   totalPages?: number | null,
   pageTextMap?: Record<number, string> | null,
+  structuredResult?: AdobeStructuredResult | null,
 ): Promise<SubdocumentSectionOutcome> {
   const invCandidates = candidatesByType(candidates, "investment_section", 0.35);
   if (invCandidates.length === 0) {
@@ -442,13 +446,14 @@ async function runInvestmentSectionExtractionPass(
 
   const confidence = Math.max(...invCandidates.map((c) => c.confidence));
 
-  // Narrow to investment section window — exact_pages strategy when pageTextMap available
+  // Narrow to investment section — prefer adobe_structured_pages, then exact_pages, then fallbacks
   const sectionWindow: SectionTextWindow = sliceSectionTextForType(
     markdownText,
     candidates,
     "investment_section",
     totalPages,
     pageTextMap,
+    structuredResult,
   );
   const extractionText = sectionWindow.text;
 
@@ -651,6 +656,11 @@ export async function orchestrateSubdocumentExtraction(
    * If not provided, will be built from markdownText + totalPages as best-effort.
    */
   pageTextMap?: Record<number, string> | null,
+  /**
+   * Optional Adobe Extract structuredData.json parsed result.
+   * When provided and multi-page, enables adobe_structured_pages isolation (highest priority).
+   */
+  structuredResult?: AdobeStructuredResult | null,
 ): Promise<SubdocumentOrchestrationResult> {
   const warnings: string[] = [];
 
@@ -658,7 +668,8 @@ export async function orchestrateSubdocumentExtraction(
   if (!packetMeta.isBundle) {
     return { orchestrationRan: false, sectionOutcomes: [], mutationCount: 0, warnings };
   }
-  if (markdownText.length < 200) {
+  const hasStructuredPages = (structuredResult?.totalPages ?? 0) > 1;
+  if (markdownText.length < 200 && !hasStructuredPages) {
     return { orchestrationRan: false, sectionOutcomes: [], mutationCount: 0, warnings };
   }
   const candidates = packetMeta.subdocumentCandidates ?? [];
@@ -680,6 +691,11 @@ export async function orchestrateSubdocumentExtraction(
     warnings.push(`page_text_map_available:${Object.keys(resolvedPageTextMap!).length}_pages`);
   }
 
+  const hasAdobeStructured = structuredResult?.ok && (structuredResult.totalPages ?? 0) > 1;
+  if (hasAdobeStructured) {
+    warnings.push(`adobe_structured_available:${structuredResult!.totalPages}_pages`);
+  }
+
   const outcomes: SubdocumentSectionOutcome[] = [];
 
   // 1. Modelation lifecycle correction (synchronous, cheap)
@@ -694,7 +710,7 @@ export async function orchestrateSubdocumentExtraction(
   const paymentOutcome = runPaymentSectionDetection(candidates, envelope);
   outcomes.push(paymentOutcome);
 
-  // 4. Health questionnaire targeted extraction (async LLM call — uses narrowed section text)
+  // 4. Health questionnaire targeted extraction (async LLM call — prefers adobe_structured_pages)
   const healthOutcome = await runHealthSectionExtractionPass(
     markdownText,
     candidates,
@@ -702,10 +718,11 @@ export async function orchestrateSubdocumentExtraction(
     warnings,
     totalPages,
     resolvedPageTextMap,
+    structuredResult,
   );
   outcomes.push(healthOutcome);
 
-  // 5. Investment / DIP / DPS targeted extraction (async LLM call — uses narrowed section text)
+  // 5. Investment / DIP / DPS targeted extraction (async LLM call — prefers adobe_structured_pages)
   const investmentOutcome = await runInvestmentSectionExtractionPass(
     markdownText,
     candidates,
@@ -713,6 +730,7 @@ export async function orchestrateSubdocumentExtraction(
     warnings,
     totalPages,
     resolvedPageTextMap,
+    structuredResult,
   );
   outcomes.push(investmentOutcome);
 

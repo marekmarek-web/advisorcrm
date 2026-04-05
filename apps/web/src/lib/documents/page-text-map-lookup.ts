@@ -1,17 +1,20 @@
 /**
- * DB lookup for per-page text maps.
+ * DB lookup for per-page text maps and Adobe structured data.
  *
- * The documents table stores a `pageTextMap` (JSONB column) that is populated during
- * document processing (processDocument in orchestrator.ts). The AI Review pipeline
- * can read this instead of rebuilding the map heuristically from markdown.
- *
- * Priority for review pipeline:
- *   1. DB-backed pageTextMap (built from Adobe-normalized markdown with numbered markers)
- *   2. Rebuild from current markdown (buildPageTextMapFromMarkdown — may detect standalone ---)
- *   3. Single-page fallback (entire text = page 1)
+ * Priority for AI Review pipeline (highest → lowest):
+ *   1. adobe_structured_pages — from Adobe Extract structuredData.json (highest fidelity)
+ *   2. db_page_text_map       — JSONB from processDocument
+ *   3. markdown_*             — rebuilt from markdown content
+ *   4. heuristic_fallback     — single-page, entire text
  */
 
 import { db, documents, eq } from "db";
+import { createAdminClient } from "@/lib/supabase/server";
+import {
+  parseAdobeStructuredData,
+  buildPageMapFromStructuredData,
+  type AdobeStructuredResult,
+} from "@/lib/adobe/structured-data-parser";
 
 export type PageTextMapLookupResult = {
   pageTextMap: Record<number, string> | null;
@@ -20,6 +23,82 @@ export type PageTextMapLookupResult = {
   /** Number of pages in the map (0 if not found). */
   pageCount: number;
 };
+
+// ─── Adobe structured data lookup ────────────────────────────────────────────
+
+export type AdobeStructuredLookupResult = {
+  /** Parsed structured data result, or null if not available. */
+  structured: AdobeStructuredResult | null;
+  /** Pre-built page text map from structured data, or null. */
+  pageTextMap: Record<number, string> | null;
+  /** Source for traceability. */
+  source: "adobe_structured" | "not_found" | "error";
+  /** Number of pages extracted, 0 if not found. */
+  pageCount: number;
+};
+
+/**
+ * Download and parse Adobe Extract structuredData.json for a document.
+ *
+ * @param extractJsonPath  Storage path to the structuredData.json file.
+ * @returns                Parsed structured result with page text map.
+ */
+export async function fetchAndParseStructuredData(
+  extractJsonPath: string,
+): Promise<AdobeStructuredLookupResult> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin.storage.from("documents").download(extractJsonPath);
+    if (error || !data) {
+      return { structured: null, pageTextMap: null, source: "not_found", pageCount: 0 };
+    }
+
+    const jsonText = await data.text();
+    const parsed = parseAdobeStructuredData(jsonText);
+
+    if (!parsed.ok) {
+      return { structured: null, pageTextMap: null, source: "not_found", pageCount: 0 };
+    }
+
+    const pageTextMap = buildPageMapFromStructuredData(parsed);
+    return {
+      structured: parsed,
+      pageTextMap,
+      source: "adobe_structured",
+      pageCount: parsed.totalPages,
+    };
+  } catch {
+    return { structured: null, pageTextMap: null, source: "error", pageCount: 0 };
+  }
+}
+
+/**
+ * Look up the document's extractJsonPath by storagePath, then download and parse the
+ * Adobe structured data.
+ *
+ * This is the primary entry point for the AI Review pipeline.
+ * Returns null result (not an error) when extractJsonPath isn't available for the document.
+ */
+export async function fetchAdobeStructuredDataByStoragePath(
+  storagePath: string,
+): Promise<AdobeStructuredLookupResult> {
+  try {
+    const rows = await db
+      .select({ extractJsonPath: documents.extractJsonPath })
+      .from(documents)
+      .where(eq(documents.storagePath, storagePath))
+      .limit(1);
+
+    const extractJsonPath = rows[0]?.extractJsonPath;
+    if (!extractJsonPath?.trim()) {
+      return { structured: null, pageTextMap: null, source: "not_found", pageCount: 0 };
+    }
+
+    return fetchAndParseStructuredData(extractJsonPath);
+  } catch {
+    return { structured: null, pageTextMap: null, source: "error", pageCount: 0 };
+  }
+}
 
 /**
  * Fetches the stored pageTextMap for a document identified by storagePath + tenantId.
@@ -63,13 +142,22 @@ export async function fetchPageTextMapByStoragePath(
   }
 }
 
+export type PageTextMapTraceSource =
+  | "adobe_structured_pages"     // highest: from Adobe Extract structuredData.json
+  | "db_stored"                  // from processDocument DB pageTextMap
+  | "markdown_numbered_markers"  // --- page N --- markers
+  | "markdown_standalone_dashes" // legacy Adobe --- without numbers
+  | "markdown_form_feed"         // \f form-feed
+  | "heuristic_fallback";        // single-page, no isolation possible
+
 /**
  * Resolves the best available pageTextMap for a document in the review pipeline.
  *
- * Priority:
- *   1. `storedMap` (from DB lookup) — if multi-page (>1 entries)
- *   2. `markdownMap` (built from markdown) — if multi-page
- *   3. null (caller should fall back to full-text)
+ * Priority (highest → lowest):
+ *   1. Adobe structured pages (from structuredData.json) — exact block/page sourcing
+ *   2. DB-stored pageTextMap (from processDocument) — numbered markers or similar
+ *   3. Markdown-derived map (numbered_markers > standalone_dashes > form_feed)
+ *   4. null / heuristic_fallback
  *
  * Also returns a trace string describing the winning source.
  */
@@ -77,24 +165,36 @@ export function resolvePageTextMap(
   storedMap: PageTextMapLookupResult,
   markdownMap: Record<number, string>,
   markdownMapSource: string,
+  adobeStructured?: AdobeStructuredLookupResult | null,
 ): {
   pageTextMap: Record<number, string> | null;
-  traceSource: "db_stored" | "markdown_numbered_markers" | "markdown_standalone_dashes" | "markdown_form_feed" | "heuristic_fallback";
+  traceSource: PageTextMapTraceSource;
+  structuredResult?: AdobeStructuredResult | null;
 } {
-  // 1. Prefer DB-stored map if it has real page data
+  // 1. Prefer Adobe structured data when multi-page (highest fidelity)
+  if (adobeStructured?.pageTextMap && adobeStructured.pageCount > 1) {
+    return {
+      pageTextMap: adobeStructured.pageTextMap,
+      traceSource: "adobe_structured_pages",
+      structuredResult: adobeStructured.structured,
+    };
+  }
+
+  // 2. DB-stored map if multi-page
   if (storedMap.pageTextMap && storedMap.pageCount > 1) {
     return { pageTextMap: storedMap.pageTextMap, traceSource: "db_stored" };
   }
 
-  // 2. Use markdown-derived map if it has real page separation
+  // 3. Markdown-derived map if multi-page
   if (Object.keys(markdownMap).length > 1) {
-    const src = markdownMapSource === "numbered_markers"
-      ? "markdown_numbered_markers"
-      : markdownMapSource === "standalone_dashes"
-      ? "markdown_standalone_dashes"
-      : markdownMapSource === "form_feed"
-      ? "markdown_form_feed"
-      : "heuristic_fallback";
+    const src: PageTextMapTraceSource =
+      markdownMapSource === "numbered_markers"
+        ? "markdown_numbered_markers"
+        : markdownMapSource === "standalone_dashes"
+        ? "markdown_standalone_dashes"
+        : markdownMapSource === "form_feed"
+        ? "markdown_form_feed"
+        : "heuristic_fallback";
     return { pageTextMap: markdownMap, traceSource: src };
   }
 

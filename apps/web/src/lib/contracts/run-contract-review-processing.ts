@@ -20,7 +20,7 @@ import {
 import { logOpenAICall } from "@/lib/openai";
 import { preprocessForAiExtraction } from "@/lib/documents/processing/preprocess-for-ai";
 import { buildPageTextMapFromMarkdown } from "@/lib/ai/section-text-slicer";
-import { fetchPageTextMapByStoragePath, resolvePageTextMap } from "@/lib/documents/page-text-map-lookup";
+import { fetchPageTextMapByStoragePath, fetchAdobeStructuredDataByStoragePath, resolvePageTextMap } from "@/lib/documents/page-text-map-lookup";
 import { evaluateContractReviewScanGate } from "@/lib/contracts/contract-review-scan-gate";
 import {
   isAiReviewLlmPostprocessEnabled,
@@ -296,9 +296,9 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   let subdocOrchestrationRoute = describeSubdocumentExtractionRoute(packetMeta);
   if (packetMeta.isBundle && markdownAvailable) {
     try {
-      // Resolve physical page-level text map for exact_pages isolation.
-      // Priority: DB-stored (from processDocument) > markdown rebuild.
-      const [storedMapResult, markdownMapWithSource] = await Promise.all([
+      // Resolve physical page-level text map for exact_pages / adobe_structured isolation.
+      // Priority: Adobe structured > DB-stored > markdown rebuild.
+      const [storedMapResult, markdownMapWithSource, adobeStructured] = await Promise.all([
         fetchPageTextMapByStoragePath(storagePath, tenantId),
         Promise.resolve(
           buildPageTextMapFromMarkdown(
@@ -307,12 +307,14 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
             true, // returnSource flag
           ) as { map: Record<number, string>; source: string }
         ),
+        fetchAdobeStructuredDataByStoragePath(storagePath),
       ]);
 
-      const { pageTextMap: resolvedPageTextMap, traceSource } = resolvePageTextMap(
+      const { pageTextMap: resolvedPageTextMap, traceSource, structuredResult } = resolvePageTextMap(
         storedMapResult,
         markdownMapWithSource.map,
         markdownMapWithSource.source,
+        adobeStructured,
       );
 
       const orchResult = await orchestrateSubdocumentExtraction(
@@ -321,6 +323,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
         data,
         adobePreprocessResult?.pageCountEstimate ?? null,
         resolvedPageTextMap,
+        structuredResult,
       );
       if (orchResult.orchestrationRan) {
         subdocOrchestrationRoute = `${subdocOrchestrationRoute}|mutations:${orchResult.mutationCount}`;

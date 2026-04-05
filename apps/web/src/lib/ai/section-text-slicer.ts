@@ -21,10 +21,17 @@
  */
 
 import type { PacketSubdocumentCandidate } from "./document-packet-types";
+import type { AdobeStructuredResult } from "@/lib/adobe/structured-data-parser";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SectionTextMethod = "exact_pages" | "heading" | "char_offset" | "page_range" | "full_text";
+export type SectionTextMethod =
+  | "adobe_structured_pages" // page text from Adobe Extract structuredData.json (highest)
+  | "exact_pages"            // page text from pageTextMap (numbered markers / DB)
+  | "heading"                // substring isolated by section heading
+  | "char_offset"            // substring by char offset
+  | "page_range"             // estimated char slice from pageRangeHint
+  | "full_text";             // fallback: entire document text
 
 export interface SectionTextWindow {
   /** Narrowed text for the section (may equal full text when narrowing fails). */
@@ -81,6 +88,7 @@ const MAJOR_BOUNDARY_PATTERNS: RegExp[] = [
  * Used for source mode traceability.
  */
 export type PageTextMapSource =
+  | "adobe_structured"   // from Adobe Extract structuredData.json (highest fidelity)
   | "numbered_markers"   // `--- page N ---` markers (canonical, from normalizeMarkdownPageBreaks)
   | "form_feed"          // \f form-feed characters
   | "html_comment"       // <!-- page N --> markers
@@ -288,6 +296,49 @@ function sliceByPageRange(
 }
 
 /**
+ * Slice text using Adobe Extract structuredData.json per-page content.
+ * This is the highest-fidelity strategy — uses actual structural block text,
+ * not markdown-derived content.
+ *
+ * Requires:
+ * - candidate.pageNumbers is non-empty
+ * - structuredResult.pages has entries for those page numbers
+ */
+function sliceByAdobeStructuredPages(
+  candidate: PacketSubdocumentCandidate,
+  structuredResult: AdobeStructuredResult,
+): SectionTextWindow | null {
+  const pages = candidate.pageNumbers;
+  if (!pages || pages.length === 0) return null;
+  if (!structuredResult.ok || structuredResult.totalPages === 0) return null;
+
+  const availablePages = pages.filter((p) => p in structuredResult.pages);
+  if (availablePages.length === 0) return null;
+
+  const textParts: string[] = [];
+  for (const p of availablePages) {
+    const page = structuredResult.pages[p];
+    if (page?.fullText) textParts.push(page.fullText);
+  }
+
+  const text = textParts.join("\n\n").trim();
+  if (text.length < 20) return null;
+
+  const truncated = text.slice(0, MAX_SECTION_CHARS);
+  const totalStructuredLength = Object.values(structuredResult.pages)
+    .map((p) => p.fullText.length)
+    .reduce((a, b) => a + b, 0);
+
+  return {
+    text: truncated,
+    method: "adobe_structured_pages",
+    startOffset: -1,
+    endOffset: -1,
+    narrowed: truncated.length < totalStructuredLength * 0.9,
+  };
+}
+
+/**
  * Attempt exact page-based slice using a pre-built pageTextMap.
  * This is the highest-fidelity strategy: uses the actual physical page text
  * rather than a heuristic substring.
@@ -343,23 +394,25 @@ function estimatePageCountFromText(text: string): number {
  * Returns the narrowed text window for a given candidate section.
  *
  * Priority order (highest → lowest):
- *   1. exact_pages  — physical page slices from pageTextMap (if pageNumbers + map available)
- *   2. heading      — heading-based substring from full markdown
- *   3. char_offset  — character offset from signal match location
- *   4. page_range   — estimated char slice from pageRangeHint + total pages
- *   5. full_text    — fallback: full markdown (no narrowing)
+ *   1. adobe_structured_pages — per-page text from Adobe Extract structuredData.json
+ *   2. exact_pages  — physical page slices from pageTextMap (if pageNumbers + map available)
+ *   3. heading      — heading-based substring from full markdown
+ *   4. char_offset  — character offset from signal match location
+ *   5. page_range   — estimated char slice from pageRangeHint + total pages
+ *   6. full_text    — fallback: full markdown (no narrowing)
  *
- * @param fullText    The complete markdown text of the document.
- * @param candidate   The detected subdocument candidate.
- * @param totalPages  Optional total page count (from preprocess meta).
- * @param pageTextMap Optional physical page-level text map (key = 1-indexed page number).
- *                    When present and candidate.pageNumbers is set, enables exact_pages isolation.
+ * @param fullText        The complete markdown text of the document.
+ * @param candidate       The detected subdocument candidate.
+ * @param totalPages      Optional total page count (from preprocess meta).
+ * @param pageTextMap     Optional physical page-level text map (key = 1-indexed page number).
+ * @param structuredResult Optional Adobe Extract parsed structured data (highest priority).
  */
 export function sliceSectionText(
   fullText: string,
   candidate: PacketSubdocumentCandidate,
   totalPages?: number | null,
   pageTextMap?: Record<number, string> | null,
+  structuredResult?: AdobeStructuredResult | null,
 ): SectionTextWindow {
   const fallback: SectionTextWindow = {
     text: fullText.slice(0, MAX_SECTION_CHARS * 2),
@@ -369,7 +422,13 @@ export function sliceSectionText(
     narrowed: false,
   };
 
-  // Strategy 0 (highest priority): exact page-level isolation from pageTextMap.
+  // Strategy 0a (highest): Adobe Extract structuredData.json per-page text
+  if (structuredResult?.ok && structuredResult.totalPages > 1) {
+    const result = sliceByAdobeStructuredPages(candidate, structuredResult);
+    if (result?.narrowed) return result;
+  }
+
+  // Strategy 0b: exact page-level isolation from pageTextMap.
   // Checked BEFORE the min-length guard because physical page isolation is always reliable
   // regardless of total document length.
   if (pageTextMap && Object.keys(pageTextMap).length > 1) {
@@ -406,11 +465,12 @@ export function sliceSectionText(
  * When multiple candidates of the same type exist (e.g. multiple health sections),
  * their windows are merged into one contiguous range.
  *
- * @param fullText    The complete markdown text.
- * @param candidates  All detected subdocument candidates.
- * @param type        The candidate type to slice for.
- * @param totalPages  Optional total page count.
- * @param pageTextMap Optional physical page-level text map for exact_pages isolation.
+ * @param fullText        The complete markdown text.
+ * @param candidates      All detected subdocument candidates.
+ * @param type            The candidate type to slice for.
+ * @param totalPages      Optional total page count.
+ * @param pageTextMap     Optional physical page-level text map for exact_pages isolation.
+ * @param structuredResult Optional Adobe Extract structured result (highest priority).
  */
 export function sliceSectionTextForType(
   fullText: string,
@@ -418,6 +478,7 @@ export function sliceSectionTextForType(
   type: PacketSubdocumentCandidate["type"],
   totalPages?: number | null,
   pageTextMap?: Record<number, string> | null,
+  structuredResult?: AdobeStructuredResult | null,
 ): SectionTextWindow {
   const matching = candidates.filter((c) => c.type === type);
   if (matching.length === 0) {
@@ -431,10 +492,20 @@ export function sliceSectionTextForType(
   }
 
   if (matching.length === 1) {
-    return sliceSectionText(fullText, matching[0], totalPages, pageTextMap);
+    return sliceSectionText(fullText, matching[0], totalPages, pageTextMap, structuredResult);
   }
 
-  // Multiple candidates: try exact_pages first by merging all page numbers
+  // Multiple candidates: try adobe_structured_pages first by merging all page numbers
+  if (structuredResult?.ok && structuredResult.totalPages > 1) {
+    const allPages = [...new Set(matching.flatMap((c) => c.pageNumbers ?? []))].sort((a, b) => a - b);
+    if (allPages.length > 0) {
+      const syntheticCandidate: PacketSubdocumentCandidate = { ...matching[0], pageNumbers: allPages };
+      const result = sliceByAdobeStructuredPages(syntheticCandidate, structuredResult);
+      if (result?.narrowed) return result;
+    }
+  }
+
+  // Multiple candidates: try exact_pages by merging all page numbers
   if (pageTextMap && Object.keys(pageTextMap).length > 1) {
     const allPages = [...new Set(matching.flatMap((c) => c.pageNumbers ?? []))].sort((a, b) => a - b);
     if (allPages.length > 0) {
@@ -445,10 +516,23 @@ export function sliceSectionTextForType(
   }
 
   // Collect all windows and merge
-  const windows = matching.map((c) => sliceSectionText(fullText, c, totalPages, pageTextMap));
+  const windows = matching.map((c) => sliceSectionText(fullText, c, totalPages, pageTextMap, structuredResult));
   const narrowedWindows = windows.filter((w) => w.narrowed);
 
   if (narrowedWindows.length === 0) return windows[0];
+
+  // For adobe_structured_pages windows, concatenate directly
+  const adobeWindows = narrowedWindows.filter((w) => w.method === "adobe_structured_pages");
+  if (adobeWindows.length > 0) {
+    const combined = adobeWindows.map((w) => w.text).join("\n\n").slice(0, MAX_SECTION_CHARS);
+    return {
+      text: combined,
+      method: "adobe_structured_pages",
+      startOffset: -1,
+      endOffset: -1,
+      narrowed: true,
+    };
+  }
 
   // For exact_pages windows, concatenate texts directly (offsets are -1)
   const exactWindows = narrowedWindows.filter((w) => w.method === "exact_pages");
@@ -487,6 +571,7 @@ export function sliceSectionTextForType(
  */
 export function describeSourceMode(window: SectionTextWindow): string {
   switch (window.method) {
+    case "adobe_structured_pages": return "Adobe structured pages (structuredData.json)";
     case "exact_pages": return "exact page-level (pageTextMap)";
     case "heading":     return "section/heading slice";
     case "char_offset": return "char-offset slice";
