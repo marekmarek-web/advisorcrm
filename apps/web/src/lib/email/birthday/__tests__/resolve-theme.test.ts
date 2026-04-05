@@ -23,7 +23,7 @@ describe("resolveEffectiveBirthdayTheme", () => {
     existsSyncMock.mockReturnValue(true);
     const r = resolveEffectiveBirthdayTheme("birthday_gif");
     expect(r.theme).toBe("birthday_gif");
-    expect(r.asset).toBe("/birthday-freepik.gif");
+    expect(r.asset).toBe("/birthday-freepik.png");
   });
 
   it("keeps premium_dark", () => {

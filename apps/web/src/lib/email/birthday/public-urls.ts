@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { join } from "path";
-import { BIRTHDAY_GIF_PUBLIC_PATH } from "./types";
+import { BIRTHDAY_DECOR_IMAGE_FILENAMES } from "./types";
 
 export function getPublicSiteOrigin(): string {
   const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
@@ -15,7 +15,11 @@ export function absoluteUrlFromPublicPath(path: string): string {
   return `${base}${p}`;
 }
 
-const EMAIL_LOGO_CANDIDATES = ["email/aidvisory-mark.png", "email/aidvisory-mark.svg"];
+const EMAIL_LOGO_CANDIDATES = [
+  "email/aidvisory-mark.png",
+  "email/aidvisory-mark.svg",
+  "aidvisora-logo-a.png",
+];
 
 export function resolveEmailHeaderLogoUrl(): string | null {
   for (const rel of EMAIL_LOGO_CANDIDATES) {
@@ -30,11 +34,19 @@ export function resolveEmailHeaderLogoUrl(): string | null {
   return null;
 }
 
+export function resolveBirthdayDecorImagePublicPath(): string | null {
+  for (const file of BIRTHDAY_DECOR_IMAGE_FILENAMES) {
+    const paths = [
+      join(process.cwd(), "public", file),
+      join(process.cwd(), "apps", "web", "public", file),
+    ];
+    if (paths.some((p) => existsSync(p))) return `/${file}`;
+  }
+  return null;
+}
+
 export function birthdayGifAbsoluteUrlIfExists(): string | null {
-  const paths = [
-    join(process.cwd(), "public", "birthday-freepik.gif"),
-    join(process.cwd(), "apps", "web", "public", "birthday-freepik.gif"),
-  ];
-  if (!paths.some((p) => existsSync(p))) return null;
-  return absoluteUrlFromPublicPath(BIRTHDAY_GIF_PUBLIC_PATH);
+  const rel = resolveBirthdayDecorImagePublicPath();
+  if (!rel) return null;
+  return absoluteUrlFromPublicPath(rel);
 }

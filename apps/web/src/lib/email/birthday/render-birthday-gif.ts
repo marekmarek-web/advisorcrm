@@ -9,6 +9,10 @@ export function renderBirthdayGifEmail(input: BirthdayEmailBuildInput): string {
   const gif = input.gifAbsoluteUrl;
   const advisorBits = [input.advisorPhone, input.advisorWebsite].filter(Boolean).join(" · ");
 
+  const logoBlock = input.headerLogoAbsoluteUrl
+    ? `<div style="margin-bottom:12px;"><img src="${input.headerLogoAbsoluteUrl}" alt="Aidvisory" width="120" style="display:inline-block;height:auto;max-width:120px;" /></div>`
+    : "";
+
   const gifRow =
     gif &&
     `<tr><td style="padding:0 24px 16px;background:#fffbeb;">
@@ -26,6 +30,7 @@ ${preheaderBlock(input.preheader)}
         <table role="presentation" width="100%" style="max-width:560px;border-radius:18px;overflow:hidden;border:1px solid #fed7aa;box-shadow:0 8px 30px rgba(234,88,12,0.12);">
           <tr>
             <td style="background:linear-gradient(90deg,#fb923c,#f97316);padding:20px 24px;text-align:center;">
+              ${logoBlock}
               <span style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-0.02em;">🎂 Narozeniny</span>
             </td>
           </tr>
