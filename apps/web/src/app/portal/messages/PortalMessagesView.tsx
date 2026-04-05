@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import {
   getConversationsList,
@@ -21,6 +22,7 @@ import {
 import { getContact, getContactsList, type ContactRow } from "@/app/actions/contacts";
 import { generateAdvisorChatContextSummary, generateAdvisorChatReplyDraft } from "@/app/actions/advisor-chat-ai";
 import type { AdvisorChatAiSummary } from "@/lib/advisor-chat/advisor-chat-ai-types";
+import { queryKeys } from "@/lib/query-keys";
 import { ConversationList } from "./components/ConversationList";
 import { ConversationHeader } from "./components/ConversationHeader";
 import { ConversationQuickActions } from "./components/ConversationQuickActions";
@@ -29,6 +31,7 @@ import { MessageComposer } from "./components/MessageComposer";
 import { ConversationContextPanel } from "./components/ConversationContextPanel";
 import { NewAdvisorActionsMenu } from "./components/NewAdvisorActionsMenu";
 import { ChatModal } from "./components/ChatModal";
+import { ChatQuickScheduleOverlay } from "./components/ChatQuickScheduleOverlay";
 import { formatLastActiveLabel, presenceFromLastMessageAt } from "./components/chat-format";
 import { mergeConversationsWithSelection } from "./components/merge-conversations-with-selection";
 
@@ -87,6 +90,22 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
   const [aiDraftLoading, setAiDraftLoading] = useState(false);
   const [aiDraftError, setAiDraftError] = useState<string | null>(null);
   const [aiDraftText, setAiDraftText] = useState("");
+
+  const { data: scheduleContacts = [], isPending: scheduleContactsLoading } = useQuery({
+    queryKey: queryKeys.contacts.list(),
+    queryFn: getContactsList,
+    enabled: meetingSheetOpen && Boolean(selectedContactId),
+    staleTime: 120_000,
+  });
+
+  const suggestedMeetingTitle = useMemo(() => {
+    const name = (contactName || "Klient").trim();
+    const oppTitle = crmSnapshot?.primaryOpportunity?.title?.trim();
+    if (oppTitle) return `Schůzka: ${oppTitle}`;
+    return `Schůzka s ${name}`;
+  }, [contactName, crmSnapshot?.primaryOpportunity?.title]);
+
+  const scheduleOpportunityId = crmSnapshot?.primaryOpportunity?.id ?? null;
 
   searchRef.current = searchQuery.trim();
   conversationsRef.current = conversations;
@@ -656,22 +675,17 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
         ) : null}
       </ChatModal>
 
-      <ChatModal
-        open={meetingSheetOpen}
-        title="Naplánovat schůzku"
-        onClose={() => setMeetingSheetOpen(false)}
-        footer={
-          <button
-            type="button"
-            onClick={() => setMeetingSheetOpen(false)}
-            className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-medium text-white hover:opacity-95"
-          >
-            Zavřít
-          </button>
-        }
-      >
-        <p>Kalendář a plánování schůzek doplníme v další iteraci. Prozatím použijte svůj běžný postup.</p>
-      </ChatModal>
+      {selectedContactId ? (
+        <ChatQuickScheduleOverlay
+          open={meetingSheetOpen}
+          onClose={() => setMeetingSheetOpen(false)}
+          contactId={selectedContactId}
+          suggestedTitle={suggestedMeetingTitle}
+          opportunityId={scheduleOpportunityId}
+          contacts={scheduleContacts}
+          contactsLoading={scheduleContactsLoading}
+        />
+      ) : null}
 
       <ChatModal
         open={taskSheetOpen}

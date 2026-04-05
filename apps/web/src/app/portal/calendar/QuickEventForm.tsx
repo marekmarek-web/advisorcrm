@@ -121,9 +121,12 @@ export function QuickEventForm({
     const title = form.title.trim() || "Nová schůzka";
     if (!form.startAt) return;
     setSaving(true);
-    await onSave({ ...form, title }, initialValues?.id);
-    setSaving(false);
-    onClose();
+    try {
+      await onSave({ ...form, title }, initialValues?.id);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
