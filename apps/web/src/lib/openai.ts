@@ -36,7 +36,7 @@ type OpenAIRequestOptions = {
 type JsonSchemaFormat = NonNullable<NonNullable<ResponsesCreateBody["text"]>["format"]>;
 
 /** Model routing for copilot vs AI Review (env overrides). */
-export type OpenAIModelRoutingCategory = "default" | "copilot" | "ai_review";
+export type OpenAIModelRoutingCategory = "default" | "copilot" | "ai_review" | "advisor_chat";
 
 export type OpenAICallRoutingOptions = {
   category?: OpenAIModelRoutingCategory;
@@ -113,6 +113,9 @@ export function resolveOpenAIModel(options?: {
       process.env.OPENAI_MODEL?.trim() ||
       defaultModel
     );
+  }
+  if (cat === "advisor_chat") {
+    return process.env.OPENAI_MODEL_ADVISOR_CHAT?.trim() || fallback;
   }
   return fallback;
 }

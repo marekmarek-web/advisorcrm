@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import {
   getConversationsList,
   getMessages,
@@ -18,6 +19,8 @@ import {
   type MessageAttachmentRow,
 } from "@/app/actions/messages";
 import { getContact, getContactsList, type ContactRow } from "@/app/actions/contacts";
+import { generateAdvisorChatContextSummary, generateAdvisorChatReplyDraft } from "@/app/actions/advisor-chat-ai";
+import type { AdvisorChatAiSummary } from "@/lib/advisor-chat/advisor-chat-ai-types";
 import { ConversationList } from "./components/ConversationList";
 import { ConversationHeader } from "./components/ConversationHeader";
 import { ConversationQuickActions } from "./components/ConversationQuickActions";
@@ -78,6 +81,12 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
   const [contextSheetOpen, setContextSheetOpen] = useState(false);
   const [crmSnapshot, setCrmSnapshot] = useState<ChatContextPanelSnapshot | null>(null);
   const [crmLoading, setCrmLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<AdvisorChatAiSummary | null>(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
+  const [aiDraftLoading, setAiDraftLoading] = useState(false);
+  const [aiDraftError, setAiDraftError] = useState<string | null>(null);
+  const [aiDraftText, setAiDraftText] = useState("");
 
   searchRef.current = searchQuery.trim();
   conversationsRef.current = conversations;
@@ -176,6 +185,42 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       cancelled = true;
     };
   }, [selectedContactId, msgs.length]);
+
+  useEffect(() => {
+    if (!selectedContactId) {
+      setAiSummary(null);
+      setAiSummaryError(null);
+      setAiSummaryLoading(false);
+      setAiDraftText("");
+      setAiDraftError(null);
+      setAiDraftLoading(false);
+      return;
+    }
+    setAiSummary(null);
+    setAiSummaryError(null);
+    setAiDraftText("");
+    setAiDraftError(null);
+  }, [selectedContactId]);
+
+  useEffect(() => {
+    if (!selectedContactId || messagesLoading) return;
+    let cancelled = false;
+    setAiSummaryLoading(true);
+    setAiSummaryError(null);
+    void generateAdvisorChatContextSummary(selectedContactId).then((r) => {
+      if (cancelled) return;
+      setAiSummaryLoading(false);
+      if (r.ok) {
+        setAiSummary(r.summary);
+      } else {
+        setAiSummary(null);
+        setAiSummaryError(r.error);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedContactId, msgs.length, messagesLoading]);
 
   useEffect(() => {
     if (!selectedContactId) return;
@@ -364,10 +409,37 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     activeConv?.lastMessage?.trim() ||
     "";
 
-  const openAi = () => {
-    setAiSheetOpen(true);
-    setContextSheetOpen(false);
-  };
+  const refreshAiSummary = useCallback(() => {
+    if (!selectedContactId) return;
+    setAiSummaryLoading(true);
+    setAiSummaryError(null);
+    void generateAdvisorChatContextSummary(selectedContactId).then((r) => {
+      setAiSummaryLoading(false);
+      if (r.ok) {
+        setAiSummary(r.summary);
+      } else {
+        setAiSummary(null);
+        setAiSummaryError(r.error);
+      }
+    });
+  }, [selectedContactId]);
+
+  const runAiDraft = useCallback(
+    async (variantHint?: string) => {
+      if (!selectedContactId) return;
+      setAiSheetOpen(true);
+      setContextSheetOpen(false);
+      setAiDraftLoading(true);
+      setAiDraftError(null);
+      if (!variantHint) setAiDraftText("");
+      const r = await generateAdvisorChatReplyDraft(selectedContactId, { variantHint });
+      setAiDraftLoading(false);
+      if (r.ok) setAiDraftText(r.draft);
+      else setAiDraftError(r.error);
+    },
+    [selectedContactId],
+  );
+
   const openMeeting = () => {
     setMeetingSheetOpen(true);
     setContextSheetOpen(false);
@@ -387,6 +459,10 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       lastThreadActivityAt: lastActivitySource,
       crmSnapshot,
       crmLoading,
+      aiSummary,
+      aiSummaryLoading,
+      aiSummaryError,
+      onRefreshAiSummary: refreshAiSummary,
       onNavigate: (href: string) => {
         setContextSheetOpen(false);
         router.push(href);
@@ -400,6 +476,10 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     lastActivitySource,
     crmSnapshot,
     crmLoading,
+    aiSummary,
+    aiSummaryLoading,
+    aiSummaryError,
+    refreshAiSummary,
     router,
   ]);
 
@@ -455,7 +535,12 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
                 showContextTrigger
                 onOpenContext={() => setContextSheetOpen(true)}
               />
-              <ConversationQuickActions onAiSuggest={openAi} onScheduleMeeting={openMeeting} onCreateTask={openTask} />
+              <ConversationQuickActions
+                onAiSuggest={() => void runAiDraft()}
+                onScheduleMeeting={openMeeting}
+                onCreateTask={openTask}
+                aiBusy={aiDraftLoading}
+              />
 
               <div className="flex min-h-0 flex-1 flex-col">
                 <MessageThread
@@ -523,22 +608,50 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
         title="Navrhnout odpověď AI"
         onClose={() => setAiSheetOpen(false)}
         footer={
-          <button
-            type="button"
-            onClick={() => setAiSheetOpen(false)}
-            className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-medium text-white hover:opacity-95"
-          >
-            Zavřít
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <button
+              type="button"
+              disabled={aiDraftLoading || !aiDraftText.trim()}
+              onClick={() => {
+                setBody(aiDraftText);
+                setAiSheetOpen(false);
+              }}
+              className="w-full rounded-xl bg-violet-600 py-2.5 text-sm font-medium text-white hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[140px]"
+            >
+              Vložit do zprávy
+            </button>
+            <button
+              type="button"
+              disabled={aiDraftLoading || !selectedContactId}
+              onClick={() => void runAiDraft(`variant-${Date.now()}`)}
+              className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] py-2.5 text-sm font-medium text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-card)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[140px]"
+            >
+              Znovu vygenerovat
+            </button>
+            <button
+              type="button"
+              onClick={() => setAiSheetOpen(false)}
+              className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-medium text-white hover:opacity-95 sm:w-auto sm:min-w-[100px]"
+            >
+              Zavřít
+            </button>
+          </div>
         }
       >
-        <p>
-          Tady přibude návrh odpovědi z AI podle vlákna a kontextu klienta. Zatím můžete psát ručně v poli pro zprávu níže.
+        <p className="text-xs text-[color:var(--wp-text-tertiary)]">
+          Návrh vychází z aktuálního vlákna a CRM dat. Před odesláním ho upravte — zpráva se nikdy neodešle automaticky.
         </p>
-        {lastClientSnippet ? (
+        {aiDraftLoading ? (
+          <div className="mt-4 flex items-center gap-2 text-[color:var(--wp-text-secondary)]">
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
+            Generuji návrh…
+          </div>
+        ) : null}
+        {aiDraftError ? <p className="mt-4 text-sm text-red-600 dark:text-red-400">{aiDraftError}</p> : null}
+        {aiDraftText && !aiDraftLoading ? (
           <div className="mt-4 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-3 text-[color:var(--wp-text)]">
-            <div className="text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">Poslední zpráva od klienta</div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{lastClientSnippet}</p>
+            <div className="text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">Návrh odpovědi</div>
+            <p className="mt-2 max-h-[min(40vh,320px)] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed">{aiDraftText}</p>
           </div>
         ) : null}
       </ChatModal>

@@ -13,10 +13,13 @@ export function ConversationQuickActions({
   onAiSuggest,
   onScheduleMeeting,
   onCreateTask,
+  aiBusy,
 }: {
   onAiSuggest: () => void;
   onScheduleMeeting: () => void;
   onCreateTask: () => void;
+  /** Generuje se návrh AI — primární tlačítko je dočasně neaktivní. */
+  aiBusy?: boolean;
 }) {
   const handlers = { ai: onAiSuggest, meeting: onScheduleMeeting, task: onCreateTask };
 
@@ -27,9 +30,12 @@ export function ConversationQuickActions({
           <button
             key={action.id}
             type="button"
+            disabled={action.primary && aiBusy}
+            title={action.primary && aiBusy ? "Generuji návrh…" : undefined}
             onClick={() => handlers[action.id]()}
             className={clsx(
               "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
+              action.primary && aiBusy && "cursor-not-allowed opacity-60",
               action.primary
                 ? "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100/80 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200"
                 : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]",

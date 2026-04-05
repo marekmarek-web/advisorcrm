@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronRight, Clock3, Loader2, Mail, Phone } from "lucide-react";
+import { ChevronRight, Clock3, Loader2, Mail, Phone, Sparkles } from "lucide-react";
 import clsx from "clsx";
 import type { ContactRow } from "@/app/actions/contacts";
 import type { ChatContextPanelSnapshot } from "@/app/actions/messages";
+import type { AdvisorChatAiSummary } from "@/lib/advisor-chat/advisor-chat-ai-types";
 import {
   calendarNewEventHref,
   contactTabHref,
@@ -44,6 +45,10 @@ export function ConversationContextPanel({
   lastThreadActivityAt,
   crmSnapshot,
   crmLoading,
+  aiSummary,
+  aiSummaryLoading,
+  aiSummaryError,
+  onRefreshAiSummary,
   onNavigate,
   asDiv,
   className,
@@ -55,6 +60,10 @@ export function ConversationContextPanel({
   lastThreadActivityAt: Date | null;
   crmSnapshot: ChatContextPanelSnapshot | null;
   crmLoading: boolean;
+  aiSummary: AdvisorChatAiSummary | null;
+  aiSummaryLoading: boolean;
+  aiSummaryError: string | null;
+  onRefreshAiSummary: () => void;
   onNavigate: (href: string) => void;
   asDiv?: boolean;
   className?: string;
@@ -182,6 +191,54 @@ export function ConversationContextPanel({
         {lastMessagePreview ? (
           <p className="mt-2 line-clamp-3 border-t border-white/10 pt-2 text-sm leading-relaxed text-white/85">{lastMessagePreview}</p>
         ) : null}
+      </div>
+
+      <div className="rounded-3xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--wp-text)]">
+            <Sparkles className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
+            AI kontext
+          </div>
+          <button
+            type="button"
+            onClick={onRefreshAiSummary}
+            disabled={aiSummaryLoading}
+            className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100/80 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-300 dark:hover:bg-violet-950/50"
+          >
+            Obnovit
+          </button>
+        </div>
+        {aiSummaryLoading ? (
+          <div className="mt-3 flex items-center gap-2 text-sm text-[color:var(--wp-text-secondary)]">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Shrnuji konverzaci…
+          </div>
+        ) : aiSummaryError ? (
+          <p className="mt-3 text-sm text-red-600 dark:text-red-400">{aiSummaryError}</p>
+        ) : aiSummary ? (
+          <dl className="mt-3 space-y-3 text-sm text-[color:var(--wp-text-secondary)]">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">
+                Klient řeší
+              </dt>
+              <dd className="mt-1 leading-snug text-[color:var(--wp-text)]">{aiSummary.clientFocus}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">
+                Chybí dodat
+              </dt>
+              <dd className="mt-1 leading-snug text-[color:var(--wp-text)]">{aiSummary.missing}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">
+                Doporučený další krok
+              </dt>
+              <dd className="mt-1 leading-snug text-[color:var(--wp-text)]">{aiSummary.recommendedNextStep}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="mt-3 text-xs text-[color:var(--wp-text-tertiary)]">Souhrn se načte po načtení zpráv.</p>
+        )}
       </div>
 
       <div className="rounded-3xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-4">
