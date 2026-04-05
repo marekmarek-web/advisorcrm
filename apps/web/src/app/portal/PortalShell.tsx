@@ -26,8 +26,8 @@ import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styl
 import type { QuickActionsConfig } from "@/lib/quick-actions";
 
 const MOBILE_BREAKPOINT = 768;
-/** Viewport threshold below which the sidebar auto-collapses to icon-only mode. */
-const SIDEBAR_AUTO_COLLAPSE_THRESHOLD = 1100;
+/** Viewport threshold: below this width desktop uses overlay drawer + full-width main (no docked sidebar). */
+const SIDEBAR_NARROW_DESKTOP_THRESHOLD = 1100;
 
 const SIDEBAR_STORAGE_KEY = "portal-sidebar";
 /** Odsazení plovoucího sidebaru od levého okraje (Tailwind left-5). */
@@ -76,7 +76,7 @@ export function PortalShell({
   }, []);
 
   useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${SIDEBAR_AUTO_COLLAPSE_THRESHOLD - 1}px)`);
+    const mq = window.matchMedia(`(max-width: ${SIDEBAR_NARROW_DESKTOP_THRESHOLD - 1}px)`);
     const update = () => setIsNarrowDesktop(mq.matches);
     update();
     mq.addEventListener("change", update);
@@ -93,13 +93,24 @@ export function PortalShell({
 
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
 
-  const effectiveSidebarCollapsed = sidebarCollapsed || (isDesktop && isNarrowDesktop);
+  const narrowDesktopOverlay = isDesktop && isNarrowDesktop;
 
   const mainMarginPx = useMemo(() => {
     if (!isDesktop) return 0;
-    const sidebarPx = effectiveSidebarCollapsed ? PORTAL_SIDEBAR_COLLAPSED_PX : sidebarWidth;
+    if (narrowDesktopOverlay) {
+      return PORTAL_SIDEBAR_FLOAT_INSET_PX + PORTAL_SIDEBAR_MAIN_GAP_PX;
+    }
+    const sidebarPx = sidebarCollapsed ? PORTAL_SIDEBAR_COLLAPSED_PX : sidebarWidth;
     return PORTAL_SIDEBAR_FLOAT_INSET_PX + sidebarPx + PORTAL_SIDEBAR_MAIN_GAP_PX;
-  }, [isDesktop, effectiveSidebarCollapsed, sidebarWidth]);
+  }, [isDesktop, narrowDesktopOverlay, sidebarCollapsed, sidebarWidth]);
+
+  const prevNarrowOverlayRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (prevNarrowOverlayRef.current === true && narrowDesktopOverlay === false && isDesktop) {
+      setSidebarDrawerOpen(false);
+    }
+    prevNarrowOverlayRef.current = narrowDesktopOverlay;
+  }, [narrowDesktopOverlay, isDesktop]);
 
   const handleSidebarResize = useCallback((w: number) => {
     const clamped = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, w));
@@ -141,6 +152,7 @@ export function PortalShell({
           showTeamOverview={showTeamOverview}
           initialQuickActions={initialQuickActions}
           isDesktop={isDesktop}
+          isNarrowDesktop={isNarrowDesktop}
           headerSearchRef={headerSearchRef}
           mainMarginPx={mainMarginPx}
           sidebarDrawerOpen={sidebarDrawerOpen}
@@ -148,7 +160,7 @@ export function PortalShell({
           initSidebarState={initSidebarState}
           sidebarWidth={sidebarWidth}
           sidebarCollapsed={sidebarCollapsed}
-          effectiveSidebarCollapsed={effectiveSidebarCollapsed}
+          narrowDesktopOverlay={narrowDesktopOverlay}
           handleSidebarResize={handleSidebarResize}
           handleSidebarCollapsed={handleSidebarCollapsed}
         >
@@ -165,6 +177,7 @@ function PortalShellInner({
   showTeamOverview,
   initialQuickActions,
   isDesktop,
+  isNarrowDesktop,
   headerSearchRef,
   mainMarginPx,
   sidebarDrawerOpen,
@@ -172,7 +185,7 @@ function PortalShellInner({
   initSidebarState,
   sidebarWidth,
   sidebarCollapsed,
-  effectiveSidebarCollapsed,
+  narrowDesktopOverlay,
   handleSidebarResize,
   handleSidebarCollapsed,
   children,
@@ -180,6 +193,7 @@ function PortalShellInner({
   showTeamOverview?: boolean;
   initialQuickActions?: QuickActionsConfig;
   isDesktop: boolean;
+  isNarrowDesktop: boolean;
   headerSearchRef: React.RefObject<PortalHeaderSearchHandle | null>;
   mainMarginPx: number;
   sidebarDrawerOpen: boolean;
@@ -187,7 +201,7 @@ function PortalShellInner({
   initSidebarState: () => void;
   sidebarWidth: number;
   sidebarCollapsed: boolean;
-  effectiveSidebarCollapsed: boolean;
+  narrowDesktopOverlay: boolean;
   handleSidebarResize: (w: number) => void;
   handleSidebarCollapsed: (v: boolean) => void;
   children: React.ReactNode;
@@ -252,7 +266,8 @@ function PortalShellInner({
       <PortalSidebar
           showTeamOverview={showTeamOverview}
           width={sidebarWidth}
-          collapsed={effectiveSidebarCollapsed}
+          collapsed={sidebarCollapsed}
+          narrowDesktopOverlay={narrowDesktopOverlay}
           onResize={handleSidebarResize}
           onCollapsedChange={handleSidebarCollapsed}
           onMount={initSidebarState}
@@ -268,7 +283,10 @@ function PortalShellInner({
             <button
               type="button"
               onClick={() => setSidebarDrawerOpen(true)}
-              className="md:hidden p-2 rounded-lg text-[color:var(--wp-text-muted)] hover:bg-[color:var(--wp-link-hover-bg)] min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
+              className={clsx(
+                "p-2 rounded-lg text-[color:var(--wp-text-muted)] hover:bg-[color:var(--wp-link-hover-bg)] min-h-[44px] min-w-[44px] items-center justify-center shrink-0",
+                isDesktop && !isNarrowDesktop ? "hidden" : "flex",
+              )}
               aria-label="Otevřít menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" viewBox="0 0 24 24">

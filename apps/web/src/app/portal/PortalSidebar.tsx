@@ -211,6 +211,8 @@ interface PortalSidebarProps {
   showTeamOverview?: boolean;
   width?: number;
   collapsed?: boolean;
+  /** Desktop 768–1099px: menu je překrývací drawer (hamburger), ne docked sidebar. */
+  narrowDesktopOverlay?: boolean;
   onResize?: (width: number) => void;
   onCollapsedChange?: (collapsed: boolean) => void;
   onMount?: () => void;
@@ -227,6 +229,7 @@ export function PortalSidebar({
   showTeamOverview,
   width = PORTAL_SIDEBAR_WIDTH_PX,
   collapsed = false,
+  narrowDesktopOverlay = false,
   onResize,
   onCollapsedChange,
   onMount,
@@ -269,11 +272,18 @@ export function PortalSidebar({
   }, []);
 
   const isControlled = onMobileDrawerClose != null;
-  const mobileOpen = isMobileState && (isControlled ? mobileDrawerOpen : internalMobileOpen);
+  const isSlidingNav = isMobileState || narrowDesktopOverlay;
+  const navDrawerOpen = isControlled ? mobileDrawerOpen : internalMobileOpen;
+  const navOpen = isSlidingNav && navDrawerOpen;
+  const contentCollapsed = narrowDesktopOverlay && navOpen ? false : collapsed;
+
   const setMobileOpen = useCallback(
     (open: boolean) => {
-      if (isControlled) onMobileDrawerClose?.();
-      else setInternalMobileOpen(open);
+      if (isControlled) {
+        if (!open) onMobileDrawerClose?.();
+      } else {
+        setInternalMobileOpen(open);
+      }
     },
     [isControlled, onMobileDrawerClose]
   );
@@ -307,18 +317,22 @@ export function PortalSidebar({
   }, []);
 
   useEffect(() => {
-    if (!mobileOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [mobileOpen, setMobileOpen]);
+  }, [navOpen, setMobileOpen]);
 
   useEffect(() => {
-    if (!mobileOpen) return;
+    if (!navOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [mobileOpen]);
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [navOpen]);
 
   const handleDragStart = useCallback((e: React.DragEvent, groupIdx: number, itemIdx: number) => {
     dragItemRef.current = { groupIdx, itemIdx };
@@ -358,7 +372,25 @@ export function PortalSidebar({
       .filter((sec) => sec.items.length > 0);
   }, [menuSections, searchQuery]);
 
-  const effectiveWidth = collapsed ? PORTAL_SIDEBAR_COLLAPSED_PX : width;
+  const effectiveWidthPx = contentCollapsed ? PORTAL_SIDEBAR_COLLAPSED_PX : width;
+
+  const asidePositionClasses = isSlidingNav
+    ? isMobileState
+      ? "left-0 top-0 bottom-0 border-r border-[color:var(--wp-sidebar-card-border)] shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)]"
+      : "left-5 top-5 bottom-5 h-auto rounded-[32px] border border-[color:var(--wp-sidebar-card-border)] shadow-[var(--wp-sidebar-card-shadow)]"
+    : [
+        "max-md:left-0 max-md:top-0 max-md:bottom-0 max-md:border-r max-md:border-[color:var(--wp-sidebar-card-border)] max-md:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)]",
+        "md:left-5 md:top-5 md:bottom-5 md:h-auto md:rounded-[32px] md:border md:border-[color:var(--wp-sidebar-card-border)] md:shadow-[var(--wp-sidebar-card-shadow)]",
+      ].join(" ");
+
+  const asideTransformClasses = isSlidingNav
+    ? navOpen
+      ? "translate-x-0 pointer-events-auto"
+      : "-translate-x-full pointer-events-none"
+    : [
+        "translate-x-0 pointer-events-auto max-md:-translate-x-full max-md:pointer-events-none",
+        "md:z-20 md:translate-x-0",
+      ].join(" ");
 
   return (
     <>
@@ -375,9 +407,9 @@ export function PortalSidebar({
         .animate-pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
       `}</style>
 
-      {mobileOpen && (
+      {navOpen && isSlidingNav && (
         <div
-          className="md:hidden fixed inset-0 z-drawer-overlay bg-black/40"
+          className="fixed inset-0 z-drawer-overlay bg-black/40"
           onClick={() => setMobileOpen(false)}
           aria-hidden
         />
@@ -388,13 +420,11 @@ export function PortalSidebar({
           "fixed z-drawer-panel flex flex-col shrink-0 transition-[width,transform] duration-500 ease-\\[cubic-bezier(0.16,1,0.3,1)\\]",
           "font-[family-name:var(--font-jakarta),ui-sans-serif,system-ui,sans-serif]",
           "bg-[color:var(--wp-sidebar-card-bg)] backdrop-blur-3xl",
-          "max-md:left-0 max-md:top-0 max-md:bottom-0 max-md:border-r max-md:border-[color:var(--wp-sidebar-card-border)] max-md:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)]",
-          "md:left-5 md:top-5 md:bottom-5 md:h-auto md:rounded-[32px] md:border md:border-[color:var(--wp-sidebar-card-border)] md:shadow-[var(--wp-sidebar-card-shadow)]",
-          "md:z-20 md:translate-x-0",
-          mobileOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none md:pointer-events-auto",
+          asidePositionClasses,
+          asideTransformClasses,
         ].join(" ")}
         style={{
-          width: isMobileState ? "min(85vw, 300px)" : `${effectiveWidth}px`,
+          width: isSlidingNav ? "min(85vw, 300px)" : `${effectiveWidthPx}px`,
         }}
       >
         <div
@@ -411,10 +441,10 @@ export function PortalSidebar({
           <Link
             href="/portal"
             prefetch={false}
-            className={`flex items-center overflow-hidden ${collapsed ? "justify-center w-full" : "min-w-0"}`}
+            className={`flex items-center overflow-hidden ${contentCollapsed ? "justify-center w-full" : "min-w-0"}`}
             aria-label="Aidvisora – přejít na nástěnku"
           >
-            {collapsed ? (
+            {contentCollapsed ? (
               <img
                 key="logo-a"
                 src="/logos/Aidvisora%20logo%20new%20fav.png"
@@ -433,13 +463,19 @@ export function PortalSidebar({
             )}
           </Link>
           <div className="flex items-center shrink-0">
-            {onCollapsedChange && (
+            {((onCollapsedChange && !narrowDesktopOverlay) || (narrowDesktopOverlay && navOpen)) && (
               <button
                 type="button"
-                onClick={() => onCollapsedChange(!collapsed)}
+                onClick={() => {
+                  if (narrowDesktopOverlay && navOpen && onMobileDrawerClose) {
+                    onMobileDrawerClose();
+                  } else if (onCollapsedChange) {
+                    onCollapsedChange(!collapsed);
+                  }
+                }}
                 className={[
                   "hidden md:flex h-8 w-8 shrink-0 items-center justify-center transition-all",
-                  collapsed
+                  contentCollapsed
                     ? "absolute -right-4 top-8 z-50 rounded-full bg-indigo-600 text-white shadow-lg hover:scale-110"
                     : [
                         "rounded-full border border-transparent",
@@ -448,14 +484,26 @@ export function PortalSidebar({
                           : "text-[color:var(--wp-text-tertiary)] hover:bg-[color:var(--wp-surface-card)]/10 hover:text-[color:var(--wp-text)]",
                       ].join(" "),
                 ].join(" ")}
-                aria-label={collapsed ? "Rozbalit panel" : "Sbalit panel"}
+                aria-label={
+                  narrowDesktopOverlay && navOpen
+                    ? "Zavřít menu"
+                    : contentCollapsed
+                      ? "Rozbalit panel"
+                      : "Sbalit panel"
+                }
               >
-                {collapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={16} />}
+                {contentCollapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={16} />}
               </button>
             )}
             <button
+              type="button"
               onClick={() => setMobileOpen(false)}
-              className={`md:hidden p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${isDark ? "text-white hover:bg-[color:var(--wp-surface-card)]/10" : "text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"}`}
+              className={clsx(
+                "p-2 rounded-lg min-h-[44px] min-w-[44px] items-center justify-center transition-colors",
+                isDark ? "text-white hover:bg-[color:var(--wp-surface-card)]/10" : "text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]",
+                !(navOpen && isSlidingNav) && "hidden",
+                navOpen && isSlidingNav && (isMobileState ? "flex md:hidden" : "flex"),
+              )}
               aria-label="Zavřít menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
@@ -466,7 +514,7 @@ export function PortalSidebar({
         </div>
 
         {/* Search – main banner txt: py-5, rounded-[16px], Command + K */}
-        {!collapsed && (
+        {!contentCollapsed && (
           <div className="relative z-10 flex-shrink-0 px-5 py-5 transition-all duration-300 md:px-6">
             <div className="relative">
               <Search
@@ -497,16 +545,16 @@ export function PortalSidebar({
               key={group.id}
               className={[
                 "relative transition-all duration-300",
-                groupIdx === 0 && collapsed ? "mt-4" : "",
-                group.specialBg && !collapsed
+                groupIdx === 0 && contentCollapsed ? "mt-4" : "",
+                group.specialBg && !contentCollapsed
                   ? isDark
                     ? "mx-3 rounded-2xl border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/10 to-indigo-500/5 p-3 shadow-inner"
                     : "mx-3 rounded-2xl border border-purple-100/50 bg-gradient-to-b from-purple-50/50 to-indigo-50/30 p-3 shadow-inner"
                   : "px-3",
-                group.specialBg && collapsed ? (isDark ? "mx-2 rounded-2xl bg-[color:var(--wp-surface-card)]/10 py-2" : "mx-2 rounded-2xl bg-fuchsia-50/40 py-2") : "",
+                group.specialBg && contentCollapsed ? (isDark ? "mx-2 rounded-2xl bg-[color:var(--wp-surface-card)]/10 py-2" : "mx-2 rounded-2xl bg-fuchsia-50/40 py-2") : "",
               ].join(" ")}
             >
-              {!collapsed && (
+              {!contentCollapsed && (
                 <div className="relative z-10 mb-3 ml-3 flex items-center pt-1">
                   <h4
                     className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${
@@ -518,7 +566,7 @@ export function PortalSidebar({
                   </h4>
                 </div>
               )}
-              {collapsed && groupIdx !== 0 && !group.specialBg && (
+              {contentCollapsed && groupIdx !== 0 && !group.specialBg && (
                 <div className={`mx-auto mb-4 mt-2 h-px w-8 ${isDark ? "bg-[color:var(--wp-surface-card)]/10" : "bg-[color:var(--wp-surface-card-border)]"}`} aria-hidden />
               )}
               <ul className="relative z-10 space-y-1.5">
@@ -536,7 +584,7 @@ export function PortalSidebar({
                     return (
                       <li
                         key={item.href}
-                        draggable={!collapsed && !isMobileState}
+                        draggable={!contentCollapsed && !isSlidingNav}
                         onDragStart={(e) => handleDragStart(e, groupIdx, itemIdx)}
                         onDragEnter={() => { dragOverRef.current = { groupIdx, itemIdx }; }}
                         onDragEnd={handleDragEnd}
@@ -547,7 +595,7 @@ export function PortalSidebar({
                           href={item.href}
                           prefetch={false}
                           className={`w-full flex items-center relative overflow-hidden transition-all duration-300
-                            ${collapsed ? "min-h-[44px] justify-center rounded-2xl p-3" : "min-h-[44px] justify-between rounded-[14px] px-4 py-3"}
+                            ${contentCollapsed ? "min-h-[44px] justify-center rounded-2xl p-3" : "min-h-[44px] justify-between rounded-[14px] px-4 py-3"}
                             ${isDark
                               ? isActive
                                 ? "border border-[color:var(--wp-nav-active-border)] bg-[color:var(--wp-nav-active-bg)] text-[color:var(--wp-nav-active-text)] shadow-[var(--wp-nav-active-shadow)]"
@@ -556,15 +604,15 @@ export function PortalSidebar({
                                 ? "border border-transparent bg-gradient-to-r from-fuchsia-600 to-indigo-600 font-bold text-white shadow-lg shadow-fuchsia-900/20"
                                 : "border border-transparent text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]/60 hover:text-[color:var(--wp-text)]"}
                           `}
-                          title={collapsed ? item.label : undefined}
+                          title={contentCollapsed ? item.label : undefined}
                         >
                           <AiAssistantBrandIcon size={22} className="shrink-0" />
-                          {!collapsed && (
+                          {!contentCollapsed && (
                             <span className={`ml-3 flex-1 text-left text-sm font-black tracking-wide ${isActive ? "text-white" : isDark ? "text-white" : "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600"}`}>
                               {item.label}
                             </span>
                           )}
-                          {!collapsed && (
+                          {!contentCollapsed && (
                             <GripVertical size={14} className={`hidden md:block ${isDark ? "text-white/30" : "text-fuchsia-200"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0`} />
                           )}
                         </Link>
@@ -575,7 +623,7 @@ export function PortalSidebar({
                   return (
                     <li
                       key={item.href}
-                      draggable={!collapsed && !isMobileState}
+                      draggable={!contentCollapsed && !isSlidingNav}
                       onDragStart={(e) => handleDragStart(e, groupIdx, itemIdx)}
                       onDragEnter={() => { dragOverRef.current = { groupIdx, itemIdx }; }}
                       onDragEnd={handleDragEnd}
@@ -586,7 +634,7 @@ export function PortalSidebar({
                         href={item.href}
                         prefetch={false}
                         className={`w-full flex items-center relative overflow-hidden transition-all duration-300
-                          ${collapsed ? "min-h-[44px] justify-center rounded-2xl p-3" : "min-h-[44px] rounded-[14px] px-4 py-3"}
+                          ${contentCollapsed ? "min-h-[44px] justify-center rounded-2xl p-3" : "min-h-[44px] rounded-[14px] px-4 py-3"}
                           ${isDark
                             ? isActive
                               ? "border border-[color:var(--wp-nav-active-border)] bg-[color:var(--wp-nav-active-bg)] text-[color:var(--wp-nav-active-text)] shadow-[var(--wp-nav-active-shadow)]"
@@ -597,9 +645,9 @@ export function PortalSidebar({
                                 ? "border border-transparent font-bold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]/60 hover:text-[color:var(--wp-text)]"
                                 : "border border-transparent font-medium text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]/60 hover:text-[color:var(--wp-text)]"}
                         `}
-                        title={collapsed ? item.label : undefined}
+                        title={contentCollapsed ? item.label : undefined}
                       >
-                        {collapsed && isActive && (
+                        {contentCollapsed && isActive && (
                           <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-full ${isDark ? "bg-white/60" : "bg-indigo-400"}`} aria-hidden />
                         )}
                         <div className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${!isActive && item.hoverAnim ? item.hoverAnim : ""}`}>
@@ -615,7 +663,7 @@ export function PortalSidebar({
                             strokeWidth={isActive || item.isHighlighted ? 2.5 : 2}
                           />
                         </div>
-                        {!collapsed && (
+                        {!contentCollapsed && (
                           <span
                             className={`ml-3 flex-1 text-left text-sm whitespace-nowrap tracking-wide ${
                               isActive
@@ -630,7 +678,7 @@ export function PortalSidebar({
                             {item.label}
                           </span>
                         )}
-                        {!collapsed && badge != null && (
+                        {!contentCollapsed && badge != null && (
                           <span
                             className={`text-[10px] font-black px-2 py-0.5 rounded-full transition-colors mr-2 shrink-0 ${
                               isDark
@@ -643,7 +691,7 @@ export function PortalSidebar({
                             {badge > 99 ? "99+" : badge}
                           </span>
                         )}
-                        {!collapsed && (
+                        {!contentCollapsed && (
                           <GripVertical size={14} className={`hidden md:block ${isDark ? "text-white/30" : "text-[color:var(--wp-text-tertiary)]"} opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0 ${badge == null ? "ml-auto" : ""}`} />
                         )}
                       </Link>
@@ -666,7 +714,7 @@ export function PortalSidebar({
                 title="Přihlásit se jako klient (localhost)"
               >
                 <User size={18} className="shrink-0" />
-                {!collapsed && <span className="text-sm font-semibold">Klientská zóna</span>}
+                {!contentCollapsed && <span className="text-sm font-semibold">Klientská zóna</span>}
               </Link>
             </div>
           )}
@@ -682,21 +730,21 @@ export function PortalSidebar({
             <Link
               href="/portal/setup?tab=profil"
               prefetch={false}
-              className={`flex items-center group cursor-pointer p-2 -m-2 rounded-xl transition-colors w-full max-w-full ${collapsed ? "justify-center" : "justify-between"} ${isDark ? "hover:bg-[color:var(--wp-surface-card)]/10" : "hover:bg-[color:var(--wp-surface-card)]"}`}
-              title={collapsed ? (userName ?? userEmail ?? "Profil") : undefined}
+              className={`flex items-center group cursor-pointer p-2 -m-2 rounded-xl transition-colors w-full max-w-full ${contentCollapsed ? "justify-center" : "justify-between"} ${isDark ? "hover:bg-[color:var(--wp-surface-card)]/10" : "hover:bg-[color:var(--wp-surface-card)]"}`}
+              title={contentCollapsed ? (userName ?? userEmail ?? "Profil") : undefined}
             >
               <div className="flex items-center gap-3 overflow-hidden min-w-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-aidv-dashboard-cta to-aidv-accent-purple flex items-center justify-center text-white font-black text-sm shrink-0 shadow-inner">
                   {getUserMenuInitials({ displayName: userName, email: userEmail })}
                 </div>
-                {!collapsed && (
+                {!contentCollapsed && (
                   <div className="min-w-0">
                     <p className={`text-sm font-black truncate ${isDark ? "text-white" : "text-[color:var(--wp-text)]"}`}>{userName ?? userEmail ?? "Profil"}</p>
                     <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${isDark ? "text-white/60" : "text-[color:var(--wp-text-tertiary)]"}`}>AIDVISORA CRM V2.0</p>
                   </div>
                 )}
               </div>
-              {!collapsed && (
+              {!contentCollapsed && (
                 <MoreVertical size={16} className={`shrink-0 ${isDark ? "text-white/70 group-hover:text-white" : "text-[color:var(--wp-text-tertiary)] group-hover:text-[color:var(--wp-text-secondary)]"}`} />
               )}
             </Link>
@@ -840,7 +888,7 @@ export function PortalSidebar({
           </div>
         </div>
 
-        {onResize && !collapsed && (
+        {onResize && !contentCollapsed && !isSlidingNav && (
           <div
             className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hidden md:block hover:bg-[color:var(--wp-surface-card-border)] active:bg-[color:var(--wp-surface-card-border)] transition-colors dark:hover:bg-[color:var(--wp-surface-card)]/15 dark:active:bg-[color:var(--wp-surface-card)]/25"
             onMouseDown={(e) => {
