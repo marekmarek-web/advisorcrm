@@ -180,6 +180,157 @@ export function applyProductFamilyTextOverride(
   return { productFamily: currentProductFamily, overrideApplied: false };
 }
 
+// ─── Router-input text overrides (G03/G08/G09 family / docType correction) ───
+// Applied in V2 pipeline BEFORE the router to fix wrong LLM-classifier outputs
+// without touching the main classifier call.
+
+export type RouterInputOverrideResult = {
+  productFamily: string;
+  documentType: string;
+  productSubtype: string;
+  overrideApplied: boolean;
+  overrideReasons: string[];
+};
+
+const AML_COMPLIANCE_MARKERS: RegExp[] = [
+  /\baml\b/,
+  /fatca/,
+  /anti.mone.*launder/,
+  /legitimace\s+(prostredku|zdroje)/,
+  /politicky\s+exponovana/,
+  /\bkyc\b/,
+  /boj\s+proti.*praci\s+penez/,
+  /identifikac.*klienta\s+dle\s+zakona/,
+];
+
+const LEASING_MARKERS: RegExp[] = [
+  /\bleasing\b/,
+  /leasingov\w+\s+smlouva/,
+  /smlouva\s+o\s+(financnim|financovacim|financovani)/,
+  /najemce|pronajimatele/,
+  /csob\s+leasing/,
+  /financovani\s+vozidla|financovani\s+majetku/,
+  /\bpbi\b/,
+];
+
+const LIFE_CONTRACT_HEADER_MARKERS: RegExp[] = [
+  /pojistna\s+smlouva/,
+  /pojistitel/,
+  /cislo\s+pojistne\s+smlouvy/,
+];
+
+/**
+ * Rule-based override for router input fields (productFamily / documentType / productSubtype).
+ * Called in the V2 pipeline AFTER the LLM classifier and BEFORE resolveAiReviewExtractionRoute.
+ * Priorities: AML/compliance > leasing > life-insurance modelation→contract correction.
+ */
+export function applyRouterInputTextOverrides(
+  currentProductFamily: string,
+  currentDocumentType: string,
+  currentProductSubtype: string,
+  textSnippet: string | null | undefined,
+): RouterInputOverrideResult {
+  const base: RouterInputOverrideResult = {
+    productFamily: currentProductFamily,
+    documentType: currentDocumentType,
+    productSubtype: currentProductSubtype,
+    overrideApplied: false,
+    overrideReasons: [],
+  };
+  if (!textSnippet || textSnippet.trim().length < 40) return base;
+
+  const haystack = textSnippet
+    .slice(0, 32_000)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+
+  // Priority 1: AML/FATCA compliance — overrides generic/investment family when the document
+  // is primarily a compliance/KYC form rather than a product contract with AML clauses.
+  // Guards: skip when product family is already a specific product (DIP/DPS/PP/loan/…),
+  // or when strong insurance/investment primary contract headers are present.
+  {
+    // Guard 1: already-specific product families contain AML clauses by regulation — don't override
+    const PRODUCT_FAMILIES_WITH_EMBEDDED_AML = new Set([
+      "dip", "dps", "pp", "loan", "mortgage", "building_savings", "leasing",
+    ]);
+    if (!PRODUCT_FAMILIES_WITH_EMBEDDED_AML.has(currentProductFamily)) {
+      let amlHits = 0;
+      for (const m of AML_COMPLIANCE_MARKERS) {
+        if (m.test(haystack)) amlHits++;
+        if (amlHits >= 2) break;
+      }
+      if (amlHits >= 2) {
+        // Guard 2: if document has ≥2 insurance contract headers, it's a primary insurance
+        // contract with an embedded AML section — skip the override.
+        let contractHits = 0;
+        for (const m of LIFE_CONTRACT_HEADER_MARKERS) {
+          if (m.test(haystack)) contractHits++;
+        }
+        if (contractHits < 2) {
+          return {
+            productFamily: "compliance",
+            documentType: "consent_or_identification_document",
+            productSubtype: "aml_kyc_form",
+            overrideApplied: true,
+            overrideReasons: ["aml_compliance_override"],
+          };
+        }
+      }
+    }
+  }
+
+  // Priority 2: Leasing / financial lease — override when clear leasing signals
+  {
+    let hits = 0;
+    for (const m of LEASING_MARKERS) {
+      if (m.test(haystack)) hits++;
+      if (hits >= 2) break;
+    }
+    if (hits >= 2) {
+      const dt =
+        currentDocumentType === "contract" ||
+        currentDocumentType === "amendment" ||
+        currentDocumentType.includes("contract")
+          ? "contract"
+          : "unknown";
+      return {
+        productFamily: "leasing",
+        documentType: dt,
+        productSubtype: "leasing_contract",
+        overrideApplied: true,
+        overrideReasons: ["leasing_override"],
+      };
+    }
+  }
+
+  // Priority 3: Life insurance classified as modelation but has strong contract headers
+  // → reclassify as contract so insuranceContractExtraction is used
+  {
+    const isLifeFam = currentProductFamily === "life_insurance";
+    const isModelationDt =
+      currentDocumentType === "modelation" ||
+      currentDocumentType === "life_insurance_modelation";
+    if (isLifeFam && isModelationDt) {
+      let hits = 0;
+      for (const m of LIFE_CONTRACT_HEADER_MARKERS) {
+        if (m.test(haystack)) hits++;
+      }
+      if (hits >= 2) {
+        return {
+          productFamily: currentProductFamily,
+          documentType: "contract",
+          productSubtype: currentProductSubtype,
+          overrideApplied: true,
+          overrideReasons: ["life_contract_modelation_correction"],
+        };
+      }
+    }
+  }
+
+  return base;
+}
+
 export function applyRuleBasedClassificationOverride(
   classification: ClassificationResult,
   textSnippet: string | null | undefined

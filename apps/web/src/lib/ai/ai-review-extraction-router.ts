@@ -41,6 +41,47 @@ function norm(s: string): string {
     .replace(/\s+/g, "_");
 }
 
+/**
+ * OpenAI Prompt Builder historically used short router tokens (contract, proposal, …).
+ * Anthropic local docClassifierV2 template lists full primary-style names — map them back so § routing matches.
+ */
+export function coerceClassifierDocumentTypeForRouter(raw: string): string {
+  const d = norm(raw);
+  const shortOk = new Set([
+    "contract",
+    "proposal",
+    "modelation",
+    "amendment",
+    "offer",
+    "statement",
+    "payment_instructions",
+    "termination_document",
+    "consent_or_identification_document",
+    "confirmation_document",
+    "supporting_document",
+    "unknown",
+  ]);
+  if (shortOk.has(d)) return String(raw || "").trim();
+
+  if (d === "life_insurance_final_contract" || d === "life_insurance_contract") return "contract";
+  if (d === "life_insurance_investment_contract") return "contract";
+  if (d === "life_insurance_modelation") return "modelation";
+  if (d === "life_insurance_proposal") return "proposal";
+  if (d === "life_insurance_change_request") return "amendment";
+  if (d === "nonlife_insurance_contract") return "contract";
+  if (d === "consumer_loan_contract" || d === "consumer_loan_with_payment_protection") return "contract";
+  if (d === "mortgage_document") return "contract";
+  if (d === "investment_subscription_document" || d === "investment_service_agreement") return "contract";
+  if (d === "investment_modelation") return "modelation";
+  if (d === "pension_contract") return "contract";
+  if (d === "consent_or_declaration") return "consent_or_identification_document";
+  if (d === "final_contract") return "contract";
+  // Leasing / financial lease document types
+  if (d.includes("leasing") || d === "financial_lease" || d === "operating_lease" || d === "leasing_contract") return "contract";
+
+  return String(raw || "").trim();
+}
+
 function amendmentConfidenceOk(confidence: number, threshold: number): boolean {
   return confidence >= threshold;
 }
@@ -59,7 +100,7 @@ export function getClassifierConfidenceThresholds(): { min: number; amendment: n
  * this function still guards it at the top.
  */
 export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiReviewRouterResult {
-  const dt = norm(input.documentType);
+  const dt = norm(coerceClassifierDocumentTypeForRouter(input.documentType));
   const fam = norm(input.productFamily);
   const sub = norm(input.productSubtype);
   const intent = norm(input.businessIntent);
@@ -270,6 +311,16 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
     return { outcome: "manual_review", reasonCodes: ["prompt_missing_termination"] };
   }
 
+  // §X Leasing / financial lease / fleet financing
+  {
+    const LEASING_FAMILIES = new Set(["leasing", "financing", "financial_leasing", "fleet_financing", "factoring", "compliance"]);
+    if (LEASING_FAMILIES.has(fam) && fam !== "compliance") {
+      if (dt === "contract" || dt === "amendment" || dt === "unknown" || dt === "") {
+        return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["leasing_contract"] };
+      }
+    }
+  }
+
   // §12 Consent / AML / mandate
   if (dt === "consent_or_identification_document") {
     const okSub = new Set(["aml_kyc_form", "direct_debit_mandate"]);
@@ -279,7 +330,14 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
     if (getAiReviewPromptId("consentIdentificationExtraction")) {
       return { outcome: "extract", promptKey: "consentIdentificationExtraction", reasonCodes: ["consent_kyc"] };
     }
-    return { outcome: "manual_review", reasonCodes: ["prompt_missing_consent"] };
+    // Fallback when dedicated consent prompt is not configured — use legacy extraction
+    // so primaryType can be properly set (manual_review stub returns unsupported_or_unknown)
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["consent_kyc_legacy_fallback"] };
+  }
+
+  // §X2 Compliance family (AML/KYC/FATCA documents detected via text override)
+  if (fam === "compliance") {
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["compliance_document"] };
   }
 
   // §13 Confirmation

@@ -74,7 +74,7 @@ import type {
 import { getPipelineVersionInfo } from "./pipeline-versioning";
 import type { DocumentReviewEnvelope } from "./document-review-types";
 import { resolveHybridInvestmentDocumentType } from "./ai-review-document-type-signals";
-import { applyProductFamilyTextOverride } from "./document-classification-overrides";
+import { applyProductFamilyTextOverride, applyRouterInputTextOverrides } from "./document-classification-overrides";
 import { resolveDocumentSchema } from "./document-schema-router";
 import {
   COMBINED_CLASSIFY_AND_EXTRACT_MIN_HINT_CHARS,
@@ -779,7 +779,7 @@ export async function runAiReviewV2Pipeline(
   const ai = clsRes.data;
   trace.aiClassifierJson = ai as unknown as Record<string, unknown>;
   trace.supportedForDirectExtraction = ai.supportedForDirectExtraction !== false;
-  const classification = mapAiClassifierToClassificationResult(ai);
+  let classification = mapAiClassifierToClassificationResult(ai);
   trace.documentType = classification.primaryType;
   trace.classificationConfidence = classification.confidence;
   trace.rawClassification = `${ai.documentType}/${ai.productFamily}/${ai.productSubtype}`;
@@ -800,10 +800,43 @@ export async function runAiReviewV2Pipeline(
     }
   }
 
+  // Rule-based router-input override: fixes AML/compliance, leasing, and life-insurance
+  // modelation→contract misclassifications before routing. When applied, re-derives
+  // classification so the correct primaryType propagates through extraction.
+  const routerInputOverride = applyRouterInputTextOverrides(
+    effectiveProductFamily,
+    ai.documentType,
+    ai.productSubtype,
+    documentTextForExtraction,
+  );
+  let effectiveDocumentType = ai.documentType;
+  let effectiveProductSubtype = ai.productSubtype;
+  if (routerInputOverride.overrideApplied) {
+    effectiveDocumentType = routerInputOverride.documentType;
+    effectiveProductSubtype = routerInputOverride.productSubtype;
+    // Re-derive classification with the overridden documentType/family/subtype
+    // so primaryType, lifecycleStatus and documentIntent are consistent.
+    const overriddenAi = {
+      ...ai,
+      documentType: routerInputOverride.documentType,
+      productFamily: routerInputOverride.productFamily,
+      productSubtype: routerInputOverride.productSubtype,
+    };
+    classification = mapAiClassifierToClassificationResult(overriddenAi);
+    allReasons.push(`router_input_text_override:${routerInputOverride.overrideReasons.join(",")}`);
+    trace.warnings = [
+      ...(trace.warnings ?? []),
+      `router_input_overridden:${routerInputOverride.overrideReasons.join(",")}`,
+    ];
+    if (trace.aiClassifierJson) {
+      (trace.aiClassifierJson as Record<string, unknown>).documentType = effectiveDocumentType;
+    }
+  }
+
   const router = resolveAiReviewExtractionRoute({
-    documentType: ai.documentType,
-    productFamily: effectiveProductFamily,
-    productSubtype: ai.productSubtype,
+    documentType: effectiveDocumentType,
+    productFamily: routerInputOverride.overrideApplied ? routerInputOverride.productFamily : effectiveProductFamily,
+    productSubtype: effectiveProductSubtype,
     businessIntent: ai.businessIntent,
     recommendedRoute: ai.recommendedRoute,
     confidence: ai.confidence,
@@ -1246,6 +1279,44 @@ export async function runAiReviewV2Pipeline(
             coercedData.extractedFields[k] = v as DocumentReviewEnvelope["extractedFields"][string];
           }
           trace.warnings = [...(trace.warnings ?? []), "rescue_extraction_merged"];
+        }
+      }
+      // Fallback for stored-prompt path: when OpenAI stored prompt returned very few valid fields
+      // after coercion (< 3 populated required fields), retry with schema_text_wrap (local template /
+      // Claude) to recover extraction data. This handles non-deterministic OpenAI stored prompt
+      // failures for DIP/investment documents.
+      const storedPromptPopulatedFieldCount = Object.values(coercedData.extractedFields ?? {}).filter((f) => {
+        const v = f?.value;
+        return v != null && String(v).trim() && String(v) !== "null" && String(v) !== "unknown";
+      }).length;
+      if (
+        trace.extractionSecondPass === "prompt_text" &&
+        storedPromptPopulatedFieldCount < 3 &&
+        allowTextSecondPass
+      ) {
+        try {
+          trace.warnings = [...(trace.warnings ?? []), "stored_prompt_zero_fields_text_fallback"];
+          const wrapped = wrapExtractionPromptWithDocumentText(
+            extractionPrompt,
+            documentTextForExtraction,
+            undefined,
+            options?.bundleSectionTexts ?? null,
+          );
+          const fallbackRaw = await createResponse(wrapped, { routing: { category: "ai_review" } });
+          const fallbackValidation = validateExtractionByType(fallbackRaw, documentType);
+          if (fallbackValidation.ok) {
+            const fallbackFields = fallbackValidation.data.extractedFields ?? {};
+            const nonEmptyKeys = Object.keys(fallbackFields).filter((k) => {
+              const v = fallbackFields[k]?.value;
+              return v != null && String(v).trim() && String(v) !== "null" && String(v) !== "unknown";
+            });
+            if (nonEmptyKeys.length > 0) {
+              Object.assign(coercedData.extractedFields, fallbackFields);
+              trace.warnings = [...(trace.warnings ?? []), "stored_prompt_fallback_text_merged"];
+            }
+          }
+        } catch {
+          // Fallback failed silently — keep original coerced (0-field) result
         }
       }
     }

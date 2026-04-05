@@ -738,8 +738,8 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
     ],
     defaultIntent: "creates_new_product",
     extractionRules: {
-      required: ["extractedFields.investorFullName", "extractedFields.productName"],
-      optional: ["extractedFields.contributionAmount", ...commonOptional],
+      required: ["extractedFields.investorFullName", "extractedFields.productName", "extractedFields.productType"],
+      optional: ["extractedFields.contributionAmount", "extractedFields.bankAccount", "extractedFields.variableSymbol", ...commonOptional],
       conditional: ["extractedFields.signedDate_if_present"],
       notApplicableRules: ["bank-statement specific fields are not_applicable"],
       matchingKeys: ["investorFullName", "birthDate", "maskedPersonalId", "email"],

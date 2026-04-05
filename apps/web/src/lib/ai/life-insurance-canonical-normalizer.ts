@@ -156,8 +156,14 @@ function extractParticipants(env: DocumentReviewEnvelope): ParticipantRecord[] {
     });
   }
 
-  // Case A: flat primary client fields — add as policyholder if no participant yet
-  const primaryName = fieldVal(ef, "fullName") ?? fieldVal(ef, "clientFullName");
+  // Case A: flat primary client fields — add as policyholder if no participant yet.
+  // investorFullName is used by DIP/investment subscription schemas.
+  const primaryName =
+    fieldVal(ef, "fullName") ??
+    fieldVal(ef, "clientFullName") ??
+    fieldVal(ef, "investorFullName") ??
+    fieldVal(ef, "policyholderName") ??
+    fieldVal(ef, "proposerName");
   if (primaryName && !participants.some((p) => p.role === "policyholder" || p.role === "insured")) {
     participants.unshift({
       role: "policyholder",
@@ -342,7 +348,11 @@ function extractInvestmentData(env: DocumentReviewEnvelope): InvestmentDataRecor
   const lifecycle = env.documentClassification?.lifecycleStatus;
 
   const strategy = fieldVal(ef, "investmentStrategy") ?? fieldVal(ef, "investmentAllocation");
-  const investmentAmountRaw = fieldValNum(ef, "investmentPremium") ?? fieldValNum(ef, "regularExtraContribution");
+  const investmentAmountRaw =
+    fieldValNum(ef, "investmentPremium") ??
+    fieldValNum(ef, "regularExtraContribution") ??
+    fieldValNum(ef, "contributionAmount") ??
+    fieldValNum(ef, "monthlyContribution");
 
   const fundsRaw = ef["investmentFunds"]?.value ?? ef["fundAllocation"]?.value;
   let funds: InvestmentDataRecord["funds"] = [];
@@ -366,16 +376,21 @@ function extractInvestmentData(env: DocumentReviewEnvelope): InvestmentDataRecor
     }
   }
 
-  if (!strategy && funds.length === 0 && investmentAmountRaw == null) return null;
+  // For DIP/DPS investment accounts: productType signals the investment product even when
+  // investment-specific fields (strategy, funds, amount) weren't extracted by the LLM.
+  const productType = fieldVal(ef, "productType");
+  const isDipDps = productType != null && /^(dip|dps|dlouhodoby.investicni|penzijni.sporeni)/i.test(productType);
+
+  if (!strategy && funds.length === 0 && investmentAmountRaw == null && !isDipDps) return null;
 
   const isModeledData =
     lifecycle === "modelation" || lifecycle === "illustration" || lifecycle === "non_binding_projection";
   const isContractualData = lifecycle === "final_contract" || lifecycle === "confirmation";
 
   return {
-    strategy,
+    strategy: strategy ?? (isDipDps ? productType : null),
     funds,
-    investmentAmount: investmentAmountRaw,
+    investmentAmount: investmentAmountRaw ?? contributionAmount,
     isModeledData,
     isContractualData,
     notes: fieldVal(ef, "investmentScenario"),
