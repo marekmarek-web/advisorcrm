@@ -31,6 +31,48 @@ async function uploadToAdobe(
   return asset.assetID;
 }
 
+/**
+ * Normalize page-break markers in Adobe-produced markdown.
+ *
+ * Adobe PDF Services pdftomarkdown outputs `---` (thematic break / horizontal rule) as page
+ * separators. These are indistinguishable from decorative `---` in pure Markdown, but in
+ * practice legal/insurance documents use `---` exclusively as page delimiters.
+ *
+ * This function replaces every isolated `---` line (preceded and/or followed by blank lines
+ * or document start/end) with a numbered `--- page N ---` marker, matching the canonical
+ * format used by `buildPageTextMapFromMarkdown` for exact-page isolation.
+ *
+ * Returns the normalized text and a count of page breaks found.
+ */
+export function normalizeMarkdownPageBreaks(
+  text: string,
+  knownPageCount?: number | null,
+): { normalized: string; pageBreakCount: number } {
+  if (!text) return { normalized: text, pageBreakCount: 0 };
+
+  // Match `---` on its own line (optional surrounding blank lines)
+  // Only when the line is EXACTLY `---` (no other chars besides whitespace)
+  const standaloneBreakRe = /^---\s*$/gm;
+  const matches = text.match(standaloneBreakRe);
+  const pageBreakCount = matches?.length ?? 0;
+
+  if (pageBreakCount === 0) return { normalized: text, pageBreakCount: 0 };
+
+  // Sanity check: if known page count is provided, don't insert far more separators than pages
+  // (could indicate decorative use). Allow 2× tolerance.
+  if (knownPageCount && pageBreakCount > knownPageCount * 2) {
+    return { normalized: text, pageBreakCount: 0 };
+  }
+
+  let pageNum = 1;
+  const normalized = text.replace(standaloneBreakRe, () => {
+    pageNum++;
+    return `--- page ${pageNum} ---`;
+  });
+
+  return { normalized, pageBreakCount };
+}
+
 async function saveToStorage(
   storagePath: string,
   content: ArrayBuffer | Uint8Array | string,
@@ -109,6 +151,13 @@ export class AdobeProvider implements DocumentProcessingProviderInterface {
         textContent = fromZip ?? new TextDecoder("utf-8", { fatal: false }).decode(rawBytes);
       } else {
         textContent = new TextDecoder("utf-8", { fatal: false }).decode(rawBytes);
+      }
+
+      // Normalize standalone `---` page separators from Adobe output to numbered `--- page N ---`
+      // markers so that downstream buildPageTextMapFromMarkdown can perform exact-page isolation.
+      const { normalized, pageBreakCount } = normalizeMarkdownPageBreaks(textContent, input.pageCount);
+      if (pageBreakCount > 0) {
+        textContent = normalized;
       }
 
       const outputPath = `${input.tenantId}/processing/${input.documentId}/markdown-${Date.now()}.md`;

@@ -76,22 +76,84 @@ const MAJOR_BOUNDARY_PATTERNS: RegExp[] = [
  * This replicates the logic in documents/processing/orchestrator.ts and is the shared
  * source of truth for page-level text isolation.
  */
+/**
+ * Marker source info returned alongside the page text map.
+ * Used for source mode traceability.
+ */
+export type PageTextMapSource =
+  | "numbered_markers"   // `--- page N ---` markers (canonical, from normalizeMarkdownPageBreaks)
+  | "form_feed"          // \f form-feed characters
+  | "html_comment"       // <!-- page N --> markers
+  | "standalone_dashes"  // `---` standalone lines (legacy Adobe output, unnumbered)
+  | "single_page";       // no page breaks found, entire text = page 1
+
 export function buildPageTextMapFromMarkdown(
   markdownContent: string | null | undefined,
   pageCount?: number | null,
-): Record<number, string> {
-  if (!markdownContent) return {};
-  const pages = Math.max(pageCount ?? 1, 1);
-  if (pages <= 1 && !markdownContent.includes("\f") && !/---\s*page\s*\d+\s*---|<!--\s*page\s*\d+\s*-->/.test(markdownContent)) {
-    return { 1: markdownContent };
+): Record<number, string>;
+export function buildPageTextMapFromMarkdown(
+  markdownContent: string | null | undefined,
+  pageCount: number | null | undefined,
+  returnSource: true,
+): { map: Record<number, string>; source: PageTextMapSource };
+export function buildPageTextMapFromMarkdown(
+  markdownContent: string | null | undefined,
+  pageCount?: number | null,
+  returnSource?: true,
+): Record<number, string> | { map: Record<number, string>; source: PageTextMapSource } {
+  const ret = (map: Record<number, string>, source: PageTextMapSource) =>
+    returnSource ? { map, source } : map;
+
+  if (!markdownContent) return ret({}, "single_page");
+
+  // Strategy 1: numbered `--- page N ---` markers (canonical — set by normalizeMarkdownPageBreaks)
+  if (/---\s*page\s*\d+\s*---/i.test(markdownContent)) {
+    const pattern = /(?:---\s*page\s*\d+\s*---)/gi;
+    const parts = markdownContent.split(pattern).filter((p) => p.trim().length > 0);
+    if (parts.length > 1) {
+      const map: Record<number, string> = {};
+      for (let i = 0; i < parts.length; i++) map[i + 1] = parts[i].trim();
+      return ret(map, "numbered_markers");
+    }
   }
-  const pageBreakPattern = /(?:---\s*page\s*\d+\s*---|\f|<!--\s*page\s*\d+\s*-->)/gi;
-  const parts = markdownContent.split(pageBreakPattern).filter((p) => p.trim().length > 0);
-  const map: Record<number, string> = {};
-  for (let i = 0; i < parts.length; i++) {
-    map[i + 1] = parts[i].trim();
+
+  // Strategy 2: HTML comment markers <!-- page N -->
+  if (/<!--\s*page\s*\d+\s*-->/i.test(markdownContent)) {
+    const pattern = /<!--\s*page\s*\d+\s*-->/gi;
+    const parts = markdownContent.split(pattern).filter((p) => p.trim().length > 0);
+    if (parts.length > 1) {
+      const map: Record<number, string> = {};
+      for (let i = 0; i < parts.length; i++) map[i + 1] = parts[i].trim();
+      return ret(map, "html_comment");
+    }
   }
-  return Object.keys(map).length > 0 ? map : { 1: markdownContent };
+
+  // Strategy 3: form-feed characters (\f)
+  if (markdownContent.includes("\f")) {
+    const parts = markdownContent.split(/\f/).filter((p) => p.trim().length > 0);
+    if (parts.length > 1) {
+      const map: Record<number, string> = {};
+      for (let i = 0; i < parts.length; i++) map[i + 1] = parts[i].trim();
+      return ret(map, "form_feed");
+    }
+  }
+
+  // Strategy 4: standalone `---` on its own line (legacy Adobe output before normalization).
+  // Only use this when we have a plausible page count to validate against (avoid splitting
+  // on decorative horizontal rules in single-page or low-page documents).
+  const standaloneBreaks = (markdownContent.match(/^---\s*$/gm) ?? []).length;
+  const plausiblePages = pageCount ?? 0;
+  if (standaloneBreaks > 0 && (plausiblePages > 1 || standaloneBreaks <= 20)) {
+    const parts = markdownContent.split(/^---\s*$/m).filter((p) => p.trim().length > 0);
+    if (parts.length > 1) {
+      const map: Record<number, string> = {};
+      for (let i = 0; i < parts.length; i++) map[i + 1] = parts[i].trim();
+      return ret(map, "standalone_dashes");
+    }
+  }
+
+  // Fallback: single page
+  return ret({ 1: markdownContent }, "single_page");
 }
 
 /**
@@ -307,13 +369,15 @@ export function sliceSectionText(
     narrowed: false,
   };
 
-  if (fullText.length < MIN_SECTION_CHARS) return fallback;
-
-  // Strategy 0 (highest priority): exact page-level isolation from pageTextMap
+  // Strategy 0 (highest priority): exact page-level isolation from pageTextMap.
+  // Checked BEFORE the min-length guard because physical page isolation is always reliable
+  // regardless of total document length.
   if (pageTextMap && Object.keys(pageTextMap).length > 1) {
     const result = sliceByPageNumbers(candidate, pageTextMap);
     if (result?.narrowed) return result;
   }
+
+  if (fullText.length < MIN_SECTION_CHARS) return fallback;
 
   // Strategy 1: heading-based
   if (candidate.sectionHeadingHint) {

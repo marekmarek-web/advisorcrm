@@ -20,6 +20,7 @@ import {
 import { logOpenAICall } from "@/lib/openai";
 import { preprocessForAiExtraction } from "@/lib/documents/processing/preprocess-for-ai";
 import { buildPageTextMapFromMarkdown } from "@/lib/ai/section-text-slicer";
+import { fetchPageTextMapByStoragePath, resolvePageTextMap } from "@/lib/documents/page-text-map-lookup";
 import { evaluateContractReviewScanGate } from "@/lib/contracts/contract-review-scan-gate";
 import {
   isAiReviewLlmPostprocessEnabled,
@@ -295,10 +296,23 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   let subdocOrchestrationRoute = describeSubdocumentExtractionRoute(packetMeta);
   if (packetMeta.isBundle && markdownAvailable) {
     try {
-      // Build physical page-level text map for exact_pages isolation
-      const pageTextMap = buildPageTextMapFromMarkdown(
-        adobePreprocessResult?.markdownContent ?? null,
-        adobePreprocessResult?.pageCountEstimate ?? null,
+      // Resolve physical page-level text map for exact_pages isolation.
+      // Priority: DB-stored (from processDocument) > markdown rebuild.
+      const [storedMapResult, markdownMapWithSource] = await Promise.all([
+        fetchPageTextMapByStoragePath(storagePath, tenantId),
+        Promise.resolve(
+          buildPageTextMapFromMarkdown(
+            adobePreprocessResult?.markdownContent ?? null,
+            adobePreprocessResult?.pageCountEstimate ?? null,
+            true, // returnSource flag
+          ) as { map: Record<number, string>; source: string }
+        ),
+      ]);
+
+      const { pageTextMap: resolvedPageTextMap, traceSource } = resolvePageTextMap(
+        storedMapResult,
+        markdownMapWithSource.map,
+        markdownMapWithSource.source,
       );
 
       const orchResult = await orchestrateSubdocumentExtraction(
@@ -306,11 +320,13 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
         packetMeta,
         data,
         adobePreprocessResult?.pageCountEstimate ?? null,
-        pageTextMap,
+        resolvedPageTextMap,
       );
       if (orchResult.orchestrationRan) {
         subdocOrchestrationRoute = `${subdocOrchestrationRoute}|mutations:${orchResult.mutationCount}`;
-        // Append source mode trace for observability (e.g. "health=exact_pages,investment=heading")
+        // Log page text map source for observability
+        subdocOrchestrationRoute = `${subdocOrchestrationRoute}|ptm:${traceSource}`;
+        // Append section source mode trace (e.g. "health=exact_pages,investment=heading")
         if (orchResult.sourceModeTrace && Object.keys(orchResult.sourceModeTrace).length > 0) {
           const traceStr = Object.entries(orchResult.sourceModeTrace)
             .map(([k, v]) => `${k.replace("_", "")}=${v.split(" ")[0]}`)
