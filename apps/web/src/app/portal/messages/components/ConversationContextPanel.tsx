@@ -48,6 +48,7 @@ export function ConversationContextPanel({
   aiSummary,
   aiSummaryLoading,
   aiSummaryError,
+  aiSummaryIdleHint,
   onRefreshAiSummary,
   onNavigate,
   asDiv,
@@ -63,6 +64,8 @@ export function ConversationContextPanel({
   aiSummary: AdvisorChatAiSummary | null;
   aiSummaryLoading: boolean;
   aiSummaryError: string | null;
+  /** Text když není souhrn a neběží načítání (např. záměrně přeskočeno kvůli úspoře API). */
+  aiSummaryIdleHint: string | null;
   onRefreshAiSummary: () => void;
   onNavigate: (href: string) => void;
   asDiv?: boolean;
@@ -237,7 +240,9 @@ export function ConversationContextPanel({
             </div>
           </dl>
         ) : (
-          <p className="mt-3 text-xs text-[color:var(--wp-text-tertiary)]">Souhrn se načte po načtení zpráv.</p>
+          <p className="mt-3 text-xs leading-relaxed text-[color:var(--wp-text-tertiary)]">
+            {aiSummaryIdleHint ?? "Souhrn se načte po načtení zpráv."}
+          </p>
         )}
       </div>
 

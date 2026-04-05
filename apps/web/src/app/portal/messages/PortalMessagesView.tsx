@@ -38,6 +38,7 @@ import { buildChatTaskDescriptionSeed, buildChatTaskSuggestedTitle } from "./com
 import { formatLastActiveLabel, presenceFromLastMessageAt } from "./components/chat-format";
 import { mergeConversationsWithSelection } from "./components/merge-conversations-with-selection";
 import { getActionFriendlyErrorMessage } from "@/lib/observability/production-error-ui";
+import { shouldAutoRunAdvisorChatAiSummary } from "@/lib/advisor-chat/advisor-chat-summary-gating";
 
 const POLL_INTERVAL = 10_000;
 
@@ -253,6 +254,12 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
 
   useEffect(() => {
     if (!selectedContactId || messagesLoading) return;
+    if (!shouldAutoRunAdvisorChatAiSummary(msgs)) {
+      setAiSummary(null);
+      setAiSummaryError(null);
+      setAiSummaryLoading(false);
+      return;
+    }
     let cancelled = false;
     setAiSummaryLoading(true);
     setAiSummaryError(null);
@@ -269,7 +276,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     return () => {
       cancelled = true;
     };
-  }, [selectedContactId, msgs.length, messagesLoading]);
+  }, [selectedContactId, msgs, messagesLoading]);
 
   useEffect(() => {
     if (!selectedContactId) return;
@@ -484,6 +491,28 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     [contactName, lastClientSnippet],
   );
 
+  const aiSummaryIdleHint = useMemo(() => {
+    if (!selectedContactId) return null;
+    if (aiSummaryLoading || aiSummary || aiSummaryError) return null;
+    if (messagesLoading) {
+      return "Po načtení zpráv případně spustíme AI souhrn jen při delší konverzaci nebo konkrétní poptávce klienta.";
+    }
+    if (msgs.length === 0) {
+      return "Zatím tu nejsou žádné zprávy — AI souhrn přeskakujeme.";
+    }
+    if (!shouldAutoRunAdvisorChatAiSummary(msgs)) {
+      return "AI souhrn teď nespouštíme (úspora API): automaticky až od 5 zpráv v konverzaci, nebo když klient v textu naznačí poptávku či otázku. Tlačítkem Obnovit ho můžete vygenerovat kdykoli.";
+    }
+    return null;
+  }, [
+    selectedContactId,
+    messagesLoading,
+    msgs,
+    aiSummaryLoading,
+    aiSummary,
+    aiSummaryError,
+  ]);
+
   const refreshAiSummary = useCallback(() => {
     if (!selectedContactId) return;
     setAiSummaryLoading(true);
@@ -537,6 +566,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       aiSummary,
       aiSummaryLoading,
       aiSummaryError,
+      aiSummaryIdleHint,
       onRefreshAiSummary: refreshAiSummary,
       onNavigate: (href: string) => {
         setContextSheetOpen(false);
@@ -554,6 +584,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     aiSummary,
     aiSummaryLoading,
     aiSummaryError,
+    aiSummaryIdleHint,
     refreshAiSummary,
     router,
   ]);
