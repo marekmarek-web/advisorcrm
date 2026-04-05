@@ -57,6 +57,15 @@ export function ChatQuickTaskOverlay({
     setDesc(descriptionSeed);
   }, [open, contactId, suggestedTitle, descriptionSeed, initialOpportunityId]);
 
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
   const oppForContact = useMemo(() => {
     if (!cid) return [];
     return opportunities.filter((o) => !o.contactId || o.contactId === cid);

@@ -195,6 +195,10 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       setContactName("");
       return;
     }
+    // Clear stale content immediately so old thread never flashes during load
+    setMsgs([]);
+    setMsgAttachments({});
+    setMessagesError(null);
     void reloadActiveThread();
   }, [selectedContactId, reloadActiveThread]);
 

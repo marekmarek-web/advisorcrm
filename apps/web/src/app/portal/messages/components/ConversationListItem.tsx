@@ -23,7 +23,11 @@ export function ConversationListItem({
       onClick={onSelect}
       className={clsx(
         "w-full rounded-2xl px-3 py-3 text-left transition",
-        active ? "bg-violet-50 ring-1 ring-violet-100 dark:bg-violet-950/30 dark:ring-violet-900/40" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+        active
+          ? "bg-violet-50 ring-1 ring-violet-100 dark:bg-violet-950/30 dark:ring-violet-900/40"
+          : item.unread
+            ? "bg-indigo-50/60 hover:bg-indigo-50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/30"
+            : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
       )}
     >
       <div className="flex items-start gap-3">
@@ -33,7 +37,9 @@ export function ConversationListItem({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="truncate font-medium text-[color:var(--wp-text)]">{item.contactName}</div>
+              <div className={clsx("truncate text-[color:var(--wp-text)]", item.unread && !active ? "font-semibold" : "font-medium")}>
+                {item.contactName}
+              </div>
               <StatusDot tier={tier} />
             </div>
             <div className="shrink-0 text-xs text-[color:var(--wp-text-tertiary)]">

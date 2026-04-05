@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { FileText, Paperclip, Send } from "lucide-react";
 import clsx from "clsx";
@@ -45,6 +45,8 @@ export function MessageComposer({
   isPending: boolean;
   canSend: boolean;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const imagePreviewUrls = useMemo(() => {
     return files.map((f) => (f.type.startsWith("image/") ? URL.createObjectURL(f) : null));
   }, [files]);
@@ -56,6 +58,14 @@ export function MessageComposer({
       });
     };
   }, [imagePreviewUrls]);
+
+  // Auto-grow textarea up to 200 px
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [body]);
 
   function appendChip(text: string) {
     onBodyChange(body.trim() ? `${body.trim()}\n\n${text}` : text);
@@ -145,12 +155,13 @@ export function MessageComposer({
             </button>
 
             <textarea
+              ref={textareaRef}
               value={body}
               onChange={(e) => onBodyChange(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Napište zprávu… (Enter odešle, Shift+Enter nový řádek)"
               rows={1}
-              className="min-h-[52px] flex-1 resize-none rounded-2xl border-0 bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm leading-6 text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] outline-none focus:ring-0"
+              className="min-h-[52px] max-h-[200px] flex-1 resize-none overflow-y-auto rounded-2xl border-0 bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm leading-6 text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] outline-none focus:ring-0"
             />
 
             <button

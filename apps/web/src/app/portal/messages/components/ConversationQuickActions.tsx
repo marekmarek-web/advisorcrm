@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Sparkles } from "lucide-react";
+import { Loader2, Plus, Sparkles } from "lucide-react";
 import clsx from "clsx";
 
 const ACTIONS = [
@@ -41,8 +41,14 @@ export function ConversationQuickActions({
                 : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]",
             )}
           >
-            {action.primary ? <Sparkles className="h-4 w-4 shrink-0" /> : <Plus className="h-4 w-4 shrink-0" />}
-            {action.label}
+            {action.primary && aiBusy ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            ) : action.primary ? (
+              <Sparkles className="h-4 w-4 shrink-0" />
+            ) : (
+              <Plus className="h-4 w-4 shrink-0" />
+            )}
+            {action.primary && aiBusy ? "Generuji…" : action.label}
           </button>
         ))}
       </div>
