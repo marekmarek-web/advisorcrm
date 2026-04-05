@@ -93,6 +93,8 @@ export function FundLibrarySettings({ snapshot }: Props) {
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
+  /** Klíče fondů, u kterých `/logos/...` selhalo načtením (síť, chybějící soubor). */
+  const [brokenLogoKeys, setBrokenLogoKeys] = useState<Set<string>>(() => new Set());
   const [reqForm, setReqForm] = useState({
     fundName: "",
     provider: "",
@@ -416,7 +418,7 @@ export function FundLibrarySettings({ snapshot }: Props) {
                     </button>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-surface-card-border)] flex items-center justify-center overflow-hidden shrink-0">
-                    {logo ? (
+                    {logo && !brokenLogoKeys.has(key) ? (
                       <Image
                         src={logo}
                         alt=""
@@ -424,6 +426,13 @@ export function FundLibrarySettings({ snapshot }: Props) {
                         height={40}
                         unoptimized
                         className="object-contain w-10 h-10"
+                        onError={() =>
+                          setBrokenLogoKeys((prev) => {
+                            const n = new Set(prev);
+                            n.add(key);
+                            return n;
+                          })
+                        }
                       />
                     ) : (
                       <span className="text-[10px] font-black text-[color:var(--wp-text-tertiary)]">

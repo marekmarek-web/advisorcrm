@@ -9,6 +9,7 @@ import { getBaseFundByKey, getBaseFundFromProductKey } from "./helpers";
 import {
   FUND_PLACEHOLDER_GALLERY_PATH,
   FUND_PLACEHOLDER_HERO_PATH,
+  FUND_PLACEHOLDER_LOGO_PATH,
 } from "./fund-report-asset-resolver";
 import type { BaseFundKey } from "./legacy-fund-key-map";
 import { mapLegacyFundKey } from "./legacy-fund-key-map";
@@ -278,9 +279,9 @@ export function getFaFundPlanningRateDecimal(productKey: string): number {
   return 0.07;
 }
 
-export function getFaFundLogoUrl(productKey: string): string | undefined {
+export function getFaFundLogoUrl(productKey: string): string {
   const canonical = toCanonicalFundKey(productKey);
-  if (!canonical) return undefined;
+  if (!canonical) return FUND_PLACEHOLDER_LOGO_PATH;
 
   const fund = getBaseFundByKey(canonical);
   const catalogLogo = fund?.assets?.logoPath?.trim();
@@ -292,7 +293,7 @@ export function getFaFundLogoUrl(productKey: string): string | undefined {
     if (logo && logo.trim()) return logo;
   }
 
-  return undefined;
+  return FUND_PLACEHOLDER_LOGO_PATH;
 }
 
 /**

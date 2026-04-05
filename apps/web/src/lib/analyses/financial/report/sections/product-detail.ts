@@ -87,7 +87,7 @@ export function renderProductDetails(ctx: SectionCtx): string {
     const detail = getFaFundDetailForReport(inv.productKey);
     if (!detail) return '';
     const name = getProductDisplayName(inv.productKey);
-    const logo = getFaFundLogoUrl(inv.productKey) ?? '';
+    const logo = getFaFundLogoUrl(inv.productKey);
     const catLower = (detail.category ?? "").toLowerCase();
     const category = detail.category ?? investmentLabel(inv);
     const pillClass = detail.category

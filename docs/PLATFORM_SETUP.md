@@ -7,8 +7,8 @@ Checklist for **Supabase**, **Vercel**, and related services before production t
 - [ ] Upgrade project to **Pro** if you need higher connection limits, storage, and bandwidth.
 - [ ] Set `DATABASE_URL` to the **connection pooler** (Supabase **Transaction** mode, port **6543**), not the direct DB port, for serverless (Vercel).
 - [ ] Confirm `prepare: false` (or equivalent) in the DB client when using the pooler.
-- [ ] Apply pending SQL migrations (including `fa_source_id` on `opportunities`, `fa_sync_log` table) — see `packages/db/migrations/`.
-- [ ] **Fondová knihovna + fronta požadavků:** `packages/db/migrations/fund_library_settings_2026-04-06.sql` (sloupec `advisor_preferences.fund_library`, tabulka `fund_add_requests`, index, normalizace stavů). Volitelně poté `fund_library_z_status_normalize_2026-04-07.sql` (stejné UPDATE — idempotentní). Reference: `packages/db/supabase-schema.sql`.
+- [ ] Apply pending SQL migrations (including `fa_source_id` on `opportunities`, `fa_sync_log` table) — see `packages/db/migrations/` a `pnpm db:migrate` (`packages/db/drizzle/`).
+- [ ] **Fondová knihovna + fronta požadavků:** spusť `pnpm db:migrate` (obsahuje `0020_fund_library_settings.sql`: `advisor_preferences.fund_library`, `fund_add_requests`, index, FK, normalizace stavů). Alternativa: ručně `packages/db/migrations/fund_library_settings_2026-04-06.sql` (+ volitelně `fund_library_z_status_normalize_2026-04-07.sql`). Reference: `packages/db/supabase-schema.sql`, `packages/db/migrations/README.md`.
 - [ ] Review **Auth** MAU and **Storage** bucket limits for documents.
 
 ## Local development — Auth & debugging

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getFaFundDetailForReport, getFaFundPlanningRateDecimal, getFaFundLogoUrl } from "../fa-fund-bridge";
+import { FUND_PLACEHOLDER_LOGO_PATH } from "../fund-report-asset-resolver";
 import { reconcileFaInvestmentsWithSnapshot, buildFaInvestmentTemplate } from "../fa-investment-rows";
 import { normalizePersistedInvestmentEntries } from "@/lib/analyses/financial/normalize-persisted-investment-entries";
 import { getProductName } from "@/lib/analyses/financial/formatters";
@@ -67,9 +68,9 @@ describe("fund library release hardening — edge cases", () => {
     expect(getFaFundPlanningRateDecimal("totally_unknown_fund")).toBe(0.07);
   });
 
-  it("getFaFundLogoUrl: prázdný vstup → undefined", () => {
-    expect(getFaFundLogoUrl("")).toBeUndefined();
-    expect(getFaFundLogoUrl("   ")).toBeUndefined();
+  it("getFaFundLogoUrl: prázdný vstup → generický placeholder (žádný broken img)", () => {
+    expect(getFaFundLogoUrl("")).toBe(FUND_PLACEHOLDER_LOGO_PATH);
+    expect(getFaFundLogoUrl("   ")).toBe(FUND_PLACEHOLDER_LOGO_PATH);
   });
 
   it("getFaFundDetailForReport: prázdný vstup → undefined", () => {
@@ -107,6 +108,6 @@ describe("fund library release hardening — edge cases", () => {
       expect(getBaseFundFromProductKey(k)).toBeUndefined();
     }
     expect(getFaFundDetailForReport("alternative")).toBeUndefined();
-    expect(getFaFundLogoUrl("alternative")).toBeUndefined();
+    expect(getFaFundLogoUrl("alternative")).toBe(FUND_PLACEHOLDER_LOGO_PATH);
   });
 });
