@@ -24,7 +24,11 @@ export function getActionFriendlyErrorMessage(e: unknown, fallback: string): str
       (!msg && digest.length > 0));
 
   if (isGenericProd) {
-    return "Načtení nebo odeslání zpráv selhalo — často chybí tabulky messages v databázi. V Supabase spusťte packages/db/migrations/portal_messages_tables.sql z repozitáře, pak obnovte stránku.";
+    return (
+      "Načtení nebo odeslání zpráv selhalo — často chybí tabulky messages v databázi.\n" +
+      "Supabase → SQL Editor: spusťte portal_messages_tables.sql (repo: packages/db/migrations/).\n" +
+      "Poté obnovte stránku."
+    );
   }
   if (msg) return msg;
   if (digest && isProd) {

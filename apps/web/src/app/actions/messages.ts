@@ -25,8 +25,9 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
 import { newMessageAdvisorTemplate } from "@/lib/email/templates";
 
+/** Kratší první řádka + samostatná cesta kvůli zalamování v úzkém panelu (overflow-hidden). */
 const PORTAL_MESSAGES_SCHEMA_HINT =
-  "V Supabase → SQL Editor spusťte skript packages/db/migrations/portal_messages_tables.sql z repozitáře (vytvoří messages a message_attachments), pak obnovte stránku.";
+  "Supabase → SQL Editor: spusťte soubor portal_messages_tables.sql (vytvoří tabulky messages a message_attachments).\nCesta v repu Aidvisora: packages/db/migrations/portal_messages_tables.sql\nPoté obnovte stránku.";
 
 function isNextRedirectError(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";

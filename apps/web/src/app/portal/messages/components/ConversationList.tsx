@@ -113,8 +113,10 @@ export function ConversationList({
       ) : null}
 
       {listError ? (
-        <div className="shrink-0 border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
-          <p className="font-medium">{listError}</p>
+        <div className="min-w-0 shrink-0 border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
+          <p className="whitespace-pre-line font-medium leading-snug break-words [overflow-wrap:anywhere] text-pretty">
+            {listError}
+          </p>
           <button type="button" onClick={onRetryList} className="mt-2 text-sm font-semibold text-rose-700 underline dark:text-rose-300">
             Zkusit znovu
           </button>
