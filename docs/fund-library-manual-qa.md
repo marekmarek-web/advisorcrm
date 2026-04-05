@@ -2,6 +2,8 @@
 
 Základ pro **finální browser QA pass** před / po nasazení. Reálný tenant, přihlášený poradce (kde je potřeba i **Admin/Director** pro whitelist, je to uvedeno).
 
+**Deploy DB na cílové prostředí a krátký post-deploy smoke test:** [`fund-library-deploy.md`](./fund-library-deploy.md).
+
 **Kde v UI:** Nastavení portálu → záložka **Fondy** (`SetupView` → `FundLibrarySettings`).
 
 ---
@@ -88,15 +90,7 @@ Základ pro **finální browser QA pass** před / po nasazení. Reálný tenant,
 
 ## Release smoke test (~5 min po deployi)
 
-Rychlá kontrola na **produkční** URL, jeden tenant, jeden uživatel s právem uložit fondy.
-
-1. **DB:** migrace fondové knihovny na produkci už proběhly (neověřuješ SQL z UI — jen pokud máte runbook).
-2. **Nastavení → Fondy:** uložit **jednu** změnu (toggle nebo pořadí) → refresh → **stav drží**.
-3. **Chci přidat fond:** odeslat krátký testovací požadavek → viditelný ve frontě.
-4. **FA:** otevřít rozpracovanou analýzu, přidat jednu investici do **povoleného** fondu → uložit bez chyby.
-5. **PDF:** jednou vygenerovat z téže analýzy → soubor stáhnout / otevřít.
-
-Pokud bod 2–5 projde, fondová knihovna je z pohledu smoke **OK**; hlubší průchod dělej podle sekcí výše.
+Stejný obsah jako tabulka v **[`fund-library-deploy.md`](./fund-library-deploy.md#post-deploy-smoke-test-5-min)** (migrace + whitelist + moje fondy + požadavek + FA + PDF). Pokud bod 2–6 tam projde, smoke je **OK**; hlubší průchod je v sekcích výše.
 
 ---
 

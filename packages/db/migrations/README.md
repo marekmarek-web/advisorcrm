@@ -9,3 +9,5 @@
 - **Zlatý zdroj pro nové prostředí + patch:** `../supabase-schema.sql` a `pnpm db:apply-schema` (patch v `apply-schema.mjs` / `apply-schema.ts`).
 
 Tenant whitelist (`fund_library.allowlist` v `tenant_settings`) nevyžaduje migraci — používá existující tabulku `tenant_settings`.
+
+Postup nasazení na cílové prostředí a post-deploy smoke: [`../../docs/fund-library-deploy.md`](../../docs/fund-library-deploy.md).
