@@ -4,8 +4,6 @@ import { loadAdvisorChatAiBundle } from "@/lib/advisor-chat/load-advisor-chat-ai
 import { getOpenAIAdvisorChatProvider } from "@/lib/advisor-chat/openai-advisor-chat-provider";
 import type { AdvisorChatAiSummary } from "@/lib/advisor-chat/advisor-chat-ai-types";
 
-export type { AdvisorChatAiSummary };
-
 function humanError(e: unknown): string {
   if (e instanceof Error) return e.message;
   return String(e);
