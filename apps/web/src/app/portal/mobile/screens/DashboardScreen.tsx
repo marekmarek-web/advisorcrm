@@ -913,6 +913,7 @@ export function DashboardScreen({
         czPublicHolidayToday={kpis.czPublicHolidayToday}
         czNameDaysToday={kpis.czNameDaysToday}
         birthdaysToday={kpis.birthdaysToday}
+        pragueTodayYmd={kpis.pragueTodayYmd}
       />
 
       <MobileSection title="Agenda dnes">

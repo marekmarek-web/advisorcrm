@@ -35,6 +35,10 @@ export type ContactRow = {
   nextServiceDue?: string | null;
   /** ISO 8601 — serializovatelné pro RSC a klienta (Server Actions vrací string) */
   gdprConsentAt?: string | null;
+  preferredSalutation?: string | null;
+  preferredGreetingName?: string | null;
+  greetingStyle?: string | null;
+  birthGreetingOptOut?: boolean;
 };
 
 export async function getContactsList(): Promise<ContactRow[]> {
@@ -174,6 +178,10 @@ const contactDetailExtendedSelect = {
   lastServiceDate: contacts.lastServiceDate,
   nextServiceDue: contacts.nextServiceDue,
   gdprConsentAt: contacts.gdprConsentAt,
+  preferredSalutation: contacts.preferredSalutation,
+  preferredGreetingName: contacts.preferredGreetingName,
+  greetingStyle: contacts.greetingStyle,
+  birthGreetingOptOut: contacts.birthGreetingOptOut,
 } as const;
 
 async function loadContactWithAuth(auth: AuthContext, id: string): Promise<ContactRow | null> {
@@ -243,6 +251,10 @@ async function loadContactWithAuth(auth: AuthContext, id: string): Promise<Conta
       lastServiceDate: dateLikeToOptionalYmd(row.lastServiceDate),
       nextServiceDue: dateLikeToOptionalYmd(row.nextServiceDue),
       gdprConsentAt: gdprConsentToIsoOrNull(row.gdprConsentAt),
+      preferredSalutation: (row.preferredSalutation as string | null | undefined) ?? null,
+      preferredGreetingName: (row.preferredGreetingName as string | null | undefined) ?? null,
+      greetingStyle: (row.greetingStyle as string | null | undefined) ?? null,
+      birthGreetingOptOut: Boolean(row.birthGreetingOptOut),
     };
   } catch (e) {
     if (isRedirectError(e)) throw e;
@@ -375,6 +387,10 @@ export async function createContact(form: {
   leadSourceUrl?: string;
   priority?: string;
   notes?: string;
+  preferredSalutation?: string;
+  preferredGreetingName?: string;
+  greetingStyle?: string;
+  birthGreetingOptOut?: boolean;
 }): Promise<CreateContactResult> {
   try {
     const auth = await requireAuthInAction();
@@ -403,6 +419,10 @@ export async function createContact(form: {
         leadSourceUrl: form.leadSourceUrl?.trim() || null,
         priority: form.priority?.trim() || null,
         notes: form.notes?.trim() || null,
+        preferredSalutation: form.preferredSalutation?.trim() || null,
+        preferredGreetingName: form.preferredGreetingName?.trim() || null,
+        greetingStyle: form.greetingStyle?.trim() || null,
+        birthGreetingOptOut: form.birthGreetingOptOut === true,
       })
       .returning({ id: contacts.id });
     const id = row?.id;
@@ -493,6 +513,10 @@ export async function updateContact(
     lastServiceDate?: string;
     nextServiceDue?: string;
     avatarUrl?: string | null;
+    preferredSalutation?: string | null;
+    preferredGreetingName?: string | null;
+    greetingStyle?: string | null;
+    birthGreetingOptOut?: boolean;
   }
 ) {
   try {
@@ -520,6 +544,14 @@ export async function updateContact(
         ...(form.lastServiceDate != null && { lastServiceDate: form.lastServiceDate || null }),
         ...(form.nextServiceDue != null && { nextServiceDue: form.nextServiceDue || null }),
         ...(form.avatarUrl !== undefined && { avatarUrl: form.avatarUrl || null }),
+        ...(form.preferredSalutation !== undefined && {
+          preferredSalutation: form.preferredSalutation?.trim() || null,
+        }),
+        ...(form.preferredGreetingName !== undefined && {
+          preferredGreetingName: form.preferredGreetingName?.trim() || null,
+        }),
+        ...(form.greetingStyle !== undefined && { greetingStyle: form.greetingStyle?.trim() || null }),
+        ...(form.birthGreetingOptOut !== undefined && { birthGreetingOptOut: form.birthGreetingOptOut }),
         updatedAt: new Date(),
       })
       .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, id)));

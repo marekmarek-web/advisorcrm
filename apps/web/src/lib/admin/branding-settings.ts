@@ -4,6 +4,7 @@
  */
 
 import { db, tenantSettings, eq, and } from "db";
+import type { BirthdayEmailTheme } from "@/lib/email/birthday/types";
 
 export type BrandingConfig = {
   logoUrl?: string;
@@ -14,6 +15,8 @@ export type BrandingConfig = {
   emailSignature?: string;
   senderName?: string;
   defaultTone?: "professional" | "friendly" | "formal";
+  /** Výchozí vzhled narozeninového e-mailu pro workspace (override u poradce v advisor_preferences). */
+  birthdayEmailTheme?: BirthdayEmailTheme;
 };
 
 export const DEFAULT_BRANDING: BrandingConfig = {
@@ -25,6 +28,7 @@ export const DEFAULT_BRANDING: BrandingConfig = {
   emailSignature: undefined,
   senderName: undefined,
   defaultTone: "professional",
+  birthdayEmailTheme: "premium_dark",
 };
 
 export async function getEffectiveBranding(tenantId: string): Promise<BrandingConfig> {

@@ -893,6 +893,7 @@ export function DashboardEditable(props: DashboardEditableProps) {
             czPublicHolidayToday={kpis.czPublicHolidayToday}
             czNameDaysToday={kpis.czNameDaysToday}
             birthdaysToday={kpis.birthdaysToday}
+            pragueTodayYmd={kpis.pragueTodayYmd}
           />
         </div>
 

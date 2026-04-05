@@ -7,7 +7,8 @@ import { getCzNameDaysForDate } from "@/lib/calendar/cz-name-days";
 import { czechAgendaDateShort, czechRelativeAgendaDay, ymdToUtcNoonMs } from "@/lib/dashboard/side-panel-agenda-labels";
 import type { DashboardAgendaTimelineRow } from "@/app/portal/today/dashboard-agenda-types";
 import { db } from "db";
-import { events, tasks, opportunities, contacts, contracts, activityLog, opportunityStages } from "db";
+import { events, tasks, opportunities, contacts, contracts, activityLog, opportunityStages, notificationLog } from "db";
+import { BIRTHDAY_TEMPLATE_LOG_KEY } from "@/lib/email/birthday/types";
 import { eq, and, gte, lt, isNull, isNotNull, asc, desc, sql, inArray } from "db";
 
 export type TodayEvent = {
@@ -37,8 +38,19 @@ export type DashboardKpis = {
   czPublicHolidayToday: string | null;
   /** Jména podle českého občanského kalendáře jmen (Europe/Prague, stejný den jako svátky). */
   czNameDaysToday: string[];
+  /** YYYY-MM-DD v Europe/Prague (např. localStorage klíče pro „Přeskočit“). */
+  pragueTodayYmd: string;
   /** Kontakty s narozeninami dnes (MM-DD v Europe/Prague). */
-  birthdaysToday: Array<{ id: string; firstName: string; lastName: string; age: number }>;
+  birthdaysToday: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    age: number;
+    canSendEmail: boolean;
+    greetingSentToday: boolean;
+    optedOut: boolean;
+    doNotEmail: boolean;
+  }>;
   /** Události a úkoly pro postranní panel (dnes až +14 dní, seřazeno). */
   sidePanelAgendaTimeline: DashboardAgendaTimelineRow[];
 };
@@ -79,6 +91,7 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
     opportunitiesStep3And4List,
     recentActivityList,
     birthdaysTodayList,
+    birthdaysGreetingSentTodayList,
     upcomingEventsPanelList,
     upcomingTasksPanelList,
   ] = await Promise.all([
@@ -254,6 +267,9 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
         firstName: contacts.firstName,
         lastName: contacts.lastName,
         birthDate: contacts.birthDate,
+        email: contacts.email,
+        doNotEmail: contacts.doNotEmail,
+        birthGreetingOptOut: contacts.birthGreetingOptOut,
       })
       .from(contacts)
       .where(
@@ -266,6 +282,18 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
       )
       .orderBy(asc(contacts.lastName), asc(contacts.firstName))
       .limit(25),
+    db
+      .select({ contactId: notificationLog.contactId })
+      .from(notificationLog)
+      .where(
+        and(
+          eq(notificationLog.tenantId, auth.tenantId),
+          eq(notificationLog.template, BIRTHDAY_TEMPLATE_LOG_KEY),
+          eq(notificationLog.status, "sent"),
+          isNotNull(notificationLog.contactId),
+          sql`((${notificationLog.sentAt} AT TIME ZONE 'Europe/Prague')::date = (NOW() AT TIME ZONE 'Europe/Prague')::date)`
+        )
+      ),
     db
       .select({
         id: events.id,
@@ -378,14 +406,26 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
     createdAt: a.createdAt,
   }));
 
+  const birthdayGreetingSentIds = new Set(
+    birthdaysGreetingSentTodayList.map((r) => r.contactId).filter((id): id is string => id != null)
+  );
+
   const birthdaysToday = birthdaysTodayList.map((c) => {
     const y = c.birthDate ? parseInt(c.birthDate.slice(0, 4), 10) : NaN;
     const age = Number.isFinite(y) ? pragueToday.year - y : 0;
+    const hasEmail = !!(c.email?.trim());
+    const optedOut = c.birthGreetingOptOut === true;
+    const greetingSentToday = birthdayGreetingSentIds.has(c.id);
+    const canSendEmail = hasEmail && !c.doNotEmail && !optedOut;
     return {
       id: c.id,
       firstName: c.firstName,
       lastName: c.lastName,
       age,
+      canSendEmail,
+      greetingSentToday,
+      optedOut,
+      doNotEmail: c.doNotEmail,
     };
   });
 
@@ -448,6 +488,7 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
     opportunitiesInStep3And4,
     czPublicHolidayToday,
     czNameDaysToday,
+    pragueTodayYmd: pragueToday.ymd,
     birthdaysToday,
     sidePanelAgendaTimeline,
   };

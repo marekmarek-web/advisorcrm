@@ -10,12 +10,17 @@ import {
   Shield,
   Smartphone,
   Calendar,
+  Mail,
+  FolderOpen,
   LogOut,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   CheckCircle2,
   AlertCircle,
   Camera,
   FileText,
+  Cake,
 } from "lucide-react";
 import {
   getAdvisorAvatarUrl,
@@ -25,7 +30,11 @@ import {
   setQuickActionsConfig,
   updateAdvisorReportBranding,
   uploadAdvisorAvatar,
+  getAdvisorBirthdayEmailPrefs,
+  updateAdvisorBirthdayEmailPrefs,
 } from "@/app/actions/preferences";
+import { getWorkspaceBirthdayEmailTheme, setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings";
+import type { RoleName } from "@/shared/rolePermissions";
 import {
   listSupervisorOptions,
   updatePortalPassword,
@@ -34,7 +43,7 @@ import {
 } from "@/app/actions/auth";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
-import { getDefaultQuickActionsConfig } from "@/lib/quick-actions";
+import { getDefaultQuickActionsConfig, QUICK_ACTIONS_CATALOG, type QuickActionId } from "@/lib/quick-actions";
 import { usePushNotifications } from "@/lib/push/usePushNotifications";
 import {
   BottomSheet,
@@ -46,6 +55,7 @@ import {
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
 import { signOutAndRedirectClient } from "@/lib/auth/sign-out-client";
+import { openIntegrationConnect } from "@/lib/native/open-integration-connect";
 
 type NotificationPrefs = Record<string, boolean>;
 
@@ -197,7 +207,13 @@ function PushNotificationsRow() {
 /*  Main Screen                                                        */
 /* ------------------------------------------------------------------ */
 
-export function SettingsProfileScreen({ advisorName }: { advisorName: string }) {
+export function SettingsProfileScreen({
+  advisorName,
+  roleName = "Advisor",
+}: {
+  advisorName: string;
+  roleName?: RoleName;
+}) {
   const router = useRouter();
   const [logoutSigningOut, setLogoutSigningOut] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -224,9 +240,20 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [quickActionsSheetOpen, setQuickActionsSheetOpen] = useState(false);
+  const [quickEditOrder, setQuickEditOrder] = useState<QuickActionId[]>([]);
+  const [quickEditVisible, setQuickEditVisible] = useState<Record<string, boolean>>({});
+  const [quickSaving, setQuickSaving] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [reportPhone, setReportPhone] = useState("");
   const [reportWebsite, setReportWebsite] = useState("");
+  const [birthdayOpen, setBirthdayOpen] = useState(false);
+  const [bdSigName, setBdSigName] = useState("");
+  const [bdSigRole, setBdSigRole] = useState("");
+  const [bdReplyTo, setBdReplyTo] = useState("");
+  const [bdThemeOverride, setBdThemeOverride] = useState<"" | "premium_dark" | "birthday_gif">("");
+  const [workspaceBirthdayTheme, setWorkspaceBirthdayTheme] = useState<"premium_dark" | "birthday_gif">("premium_dark");
+  const [bdSaving, setBdSaving] = useState(false);
 
   const visibleQuickActionsCount = useMemo(
     () => Object.values(quickActions.visible ?? {}).filter(Boolean).length,
@@ -255,8 +282,20 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!birthdayOpen) return;
+    void getAdvisorBirthdayEmailPrefs().then((p) => {
+      setBdSigName(p.birthdaySignatureName ?? "");
+      setBdSigRole(p.birthdaySignatureRole ?? "");
+      setBdReplyTo(p.birthdayReplyToEmail ?? "");
+      setBdThemeOverride(p.birthdayEmailTheme ?? "");
+    });
+    if (roleName === "Admin") {
+      void getWorkspaceBirthdayEmailTheme().then(setWorkspaceBirthdayTheme);
+    }
+  }, [birthdayOpen, roleName]);
 
   function showSuccess(message: string) {
     setSuccess(message);
@@ -289,16 +328,39 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
     });
   }
 
-  async function saveQuickActions() {
-    startTransition(async () => {
-      setError(null);
-      try {
-        await setQuickActionsConfig(quickActions.order, quickActions.visible);
-        showSuccess("Rychlé akce byly uloženy.");
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Rychlé akce se nepodařilo uložit.");
-      }
-    });
+  function openQuickActionsSheet() {
+    const catalogIds = QUICK_ACTIONS_CATALOG.map((a) => a.id);
+    const rawOrder = (quickActions.order?.length
+      ? quickActions.order.filter((id) => catalogIds.includes(id as QuickActionId))
+      : [...catalogIds]) as QuickActionId[];
+    const missing = catalogIds.filter((id) => !rawOrder.includes(id));
+    setQuickEditOrder([...rawOrder, ...missing]);
+    setQuickEditVisible(
+      catalogIds.reduce<Record<string, boolean>>((acc, id) => {
+        acc[id] = quickActions.visible[id] !== false;
+        return acc;
+      }, {})
+    );
+    setQuickActionsSheetOpen(true);
+  }
+
+  async function saveQuickActionsFromSheet() {
+    setQuickSaving(true);
+    setError(null);
+    try {
+      const visiblePayload = QUICK_ACTIONS_CATALOG.reduce<Record<string, boolean>>((acc, a) => {
+        acc[a.id] = quickEditVisible[a.id] !== false;
+        return acc;
+      }, {});
+      await setQuickActionsConfig(quickEditOrder, visiblePayload);
+      setQuickActions({ order: quickEditOrder, visible: visiblePayload });
+      setQuickActionsSheetOpen(false);
+      showSuccess("Rychlé akce byly uloženy.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Rychlé akce se nepodařilo uložit.");
+    } finally {
+      setQuickSaving(false);
+    }
   }
 
   async function savePassword() {
@@ -440,19 +502,24 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
 
       {/* Integrations section */}
       <SettingsSection title="Integrace">
-        <a
-          href="/api/integrations/google-calendar/connect"
-          className="w-full min-h-[52px] flex items-center gap-3 px-0 py-2 text-left"
-        >
-          <div className="w-9 h-9 rounded-xl bg-[color:var(--wp-surface-muted)] flex items-center justify-center flex-shrink-0">
-            <Calendar size={17} className="text-[color:var(--wp-text-secondary)]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[color:var(--wp-text)]">Google Calendar</p>
-            <p className="text-xs text-[color:var(--wp-text-secondary)] mt-0.5">Propojit kalendář a schůzky</p>
-          </div>
-          <ChevronRight size={16} className="text-[color:var(--wp-text-tertiary)] flex-shrink-0" />
-        </a>
+        <SettingsRow
+          icon={Calendar}
+          label="Google Calendar"
+          sublabel="Propojit kalendář a schůzky"
+          onClick={() => void openIntegrationConnect("/api/integrations/google-calendar/connect")}
+        />
+        <SettingsRow
+          icon={Mail}
+          label="Gmail"
+          sublabel="Propojit schránku pro integraci zpráv"
+          onClick={() => void openIntegrationConnect("/api/integrations/gmail/connect")}
+        />
+        <SettingsRow
+          icon={FolderOpen}
+          label="Google Disk"
+          sublabel="Propojení souborů a náhledy dokumentů"
+          onClick={() => void openIntegrationConnect("/api/integrations/google-drive/connect")}
+        />
         <SettingsRow
           icon={Smartphone}
           label="Mobilní nastavení"
@@ -474,19 +541,16 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
           onClick={() => setReportOpen(true)}
         />
         <SettingsRow
+          icon={Cake}
+          label="Narozeninové e-maily"
+          sublabel="Podpis, Reply-To, šablona"
+          onClick={() => setBirthdayOpen(true)}
+        />
+        <SettingsRow
           icon={Bell}
           label={`Quick actions (${visibleQuickActionsCount} aktivních)`}
-          sublabel="Nastavit viditelné zkratky na dashboardu"
-          onClick={saveQuickActions}
-          right={
-            <button
-              type="button"
-              onClick={saveQuickActions}
-              className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg min-h-[32px]"
-            >
-              Uložit
-            </button>
-          }
+          sublabel="Nastavit viditelné zkratky v menu + Nový"
+          onClick={openQuickActionsSheet}
         />
       </SettingsSection>
 
@@ -703,6 +767,174 @@ export function SettingsProfileScreen({ advisorName }: { advisorName: string }) 
             Uložit report údaje
           </button>
         </div>
+      </BottomSheet>
+
+      <BottomSheet open={birthdayOpen} onClose={() => setBirthdayOpen(false)} title="Narozeninové e-maily">
+        <div className="space-y-3">
+          {roleName === "Admin" ? (
+            <>
+              <p className="text-xs font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wider">Workspace výchozí</p>
+              <select
+                value={workspaceBirthdayTheme}
+                onChange={(e) => setWorkspaceBirthdayTheme(e.target.value as "premium_dark" | "birthday_gif")}
+                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+              >
+                <option value="premium_dark">Premium (tmavá hlavička)</option>
+                <option value="birthday_gif">S GIF (fallback premium)</option>
+              </select>
+            </>
+          ) : null}
+          <p className="text-xs font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wider">Váš podpis</p>
+          <input
+            value={bdSigName}
+            onChange={(e) => setBdSigName(e.target.value)}
+            className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+            placeholder="Jméno v podpisu"
+          />
+          <input
+            value={bdSigRole}
+            onChange={(e) => setBdSigRole(e.target.value)}
+            className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+            placeholder="Role"
+          />
+          <input
+            type="email"
+            value={bdReplyTo}
+            onChange={(e) => setBdReplyTo(e.target.value)}
+            className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+            placeholder="Reply-To (volitelné)"
+          />
+          <select
+            value={bdThemeOverride}
+            onChange={(e) => setBdThemeOverride(e.target.value as "" | "premium_dark" | "birthday_gif")}
+            className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
+          >
+            <option value="">Téma: podle workspace</option>
+            <option value="premium_dark">Premium</option>
+            <option value="birthday_gif">S GIF</option>
+          </select>
+          <button
+            type="button"
+            disabled={bdSaving}
+            onClick={async () => {
+              setBdSaving(true);
+              setError(null);
+              try {
+                if (roleName === "Admin") {
+                  const wr = await setWorkspaceBirthdayEmailTheme(workspaceBirthdayTheme);
+                  if (!wr.ok) {
+                    setError(wr.message);
+                    setBdSaving(false);
+                    return;
+                  }
+                }
+                await updateAdvisorBirthdayEmailPrefs({
+                  birthdaySignatureName: bdSigName.trim() || null,
+                  birthdaySignatureRole: bdSigRole.trim() || null,
+                  birthdayReplyToEmail: bdReplyTo.trim() || null,
+                  birthdayEmailTheme: bdThemeOverride || null,
+                });
+                setBirthdayOpen(false);
+                showSuccess("Narozeninové nastavení uloženo.");
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Uložení se nezdařilo.");
+              } finally {
+                setBdSaving(false);
+              }
+            }}
+            className="w-full min-h-[48px] rounded-xl bg-orange-500 text-white text-sm font-bold disabled:opacity-50"
+          >
+            {bdSaving ? "Ukládám…" : "Uložit"}
+          </button>
+        </div>
+      </BottomSheet>
+
+      {/* Quick actions (+ Nový menu) */}
+      <BottomSheet
+        open={quickActionsSheetOpen}
+        onClose={() => setQuickActionsSheetOpen(false)}
+        title="Rychlé akce (+ Nový)"
+        reserveMobileBottomNav
+      >
+        <p className="text-xs text-[color:var(--wp-text-secondary)] mb-3 leading-relaxed">
+          Zaškrtněte viditelné položky v menu „+ Nový“. Šipkami změníte pořadí.
+        </p>
+        <div className="space-y-2 max-h-[min(52vh,420px)] overflow-y-auto overscroll-y-contain pr-1 -mr-1">
+          {quickEditOrder.map((id, index) => {
+            const item = QUICK_ACTIONS_CATALOG.find((a) => a.id === id);
+            if (!item) return null;
+            const visible = quickEditVisible[id] !== false;
+            return (
+              <div
+                key={id}
+                className={cx(
+                  "flex items-stretch gap-2 rounded-xl border px-2 py-2",
+                  visible
+                    ? "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]"
+                    : "border-[color:var(--wp-surface-card-border)]/40 opacity-70"
+                )}
+              >
+                <div className="flex flex-col justify-center gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (index <= 0) return;
+                      const n = [...quickEditOrder];
+                      [n[index - 1], n[index]] = [n[index], n[index - 1]];
+                      setQuickEditOrder(n);
+                    }}
+                    disabled={index === 0}
+                    className="p-1.5 rounded-lg text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] disabled:opacity-30"
+                    aria-label="Posunout nahoru"
+                  >
+                    <ChevronUp size={18} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (index >= quickEditOrder.length - 1) return;
+                      const n = [...quickEditOrder];
+                      [n[index], n[index + 1]] = [n[index + 1], n[index]];
+                      setQuickEditOrder(n);
+                    }}
+                    disabled={index === quickEditOrder.length - 1}
+                    className="p-1.5 rounded-lg text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card)] disabled:opacity-30"
+                    aria-label="Posunout dolů"
+                  >
+                    <ChevronDown size={18} strokeWidth={2.5} />
+                  </button>
+                </div>
+                <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer py-1">
+                  <input
+                    type="checkbox"
+                    checked={visible}
+                    onChange={() =>
+                      setQuickEditVisible((p) => ({ ...p, [id]: p[id] === false }))
+                    }
+                    className="h-5 w-5 rounded border border-[color:var(--wp-surface-card-border)] shrink-0 accent-indigo-600"
+                  />
+                  <span
+                    className={cx(
+                      "text-sm font-bold truncate",
+                      visible ? "text-[color:var(--wp-text)]" : "text-[color:var(--wp-text-secondary)] line-through"
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+        <CreateActionButton
+          type="button"
+          onClick={() => void saveQuickActionsFromSheet()}
+          disabled={quickSaving}
+          className="min-h-[48px] w-full mt-4"
+          icon={null}
+        >
+          {quickSaving ? "Ukládám…" : "Uložit"}
+        </CreateActionButton>
       </BottomSheet>
 
       {/* Logout confirmation */}

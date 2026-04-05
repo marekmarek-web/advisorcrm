@@ -23,6 +23,11 @@ export const advisorPreferences = pgTable(
     bookingAvailability: jsonb("booking_availability").$type<BookingWeeklyAvailability | null>(),
     bookingSlotMinutes: integer("booking_slot_minutes").default(30).notNull(),
     bookingBufferMinutes: integer("booking_buffer_minutes").default(0).notNull(),
+    birthdaySignatureName: text("birthday_signature_name"),
+    birthdaySignatureRole: text("birthday_signature_role"),
+    birthdayReplyToEmail: text("birthday_reply_to_email"),
+    /** premium_dark | birthday_gif — override workspace default. */
+    birthdayEmailTheme: text("birthday_email_theme"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

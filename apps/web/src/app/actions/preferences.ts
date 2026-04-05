@@ -8,6 +8,7 @@ import { getDefaultQuickActionsConfig } from "@/lib/quick-actions";
 import { loadQuickActionsConfig } from "@/lib/quick-actions/load-quick-actions-config";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
+import { isBirthdayEmailTheme, type BirthdayEmailTheme } from "@/lib/email/birthday/types";
 
 const AVATAR_MAX_SIZE = 3 * 1024 * 1024; // 3 MB
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -326,6 +327,99 @@ export async function setNotificationPrefs(prefs: NotificationPrefs): Promise<vo
     data: { notification_prefs: prefs },
   });
   if (error) throw new Error(error.message);
+}
+
+export type AdvisorBirthdayEmailPrefs = {
+  birthdaySignatureName: string | null;
+  birthdaySignatureRole: string | null;
+  birthdayReplyToEmail: string | null;
+  birthdayEmailTheme: BirthdayEmailTheme | null;
+};
+
+export async function getAdvisorBirthdayEmailPrefs(): Promise<AdvisorBirthdayEmailPrefs> {
+  try {
+    const auth = await requireAuthInAction();
+    const row = await db
+      .select({
+        birthdaySignatureName: advisorPreferences.birthdaySignatureName,
+        birthdaySignatureRole: advisorPreferences.birthdaySignatureRole,
+        birthdayReplyToEmail: advisorPreferences.birthdayReplyToEmail,
+        birthdayEmailTheme: advisorPreferences.birthdayEmailTheme,
+      })
+      .from(advisorPreferences)
+      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+      .limit(1);
+    const t = row[0]?.birthdayEmailTheme?.trim();
+    return {
+      birthdaySignatureName: row[0]?.birthdaySignatureName?.trim() || null,
+      birthdaySignatureRole: row[0]?.birthdaySignatureRole?.trim() || null,
+      birthdayReplyToEmail: row[0]?.birthdayReplyToEmail?.trim() || null,
+      birthdayEmailTheme: t && isBirthdayEmailTheme(t) ? t : null,
+    };
+  } catch {
+    return {
+      birthdaySignatureName: null,
+      birthdaySignatureRole: null,
+      birthdayReplyToEmail: null,
+      birthdayEmailTheme: null,
+    };
+  }
+}
+
+export async function updateAdvisorBirthdayEmailPrefs(update: {
+  birthdaySignatureName?: string | null;
+  birthdaySignatureRole?: string | null;
+  birthdayReplyToEmail?: string | null;
+  birthdayEmailTheme?: string | null;
+}): Promise<void> {
+  const auth = await requireAuthInAction();
+  if (update.birthdayEmailTheme != null && update.birthdayEmailTheme !== "" && !isBirthdayEmailTheme(update.birthdayEmailTheme)) {
+    throw new Error("Neplatné téma e-mailu.");
+  }
+  const existing = await db
+    .select({ id: advisorPreferences.id })
+    .from(advisorPreferences)
+    .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+    .limit(1);
+
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (Object.prototype.hasOwnProperty.call(update, "birthdaySignatureName")) {
+    set.birthdaySignatureName = update.birthdaySignatureName?.trim() || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(update, "birthdaySignatureRole")) {
+    set.birthdaySignatureRole = update.birthdaySignatureRole?.trim() || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(update, "birthdayReplyToEmail")) {
+    set.birthdayReplyToEmail = update.birthdayReplyToEmail?.trim() || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(update, "birthdayEmailTheme")) {
+    const v = update.birthdayEmailTheme?.trim();
+    set.birthdayEmailTheme = v && isBirthdayEmailTheme(v) ? v : null;
+  }
+
+  if (existing.length > 0) {
+    await db
+      .update(advisorPreferences)
+      .set(set as Partial<typeof advisorPreferences.$inferInsert>)
+      .where(eq(advisorPreferences.id, existing[0].id));
+    return;
+  }
+  await db.insert(advisorPreferences).values({
+    userId: auth.userId,
+    tenantId: auth.tenantId,
+    birthdaySignatureName:
+      update.birthdaySignatureName !== undefined ? update.birthdaySignatureName?.trim() || null : null,
+    birthdaySignatureRole:
+      update.birthdaySignatureRole !== undefined ? update.birthdaySignatureRole?.trim() || null : null,
+    birthdayReplyToEmail:
+      update.birthdayReplyToEmail !== undefined ? update.birthdayReplyToEmail?.trim() || null : null,
+    birthdayEmailTheme:
+      update.birthdayEmailTheme !== undefined
+        ? update.birthdayEmailTheme?.trim() && isBirthdayEmailTheme(update.birthdayEmailTheme.trim())
+          ? update.birthdayEmailTheme.trim()
+          : null
+        : null,
+  });
 }
 
 export async function sendNotificationEmail(

@@ -32,7 +32,8 @@ import {
   UserCog,
 } from "lucide-react";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
-import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding, getNotificationPrefs, setNotificationPrefs } from "@/app/actions/preferences";
+import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding, getNotificationPrefs, setNotificationPrefs, getAdvisorBirthdayEmailPrefs, updateAdvisorBirthdayEmailPrefs } from "@/app/actions/preferences";
+import { getWorkspaceBirthdayEmailTheme, setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings";
 import { GoogleCalendarUpcomingEvents } from "@/app/portal/setup/GoogleCalendarUpcomingEvents";
 import { GoogleCalendarAvailability } from "@/app/portal/setup/GoogleCalendarAvailability";
 import { listTenantMembers } from "@/app/actions/team";
@@ -229,6 +230,13 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [reportPhone, setReportPhone] = useState("");
   const [reportWebsite, setReportWebsite] = useState("");
   const [reportSaving, setReportSaving] = useState(false);
+  const [workspaceBirthdayTheme, setWorkspaceBirthdayTheme] = useState<"premium_dark" | "birthday_gif">("premium_dark");
+  const [workspaceBirthdaySaving, setWorkspaceBirthdaySaving] = useState(false);
+  const [bdSigName, setBdSigName] = useState("");
+  const [bdSigRole, setBdSigRole] = useState("");
+  const [bdReplyTo, setBdReplyTo] = useState("");
+  const [bdThemeOverride, setBdThemeOverride] = useState<"" | "premium_dark" | "birthday_gif">("");
+  const [bdSaving, setBdSaving] = useState(false);
 
   useEffect(() => {
     if (activeTab === "profil") {
@@ -237,8 +245,17 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         setReportPhone(f.phone ?? "");
         setReportWebsite(f.website ?? "");
       });
+      getAdvisorBirthdayEmailPrefs().then((p) => {
+        setBdSigName(p.birthdaySignatureName ?? "");
+        setBdSigRole(p.birthdaySignatureRole ?? "");
+        setBdReplyTo(p.birthdayReplyToEmail ?? "");
+        setBdThemeOverride(p.birthdayEmailTheme ?? "");
+      });
+      if (initial.roleName === "Admin") {
+        getWorkspaceBirthdayEmailTheme().then(setWorkspaceBirthdayTheme);
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, initial.roleName]);
 
   const onAdvisorAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1248,6 +1265,105 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                     className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 min-h-[44px]"
                   >
                     {reportSaving ? "Ukládám…" : "Uložit údaje pro PDF"}
+                  </button>
+                </div>
+              </div>
+
+              {initial.roleName === "Admin" ? (
+                <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden mt-6">
+                  <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
+                    <h3 className="font-black text-[color:var(--wp-text)]">Narozeninové e-maily (workspace)</h3>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mt-1">
+                      Výchozí vzhled pro celý workspace
+                    </p>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <label className={labelClass}>Téma šablony</label>
+                    <select
+                      value={workspaceBirthdayTheme}
+                      onChange={(e) => setWorkspaceBirthdayTheme(e.target.value as "premium_dark" | "birthday_gif")}
+                      className={inputClass}
+                    >
+                      <option value="premium_dark">Premium (tmavá hlavička)</option>
+                      <option value="birthday_gif">S obrázkem / GIF (fallback na premium, pokud chybí soubor)</option>
+                    </select>
+                    <button
+                      type="button"
+                      disabled={workspaceBirthdaySaving}
+                      onClick={async () => {
+                        setWorkspaceBirthdaySaving(true);
+                        try {
+                          const r = await setWorkspaceBirthdayEmailTheme(workspaceBirthdayTheme);
+                          if (!r.ok) toast.showToast(r.message, "error");
+                          else toast.showToast("Výchozí téma narozenin uloženo.");
+                        } catch {
+                          toast.showToast("Uložení se nezdařilo.", "error");
+                        } finally {
+                          setWorkspaceBirthdaySaving(false);
+                        }
+                      }}
+                      className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 min-h-[44px]"
+                    >
+                      {workspaceBirthdaySaving ? "Ukládám…" : "Uložit výchozí téma"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden mt-6">
+                <div className="px-6 py-5 border-b border-[color:var(--wp-surface-card-border)]/50">
+                  <h3 className="font-black text-[color:var(--wp-text)]">Vaše narozeninové přání</h3>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mt-1">
+                    Podpis a odpovědi jdou od vás, ne od firmy
+                  </p>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div>
+                    <label className={labelClass}>Jméno v podpisu</label>
+                    <input value={bdSigName} onChange={(e) => setBdSigName(e.target.value)} className={inputClass} placeholder="např. Marek Marek" />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Role / titul v podpisu</label>
+                    <input value={bdSigRole} onChange={(e) => setBdSigRole(e.target.value)} className={inputClass} placeholder="např. Finanční poradce" />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Reply-To e-mail (volitelné)</label>
+                    <input type="email" value={bdReplyTo} onChange={(e) => setBdReplyTo(e.target.value)} className={inputClass} placeholder="odpovědi@…" />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Vlastní téma šablony (přebije workspace)</label>
+                    <select
+                      value={bdThemeOverride}
+                      onChange={(e) => setBdThemeOverride(e.target.value as "" | "premium_dark" | "birthday_gif")}
+                      className={inputClass}
+                    >
+                      <option value="">Podle workspace</option>
+                      <option value="premium_dark">Premium (tmavá hlavička)</option>
+                      <option value="birthday_gif">S GIF (fallback na premium)</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={bdSaving}
+                    onClick={async () => {
+                      setBdSaving(true);
+                      try {
+                        await updateAdvisorBirthdayEmailPrefs({
+                          birthdaySignatureName: bdSigName.trim() || null,
+                          birthdaySignatureRole: bdSigRole.trim() || null,
+                          birthdayReplyToEmail: bdReplyTo.trim() || null,
+                          birthdayEmailTheme: bdThemeOverride || null,
+                        });
+                        toast.showToast("Nastavení narozenin uloženo.");
+                      } catch (e) {
+                        toast.showToast(e instanceof Error ? e.message : "Uložení se nezdařilo.", "error");
+                      } finally {
+                        setBdSaving(false);
+                      }
+                    }}
+                    className="w-full py-2.5 bg-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 disabled:opacity-50 min-h-[44px]"
+                  >
+                    {bdSaving ? "Ukládám…" : "Uložit narozeninové nastavení"}
                   </button>
                 </div>
               </div>

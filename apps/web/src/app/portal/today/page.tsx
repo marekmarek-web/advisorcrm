@@ -55,6 +55,7 @@ const FALLBACK_KPIS = {
   opportunitiesInStep3And4: [],
   czPublicHolidayToday: null,
   czNameDaysToday: [],
+  pragueTodayYmd: "",
   birthdaysToday: [],
   sidePanelAgendaTimeline: [],
 } as Awaited<ReturnType<typeof getDashboardKpis>>;

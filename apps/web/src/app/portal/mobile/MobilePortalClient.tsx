@@ -792,7 +792,7 @@ export function MobilePortalClient({
     }
     if (onBusinessPlanRoute) return <BusinessPlanScreen deviceClass={deviceClass} />;
     if (onTeamOverviewRoute) return <TeamOverviewScreen deviceClass={deviceClass} />;
-    if (onSetupRoute) return <SettingsProfileScreen advisorName={advisorName} />;
+    if (onSetupRoute) return <SettingsProfileScreen advisorName={advisorName} roleName={roleName} />;
     if (onNotificationsRoute) return <ClientPortalRequestsInboxLoader />;
     if (onCalendarRoute)
       return (

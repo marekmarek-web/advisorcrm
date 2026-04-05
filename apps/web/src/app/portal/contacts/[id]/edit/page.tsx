@@ -46,6 +46,10 @@ export default function EditContactPage() {
     lastServiceDate: "",
     nextServiceDue: "",
     householdId: "",
+    preferredSalutation: "",
+    preferredGreetingName: "",
+    greetingStyle: "",
+    birthGreetingOptOut: false,
   });
   const [contactOptions, setContactOptions] = useState<{ id: string; label: string }[]>([]);
   const [householdOptions, setHouseholdOptions] = useState<{ id: string; name: string }[]>([]);
@@ -90,6 +94,10 @@ export default function EditContactPage() {
             lastServiceDate: c.lastServiceDate ?? "",
             nextServiceDue: c.nextServiceDue ?? "",
             householdId: bundle.householdId ?? "",
+            preferredSalutation: c.preferredSalutation ?? "",
+            preferredGreetingName: c.preferredGreetingName ?? "",
+            greetingStyle: c.greetingStyle ?? "",
+            birthGreetingOptOut: c.birthGreetingOptOut === true,
           }));
         }
       })
@@ -164,6 +172,10 @@ export default function EditContactPage() {
         serviceCycleMonths: form.serviceCycleMonths || undefined,
         lastServiceDate: form.lastServiceDate || undefined,
         nextServiceDue: form.nextServiceDue || undefined,
+        preferredSalutation: form.preferredSalutation.trim() || null,
+        preferredGreetingName: form.preferredGreetingName.trim() || null,
+        greetingStyle: form.greetingStyle.trim() || null,
+        birthGreetingOptOut: form.birthGreetingOptOut,
       });
       await setContactHousehold(id, form.householdId || null);
       router.push(`/portal/contacts/${id}`);
@@ -334,6 +346,57 @@ export default function EditContactPage() {
                   <label className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">Rodné číslo / osobní ID</label>
                   <input value={form.personalId} onChange={(e) => setForm((f) => ({ ...f, personalId: e.target.value }))} className={inputCls} />
                 </div>
+              </div>
+              <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 p-4 space-y-4">
+                <h3 className="text-sm font-black text-[color:var(--wp-text)]">Oslovení a narozeninová přání</h3>
+                <p className="text-xs text-[color:var(--wp-text-secondary)]">
+                  Ručně zadejte oslovení (bez automatického skloňování). Např. „pane Nováku,“ do prvního pole a „pane Nováku“ do předmětu e-mailu.
+                </p>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">
+                    Oslovení v těle e-mailu (za „Dobrý den, “)
+                  </label>
+                  <input
+                    value={form.preferredSalutation}
+                    onChange={(e) => setForm((f) => ({ ...f, preferredSalutation: e.target.value }))}
+                    className={inputCls}
+                    placeholder="např. pane Nováku,"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">
+                    Zkratka do předmětu (volitelné)
+                  </label>
+                  <input
+                    value={form.preferredGreetingName}
+                    onChange={(e) => setForm((f) => ({ ...f, preferredGreetingName: e.target.value }))}
+                    className={inputCls}
+                    placeholder="např. pane Nováku"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">Styl oslovení</label>
+                  <select
+                    value={form.greetingStyle}
+                    onChange={(e) => setForm((f) => ({ ...f, greetingStyle: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="">(výchozí)</option>
+                    <option value="formal">Formální</option>
+                    <option value="informal">Neformální</option>
+                  </select>
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.birthGreetingOptOut}
+                    onChange={(e) => setForm((f) => ({ ...f, birthGreetingOptOut: e.target.checked }))}
+                    className="mt-1 h-4 w-4 rounded border-[color:var(--wp-border)]"
+                  />
+                  <span className="text-sm font-medium text-[color:var(--wp-text)]">
+                    Neposílat narozeninová blahopřání tomuto klientovi
+                  </span>
+                </label>
               </div>
             </div>
           </section>

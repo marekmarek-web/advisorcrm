@@ -1,26 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   Landmark,
   Gift,
   Cake,
   ChevronRight,
-  Send,
   CalendarHeart,
 } from "lucide-react";
+import { BirthdayGreetingPreviewModal } from "@/app/components/dashboard/BirthdayGreetingPreviewModal";
 
 export type TodayInCalendarBirthdayRow = {
   id: string;
   firstName: string;
   lastName: string;
   age: number;
+  canSendEmail: boolean;
+  greetingSentToday: boolean;
+  optedOut: boolean;
+  doNotEmail: boolean;
 };
 
 export type TodayInCalendarWidgetProps = {
   czPublicHolidayToday: string | null;
   czNameDaysToday: string[];
   birthdaysToday: TodayInCalendarBirthdayRow[];
+  /** YYYY-MM-DD Europe/Prague — klíč pro „Přeskočit“ v localStorage. */
+  pragueTodayYmd: string;
   /** Desktop: show link to full calendar. Mobile can hide if redundant. */
   showViewCalendarLink?: boolean;
 };
@@ -49,6 +56,7 @@ export function TodayInCalendarWidget({
   czPublicHolidayToday,
   czNameDaysToday,
   birthdaysToday,
+  pragueTodayYmd,
   showViewCalendarLink = true,
 }: TodayInCalendarWidgetProps) {
   const holidayActive = czPublicHolidayToday != null;
@@ -56,7 +64,45 @@ export function TodayInCalendarWidget({
   const nameLine =
     czNameDaysToday.length === 0 ? null : czNameDaysToday.join(", ");
 
+  const [modalContactId, setModalContactId] = useState<string | null>(null);
+  const [skipTick, setSkipTick] = useState(0);
+
+  const skippedIds = useMemo(() => {
+    void skipTick;
+    if (typeof window === "undefined" || !pragueTodayYmd) return new Set<string>();
+    const s = new Set<string>();
+    for (const b of birthdaysToday) {
+      try {
+        if (localStorage.getItem(`birthdayGreetingSkip:${pragueTodayYmd}:${b.id}`) === "1") {
+          s.add(b.id);
+        }
+      } catch {
+        /* noop */
+      }
+    }
+    return s;
+  }, [birthdaysToday, pragueTodayYmd, skipTick]);
+
+  function skipBirthday(contactId: string) {
+    try {
+      if (pragueTodayYmd) {
+        localStorage.setItem(`birthdayGreetingSkip:${pragueTodayYmd}:${contactId}`, "1");
+      }
+    } catch {
+      /* noop */
+    }
+    setSkipTick((t) => t + 1);
+  }
+
+  function birthdayBlockReason(b: TodayInCalendarBirthdayRow): string | null {
+    if (b.optedOut) return "Bez přání (nastavení klienta)";
+    if (b.doNotEmail) return "E-mail vyloučen";
+    if (!b.canSendEmail && !b.doNotEmail && !b.optedOut) return "Chybí e-mail";
+    return null;
+  }
+
   return (
+    <>
     <div
       className="w-full rounded-[32px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-8 shadow-[0_4px_24px_-6px_rgba(15,23,42,0.03),0_0_1px_rgba(15,23,42,0.04)] transition-all duration-\\[400ms\\] md:p-10 relative overflow-hidden dark:shadow-[0_4px_28px_-8px_rgba(0,0,0,0.45),0_0_1px_rgba(255,255,255,0.06)] [font-family:var(--wp-font)]"
     >
@@ -197,39 +243,81 @@ export function TodayInCalendarWidget({
                     Dnes nikdo z kontaktů nemá narozeniny.
                   </p>
                 ) : (
-                  <div className="space-y-3 mt-3">
-                    {birthdaysToday.map((bday, index) => (
-                      <div
-                        key={bday.id}
-                        className="flex items-center justify-between gap-2 group/bday"
-                      >
-                        <Link
-                          href={`/portal/contacts/${bday.id}`}
-                          className="flex items-center gap-2.5 min-w-0 rounded-lg -m-1 p-1 hover:bg-orange-100/40 dark:hover:bg-orange-500/15 transition-colors"
+                  <div className="space-y-4 mt-3">
+                    {birthdaysToday.map((bday, index) => {
+                      const showPrompt =
+                        bday.canSendEmail && !bday.greetingSentToday && !skippedIds.has(bday.id);
+                      const reason = birthdayBlockReason(bday);
+                      return (
+                        <div
+                          key={bday.id}
+                          className="rounded-xl border border-orange-200/60 bg-white/60 p-3 dark:border-orange-500/20 dark:bg-orange-950/20"
                         >
-                          <div
-                            className={`w-8 h-8 rounded-full ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-white flex items-center justify-center text-xs font-bold shadow-sm shrink-0`}
-                          >
-                            {initials(bday.firstName, bday.lastName)}
+                          <div className="flex items-start gap-2.5">
+                            <Link
+                              href={`/portal/contacts/${bday.id}`}
+                              className="flex items-center gap-2.5 min-w-0 shrink-0 rounded-lg -m-1 p-1 hover:bg-orange-100/40 dark:hover:bg-orange-500/15 transition-colors"
+                            >
+                              <div
+                                className={`w-8 h-8 rounded-full ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-white flex items-center justify-center text-xs font-bold shadow-sm shrink-0`}
+                              >
+                                {initials(bday.firstName, bday.lastName)}
+                              </div>
+                              <div className="min-w-0 text-left">
+                                <p className="font-bold text-sm text-[color:var(--wp-text)] leading-tight">
+                                  {bday.firstName} {bday.lastName}
+                                </p>
+                                <p className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 mt-0.5">
+                                  {bday.age} let
+                                </p>
+                              </div>
+                            </Link>
                           </div>
-                          <div className="min-w-0 text-left">
-                            <p className="font-bold text-sm text-[color:var(--wp-text)] leading-none">
-                              {bday.firstName} {bday.lastName}
+
+                          {bday.greetingSentToday ? (
+                            <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                              Odesláno dnes
                             </p>
-                            <p className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 mt-0.5">
-                              {bday.age} let
+                          ) : null}
+
+                          {!bday.greetingSentToday && reason ? (
+                            <p className="mt-2 text-xs font-medium text-[color:var(--wp-text-secondary)]">
+                              {reason}
                             </p>
-                          </div>
-                        </Link>
-                        <Link
-                          href={`/portal/messages?contact=${bday.id}`}
-                          aria-label={`Napsat zprávu: ${bday.firstName} ${bday.lastName}`}
-                          className="min-h-[44px] min-w-[44px] shrink-0 rounded-full bg-[color:var(--wp-surface)] border border-orange-200 dark:border-orange-500/40 text-orange-500 dark:text-orange-400 flex items-center justify-center hover:bg-orange-500 hover:text-white hover:border-orange-500 dark:hover:bg-orange-500 dark:hover:text-white transition-all shadow-sm"
-                        >
-                          <Send size={14} className="ml-0.5" aria-hidden />
-                        </Link>
-                      </div>
-                    ))}
+                          ) : null}
+
+                          {showPrompt ? (
+                            <>
+                              <p className="mt-2 text-xs font-medium leading-snug text-[color:var(--wp-text)]">
+                                {bday.firstName} {bday.lastName} má dnes narozeniny — chcete poslat blahopřání?
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setModalContactId(bday.id)}
+                                  className="min-h-[40px] rounded-lg bg-orange-500 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-orange-600"
+                                >
+                                  Připravit blahopřání
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => skipBirthday(bday.id)}
+                                  className="min-h-[40px] rounded-lg border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] px-3 py-2 text-xs font-bold text-[color:var(--wp-text-secondary)]"
+                                >
+                                  Přeskočit
+                                </button>
+                              </div>
+                            </>
+                          ) : null}
+
+                          {skippedIds.has(bday.id) && !bday.greetingSentToday && bday.canSendEmail ? (
+                            <p className="mt-2 text-[11px] font-medium text-[color:var(--wp-text-tertiary)]">
+                              Dnes přeskočeno
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -237,5 +325,13 @@ export function TodayInCalendarWidget({
           </div>
         </div>
       </div>
+
+      <BirthdayGreetingPreviewModal
+        key={modalContactId ?? "closed"}
+        contactId={modalContactId}
+        open={modalContactId != null}
+        onClose={() => setModalContactId(null)}
+      />
+    </>
   );
 }

@@ -33,6 +33,11 @@ export const contacts = pgTable("contacts", {
   doNotEmail: boolean("do_not_email").notNull().default(false),
   doNotPush: boolean("do_not_push").notNull().default(false),
   bestContactTime: text("best_contact_time"),
+  /** Ručně zadané formální oslovení (např. „pane Nováku,“) — bez auto-skloňování. */
+  preferredSalutation: text("preferred_salutation"),
+  preferredGreetingName: text("preferred_greeting_name"),
+  greetingStyle: text("greeting_style"),
+  birthGreetingOptOut: boolean("birth_greeting_opt_out").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

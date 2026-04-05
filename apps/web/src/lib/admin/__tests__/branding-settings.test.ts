@@ -45,6 +45,7 @@ describe("branding-settings", () => {
       expect(DEFAULT_BRANDING.accentColor).toBe("#3B82F6");
       expect(DEFAULT_BRANDING.defaultTone).toBe("professional");
       expect(DEFAULT_BRANDING.assistantDisplayName).toBeTruthy();
+      expect(DEFAULT_BRANDING.birthdayEmailTheme).toBe("premium_dark");
     });
   });
 

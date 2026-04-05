@@ -88,6 +88,7 @@ export async function logNotification(params: {
   subject: string;
   recipient: string;
   status: string;
+  meta?: Record<string, unknown>;
 }) {
   try {
     await db.insert(notificationLog).values({
@@ -98,6 +99,7 @@ export async function logNotification(params: {
       subject: params.subject,
       recipient: params.recipient,
       status: params.status,
+      meta: params.meta ?? null,
     });
   } catch {
     // silently swallow – notification logging must never break the main flow

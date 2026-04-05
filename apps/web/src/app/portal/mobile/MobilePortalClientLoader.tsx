@@ -19,6 +19,7 @@ const EMPTY_KPIS: DashboardKpis = {
   opportunitiesInStep3And4: [],
   czPublicHolidayToday: null,
   czNameDaysToday: [],
+  pragueTodayYmd: "",
   birthdaysToday: [],
   sidePanelAgendaTimeline: [],
 };
