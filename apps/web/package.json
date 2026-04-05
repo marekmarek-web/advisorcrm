@@ -24,7 +24,7 @@
     "test:client-portal-phase5-6-regression": "vitest run src/lib/client-portal/__tests__/phase-6f-phase5-6-release-gate.test.ts src/lib/client-portal/__tests__/phase-5-client-portal-bridge-regression.test.ts src/lib/observability/__tests__/contract-review-sentry.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts src/lib/calculators/investment/__tests__/investment.backtest.test.ts",
     "test:phase6h-observability": "vitest run src/lib/observability/__tests__/portal-sentry.test.ts src/lib/observability/__tests__/contract-review-sentry.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts",
     "validate:ai-review-prompt-env": "vitest run src/lib/ai/__tests__/ai-review-prompt-rollout.test.ts src/lib/ai/__tests__/ai-review-prompt-env-validator.test.ts",
-  "test:phase7-release-gate": "vitest run src/lib/__tests__/phase-7-productization-release-gate.test.ts src/lib/observability/__tests__/productization-sentry.test.ts src/lib/observability/__tests__/portal-sentry.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts",
+    "test:phase7-release-gate": "vitest run src/lib/__tests__/phase-7-productization-release-gate.test.ts src/lib/observability/__tests__/productization-sentry.test.ts src/lib/observability/__tests__/portal-sentry.test.ts src/lib/observability/__tests__/assistant-sentry.test.ts",
     "test:e2e": "playwright test",
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
@@ -38,6 +38,7 @@
     "cap:assets": "pnpm brand:assets && npx capacitor-assets generate && node scripts/copy-pwa-icons-to-public.mjs && node scripts/regenerate-public-pwa-webp.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
     "@capacitor/app": "^8.0.1",
     "@capacitor/browser": "^8.0.2",
     "@capacitor/camera": "^8.0.2",
