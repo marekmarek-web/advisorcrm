@@ -175,19 +175,22 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       const outcome = await loadThreadMessages(cid);
       if (outcome.ok) {
         setMsgs(outcome.messages);
-        try {
-          await markMessagesRead(cid);
-          window.dispatchEvent(new Event("portal-messages-badge-refresh"));
-          await runListFetch("poll");
-        } catch {
-          /* označení přečtení nesmí zablokovat zobrazení vlákna */
-        }
+        setMessagesLoading(false);
+        void (async () => {
+          try {
+            await markMessagesRead(cid);
+            window.dispatchEvent(new Event("portal-messages-badge-refresh"));
+            await runListFetch("poll");
+          } catch {
+            /* označení přečtení / obnova seznamu nesmí blokovat UI */
+          }
+        })();
       } else {
         setMessagesError(outcome.error);
+        setMessagesLoading(false);
       }
     } catch (e) {
       setMessagesError(humanMessageError(e, "Konverzaci se nepodařilo načíst."));
-    } finally {
       setMessagesLoading(false);
     }
   }, [selectedContactId, runListFetch]);
@@ -216,6 +219,11 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       setCrmLoading(false);
       return;
     }
+    if (messagesLoading) {
+      setCrmSnapshot(null);
+      setCrmLoading(false);
+      return;
+    }
     let cancelled = false;
     setCrmLoading(true);
     void getChatContextPanelSnapshot(selectedContactId)
@@ -234,7 +242,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     return () => {
       cancelled = true;
     };
-  }, [selectedContactId, msgs.length, crmSnapshotNonce]);
+  }, [selectedContactId, messagesLoading, msgs.length, crmSnapshotNonce]);
 
   useEffect(() => {
     if (!selectedContactId) {
@@ -280,6 +288,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
 
   useEffect(() => {
     if (!selectedContactId) return;
+    if (messagesLoading) return;
     let cancelled = false;
     const cid = selectedContactId;
     getContact(cid)
@@ -295,7 +304,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
     return () => {
       cancelled = true;
     };
-  }, [selectedContactId]);
+  }, [selectedContactId, messagesLoading]);
 
   useEffect(() => {
     if (!selectedContactId) return;
@@ -310,31 +319,44 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
       return;
     }
     let cancelled = false;
-    setAttachmentsLoading(true);
     const ids = msgs.map((m) => m.id);
+    const BATCH = 10;
     const load = async () => {
-      const next: Record<string, MessageAttachmentRow[]> = {};
-      for (const id of ids) {
-        try {
-          const list = await getMessageAttachments(id);
-          next[id] = list;
-        } catch {
-          next[id] = [];
+      setAttachmentsLoading(true);
+      try {
+        for (let i = 0; i < ids.length; i += BATCH) {
+          if (cancelled) return;
+          const slice = ids.slice(i, i + BATCH);
+          const chunk = await Promise.all(
+            slice.map(async (id) => {
+              try {
+                const list = await getMessageAttachments(id);
+                return [id, list] as const;
+              } catch {
+                return [id, []] as const;
+              }
+            }),
+          );
+          if (!cancelled) {
+            const partial = Object.fromEntries(chunk) as Record<string, MessageAttachmentRow[]>;
+            setMsgAttachments((prev) => ({ ...prev, ...partial }));
+          }
         }
-      }
-      if (!cancelled) {
-        setMsgAttachments((prev) => ({ ...prev, ...next }));
+      } finally {
         setAttachmentsLoading(false);
       }
     };
-    void load();
+    const frame = requestAnimationFrame(() => {
+      if (!cancelled) void load();
+    });
     return () => {
       cancelled = true;
+      cancelAnimationFrame(frame);
     };
   }, [msgs]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
   }, [msgs.length]);
 
   function handleDeleteOneMessage(messageId: string) {
@@ -353,7 +375,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
         const reload = await loadThreadMessages(cid);
         if (reload.ok) setMsgs(reload.messages);
         else throw new Error(reload.error);
-        await runListFetch("poll");
+        void runListFetch("poll");
         window.dispatchEvent(new Event("portal-messages-badge-refresh"));
       } catch (e) {
         setSendError(humanMessageError(e, "Zprávu se nepodařilo smazat."));
@@ -381,7 +403,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
         setMsgAttachments({});
         setContactDetail(null);
         router.replace("/portal/messages", { scroll: false });
-        await runListFetch("poll");
+        void runListFetch("poll");
         window.dispatchEvent(new Event("portal-messages-badge-refresh"));
       } catch (e) {
         setSendError(humanMessageError(e, "Konverzaci se nepodařilo smazat."));
@@ -418,7 +440,7 @@ export function PortalMessagesView({ initialContactId }: { initialContactId: str
         const reload = await loadThreadMessages(selectedContactId);
         if (reload.ok) setMsgs(reload.messages);
         else setSendError(reload.error);
-        await runListFetch("poll");
+        void runListFetch("poll");
       } catch (e) {
         setSendError(humanMessageError(e, "Zprávu se nepodařilo odeslat."));
       }

@@ -56,10 +56,6 @@ export function MessageThread({
           <p className="py-10 text-center text-sm text-[color:var(--wp-text-secondary)]">Zatím žádné zprávy. Napište první zprávu.</p>
         ) : null}
 
-        {attachmentsLoading && msgs.length > 0 ? (
-          <p className="text-center text-xs text-[color:var(--wp-text-tertiary)]">Načítání příloh…</p>
-        ) : null}
-
         {!loading && !loadError
           ? msgs.map((m, i) => {
               const d = new Date(m.createdAt);
@@ -84,6 +80,11 @@ export function MessageThread({
               );
             })
           : null}
+
+        {attachmentsLoading && msgs.length > 0 ? (
+          <p className="mt-2 text-center text-xs text-[color:var(--wp-text-tertiary)]">Načítání příloh…</p>
+        ) : null}
+
         <div ref={bottomRef} />
       </div>
     </div>
