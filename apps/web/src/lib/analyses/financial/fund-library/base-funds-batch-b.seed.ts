@@ -83,7 +83,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.fidelityinternational.com/FILPS/Documents/en/current/mf.en.gb.LU0251119318.pdf",
     factsheetAsOf: "2026-02-28",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/fidelity_target_2040.svg",
+    logo: "/logos/funds/fidelity_target_2040.png",
     heroImage: "/report-assets/funds/fidelity_target_2040/hero.svg",
     galleryImages: [
       "/report-assets/funds/fidelity_target_2040/gallery-1.svg",
@@ -109,7 +109,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder v `public/logos/funds/` — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "Morningstar peer group je veřejně uveden, ale explicitní star rating není na použitém factsheetu uveden; ponecháno null.",
       "planningRate 6 % je interní modelový předpoklad pro projekce, ne oficiální performance.",
     ],
@@ -189,7 +189,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.investika.cz/investicni-fondy/investika-realitni-fond",
     factsheetAsOf: "2026-02-28",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/investika_realitni_fond.svg",
+    logo: "/logos/funds/investika_realitni_fond.png",
     heroImage: "/report-assets/funds/investika_realitni_fond/hero.svg",
     galleryImages: [
       "/report-assets/funds/investika_realitni_fond/gallery-1.svg",
@@ -215,7 +215,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder v `public/logos/funds/` — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "Investika na veřejné stránce uvádí 3Y/5Y/since launch primárně jako kumulativní výkon; anualizace výše je dopočtena pro potřeby jednotného seed formátu.",
       "countries obsahují jen veřejně zřetelně doložené země z produktové stránky; samotná stránka zároveň uvádí, že fond drží 65 nemovitostí v 6 zemích Evropy.",
       "planningRate 5 % je interní modelový předpoklad pro projekce, ne oficiální performance.",
@@ -285,7 +285,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.investika.cz/investicni-fondy/monetika",
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/monetika.svg",
+    logo: "/logos/funds/monetika.png",
     heroImage: "/report-assets/funds/monetika/hero.svg",
     galleryImages: [
       "/report-assets/funds/monetika/gallery-1.svg",
@@ -311,7 +311,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder v `public/logos/funds/` — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "Investika veřejně reportuje 3Y a since inception primárně jako kumulativní výkon; anualizace výše je dopočtena pro potřeby jednotného seed formátu.",
       "planningRate 4 % je interní modelový předpoklad pro projekce, ne oficiální performance.",
     ],
@@ -381,7 +381,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.investika.cz/investicni-fondy/efektika",
     factsheetAsOf: "2026-03-31",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/efektika.svg",
+    logo: "/logos/funds/efektika.png",
     heroImage: "/report-assets/funds/efektika/hero.svg",
     galleryImages: [
       "/report-assets/funds/efektika/gallery-1.svg",
@@ -412,7 +412,7 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder v `public/logos/funds/` — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "TopHoldings obsahují jen veřejně marketingově komunikované příklady firem z produktové stránky, nikoli plný oficiální holdings list s vahami.",
       "Statut je širší než samotná marketingová komunikace a připouští expozici i na další hlavní indexy mimo čistý S&P 500; v UI je vhodné držet popis opatrně a přesně.",
       "planningRate 9 % je interní modelový předpoklad pro projekce, ne oficiální performance.",

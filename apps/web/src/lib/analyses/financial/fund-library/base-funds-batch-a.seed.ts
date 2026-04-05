@@ -142,7 +142,7 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
       'https://www.blackrock.com/cz/individualni-investori/literature/fact-sheet/swda-ishares-core-msci-world-ucits-etf-fund-fact-sheet-cs-cz.pdf',
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
-    logo: '/logos/funds/ishares_core_msci_world.svg',
+    logo: '/logos/funds/ishares_brand.png',
     heroImage: '/report-assets/funds/ishares_core_msci_world/hero.svg',
     galleryImages: [
       '/report-assets/funds/ishares_core_msci_world/gallery-1.svg',
@@ -243,7 +243,7 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
       'https://www.blackrock.com/cz/individualni-investori/literature/fact-sheet/cspx-ishares-core-s-p-500-ucits-etf-fund-fact-sheet-cs-cz.pdf',
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
-    logo: '/logos/funds/ishares_core_sp_500.svg',
+    logo: '/logos/funds/ishares_brand.png',
     heroImage: '/report-assets/funds/ishares_core_sp_500/hero.svg',
     galleryImages: [
       '/report-assets/funds/ishares_core_sp_500/gallery-1.svg',
@@ -368,7 +368,7 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
       'https://fund-docs.vanguard.com/FTSE_Emerging_Markets_UCITS_ETF_USD_Accumulating_9678_EU_INT_UK_EN.pdf',
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
-    logo: '/logos/funds/vanguard_ftse_emerging_markets.svg',
+    logo: '/logos/funds/vanguard_ftse_emerging_markets.png',
     heroImage: '/report-assets/funds/vanguard_ftse_emerging_markets/hero.svg',
     galleryImages: [
       '/report-assets/funds/vanguard_ftse_emerging_markets/gallery-1.svg',
@@ -484,7 +484,7 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
       'https://www.blackrock.com/cz/individualni-investori/literature/fact-sheet/aggh-ishares-core-global-aggregate-bond-ucits-etf-fund-fact-sheet-cs-cz.pdf',
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
-    logo: '/logos/funds/ishares_core_global_aggregate_bond.svg',
+    logo: '/logos/funds/ishares_brand.png',
     heroImage: '/report-assets/funds/ishares_core_global_aggregate_bond/hero.svg',
     galleryImages: [
       '/report-assets/funds/ishares_core_global_aggregate_bond/gallery-1.svg',

@@ -81,7 +81,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
       "https://www.conseq.cz/getmedia/8b68e79e-c1a3-4d86-b761-27c3f304f722/glak-4q2025.pdf.aspx?ext=.pdf",
     factsheetAsOf: "2025-12-31",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/conseq_globalni_akciovy_ucastnicky.svg",
+    logo: "/logos/funds/conseq_globalni_akciovy_ucastnicky.png",
     heroImage: "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/hero.svg",
     galleryImages: [
       "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/gallery-1.svg",
@@ -112,7 +112,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "Rizikový profil 5/7 je doložen z KIDu.",
       "factsheetUrl míří na čtvrtletní report portfolio manažera, protože na veřejné stránce funguje jako nejbližší náhrada factsheetu.",
       "planningRate 7 % je interní modelový předpoklad pro projekce, ne oficiální performance.",
@@ -180,7 +180,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.nn.cz/files/archiv/cz-penze/dps/fondy/klicove_informace/514351.pdf",
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/nn_povinny_konzervativni.svg",
+    logo: "/logos/funds/nn_povinny_konzervativni.png",
     heroImage: "/report-assets/funds/nn_povinny_konzervativni/hero.svg",
     galleryImages: [
       "/report-assets/funds/nn_povinny_konzervativni/gallery-1.svg",
@@ -211,7 +211,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "U NN fondů veřejné weby neukazují pohodlně kompletní factsheet strukturu jako ETF; seed proto kombinuje fund page, KID a statut.",
       "planningRate 1 % vychází z NN komunikovaného očekávaného zhodnocení a je interní modelová vrstva pro projekce, ne garance.",
       "Top holdings nejsou v dostupném veřejném výstupu snadno čitelné; doplnit případně z portfoliového reportu.",
@@ -280,7 +280,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.nn.cz/files/archiv/cz-penze/soubory/ostatni_dokumenty/514451.pdf",
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/nn_vyvazeny.svg",
+    logo: "/logos/funds/nn_vyvazeny.png",
     heroImage: "/report-assets/funds/nn_vyvazeny/hero.svg",
     galleryImages: [
       "/report-assets/funds/nn_vyvazeny/gallery-1.svg",
@@ -311,7 +311,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "planningRate 3 % vychází z NN komunikovaného očekávaného zhodnocení a je interní modelová vrstva pro projekce, ne garance.",
       "Top holdings doplnit případně z portfoliových reportů NN, pokud je budete chtít zobrazovat i u penzijních fondů.",
     ],
@@ -380,7 +380,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.nn.cz/files/archiv/cz-penze/dps/fondy/klicove_informace/514470.pdf",
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
-    logo: "/logos/funds/nn_rustovy.svg",
+    logo: "/logos/funds/nn_rustovy.png",
     heroImage: "/report-assets/funds/nn_rustovy/hero.svg",
     galleryImages: [
       "/report-assets/funds/nn_rustovy/gallery-1.svg",
@@ -416,7 +416,7 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     ],
     assetTodo: ["hero", "gallery-1", "gallery-2", "gallery-3"],
     notes: [
-      "Logo: dočasný SVG placeholder — nahradit oficiálním logem dle brand guidelines.",
+      "Logo: PNG v `public/logos/funds/` — při změně brand guidelines aktualizovat soubor.",
       "U 5leté průměrné výkonnosti je použito NN komunikované číslo 15.30 % p.a. pro období 2021-02-28 až 2026-02-28, tedy jiný referenční den než 1Y údaj k 2026-03-31.",
       "planningRate 6 % vychází z NN komunikovaného očekávaného zhodnocení a je interní modelová vrstva pro projekce, ne garance.",
       "Top holdings jsou převzaté z oficiální NN tiskové zprávy jako příklady titulů, nikoli kompletní portfolio.",

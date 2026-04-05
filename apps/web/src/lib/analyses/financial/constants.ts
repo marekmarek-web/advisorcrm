@@ -245,7 +245,7 @@ export const FUND_DETAILS: Record<string, FundDetail> = {
 
 /** Logo paths – složka logos v public (nebo repo root logos zkopírovat do apps/web/public/logos). */
 export const FUND_LOGOS: Record<string, string> = {
-  creif: '/logos/creif.png',
+  creif: '/logos/funds/creif.png',
   atris: '/logos/atris.png',
   penta: '/logos/Penta.png',
   ishares: '/logos/ishares.png',
