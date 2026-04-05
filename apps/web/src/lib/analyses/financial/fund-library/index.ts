@@ -1,6 +1,6 @@
 /**
  * Centrální fondová knihovna — katalog base fondů, varianty, legacy mapa.
- * Wizard / HTML report zatím čtou `FUND_DETAILS`; tento modul je zdroj pravdy pro další přepojení.
+ * FA wizard a report berou metadata přes `fa-fund-bridge` (katalog + doplnění z `FUND_DETAILS` kde dává smysl).
  */
 
 export * from "./types";

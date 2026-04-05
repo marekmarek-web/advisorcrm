@@ -132,7 +132,6 @@ export const PRODUCT_NAMES: Record<string, string> = {
   penta_real_estate: 'Penta',
   ishares: 'iShares Core MSCI World',
   ishares_core_msci_world: 'iShares Core MSCI World',
-  alternative: 'Alternativní investice',
   fidelity2040: 'Fidelity 2040',
   fidelity_target_2040: 'Fidelity Target 2040',
   conseq: 'Conseq Globální akciový',
