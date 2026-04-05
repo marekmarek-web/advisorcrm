@@ -19,11 +19,24 @@ const COMMITTED_LOGO_PATHS = new Set<string>([
   "/logos/funds/monetika.svg",
   "/logos/funds/investika_realitni_fond.svg",
   "/logos/funds/fidelity_target_2040.svg",
+  "/logos/funds/ishares_core_msci_world.svg",
+  "/logos/funds/ishares_core_sp_500.svg",
+  "/logos/funds/vanguard_ftse_emerging_markets.svg",
+  "/logos/funds/ishares_core_global_aggregate_bond.svg",
+  "/logos/funds/creif.svg",
+  "/logos/funds/atris.svg",
+  "/logos/funds/penta.svg",
   FUND_PLACEHOLDER_LOGO_PATH,
 ]);
 
+/** Cesty k souborům v `public/report-assets/` (včetně per-fund SVG zástupců). */
 function isCommittedReportVisualPath(p: string): boolean {
-  return p.startsWith("/report-assets/_placeholders/");
+  if (p.startsWith("/report-assets/_placeholders/")) return true;
+  if (p.startsWith("/report-assets/funds/")) return true;
+  if (p.startsWith("/report-assets/creif/")) return true;
+  if (p.startsWith("/report-assets/atris/")) return true;
+  if (p.startsWith("/report-assets/penta/")) return true;
+  return false;
 }
 
 function resolveLogoPath(raw: string | undefined): string {

@@ -84,11 +84,11 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2026-02-28",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/fidelity_target_2040.svg",
-    heroImage: "/report-assets/funds/fidelity_target_2040/hero.webp",
+    heroImage: "/report-assets/funds/fidelity_target_2040/hero.svg",
     galleryImages: [
-      "/report-assets/funds/fidelity_target_2040/gallery-1.webp",
-      "/report-assets/funds/fidelity_target_2040/gallery-2.webp",
-      "/report-assets/funds/fidelity_target_2040/gallery-3.webp",
+      "/report-assets/funds/fidelity_target_2040/gallery-1.svg",
+      "/report-assets/funds/fidelity_target_2040/gallery-2.svg",
+      "/report-assets/funds/fidelity_target_2040/gallery-3.svg",
     ],
     sources: [
       {
@@ -190,11 +190,11 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2026-02-28",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/investika_realitni_fond.svg",
-    heroImage: "/report-assets/funds/investika_realitni_fond/hero.webp",
+    heroImage: "/report-assets/funds/investika_realitni_fond/hero.svg",
     galleryImages: [
-      "/report-assets/funds/investika_realitni_fond/gallery-1.webp",
-      "/report-assets/funds/investika_realitni_fond/gallery-2.webp",
-      "/report-assets/funds/investika_realitni_fond/gallery-3.webp",
+      "/report-assets/funds/investika_realitni_fond/gallery-1.svg",
+      "/report-assets/funds/investika_realitni_fond/gallery-2.svg",
+      "/report-assets/funds/investika_realitni_fond/gallery-3.svg",
     ],
     sources: [
       {
@@ -286,11 +286,11 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/monetika.svg",
-    heroImage: "/report-assets/funds/monetika/hero.webp",
+    heroImage: "/report-assets/funds/monetika/hero.svg",
     galleryImages: [
-      "/report-assets/funds/monetika/gallery-1.webp",
-      "/report-assets/funds/monetika/gallery-2.webp",
-      "/report-assets/funds/monetika/gallery-3.webp",
+      "/report-assets/funds/monetika/gallery-1.svg",
+      "/report-assets/funds/monetika/gallery-2.svg",
+      "/report-assets/funds/monetika/gallery-3.svg",
     ],
     sources: [
       {
@@ -382,11 +382,11 @@ export const BATCH_B_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2026-03-31",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/efektika.svg",
-    heroImage: "/report-assets/funds/efektika/hero.webp",
+    heroImage: "/report-assets/funds/efektika/hero.svg",
     galleryImages: [
-      "/report-assets/funds/efektika/gallery-1.webp",
-      "/report-assets/funds/efektika/gallery-2.webp",
-      "/report-assets/funds/efektika/gallery-3.webp",
+      "/report-assets/funds/efektika/gallery-1.svg",
+      "/report-assets/funds/efektika/gallery-2.svg",
+      "/report-assets/funds/efektika/gallery-3.svg",
     ],
     sources: [
       {

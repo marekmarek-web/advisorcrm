@@ -82,11 +82,11 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2025-12-31",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/conseq_globalni_akciovy_ucastnicky.svg",
-    heroImage: "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/hero.webp",
+    heroImage: "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/hero.svg",
     galleryImages: [
-      "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/gallery-1.webp",
-      "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/gallery-2.webp",
-      "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/gallery-3.webp",
+      "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/gallery-1.svg",
+      "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/gallery-2.svg",
+      "/report-assets/funds/conseq_globalni_akciovy_ucastnicky/gallery-3.svg",
     ],
     sources: [
       {
@@ -181,11 +181,11 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/nn_povinny_konzervativni.svg",
-    heroImage: "/report-assets/funds/nn_povinny_konzervativni/hero.webp",
+    heroImage: "/report-assets/funds/nn_povinny_konzervativni/hero.svg",
     galleryImages: [
-      "/report-assets/funds/nn_povinny_konzervativni/gallery-1.webp",
-      "/report-assets/funds/nn_povinny_konzervativni/gallery-2.webp",
-      "/report-assets/funds/nn_povinny_konzervativni/gallery-3.webp",
+      "/report-assets/funds/nn_povinny_konzervativni/gallery-1.svg",
+      "/report-assets/funds/nn_povinny_konzervativni/gallery-2.svg",
+      "/report-assets/funds/nn_povinny_konzervativni/gallery-3.svg",
     ],
     sources: [
       {
@@ -281,11 +281,11 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/nn_vyvazeny.svg",
-    heroImage: "/report-assets/funds/nn_vyvazeny/hero.webp",
+    heroImage: "/report-assets/funds/nn_vyvazeny/hero.svg",
     galleryImages: [
-      "/report-assets/funds/nn_vyvazeny/gallery-1.webp",
-      "/report-assets/funds/nn_vyvazeny/gallery-2.webp",
-      "/report-assets/funds/nn_vyvazeny/gallery-3.webp",
+      "/report-assets/funds/nn_vyvazeny/gallery-1.svg",
+      "/report-assets/funds/nn_vyvazeny/gallery-2.svg",
+      "/report-assets/funds/nn_vyvazeny/gallery-3.svg",
     ],
     sources: [
       {
@@ -381,11 +381,11 @@ export const BATCH_C_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: "2026-04-01",
     verifiedAt: "2026-04-05",
     logo: "/logos/funds/nn_rustovy.svg",
-    heroImage: "/report-assets/funds/nn_rustovy/hero.webp",
+    heroImage: "/report-assets/funds/nn_rustovy/hero.svg",
     galleryImages: [
-      "/report-assets/funds/nn_rustovy/gallery-1.webp",
-      "/report-assets/funds/nn_rustovy/gallery-2.webp",
-      "/report-assets/funds/nn_rustovy/gallery-3.webp",
+      "/report-assets/funds/nn_rustovy/gallery-1.svg",
+      "/report-assets/funds/nn_rustovy/gallery-2.svg",
+      "/report-assets/funds/nn_rustovy/gallery-3.svg",
     ],
     sources: [
       {

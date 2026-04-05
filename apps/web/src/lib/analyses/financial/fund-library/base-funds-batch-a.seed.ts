@@ -143,11 +143,11 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
     logo: '/logos/funds/ishares_core_msci_world.svg',
-    heroImage: '/report-assets/funds/ishares_core_msci_world/hero.webp',
+    heroImage: '/report-assets/funds/ishares_core_msci_world/hero.svg',
     galleryImages: [
-      '/report-assets/funds/ishares_core_msci_world/gallery-1.webp',
-      '/report-assets/funds/ishares_core_msci_world/gallery-2.webp',
-      '/report-assets/funds/ishares_core_msci_world/gallery-3.webp',
+      '/report-assets/funds/ishares_core_msci_world/gallery-1.svg',
+      '/report-assets/funds/ishares_core_msci_world/gallery-2.svg',
+      '/report-assets/funds/ishares_core_msci_world/gallery-3.svg',
     ],
     sources: [
       {
@@ -244,11 +244,11 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
     logo: '/logos/funds/ishares_core_sp_500.svg',
-    heroImage: '/report-assets/funds/ishares_core_sp_500/hero.webp',
+    heroImage: '/report-assets/funds/ishares_core_sp_500/hero.svg',
     galleryImages: [
-      '/report-assets/funds/ishares_core_sp_500/gallery-1.webp',
-      '/report-assets/funds/ishares_core_sp_500/gallery-2.webp',
-      '/report-assets/funds/ishares_core_sp_500/gallery-3.webp',
+      '/report-assets/funds/ishares_core_sp_500/gallery-1.svg',
+      '/report-assets/funds/ishares_core_sp_500/gallery-2.svg',
+      '/report-assets/funds/ishares_core_sp_500/gallery-3.svg',
     ],
     sources: [
       {
@@ -369,11 +369,11 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
     logo: '/logos/funds/vanguard_ftse_emerging_markets.svg',
-    heroImage: '/report-assets/funds/vanguard_ftse_emerging_markets/hero.webp',
+    heroImage: '/report-assets/funds/vanguard_ftse_emerging_markets/hero.svg',
     galleryImages: [
-      '/report-assets/funds/vanguard_ftse_emerging_markets/gallery-1.webp',
-      '/report-assets/funds/vanguard_ftse_emerging_markets/gallery-2.webp',
-      '/report-assets/funds/vanguard_ftse_emerging_markets/gallery-3.webp',
+      '/report-assets/funds/vanguard_ftse_emerging_markets/gallery-1.svg',
+      '/report-assets/funds/vanguard_ftse_emerging_markets/gallery-2.svg',
+      '/report-assets/funds/vanguard_ftse_emerging_markets/gallery-3.svg',
     ],
     sources: [
       {
@@ -485,11 +485,11 @@ export const BATCH_A_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetAsOf: '2026-02-28',
     verifiedAt: '2026-04-05',
     logo: '/logos/funds/ishares_core_global_aggregate_bond.svg',
-    heroImage: '/report-assets/funds/ishares_core_global_aggregate_bond/hero.webp',
+    heroImage: '/report-assets/funds/ishares_core_global_aggregate_bond/hero.svg',
     galleryImages: [
-      '/report-assets/funds/ishares_core_global_aggregate_bond/gallery-1.webp',
-      '/report-assets/funds/ishares_core_global_aggregate_bond/gallery-2.webp',
-      '/report-assets/funds/ishares_core_global_aggregate_bond/gallery-3.webp',
+      '/report-assets/funds/ishares_core_global_aggregate_bond/gallery-1.svg',
+      '/report-assets/funds/ishares_core_global_aggregate_bond/gallery-2.svg',
+      '/report-assets/funds/ishares_core_global_aggregate_bond/gallery-3.svg',
     ],
     sources: [
       {

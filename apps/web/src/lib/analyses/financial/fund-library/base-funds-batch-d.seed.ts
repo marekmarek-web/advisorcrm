@@ -72,12 +72,12 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://czech-fund.cz/",
     factsheetAsOf: "2026-04-05",
     verifiedAt: "2026-04-05",
-    logo: "/logos/creif.png",
-    heroImage: "/report-assets/creif/creif-816.jpg",
+    logo: "/logos/funds/creif.svg",
+    heroImage: "/report-assets/creif/creif-816.svg",
     galleryImages: [
-      "/report-assets/creif/creif-818.jpg",
-      "/report-assets/creif/creif-853.jpg",
-      "/report-assets/creif/creif-813.jpg",
+      "/report-assets/creif/creif-818.svg",
+      "/report-assets/creif/creif-853.svg",
+      "/report-assets/creif/creif-813.svg",
     ],
     sources: [
       {
@@ -96,7 +96,7 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
         kind: "documents",
       },
     ],
-    assetTodo: ["logo", "hero", "gallery (commitnuté soubory v public)"],
+    assetTodo: ["nahradit SVG zástupce skutečnými assety (logo, hero, galerie)"],
     notes: [
       "Legacy `productKey` zůstává `creif`; oficiální název zahrnuje EFEKTA Real Estate Fund.",
       "Since inception p.a. je dopočteno z oficiální kumulativní výkonnosti 64.52 % od založení.",
@@ -172,12 +172,12 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://storage.atrisinvest.cz/actual/ATRIS_factsheet.pdf",
     factsheetAsOf: "2026-02-28",
     verifiedAt: "2026-04-05",
-    logo: "/logos/atris.png",
-    heroImage: "/report-assets/atris/atris1.jpg",
+    logo: "/logos/funds/atris.svg",
+    heroImage: "/report-assets/atris/atris1.svg",
     galleryImages: [
-      "/report-assets/atris/atris2.jpg",
-      "/report-assets/atris/atris3.jpg",
-      "/report-assets/atris/atris4.jpg",
+      "/report-assets/atris/atris2.svg",
+      "/report-assets/atris/atris3.svg",
+      "/report-assets/atris/atris4.svg",
     ],
     sources: [
       {
@@ -196,7 +196,7 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
         kind: "documents",
       },
     ],
-    assetTodo: ["logo", "hero", "gallery (commitnuté soubory v public)"],
+    assetTodo: ["nahradit SVG zástupce skutečnými assety (logo, hero, galerie)"],
     notes: [
       "Jeden kanonický záznam `atris`; lump vs. monthly řeší `InvestmentEntry.type`, ne duplicitní base fondy.",
       "Alias `atris_realita` → `atris` v legacy mapě pro starší exporty.",
@@ -278,11 +278,12 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
     factsheetUrl: "https://www.pentafund.com/storage/FACTSHEET_Penta-Real-Estate-Fund_CZ.pdf",
     factsheetAsOf: "2026-04-05",
     verifiedAt: "2026-04-05",
-    logo: "/logos/Penta.png",
+    logo: "/logos/funds/penta.svg",
+    heroImage: "/report-assets/penta/hero.svg",
     galleryImages: [
-      "/report-assets/penta/penta1.png",
-      "/report-assets/penta/penta2.jpg",
-      "/report-assets/penta/penta3.webp",
+      "/report-assets/penta/penta1.svg",
+      "/report-assets/penta/penta2.svg",
+      "/report-assets/penta/penta3.svg",
     ],
     sources: [
       {
@@ -306,7 +307,7 @@ export const BATCH_D_SEED_ROWS: readonly BatchASeedRow[] = [
         kind: "documents",
       },
     ],
-    assetTodo: ["logo", "hero", "gallery (commitnuté soubory v public)"],
+    assetTodo: ["nahradit SVG zástupce skutečnými assety (logo, hero, galerie)"],
     notes: [
       "Tag `qualified_investor` v availability — filtrování FKI; oddělená UI skupina „FKI / alternativní“.",
       "Oficiální historická performance v seedu záměrně null; target yield není performance.",

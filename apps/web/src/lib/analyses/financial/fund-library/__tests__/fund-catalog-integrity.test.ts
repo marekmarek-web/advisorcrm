@@ -66,15 +66,15 @@ describe("fund catalog integrity (Batch A–D integration)", () => {
     expect(d?.galleryImages?.length).toBe(3);
   });
 
-  it("aktuálně žádný fond nemá plně „brand“ vizuály (logo+hero+galerie mimo placeholder) — až po commitu assetů", () => {
+  it("každý fond má logo, hero a galerii mimo centrální placeholdery (per-fund SVG v public/report-assets a logos/funds)", () => {
     const full = BASE_FUNDS.filter((f) => fundHasFullyCommittedVisualPack(f.assets));
-    expect(full.length, `Kompletní pack: ${full.map((x) => x.baseFundKey).join(", ")}`).toBe(0);
+    expect(full.length, `Kompletní pack: ${full.map((x) => x.baseFundKey).join(", ")}`).toBe(
+      BASE_FUNDS.length,
+    );
   });
 
-  it("Batch B/C: brand logo v repu, hero/galerie zatím placeholdery", () => {
-    const keysWithBrandLogo = BASE_FUNDS.filter((f) => fundUsesBrandLogoPath(f.assets.logoPath)).map(
-      (f) => f.baseFundKey,
-    );
-    expect(keysWithBrandLogo.length).toBe(8);
+  it("všechny fondy používají brand nebo dedikované logo v repu (ne generický _placeholder.svg)", () => {
+    const withBrandLogo = BASE_FUNDS.filter((f) => fundUsesBrandLogoPath(f.assets.logoPath));
+    expect(withBrandLogo.length).toBe(BASE_FUNDS.length);
   });
 });
