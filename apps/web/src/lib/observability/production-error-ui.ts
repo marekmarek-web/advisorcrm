@@ -24,15 +24,18 @@ export function getActionFriendlyErrorMessage(e: unknown, fallback: string): str
       (!msg && digest.length > 0));
 
   if (isGenericProd) {
+    const digestInfo = digest ? ` (kód: ${digest.slice(0, 12)})` : "";
     return (
-      "Načtení nebo odeslání zpráv selhalo — často chybí tabulky messages v databázi.\n" +
-      "Supabase → SQL Editor: spusťte portal_messages_tables.sql (repo: packages/db/migrations/).\n" +
-      "Poté obnovte stránku."
+      `Chyba serveru${digestInfo} — server action vrátil 500.\n` +
+      "Možné příčiny: chybí tabulky messages v Supabase, nebo deploy na Vercelu ještě neskončil.\n" +
+      "1) Zkontroluj Vercel dashboard → zda poslední build proběhl úspěšně.\n" +
+      "2) Jdi na /api/messages/health (zobrazí přesný stav DB).\n" +
+      "3) Pokud tabulky chybí: Supabase → SQL Editor → spusť packages/db/migrations/portal_messages_tables.sql."
     );
   }
   if (msg) return msg;
   if (digest && isProd) {
-    return "Chyba serveru (digest). Zkontrolujte migrace databáze (messages, message_attachments) nebo logy nasazení.";
+    return `Chyba serveru (${digest.slice(0, 12)}) — viz Vercel function logy nebo /api/messages/health.`;
   }
   return fallback;
 }

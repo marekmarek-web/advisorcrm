@@ -26,25 +26,31 @@ export async function getPortalShellBadgeCounts(): Promise<PortalShellBadgeCount
 
   const canReadContacts = hasPermission(auth.roleName, "contacts:read");
 
-  const [openTasksResult, notificationRows] = await Promise.all([
-    canReadContacts
-      ? db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(tasks)
-          .where(and(eq(tasks.tenantId, auth.tenantId), isNull(tasks.completedAt)))
-      : Promise.resolve([{ count: 0 }]),
-    db
-      .select({ c: sql<number>`count(*)::int` })
-      .from(advisorNotifications)
-      .where(
-        and(
-          eq(advisorNotifications.tenantId, auth.tenantId),
-          eq(advisorNotifications.targetUserId, auth.userId),
-          eq(advisorNotifications.status, "unread"),
-          inArray(advisorNotifications.type, [...ADVISOR_NOTIFICATION_TYPES])
-        )
-      ),
-  ]);
+  let openTasksResult: { count?: number }[] = [{ count: 0 }];
+  let notificationRows: { c?: number }[] = [{ c: 0 }];
+  try {
+    [openTasksResult, notificationRows] = await Promise.all([
+      canReadContacts
+        ? db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(tasks)
+            .where(and(eq(tasks.tenantId, auth.tenantId), isNull(tasks.completedAt)))
+        : Promise.resolve([{ count: 0 }]),
+      db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(advisorNotifications)
+        .where(
+          and(
+            eq(advisorNotifications.tenantId, auth.tenantId),
+            eq(advisorNotifications.targetUserId, auth.userId),
+            eq(advisorNotifications.status, "unread"),
+            inArray(advisorNotifications.type, [...ADVISOR_NOTIFICATION_TYPES])
+          )
+        ),
+    ]);
+  } catch {
+    /* DB nedostupná — vrátíme nuly, nepádíme s HTTP 500 */
+  }
 
   const openTasks = canReadContacts ? Number((openTasksResult[0] as { count?: number })?.count ?? 0) : 0;
 
