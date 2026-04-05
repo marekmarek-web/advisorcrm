@@ -1,6 +1,6 @@
 import "server-only";
 
-import { db, tenantSettings, advisorPreferences, eq, and } from "db";
+import { db, tenantSettings, advisorPreferences, fundAddRequests, eq, and, desc } from "db";
 import { BASE_FUNDS } from "@/lib/analyses/financial/fund-library/base-funds";
 import { BASE_FUND_KEYS, type BaseFundKey } from "@/lib/analyses/financial/fund-library/legacy-fund-key-map";
 import type { RoleName } from "@/shared/rolePermissions";
@@ -10,6 +10,8 @@ import {
   type TenantFundAllowlistValue,
   type AdvisorFundLibraryValue,
   type FundCatalogListItemDTO,
+  type FundAddRequestQueueRow,
+  type FundAddRequestQueueStatus,
   type FundLibrarySetupSnapshot,
 } from "@/lib/fund-library/fund-library-setup-types";
 
@@ -24,6 +26,18 @@ const CATALOG_ORDER = [...BASE_FUND_KEYS] as string[];
 
 function isValidBaseFundKey(k: string): k is BaseFundKey {
   return (BASE_FUND_KEYS as readonly string[]).includes(k);
+}
+
+function normalizeQueueStatus(raw: string): FundAddRequestQueueStatus {
+  const legacy: Record<string, FundAddRequestQueueStatus> = {
+    under_review: "in_progress",
+    approved: "added",
+    need_info: "new",
+  };
+  const mapped = legacy[raw];
+  if (mapped) return mapped;
+  if (raw === "new" || raw === "in_progress" || raw === "added" || raw === "rejected") return raw;
+  return "new";
 }
 
 function mergeAdvisorPrefs(
@@ -93,6 +107,42 @@ export async function getFundLibrarySetupSnapshot(
       logoPath: f.assets.logoPath,
     })) satisfies FundCatalogListItemDTO[];
 
+  let fundAddRequestQueue: FundAddRequestQueueRow[] | undefined;
+  if (canEditTenantAllowlist) {
+    const rows = await db
+      .select({
+        id: fundAddRequests.id,
+        userId: fundAddRequests.userId,
+        fundName: fundAddRequests.fundName,
+        provider: fundAddRequests.provider,
+        isinOrTicker: fundAddRequests.isinOrTicker,
+        factsheetUrl: fundAddRequests.factsheetUrl,
+        category: fundAddRequests.category,
+        note: fundAddRequests.note,
+        status: fundAddRequests.status,
+        createdAt: fundAddRequests.createdAt,
+        updatedAt: fundAddRequests.updatedAt,
+      })
+      .from(fundAddRequests)
+      .where(eq(fundAddRequests.tenantId, tenantId))
+      .orderBy(desc(fundAddRequests.createdAt))
+      .limit(200);
+
+    fundAddRequestQueue = rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      fundName: r.fundName,
+      provider: r.provider,
+      isinOrTicker: r.isinOrTicker,
+      factsheetUrl: r.factsheetUrl,
+      category: r.category,
+      note: r.note,
+      status: normalizeQueueStatus(r.status),
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    }));
+  }
+
   return {
     canEditTenantAllowlist,
     tenantAllowlist: {
@@ -101,5 +151,6 @@ export async function getFundLibrarySetupSnapshot(
     advisorPrefs,
     effectiveAllowedKeys,
     catalog,
+    fundAddRequestQueue,
   };
 }
