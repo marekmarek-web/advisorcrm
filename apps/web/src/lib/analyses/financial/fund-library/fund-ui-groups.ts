@@ -22,7 +22,7 @@ export function getFundUiGroup(fund: BaseFund): FundUiGroupId | "other" {
   const key = fund.baseFundKey;
   const c = `${fund.category} ${fund.subcategory ?? ""}`.toLowerCase();
 
-  if (fund.availability.includes("qualified_investor")) return "qualified_investor";
+  if (fund.availability?.includes("qualified_investor")) return "qualified_investor";
 
   if (key === "monetika" || key === "nn_povinny_konzervativni") return "cash_conservative";
   if (c.includes("dluhopis") || c.includes("bond")) return "bonds";

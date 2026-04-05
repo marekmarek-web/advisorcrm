@@ -184,19 +184,21 @@ function buildDetailFromBaseFund(fund: BaseFund): FundDetail {
     awardsStr = awardsStr ? `${awardsStr} · ${perfAwards}` : perfAwards;
   }
 
-  const gallery = (fund.assets.galleryPaths ?? []).filter((p) => p && String(p).trim()).slice(0, 3);
-  const hero = fund.assets.heroPath?.trim() || undefined;
+  const ap = fund.assets ?? {};
+  const gallery = (ap.galleryPaths ?? []).filter((p) => p && String(p).trim()).slice(0, 3);
+  const hero = ap.heroPath?.trim() || undefined;
 
   const yieldLine =
     officialSummary.split("\n").find((l) => l.trim().length > 0) ||
     (fund.factsheetUrl ? "Výkonnost dle aktuálního factsheetu (odkaz níže)." : "—");
 
   const subcat = fund.subcategory?.trim();
-  const categoryLabel = subcat ? `${fund.category} · ${subcat}` : fund.category;
+  const catBase = (fund.category ?? "").trim() || "—";
+  const categoryLabel = subcat ? `${catBase} · ${subcat}` : catBase;
 
   return {
-    name: (fund.canonicalName?.trim() || fund.displayName).trim(),
-    manager: (fund.manager ?? fund.provider).trim() || fund.provider,
+    name: ((fund.canonicalName?.trim() || fund.displayName || "").trim() || "—"),
+    manager: (fund.manager ?? fund.provider ?? "").trim() || "—",
     provider: fund.provider?.trim() || undefined,
     goal: fund.goal?.trim() || "—",
     assets: fund.strategy?.trim() || fund.category || "—",
