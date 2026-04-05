@@ -116,6 +116,23 @@ export type ExtractionTrace = {
   supportedForDirectExtraction?: boolean;
   scanPendingReason?: string;
   totalPipelineDurationMs?: number;
+  /**
+   * Anthropic/Claude provider path observability.
+   * Set by run-contract-review-processing.ts from getAiReviewProviderMeta().
+   */
+  aiReviewProvider?: string;
+  aiReviewModel?: string;
+  /**
+   * Input mode for the primary Claude extraction call.
+   * compact_section_text = bundle_section_context / contractual_section_text (most efficient)
+   * structured_text      = Adobe structured pages text
+   * markdown             = extracted_text / document_text from markdown preprocess
+   * raw_pdf              = PDF bytes via base64 block (rescue / fallback only)
+   * prompt_builder_text  = postprocess JSON payloads (small, not the document itself)
+   */
+  aiReviewInputMode?: string;
+  /** Estimated chars sent to Claude as primary document content (proxy for token cost). */
+  aiReviewInputSizeChars?: number;
 };
 
 /** Validation warning item. */

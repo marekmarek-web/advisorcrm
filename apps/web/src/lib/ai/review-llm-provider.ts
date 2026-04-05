@@ -30,6 +30,7 @@ import {
   anthropicCreateResponseStructured,
   hasAnthropicKey,
   resolveAnthropicModel,
+  getLastAnthropicCallMeta,
 } from "./anthropic-review-adapter";
 
 // ─── Provider resolution ─────────────────────────────────────────────────────
@@ -241,15 +242,29 @@ export async function aiReviewCreateResponseStructured<T>(
 
 /**
  * Provider metadata for extraction trace (stored on every review run).
+ * For Anthropic path, also returns last call's input mode and size from adapter module state.
  */
 export function getAiReviewProviderMeta(): {
   aiReviewProvider: AiReviewProviderName;
   aiReviewModel: string;
+  aiReviewInputMode?: string;
+  aiReviewInputSizeChars?: number;
 } {
   const provider = getAiReviewProvider();
   const model =
     provider === "anthropic"
       ? resolveAnthropicModel()
       : (process.env.OPENAI_MODEL_AI_REVIEW_DEFAULT?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5-mini");
+
+  if (provider === "anthropic") {
+    const lastMeta = getLastAnthropicCallMeta();
+    return {
+      aiReviewProvider: provider,
+      aiReviewModel: model,
+      ...(lastMeta.inputMode !== "none" ? { aiReviewInputMode: lastMeta.inputMode } : {}),
+      ...(lastMeta.inputSizeChars > 0 ? { aiReviewInputSizeChars: lastMeta.inputSizeChars } : {}),
+    };
+  }
+
   return { aiReviewProvider: provider, aiReviewModel: model };
 }
