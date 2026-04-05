@@ -14,10 +14,12 @@ export function mergeConversationsWithSelection(
     contactId: selectedContactId,
     contactName: label,
     lastMessage: "Nová konverzace — napište první zprávu",
-    lastMessageAt: new Date(),
+    lastMessageAt: new Date().toISOString(),
     unreadCount: 0,
     unread: false,
   };
 
-  return [synthetic, ...conversations].sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+  return [synthetic, ...conversations].sort(
+    (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
+  );
 }

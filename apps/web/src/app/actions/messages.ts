@@ -85,8 +85,10 @@ export type MessageRow = {
   senderType: string;
   senderId: string;
   body: string;
-  readAt: Date | null;
-  createdAt: Date;
+  /** ISO 8601 nebo null — serializace přes server actions. */
+  readAt: string | null;
+  /** ISO 8601 — serializace přes server actions. */
+  createdAt: string;
 };
 
 export async function getMessages(contactId: string): Promise<MessageRow[]> {
@@ -108,7 +110,14 @@ export async function getMessages(contactId: string): Promise<MessageRow[]> {
     .from(messages)
     .where(and(eq(messages.tenantId, auth.tenantId), eq(messages.contactId, contactId)))
     .orderBy(asc(messages.createdAt));
-  return rows;
+  return rows.map((r) => ({
+    id: r.id,
+    senderType: r.senderType,
+    senderId: r.senderId,
+    body: r.body,
+    readAt: r.readAt ? r.readAt.toISOString() : null,
+    createdAt: r.createdAt.toISOString(),
+  }));
 }
 
 export type ThreadMessagesLoadResult =
@@ -174,7 +183,8 @@ export type ConversationListItem = {
   contactId: string;
   contactName: string;
   lastMessage: string;
-  lastMessageAt: Date;
+  /** ISO 8601 (UTC) — server actions musí vracet čistě JSON; Date způsobilo pád / generickou chybu v produkci. */
+  lastMessageAt: string;
   unreadCount: number;
   unread: boolean;
 };
@@ -234,12 +244,13 @@ export async function getConversationsList(search?: string): Promise<Conversatio
     const list: ConversationListItem[] = rows.map((r) => {
       const unreadCount = Number(r.unread_count ?? 0);
       const at = r.last_message_at;
-      const lastMessageAt = at instanceof Date ? at : new Date(at as string | number);
+      const d = at instanceof Date ? at : new Date(at as string | number);
+      const safe = Number.isFinite(d.getTime()) ? d : new Date();
       return {
         contactId: String(r.contact_id ?? ""),
         contactName: (String(r.contact_name ?? "").trim() || "Kontakt").trim(),
         lastMessage: String(r.last_message ?? ""),
-        lastMessageAt: Number.isFinite(lastMessageAt.getTime()) ? lastMessageAt : new Date(),
+        lastMessageAt: safe.toISOString(),
         unreadCount,
         unread: unreadCount > 0,
       };
@@ -247,6 +258,7 @@ export async function getConversationsList(search?: string): Promise<Conversatio
     return { ok: true, list };
   } catch (e) {
     if (isNextRedirectError(e)) throw e;
+    console.error("[getConversationsList]", e);
     return { ok: false, error: formatClientVisibleDbError(e) };
   }
 }
@@ -487,7 +499,8 @@ export type RecentConversation = {
   contactId: string;
   contactName: string;
   lastMessage: string;
-  lastMessageAt: Date;
+  /** ISO 8601 — serializace přes server actions. */
+  lastMessageAt: string;
   senderType: string;
   unread: boolean;
 };
@@ -513,18 +526,19 @@ export async function getRecentConversations(limit = 5): Promise<RecentConversat
     `);
 
     const rows = sqlExecuteRows(result);
-    return rows.map((r) => ({
-      contactId: String(r.contact_id ?? ""),
-      contactName: String(r.contact_name ?? "").trim() || "Kontakt",
-      lastMessage: String(r.last_message ?? ""),
-      lastMessageAt: (() => {
-        const at = r.last_message_at;
-        const d = at instanceof Date ? at : new Date(at as string | number);
-        return Number.isFinite(d.getTime()) ? d : new Date();
-      })(),
-      senderType: String(r.sender_type ?? ""),
-      unread: Boolean(r.unread),
-    }));
+    return rows.map((r) => {
+      const at = r.last_message_at;
+      const d = at instanceof Date ? at : new Date(at as string | number);
+      const safe = Number.isFinite(d.getTime()) ? d : new Date();
+      return {
+        contactId: String(r.contact_id ?? ""),
+        contactName: String(r.contact_name ?? "").trim() || "Kontakt",
+        lastMessage: String(r.last_message ?? ""),
+        lastMessageAt: safe.toISOString(),
+        senderType: String(r.sender_type ?? ""),
+        unread: Boolean(r.unread),
+      };
+    });
   } catch {
     return [];
   }

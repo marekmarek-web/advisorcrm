@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getRecentConversations, type RecentConversation } from "@/app/actions/messages";
 
-function timeAgo(date: Date): string {
+function timeAgo(isoOrDate: string | Date): string {
+  const date = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
   const now = new Date();
   const diffMin = Math.round((now.getTime() - date.getTime()) / 60000);
   if (diffMin < 1) return "teď";
