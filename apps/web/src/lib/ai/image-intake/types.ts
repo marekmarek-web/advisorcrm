@@ -137,6 +137,7 @@ export type InputClassificationResult = {
 export const CLIENT_BINDING_STATES = [
   "bound_client_confident",
   "bound_case_confident",
+  "weak_candidate",
   "multiple_candidates",
   "insufficient_binding",
 ] as const;
@@ -202,17 +203,61 @@ export type ExtractedImageFact = {
   evidence: EvidenceReference | null;
   isActionable: boolean;
   needsConfirmation: boolean;
+  /** Phase 3: whether the fact was directly observed in image or inferred/suggested. */
+  observedVsInferred: "observed" | "inferred";
+  /** Phase 3: raw key from model output (e.g. "what_client_said", "amount"). */
+  factKey: string;
 };
 
 export type ExtractedFactBundle = {
   facts: ExtractedImageFact[];
   missingFields: string[];
   ambiguityReasons: string[];
+  /** Phase 3: whether facts came from real multimodal extraction or stub. */
+  extractionSource: "multimodal_pass" | "stub";
 };
 
 export function emptyFactBundle(): ExtractedFactBundle {
-  return { facts: [], missingFields: [], ambiguityReasons: [] };
+  return { facts: [], missingFields: [], ambiguityReasons: [], extractionSource: "stub" };
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3: Multimodal combined pass result
+// ---------------------------------------------------------------------------
+
+export type MultimodalFactItem = {
+  factKey: string;
+  value: string | null;
+  confidence: number;
+  source: "observed" | "inferred";
+};
+
+export type MultimodalCombinedPassResult = {
+  inputType: ImageInputType;
+  confidence: number;
+  rationale: string;
+  /** e.g. "none" | "low" | "medium" | "high" */
+  actionabilityLevel: "none" | "low" | "medium" | "high";
+  /** Possible person name or reference in the image (for CRM binding hint). */
+  possibleClientNameSignal: string | null;
+  facts: MultimodalFactItem[];
+  missingFields: string[];
+  ambiguityReasons: string[];
+  /** Short intent for draft reply generation (only for communication screenshots). */
+  draftReplyIntent: string | null;
+};
+
+// Extended classification result with Phase 3 multimodal enrichments
+export type InputClassificationResultV2 = InputClassificationResult & {
+  /** Hint from multimodal pass for downstream extraction. */
+  extractionHint: string | null;
+  /** e.g. "none" | "low" | "medium" | "high" */
+  actionabilityLevel: "none" | "low" | "medium" | "high" | null;
+  /** Whether multimodal pass detected a possible client name reference. */
+  possibleClientSignalPresence: boolean;
+  /** Whether multimodal pass was used for this classification. */
+  upgradeFromMultimodal: boolean;
+};
 
 // ---------------------------------------------------------------------------
 // J) Proposed action plan (maps to canonical action surface)

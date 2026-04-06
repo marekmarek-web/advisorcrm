@@ -17,6 +17,7 @@ import type {
   ImageIntakeActionPlan,
   ImageIntakeActionCandidate,
   ImageOutputMode,
+  ExtractedFactBundle,
 } from "./types";
 import { safeOutputModeForUncertainInput } from "./guardrails";
 
@@ -56,7 +57,8 @@ function resolveOutputMode(
 
   if (
     binding.state === "insufficient_binding" ||
-    binding.state === "multiple_candidates"
+    binding.state === "multiple_candidates" ||
+    binding.state === "weak_candidate"
   ) {
     return "ambiguous_needs_input";
   }
@@ -215,6 +217,76 @@ function inputTypeLabel(type: InputClassificationResult["inputType"]): string {
 // ---------------------------------------------------------------------------
 // Main planner entrypoint
 // ---------------------------------------------------------------------------
+
+/**
+ * Phase 3: action planning v2.
+ * Extends v1 with extracted facts — creates richer note/task content
+ * and passes through the draft reply text.
+ */
+export function buildActionPlanV2(
+  classification: InputClassificationResult,
+  binding: ClientBindingResult,
+  factBundle: ExtractedFactBundle,
+  draftReplyText: string | null,
+): ImageIntakeActionPlan {
+  const base = buildActionPlanV1(classification, binding);
+
+  // Enrich note actions with extracted facts summary
+  if (factBundle.facts.length > 0) {
+    const factsSummary = factBundle.facts
+      .filter((f) => f.value !== null)
+      .slice(0, 5)
+      .map((f) => `${f.factKey}: ${String(f.value).slice(0, 120)}`)
+      .join("; ");
+
+    base.recommendedActions = base.recommendedActions.map((a) => {
+      if (a.writeAction === "createInternalNote" || a.writeAction === "createTask") {
+        return {
+          ...a,
+          params: {
+            ...a.params,
+            _extractedFactsSummary: factsSummary,
+            _factCount: factBundle.facts.length,
+            _extractionSource: factBundle.extractionSource,
+          },
+        };
+      }
+      return a;
+    });
+
+    // If facts include required_follow_up or urgency, ensure task action is present
+    const hasUrgentFollowUp = factBundle.facts.some(
+      (f) => f.factKey === "required_follow_up" && f.value,
+    );
+    const hasTask = base.recommendedActions.some((a) => a.writeAction === "createTask");
+
+    if (hasUrgentFollowUp && !hasTask && base.outputMode !== "no_action_archive_only" && base.outputMode !== "ambiguous_needs_input") {
+      const followUp = factBundle.facts.find((f) => f.factKey === "required_follow_up");
+      base.recommendedActions.push(
+        makeAction(
+          "create_task",
+          "createTask",
+          "Vytvořit úkol na základě požadavku klienta",
+          "Extrahovaný požadavek na follow-up.",
+          {
+            _suggestedTitle: followUp?.value ? String(followUp.value).slice(0, 150) : "Follow-up z obrázku",
+            _imageIntakeOutputMode: base.outputMode,
+          },
+        ),
+      );
+    }
+  }
+
+  // Attach draft reply to plan (preview-only)
+  base.draftReplyText = draftReplyText;
+
+  // Enrich whyThisAction with fact extraction note
+  if (factBundle.extractionSource === "multimodal_pass" && factBundle.facts.length > 0) {
+    base.whyThisAction += ` Extrahováno ${factBundle.facts.length} fakt${factBundle.facts.length > 1 ? "ů" : ""}.`;
+  }
+
+  return base;
+}
 
 export function buildActionPlanV1(
   classification: InputClassificationResult,

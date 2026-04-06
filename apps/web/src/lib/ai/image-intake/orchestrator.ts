@@ -1,21 +1,27 @@
 /**
- * AI Photo / Image Intake — orchestration adapter (Phase 2).
+ * AI Photo / Image Intake — orchestration adapter (Phase 3).
  *
- * Connects the image intake lane to the existing assistant orchestration.
- * Phase 2 additions:
- * - real classifier (cheap-first two-layer)
- * - enhanced client/case binding v1 (session → UI context → none)
- * - action planning v1 via planner.ts
+ * Phase 3 additions over Phase 2:
+ * - multimodal combined pass (classification upgrade + fact extraction) as escalation
+ * - fact extraction v1 from multimodal output (no stub)
+ * - CRM-aware binding v2 (name signal from image)
+ * - draft reply preview v1 (communication screenshots only)
+ * - richer trace with extraction source + multimodal stats
  *
- * Reuses canonical action surface, preview/confirm flow and write actions.
+ * Cost rules:
+ * - dead ends exit before any model call
+ * - supporting/reference images skip multimodal
+ * - multimodal runs at most once per asset per request
+ * - classifier output reused for extraction, planner, binding, preview
+ *
+ * Canonical action surface is the ONLY write path.
  * No new write engine.
  */
 
 import { randomUUID } from "crypto";
 import type { StepPreviewItem } from "../assistant-execution-ui";
 import type { ExecutionPlan, ExecutionStep, CanonicalIntentType } from "../assistant-domain-model";
-import type { AssistantSession } from "../assistant-session";
-import type { ActiveContext } from "../assistant-session";
+import type { AssistantSession, ActiveContext } from "../assistant-session";
 
 import type {
   ImageIntakeRequest,
@@ -30,15 +36,30 @@ import type {
   CaseBindingResult,
   ExtractedFactBundle,
   ImageOutputMode,
+  MultimodalCombinedPassResult,
 } from "./types";
 import { emptyFactBundle, emptyActionPlan } from "./types";
 import { runBatchPreflight } from "./preflight";
-import { enforceImageIntakeGuardrails, safeOutputModeForUncertainInput } from "./guardrails";
+import { enforceImageIntakeGuardrails } from "./guardrails";
 import { classifyBatch } from "./classifier";
-import { buildActionPlanV1 } from "./planner";
+import { buildActionPlanV2 } from "./planner";
+import {
+  shouldRunMultimodalPass,
+  runCombinedMultimodalPass,
+} from "./multimodal";
+import {
+  extractFactsFromMultimodalPass,
+  buildSupportingReferenceFacts,
+  buildUnusableFacts,
+} from "./extractor";
+import { resolveClientBindingV2, resolveCaseBindingV2 } from "./binding-v2";
+import { tryBuildDraftReply } from "./draft-reply";
+import {
+  isImageIntakeMultimodalEnabled,
+} from "./feature-flag";
 
 // ---------------------------------------------------------------------------
-// Lane decision (deterministic — image lane is always the right lane for image input)
+// Lane decision
 // ---------------------------------------------------------------------------
 
 function decideLane(_assets: NormalizedImageAsset[]): LaneDecisionResult {
@@ -51,100 +72,7 @@ function decideLane(_assets: NormalizedImageAsset[]): LaneDecisionResult {
 }
 
 // ---------------------------------------------------------------------------
-// Client / case binding v1 — priority chain
-// ---------------------------------------------------------------------------
-
-/**
- * Priority: session lock → session active → request UI context → unresolved.
- * Confidence reflects source quality.
- */
-export function resolveClientBindingV1(
-  request: ImageIntakeRequest,
-  session: AssistantSession | null,
-): ClientBindingResult {
-  // 1. Session locked client (highest priority)
-  if (session?.lockedClientId) {
-    return {
-      state: "bound_client_confident",
-      clientId: session.lockedClientId,
-      clientLabel: null,
-      confidence: 0.95,
-      candidates: [],
-      source: "session_context",
-      warnings: [],
-    };
-  }
-
-  // 2. Session active client
-  if (session?.activeClientId) {
-    return {
-      state: "bound_client_confident",
-      clientId: session.activeClientId,
-      clientLabel: null,
-      confidence: 0.80,
-      candidates: [],
-      source: "session_context",
-      warnings: [],
-    };
-  }
-
-  // 3. UI context from request
-  if (request.activeClientId) {
-    return {
-      state: "bound_client_confident",
-      clientId: request.activeClientId,
-      clientLabel: null,
-      confidence: 0.70,
-      candidates: [],
-      source: "ui_context",
-      warnings: [],
-    };
-  }
-
-  // 4. Nothing — unresolved
-  return {
-    state: "insufficient_binding",
-    clientId: null,
-    clientLabel: null,
-    confidence: 0.0,
-    candidates: [],
-    source: "none",
-    warnings: ["Klient nebyl identifikován — write-ready plán nelze vytvořit bez aktivního klientského kontextu."],
-  };
-}
-
-export function resolveCaseBindingV1(
-  request: ImageIntakeRequest,
-  session: AssistantSession | null,
-): CaseBindingResult {
-  const caseId =
-    session?.lockedOpportunityId ??
-    request.activeOpportunityId ??
-    null;
-
-  if (caseId) {
-    return {
-      state: "bound_case_confident",
-      caseId,
-      caseLabel: null,
-      confidence: 0.80,
-      candidates: [],
-      source: session?.lockedOpportunityId ? "session_context" : "ui_context",
-    };
-  }
-
-  return {
-    state: "insufficient_binding",
-    caseId: null,
-    caseLabel: null,
-    confidence: 0.0,
-    candidates: [],
-    source: "none",
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Map image intake actions → canonical ExecutionPlan (reuse existing surface)
+// Execution plan / preview mapping (unchanged from Phase 2)
 // ---------------------------------------------------------------------------
 
 const INTENT_TO_WRITE: Partial<Record<CanonicalIntentType, string>> = {
@@ -193,24 +121,18 @@ export function mapToExecutionPlan(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Map to StepPreviewItem[] (reuse existing preview/confirm UI)
-// ---------------------------------------------------------------------------
-
 export function mapToPreviewItems(plan: ExecutionPlan): StepPreviewItem[] {
   return plan.steps.map((step) => ({
     stepId: step.stepId,
     label: step.label,
     action: step.label,
-    description: step.params._imageIntakeSource
-      ? `Image intake: ${step.action}`
-      : String(step.action),
+    description: `Image intake: ${step.action}`,
     preflightStatus: "ready" as const,
   }));
 }
 
 // ---------------------------------------------------------------------------
-// Build preview payload for image intake
+// Preview payload
 // ---------------------------------------------------------------------------
 
 export function buildImageIntakePreview(
@@ -233,7 +155,10 @@ export function buildImageIntakePreview(
     clientLabel: clientBinding.clientLabel,
     caseLabel: caseBinding.caseLabel,
     summary: actionPlan.whyThisAction || "Image intake zpracování.",
-    factsSummary: factBundle.facts.map((f) => `${f.factType}: ${f.value ?? "–"}`),
+    factsSummary: factBundle.facts
+      .filter((f) => f.value !== null)
+      .slice(0, 6)
+      .map((f) => `${f.factKey}: ${String(f.value).slice(0, 100)}`),
     uncertainties: [
       ...factBundle.ambiguityReasons,
       ...(classification?.uncertaintyFlags ?? []),
@@ -244,23 +169,21 @@ export function buildImageIntakePreview(
       reason: a.reason,
     })),
     writeReady,
-    warnings: [
-      ...clientBinding.warnings,
-      ...actionPlan.safetyFlags,
-    ],
+    warnings: [...clientBinding.warnings, ...actionPlan.safetyFlags],
   };
 }
 
 // ---------------------------------------------------------------------------
-// Main orchestration entrypoint (Phase 2 — real classifier + planner)
+// Main orchestration (Phase 3)
 // ---------------------------------------------------------------------------
 
 export type ImageIntakeOrchestratorResult = {
   response: ImageIntakeResponse;
   executionPlan: ExecutionPlan | null;
   previewPayload: ImageIntakePreviewPayload;
-  /** Whether classifier made a model call (for cost tracing). */
   classifierUsedModel: boolean;
+  multimodalUsed: boolean;
+  multimodalResult: MultimodalCombinedPassResult | null;
 };
 
 export async function processImageIntake(
@@ -271,7 +194,6 @@ export async function processImageIntake(
   const startTime = Date.now();
   const intakeId = `img_${randomUUID().slice(0, 12)}`;
 
-  // Apply activeContext to supplement request binding info
   const effectiveRequest: ImageIntakeRequest = {
     ...request,
     activeClientId:
@@ -282,7 +204,7 @@ export async function processImageIntake(
       (typeof activeContext?.opportunityId === "string" ? activeContext.opportunityId : null),
   };
 
-  // 1. Batch preflight (deterministic, free)
+  // 1. Preflight (deterministic, free)
   const batchPreflight = runBatchPreflight(request.assets, request.sessionId);
   const primaryPreflight = batchPreflight.assetResults[0]?.result ?? {
     eligible: false,
@@ -297,65 +219,113 @@ export async function processImageIntake(
   // 2. Lane decision
   const laneDecision = decideLane(request.assets);
 
-  // 3. Client / case binding v1
-  const clientBinding = resolveClientBindingV1(effectiveRequest, session);
-  const caseBinding = resolveCaseBindingV1(effectiveRequest, session);
-
-  // 4. Classification — cheap-first two-layer
+  // 3. Classifier v1 (cheap-first: deterministic + optional text)
   let classification: InputClassificationResult | null = null;
   let classifierUsedModel = false;
+  let earlyExit = false;
 
   if (batchPreflight.eligible) {
-    const classifierResult = await classifyBatch(
-      batchPreflight.assetResults
-        .filter((r) => r.result.eligible && !r.result.isDuplicate)
-        .map((r) => {
-          const asset = request.assets.find((a) => a.assetId === r.assetId);
-          return asset!;
-        })
-        .filter(Boolean),
-      request.accompanyingText,
-    );
-    classification = classifierResult.result;
-    classifierUsedModel = classifierResult.usedModel;
+    const eligibleAssets = batchPreflight.assetResults
+      .filter((r) => r.result.eligible && !r.result.isDuplicate)
+      .map((r) => request.assets.find((a) => a.assetId === r.assetId)!)
+      .filter(Boolean);
 
-    // Early exit for obvious unusable — no further processing needed
-    if (classifierResult.earlyExit) {
-      const earlyPlan = emptyActionPlan("no_action_archive_only");
-      const earlyPreview = buildImageIntakePreview(intakeId, classification, clientBinding, caseBinding, emptyFactBundle(), earlyPlan);
-      const trace: ImageIntakeTrace = {
-        intakeId,
-        sessionId: request.sessionId,
-        assetIds: request.assets.map((a) => a.assetId),
-        laneDecision: laneDecision.lane,
-        inputType: classification.inputType,
-        outputMode: "no_action_archive_only",
-        clientBindingState: clientBinding.state,
-        factCount: 0,
-        actionCount: 0,
-        writeReady: false,
-        guardrailsTriggered: [],
-        durationMs: Date.now() - startTime,
-        timestamp: new Date(),
-      };
-      return {
-        response: { intakeId, laneDecision, preflight: primaryPreflight, classification, clientBinding, caseBinding, factBundle: emptyFactBundle(), actionPlan: earlyPlan, previewSteps: [], trace },
-        executionPlan: null,
-        previewPayload: earlyPreview,
-        classifierUsedModel,
-      };
+    if (eligibleAssets.length > 0) {
+      const classifierDecision = await classifyBatch(eligibleAssets, request.accompanyingText);
+      classification = classifierDecision.result;
+      classifierUsedModel = classifierDecision.usedModel;
+      earlyExit = classifierDecision.earlyExit;
     }
   }
 
-  // 5. Fact extraction (stub — Phase 3)
-  const factBundle = emptyFactBundle();
+  // 4. Early exits for unusable / no eligible assets
+  if (earlyExit || !batchPreflight.eligible || !classification) {
+    const earlyPlan = emptyActionPlan("no_action_archive_only");
+    const earlyFacts = buildUnusableFacts();
+    const binding: ClientBindingResult = {
+      state: "insufficient_binding", clientId: null, clientLabel: null,
+      confidence: 0, candidates: [], source: "none", warnings: [],
+    };
+    const caseBinding: CaseBindingResult = {
+      state: "insufficient_binding", caseId: null, caseLabel: null,
+      confidence: 0, candidates: [], source: "none",
+    };
+    const earlyPreview = buildImageIntakePreview(intakeId, classification, binding, caseBinding, earlyFacts, earlyPlan);
+    const trace: ImageIntakeTrace = {
+      intakeId, sessionId: request.sessionId,
+      assetIds: request.assets.map((a) => a.assetId),
+      laneDecision: laneDecision.lane,
+      inputType: classification?.inputType ?? null,
+      outputMode: "no_action_archive_only",
+      clientBindingState: "insufficient_binding",
+      factCount: 0, actionCount: 0, writeReady: false,
+      guardrailsTriggered: [], durationMs: Date.now() - startTime, timestamp: new Date(),
+    };
+    return {
+      response: { intakeId, laneDecision, preflight: primaryPreflight, classification, clientBinding: binding, caseBinding, factBundle: earlyFacts, actionPlan: earlyPlan, previewSteps: [], trace },
+      executionPlan: null, previewPayload: earlyPreview,
+      classifierUsedModel, multimodalUsed: false, multimodalResult: null,
+    };
+  }
 
-  // 6. Action planning v1
-  const actionPlan = classification
-    ? buildActionPlanV1(classification, clientBinding)
-    : emptyActionPlan("no_action_archive_only");
+  // 5. Multimodal combined pass (escalation — Phase 3)
+  // One call: classification upgrade + fact extraction + client name signal
+  const primaryAsset = request.assets.find(
+    (a) => batchPreflight.assetResults.find((r) => r.assetId === a.assetId && r.result.eligible)
+  );
+  const hasStorageUrl = Boolean(primaryAsset?.storageUrl);
+  const multimodalEnabled = isImageIntakeMultimodalEnabled();
 
-  // 7. Guardrails
+  let multimodalResult: MultimodalCombinedPassResult | null = null;
+  let multimodalUsed = false;
+  let factBundle: ExtractedFactBundle = emptyFactBundle();
+
+  if (shouldRunMultimodalPass(classification.inputType, classification.confidence, earlyExit, primaryAsset?.storageUrl ?? null, multimodalEnabled)) {
+    const passDecision = await runCombinedMultimodalPass(
+      primaryAsset!.storageUrl!,
+      classification.inputType,
+      request.accompanyingText,
+    );
+    multimodalResult = passDecision.result;
+    multimodalUsed = true;
+
+    // Upgrade classification if multimodal is more confident
+    if (multimodalResult.confidence > classification.confidence + 0.1) {
+      classification = {
+        ...classification,
+        inputType: multimodalResult.inputType,
+        confidence: multimodalResult.confidence,
+        uncertaintyFlags: multimodalResult.ambiguityReasons.length > 0 ? ["multimodal_uncertain"] : [],
+      };
+    }
+
+    // Extract facts from multimodal output (no extra call)
+    factBundle = extractFactsFromMultimodalPass(
+      multimodalResult,
+      primaryAsset?.assetId ?? intakeId,
+    );
+  } else if (classification.inputType === "supporting_reference_image") {
+    // Template facts for supporting/reference (no model call)
+    factBundle = buildSupportingReferenceFacts(primaryAsset?.assetId ?? intakeId);
+  }
+
+  // 6. CRM-aware binding v2 (uses name signal from multimodal if available)
+  const nameSignal = multimodalResult?.possibleClientNameSignal ?? null;
+  const clientBinding = await resolveClientBindingV2(effectiveRequest, session, nameSignal);
+  const caseBinding = resolveCaseBindingV2(effectiveRequest, session);
+
+  // 7. Draft reply (preview-only, communication screenshots + confident binding only)
+  const draftReplyText = tryBuildDraftReply(
+    classification.inputType,
+    clientBinding,
+    factBundle,
+    multimodalResult?.draftReplyIntent ?? null,
+  );
+
+  // 8. Action planning v2 (uses extracted facts)
+  const actionPlan = buildActionPlanV2(classification, clientBinding, factBundle, draftReplyText);
+
+  // 9. Guardrails (unchanged from Phase 1)
   const guardrailVerdict = enforceImageIntakeGuardrails(
     laneDecision,
     classification,
@@ -367,6 +337,8 @@ export async function processImageIntake(
     actionPlan.outputMode = guardrailVerdict.downgradedTo;
     actionPlan.needsAdvisorInput = true;
     actionPlan.safetyFlags.push(...guardrailVerdict.violations);
+    // Clear draft reply on downgrade
+    actionPlan.draftReplyText = null;
   }
 
   if (guardrailVerdict.strippedActions.length > 0) {
@@ -376,7 +348,7 @@ export async function processImageIntake(
     );
   }
 
-  // 8. Execution plan (if actions exist)
+  // 10. Execution plan
   const executionPlan =
     actionPlan.recommendedActions.length > 0
       ? mapToExecutionPlan(intakeId, actionPlan, clientBinding.clientId, caseBinding.caseId)
@@ -384,23 +356,17 @@ export async function processImageIntake(
 
   const previewSteps = executionPlan ? mapToPreviewItems(executionPlan) : [];
 
-  // 9. Preview payload
+  // 11. Preview payload
   const previewPayload = buildImageIntakePreview(
-    intakeId,
-    classification,
-    clientBinding,
-    caseBinding,
-    factBundle,
-    actionPlan,
+    intakeId, classification, clientBinding, caseBinding, factBundle, actionPlan,
   );
 
-  // 10. Trace
+  // 12. Trace
   const trace: ImageIntakeTrace = {
-    intakeId,
-    sessionId: request.sessionId,
+    intakeId, sessionId: request.sessionId,
     assetIds: request.assets.map((a) => a.assetId),
     laneDecision: laneDecision.lane,
-    inputType: classification?.inputType ?? null,
+    inputType: classification.inputType,
     outputMode: actionPlan.outputMode,
     clientBindingState: clientBinding.state,
     factCount: factBundle.facts.length,
@@ -412,17 +378,10 @@ export async function processImageIntake(
   };
 
   const response: ImageIntakeResponse = {
-    intakeId,
-    laneDecision,
-    preflight: primaryPreflight,
-    classification,
-    clientBinding,
-    caseBinding,
-    factBundle,
-    actionPlan,
-    previewSteps,
-    trace,
+    intakeId, laneDecision, preflight: primaryPreflight,
+    classification, clientBinding, caseBinding,
+    factBundle, actionPlan, previewSteps, trace,
   };
 
-  return { response, executionPlan, previewPayload, classifierUsedModel };
+  return { response, executionPlan, previewPayload, classifierUsedModel, multimodalUsed, multimodalResult };
 }

@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/openai", () => ({
   createResponseStructured: vi.fn(),
   createResponseSafe: vi.fn(),
+  createResponseStructuredWithImage: vi.fn(),
   logOpenAICall: vi.fn(),
 }));
 
@@ -15,13 +16,16 @@ vi.mock("@/lib/audit", () => ({
   logAudit: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../assistant-contact-search", () => ({ searchContactsForAssistant: vi.fn(async () => []) }));
+vi.mock("db", () => ({ db: {}, contacts: {}, eq: vi.fn(), and: vi.fn(), or: vi.fn(), isNull: vi.fn(), sql: vi.fn(), desc: vi.fn() }));
+
 import { createResponseStructured } from "@/lib/openai";
 import {
   processImageIntake,
   isImageIntakeEnabled,
   parseImageAssetsFromBody,
   buildActionPlanV1,
-  resolveClientBindingV1,
+  resolveClientBindingV2,
   mapImageIntakeToAssistantResponse,
   purgePreflightCache,
 } from "../image-intake";
@@ -137,26 +141,26 @@ describe("parseImageAssetsFromBody", () => {
   });
 });
 
-describe("resolveClientBindingV1", () => {
-  it("uses session locked client (highest priority)", () => {
+describe("resolveClientBindingV2 (session priority)", () => {
+  it("uses session locked client (highest priority)", async () => {
     const session = getOrCreateSession(SESSION_ID, TENANT, USER);
     lockAssistantClient(session, CLIENT_ID);
-    const result = resolveClientBindingV1(makeRequest(), session);
+    const result = await resolveClientBindingV2(makeRequest(), session, null);
     expect(result.state).toBe("bound_client_confident");
     expect(result.clientId).toBe(CLIENT_ID);
     expect(result.source).toBe("session_context");
     expect(result.confidence).toBeGreaterThan(0.9);
   });
 
-  it("uses request activeClientId when session has no lock", () => {
-    const result = resolveClientBindingV1(makeRequest({ activeClientId: CLIENT_ID }), null);
+  it("uses request activeClientId when session has no lock", async () => {
+    const result = await resolveClientBindingV2(makeRequest({ activeClientId: CLIENT_ID }), null, null);
     expect(result.state).toBe("bound_client_confident");
     expect(result.clientId).toBe(CLIENT_ID);
     expect(result.source).toBe("ui_context");
   });
 
-  it("returns insufficient_binding when no client available", () => {
-    const result = resolveClientBindingV1(makeRequest(), null);
+  it("returns insufficient_binding when no client available", async () => {
+    const result = await resolveClientBindingV2(makeRequest(), null, null);
     expect(result.state).toBe("insufficient_binding");
     expect(result.clientId).toBeNull();
     expect(result.warnings.length).toBeGreaterThan(0);

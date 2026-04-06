@@ -698,6 +698,132 @@ export async function createResponseWithFile(
   throw new Error("Prázdná odpověď od OpenAI.");
 }
 
+/**
+ * Structured response with image URL input (multimodal — Responses API).
+ * Sends imageUrl as input_image content + textPrompt, returns structured JSON.
+ * Used by image-intake multimodal classifier/extractor v2.
+ * Server-side only.
+ */
+export async function createResponseStructuredWithImage<T>(
+  imageUrl: string,
+  textPrompt: string,
+  jsonSchema: Record<string, unknown>,
+  options?: {
+    model?: string;
+    store?: boolean;
+    routing?: OpenAICallRoutingOptions;
+    schemaName?: string;
+  }
+): Promise<CreateStructuredResponseResult<T>> {
+  const client = getClient();
+  if (!client) {
+    throw new Error(
+      "OPENAI_API_KEY není nastaven. Nastavte ho v Nastavení nebo v .env."
+    );
+  }
+
+  const primaryModel = resolveOpenAIModel({
+    explicit: options?.model,
+    category: options?.routing?.category,
+  });
+  const store = options?.store ?? false;
+  const start = Date.now();
+  const schemaName = options?.schemaName?.trim() || "image_extraction";
+
+  const input = [
+    {
+      role: "user" as const,
+      content: [
+        { type: "input_image" as const, image_url: imageUrl },
+        { type: "input_text" as const, text: textPrompt },
+      ],
+    },
+  ];
+
+  let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
+  let usedModel = primaryModel;
+
+  try {
+    const body = buildResponsesCreateBody({
+      model: primaryModel,
+      input,
+      store,
+      routing: options?.routing,
+      textFormat: {
+        type: "json_schema",
+        name: schemaName,
+        schema: jsonSchema,
+        strict: false,
+      },
+    });
+    response = await withOpenAIRateLimitRetry(
+      () =>
+        client.responses.create(
+          body as Parameters<OpenAI["responses"]["create"]>[0],
+          buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+        ),
+      { label: "responses.create_structured_image", maxAttempts: resolveOpenAIRetryAttempts(options?.routing) }
+    );
+  } catch (err) {
+    if (isModelError(err) && primaryModel !== fallbackModel) {
+      const fallbackBody = buildResponsesCreateBody({
+        model: fallbackModel,
+        input,
+        store,
+        routing: options?.routing,
+        textFormat: {
+          type: "json_schema",
+          name: schemaName,
+          schema: jsonSchema,
+          strict: false,
+        },
+      });
+      response = await withOpenAIRateLimitRetry(
+        () =>
+          client.responses.create(
+            fallbackBody as Parameters<OpenAI["responses"]["create"]>[0],
+            buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+          ),
+        {
+          label: "responses.create_structured_image(fallback_model)",
+          maxAttempts: resolveOpenAIRetryAttempts(options?.routing),
+        }
+      );
+      usedModel = fallbackModel;
+    } else {
+      const latencyMs = Date.now() - start;
+      const message = err instanceof Error ? err.message : String(err);
+      logOpenAICall({
+        endpoint: "responses.create_structured_image",
+        model: primaryModel,
+        latencyMs,
+        success: false,
+        error: message,
+      });
+      throw err instanceof Error ? err : new Error(message);
+    }
+  }
+
+  const latencyMs = Date.now() - start;
+  logOpenAICall({
+    endpoint: "responses.create_structured_image",
+    model: usedModel,
+    latencyMs,
+    success: true,
+  });
+
+  const parsedDirect = (response as { output_parsed?: T }).output_parsed;
+  const text = extractResponseText(response as { output_text?: string; output?: unknown[] });
+  if (parsedDirect !== undefined) {
+    return { text, parsed: parsedDirect, model: usedModel };
+  }
+  return {
+    text,
+    parsed: JSON.parse(text) as T,
+    model: usedModel,
+  };
+}
+
 export function hasOpenAIKey(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }

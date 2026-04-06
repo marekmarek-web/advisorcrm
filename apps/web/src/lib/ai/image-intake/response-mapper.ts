@@ -1,13 +1,18 @@
 /**
  * AI Photo / Image Intake — maps ImageIntakeOrchestratorResult to AssistantResponse.
  *
- * Reuses the existing AssistantResponse type so the chat route, SSE stream,
- * and frontend don't need changes for the response envelope.
- * stepPreviews reuse existing StepPreviewItem from assistant-execution-ui.
+ * Phase 3 enhancements:
+ * - richer message with extracted facts summary
+ * - draft reply preview attached to suggestedActions
+ * - missing fields / ambiguity reasons surfaced in warnings
+ * - multimodal flag state in sourcesSummary
+ *
+ * Reuses the existing AssistantResponse type — no frontend changes needed.
  */
 
 import type { AssistantResponse } from "../assistant-tool-router";
 import type { ImageIntakeOrchestratorResult } from "./orchestrator";
+import { buildFactsSummaryLines } from "./extractor";
 
 // ---------------------------------------------------------------------------
 // Message templates by output mode
@@ -45,7 +50,12 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
 
     case "client_message_update": {
       const client = clientLabel ? ` od klienta **${clientLabel}**` : "";
-      return `Rozpoznal jsem screenshot klientské komunikace${client}. Navrhuji zaznamenat obsah a případně vytvořit úkol nebo poznámku.`;
+      const factLines = buildFactsSummaryLines(result.response.factBundle, 3);
+      const factText = factLines.length > 0 ? `\n\nExtrahovaná fakta:\n${factLines.map((l) => `• ${l}`).join("\n")}` : "";
+      const draftNote = result.response.actionPlan.draftReplyText
+        ? "\n\n_Draft odpovědi je připraven k revizi (preview-only — nic nebylo odesláno)._"
+        : "";
+      return `Rozpoznal jsem screenshot klientské komunikace${client}. Navrhuji zaznamenat obsah a případně vytvořit úkol nebo poznámku.${factText}${draftNote}`;
     }
 
     case "structured_image_fact_intake": {
@@ -55,7 +65,12 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
         : inputType === "screenshot_bank_or_finance_info"
           ? "bankovním screenshotem"
           : "dokumentem";
-      return `Rozpoznal jsem obrázek s ${typeLabel}. Navrhuji uložit klíčové informace${client}.`;
+      const factLines = buildFactsSummaryLines(result.response.factBundle, 4);
+      const factText = factLines.length > 0 ? `\n\nExtrahovaná fakta:\n${factLines.map((l) => `• ${l}`).join("\n")}` : "";
+      const missing = result.response.factBundle.missingFields.length > 0
+        ? `\n\nChybějící údaje: ${result.response.factBundle.missingFields.slice(0, 3).join(", ")}.`
+        : "";
+      return `Rozpoznal jsem obrázek s ${typeLabel}. Navrhuji uložit klíčové informace${client}.${factText}${missing}`;
     }
   }
 }
@@ -99,6 +114,10 @@ export function mapImageIntakeToAssistantResponse(
           ? "Tato zpráva patří do image intake lane, ne AI Review."
           : v,
     ),
+    // Surface missing fields as warnings
+    ...response.factBundle.missingFields
+      .slice(0, 2)
+      .map((f) => `Chybějící údaj: ${f}`),
   ].filter(Boolean);
 
   const confidence =
@@ -110,6 +129,15 @@ export function mapImageIntakeToAssistantResponse(
     suggestedNextSteps.push("Otevřete kartu klienta a nahrajte obrázek znovu.");
     suggestedNextSteps.push("Nebo sdělte jméno klienta v textovém poli.");
   }
+  if (response.clientBinding.state === "weak_candidate") {
+    suggestedNextSteps.push(
+      `Potvrďte, zda obrázek patří klientovi: ${response.clientBinding.clientLabel ?? "nalezený kandidát"}.`,
+    );
+  }
+
+  const sourceLabel = result.multimodalUsed
+    ? `Image intake v3 (multimodal, ${response.actionPlan.outputMode})`
+    : `Image intake (${response.actionPlan.outputMode})`;
 
   return {
     message,
@@ -119,7 +147,7 @@ export function mapImageIntakeToAssistantResponse(
     suggestedActions: [],
     warnings: [...new Set(warnings)],
     confidence,
-    sourcesSummary: [`Image intake (${response.actionPlan.outputMode})`],
+    sourcesSummary: [sourceLabel],
     sessionId,
     executionState,
     contextState: {

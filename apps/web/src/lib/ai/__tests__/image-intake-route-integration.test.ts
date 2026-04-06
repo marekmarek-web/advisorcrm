@@ -75,8 +75,10 @@ vi.mock("@/lib/ai/assistant-tool-router", () => ({
 vi.mock("db", () => ({
   db: { select: vi.fn(), from: vi.fn(), where: vi.fn(), leftJoin: vi.fn(), orderBy: vi.fn(), limit: vi.fn(), insert: vi.fn(), values: vi.fn(), update: vi.fn(), set: vi.fn() },
   eq: vi.fn(), and: vi.fn(), or: vi.fn(), isNull: vi.fn(), isNotNull: vi.fn(), gte: vi.fn(), sql: vi.fn(), asc: vi.fn(), desc: vi.fn(),
-  assistantConversations: {}, assistantMessages: {}, contacts: {}, tasks: {}, contracts: {},
+  assistantConversations: {}, assistantMessages: {}, contacts: {}, tasks: {}, contracts: {}, contractUploadReviews: {},
 }));
+
+vi.mock("@/lib/ai/assistant-contact-search", () => ({ searchContactsForAssistant: vi.fn(async () => []) }));
 
 const TEXT_RESPONSE = {
   message: "Test response",

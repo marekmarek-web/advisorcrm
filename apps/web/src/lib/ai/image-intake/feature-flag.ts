@@ -35,9 +35,38 @@ export function getImageIntakeClassifierConfig(): {
 }
 
 /**
+ * Returns true when the multimodal vision pass is enabled.
+ * Requires IMAGE_INTAKE_ENABLED=true AND IMAGE_INTAKE_MULTIMODAL_ENABLED=true.
+ * Default: false (safe — v1 text classifier is used instead).
+ *
+ * This flag allows enabling image intake without paying for vision calls in early rollout.
+ */
+export function isImageIntakeMultimodalEnabled(): boolean {
+  return isImageIntakeEnabled() && process.env.IMAGE_INTAKE_MULTIMODAL_ENABLED === "true";
+}
+
+/**
  * Returns state string for tracing / telemetry meta.
  * Never logs sensitive env values.
  */
 export function getImageIntakeFlagState(): "enabled" | "disabled" {
   return isImageIntakeEnabled() ? "enabled" : "disabled";
+}
+
+export function getImageIntakeMultimodalFlagState(): "enabled" | "disabled" {
+  return isImageIntakeMultimodalEnabled() ? "enabled" : "disabled";
+}
+
+/**
+ * Returns the model routing config for the multimodal combined pass.
+ * Uses copilot category (same as classifier) for consistent model routing.
+ */
+export function getImageIntakeMultimodalConfig(): {
+  model: string | undefined;
+  routingCategory: "copilot";
+} {
+  return {
+    model: process.env.IMAGE_INTAKE_MULTIMODAL_MODEL?.trim() || undefined,
+    routingCategory: "copilot",
+  };
 }

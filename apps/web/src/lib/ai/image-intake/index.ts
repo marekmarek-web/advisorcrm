@@ -16,6 +16,7 @@ export type {
   LaneDecision,
   LaneDecisionResult,
   InputClassificationResult,
+  InputClassificationResultV2,
   ClientBindingState,
   ClientBindingResult,
   CaseBindingResult,
@@ -23,6 +24,8 @@ export type {
   FactType,
   ExtractedImageFact,
   ExtractedFactBundle,
+  MultimodalFactItem,
+  MultimodalCombinedPassResult,
   ImageIntakeActionCandidate,
   ImageIntakeActionPlan,
   ImageIntakeRequest,
@@ -66,15 +69,41 @@ export type { GuardrailVerdict } from "./guardrails";
 export { classifyImageInput, classifyBatch } from "./classifier";
 export type { ClassifierDecision } from "./classifier";
 
-// --- Planner v1 ---
-export { buildActionPlanV1 } from "./planner";
+// --- Planner v1 + v2 ---
+export { buildActionPlanV1, buildActionPlanV2 } from "./planner";
 
 // --- Feature flag ---
 export {
   isImageIntakeEnabled,
+  isImageIntakeMultimodalEnabled,
   getImageIntakeClassifierConfig,
+  getImageIntakeMultimodalConfig,
   getImageIntakeFlagState,
+  getImageIntakeMultimodalFlagState,
 } from "./feature-flag";
+
+// --- Multimodal combined pass (Phase 3) ---
+export { runCombinedMultimodalPass, shouldRunMultimodalPass } from "./multimodal";
+export type { MultimodalPassDecision } from "./multimodal";
+
+// --- Fact extractor (Phase 3) ---
+export {
+  extractFactsFromMultimodalPass,
+  buildSupportingReferenceFacts,
+  buildUnusableFacts,
+  buildFactsSummaryLines,
+} from "./extractor";
+
+// --- CRM-aware binding v2 (Phase 3) ---
+export { resolveClientBindingV2, resolveCaseBindingV2 } from "./binding-v2";
+
+// --- Draft reply preview (Phase 3) ---
+export {
+  checkDraftReplyEligibility,
+  buildDraftReplyPreview,
+  tryBuildDraftReply,
+} from "./draft-reply";
+export type { DraftReplyEligibility } from "./draft-reply";
 
 // --- Orchestrator ---
 export {
@@ -82,8 +111,6 @@ export {
   mapToExecutionPlan,
   mapToPreviewItems,
   buildImageIntakePreview,
-  resolveClientBindingV1,
-  resolveCaseBindingV1,
 } from "./orchestrator";
 export type { ImageIntakeOrchestratorResult } from "./orchestrator";
 

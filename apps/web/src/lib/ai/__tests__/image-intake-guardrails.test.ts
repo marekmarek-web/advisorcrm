@@ -5,7 +5,9 @@
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
-vi.mock("@/lib/openai", () => ({ createResponseStructured: vi.fn(), createResponseSafe: vi.fn(), logOpenAICall: vi.fn() }));
+vi.mock("@/lib/openai", () => ({ createResponseStructured: vi.fn(), createResponseSafe: vi.fn(), createResponseStructuredWithImage: vi.fn(), logOpenAICall: vi.fn() }));
+vi.mock("../assistant-contact-search", () => ({ searchContactsForAssistant: vi.fn(async () => []) }));
+vi.mock("db", () => ({ db: {}, contacts: {}, eq: vi.fn(), and: vi.fn(), or: vi.fn(), isNull: vi.fn(), sql: vi.fn(), desc: vi.fn() }));
 import {
   enforceImageIntakeGuardrails,
   isValidTerminalOutputMode,
