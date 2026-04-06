@@ -1555,7 +1555,9 @@
       "expectedNotesForAdvisor": "Leasing / podnikatelské financování; POV/HAV v textu.",
       "aliasFileNames": [
         "Test AI/Tested preprompt/ČSOB Leasing PBI.pdf"
-      ]
+      ],
+      "requiresPreprocessing": true,
+      "preprocessingNote": "Scan-only PDF — requires Adobe preprocessing or OCR for text extraction. Pipeline cannot extract data from raw file without preprocessed text."
     },
     {
       "id": "C026",
@@ -1821,7 +1823,9 @@
       "mapsToGoldenScenarioIds": [],
       "aliasFileNames": [
         "Test AI/Tested preprompt/IŽP - Generali.pdf"
-      ]
+      ],
+      "requiresPreprocessing": true,
+      "preprocessingNote": "Scan-only PDF — requires Adobe preprocessing or OCR for text extraction. Pipeline cannot extract data from raw file without preprocessed text."
     },
     {
       "id": "C031",

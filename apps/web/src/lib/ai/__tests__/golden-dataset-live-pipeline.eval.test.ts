@@ -1157,6 +1157,29 @@ describe.skipIf(!process.env.GOLDEN_LIVE_EVAL)("golden dataset live pipeline eva
           continue;
         }
 
+        // Skip scan-only / preprocessing-required docs — pipeline cannot extract without OCR
+        if ((doc as Record<string, unknown>).requiresPreprocessing === true) {
+          cRows.push({
+            id: doc.id,
+            referenceFile: doc.referenceFile,
+            status: "skipped",
+            skipReason: "requires_preprocessing",
+            expectedFamily: doc.expectedFamily,
+            actualFamilyInferred: "—",
+            familyPass: false,
+            expectedPrimaryType: doc.expectedPrimaryType,
+            primaryPass: false,
+            expectedOutputMode: doc.expectedOutputMode,
+            outputModePass: false,
+            coreFieldsExpected: doc.expectedCoreFields.length,
+            coreFieldsFound: 0,
+            coreFieldsPass: false,
+            failReasons: ["requires_preprocessing_skipped"],
+            overallPass: false,
+          });
+          continue;
+        }
+
         const fileUrl = pdfHttpUrl(pdfServer.baseUrl, resolvedRef);
         const textHint = await extractPdfTextHintFromDisk(pdfPath);
         const started = Date.now();
