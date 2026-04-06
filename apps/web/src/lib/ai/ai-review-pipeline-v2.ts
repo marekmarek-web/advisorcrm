@@ -325,21 +325,31 @@ function inferSupportingSubtypeFromPromptResponse(
   if (dtFromEf === "payslip" || dtFromEf === "payslip_document" || dtFromEf === "salarydocument" || dtFromEf === "payslippayment") return "payslip_document";
   if (dtFromEf === "corporate_tax_return" || dtFromEf === "taxreturn" || dtFromEf === "taxdeclaration" || dtFromEf === "corporatetax" || dtFromEf === "danove_priznani") return "corporate_tax_return";
 
-  // Path 3: top-level documentType / normalizedSubtype (flat/legacy shape)
-  const topDt = String(parsed.documentType ?? parsed.normalizedSubtype ?? "").toLowerCase().replace(/[-_\s]/g, "");
-  if (topDt === "payslip" || topDt === "payslip_document" || topDt === "salarydocument" || topDt === "salarislip") return "payslip_document";
-  if (topDt === "corporate_tax_return" || topDt === "taxreturn" || topDt === "taxdeclaration" || topDt === "danove_priznani") return "corporate_tax_return";
+  // Path 3: top-level documentType / normalizedSubtype (flat/legacy shape from stored prompt)
+  // Stored prompt may return documentType as a plain string at top-level (not nested in envelope)
+  const topDtRaw = String(parsed.documentType ?? parsed.documentTypeLabel ?? parsed.normalizedSubtype ?? parsed.subtypeLabel ?? "").toLowerCase();
+  const topDt = topDtRaw.replace(/[-_\s]/g, "");
+  if (topDt === "payslip" || topDt === "payslip_document" || topDt === "salarydocument" || topDt === "salarislip" || topDtRaw.includes("payslip") || topDtRaw.includes("výplatní lístek") || topDtRaw.includes("vyplatni listek")) return "payslip_document";
+  if (topDt === "corporate_tax_return" || topDt === "taxreturn" || topDt === "taxdeclaration" || topDt === "danove_priznani" || topDt === "danoveprIznani" || topDtRaw.includes("daňov") || topDtRaw.includes("tax_return") || topDtRaw.includes("taxreturn") || topDtRaw.includes("corporate tax") || topDtRaw.includes("tax return")) return "corporate_tax_return";
 
-  // Path 4: field-presence heuristics — look at extractedFields keys and their values
+  // Path 4: field-presence heuristics — look at extractedFields keys and their values.
+  // Important: use SPECIFIC signals that are not shared between payslip and tax return.
+  // Avoid generic signals like grossIncome/netIncome which appear in both types.
   const efKeys = ef ? new Set(Object.keys(ef).map((k) => k.toLowerCase().replace(/[-_]/g, ""))) : new Set<string>();
   const topKeys = new Set(Object.keys(parsed).map((k) => k.toLowerCase().replace(/[-_]/g, "")));
   const allKeys = new Set([...efKeys, ...topKeys]);
 
-  const payslipSignals = ["grosspay", "netpay", "grossincome", "netincome", "hrubazmda", "cistamzda", "hrubamzda", "employer", "employee", "payperiod", "payoutaccount", "employeename", "employername"];
-  const taxReturnSignals = ["taxperiodfrom", "taxperiodto", "taxtype", "taxpayername", "taxamountdue", "taxbase", "taxamount", "mainbusinessactivity", "danoveobdobi", "zakladDane"];
+  // Bank-statement exclusion: if these keys are present, it's more likely a bank statement
+  const bankStatementSignals = ["statementbalance", "openingbalance", "closingbalance", "statementperiod"];
+  if (bankStatementSignals.some((s) => allKeys.has(s))) return null;
 
-  if (payslipSignals.some((s) => allKeys.has(s))) return "payslip_document";
-  if (taxReturnSignals.some((s) => allKeys.has(s))) return "corporate_tax_return";
+  // Payslip: must have employer OR employee — these don't appear in tax returns
+  const strongPayslipSignals = ["employer", "employee", "employeename", "employername", "payoutaccount", "grosspay", "netpay", "hrubazmda", "cistamzda", "hrubamzda"];
+  // Tax return: must have tax-specific signals that don't appear in payslips
+  const strongTaxReturnSignals = ["taxperiodfrom", "taxperiodto", "taxtype", "taxpayername", "taxamountdue", "taxbase", "mainbusinessactivity", "danoveobdobi", "zakladDane", "ico", "dic"];
+
+  if (strongTaxReturnSignals.some((s) => allKeys.has(s))) return "corporate_tax_return";
+  if (strongPayslipSignals.some((s) => allKeys.has(s))) return "payslip_document";
 
   return null;
 }
@@ -1271,11 +1281,27 @@ export async function runAiReviewV2Pipeline(
 
   // For supporting-doc prompt: refine generic bank_statement to specific subtype BEFORE validation,
   // so the correct schema (payslip_document / corporate_tax_return) is used for validation and coercion.
-  if (documentType === "bank_statement" && promptKey === "supportingDocumentExtraction" && parsedExtractionObj) {
-    const refinedType = inferSupportingSubtypeFromPromptResponse(parsedExtractionObj);
+  // Uses 3-tier fallback: (1) prompt response signals, (2) original classifier documentType, (3) stays bank_statement.
+  if (documentType === "bank_statement" && promptKey === "supportingDocumentExtraction") {
+    const refinedType = parsedExtractionObj
+      ? inferSupportingSubtypeFromPromptResponse(parsedExtractionObj)
+      : null;
     if (refinedType) {
       documentType = refinedType;
       trace.selectedSchema = documentType;
+    } else {
+      // Fallback: trust the classifier's effective document type / product subtype when the stored prompt
+      // returns a generic "bank_statement" shape (older stored prompt without specific subtype instructions).
+      const rawDt = String(effectiveDocumentType ?? "").toLowerCase().replace(/[-_\s]/g, "");
+      const rawSub = String(effectiveProductSubtype ?? "").toLowerCase().replace(/[-_\s]/g, "");
+      const combined = rawDt + " " + rawSub;
+      if (combined.includes("taxreturn") || combined.includes("corporatetax") || combined.includes("danoveprIznani") || combined.includes("taxdeclaration") || combined.includes("selfemployedtax")) {
+        documentType = "corporate_tax_return";
+        trace.selectedSchema = documentType;
+      } else if (combined.includes("payslip") || combined.includes("salary") || combined.includes("mzda") || combined.includes("payroll") || combined.includes("incomeproof")) {
+        documentType = "payslip_document";
+        trace.selectedSchema = documentType;
+      }
     }
   }
 
