@@ -344,12 +344,11 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
     const LEASING_FAMILIES = new Set(["leasing", "financing", "financial_leasing", "fleet_financing", "factoring"]);
     if (LEASING_FAMILIES.has(fam)) {
       if (dt === "contract" || dt === "amendment" || dt === "unknown" || dt === "") {
-        // Use dedicated leasing prompt if configured, otherwise fall back to legacy financial extraction
-        // (legacy has a stored prompt that works with both text and file-based PDFs)
-        if (getAiReviewPromptId("leasingExtraction")) {
-          return { outcome: "extract", promptKey: "leasingExtraction", reasonCodes: ["leasing_contract_dedicated"] };
-        }
-        return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["leasing_contract_legacy_fallback"] };
+        // Always use leasingExtraction route for leasing families:
+        // - When OPENAI_PROMPT_AI_REVIEW_LEASING_EXTRACTION_ID is set: uses stored OpenAI prompt
+        // - When not configured: falls to allowTextSecondPass → local LEASING_EXTRACTION_TEMPLATE
+        //   (leasing-specific field set: customer, lender, VIN, installment, etc.)
+        return { outcome: "extract", promptKey: "leasingExtraction", reasonCodes: ["leasing_contract_dedicated"] };
       }
     }
   }

@@ -22,6 +22,7 @@ import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runContractUnderstandingPipeline } from "../contract-understanding-pipeline";
+import { evalAdobePreprocess } from "./eval-adobe-preprocess";
 import type { DocumentReviewEnvelope } from "../document-review-types";
 import { applyCanonicalNormalizationToEnvelope } from "../life-insurance-canonical-normalizer";
 import type { PublishHints } from "../document-packet-types";
@@ -681,10 +682,10 @@ const CORE_FIELD_ALIASES: Record<string, RegExp> = {
   strategyOrFund: /strategyOrFund|fundName|strategy|isin/i,
   contributionAmount: /contributionAmount|regularAmount|premiumAmount|amount/i,
   nominatedPersons: /nominatedPersons|obmyslene|beneficiaries/i,
-  financedAmount: /financedAmount|principal|loanAmount/i,
+  financedAmount: /financedAmount|totalFinancedAmount|principal|loanAmount|leasingAmount/i,
   vin: /vin\b|vinNumber|chassisNumber/i,
   registrationPlate: /registrationPlate|licensePlate|spz|ecv/i,
-  lesseeName: /fullName|clientFullName|lesseeName/i,
+  lesseeName: /fullName|clientFullName|lesseeName|customer(?:Name)?|lessee/i,
   coverageLimits: /coverageLimits|limit|coverage|krytie/i,
   coinsurance: /coinsurance|spoluúčast|spoluucast/i,
   investmentStrategy: /investmentStrategy|strategy|isin|fundName/i,
@@ -719,21 +720,52 @@ const CORE_FIELD_ALIASES: Record<string, RegExp> = {
   insurer: /insurer|institution|lender|provider|bankName/i,
 };
 
+function hasNonEmptyString(v: unknown): boolean {
+  if (v == null) return false;
+  const s = typeof v === "string" ? v.trim() : String(v);
+  return Boolean(s) && s !== "—" && s !== "null" && s !== "0" && s !== "unknown";
+}
+
 function coreFieldPresent(
   ef: Record<string, { value?: unknown; status?: string } | undefined> | undefined,
   fieldName: string,
+  env?: DocumentReviewEnvelope,
 ): boolean {
-  if (!ef) return false;
   const pat = CORE_FIELD_ALIASES[fieldName] ?? new RegExp(fieldName, "i");
-  for (const [k, cell] of Object.entries(ef)) {
-    if (!cell) continue;
-    if (cell.status === "missing" || cell.status === "not_applicable" || cell.status === "explicitly_not_selected") continue;
-    const v = cell.value;
-    if (v == null) continue;
-    const s = typeof v === "string" ? v.trim() : String(v);
-    if (!s || s === "—" || s === "null" || s === "0" || s === "unknown") continue;
-    if (pat.test(k)) return true;
+
+  // Check extractedFields flat map
+  if (ef) {
+    for (const [k, cell] of Object.entries(ef)) {
+      if (!cell) continue;
+      if (cell.status === "missing" || cell.status === "not_applicable" || cell.status === "explicitly_not_selected") continue;
+      if (!hasNonEmptyString(cell.value)) continue;
+      if (pat.test(k)) return true;
+    }
   }
+
+  // For fields that are specifically about person names, also check parties array / parties record.
+  // Only applies when the canonical field name is fullName/borrowerName/policyholderName,
+  // not for leasing-specific aliases like lesseeName that have their own extractedFields path.
+  const fullNameFields = new Set(["fullName", "borrowerName", "policyholderName", "investorName"]);
+  if (fullNameFields.has(fieldName)) {
+    const parties = env?.parties;
+    if (Array.isArray(parties)) {
+      for (const p of parties) {
+        if (typeof p === "object" && p !== null) {
+          const pp = p as Record<string, unknown>;
+          if (hasNonEmptyString(pp.fullName) || hasNonEmptyString(pp.name)) return true;
+        }
+      }
+    } else if (parties && typeof parties === "object") {
+      for (const p of Object.values(parties as Record<string, unknown>)) {
+        if (typeof p === "object" && p !== null) {
+          const pp = p as Record<string, unknown>;
+          if (hasNonEmptyString(pp.fullName) || hasNonEmptyString(pp.name)) return true;
+        }
+      }
+    }
+  }
+
   return false;
 }
 
@@ -741,6 +773,7 @@ function evaluateCoreFields(
   ef: Record<string, { value?: unknown; status?: string } | undefined> | undefined,
   expectedCoreFields: string[],
   expectedOutputMode?: string,
+  env?: DocumentReviewEnvelope,
 ): { found: number; total: number; pass: boolean; missing: string[] } {
   if (!expectedCoreFields.length) return { found: 0, total: 0, pass: true, missing: [] };
 
@@ -765,7 +798,7 @@ function evaluateCoreFields(
   let found = 0;
   const missing: string[] = [];
   for (const field of expectedCoreFields) {
-    if (coreFieldPresent(ef, field)) {
+    if (coreFieldPresent(ef, field, env)) {
       found++;
     } else {
       missing.push(field);
@@ -1165,51 +1198,92 @@ describe.skipIf(!process.env.GOLDEN_LIVE_EVAL)("golden dataset live pipeline eva
           continue;
         }
 
-        // Skip scan-only / preprocessing-required docs — pipeline cannot extract without OCR.
-        // This is a clean skip (preprocess_prerequisite_not_met), NOT a routing or extraction failure.
-        if ((doc as Record<string, unknown>).requiresPreprocessing === true) {
-          const d = doc as Record<string, unknown>;
-          cRows.push({
-            id: doc.id,
-            referenceFile: doc.referenceFile,
-            status: "skipped",
-            skipReason: (d.evalSkipReason as string | undefined) ?? "preprocess_prerequisite_not_met",
-            skipNote: (d.evalSkipNote as string | undefined) ?? "Document requires OCR/Adobe preprocessing before field extraction is possible.",
-            preprocessingReason: (d.preprocessingReason as string | undefined) ?? "scan_only_pdf",
-            preprocessingLane: (d.preprocessingLane as string | undefined) ?? "adobe_text_extraction",
-            preprocessingStatus: (d.preprocessingStatus as string | undefined) ?? "awaiting_ocr",
-            expectedFamily: doc.expectedFamily,
-            actualFamilyInferred: "—",
-            familyPass: false,
-            expectedPrimaryType: doc.expectedPrimaryType,
-            primaryPass: false,
-            expectedOutputMode: doc.expectedOutputMode,
-            outputModePass: false,
-            coreFieldsExpected: doc.expectedCoreFields.length,
-            coreFieldsFound: 0,
-            coreFieldsPass: false,
-            failReasons: [],
-            overallPass: false,
-          });
-          continue;
+        // Scan-only / preprocessing-required docs: attempt Adobe preprocess lane.
+        // - With GOLDEN_EVAL_ADOBE_PREPROCESS=1: calls Adobe PDF-to-Markdown, caches result, then runs pipeline.
+        // - With cached result: reuses cached markdown (no new Adobe API call).
+        // - Without flag and no cache: records preprocess_required (clean skip, not a fail).
+        // - If preprocess fails: records preprocess_failed (separate bucket from routing/extraction errors).
+        const docRequiresPreprocess = (doc as Record<string, unknown>).requiresPreprocessing === true;
+        let nativeTextHint = await extractPdfTextHintFromDisk(pdfPath);
+        let effectiveTextHint = nativeTextHint;
+        let effectivePreprocessMeta: import("../contract-understanding-pipeline").PipelinePreprocessMeta;
+
+        if (docRequiresPreprocess) {
+          const preprocessResult = await evalAdobePreprocess(pdfPath, doc.id);
+          const lifecycle = preprocessResult.lifecycle;
+
+          if (lifecycle === "preprocess_required") {
+            // Adobe not enabled and no cache — clean skip
+            const d = doc as Record<string, unknown>;
+            cRows.push({
+              id: doc.id,
+              referenceFile: doc.referenceFile,
+              status: "skipped",
+              skipReason: "preprocess_required_no_cache",
+              skipNote: "Set GOLDEN_EVAL_ADOBE_PREPROCESS=1 to run Adobe preprocessing for this document, or a cached result must exist.",
+              preprocessingReason: (d.preprocessingReason as string | undefined) ?? "scan_only_pdf",
+              preprocessingLane: (d.preprocessingLane as string | undefined) ?? "adobe_text_extraction",
+              preprocessingStatus: "awaiting_ocr",
+              expectedFamily: doc.expectedFamily,
+              actualFamilyInferred: "—",
+              familyPass: false,
+              expectedPrimaryType: doc.expectedPrimaryType,
+              primaryPass: false,
+              expectedOutputMode: doc.expectedOutputMode,
+              outputModePass: false,
+              coreFieldsExpected: doc.expectedCoreFields.length,
+              coreFieldsFound: 0,
+              coreFieldsPass: false,
+              failReasons: [],
+              overallPass: false,
+            });
+            continue;
+          }
+
+          if (lifecycle === "preprocess_failed") {
+            cRows.push({
+              id: doc.id,
+              referenceFile: doc.referenceFile,
+              status: "error",
+              errorMessage: preprocessResult.preprocessMeta.preprocessErrorMessage ?? "Adobe preprocess failed",
+              expectedFamily: doc.expectedFamily,
+              actualFamilyInferred: "—",
+              familyPass: false,
+              expectedPrimaryType: doc.expectedPrimaryType,
+              primaryPass: false,
+              expectedOutputMode: doc.expectedOutputMode,
+              outputModePass: false,
+              coreFieldsExpected: doc.expectedCoreFields.length,
+              coreFieldsFound: 0,
+              coreFieldsPass: false,
+              failReasons: ["preprocess_failed"],
+              overallPass: false,
+            });
+            continue;
+          }
+
+          // preprocess_succeeded or preprocess_reused_cached_result — proceed with pipeline
+          effectiveTextHint = preprocessResult.ruleBasedTextHint;
+          effectivePreprocessMeta = preprocessResult.preprocessMeta;
+        } else {
+          effectivePreprocessMeta = {
+            preprocessStatus: nativeTextHint ? "golden_eval_pdf_parse_hint" : "golden_eval_local",
+            preprocessMode: "none",
+            adobePreprocessed: false,
+            markdownContentLength: nativeTextHint?.length ?? 0,
+            readabilityScore: nativeTextHint && nativeTextHint.length >= 800 ? 80 : 0,
+          };
         }
 
         const fileUrl = pdfHttpUrl(pdfServer.baseUrl, resolvedRef);
-        const textHint = await extractPdfTextHintFromDisk(pdfPath);
         const started = Date.now();
         let result: Awaited<ReturnType<typeof runContractUnderstandingPipeline>>;
         try {
           result = await runContractUnderstandingPipeline(fileUrl, "application/pdf", {
             sourceFileName: resolvedRef.split("/").pop() ?? "doc.pdf",
-            ruleBasedTextHint: textHint,
-            bundleSectionTexts: textHint ? { contractualText: textHint, investmentText: textHint } : null,
-            preprocessMeta: {
-              preprocessStatus: textHint ? "golden_eval_pdf_parse_hint" : "golden_eval_local",
-              preprocessMode: "none",
-              adobePreprocessed: false,
-              markdownContentLength: textHint?.length ?? 0,
-              readabilityScore: textHint && textHint.length >= 800 ? 80 : 0,
-            },
+            ruleBasedTextHint: effectiveTextHint,
+            bundleSectionTexts: effectiveTextHint ? { contractualText: effectiveTextHint, investmentText: effectiveTextHint } : null,
+            preprocessMeta: effectivePreprocessMeta,
           });
         } catch (e) {
           cRows.push({
@@ -1279,7 +1353,7 @@ describe.skipIf(!process.env.GOLDEN_LIVE_EVAL)("golden dataset live pipeline eva
         const outputModePass = outputModeMatchOk(doc.expectedOutputMode, actualOutputMode);
 
         const ef = env.extractedFields as Record<string, { value?: unknown; status?: string } | undefined> | undefined;
-        const coreCheck = evaluateCoreFields(ef, doc.expectedCoreFields, doc.expectedOutputMode);
+        const coreCheck = evaluateCoreFields(ef, doc.expectedCoreFields, doc.expectedOutputMode, env);
 
         // Fallback lane: reference docs must never end up as structured product
         const fallbackLaneViolation = isFallbackLaneViolation(doc.expectedOutputMode, actualOutputMode, primary);
@@ -1338,6 +1412,14 @@ describe.skipIf(!process.env.GOLDEN_LIVE_EVAL)("golden dataset live pipeline eva
       const cErrors = cRows.filter((r) => r.status === "error");
       const cFailed = cRunnable.filter((r) => !r.overallPass);
 
+      // Preprocess lifecycle buckets for observability
+      const cPreprocessSkipped = cSkipped.filter((r) => (r as Record<string, unknown>).skipReason === "preprocess_required_no_cache");
+      const cPreprocessFailed = cErrors.filter((r) => r.failReasons?.includes("preprocess_failed"));
+      const cPreprocessSucceeded = cRunnable.filter((r) => {
+        const d = r as Record<string, unknown>;
+        return d.preprocessStatus === "preprocess_succeeded" || d.preprocessStatus === "preprocess_reused_cached_result";
+      });
+
       const cFamilyAcc = cRunnable.length > 0
         ? cRunnable.filter((r) => r.familyPass).length / cRunnable.length : 0;
       const cOutputModeAcc = cRunnable.length > 0
@@ -1369,6 +1451,12 @@ describe.skipIf(!process.env.GOLDEN_LIVE_EVAL)("golden dataset live pipeline eva
           outputModeAccuracy: cOutputModeAcc,
           coreFieldsAccuracy: cCoreFieldsAcc,
           fallbackLaneViolations: cRunnable.filter((r) => r.fallbackLaneViolation).length,
+          preprocess: {
+            awaitingOcr: cPreprocessSkipped.length,
+            preprocessFailed: cPreprocessFailed.length,
+            preprocessSucceeded: cPreprocessSucceeded.length,
+            preprocessSucceededIds: cPreprocessSucceeded.map((r) => r.id),
+          },
         },
         rootCauseBuckets,
         rows: cRows,
@@ -1408,6 +1496,9 @@ describe.skipIf(!process.env.GOLDEN_LIVE_EVAL)("golden dataset live pipeline eva
       }
       // eslint-disable-next-line no-console
       console.info(`\nROOT CAUSE BUCKETS: routing=${rootCauseBuckets.routing.join(",") || "none"} | mode=${rootCauseBuckets.outputMode.join(",") || "none"} | extraction=${rootCauseBuckets.coreExtraction.join(",") || "none"} | fallback=${rootCauseBuckets.fallbackLane.join(",") || "none"}\n`);
+      if (cPreprocessSkipped.length > 0 || cPreprocessFailed.length > 0 || cPreprocessSucceeded.length > 0) {
+        console.info(`PREPROCESS LANE: awaiting_ocr=${cPreprocessSkipped.map((r) => r.id).join(",") || "none"} | failed=${cPreprocessFailed.map((r) => r.id).join(",") || "none"} | succeeded=${cPreprocessSucceeded.map((r) => r.id).join(",") || "none"}\n`);
+      }
 
       expect(cErrors.length, "corpus pipeline hard errors").toBe(0);
       expect(cFamilyAcc, "corpus family accuracy").toBeGreaterThanOrEqual(0.8);

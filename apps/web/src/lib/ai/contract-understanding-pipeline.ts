@@ -46,9 +46,41 @@ import { buildManualReviewStubEnvelope, buildScanOcrUnusableStubEnvelope } from 
 import { shouldSkipContractLlmExtractionForScanOcr } from "./scan-ocr-extraction-gate";
 import { runAiReviewV2Pipeline } from "./ai-review-pipeline-v2";
 
+/**
+ * Explicit lifecycle states for preprocessing.
+ * - preprocess_not_needed: native text is sufficient, no preprocess required
+ * - preprocess_required: document needs preprocessing but hasn't been sent yet
+ * - preprocess_started: preprocessing job submitted, waiting for result
+ * - preprocess_succeeded: preprocessing completed and returned usable text
+ * - preprocess_failed: preprocessing attempted but failed (provider error, timeout, etc.)
+ * - preprocess_reused_cached_result: preprocessing result reused from local cache (no new API call)
+ */
+export type PreprocessLifecycleStatus =
+  | "preprocess_not_needed"
+  | "preprocess_required"
+  | "preprocess_started"
+  | "preprocess_succeeded"
+  | "preprocess_failed"
+  | "preprocess_reused_cached_result"
+  // Legacy / provider-specific statuses preserved for backward compatibility
+  | "completed"
+  | "failed"
+  | "skipped"
+  | "partial"
+  | "golden_eval_pdf_parse_hint"
+  | "golden_eval_local"
+  | "golden_eval_adobe_preprocess"
+  | string;
+
+export type PreprocessSourcePriority =
+  | "adobe_structured_pages"
+  | "adobe_markdown_text"
+  | "native_pdf_text"
+  | "fallback_text";
+
 export type PipelinePreprocessMeta = {
   adobePreprocessed?: boolean;
-  preprocessStatus?: string;
+  preprocessStatus?: PreprocessLifecycleStatus;
   preprocessMode?: string;
   preprocessWarnings?: string[];
   ocrConfidenceEstimate?: number;
@@ -57,6 +89,20 @@ export type PipelinePreprocessMeta = {
   normalizedPdfPath?: string | null;
   markdownContentLength?: number;
   pageCountEstimate?: number | null;
+  /** Which provider ran the preprocess job. */
+  preprocessProvider?: "adobe" | "none" | "eval_standalone";
+  /** Which text source was ultimately chosen for extraction. */
+  preprocessSourcePriority?: PreprocessSourcePriority;
+  /** For cache reuse: path to the cached result file. */
+  preprocessCacheSource?: string;
+  /** Error code when preprocess_failed. */
+  preprocessErrorCode?: string;
+  /** Human-readable error when preprocess_failed. */
+  preprocessErrorMessage?: string;
+  /** Char count of extracted structured text. */
+  preprocessTextSizeChars?: number;
+  /** Number of structured pages returned by Adobe. */
+  preprocessStructuredPagesCount?: number;
 };
 
 function logPipelineEvent(phase: string, payload: Record<string, unknown>): void {

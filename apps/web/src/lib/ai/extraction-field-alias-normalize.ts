@@ -623,6 +623,14 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "dluznik",
         "leasingTenant",
         "lessee",
+        "lesseeName",
+      ]);
+      mergeFromAliases(ef, "lesseeName", [
+        "customer",
+        "customerName",
+        "lessee",
+        "zakaznik",
+        "klient",
       ]);
       mergeFromAliases(ef, "fullName", [
         "customer",

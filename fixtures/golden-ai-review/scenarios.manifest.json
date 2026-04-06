@@ -1541,7 +1541,7 @@
         "lesseeName",
         "financedAmount",
         "vin",
-        "registrationPlate"
+        "contractNumber"
       ],
       "expectedActionsForbidden": [
         "map_to_consumer_loan_schema"

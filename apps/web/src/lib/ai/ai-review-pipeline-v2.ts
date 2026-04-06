@@ -57,6 +57,7 @@ import { getAiReviewPromptId, getAiReviewPromptVersion, type AiReviewPromptKey }
 import { fingerprintOpenAiPromptId } from "./ai-review-prompt-rollout";
 import { isAiReviewLlmPostprocessEnabled, runAiReviewDecisionLlm } from "./ai-review-llm-postprocess";
 import { buildAiReviewExtractionPromptVariables, capAiReviewPromptString } from "./ai-review-prompt-variables";
+import { getPromptTemplateContent } from "./ai-review-prompt-templates-content";
 import { zodIssuesToAdvisorBriefMessages } from "./zod-issues-advisor-copy";
 import {
   mergePartialParsedIntoManualStub,
@@ -1183,8 +1184,18 @@ export async function runAiReviewV2Pipeline(
     typeof options?.preprocessMeta?.readabilityScore === "number" &&
     options.preprocessMeta.readabilityScore >= 68;
   const isTextPdf = inputModeResult.inputMode === "text_pdf";
+  // Adobe-preprocessed scan docs: if preprocess succeeded and yielded substantial text,
+  // treat that text as usable OCR output and allow text-based extraction even for scan PDFs.
+  // This is the correct behavior when ruleBasedTextHint comes from Adobe PDF-to-Markdown.
+  const preprocessSucceeded =
+    options?.preprocessMeta?.preprocessStatus === "preprocess_succeeded" ||
+    options?.preprocessMeta?.preprocessStatus === "preprocess_reused_cached_result" ||
+    (options?.preprocessMeta?.adobePreprocessed === true &&
+      (options?.preprocessMeta?.preprocessStatus === "completed" || options?.preprocessMeta?.preprocessStatus === "partial"));
   const allowTextSecondPass =
-    documentTextForExtraction.length >= minTextChars && !isScanFallback && (isTextPdf || readabilityOk);
+    documentTextForExtraction.length >= minTextChars &&
+    (isTextPdf || readabilityOk || preprocessSucceeded) &&
+    (!isScanFallback || preprocessSucceeded);
 
   const extractionPromptId = getAiReviewPromptId(promptKey);
   const extractionVersion = getAiReviewPromptVersion(promptKey);
@@ -1195,7 +1206,10 @@ export async function runAiReviewV2Pipeline(
     let extractionBuilder: "prompt_builder" | "schema_text_wrap" | "file_pdf" | undefined;
     let extractionPmptFingerprint: string | null | undefined;
 
-    if (extractionPromptId && documentTextForExtraction.length >= 400) {
+    // GOLDEN_EVAL_FORCE_LOCAL_TEMPLATE=1: skip stored prompt and always use local template.
+    // Used in eval harness when Adobe preprocess succeeded but stored prompt is known to be outdated.
+    const forceLocalTemplate = process.env.GOLDEN_EVAL_FORCE_LOCAL_TEMPLATE === "1" && preprocessSucceeded;
+    if (extractionPromptId && documentTextForExtraction.length >= 400 && !forceLocalTemplate) {
       trace.extractionSecondPass = "prompt_text";
       extractionBuilder = "prompt_builder";
       extractionPmptFingerprint = fingerprintOpenAiPromptId(extractionPromptId);
@@ -1223,13 +1237,37 @@ export async function runAiReviewV2Pipeline(
       trace.extractionSecondPass = "text";
       extractionBuilder = "schema_text_wrap";
       extractionPmptFingerprint = null;
-      const wrapped = wrapExtractionPromptWithDocumentText(
-        extractionPrompt,
-        documentTextForExtraction,
-        undefined,
-        options?.bundleSectionTexts ?? null,
-      );
-      rawExtraction = await createResponse(wrapped, { routing: { category: "ai_review" } });
+      // When a local prompt template exists for this promptKey (e.g. leasingExtraction),
+      // prefer its system prompt over the generic schema-based prompt. This ensures
+      // Adobe-preprocessed scan docs (which have no stored prompt configured) use the
+      // full leasing / domain-specific instruction set for extraction.
+      const localTemplate = getPromptTemplateContent(promptKey);
+      let textExtractionSystemPrompt: string;
+      if (localTemplate?.systemPrompt) {
+        const variables = buildAiReviewExtractionPromptVariables({
+          documentText: documentTextForExtraction,
+          classificationReasons: classification.reasons,
+          adobeSignals: buildAdobeSignalsSummary(options?.preprocessMeta ?? null),
+          filename: options?.sourceFileName?.trim() || "unknown",
+          bundleSectionTexts: options?.bundleSectionTexts ?? null,
+        });
+        // Replace template variables in system prompt
+        let sysPrompt = localTemplate.systemPrompt;
+        for (const [k, v] of Object.entries(variables)) {
+          sysPrompt = sysPrompt.replaceAll(`{{${k}}}`, typeof v === "string" ? v : "");
+        }
+        textExtractionSystemPrompt = sysPrompt;
+        (trace as Record<string, unknown>).localTemplateFallback = promptKey;
+      } else {
+        const wrapped = wrapExtractionPromptWithDocumentText(
+          extractionPrompt,
+          documentTextForExtraction,
+          undefined,
+          options?.bundleSectionTexts ?? null,
+        );
+        textExtractionSystemPrompt = wrapped;
+      }
+      rawExtraction = await createResponse(textExtractionSystemPrompt, { routing: { category: "ai_review" } });
     } else {
       trace.extractionSecondPass = "pdf";
       extractionBuilder = "file_pdf";
