@@ -96,6 +96,103 @@ export function getImageIntakeFlagSummary(): Record<string, "enabled" | "disable
   };
 }
 
+// ---------------------------------------------------------------------------
+// Phase 5: Per-user / allowlist rollout v1
+//
+// Pattern: comma-separated user ID allowlist in env var.
+// No enterprise platform — minimal, auditable, safe-default.
+//
+// IMAGE_INTAKE_ALLOWED_USER_IDS=user-abc123,user-def456,...
+//   → only listed users get image intake capability
+//   → when empty/unset: allow all users (if base flag is ON)
+//
+// Per-feature overrides (same pattern):
+// IMAGE_INTAKE_MULTIMODAL_ALLOWED_USER_IDS=...
+// IMAGE_INTAKE_THREAD_RECONSTRUCTION_ALLOWED_USER_IDS=...
+// IMAGE_INTAKE_REVIEW_HANDOFF_ALLOWED_USER_IDS=...
+// IMAGE_INTAKE_CASE_SIGNAL_ALLOWED_USER_IDS=...
+// ---------------------------------------------------------------------------
+
+function parseAllowlist(envVar: string): Set<string> | null {
+  const raw = process.env[envVar]?.trim();
+  if (!raw) return null; // null = allow all
+  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return ids.length > 0 ? new Set(ids) : null;
+}
+
+function isUserAllowed(userId: string, allowlistEnvVar: string): boolean {
+  const allowlist = parseAllowlist(allowlistEnvVar);
+  if (!allowlist) return true; // no allowlist → allow all
+  return allowlist.has(userId);
+}
+
+/**
+ * Phase 5: Returns true when image intake is enabled for a specific user.
+ * Checks base flag + optional per-user allowlist.
+ */
+export function isImageIntakeEnabledForUser(userId: string): boolean {
+  return isImageIntakeEnabled() && isUserAllowed(userId, "IMAGE_INTAKE_ALLOWED_USER_IDS");
+}
+
+/**
+ * Returns true when multimodal pass is enabled for a specific user.
+ */
+export function isImageIntakeMultimodalEnabledForUser(userId: string): boolean {
+  return isImageIntakeMultimodalEnabled() &&
+    isUserAllowed(userId, "IMAGE_INTAKE_MULTIMODAL_ALLOWED_USER_IDS");
+}
+
+/**
+ * Returns true when thread reconstruction is enabled for a specific user.
+ * Requires base + stitching flag ON.
+ */
+export function isImageIntakeThreadReconstructionEnabledForUser(userId: string): boolean {
+  return isImageIntakeStitchingEnabled() &&
+    process.env.IMAGE_INTAKE_THREAD_RECONSTRUCTION_ENABLED === "true" &&
+    isUserAllowed(userId, "IMAGE_INTAKE_THREAD_RECONSTRUCTION_ALLOWED_USER_IDS");
+}
+
+/**
+ * Returns true when AI Review handoff is enabled for a specific user.
+ */
+export function isImageIntakeReviewHandoffEnabledForUser(userId: string): boolean {
+  return isImageIntakeReviewHandoffEnabled() &&
+    isUserAllowed(userId, "IMAGE_INTAKE_REVIEW_HANDOFF_ALLOWED_USER_IDS");
+}
+
+/**
+ * Returns true when advanced case signal extraction is enabled for a specific user.
+ */
+export function isImageIntakeCaseSignalEnabledForUser(userId: string): boolean {
+  return isImageIntakeEnabled() &&
+    process.env.IMAGE_INTAKE_CASE_SIGNAL_ENABLED === "true" &&
+    isUserAllowed(userId, "IMAGE_INTAKE_CASE_SIGNAL_ALLOWED_USER_IDS");
+}
+
+/**
+ * Returns Phase 5 rollout summary for a specific user (trace-safe).
+ */
+export function getImageIntakeUserRolloutSummary(userId: string): {
+  base: boolean;
+  multimodal: boolean;
+  threadReconstruction: boolean;
+  reviewHandoff: boolean;
+  caseSignal: boolean;
+  reason: string;
+} {
+  const base = isImageIntakeEnabledForUser(userId);
+  return {
+    base,
+    multimodal: base && isImageIntakeMultimodalEnabledForUser(userId),
+    threadReconstruction: base && isImageIntakeThreadReconstructionEnabledForUser(userId),
+    reviewHandoff: base && isImageIntakeReviewHandoffEnabledForUser(userId),
+    caseSignal: base && isImageIntakeCaseSignalEnabledForUser(userId),
+    reason: base
+      ? "user is allowed by base flag and optional per-feature allowlists"
+      : "image intake disabled (base flag or user allowlist exclusion)",
+  };
+}
+
 /**
  * Returns the model routing config for the multimodal combined pass.
  * Uses copilot category (same as classifier) for consistent model routing.

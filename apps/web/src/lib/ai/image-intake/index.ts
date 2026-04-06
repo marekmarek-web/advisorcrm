@@ -6,6 +6,22 @@
  */
 
 // --- Domain types & contracts ---
+// Phase 5 types
+export type {
+  ThreadAssetOrder,
+  MergedThreadFact,
+  ThreadReconstructionOutcome,
+  ThreadReconstructionResult,
+  HandoffPayloadStatus,
+  ReviewHandoffPayload,
+  CaseSignalStrength,
+  CaseOpportunitySignal,
+  CaseSignalBundle,
+  BatchMultimodalStrategy,
+  BatchMultimodalDecision,
+} from "./types";
+export { CASE_SIGNAL_STRENGTHS } from "./types";
+
 export type {
   ImageInputType,
   ImageInputSubtype,
@@ -91,6 +107,22 @@ export {
 
 // --- AI Review handoff boundary v1 (Phase 4) ---
 export { evaluateReviewHandoff } from "./review-handoff";
+
+// --- Phase 5 modules ---
+export { reconstructThread, buildThreadSummaryLines } from "./thread-reconstruction";
+export { buildReviewHandoffPayload, buildHandoffPreviewNote } from "./handoff-payload";
+export { decideBatchMultimodalStrategy, buildBatchCostSummary } from "./batch-multimodal";
+export { extractCaseSignals, mergeCaseSignalBundles } from "./case-signal-extraction";
+
+// --- Phase 5 feature flags ---
+export {
+  isImageIntakeEnabledForUser,
+  isImageIntakeMultimodalEnabledForUser,
+  isImageIntakeThreadReconstructionEnabledForUser,
+  isImageIntakeReviewHandoffEnabledForUser,
+  isImageIntakeCaseSignalEnabledForUser,
+  getImageIntakeUserRolloutSummary,
+} from "./feature-flag";
 
 // --- Feature flag ---
 export {

@@ -14,6 +14,8 @@ import type { AssistantResponse } from "../assistant-tool-router";
 import type { ImageIntakeOrchestratorResult } from "./orchestrator";
 import { buildFactsSummaryLines } from "./extractor";
 import { buildStitchingSummary } from "./stitching";
+import { buildThreadSummaryLines } from "./thread-reconstruction";
+import { buildHandoffPreviewNote } from "./handoff-payload";
 
 // ---------------------------------------------------------------------------
 // Message templates by output mode
@@ -142,12 +144,31 @@ export function mapImageIntakeToAssistantResponse(
     );
   }
 
+  // Thread reconstruction summary (Phase 5)
+  if (result.threadReconstruction) {
+    const threadLines = buildThreadSummaryLines(result.threadReconstruction);
+    if (threadLines.length > 0) {
+      suggestedNextSteps.unshift(...threadLines);
+    }
+  }
+
   // Stitching summary (Phase 4)
   const stitchingSummary = result.stitchingResult
     ? buildStitchingSummary(result.stitchingResult)
     : null;
   if (stitchingSummary) {
     suggestedNextSteps.unshift(stitchingSummary);
+  }
+
+  // Handoff payload note (Phase 5)
+  if (result.handoffPayload) {
+    const handoffNote = buildHandoffPreviewNote(result.handoffPayload);
+    suggestedNextSteps.push(handoffNote);
+  }
+
+  // Case signals summary (Phase 5)
+  if (result.caseSignals?.summary) {
+    suggestedNextSteps.push(`Signály k příležitosti: ${result.caseSignals.summary}`);
   }
 
   // Case binding v2 warning (Phase 4)

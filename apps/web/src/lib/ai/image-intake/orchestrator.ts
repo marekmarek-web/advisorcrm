@@ -61,10 +61,22 @@ import {
   isImageIntakeMultimodalEnabled,
   isImageIntakeStitchingEnabled,
   isImageIntakeReviewHandoffEnabled,
+  isImageIntakeThreadReconstructionEnabledForUser,
+  isImageIntakeCaseSignalEnabledForUser,
   getImageIntakeFlagSummary,
 } from "./feature-flag";
 import { computeStitchingGroups, getPrimaryAssetIds } from "./stitching";
 import { evaluateReviewHandoff } from "./review-handoff";
+import { reconstructThread } from "./thread-reconstruction";
+import { buildReviewHandoffPayload, buildHandoffPreviewNote } from "./handoff-payload";
+import { decideBatchMultimodalStrategy } from "./batch-multimodal";
+import { extractCaseSignals, mergeCaseSignalBundles } from "./case-signal-extraction";
+import type {
+  ThreadReconstructionResult,
+  ReviewHandoffPayload,
+  CaseSignalBundle,
+  BatchMultimodalDecision,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Lane decision
@@ -198,6 +210,14 @@ export type ImageIntakeOrchestratorResult = {
   reviewHandoff: ReviewHandoffRecommendation | null;
   /** Phase 4: case/opportunity binding v2 result. */
   caseBindingV2: CaseBindingResultV2 | null;
+  /** Phase 5: thread reconstruction result. */
+  threadReconstruction: ThreadReconstructionResult | null;
+  /** Phase 5: structured AI Review handoff payload. */
+  handoffPayload: ReviewHandoffPayload | null;
+  /** Phase 5: case/opportunity signals bundle. */
+  caseSignals: CaseSignalBundle | null;
+  /** Phase 5: batch multimodal decision (when stitching active). */
+  batchDecision: BatchMultimodalDecision | null;
 };
 
 export async function processImageIntake(
@@ -235,20 +255,20 @@ export async function processImageIntake(
 
   // 3. Multi-image stitching (Phase 4 — metadata-only, free)
   const stitchingEnabled = isImageIntakeStitchingEnabled();
+  const threadReconstructionEnabled = isImageIntakeThreadReconstructionEnabledForUser(request.userId);
+  const caseSignalEnabled = isImageIntakeCaseSignalEnabledForUser(request.userId);
   let stitchingResult: MultiImageStitchingResult | null = null;
   let primaryAssets = request.assets;
+  const stitchingClassMap = new Map<string, InputClassificationResult | null>();
 
   if (stitchingEnabled && request.assets.length > 1) {
-    // We need per-asset classification for stitching; run a cheap batch first
-    // For stitching we use a lightweight heuristic pass (no model yet)
-    const classMap = new Map<string, InputClassificationResult | null>();
     // Classify each asset cheaply (deterministic only — skip model for stitching pass)
     for (const asset of request.assets) {
       const { classifyImageInput } = await import("./classifier");
       const dec = await classifyImageInput(asset, request.accompanyingText);
-      classMap.set(asset.assetId, dec.earlyExit ? null : dec.result);
+      stitchingClassMap.set(asset.assetId, dec.earlyExit ? null : dec.result);
     }
-    stitchingResult = computeStitchingGroups(request.assets, classMap);
+    stitchingResult = computeStitchingGroups(request.assets, stitchingClassMap);
     // Only process primary (non-duplicate) assets downstream
     const primaryIds = new Set(getPrimaryAssetIds(stitchingResult));
     primaryAssets = request.assets.filter((a) => primaryIds.has(a.assetId));
@@ -302,6 +322,7 @@ export async function processImageIntake(
       executionPlan: null, previewPayload: earlyPreview,
       classifierUsedModel, multimodalUsed: false, multimodalResult: null,
       stitchingResult, reviewHandoff: null, caseBindingV2: null,
+      threadReconstruction: null, handoffPayload: null, caseSignals: null, batchDecision: null,
     };
   }
 
@@ -358,6 +379,57 @@ export async function processImageIntake(
   // 9. Review handoff recommendation (Phase 4 — no model call)
   const handoffFlagEnabled = isImageIntakeReviewHandoffEnabled();
   const reviewHandoff = evaluateReviewHandoff(classification, factBundle, handoffFlagEnabled);
+
+  // Phase 5: Thread reconstruction (for grouped threads when flag enabled)
+  let threadReconstruction: ThreadReconstructionResult | null = null;
+  let batchDecision: BatchMultimodalDecision | null = null;
+
+  if (stitchingResult && threadReconstructionEnabled) {
+    const groupedGroup = stitchingResult.groups.find(
+      (g) => g.decision === "grouped_thread" || g.decision === "grouped_related",
+    );
+    if (groupedGroup && groupedGroup.assetIds.length >= 2) {
+      // Per-asset fact bundles (current run only has one primary asset)
+      const perAssetBundles = new Map<string, ExtractedFactBundle>();
+      if (primaryAsset) perAssetBundles.set(primaryAsset.assetId, factBundle);
+      threadReconstruction = reconstructThread(groupedGroup, request.assets, perAssetBundles);
+    }
+
+    // Phase 5: Batch multimodal decision
+    const existingMultimodalResults = new Map<string, MultimodalCombinedPassResult | null>();
+    if (primaryAsset && multimodalResult) {
+      existingMultimodalResults.set(primaryAsset.assetId, multimodalResult);
+    }
+    const firstGroup = stitchingResult.groups[0];
+    if (firstGroup) {
+      batchDecision = decideBatchMultimodalStrategy(
+        firstGroup,
+        request.assets,
+        stitchingClassMap,
+        existingMultimodalResults,
+        isImageIntakeMultimodalEnabled(),
+      );
+    }
+  }
+
+  // Phase 5: Advanced case signal extraction (from fact bundle — no model call)
+  let caseSignals: CaseSignalBundle | null = null;
+  if (caseSignalEnabled && factBundle.facts.length > 0) {
+    caseSignals = extractCaseSignals(factBundle, classification, primaryAsset?.assetId ?? intakeId);
+  }
+
+  // Phase 5: Structured handoff payload (when handoff recommended)
+  const handoffPayload = reviewHandoff?.recommended
+    ? buildReviewHandoffPayload(
+        reviewHandoff,
+        classification,
+        clientBinding,
+        caseBindingV2,
+        factBundle,
+        primaryAssets,
+        request,
+      )
+    : null;
 
   // 10. Draft reply (preview-only, communication screenshots + confident binding only)
   const draftReplyText = tryBuildDraftReply(
@@ -432,5 +504,6 @@ export async function processImageIntake(
     response, executionPlan, previewPayload,
     classifierUsedModel, multimodalUsed, multimodalResult,
     stitchingResult, reviewHandoff, caseBindingV2,
+    threadReconstruction, handoffPayload, caseSignals, batchDecision,
   };
 }

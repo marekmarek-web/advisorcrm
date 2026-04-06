@@ -472,6 +472,148 @@ export type ReviewHandoffRecommendation = {
 };
 
 // ---------------------------------------------------------------------------
+// Phase 5: Long-thread conversation reconstruction
+// ---------------------------------------------------------------------------
+
+export type ThreadAssetOrder = {
+  assetId: string;
+  /** Position in probable chronological order. Lower = earlier. */
+  position: number;
+  /** Whether this asset fully overlaps with the previous one (near-duplicate content). */
+  overlapsWithPrevious: boolean;
+};
+
+export type MergedThreadFact = {
+  factKey: string;
+  factType: FactType;
+  value: unknown;
+  /** Which assets contributed to this fact. */
+  sourceAssetIds: string[];
+  confidence: number;
+  observedVsInferred: "observed" | "inferred";
+  /** Is this fact from the most recent / actionable part of the thread? */
+  isLatestSignal: boolean;
+};
+
+export type ThreadReconstructionOutcome =
+  | "full_thread"           // Confident reconstruction
+  | "partial_thread"        // Some gaps, usable but incomplete
+  | "ambiguous_thread"      // Cannot confidently reconstruct
+  | "single_asset"          // Only one asset — no reconstruction needed
+  | "duplicate_only";       // All assets are duplicates of each other
+
+export type ThreadReconstructionResult = {
+  outcome: ThreadReconstructionOutcome;
+  orderedAssets: ThreadAssetOrder[];
+  mergedFacts: MergedThreadFact[];
+  /** The most recent actionable signal, if detectable. */
+  latestActionableSignal: string | null;
+  /** What is missing or unresolved in this thread. */
+  unresolvedGaps: string[];
+  reconstructionConfidence: number;
+  reconstructionRationale: string;
+  /** Original assetIds considered as duplicates within this thread. */
+  suppressedDuplicateAssetIds: string[];
+};
+
+// ---------------------------------------------------------------------------
+// Phase 5: Structured AI Review handoff payload contract
+// ---------------------------------------------------------------------------
+
+export type HandoffPayloadStatus =
+  | "ready"       // Handoff payload is well-formed, ready to pass
+  | "partial"     // Some fields uncertain but sufficient
+  | "insufficient"; // Not enough info for safe handoff
+
+export type ReviewHandoffPayload = {
+  /** Unique ID for this handoff request. */
+  handoffId: string;
+  status: HandoffPayloadStatus;
+  /** Source asset IDs being handed off. */
+  sourceAssetIds: string[];
+  /** Signals that triggered the handoff recommendation. */
+  handoffReasons: string[];
+  /** What image intake lane extracted orientationally. */
+  orientationSummary: string | null;
+  /** Classification input type that was determined. */
+  detectedInputType: string | null;
+  /** Client binding context (safe to pass). */
+  bindingContext: {
+    clientId: string | null;
+    clientLabel: string | null;
+    caseId: string | null;
+    caseLabel: string | null;
+    bindingConfidence: number;
+  };
+  /** Ambiguity notes for AI Review lane to be aware of. */
+  ambiguityNotes: string[];
+  /** Minimal metadata for AI Review entrypoint. */
+  metadata: {
+    sessionId: string;
+    tenantId: string;
+    userId: string;
+    uploadedAt: Date;
+  };
+  /**
+   * Explicit separation marker: image intake did NOT perform AI Review work.
+   * AI Review lane must process this independently.
+   */
+  laneNote: "image_intake_lane_only_extracted_orientation";
+};
+
+// ---------------------------------------------------------------------------
+// Phase 5: Advanced case/opportunity signal extraction
+// ---------------------------------------------------------------------------
+
+export const CASE_SIGNAL_STRENGTHS = ["strong", "moderate", "weak"] as const;
+export type CaseSignalStrength = (typeof CASE_SIGNAL_STRENGTHS)[number];
+
+export type CaseOpportunitySignal = {
+  signalType:
+    | "product_type_mention"
+    | "bank_or_institution_mention"
+    | "deadline_or_date_mention"
+    | "existing_process_reference"
+    | "financial_amount_hint"
+    | "advisor_action_request"
+    | "case_title_like_text";
+  rawValue: string;
+  normalizedValue: string | null;
+  strength: CaseSignalStrength;
+  evidenceText: string;
+  sourceAssetId: string;
+  /** This is for binding assist only — never for confident auto-pick. */
+  bindingAssistOnly: true;
+};
+
+export type CaseSignalBundle = {
+  signals: CaseOpportunitySignal[];
+  /** Combined signal strength for this bundle. */
+  overallStrength: CaseSignalStrength | "none";
+  /** Human-readable summary for preview. */
+  summary: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Phase 5: Batch multimodal decision
+// ---------------------------------------------------------------------------
+
+export type BatchMultimodalStrategy = "per_asset" | "combined_pass" | "skip_all";
+
+export type BatchMultimodalDecision = {
+  strategy: BatchMultimodalStrategy;
+  /** Asset IDs to include in combined pass (when strategy=combined_pass). */
+  combinedPassAssetIds: string[];
+  /** Asset IDs to process individually. */
+  perAssetIds: string[];
+  /** Asset IDs to skip (dead ends / duplicates / unsupported). */
+  skipAssetIds: string[];
+  costRationale: string;
+  /** Estimated max vision calls for this decision. */
+  estimatedVisionCalls: number;
+};
+
+// ---------------------------------------------------------------------------
 // O) Constants
 // ---------------------------------------------------------------------------
 
