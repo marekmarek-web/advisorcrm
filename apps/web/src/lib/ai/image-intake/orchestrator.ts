@@ -1,22 +1,27 @@
 /**
- * AI Photo / Image Intake — orchestration adapter.
+ * AI Photo / Image Intake — orchestration adapter (Phase 2).
  *
  * Connects the image intake lane to the existing assistant orchestration.
+ * Phase 2 additions:
+ * - real classifier (cheap-first two-layer)
+ * - enhanced client/case binding v1 (session → UI context → none)
+ * - action planning v1 via planner.ts
+ *
  * Reuses canonical action surface, preview/confirm flow and write actions.
- * No new write engine — all writes go through existing ExecutionPlan → executePlan path.
+ * No new write engine.
  */
 
 import { randomUUID } from "crypto";
 import type { StepPreviewItem } from "../assistant-execution-ui";
 import type { ExecutionPlan, ExecutionStep, CanonicalIntentType } from "../assistant-domain-model";
 import type { AssistantSession } from "../assistant-session";
+import type { ActiveContext } from "../assistant-session";
 
 import type {
   ImageIntakeRequest,
   ImageIntakeResponse,
   ImageIntakeTrace,
   ImageIntakeActionPlan,
-  ImageIntakeActionCandidate,
   ImageIntakePreviewPayload,
   NormalizedImageAsset,
   LaneDecisionResult,
@@ -29,69 +34,74 @@ import type {
 import { emptyFactBundle, emptyActionPlan } from "./types";
 import { runBatchPreflight } from "./preflight";
 import { enforceImageIntakeGuardrails, safeOutputModeForUncertainInput } from "./guardrails";
+import { classifyBatch } from "./classifier";
+import { buildActionPlanV1 } from "./planner";
 
 // ---------------------------------------------------------------------------
-// Lane decision (deterministic in Phase 1; Phase 2 adds classifier)
+// Lane decision (deterministic — image lane is always the right lane for image input)
 // ---------------------------------------------------------------------------
 
-function decideLane(
-  _assets: NormalizedImageAsset[],
-  _accompanyingText: string | null,
-): LaneDecisionResult {
+function decideLane(_assets: NormalizedImageAsset[]): LaneDecisionResult {
   return {
     lane: "image_intake",
     confidence: 1.0,
-    reason: "Image input routed to image intake lane (Phase 1 default).",
+    reason: "Image input routed to image intake lane.",
     handoffReason: null,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Classification stub (Phase 2 replaces with model-based classifier)
+// Client / case binding v1 — priority chain
 // ---------------------------------------------------------------------------
 
-function classifyInput(
-  _assets: NormalizedImageAsset[],
-  _accompanyingText: string | null,
-): InputClassificationResult {
-  return {
-    inputType: "mixed_or_uncertain_image",
-    subtype: null,
-    confidence: 0.0,
-    containsText: false,
-    likelyMessageThread: false,
-    likelyDocument: false,
-    likelyPayment: false,
-    likelyFinancialInfo: false,
-    uncertaintyFlags: ["phase1_stub_no_classifier"],
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Client / case binding (from session context in Phase 1)
-// ---------------------------------------------------------------------------
-
-function resolveClientBinding(
+/**
+ * Priority: session lock → session active → request UI context → unresolved.
+ * Confidence reflects source quality.
+ */
+export function resolveClientBindingV1(
   request: ImageIntakeRequest,
   session: AssistantSession | null,
 ): ClientBindingResult {
-  const sessionClientId = session?.lockedClientId ?? session?.activeClientId ?? null;
-  const requestClientId = request.activeClientId;
-
-  const clientId = sessionClientId ?? requestClientId;
-
-  if (clientId) {
+  // 1. Session locked client (highest priority)
+  if (session?.lockedClientId) {
     return {
       state: "bound_client_confident",
-      clientId,
+      clientId: session.lockedClientId,
       clientLabel: null,
-      confidence: sessionClientId ? 0.9 : 0.7,
+      confidence: 0.95,
       candidates: [],
-      source: sessionClientId ? "session_context" : "ui_context",
+      source: "session_context",
       warnings: [],
     };
   }
 
+  // 2. Session active client
+  if (session?.activeClientId) {
+    return {
+      state: "bound_client_confident",
+      clientId: session.activeClientId,
+      clientLabel: null,
+      confidence: 0.80,
+      candidates: [],
+      source: "session_context",
+      warnings: [],
+    };
+  }
+
+  // 3. UI context from request
+  if (request.activeClientId) {
+    return {
+      state: "bound_client_confident",
+      clientId: request.activeClientId,
+      clientLabel: null,
+      confidence: 0.70,
+      candidates: [],
+      source: "ui_context",
+      warnings: [],
+    };
+  }
+
+  // 4. Nothing — unresolved
   return {
     state: "insufficient_binding",
     clientId: null,
@@ -99,24 +109,27 @@ function resolveClientBinding(
     confidence: 0.0,
     candidates: [],
     source: "none",
-    warnings: ["Klient nebyl identifikován — write-ready plán nelze vytvořit."],
+    warnings: ["Klient nebyl identifikován — write-ready plán nelze vytvořit bez aktivního klientského kontextu."],
   };
 }
 
-function resolveCaseBinding(
+export function resolveCaseBindingV1(
   request: ImageIntakeRequest,
   session: AssistantSession | null,
 ): CaseBindingResult {
-  const caseId = session?.lockedOpportunityId ?? request.activeOpportunityId ?? null;
+  const caseId =
+    session?.lockedOpportunityId ??
+    request.activeOpportunityId ??
+    null;
 
   if (caseId) {
     return {
       state: "bound_case_confident",
       caseId,
       caseLabel: null,
-      confidence: 0.8,
+      confidence: 0.80,
       candidates: [],
-      source: "session_context",
+      source: session?.lockedOpportunityId ? "session_context" : "ui_context",
     };
   }
 
@@ -128,18 +141,6 @@ function resolveCaseBinding(
     candidates: [],
     source: "none",
   };
-}
-
-// ---------------------------------------------------------------------------
-// Action plan stub (Phase 2 replaces with model-based planner)
-// ---------------------------------------------------------------------------
-
-function buildActionPlanStub(
-  classification: InputClassificationResult,
-  clientBinding: ClientBindingResult,
-): ImageIntakeActionPlan {
-  const outputMode = safeOutputModeForUncertainInput(classification, clientBinding);
-  return emptyActionPlan(outputMode);
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +202,9 @@ export function mapToPreviewItems(plan: ExecutionPlan): StepPreviewItem[] {
     stepId: step.stepId,
     label: step.label,
     action: step.label,
-    description: `Image intake: ${step.action}`,
+    description: step.params._imageIntakeSource
+      ? `Image intake: ${step.action}`
+      : String(step.action),
     preflightStatus: "ready" as const,
   }));
 }
@@ -229,7 +232,7 @@ export function buildImageIntakePreview(
     inputType: classification?.inputType ?? "mixed_or_uncertain_image",
     clientLabel: clientBinding.clientLabel,
     caseLabel: caseBinding.caseLabel,
-    summary: actionPlan.whyThisAction || "Image intake zpracování (Phase 1 stub).",
+    summary: actionPlan.whyThisAction || "Image intake zpracování.",
     factsSummary: factBundle.facts.map((f) => `${f.factType}: ${f.value ?? "–"}`),
     uncertainties: [
       ...factBundle.ambiguityReasons,
@@ -249,23 +252,37 @@ export function buildImageIntakePreview(
 }
 
 // ---------------------------------------------------------------------------
-// Main orchestration entrypoint
+// Main orchestration entrypoint (Phase 2 — real classifier + planner)
 // ---------------------------------------------------------------------------
 
 export type ImageIntakeOrchestratorResult = {
   response: ImageIntakeResponse;
   executionPlan: ExecutionPlan | null;
   previewPayload: ImageIntakePreviewPayload;
+  /** Whether classifier made a model call (for cost tracing). */
+  classifierUsedModel: boolean;
 };
 
-export function processImageIntake(
+export async function processImageIntake(
   request: ImageIntakeRequest,
   session: AssistantSession | null,
-): ImageIntakeOrchestratorResult {
+  activeContext?: ActiveContext | null,
+): Promise<ImageIntakeOrchestratorResult> {
   const startTime = Date.now();
   const intakeId = `img_${randomUUID().slice(0, 12)}`;
 
-  // 1. Batch preflight
+  // Apply activeContext to supplement request binding info
+  const effectiveRequest: ImageIntakeRequest = {
+    ...request,
+    activeClientId:
+      request.activeClientId ??
+      (typeof activeContext?.clientId === "string" ? activeContext.clientId : null),
+    activeOpportunityId:
+      request.activeOpportunityId ??
+      (typeof activeContext?.opportunityId === "string" ? activeContext.opportunityId : null),
+  };
+
+  // 1. Batch preflight (deterministic, free)
   const batchPreflight = runBatchPreflight(request.assets, request.sessionId);
   const primaryPreflight = batchPreflight.assetResults[0]?.result ?? {
     eligible: false,
@@ -278,23 +295,64 @@ export function processImageIntake(
   };
 
   // 2. Lane decision
-  const laneDecision = decideLane(request.assets, request.accompanyingText);
+  const laneDecision = decideLane(request.assets);
 
-  // 3. Classification (stub in Phase 1)
-  const classification = batchPreflight.eligible
-    ? classifyInput(request.assets, request.accompanyingText)
-    : null;
+  // 3. Client / case binding v1
+  const clientBinding = resolveClientBindingV1(effectiveRequest, session);
+  const caseBinding = resolveCaseBindingV1(effectiveRequest, session);
 
-  // 4. Client / case binding
-  const clientBinding = resolveClientBinding(request, session);
-  const caseBinding = resolveCaseBinding(request, session);
+  // 4. Classification — cheap-first two-layer
+  let classification: InputClassificationResult | null = null;
+  let classifierUsedModel = false;
 
-  // 5. Fact extraction (stub in Phase 1)
+  if (batchPreflight.eligible) {
+    const classifierResult = await classifyBatch(
+      batchPreflight.assetResults
+        .filter((r) => r.result.eligible && !r.result.isDuplicate)
+        .map((r) => {
+          const asset = request.assets.find((a) => a.assetId === r.assetId);
+          return asset!;
+        })
+        .filter(Boolean),
+      request.accompanyingText,
+    );
+    classification = classifierResult.result;
+    classifierUsedModel = classifierResult.usedModel;
+
+    // Early exit for obvious unusable — no further processing needed
+    if (classifierResult.earlyExit) {
+      const earlyPlan = emptyActionPlan("no_action_archive_only");
+      const earlyPreview = buildImageIntakePreview(intakeId, classification, clientBinding, caseBinding, emptyFactBundle(), earlyPlan);
+      const trace: ImageIntakeTrace = {
+        intakeId,
+        sessionId: request.sessionId,
+        assetIds: request.assets.map((a) => a.assetId),
+        laneDecision: laneDecision.lane,
+        inputType: classification.inputType,
+        outputMode: "no_action_archive_only",
+        clientBindingState: clientBinding.state,
+        factCount: 0,
+        actionCount: 0,
+        writeReady: false,
+        guardrailsTriggered: [],
+        durationMs: Date.now() - startTime,
+        timestamp: new Date(),
+      };
+      return {
+        response: { intakeId, laneDecision, preflight: primaryPreflight, classification, clientBinding, caseBinding, factBundle: emptyFactBundle(), actionPlan: earlyPlan, previewSteps: [], trace },
+        executionPlan: null,
+        previewPayload: earlyPreview,
+        classifierUsedModel,
+      };
+    }
+  }
+
+  // 5. Fact extraction (stub — Phase 3)
   const factBundle = emptyFactBundle();
 
-  // 6. Action planning (stub in Phase 1)
+  // 6. Action planning v1
   const actionPlan = classification
-    ? buildActionPlanStub(classification, clientBinding)
+    ? buildActionPlanV1(classification, clientBinding)
     : emptyActionPlan("no_action_archive_only");
 
   // 7. Guardrails
@@ -305,16 +363,12 @@ export function processImageIntake(
     actionPlan,
   );
 
-  // Apply guardrail downgrade
   if (guardrailVerdict.modeDowngraded && guardrailVerdict.downgradedTo) {
     actionPlan.outputMode = guardrailVerdict.downgradedTo;
     actionPlan.needsAdvisorInput = true;
-    actionPlan.safetyFlags.push(
-      ...guardrailVerdict.violations,
-    );
+    actionPlan.safetyFlags.push(...guardrailVerdict.violations);
   }
 
-  // Strip disallowed actions
   if (guardrailVerdict.strippedActions.length > 0) {
     const strippedIds = new Set(guardrailVerdict.strippedActions.map((a) => a.intentType));
     actionPlan.recommendedActions = actionPlan.recommendedActions.filter(
@@ -322,14 +376,15 @@ export function processImageIntake(
     );
   }
 
-  // 8. Map to execution plan (for preview/confirm reuse)
-  const executionPlan = actionPlan.recommendedActions.length > 0
-    ? mapToExecutionPlan(intakeId, actionPlan, clientBinding.clientId, caseBinding.caseId)
-    : null;
+  // 8. Execution plan (if actions exist)
+  const executionPlan =
+    actionPlan.recommendedActions.length > 0
+      ? mapToExecutionPlan(intakeId, actionPlan, clientBinding.clientId, caseBinding.caseId)
+      : null;
 
   const previewSteps = executionPlan ? mapToPreviewItems(executionPlan) : [];
 
-  // 9. Build preview payload
+  // 9. Preview payload
   const previewPayload = buildImageIntakePreview(
     intakeId,
     classification,
@@ -339,7 +394,7 @@ export function processImageIntake(
     actionPlan,
   );
 
-  // 10. Build trace
+  // 10. Trace
   const trace: ImageIntakeTrace = {
     intakeId,
     sessionId: request.sessionId,
@@ -369,5 +424,5 @@ export function processImageIntake(
     trace,
   };
 
-  return { response, executionPlan, previewPayload };
+  return { response, executionPlan, previewPayload, classifierUsedModel };
 }

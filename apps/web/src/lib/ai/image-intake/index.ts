@@ -62,11 +62,37 @@ export {
 } from "./guardrails";
 export type { GuardrailVerdict } from "./guardrails";
 
+// --- Classifier v1 ---
+export { classifyImageInput, classifyBatch } from "./classifier";
+export type { ClassifierDecision } from "./classifier";
+
+// --- Planner v1 ---
+export { buildActionPlanV1 } from "./planner";
+
+// --- Feature flag ---
+export {
+  isImageIntakeEnabled,
+  getImageIntakeClassifierConfig,
+  getImageIntakeFlagState,
+} from "./feature-flag";
+
 // --- Orchestrator ---
 export {
   processImageIntake,
   mapToExecutionPlan,
   mapToPreviewItems,
   buildImageIntakePreview,
+  resolveClientBindingV1,
+  resolveCaseBindingV1,
 } from "./orchestrator";
 export type { ImageIntakeOrchestratorResult } from "./orchestrator";
+
+// --- Response mapper ---
+export { mapImageIntakeToAssistantResponse } from "./response-mapper";
+
+// --- Route handler ---
+export {
+  parseImageAssetsFromBody,
+  handleImageIntakeFromChatRoute,
+} from "./route-handler";
+export type { ImageAssetInput } from "./route-handler";

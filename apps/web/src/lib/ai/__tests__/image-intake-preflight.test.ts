@@ -2,7 +2,10 @@
  * Image Intake Phase 1: preflight validation tests.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
+vi.mock("@/lib/openai", () => ({ createResponseStructured: vi.fn(), createResponseSafe: vi.fn(), logOpenAICall: vi.fn() }));
 import {
   runImagePreflight,
   runBatchPreflight,

@@ -30,6 +30,11 @@ import { ASSISTANT_CHANNELS, type AssistantChannel, type AssistantMode } from "@
 import { logAudit } from "@/lib/audit";
 import { captureAssistantApiError } from "@/lib/observability/assistant-sentry";
 import { sanitizeAssistantMessageForAdvisor, sanitizeWarningForAdvisor } from "@/lib/ai/assistant-message-sanitizer";
+import {
+  isImageIntakeEnabled,
+  parseImageAssetsFromBody,
+  handleImageIntakeFromChatRoute,
+} from "@/lib/ai/image-intake";
 
 export const dynamic = "force-dynamic";
 
@@ -148,7 +153,11 @@ export async function POST(request: Request) {
               ? "canonical"
               : "legacy";
 
-          if (!message && !confirmExecution && !cancelExecution && !bootstrapPostUpload) {
+          const hasImageAssets =
+            Array.isArray((body as Record<string, unknown>).imageAssets) &&
+            ((body as Record<string, unknown>).imageAssets as unknown[]).length > 0;
+
+          if (!message && !confirmExecution && !cancelExecution && !bootstrapPostUpload && !hasImageAssets) {
             return NextResponse.json(
               { error: "Chybí zpráva." },
               { status: 400, headers: correlationHeaders(traceId, assistantRunId) },
@@ -243,9 +252,28 @@ export async function POST(request: Request) {
             logAssistantTelemetry(AssistantTelemetryAction.ROUTE_LEGACY);
           }
 
+          // --- Image Intake lane detection ---
+          // Cheap-first: parse assets from body before any model call.
+          // Text-only requests are completely unaffected (imageAssets absent → 0 assets).
+          const rawImageAssets = parseImageAssetsFromBody(body);
+          const isImageRequest = rawImageAssets.length > 0 && isImageIntakeEnabled();
+
           let response: AssistantResponse;
 
-          if (orchestration === "canonical" && (confirmExecution || cancelExecution)) {
+          if (isImageRequest && !confirmExecution && !cancelExecution) {
+            // Route to image intake lane (feature-flagged)
+            response = await handleImageIntakeFromChatRoute(
+              rawImageAssets,
+              session,
+              activeContext,
+              {
+                tenantId,
+                userId,
+                channel,
+                accompanyingText: message || null,
+              },
+            );
+          } else if (orchestration === "canonical" && (confirmExecution || cancelExecution)) {
             const confirmOut = await handleAssistantAwaitingConfirmation(
               session,
               {

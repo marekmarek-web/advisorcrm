@@ -2,7 +2,10 @@
  * Image Intake Phase 1: orchestrator integration tests.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
+vi.mock("@/lib/openai", () => ({ createResponseStructured: vi.fn(), createResponseSafe: vi.fn(), logOpenAICall: vi.fn() }));
 import {
   processImageIntake,
   mapToExecutionPlan,
@@ -57,36 +60,49 @@ function makeRequest(overrides: Partial<ImageIntakeRequest> = {}): ImageIntakeRe
   };
 }
 
+import { createResponseStructured } from "@/lib/openai";
+
+function mockModel(inputType: string, confidence = 0.4) {
+  vi.mocked(createResponseStructured).mockResolvedValueOnce({
+    text: "{}",
+    parsed: { inputType, confidence, rationale: "test", needsDeepExtraction: false, safePreviewAlready: false },
+    model: "gpt-5-mini",
+  });
+}
+
 describe("processImageIntake", () => {
   beforeEach(() => {
     purgePreflightCache(SESSION_ID);
+    vi.clearAllMocks();
   });
 
-  it("returns a complete response for a valid image without client context", () => {
-    const result = processImageIntake(makeRequest(), null);
+  it("returns a complete response for a valid image without client context", async () => {
+    mockModel("mixed_or_uncertain_image", 0.3);
+    const result = await processImageIntake(makeRequest(), null);
 
     expect(result.response.intakeId).toBeTruthy();
     expect(result.response.laneDecision.lane).toBe("image_intake");
     expect(result.response.preflight.eligible).toBe(true);
     expect(result.response.clientBinding.state).toBe("insufficient_binding");
-    // No write-ready plan without client
     expect(result.previewPayload.writeReady).toBe(false);
     expect(result.response.trace.intakeId).toBe(result.response.intakeId);
   });
 
-  it("uses session locked client for binding", () => {
+  it("uses session locked client for binding", async () => {
     const session = getOrCreateSession(SESSION_ID, TENANT, USER);
     lockAssistantClient(session, CLIENT_ID);
+    mockModel("screenshot_client_communication", 0.85);
 
-    const result = processImageIntake(makeRequest(), session);
+    const result = await processImageIntake(makeRequest(), session);
 
     expect(result.response.clientBinding.state).toBe("bound_client_confident");
     expect(result.response.clientBinding.clientId).toBe(CLIENT_ID);
     expect(result.response.clientBinding.source).toBe("session_context");
   });
 
-  it("uses request activeClientId when session has no lock", () => {
-    const result = processImageIntake(
+  it("uses request activeClientId when session has no lock", async () => {
+    mockModel("mixed_or_uncertain_image", 0.3);
+    const result = await processImageIntake(
       makeRequest({ activeClientId: CLIENT_ID }),
       null,
     );
@@ -96,8 +112,8 @@ describe("processImageIntake", () => {
     expect(result.response.clientBinding.source).toBe("ui_context");
   });
 
-  it("returns no_action for unsupported MIME", () => {
-    const result = processImageIntake(
+  it("returns no_action for unsupported MIME", async () => {
+    const result = await processImageIntake(
       makeRequest({ assets: [makeAsset({ mimeType: "application/pdf" })] }),
       null,
     );
@@ -107,16 +123,24 @@ describe("processImageIntake", () => {
     expect(result.response.actionPlan.outputMode).toBe("no_action_archive_only");
   });
 
-  it("returns ambiguous output mode when no classifier (Phase 1 stub)", () => {
-    const result = processImageIntake(makeRequest(), null);
+  it("returns ambiguous output mode when classifier is uncertain or no client", async () => {
+    mockModel("mixed_or_uncertain_image", 0.3);
+    // Use neutral filename (no hint) to ensure model layer runs and returns uncertain
+    const result = await processImageIntake(
+      makeRequest({ assets: [makeAsset({ originalFilename: "neutral_attach.jpg" })] }),
+      null,
+    );
 
-    expect(result.response.classification).toBeTruthy();
-    expect(result.response.classification!.uncertaintyFlags).toContain("phase1_stub_no_classifier");
+    expect(result.response.classification?.inputType).toBe("mixed_or_uncertain_image");
     expect(result.response.actionPlan.outputMode).toBe("ambiguous_needs_input");
   });
 
-  it("trace contains all required fields", () => {
-    const result = processImageIntake(makeRequest(), null);
+  it("trace contains all required fields", async () => {
+    mockModel("supporting_reference_image", 0.5);
+    const result = await processImageIntake(
+      makeRequest({ assets: [makeAsset({ originalFilename: "neutral_attach.jpg" })] }),
+      null,
+    );
     const trace = result.response.trace;
 
     expect(trace.intakeId).toBeTruthy();
@@ -127,8 +151,12 @@ describe("processImageIntake", () => {
     expect(trace.timestamp).toBeInstanceOf(Date);
   });
 
-  it("does not produce an execution plan for stub (no actions)", () => {
-    const result = processImageIntake(makeRequest(), null);
+  it("no actions for ambiguous / no client", async () => {
+    mockModel("mixed_or_uncertain_image", 0.25);
+    const result = await processImageIntake(
+      makeRequest({ assets: [makeAsset({ originalFilename: "neutral_attach.jpg" })] }),
+      null,
+    );
     expect(result.executionPlan).toBeNull();
   });
 });

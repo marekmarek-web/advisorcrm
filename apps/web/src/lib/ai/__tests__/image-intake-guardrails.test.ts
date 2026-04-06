@@ -2,7 +2,10 @@
  * Image Intake Phase 1: guardrail tests.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
+vi.mock("@/lib/openai", () => ({ createResponseStructured: vi.fn(), createResponseSafe: vi.fn(), logOpenAICall: vi.fn() }));
 import {
   enforceImageIntakeGuardrails,
   isValidTerminalOutputMode,
