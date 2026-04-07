@@ -7,7 +7,9 @@
  * Env variables:
  *   AI_REVIEW_PROVIDER=openai|anthropic        (default: openai)
  *   AI_REVIEW_PROVIDER_FALLBACK_TO_OPENAI=true  (default: false — fail hard in benchmark)
- *   AI_REVIEW_PROVIDER_DEBUG=true               (default: false)
+ *   AI_REVIEW_PROVIDER_DEBUG=true               (default: false — rolled into ai-review-debug.ts)
+ *   AI_REVIEW_DEBUG=true                        (pipeline + prompt + OpenAI call logs; see ai-review-debug.ts)
+ *   AIDVISORA_DEBUG_AI_REVIEW=1|true            (umbrella: same flags as AI_REVIEW_DEBUG for console.info)
  *   ANTHROPIC_API_KEY=sk-ant-...
  *   ANTHROPIC_MODEL=claude-sonnet-4-20250514
  */
@@ -32,6 +34,7 @@ import {
   resolveAnthropicModel,
   getLastAnthropicCallMeta,
 } from "./anthropic-review-adapter";
+import { isAiReviewPipelineDebug } from "./ai-review-debug";
 
 // ─── Provider resolution ─────────────────────────────────────────────────────
 
@@ -44,7 +47,7 @@ export function getAiReviewProvider(): AiReviewProviderName {
 }
 
 export function isAiReviewProviderDebug(): boolean {
-  return process.env.AI_REVIEW_PROVIDER_DEBUG === "true";
+  return isAiReviewPipelineDebug();
 }
 
 function isFallbackToOpenAIEnabled(): boolean {
@@ -52,7 +55,7 @@ function isFallbackToOpenAIEnabled(): boolean {
 }
 
 function logProviderCall(endpoint: string, provider: AiReviewProviderName): void {
-  if (!isAiReviewProviderDebug()) return;
+  if (!isAiReviewPipelineDebug()) return;
   console.info("[review-llm-provider]", JSON.stringify({ endpoint, provider }));
 }
 

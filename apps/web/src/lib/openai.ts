@@ -6,6 +6,7 @@ import {
   findMissingAiReviewPromptVariables,
 } from "./ai/ai-review-prompt-variables";
 import type { AiReviewPromptKey } from "./ai/prompt-model-registry";
+import { isAiReviewPipelineDebug } from "./ai/ai-review-debug";
 
 const defaultModel = "gpt-5-mini";
 const fallbackModel = "gpt-4o-mini";
@@ -156,6 +157,7 @@ export function logOpenAICall(params: {
   error?: string;
 }): void {
   if (process.env.NODE_ENV !== "development") return;
+  if (!isAiReviewPipelineDebug()) return;
   console.log("[OpenAI]", {
     endpoint: params.endpoint,
     model: params.model,
@@ -522,6 +524,7 @@ export function logAiReviewPromptStep(payload: {
   durationMs?: number;
   openaiError?: string;
 }): void {
+  if (!isAiReviewPipelineDebug()) return;
   console.info(
     "[ai-review-prompt]",
     JSON.stringify({
@@ -887,7 +890,7 @@ export async function createResponseStructuredWithImages<T>(
   ];
 
   let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
-  let usedModel = primaryModel;
+  const usedModel = primaryModel;
 
   const body = buildResponsesCreateBody({
     model: primaryModel,

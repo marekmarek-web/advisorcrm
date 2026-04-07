@@ -7,6 +7,7 @@ import {
   aiReviewCreateResponseFromPrompt as createAiReviewResponseFromPrompt,
   aiReviewCreateResponseWithFile as createResponseWithFile,
 } from "./review-llm-provider";
+import { isAiReviewPipelineDebug } from "./ai-review-debug";
 import { detectInputMode, type InputModeResult } from "./input-mode-detection";
 import { normalizeClassification, type ClassificationResult } from "./document-classification";
 import {
@@ -163,6 +164,7 @@ function buildAdobeSignalsSummary(meta?: PipelinePreprocessMeta | null): string 
 
 function logPipelineEvent(phase: string, payload: Record<string, unknown>): void {
   if (process.env.NODE_ENV === "production") return;
+  if (!isAiReviewPipelineDebug()) return;
   console.info(`[ai-review-v2] ${phase}`, JSON.stringify(payload));
 }
 

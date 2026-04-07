@@ -36,22 +36,7 @@ function matchSearch(row: { extractedPayload?: unknown }, q: string): boolean {
 }
 
 export async function GET(request: Request) {
-  const url = request.url;
-  const method = request.method;
-  const xDebugMw = request.headers.get("x-debug-mw");
-  const xDebugPath = request.headers.get("x-debug-path");
   const userId = request.headers.get(USER_ID_HEADER);
-  if (process.env.NODE_ENV === "development") {
-     
-    console.log("[route GET /api/contracts/review]", {
-      url,
-      method,
-      xDebugMw,
-      xDebugPath,
-      hasUserIdHeader: !!userId,
-      userIdMask: userId ? `${userId.slice(0, 8)}…` : null,
-    });
-  }
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -59,10 +44,6 @@ export async function GET(request: Request) {
   try {
     const membership = await getMembership(userId);
     if (!membership) {
-      if (process.env.NODE_ENV === "development") {
-         
-        console.log("[route GET /api/contracts/review] 403", { hasMembership: false });
-      }
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
