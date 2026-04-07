@@ -23,11 +23,14 @@ export type ImageIntakeConfigKey =
   | "combined_pass_max_images"
   | "intent_assist_confidence_threshold"
   | "intent_assist_enabled"
+  | "intent_assist_cache_ttl_hours"
   | "cross_session_persistence_enabled"
   | "handoff_queue_submit_enabled"
   | "rollout_percentage_combined"
   | "rollout_percentage_cross_session"
-  | "rollout_percentage_handoff_submit";
+  | "rollout_percentage_handoff_submit"
+  /** Phase 11: interval (hours) for the dedicated cache cleanup cron. Default 2h. */
+  | "cache_cleanup_interval_hours";
 
 type ConfigDefinition = {
   envVar: string;
@@ -71,6 +74,13 @@ const CONFIG_DEFINITIONS: Record<ImageIntakeConfigKey, ConfigDefinition> = {
     defaultValue: false,
     type: "boolean",
   },
+  intent_assist_cache_ttl_hours: {
+    envVar: "IMAGE_INTAKE_INTENT_ASSIST_CACHE_TTL_HOURS",
+    defaultValue: 0.5, // 30 minutes — matches in-process cache TTL
+    min: 0.1,
+    max: 24,
+    type: "number",
+  },
   cross_session_persistence_enabled: {
     envVar: "IMAGE_INTAKE_CROSS_SESSION_PERSISTENCE_ENABLED",
     defaultValue: false,
@@ -100,6 +110,13 @@ const CONFIG_DEFINITIONS: Record<ImageIntakeConfigKey, ConfigDefinition> = {
     defaultValue: 100,
     min: 0,
     max: 100,
+    type: "number",
+  },
+  cache_cleanup_interval_hours: {
+    envVar: "IMAGE_INTAKE_CACHE_CLEANUP_INTERVAL_HOURS",
+    defaultValue: 2,
+    min: 0.5,
+    max: 24,
     type: "number",
   },
 };
@@ -190,8 +207,17 @@ export function getImageIntakeConfig(): {
   combinedPassMaxImages: number;
   intentAssistThreshold: number;
   intentAssistEnabled: boolean;
+  /** Phase 10: separate TTL for intent-assist cache cleanup (default 30 min). */
+  intentAssistCacheTtlMs: number;
   crossSessionPersistenceEnabled: boolean;
   handoffQueueSubmitEnabled: boolean;
+  /**
+   * Phase 11: interval (hours) for the dedicated intent-assist cache cleanup cron.
+   * Default 2h — aligns with 30-min cache TTL so entries are cleaned within a reasonable window.
+   * This value is informational only (actual schedule is set in vercel.json).
+   * Exposed here for ops visibility and potential future dynamic scheduling.
+   */
+  cacheCleanupIntervalHours: number;
 } {
   return {
     crossSessionTtlMs: (resolveValue("cross_session_ttl_hours") as number) * 60 * 60 * 1000,
@@ -199,8 +225,10 @@ export function getImageIntakeConfig(): {
     combinedPassMaxImages: resolveValue("combined_pass_max_images") as number,
     intentAssistThreshold: resolveValue("intent_assist_confidence_threshold") as number,
     intentAssistEnabled: resolveValue("intent_assist_enabled") as boolean,
+    intentAssistCacheTtlMs: (resolveValue("intent_assist_cache_ttl_hours") as number) * 60 * 60 * 1000,
     crossSessionPersistenceEnabled: resolveValue("cross_session_persistence_enabled") as boolean,
     handoffQueueSubmitEnabled: resolveValue("handoff_queue_submit_enabled") as boolean,
+    cacheCleanupIntervalHours: resolveValue("cache_cleanup_interval_hours") as number,
   };
 }
 
