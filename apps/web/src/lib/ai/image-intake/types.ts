@@ -614,6 +614,83 @@ export type BatchMultimodalDecision = {
 };
 
 // ---------------------------------------------------------------------------
+// Phase 6: Cross-session thread reconstruction
+// ---------------------------------------------------------------------------
+
+/** Lightweight artifact stored in-process for cross-session reference. */
+export type CrossSessionThreadArtifact = {
+  artifactId: string;
+  tenantId: string;
+  userId: string;
+  clientId: string | null;
+  /** ISO timestamp of last update. */
+  lastUpdatedAt: string;
+  /** The thread facts from previous session(s). */
+  priorMergedFacts: MergedThreadFact[];
+  /** Latest actionable signal captured. */
+  priorLatestSignal: string | null;
+  /** Session IDs that contributed to this artifact. */
+  sourceSessionIds: string[];
+};
+
+export type CrossSessionReconstructionResult = {
+  /** Was a prior artifact found and used? */
+  hasPriorContext: boolean;
+  /** Prior facts from previous sessions. */
+  priorMergedFacts: MergedThreadFact[];
+  /** Current session's facts. */
+  currentMergedFacts: MergedThreadFact[];
+  /** What changed vs prior context. */
+  priorVsLatestDelta: string | null;
+  /** Combined confidence in the cross-session linkage. */
+  crossSessionConfidence: number;
+  /** Gaps that couldn't be resolved cross-session. */
+  unresolvedGaps: string[];
+};
+
+// ---------------------------------------------------------------------------
+// Phase 6: Handoff submit result
+// ---------------------------------------------------------------------------
+
+export type HandoffSubmitStatus =
+  | "submitted"
+  | "skipped_no_confirm"
+  | "skipped_flag_disabled"
+  | "skipped_no_payload"
+  | "failed";
+
+export type HandoffSubmitResult = {
+  status: HandoffSubmitStatus;
+  handoffId: string | null;
+  reason: string;
+  /** Action reference for audit. */
+  auditRef: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Phase 6: Intent change detection
+// ---------------------------------------------------------------------------
+
+export type IntentChangeStatus =
+  | "stable"          // No change detected
+  | "changed"         // Clear intent change
+  | "partially_changed" // Some aspects changed, others stable
+  | "ambiguous";      // Cannot determine with confidence
+
+export type IntentChangeFinding = {
+  status: IntentChangeStatus;
+  /** The most recent / actionable intent. */
+  currentIntent: string | null;
+  /** Prior intent that may be superseded. */
+  priorIntent: string | null;
+  /** Human-readable explanation of the change. */
+  changeExplanation: string | null;
+  confidence: number;
+  /** Whether the prior intent should be treated as superseded. */
+  priorSuperseded: boolean;
+};
+
+// ---------------------------------------------------------------------------
 // O) Constants
 // ---------------------------------------------------------------------------
 

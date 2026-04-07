@@ -169,6 +169,78 @@ export function isImageIntakeCaseSignalEnabledForUser(userId: string): boolean {
     isUserAllowed(userId, "IMAGE_INTAKE_CASE_SIGNAL_ALLOWED_USER_IDS");
 }
 
+// ---------------------------------------------------------------------------
+// Phase 6: Percentage / canary rollout v1
+//
+// Deterministic hash-based bucket assignment.
+// No DB queries — pure string hash using userId as seed.
+// Config: IMAGE_INTAKE_ROLLOUT_PERCENTAGE=0..100 (integer)
+//   → 0 = disabled for all, 100 = enabled for all (within allowlist)
+//   → empty/unset = 100 (full rollout within allowlist)
+//
+// Per sub-feature percentage gates:
+//   IMAGE_INTAKE_COMBINED_MULTIMODAL_PERCENTAGE=0..100
+//   IMAGE_INTAKE_CROSS_SESSION_PERCENTAGE=0..100
+//   IMAGE_INTAKE_HANDOFF_SUBMIT_PERCENTAGE=0..100
+// ---------------------------------------------------------------------------
+
+/**
+ * Deterministic hash → bucket [0, 99].
+ * Uses djb2-style hash on userId string — no crypto, no DB.
+ */
+function userBucket(userId: string, salt: string): number {
+  const str = `${salt}:${userId}`;
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 33) ^ str.charCodeAt(i);
+    hash = hash >>> 0; // keep unsigned 32-bit
+  }
+  return hash % 100;
+}
+
+function parsePercentage(envVar: string, defaultPct = 100): number {
+  const raw = process.env[envVar]?.trim();
+  if (!raw) return defaultPct;
+  const n = parseInt(raw, 10);
+  if (isNaN(n) || n < 0) return 0;
+  if (n > 100) return 100;
+  return n;
+}
+
+function isUserInPercentageBucket(userId: string, envVar: string, salt: string): boolean {
+  const pct = parsePercentage(envVar);
+  if (pct === 0) return false;
+  if (pct >= 100) return true;
+  return userBucket(userId, salt) < pct;
+}
+
+/**
+ * Phase 6: Returns true when combined multimodal execution is enabled for a user.
+ * Requires base + multimodal enabled + percentage gate.
+ */
+export function isImageIntakeCombinedMultimodalEnabledForUser(userId: string): boolean {
+  return isImageIntakeMultimodalEnabledForUser(userId) &&
+    isUserInPercentageBucket(userId, "IMAGE_INTAKE_COMBINED_MULTIMODAL_PERCENTAGE", "combined");
+}
+
+/**
+ * Phase 6: Returns true when cross-session reconstruction is enabled for a user.
+ */
+export function isImageIntakeCrossSessionEnabledForUser(userId: string): boolean {
+  return isImageIntakeThreadReconstructionEnabledForUser(userId) &&
+    process.env.IMAGE_INTAKE_CROSS_SESSION_ENABLED === "true" &&
+    isUserInPercentageBucket(userId, "IMAGE_INTAKE_CROSS_SESSION_PERCENTAGE", "cross_session");
+}
+
+/**
+ * Phase 6: Returns true when AI Review handoff submit is enabled for a user.
+ */
+export function isImageIntakeHandoffSubmitEnabledForUser(userId: string): boolean {
+  return isImageIntakeReviewHandoffEnabledForUser(userId) &&
+    process.env.IMAGE_INTAKE_HANDOFF_SUBMIT_ENABLED === "true" &&
+    isUserInPercentageBucket(userId, "IMAGE_INTAKE_HANDOFF_SUBMIT_PERCENTAGE", "handoff_submit");
+}
+
 /**
  * Returns Phase 5 rollout summary for a specific user (trace-safe).
  */
@@ -178,6 +250,9 @@ export function getImageIntakeUserRolloutSummary(userId: string): {
   threadReconstruction: boolean;
   reviewHandoff: boolean;
   caseSignal: boolean;
+  combinedMultimodal: boolean;
+  crossSession: boolean;
+  handoffSubmit: boolean;
   reason: string;
 } {
   const base = isImageIntakeEnabledForUser(userId);
@@ -187,8 +262,11 @@ export function getImageIntakeUserRolloutSummary(userId: string): {
     threadReconstruction: base && isImageIntakeThreadReconstructionEnabledForUser(userId),
     reviewHandoff: base && isImageIntakeReviewHandoffEnabledForUser(userId),
     caseSignal: base && isImageIntakeCaseSignalEnabledForUser(userId),
+    combinedMultimodal: base && isImageIntakeCombinedMultimodalEnabledForUser(userId),
+    crossSession: base && isImageIntakeCrossSessionEnabledForUser(userId),
+    handoffSubmit: base && isImageIntakeHandoffSubmitEnabledForUser(userId),
     reason: base
-      ? "user is allowed by base flag and optional per-feature allowlists"
+      ? "user is allowed by base flag, allowlists and percentage gates"
       : "image intake disabled (base flag or user allowlist exclusion)",
   };
 }

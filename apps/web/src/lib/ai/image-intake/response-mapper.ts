@@ -16,6 +16,7 @@ import { buildFactsSummaryLines } from "./extractor";
 import { buildStitchingSummary } from "./stitching";
 import { buildThreadSummaryLines } from "./thread-reconstruction";
 import { buildHandoffPreviewNote } from "./handoff-payload";
+import { buildIntentChangeSummary } from "./intent-change-detection";
 
 // ---------------------------------------------------------------------------
 // Message templates by output mode
@@ -169,6 +170,21 @@ export function mapImageIntakeToAssistantResponse(
   // Case signals summary (Phase 5)
   if (result.caseSignals?.summary) {
     suggestedNextSteps.push(`Signály k příležitosti: ${result.caseSignals.summary}`);
+  }
+
+  // Intent change detection summary (Phase 6)
+  if (result.intentChange && result.intentChange.status !== "stable") {
+    const intentNote = buildIntentChangeSummary(result.intentChange);
+    if (intentNote) {
+      suggestedNextSteps.push(intentNote);
+    }
+  }
+
+  // Cross-session reconstruction note (Phase 6)
+  if (result.crossSessionReconstruction?.hasPriorContext) {
+    const cs = result.crossSessionReconstruction;
+    const delta = cs.priorVsLatestDelta ?? "Navazuje na předchozí session.";
+    suggestedNextSteps.push(`Cross-session kontext (jistota ${Math.round(cs.crossSessionConfidence * 100)}%): ${delta}`);
   }
 
   // Case binding v2 warning (Phase 4)

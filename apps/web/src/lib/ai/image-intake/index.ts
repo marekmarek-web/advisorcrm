@@ -22,6 +22,16 @@ export type {
 } from "./types";
 export { CASE_SIGNAL_STRENGTHS } from "./types";
 
+// Phase 6 types
+export type {
+  CrossSessionThreadArtifact,
+  CrossSessionReconstructionResult,
+  HandoffSubmitStatus,
+  HandoffSubmitResult,
+  IntentChangeStatus,
+  IntentChangeFinding,
+} from "./types";
+
 export type {
   ImageInputType,
   ImageInputSubtype,
@@ -122,6 +132,29 @@ export {
   isImageIntakeReviewHandoffEnabledForUser,
   isImageIntakeCaseSignalEnabledForUser,
   getImageIntakeUserRolloutSummary,
+} from "./feature-flag";
+
+// --- Phase 6 modules ---
+export { executeBatchMultimodalStrategy } from "./combined-multimodal-execution";
+export type { CombinedMultimodalExecutionResult } from "./combined-multimodal-execution";
+export { resolveCaseBindingWithSignals } from "./binding-v2";
+export {
+  persistThreadArtifact,
+  reconstructCrossSessionThread,
+  clearAllArtifacts,
+} from "./cross-session-reconstruction";
+export {
+  isHandoffConfirmAction,
+  submitHandoffAfterConfirm,
+  buildHandoffSubmitAction,
+} from "./handoff-submit";
+export { detectIntentChange, buildIntentChangeSummary } from "./intent-change-detection";
+
+// --- Phase 6 feature flags ---
+export {
+  isImageIntakeCombinedMultimodalEnabledForUser,
+  isImageIntakeCrossSessionEnabledForUser,
+  isImageIntakeHandoffSubmitEnabledForUser,
 } from "./feature-flag";
 
 // --- Feature flag ---

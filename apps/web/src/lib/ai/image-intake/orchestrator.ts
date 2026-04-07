@@ -70,12 +70,22 @@ import { evaluateReviewHandoff } from "./review-handoff";
 import { reconstructThread } from "./thread-reconstruction";
 import { buildReviewHandoffPayload, buildHandoffPreviewNote } from "./handoff-payload";
 import { decideBatchMultimodalStrategy } from "./batch-multimodal";
+import { executeBatchMultimodalStrategy } from "./combined-multimodal-execution";
 import { extractCaseSignals, mergeCaseSignalBundles } from "./case-signal-extraction";
+import { resolveCaseBindingWithSignals } from "./binding-v2";
+import { reconstructCrossSessionThread, persistThreadArtifact } from "./cross-session-reconstruction";
+import { detectIntentChange, buildIntentChangeSummary } from "./intent-change-detection";
+import {
+  isImageIntakeCombinedMultimodalEnabledForUser,
+  isImageIntakeCrossSessionEnabledForUser,
+} from "./feature-flag";
 import type {
   ThreadReconstructionResult,
   ReviewHandoffPayload,
   CaseSignalBundle,
   BatchMultimodalDecision,
+  CrossSessionReconstructionResult,
+  IntentChangeFinding,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -218,6 +228,12 @@ export type ImageIntakeOrchestratorResult = {
   caseSignals: CaseSignalBundle | null;
   /** Phase 5: batch multimodal decision (when stitching active). */
   batchDecision: BatchMultimodalDecision | null;
+  /** Phase 6: combined multimodal execution result (null when not executed). */
+  combinedMultimodalResult: import("./combined-multimodal-execution").CombinedMultimodalExecutionResult | null;
+  /** Phase 6: cross-session thread reconstruction result. */
+  crossSessionReconstruction: CrossSessionReconstructionResult | null;
+  /** Phase 6: intent change detection finding. */
+  intentChange: IntentChangeFinding | null;
 };
 
 export async function processImageIntake(
@@ -323,6 +339,7 @@ export async function processImageIntake(
       classifierUsedModel, multimodalUsed: false, multimodalResult: null,
       stitchingResult, reviewHandoff: null, caseBindingV2: null,
       threadReconstruction: null, handoffPayload: null, caseSignals: null, batchDecision: null,
+      combinedMultimodalResult: null, crossSessionReconstruction: null, intentChange: null,
     };
   }
 
@@ -418,13 +435,72 @@ export async function processImageIntake(
     caseSignals = extractCaseSignals(factBundle, classification, primaryAsset?.assetId ?? intakeId);
   }
 
+  // Phase 6: Signal-aware case binding (replaces plain resolveCaseBindingV2 when signals available)
+  let finalCaseBindingV2 = caseBindingV2;
+  if (caseSignals && caseSignals.signals.length > 0 && caseBindingV2.state === "multiple_case_candidates") {
+    finalCaseBindingV2 = await resolveCaseBindingWithSignals(
+      effectiveRequest,
+      session,
+      resolvedClientId,
+      caseSignals,
+    );
+  }
+  const finalCaseBinding = toCaseBindingResult(finalCaseBindingV2);
+
+  // Phase 6: Combined multimodal execution (when decision says combined_pass + flag enabled)
+  let combinedMultimodalResult: import("./combined-multimodal-execution").CombinedMultimodalExecutionResult | null = null;
+  const combinedMultimodalEnabled = isImageIntakeCombinedMultimodalEnabledForUser(effectiveRequest.userId ?? "");
+  if (batchDecision && batchDecision.strategy === "combined_pass" && combinedMultimodalEnabled) {
+    combinedMultimodalResult = await executeBatchMultimodalStrategy(
+      batchDecision,
+      request.assets,
+      request.accompanyingText ?? null,
+    );
+    // Merge combined pass facts into main factBundle if execution succeeded
+    if (combinedMultimodalResult.strategy === "combined_pass" && combinedMultimodalResult.groupFactBundle) {
+      factBundle = combinedMultimodalResult.groupFactBundle;
+    }
+  }
+
+  // Phase 6: Cross-session thread reconstruction (when enabled + client known)
+  let crossSessionReconstruction: CrossSessionReconstructionResult | null = null;
+  const crossSessionEnabled = isImageIntakeCrossSessionEnabledForUser(effectiveRequest.userId ?? "");
+  if (crossSessionEnabled && threadReconstruction) {
+    crossSessionReconstruction = reconstructCrossSessionThread(
+      effectiveRequest.tenantId,
+      clientBinding.clientId ?? null,
+      intakeId,
+      threadReconstruction.mergedFacts,
+    );
+    // Persist artifact for future sessions
+    if (clientBinding.clientId) {
+      persistThreadArtifact(
+        effectiveRequest.tenantId,
+        effectiveRequest.userId ?? "",
+        clientBinding.clientId,
+        intakeId,
+        threadReconstruction.mergedFacts,
+        threadReconstruction.latestActionableSignal,
+      );
+    }
+  }
+
+  // Phase 6: Intent change detection (when thread reconstruction has multiple assets)
+  let intentChange: IntentChangeFinding | null = null;
+  if (threadReconstruction && request.assets.length >= 2) {
+    intentChange = detectIntentChange(
+      threadReconstruction.mergedFacts,
+      request.assets.length >= 2,
+    );
+  }
+
   // Phase 5: Structured handoff payload (when handoff recommended)
   const handoffPayload = reviewHandoff?.recommended
     ? buildReviewHandoffPayload(
         reviewHandoff,
         classification,
         clientBinding,
-        caseBindingV2,
+        finalCaseBindingV2,
         factBundle,
         primaryAssets,
         request,
@@ -466,16 +542,17 @@ export async function processImageIntake(
   }
 
   // 13. Execution plan
+  // Use signal-upgraded case binding in execution plan
   const executionPlan =
     actionPlan.recommendedActions.length > 0
-      ? mapToExecutionPlan(intakeId, actionPlan, clientBinding.clientId, caseBinding.caseId)
+      ? mapToExecutionPlan(intakeId, actionPlan, clientBinding.clientId, finalCaseBinding.caseId)
       : null;
 
   const previewSteps = executionPlan ? mapToPreviewItems(executionPlan) : [];
 
   // 14. Preview payload
   const previewPayload = buildImageIntakePreview(
-    intakeId, classification, clientBinding, caseBinding, factBundle, actionPlan,
+    intakeId, classification, clientBinding, finalCaseBinding, factBundle, actionPlan,
   );
 
   // 15. Trace
@@ -496,14 +573,17 @@ export async function processImageIntake(
 
   const response: ImageIntakeResponse = {
     intakeId, laneDecision, preflight: primaryPreflight,
-    classification, clientBinding, caseBinding,
+    classification, clientBinding, caseBinding: finalCaseBinding,
     factBundle, actionPlan, previewSteps, trace,
   };
 
   return {
     response, executionPlan, previewPayload,
     classifierUsedModel, multimodalUsed, multimodalResult,
-    stitchingResult, reviewHandoff, caseBindingV2,
+    stitchingResult, reviewHandoff, caseBindingV2: finalCaseBindingV2,
     threadReconstruction, handoffPayload, caseSignals, batchDecision,
+    combinedMultimodalResult,
+    crossSessionReconstruction,
+    intentChange,
   };
 }

@@ -25,6 +25,7 @@ import type {
   CaseBindingResult,
   CaseBindingResultV2,
   ImageIntakeRequest,
+  CaseSignalBundle,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -300,6 +301,118 @@ async function lookupOpportunitiesForClient(
       warnings: ["Lookup příležitostí selhal — case zůstává nevyřešený."],
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6: Signal-aware case binding hints integration
+// ---------------------------------------------------------------------------
+
+/**
+ * Extends case/opportunity binding v2 with case signal hints (Phase 6).
+ *
+ * Priority chain:
+ * 1. Active context (unchanged — absolute priority)
+ * 2. CRM DB lookup (unchanged)
+ * 3. Image-derived case signals as tie-breaker / scoring boost (Phase 6 NEW)
+ *    → signals can downgrade multiple_case_candidates to weak_case_candidate
+ *      if one candidate title matches a strong product/institution signal
+ *    → signals NEVER create new binding on their own
+ *    → active context always wins
+ *
+ * Safety: signalBundle.bindingAssistOnly = true enforced in case-signal-extraction.ts
+ */
+export async function resolveCaseBindingWithSignals(
+  request: ImageIntakeRequest,
+  session: AssistantSession | null,
+  resolvedClientId: string | null,
+  signalBundle: CaseSignalBundle | null,
+): Promise<CaseBindingResultV2> {
+  // Run standard binding first
+  const baseResult = await resolveCaseBindingV2(request, session, resolvedClientId);
+
+  // If we have a confident or active-context result, signals don't override
+  if (
+    baseResult.state === "bound_case_from_active_context" ||
+    baseResult.state === "bound_case_from_strong_lookup"
+  ) {
+    return baseResult;
+  }
+
+  // No signal bundle or no signals — return base result
+  if (!signalBundle || signalBundle.signals.length === 0 || signalBundle.overallStrength === "none") {
+    return baseResult;
+  }
+
+  // Only attempt signal-assisted scoring for multiple_case_candidates
+  if (baseResult.state !== "multiple_case_candidates" || baseResult.candidates.length === 0) {
+    return baseResult;
+  }
+
+  // Score candidates against extracted signals
+  const scoredCandidates = scoreOpportunityCandidatesWithSignals(
+    baseResult.candidates,
+    signalBundle,
+  );
+
+  if (!scoredCandidates) return baseResult;
+
+  const best = scoredCandidates[0]!;
+  const secondBest = scoredCandidates[1];
+
+  // Only help if best candidate has a meaningful signal-based advantage
+  const threshold = signalBundle.overallStrength === "strong" ? 0.25 : 0.40;
+  const advantage = secondBest ? best.score - secondBest.score : 1.0;
+
+  if (advantage < threshold) {
+    // Signals didn't discriminate well → keep multiple_case_candidates
+    return {
+      ...baseResult,
+      warnings: [
+        ...baseResult.warnings,
+        "Case signály z obrázku nepomohly rozlišit mezi kandidáty — poradce musí vybrat.",
+      ],
+    };
+  }
+
+  // Signal-boosted weak candidate
+  return {
+    state: "weak_case_candidate",
+    caseId: best.id,
+    caseLabel: best.label,
+    confidence: Math.min(0.55, best.score), // cap at 0.55 — never confident from signals alone
+    candidates: scoredCandidates,
+    source: "client_scoped_lookup",
+    warnings: [
+      `Case byl odvozen pomocí signálů z obrázku (${signalBundle.overallStrength} strength) — potvrzení nutné.`,
+      "Signály jsou binding assist only — nebylo provedeno automatické přiřazení.",
+    ],
+  };
+}
+
+type ScoredCandidate = { id: string; label: string; score: number };
+
+function scoreOpportunityCandidatesWithSignals(
+  candidates: Array<{ id: string; label: string; score: number }>,
+  signalBundle: CaseSignalBundle,
+): ScoredCandidate[] | null {
+  if (candidates.length === 0) return null;
+
+  const scored: ScoredCandidate[] = candidates.map((c) => {
+    let score = c.score;
+    const labelLower = c.label.toLowerCase();
+
+    for (const signal of signalBundle.signals) {
+      const normLower = (signal.normalizedValue ?? signal.rawValue).toLowerCase().slice(0, 50);
+      if (normLower && labelLower.includes(normLower.slice(0, 15))) {
+        // Title contains signal text → boost
+        const boost = signal.strength === "strong" ? 0.25 : signal.strength === "moderate" ? 0.15 : 0.08;
+        score = Math.min(1.0, score + boost);
+      }
+    }
+    return { id: c.id, label: c.label, score };
+  });
+
+  return scored.sort((a, b) => b.score - a.score);
 }
 
 /**
