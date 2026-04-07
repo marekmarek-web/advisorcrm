@@ -123,6 +123,95 @@ export type SectionSensitivityLabel = (typeof SECTION_SENSITIVITY_LABELS)[number
 export const sensitivityProfileSchema = z.enum(SENSITIVITY_PROFILES);
 export const extractionFieldStatusSchema = z.enum(EXTRACTION_FIELD_STATUSES);
 
+/**
+ * How the field value was obtained. Used for source priority enforcement and advisor display.
+ * Values roughly map to: "Nalezeno" (explicit*), "Odvozeno" (inferred*), "Chybí" (missing).
+ */
+export const EVIDENCE_TIERS = [
+  "explicit_labeled_field",    // value explicitly labeled in the document (e.g., "Číslo smlouvy: 12345")
+  "explicit_table_field",      // value from a structured table cell
+  "explicit_section_block",    // value from a clearly identified section (e.g., "Pojistník" block)
+  "normalized_alias_match",    // canonical value resolved from an LLM alias/alternate key
+  "local_inference",           // inferred from nearby context (e.g., split name from fullName)
+  "cross_section_inference",   // inferred by combining data across sections
+  "classifier_fallback",       // produced by a classifier prompt, not an extraction prompt
+  "model_inference_only",      // model guess, no explicit textual evidence
+  "missing",                   // not found / not applicable
+] as const;
+
+export type EvidenceTier = (typeof EVIDENCE_TIERS)[number];
+
+/**
+ * Which part of the document the field value originated from.
+ * Enforces binding rules (e.g., client data must NOT come from insurer_header).
+ */
+export const SOURCE_KINDS = [
+  "client_block",          // Klient / Pojistník / Dlužník / Zákazník / Investor block
+  "policyholder_block",    // specifically a Pojistník block
+  "borrower_block",        // Dlužník / Žadatel block in loan/mortgage docs
+  "owner_block",           // Vlastník / Majitel block
+  "investor_block",        // Investor / Účastník block
+  "intermediary_block",    // Zprostředkovatel / Poradce / Makléř block
+  "insurer_header",        // pojišťovna header (valid for insurer, NOT for client fields)
+  "bank_header",           // banka / věřitel header (valid for lender, NOT for client fields)
+  "provider_header",       // leasingová společnost / poskytovatel header
+  "signature_block",       // signature area (must NOT be source of intermediary or client)
+  "payment_block",         // platební tabulka / platební instrukce
+  "product_block",         // produktový blok / tarif / parametry produktu
+  "contract_block",        // hlavní smluvní tabulka / blok čísla smlouvy
+  "health_block",          // zdravotní dotazník (must NOT override contractual facts)
+  "aml_block",             // AML / FATCA příloha
+  "attachment_block",      // obecná příloha
+  "parties_record",        // extracted from envelope.parties by role
+  "pipeline_normalized",   // set by alias normalization / pipeline post-processing
+  "unknown",
+] as const;
+
+export type SourceKind = (typeof SOURCE_KINDS)[number];
+
+/**
+ * Human-friendly display label for an evidence tier (advisor-facing, no debug vocabulary).
+ */
+export function evidenceTierDisplayLabel(tier: EvidenceTier | undefined): "Nalezeno" | "Odvozeno" | "Chybí" {
+  if (!tier || tier === "missing") return "Chybí";
+  if (
+    tier === "explicit_labeled_field" ||
+    tier === "explicit_table_field" ||
+    tier === "explicit_section_block" ||
+    tier === "normalized_alias_match"
+  ) return "Nalezeno";
+  return "Odvozeno";
+}
+
+/**
+ * Human-friendly source display for advisor panels (no debug vocabulary).
+ */
+export function sourceKindDisplayLabel(kind: SourceKind | undefined): string {
+  if (!kind) return "";
+  const MAP: Record<SourceKind, string> = {
+    client_block: "z bloku Klient",
+    policyholder_block: "z bloku Pojistník",
+    borrower_block: "z bloku Dlužník",
+    owner_block: "z bloku Vlastník",
+    investor_block: "z bloku Investor",
+    intermediary_block: "z bloku Zprostředkovatel",
+    insurer_header: "z hlavičky pojišťovny",
+    bank_header: "z hlavičky banky",
+    provider_header: "z hlavičky poskytovatele",
+    signature_block: "z podpisového bloku",
+    payment_block: "z tabulky plateb",
+    product_block: "z produktového bloku",
+    contract_block: "ze smluvní tabulky",
+    health_block: "ze zdravotního dotazníku",
+    aml_block: "z AML přílohy",
+    attachment_block: "z přílohy",
+    parties_record: "ze seznamu účastníků",
+    pipeline_normalized: "odvozeno z kontextu",
+    unknown: "",
+  };
+  return MAP[kind] ?? "";
+}
+
 export const extractedFieldSchema = z.object({
   value: z.unknown().optional(),
   confidence: z.number().min(0).max(1).optional(),
@@ -130,6 +219,12 @@ export const extractedFieldSchema = z.object({
   evidenceSnippet: z.string().max(400).optional(),
   status: extractionFieldStatusSchema,
   sensitive: z.boolean().optional(),
+  /** How the field value was obtained — used for source priority and advisor display. */
+  evidenceTier: z.enum(EVIDENCE_TIERS).optional(),
+  /** Which part of the document the value originated from. */
+  sourceKind: z.enum(SOURCE_KINDS).optional(),
+  /** Human-readable label of the source section (e.g., "Pojistník", "Tabulka plateb"). */
+  sourceLabel: z.string().max(120).optional(),
 });
 
 export type ExtractedField = z.infer<typeof extractedFieldSchema>;
@@ -152,6 +247,9 @@ export const fieldEvidenceSchema = z.object({
   sourcePage: z.number().int().positive().optional(),
   evidenceSnippet: z.string().max(400).optional(),
   status: extractionFieldStatusSchema,
+  evidenceTier: z.enum(EVIDENCE_TIERS).optional(),
+  sourceKind: z.enum(SOURCE_KINDS).optional(),
+  sourceLabel: z.string().max(120).optional(),
 });
 
 export type FieldEvidence = z.infer<typeof fieldEvidenceSchema>;

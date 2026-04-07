@@ -17,7 +17,8 @@ import { isDateFieldKey, normalizeDateForAdvisorDisplay } from "../ai/canonical-
 import type { DocumentReviewEnvelope } from "../ai/document-review-types";
 import type { InputMode } from "../ai/input-mode-detection";
 import { formatAiClassifierForAdvisor } from "./czech-labels";
-import { advisorFieldPresentation, shouldCountFieldForAttentionBanner } from "./advisor-confidence-policy";
+import { advisorFieldPresentation, advisorFieldPresentationWithEvidence, shouldCountFieldForAttentionBanner } from "./advisor-confidence-policy";
+import type { EvidenceTier, SourceKind } from "../ai/document-review-types";
 import { buildAdvisorReviewViewModel } from "./advisor-review-view-model";
 
 type ApiReviewDetail = Record<string, unknown>;
@@ -717,11 +718,14 @@ function flattenEnvelopeToGroups(
           ? fObj.confidence
           : globalConfidence01;
       const confPct = fieldConfidence(fKey, fieldConfidenceMap, globalConfidence01);
-      const pres = advisorFieldPresentation(rawVal, fObj.status, conf01, {
+      const evidenceTier = (fObj as Record<string, unknown>).evidenceTier as EvidenceTier | undefined;
+      const sourceKind = (fObj as Record<string, unknown>).sourceKind as SourceKind | undefined;
+      const sourceLabel = (fObj as Record<string, unknown>).sourceLabel as string | undefined;
+      const pres = advisorFieldPresentationWithEvidence(rawVal, fObj.status, conf01, {
         inputMode: ctx.inputMode as InputMode | undefined,
         textCoverageEstimate: ctx.textCoverageEstimate,
         preprocessStatus: ctx.preprocessStatus,
-      });
+      }, evidenceTier, sourceKind, sourceLabel);
       pushGroupedField({
         id: `extractedFields.${fKey}`,
         groupId: "extractedFields",

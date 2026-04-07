@@ -29,6 +29,7 @@ import { selectSchemaForType } from "./document-schema-router";
 import { mapPrimaryToNormalized } from "./normalized-document-taxonomy";
 import { runVerificationPass } from "./document-verification";
 import { applyExtractedFieldAliasNormalizations } from "./extraction-field-alias-normalize";
+import { buildFieldEvidenceSummaries } from "./field-source-priority";
 import { resolveSensitivityProfile } from "./document-sensitivity";
 import { inferDocumentRelationships } from "./document-relationships";
 import { isOpenAIRateLimitError } from "./openai-rate-limit";
@@ -408,6 +409,20 @@ function finalizeContractPayload(params: {
   }
 
   applyExtractedFieldAliasNormalizations(data);
+
+  // Build evidence summary trace for debugging and advisor UI
+  const evidenceSummaries = buildFieldEvidenceSummaries(data);
+  const sourcePriorityViolations = data.reviewWarnings?.filter(
+    (w) => w.code === "client_field_institution_value" || w.code === "intermediary_institution_value"
+  ) ?? [];
+  (trace as Record<string, unknown>).evidenceFieldCount = evidenceSummaries.length;
+  (trace as Record<string, unknown>).sourcePriorityViolations = sourcePriorityViolations.length;
+  if (sourcePriorityViolations.length > 0) {
+    (trace as Record<string, unknown>).sourcePriorityViolationKeys = sourcePriorityViolations.map((w) => w.field).filter(Boolean);
+  }
+  // Store evidence summaries in envelope.debug (available for advisor review panels)
+  if (!data.debug) data.debug = {};
+  data.debug["fieldEvidenceSummaries"] = evidenceSummaries;
 
   const lifecycle = data.documentClassification.lifecycleStatus;
   if (isProposalOrModelationLifecycle(lifecycle)) {

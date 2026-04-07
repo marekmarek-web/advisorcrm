@@ -1,5 +1,6 @@
 import type { InputMode } from "../ai/input-mode-detection";
 import type { ExtractedField } from "./types";
+import type { EvidenceTier, SourceKind } from "../ai/document-review-types";
 
 export type ReadabilityContext = {
   inputMode?: InputMode | string;
@@ -91,4 +92,79 @@ export function shouldCountFieldForAttentionBanner(field: ExtractedField): boole
   if (field.status === "warning" && field.message?.includes("Nízká jistota")) return true;
   if (field.status === "warning" && field.message?.includes("Odhad z kontextu")) return true;
   return false;
+}
+
+// ─── Evidence tier → advisor-facing display ───────────────────────────────────
+
+/**
+ * Converts the internal evidenceTier to a simple advisor-facing label.
+ * No debug vocabulary exposed.
+ */
+export function evidenceTierToAdvisorLabel(
+  tier: EvidenceTier | undefined
+): "Nalezeno" | "Odvozeno" | "Chybí" {
+  if (!tier || tier === "missing") return "Chybí";
+  if (
+    tier === "explicit_labeled_field" ||
+    tier === "explicit_table_field" ||
+    tier === "explicit_section_block" ||
+    tier === "normalized_alias_match"
+  ) return "Nalezeno";
+  return "Odvozeno";
+}
+
+/**
+ * Converts sourceKind to an advisor-friendly source description.
+ * Returns empty string if no source kind is available.
+ */
+export function sourceKindToAdvisorLabel(kind: SourceKind | undefined, sourceLabel?: string): string {
+  if (sourceLabel) return sourceLabel;
+  if (!kind || kind === "unknown" || kind === "pipeline_normalized") return "";
+  const MAP: Partial<Record<SourceKind, string>> = {
+    client_block: "z bloku Klient",
+    policyholder_block: "z bloku Pojistník",
+    borrower_block: "z bloku Dlužník",
+    owner_block: "z bloku Vlastník",
+    investor_block: "z bloku Investor",
+    intermediary_block: "z bloku Zprostředkovatel",
+    insurer_header: "z hlavičky pojišťovny",
+    bank_header: "z hlavičky banky",
+    provider_header: "z hlavičky poskytovatele",
+    payment_block: "z tabulky plateb",
+    product_block: "z produktového bloku",
+    contract_block: "ze smluvní tabulky",
+    parties_record: "ze seznamu účastníků",
+  };
+  return MAP[kind] ?? "";
+}
+
+/**
+ * Combined advisor field presentation that incorporates evidence tier and source kind
+ * in addition to the existing status/confidence logic.
+ */
+export function advisorFieldPresentationWithEvidence(
+  rawValue: unknown,
+  extractionStatus: string | undefined,
+  fieldConf01: number | undefined,
+  ctx: ReadabilityContext,
+  evidenceTier?: EvidenceTier,
+  sourceKind?: SourceKind,
+  sourceLabel?: string,
+): {
+  status: "success" | "warning" | "error";
+  message?: string;
+  displayStatus: "Nalezeno" | "Odvozeno" | "Chybí";
+  displaySource: string;
+} {
+  const base = advisorFieldPresentation(rawValue, extractionStatus, fieldConf01, ctx);
+  const displayStatus = evidenceTierToAdvisorLabel(evidenceTier);
+  const displaySource = sourceKindToAdvisorLabel(sourceKind, sourceLabel);
+
+  // If evidence says it's inferred but status would show as success, add context
+  let message = base.message;
+  if (!message && displayStatus === "Odvozeno" && base.status === "success") {
+    message = "Odvozeno z kontextu — ověřte oproti originálu.";
+  }
+
+  return { ...base, message, displayStatus, displaySource };
 }

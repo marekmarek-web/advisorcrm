@@ -5,6 +5,7 @@
 
 import type { DocumentReviewEnvelope, ExtractedField, PrimaryDocumentType } from "./document-review-types";
 import { normalizeExtractedFieldDates, normalizeExtractedFieldFrequencies } from "./canonical-date-normalize";
+import { applyFieldSourcePriorityAndEvidence } from "./field-source-priority";
 
 function valuePresent(cell: ExtractedField | undefined): boolean {
   if (!cell) return false;
@@ -975,4 +976,10 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
   });
   normalizeExtractedFieldDates(ef);
   normalizeExtractedFieldFrequencies(ef);
+  // Evidence tagging and source priority enforcement:
+  // - Tags each field with evidenceTier + sourceKind
+  // - Prevents client fields from containing institution names
+  // - Prevents intermediary from containing institution signatories
+  // - Resolves fullName / firstName / lastName deduplication
+  applyFieldSourcePriorityAndEvidence(envelope);
 }
