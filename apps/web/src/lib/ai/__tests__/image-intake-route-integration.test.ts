@@ -78,7 +78,11 @@ vi.mock("db", () => ({
   assistantConversations: {}, assistantMessages: {}, contacts: {}, tasks: {}, contracts: {}, contractUploadReviews: {},
 }));
 
-vi.mock("@/lib/ai/assistant-contact-search", () => ({ searchContactsForAssistant: vi.fn(async () => []) }));
+const contactSearchMock = vi.hoisted(() => ({ searchContactsForAssistant: vi.fn(async () => []) }));
+
+vi.mock("@/lib/ai/assistant-contact-search", () => ({
+  searchContactsForAssistant: contactSearchMock.searchContactsForAssistant,
+}));
 
 const TEXT_RESPONSE = {
   message: "Test response",
@@ -91,6 +95,7 @@ const TEXT_RESPONSE = {
 };
 
 import { POST } from "@/app/api/ai/assistant/chat/route";
+import { PENDING_IMAGE_INTAKE_METADATA_KEY } from "@/lib/ai/image-intake/pending-resolution-metadata";
 
 function makeRequest(body: Record<string, unknown>, headers: Record<string, string> = {}): Request {
   return new Request("http://localhost/api/ai/assistant/chat", {
@@ -113,9 +118,48 @@ function hasImageIntakeAssets() {
   ];
 }
 
+function freshPendingMetadataPayload(): Record<string, unknown> {
+  return {
+    intakeId: "img_meta_1",
+    factBundle: {
+      facts: [
+        {
+          factType: "deadline_date",
+          factKey: "due",
+          value: "15. 3. 2025",
+          normalizedValue: null,
+          confidence: 0.9,
+          evidence: null,
+          isActionable: true,
+          needsConfirmation: false,
+          observedVsInferred: "observed",
+        },
+      ],
+      missingFields: [],
+      ambiguityReasons: [],
+      extractionSource: "multimodal_pass",
+    },
+    actionPlan: {
+      outputMode: "ambiguous_needs_input",
+      recommendedActions: [],
+      draftReplyText: null,
+      whyThisAction: "missing client",
+      whyNotOtherActions: null,
+      needsAdvisorInput: true,
+      safetyFlags: [],
+    },
+    bindingState: "insufficient_binding",
+    candidates: [],
+    imageNameSignal: null,
+    inputType: "screenshot_client_communication",
+    createdAt: new Date().toISOString(),
+  };
+}
+
 describe("chat route — text-only flow (must not regress)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    repoMocks.loadConversationHydration.mockResolvedValue(null);
     routerMocks.routeAssistantMessage.mockResolvedValue(TEXT_RESPONSE);
     routerMocks.routeAssistantMessageCanonical.mockResolvedValue(TEXT_RESPONSE);
     openaiMocks.createResponseStructured.mockResolvedValue({
@@ -149,6 +193,7 @@ describe("chat route — text-only flow (must not regress)", () => {
 describe("chat route — image intake routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    repoMocks.loadConversationHydration.mockResolvedValue(null);
     routerMocks.routeAssistantMessage.mockResolvedValue(TEXT_RESPONSE);
     routerMocks.routeAssistantMessageCanonical.mockResolvedValue(TEXT_RESPONSE);
     openaiMocks.createResponseStructured.mockResolvedValue({
@@ -234,5 +279,68 @@ describe("chat route — image intake routing", () => {
     expect(routerMocks.handleAssistantAwaitingConfirmation).toHaveBeenCalledOnce();
 
     process.env.IMAGE_INTAKE_ENABLED = origFlag ?? "";
+  });
+});
+
+describe("chat route — pending image intake resume from conversation metadata", () => {
+  const SESSION_ID = "33333333-3333-3333-3333-333333333333";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    repoMocks.loadConversationHydration.mockResolvedValue({
+      channel: null,
+      assistantMode: null,
+      lockedContactId: null,
+      metadata: { [PENDING_IMAGE_INTAKE_METADATA_KEY]: freshPendingMetadataPayload() },
+    });
+    routerMocks.routeAssistantMessage.mockResolvedValue(TEXT_RESPONSE);
+    routerMocks.routeAssistantMessageCanonical.mockResolvedValue(TEXT_RESPONSE);
+    openaiMocks.createResponseStructured.mockResolvedValue({
+      text: "{}",
+      parsed: {
+        inputType: "mixed_or_uncertain_image",
+        confidence: 0.3,
+        rationale: "test",
+        needsDeepExtraction: false,
+        safePreviewAlready: false,
+      },
+      model: "gpt-5-mini",
+    });
+    contactSearchMock.searchContactsForAssistant.mockResolvedValue([
+      { id: "contact-lucie", displayName: "Lucie Opalecká" },
+    ]);
+  });
+
+  it("hydrates pending from DB and runs CRM resume instead of generic chat", async () => {
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      message: "Lucie Opalecká",
+      orchestration: "canonical",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { message?: string; sourcesSummary?: string[] };
+    expect(routerMocks.routeAssistantMessageCanonical).not.toHaveBeenCalled();
+    expect(contactSearchMock.searchContactsForAssistant).toHaveBeenCalled();
+    expect(body.message).toContain("Lucie Opalecká");
+    expect(body.sourcesSummary?.some((s) => s.includes("image_intake_resume"))).toBe(true);
+    expect(body.message).not.toContain("Obrázek jsem přijal, ale potřebuji doplnění");
+  });
+
+  it("without pending in metadata, plain text still uses canonical router", async () => {
+    repoMocks.loadConversationHydration.mockResolvedValue({
+      channel: null,
+      assistantMode: null,
+      lockedContactId: null,
+      metadata: {},
+    });
+    const req = makeRequest({
+      sessionId: SESSION_ID,
+      message: "Obecná otázka",
+      orchestration: "canonical",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(routerMocks.routeAssistantMessageCanonical).toHaveBeenCalledOnce();
   });
 });

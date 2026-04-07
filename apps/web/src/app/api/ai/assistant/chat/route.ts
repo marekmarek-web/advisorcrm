@@ -35,6 +35,15 @@ import {
   parseImageAssetsFromBody,
   handleImageIntakeFromChatRoute,
 } from "@/lib/ai/image-intake";
+import {
+  hasPendingImageIntakeResolution,
+  resumeImageIntakeWithClientResolution,
+  INTAKE_RESUME_FALLTHROUGH,
+} from "@/lib/ai/image-intake/client-resolution";
+import {
+  applyPendingImageIntakeFromConversationMetadata,
+  PENDING_IMAGE_INTAKE_METADATA_KEY,
+} from "@/lib/ai/image-intake/pending-resolution-metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -228,6 +237,8 @@ export async function POST(request: Request) {
               session.assistantMode = hydrated.assistantMode as AssistantMode;
               session.contextLock.assistantMode = session.assistantMode;
             }
+            // Cross-request / serverless: restore pending image intake ambiguity from DB metadata.
+            applyPendingImageIntakeFromConversationMetadata(session, hydrated.metadata);
           }
 
           const resumablePlan = await loadResumableExecutionPlanSnapshot(session.sessionId);
@@ -259,6 +270,10 @@ export async function POST(request: Request) {
           const imageIntakeEnvOn = isImageIntakeEnabled();
           const isImageRequest = rawImageAssets.length > 0 && imageIntakeEnvOn;
 
+          const debugImageIntakeResume = process.env.DEBUG_IMAGE_INTAKE_RESUME === "true";
+          const pendingAfterHydrate = Boolean(session.pendingImageIntakeResolution);
+          const pendingEffective = hasPendingImageIntakeResolution(session);
+
           if (process.env.DEBUG_ASSISTANT_IMAGE_PASTE === "true") {
             console.info("[assistant-image-pipeline][api:lane]", {
               traceId,
@@ -276,8 +291,83 @@ export async function POST(request: Request) {
 
           let response: AssistantResponse;
 
-          if (isImageRequest && !confirmExecution && !cancelExecution) {
-            // Route to image intake lane (feature-flagged)
+          // Pending client clarification must run before image intake so accompanying text + image
+          // does not re-run the full pipeline and replay the same ambiguity block.
+          if (
+            !confirmExecution &&
+            !cancelExecution &&
+            !bootstrapPostUpload &&
+            message &&
+            pendingEffective
+          ) {
+            if (debugImageIntakeResume) {
+              console.info("[assistant-image-pipeline][api:resume_branch]", {
+                traceId,
+                hadPendingRawAfterHydrate: pendingAfterHydrate,
+                messageLen: message.length,
+                isImageRequest,
+                fallthroughIfNotNameLike: true,
+              });
+            }
+            const resumeResult = await resumeImageIntakeWithClientResolution(
+              message,
+              session,
+              tenantId,
+            );
+            if (resumeResult.message === INTAKE_RESUME_FALLTHROUGH) {
+              if (debugImageIntakeResume) {
+                console.info("[assistant-image-pipeline][api:resume_fallthrough]", {
+                  traceId,
+                  reason: "message_not_client_name_like",
+                  next: isImageRequest ? "image_intake_lane" : "generic_text",
+                });
+              }
+              if (isImageRequest && !confirmExecution && !cancelExecution) {
+                response = await handleImageIntakeFromChatRoute(
+                  rawImageAssets,
+                  session,
+                  activeContext,
+                  {
+                    tenantId,
+                    userId,
+                    channel,
+                    accompanyingText: message || null,
+                  },
+                );
+              } else {
+                response =
+                  orchestration === "canonical"
+                    ? await routeAssistantMessageCanonical(message, session, activeContext, {
+                        roleName: membership.roleName,
+                        bootstrapPostUploadReviewPlan: bootstrapPostUpload,
+                        intentPromptAugment: session.conversationDigest?.trim()
+                          ? `[Předchozí zkrácené dotazy ve vlákně]\n${session.conversationDigest}`
+                          : undefined,
+                      })
+                    : await routeAssistantMessage(message, session, activeContext, { roleName: membership.roleName });
+              }
+            } else {
+              response = resumeResult;
+            }
+          } else if (isImageRequest && !confirmExecution && !cancelExecution) {
+            if (debugImageIntakeResume) {
+              console.info("[assistant-image-pipeline][api:image_lane]", {
+                traceId,
+                pendingEffective,
+                skipResumeBecause: !message
+                  ? "empty_message"
+                  : !pendingEffective
+                    ? "no_pending"
+                    : confirmExecution || cancelExecution
+                      ? "confirm_cancel"
+                      : bootstrapPostUpload
+                        ? "bootstrap_post_upload"
+                        : "unknown",
+              });
+            }
+            // Route to image intake lane (feature-flagged).
+            // Starting a new image intake always clears any pending client resolution state
+            // (handled inside route-handler when the new result is not client-ambiguous).
             response = await handleImageIntakeFromChatRoute(
               rawImageAssets,
               session,
@@ -306,6 +396,13 @@ export async function POST(request: Request) {
             }
             response = confirmOut;
           } else {
+            if (debugImageIntakeResume) {
+              console.info("[assistant-image-pipeline][api:generic_text]", {
+                traceId,
+                pendingEffective,
+                messageLen: message.length,
+              });
+            }
             response =
               orchestration === "canonical"
                 ? await routeAssistantMessageCanonical(message, session, activeContext, {
@@ -373,6 +470,7 @@ export async function POST(request: Request) {
                 metadata: {
                   orchestration,
                   messageCount: session.messageCount,
+                  [PENDING_IMAGE_INTAKE_METADATA_KEY]: session.pendingImageIntakeResolution ?? null,
                 },
               });
               await appendConversationMessage({
