@@ -5,6 +5,7 @@ import { getContractSegments } from "@/app/actions/contracts";
 import { getTerminationWizardPrefill } from "@/app/actions/terminations";
 import { getReasonsForSegment } from "@/lib/terminations";
 import { TerminationIntakeWizard, type WizardReasonOption } from "./TerminationIntakeWizard";
+import { isTerminationsModuleEnabled } from "@/lib/terminations/terminations-feature-flag";
 
 export const metadata: Metadata = {
   title: "Výpověď smlouvy",
@@ -15,7 +16,14 @@ export const dynamic = "force-dynamic";
 export default async function TerminationNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ contactId?: string; contractId?: string; source?: string }>;
+  searchParams: Promise<{
+    contactId?: string;
+    contractId?: string;
+    source?: string;
+    insurerName?: string;
+    requestedEffectiveDate?: string;
+    sourceDocumentId?: string;
+  }>;
 }) {
   const auth = await requireAuth();
   if (auth.roleName === "Client") {
@@ -26,10 +34,19 @@ export default async function TerminationNewPage({
     );
   }
 
+  if (!isTerminationsModuleEnabled()) {
+    return (
+      <div className="p-4 md:p-8">
+        <p className="text-sm text-[color:var(--wp-text-secondary)]">Modul výpovědí je vypnutý.</p>
+      </div>
+    );
+  }
+
   const sp = await searchParams;
   const contactId = sp.contactId?.trim() || null;
   const contractId = sp.contractId?.trim() || null;
   const sourceQuick = sp.source === "quick";
+  const sourceFromAi = sp.source === "ai_chat";
 
   const prefill = await getTerminationWizardPrefill(contactId, contractId);
   const segments = await getContractSegments();
@@ -43,6 +60,12 @@ export default async function TerminationNewPage({
   }));
   const canWrite = hasPermission(auth.roleName, "contacts:write");
 
+  const urlPrefill = {
+    insurerName: sp.insurerName?.trim(),
+    requestedEffectiveDate: sp.requestedEffectiveDate?.trim(),
+    sourceDocumentId: sp.sourceDocumentId?.trim(),
+  };
+
   return (
     <div className="p-4 md:p-8">
       <TerminationIntakeWizard
@@ -51,6 +74,8 @@ export default async function TerminationNewPage({
         initialReasons={initialReasons}
         canWrite={canWrite}
         sourceQuick={sourceQuick}
+        sourceFromAi={sourceFromAi}
+        urlPrefill={urlPrefill}
       />
     </div>
   );

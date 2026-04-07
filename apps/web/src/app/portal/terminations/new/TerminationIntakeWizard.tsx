@@ -38,6 +38,14 @@ type Props = {
   canWrite: boolean;
   /** Otevřeno z rychlé akce „Výpověď“ – `source_kind` = quick_action. */
   sourceQuick: boolean;
+  /** Query z AI asistenta (`prepareTerminationIntake`) → `source_kind` = ai_chat. */
+  sourceFromAi: boolean;
+  /** Předvyplnění z URL (asistent / externí odkaz). */
+  urlPrefill?: {
+    insurerName?: string;
+    requestedEffectiveDate?: string;
+    sourceDocumentId?: string;
+  };
 };
 
 function outcomeLabel(outcome: TerminationRulesResult["outcome"]): string {
@@ -61,9 +69,13 @@ export function TerminationIntakeWizard({
   initialReasons,
   canWrite,
   sourceQuick,
+  sourceFromAi,
+  urlPrefill,
 }: Props) {
 
-  const [insurerName, setInsurerName] = useState(prefill.insurerName);
+  const [insurerName, setInsurerName] = useState(
+    () => urlPrefill?.insurerName?.trim() || prefill.insurerName
+  );
   const [uncertainInsurer, setUncertainInsurer] = useState(false);
   const [contractNumber, setContractNumber] = useState(prefill.contractNumber ?? "");
   const [productSegment, setProductSegment] = useState(
@@ -73,7 +85,12 @@ export function TerminationIntakeWizard({
   const [contractAnniversaryDate, setContractAnniversaryDate] = useState(
     prefill.contractAnniversaryDate ?? ""
   );
-  const [requestedEffectiveDate, setRequestedEffectiveDate] = useState("");
+  const [requestedEffectiveDate, setRequestedEffectiveDate] = useState(
+    () => urlPrefill?.requestedEffectiveDate?.trim() ?? ""
+  );
+  const [sourceDocumentId, setSourceDocumentId] = useState(
+    () => urlPrefill?.sourceDocumentId?.trim() ?? ""
+  );
   const [reasons, setReasons] = useState<WizardReasonOption[]>(initialReasons);
   const [terminationReasonCode, setTerminationReasonCode] = useState<TerminationReasonCode>(
     (initialReasons[0]?.reasonCode as TerminationReasonCode) ?? "end_of_period_6_weeks"
@@ -94,10 +111,11 @@ export function TerminationIntakeWizard({
   const [isPending, startTransition] = useTransition();
 
   const sourceKind: TerminationRequestSource = useMemo(() => {
+    if (sourceFromAi) return "ai_chat";
     if (prefill.mode === "crm") return "crm_contract";
     if (sourceQuick) return "quick_action";
     return "manual_intake";
-  }, [prefill.mode, sourceQuick]);
+  }, [prefill.mode, sourceFromAi, sourceQuick]);
 
   const onSegmentChange = useCallback(
     async (seg: string) => {
@@ -122,7 +140,7 @@ export function TerminationIntakeWizard({
       sourceKind,
       contactId: prefill.contactId,
       contractId: prefill.contractId,
-      sourceDocumentId: null,
+      sourceDocumentId: sourceDocumentId.trim() || null,
       sourceConversationId: null,
       insurerName: insurerName.trim(),
       contractNumber: contractNumber.trim() || null,
@@ -186,6 +204,14 @@ export function TerminationIntakeWizard({
     );
   }, [prefill]);
 
+  const aiBanner =
+    sourceFromAi ? (
+      <p className="text-sm text-indigo-900 bg-indigo-50 border border-indigo-200 rounded-[var(--wp-radius)] px-3 py-2">
+        Otevřeno z AI asistenta – po uložení bude žádost označena zdrojem „ai_chat“. Doplňte údaje a ověřte výsledek
+        rules engine.
+      </p>
+    ) : null;
+
   if (result) {
     const { rules, requestId } = result;
     return (
@@ -240,6 +266,12 @@ export function TerminationIntakeWizard({
         </div>
 
         <div className="flex flex-wrap gap-3">
+          <Link
+            href={`/portal/terminations/${requestId}`}
+            className="rounded-[var(--wp-radius)] bg-[var(--wp-accent)] px-4 py-2.5 text-sm font-semibold text-white min-h-[44px] inline-flex items-center"
+          >
+            Detail žádosti (stav, odeslání, audit)
+          </Link>
           {prefill.contactId ? (
             <Link
               href={`/portal/contacts/${prefill.contactId}`}
@@ -271,6 +303,7 @@ export function TerminationIntakeWizard({
       <div>
         <h1 className="text-xl font-semibold text-[color:var(--wp-text)]">Výpověď smlouvy</h1>
         {contextBanner}
+        {aiBanner}
       </div>
 
       {!canWrite ? (
@@ -311,6 +344,21 @@ export function TerminationIntakeWizard({
             onChange={(e) => setContractNumber(e.target.value)}
             className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
           />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+            ID zdrojového dokumentu (volitelné)
+          </label>
+          <input
+            value={sourceDocumentId}
+            onChange={(e) => setSourceDocumentId(e.target.value)}
+            className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px] font-mono text-xs"
+            placeholder="UUID dokumentu z CRM (nahraná smlouva)"
+          />
+          <p className="text-[11px] text-[color:var(--wp-text-muted)] mt-1">
+            Fáze 5 masterplan: navázání na existující soubor ve vašem tenantu před doplněním kontaktu.
+          </p>
         </div>
 
         <div>

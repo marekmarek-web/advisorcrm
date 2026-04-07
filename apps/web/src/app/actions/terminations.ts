@@ -7,13 +7,16 @@ import { db } from "db";
 import {
   contracts,
   contacts,
+  documents,
   insurerTerminationRegistry,
   terminationReasonCatalog,
   terminationRequests,
   terminationRequestEvents,
   terminationRequiredAttachments,
+  terminationDispatchLog,
+  terminationRequestStatuses,
 } from "db";
-import { and, eq } from "db";
+import { and, desc, eq } from "db";
 import { evaluateTerminationRules, getReasonsForSegment } from "@/lib/terminations";
 import type {
   TerminationManualInput,
@@ -21,6 +24,7 @@ import type {
   TerminationRulesResult,
 } from "@/lib/terminations";
 import type {
+  TerminationDeliveryChannel,
   TerminationMode,
   TerminationReasonCode,
   TerminationRequestSource,
@@ -259,6 +263,17 @@ export async function createTerminationDraft(
       .limit(1);
     if (!p) {
       return { ok: false, error: "Kontakt neexistuje." };
+    }
+  }
+
+  if (payload.sourceDocumentId) {
+    const [doc] = await db
+      .select({ id: documents.id })
+      .from(documents)
+      .where(and(eq(documents.id, payload.sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!doc) {
+      return { ok: false, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
     }
   }
 
@@ -543,4 +558,204 @@ export async function getTerminationLetterPreview(requestId: string): Promise<Te
   });
 
   return { ok: true, data };
+}
+
+// --- Fáze 8 / 9: detail žádosti, stav, dispatch log ---
+
+export type TerminationRequestEventRow = {
+  id: string;
+  eventType: string;
+  payload: Record<string, unknown> | null;
+  actorUserId: string | null;
+  createdAt: string;
+};
+
+export type TerminationDispatchLogRow = {
+  id: string;
+  channel: string;
+  status: string;
+  attemptedAt: string | null;
+  completedAt: string | null;
+  carrierOrProvider: string | null;
+  trackingReference: string | null;
+  error: string | null;
+  createdAt: string;
+};
+
+export type TerminationRequestDetail = {
+  request: typeof terminationRequests.$inferSelect;
+  events: TerminationRequestEventRow[];
+  dispatchLog: TerminationDispatchLogRow[];
+};
+
+export type TerminationRequestDetailResponse =
+  | { ok: true; data: TerminationRequestDetail }
+  | { ok: false; error: string };
+
+export async function getTerminationRequestDetail(requestId: string): Promise<TerminationRequestDetailResponse> {
+  const auth = await requireAuthInAction();
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
+
+  const [req] = await db
+    .select()
+    .from(terminationRequests)
+    .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
+    .limit(1);
+  if (!req) return { ok: false, error: "Žádost nenalezena." };
+
+  const evRows = await db
+    .select()
+    .from(terminationRequestEvents)
+    .where(
+      and(
+        eq(terminationRequestEvents.requestId, requestId),
+        eq(terminationRequestEvents.tenantId, auth.tenantId)
+      )
+    )
+    .orderBy(desc(terminationRequestEvents.createdAt));
+
+  const dispRows = await db
+    .select()
+    .from(terminationDispatchLog)
+    .where(
+      and(eq(terminationDispatchLog.requestId, requestId), eq(terminationDispatchLog.tenantId, auth.tenantId))
+    )
+    .orderBy(desc(terminationDispatchLog.createdAt));
+
+  return {
+    ok: true,
+    data: {
+      request: req,
+      events: evRows.map((e) => ({
+        id: e.id,
+        eventType: e.eventType,
+        payload: (e.payload as Record<string, unknown> | null) ?? null,
+        actorUserId: e.actorUserId ?? null,
+        createdAt: e.createdAt.toISOString(),
+      })),
+      dispatchLog: dispRows.map((d) => ({
+        id: d.id,
+        channel: d.channel,
+        status: d.status,
+        attemptedAt: d.attemptedAt?.toISOString() ?? null,
+        completedAt: d.completedAt?.toISOString() ?? null,
+        carrierOrProvider: d.carrierOrProvider ?? null,
+        trackingReference: d.trackingReference ?? null,
+        error: d.error ?? null,
+        createdAt: d.createdAt.toISOString(),
+      })),
+    },
+  };
+}
+
+export type UpdateTerminationStatusPayload = {
+  requestId: string;
+  status: TerminationRequestStatus;
+  note?: string | null;
+};
+
+export type SimpleOk = { ok: true } | { ok: false; error: string };
+
+export async function updateTerminationRequestStatusAction(
+  payload: UpdateTerminationStatusPayload
+): Promise<SimpleOk> {
+  const auth = await requireAuthInAction();
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!canWriteContacts(auth.roleName)) return { ok: false, error: "Nemáte oprávnění." };
+
+  if (!terminationRequestStatuses.includes(payload.status as (typeof terminationRequestStatuses)[number])) {
+    return { ok: false, error: "Neplatný stav." };
+  }
+
+  const [existing] = await db
+    .select({ id: terminationRequests.id, status: terminationRequests.status })
+    .from(terminationRequests)
+    .where(
+      and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+    )
+    .limit(1);
+  if (!existing) return { ok: false, error: "Žádost nenalezena." };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(terminationRequests)
+      .set({
+        status: payload.status,
+        updatedBy: auth.userId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+      );
+
+    await tx.insert(terminationRequestEvents).values({
+      tenantId: auth.tenantId,
+      requestId: payload.requestId,
+      eventType: "status_changed",
+      payload: {
+        from: existing.status,
+        to: payload.status,
+        note: payload.note?.trim() || undefined,
+      },
+      actorUserId: auth.userId,
+    });
+  });
+
+  return { ok: true };
+}
+
+export type AppendTerminationDispatchPayload = {
+  requestId: string;
+  channel: TerminationDeliveryChannel;
+  status: "pending" | "sent" | "delivered" | "failed" | "bounced" | "cancelled";
+  trackingReference?: string | null;
+  carrierOrProvider?: string | null;
+  error?: string | null;
+};
+
+export async function appendTerminationDispatchLogAction(
+  payload: AppendTerminationDispatchPayload
+): Promise<SimpleOk> {
+  const auth = await requireAuthInAction();
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!canWriteContacts(auth.roleName)) return { ok: false, error: "Nemáte oprávnění." };
+
+  const [existing] = await db
+    .select({ id: terminationRequests.id })
+    .from(terminationRequests)
+    .where(
+      and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+    )
+    .limit(1);
+  if (!existing) return { ok: false, error: "Žádost nenalezena." };
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx.insert(terminationDispatchLog).values({
+      tenantId: auth.tenantId,
+      requestId: payload.requestId,
+      channel: payload.channel,
+      status: payload.status,
+      attemptedAt: payload.status !== "pending" ? now : null,
+      completedAt: payload.status === "delivered" ? now : null,
+      carrierOrProvider: payload.carrierOrProvider?.trim() || null,
+      trackingReference: payload.trackingReference?.trim() || null,
+      error: payload.error?.trim() || null,
+    });
+
+    await tx.insert(terminationRequestEvents).values({
+      tenantId: auth.tenantId,
+      requestId: payload.requestId,
+      eventType: "dispatch_attempt",
+      payload: {
+        channel: payload.channel,
+        status: payload.status,
+        trackingReference: payload.trackingReference?.trim() || undefined,
+      },
+      actorUserId: auth.userId,
+    });
+  });
+
+  return { ok: true };
 }

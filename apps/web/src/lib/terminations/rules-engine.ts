@@ -256,9 +256,15 @@ export async function evaluateTerminationRules(
     }
   }
 
-  // --- 3. Povinná pole z katalogu ---
+  // --- 3. Povinná pole z katalogu (DB snake_case → vstup camelCase) ---
+  const catalogFieldToInput: Record<string, keyof TerminationRulesInput> = {
+    contract_anniversary_date: "contractAnniversaryDate",
+    requested_effective_date: "requestedEffectiveDate",
+    contract_start_date: "contractStartDate",
+  };
   for (const field of reason.requiredFields) {
-    const value = (input as unknown as Record<string, unknown>)[field];
+    const inputKey = catalogFieldToInput[field];
+    const value = inputKey != null ? input[inputKey] : (input as unknown as Record<string, unknown>)[field];
     if (value === null || value === undefined || value === "") {
       const labelMap: Record<string, string> = {
         contract_anniversary_date: "Datum výročí smlouvy",

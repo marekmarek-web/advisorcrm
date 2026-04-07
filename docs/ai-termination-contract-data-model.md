@@ -109,3 +109,12 @@ Doplněk (šablona dopisu – volitelná pole): `packages/db/migrations/terminat
 - **Extras:** `document_builder_extras` + builder (`termination-letter-builder.ts`, `termination-document-extras.ts`, `termination-letter-html.ts`).
 
 Logika odpovídá draftu: volná forma jen pokud není `requiresOfficialForm` a registr dovoluje volný dopis; oficiální formulář negeneruje hlavní dopis, ale generuje průvodní list; datum v textu preferuje `computedEffectiveDate`; odstoupení na dálku má samostatnou šablonu (sekce 3.6); rozpor `requested` vs `computed` a nepotvrzené `fixed_date` mají odlišnou textaci / varování.
+
+## Masterplan – doplněné části (fáze 5, 7, 8, 9, 10, 11)
+
+- **Fáze 5:** průvodce podporuje `sourceDocumentId` (UUID dokumentu) a query předvyplnění z URL (`insurerName`, `requestedEffectiveDate`, `sourceDocumentId`).
+- **Fáze 7:** asistentní nástroj `prepareTerminationIntake` (`assistant-tools.ts`) vrací odkaz na `/portal/terminations/new?…&source=ai_chat` bez obcházení rules engine.
+- **Fáze 8:** stránka detailu žádosti `/portal/terminations/[requestId]` – přehled, změna stavu, audit událostí, náhled dokumentu.
+- **Fáze 9:** zápis do `termination_dispatch_log` + událost `dispatch_attempt` (akce `appendTerminationDispatchLogAction`), přechody stavu s událostí `status_changed`.
+- **Fáze 10:** admin UI `/portal/admin/termination-registry` (oprávnění `settings:write`, globální řádky jen **Admin**).
+- **Fáze 11:** unit testy rules engine (`src/lib/terminations/__tests__/rules-engine.test.ts`), oprava mapování `required_fields` katalogu (snake_case) na camelCase vstup; feature flag `NEXT_PUBLIC_TERMINATIONS_ENABLED=false` vypne stránky průvodce/detailu.

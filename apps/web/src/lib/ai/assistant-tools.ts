@@ -193,6 +193,59 @@ async function handleSearchContacts(
   };
 }
 
+async function handlePrepareTerminationIntake(
+  params: Record<string, unknown>,
+  _ctx: ToolHandlerContext,
+): Promise<ToolResult> {
+  const contactId = typeof params.contactId === "string" ? params.contactId.trim() : "";
+  const contractId = typeof params.contractId === "string" ? params.contractId.trim() : "";
+  const insurerName = typeof params.insurerName === "string" ? params.insurerName.trim() : "";
+  const requestedEffectiveDate =
+    typeof params.requestedEffectiveDate === "string" ? params.requestedEffectiveDate.trim() : "";
+  const sourceDocumentId = typeof params.sourceDocumentId === "string" ? params.sourceDocumentId.trim() : "";
+
+  if (!contactId && !contractId && !insurerName) {
+    return {
+      data: {
+        error: "missing_context",
+        hint: "Zadejte contactId nebo contractId, případně alespoň insurerName pro manuální intak.",
+      },
+      sourceReferences: [],
+      warnings: [
+        "Bez kontaktu, smlouvy nebo názvu pojišťovny nelze sestavit užitečný odkaz do průvodce výpovědi.",
+      ],
+    };
+  }
+
+  const qs = new URLSearchParams();
+  if (contactId) qs.set("contactId", contactId);
+  if (contractId) qs.set("contractId", contractId);
+  if (insurerName) qs.set("insurerName", insurerName);
+  if (requestedEffectiveDate) qs.set("requestedEffectiveDate", requestedEffectiveDate);
+  if (sourceDocumentId) qs.set("sourceDocumentId", sourceDocumentId);
+  qs.set("source", "ai_chat");
+
+  const wizardPath = `/portal/terminations/new?${qs.toString()}`;
+  return {
+    data: {
+      wizardPath,
+      instructions:
+        "Otevřete cestu v portálu. Po odeslání průvodce vznikne záznam žádosti a proběhne rules engine. Finální znění vždy zkontrolujte; AI nenahrazuje právní posouzení.",
+      prefill: {
+        contactId: contactId || null,
+        contractId: contractId || null,
+        insurerName: insurerName || null,
+        requestedEffectiveDate: requestedEffectiveDate || null,
+        sourceDocumentId: sourceDocumentId || null,
+      },
+    },
+    sourceReferences: contactId
+      ? [{ sourceType: "client", sourceId: contactId, freshness: "live", visibilityScope: "tenant" }]
+      : [],
+    warnings: [],
+  };
+}
+
 async function handlePrepareContractApply(
   params: Record<string, unknown>,
   ctx: ToolHandlerContext,
@@ -288,6 +341,19 @@ export const ASSISTANT_TOOLS: AssistantTool[] = [
     description: "Vyhodnotí připravenost review k aplikaci do CRM (kvalitní brána). Neaplikuje.",
     parameters: { reviewId: { type: "string", description: "ID review položky" } },
     handler: handlePrepareContractApply,
+  },
+  {
+    name: "prepareTerminationIntake",
+    description:
+      "Sestaví odkaz do průvodce „Výpověď smlouvy“ s předvyplněnými parametry (klient, smlouva, pojišťovna, datum, zdrojový dokument). Nevytváří záznam v databázi — ten vznikne až po uložení průvodce a projde rules engine.",
+    parameters: {
+      contactId: { type: "string", description: "UUID kontaktu (volitelné)" },
+      contractId: { type: "string", description: "UUID smlouvy z CRM (volitelné)" },
+      insurerName: { type: "string", description: "Název pojišťovny pro manuální intak (volitelné)" },
+      requestedEffectiveDate: { type: "string", description: "Požadované datum účinnosti YYYY-MM-DD (volitelné)" },
+      sourceDocumentId: { type: "string", description: "UUID nahraného dokumentu ve stejném tenantu (volitelné)" },
+    },
+    handler: handlePrepareTerminationIntake,
   },
 ];
 

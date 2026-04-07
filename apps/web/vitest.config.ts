@@ -7,6 +7,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       db: path.resolve(__dirname, "./src/lib/db.ts"),
+      "server-only": path.resolve(__dirname, "./src/lib/test-shims/server-only.ts"),
     },
   },
   test: {
