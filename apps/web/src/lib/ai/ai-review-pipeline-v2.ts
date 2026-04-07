@@ -495,10 +495,15 @@ function finalizeContractPayload(params: {
       ? ef.premiumFrequency.value
       : null);
 
-  const extractionConfidence =
+  const rawExtractionConfidence =
     typeof data.documentMeta.overallConfidence === "number"
       ? data.documentMeta.overallConfidence
       : data.documentClassification.confidence ?? 0.5;
+  // Clamp to [0,1]: guard against models returning confidence as integer percentage (e.g. 54, 98, 99)
+  const extractionConfidence =
+    rawExtractionConfidence > 1
+      ? Math.min(1, rawExtractionConfidence / 100)
+      : Math.max(0, Math.min(1, rawExtractionConfidence));
   data.documentMeta.overallConfidence = extractionConfidence;
   const fieldConfidenceMap = Object.fromEntries(
     Object.entries(data.extractedFields).map(([key, field]) => [
@@ -938,6 +943,7 @@ export async function runAiReviewV2Pipeline(
   trace.extractionRoute = extractionRoute;
 
   if (router.outcome === "manual_review") {
+    const manualReasonNote = `Dokument je nestandardního nebo nerozpoznaného typu (kódy: ${router.reasonCodes.join(", ")}). Výstup je orientační — klasifikovaný typ dokumentu: ${classification.primaryType}. Finální rozhodnutí o zápisu je na poradci.`;
     const stub = buildManualReviewStubEnvelope({
       classification,
       inputMode: inputModeResult.inputMode as string,
@@ -945,6 +951,7 @@ export async function runAiReviewV2Pipeline(
       pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
       norm: normPipeline,
       route: "manual_review_only",
+      advisorNote: manualReasonNote,
     });
     stub.documentMeta.textCoverageEstimate = textCov;
     stub.reviewWarnings.push({
@@ -953,6 +960,10 @@ export async function runAiReviewV2Pipeline(
       severity: "warning",
     });
     trace.selectedSchema = "manual_review_router";
+    // Preserve detected type so advisor sees what the classifier found (not unsupported_or_unknown)
+    const manualDetectedType = classification.primaryType !== "unsupported_or_unknown"
+      ? classification.primaryType
+      : "unsupported_or_unknown";
     return {
       ok: true,
       processingStatus: "review_required",
@@ -961,7 +972,7 @@ export async function runAiReviewV2Pipeline(
       reasonsForReview: [...new Set([...allReasons, ...router.reasonCodes])],
       inputMode: inputModeResult.inputMode,
       extractionMode: inputModeResult.extractionMode,
-      detectedDocumentType: "unsupported_or_unknown",
+      detectedDocumentType: manualDetectedType,
       extractionTrace: trace,
       validationWarnings: stub.reviewWarnings as ValidationWarning[],
       fieldConfidenceMap: null,
@@ -970,6 +981,7 @@ export async function runAiReviewV2Pipeline(
   }
 
   if (router.outcome === "review_required") {
+    const reviewReasonNote = `Dokument vyžaduje kontrolu před extrakcí (kódy: ${router.reasonCodes.join(", ")}). Klasifikovaný typ: ${classification.primaryType}. Finální rozhodnutí o zápisu je na poradci.`;
     const stub = buildManualReviewStubEnvelope({
       classification,
       inputMode: inputModeResult.inputMode as string,
@@ -977,6 +989,7 @@ export async function runAiReviewV2Pipeline(
       pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
       norm: normPipeline,
       route: "manual_review_only",
+      advisorNote: reviewReasonNote,
     });
     stub.documentMeta.textCoverageEstimate = textCov;
     stub.reviewWarnings.push({
@@ -1003,7 +1016,37 @@ export async function runAiReviewV2Pipeline(
 
   const promptKey = router.promptKey as AiReviewPromptKey;
 
-  if (ai.supportedForDirectExtraction === false && promptKey !== "paymentInstructionsExtraction") {
+  // Prompt keys that must always proceed to extraction regardless of supportedForDirectExtraction flag.
+  // The flag is meant for truly unreadable/non-financial documents, not for financial proposals/precontracts.
+  // EXTRACTION PHILOSOPHY: all known financial document prompt keys MUST extract — never skip to stub.
+  // Only truly unknown/generic keys (not in this set) may fall through to best-effort stub.
+  const ALWAYS_EXTRACT_PROMPT_KEYS = new Set<AiReviewPromptKey>([
+    "paymentInstructionsExtraction",
+    "insuranceProposalModelation",
+    "insuranceContractExtraction",
+    "insuranceAmendment",
+    "retirementProductExtraction",
+    "loanContractExtraction",
+    "investmentContractExtraction",
+    "investmentProposal",
+    "dipExtraction",
+    "buildingSavingsExtraction",
+    "carInsuranceExtraction",
+    "nonLifeInsuranceExtraction",
+    "leasingExtraction",
+    "legacyFinancialProductExtraction",
+    "supportingDocumentExtraction",
+    // Additional keys: consent, confirmation, termination — always extract, never block
+    "consentIdentificationExtraction",
+    "confirmationDocumentExtraction",
+    "terminationDocumentExtraction",
+  ]);
+
+  if (ai.supportedForDirectExtraction === false && !ALWAYS_EXTRACT_PROMPT_KEYS.has(promptKey)) {
+    // EXTRACTION PHILOSOPHY: direct_extraction_unsupported flag blocks AUTO-APPLY only.
+    // Extraction still runs as best_effort — stub carries all classification metadata + advisor note.
+    // The advisor decides whether to save as supporting doc, partially apply, or ignore.
+    const unsupportedNote = `Klasifikátor označil dokument jako nevhodný pro plnou automatickou extrakci (promptKey: ${promptKey}, typ: ${classification.primaryType}). Výstup je orientační — finální rozhodnutí o zápisu je na poradci.`;
     const stub = buildManualReviewStubEnvelope({
       classification,
       inputMode: inputModeResult.inputMode as string,
@@ -1011,6 +1054,7 @@ export async function runAiReviewV2Pipeline(
       pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
       norm: normPipeline,
       route: extractionRoute,
+      advisorNote: unsupportedNote,
     });
     stub.documentMeta.textCoverageEstimate = textCov;
     stub.reviewWarnings.push({
@@ -1372,14 +1416,19 @@ export async function runAiReviewV2Pipeline(
   // For supporting-doc prompt: refine generic bank_statement to specific subtype BEFORE validation,
   // so the correct schema (payslip_document / corporate_tax_return) is used for validation and coercion.
   // Uses 3-tier fallback: (1) prompt response signals, (2) original classifier documentType, (3) stays bank_statement.
-  if (documentType === "bank_statement" && promptKey === "supportingDocumentExtraction") {
+  const SUPPORTING_DOC_TYPES = new Set<ContractDocumentType>([
+    "bank_statement",
+    "payslip_document",
+    "corporate_tax_return",
+  ]);
+  if (SUPPORTING_DOC_TYPES.has(documentType) && promptKey === "supportingDocumentExtraction") {
     const refinedType = parsedExtractionObj
       ? inferSupportingSubtypeFromPromptResponse(parsedExtractionObj)
       : null;
-    if (refinedType) {
+    if (refinedType && refinedType !== documentType) {
       documentType = refinedType;
       trace.selectedSchema = documentType;
-    } else {
+    } else if (documentType === "bank_statement") {
       // Fallback: trust the classifier's effective document type / product subtype when the stored prompt
       // returns a generic "bank_statement" shape (older stored prompt without specific subtype instructions).
       const rawDt = String(effectiveDocumentType ?? "").toLowerCase().replace(/[-_\s]/g, "");

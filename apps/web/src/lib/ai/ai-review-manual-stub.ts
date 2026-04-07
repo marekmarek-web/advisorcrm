@@ -1,7 +1,18 @@
 import type { ClassificationResult } from "./document-classification";
-import type { DocumentReviewEnvelope } from "./document-review-types";
+import type { ContractDocumentType, DocumentReviewEnvelope } from "./document-review-types";
 import type { ExtractionRoute, PipelineNormalizedClassification } from "./pipeline-extraction-routing";
 
+/**
+ * Builds a manual-review stub envelope that ALWAYS preserves the detected document type
+ * and includes advisor notes so the review layer is never empty.
+ *
+ * EXTRACTION PHILOSOPHY:
+ * - This stub is used when auto-extraction is not feasible (low confidence, unsupported input, etc.)
+ * - It is NOT used to hide data — it preserves classification + metadata for the advisor
+ * - `requiresAdvisorDecision: true` signals that the advisor must decide next steps
+ * - `extractionMode: "best_effort"` is set so the UI shows this as partial, not failed
+ * - auto-apply is blocked via processingStatus="review_required", NOT by hiding the stub
+ */
 export function buildManualReviewStubEnvelope(params: {
   classification: ClassificationResult;
   inputMode: string;
@@ -9,25 +20,39 @@ export function buildManualReviewStubEnvelope(params: {
   pageCount?: number | null;
   norm: PipelineNormalizedClassification;
   route: ExtractionRoute;
+  /** Optional advisor-facing note about why this path was taken. */
+  advisorNote?: string;
 }): DocumentReviewEnvelope {
-  const { classification, inputMode, extractionMode, pageCount, norm, route } = params;
+  const { classification, inputMode, extractionMode, pageCount, norm, route, advisorNote } = params;
   const scannedVsDigital =
     inputMode === "text_pdf"
       ? "digital"
       : inputMode === "image_document" || inputMode === "scanned_pdf" || inputMode === "mixed_pdf"
         ? "scanned"
         : "unknown";
+
+  // Preserve the detected primary type when it is known — do not downgrade to unsupported_or_unknown
+  // unless the classifier truly returned unknown. This ensures advisors see useful classification data.
+  const effectivePrimaryType: ContractDocumentType =
+    classification.primaryType && classification.primaryType !== "unsupported_or_unknown"
+      ? classification.primaryType
+      : "unsupported_or_unknown";
+
+  const defaultAdvisorNote =
+    "Dokument je nestandardního nebo nerozpoznaného typu. Výstup extrakce je orientační — finální rozhodnutí o zápisu do systému je na poradci.";
+
   return {
     documentClassification: {
-      primaryType: "unsupported_or_unknown",
-      subtype: classification.primaryType,
-      lifecycleStatus: "unknown",
-      documentIntent: "manual_review_required",
+      primaryType: effectivePrimaryType,
+      subtype: classification.subtype ?? classification.primaryType,
+      lifecycleStatus: classification.lifecycleStatus ?? "unknown",
+      documentIntent: classification.documentIntent ?? "manual_review_required",
       confidence: classification.confidence,
       reasons: [
         ...classification.reasons,
         `original_primary:${classification.primaryType}`,
         `normalized_pipeline:${norm}`,
+        "requires_advisor_decision",
       ],
     },
     documentMeta: {
@@ -38,6 +63,8 @@ export function buildManualReviewStubEnvelope(params: {
       normalizedPipelineClassification: norm,
       rawPrimaryClassification: classification.primaryType,
       extractionRoute: route,
+      // Signal to UI that this is a best-effort partial output, not a full extraction failure
+      extractionMode: "best_effort",
     },
     parties: {},
     productsOrObligations: [],
@@ -71,6 +98,11 @@ export function buildManualReviewStubEnvelope(params: {
           "Typ dokumentu není spolehlivě podporován pro automatickou extrakci. Ověřte obsah a doplňte údaje ručně.",
         severity: "warning",
       },
+      {
+        code: "requires_advisor_decision",
+        message: advisorNote ?? defaultAdvisorNote,
+        severity: "info",
+      },
     ],
     suggestedActions: [],
     sensitivityProfile: "standard_personal_data",
@@ -82,10 +114,14 @@ export function buildManualReviewStubEnvelope(params: {
       containsAdvisorData: false,
       containsMultipleDocumentSections: false,
     },
+    // Advisor decision fields — consumed by UI and apply-policy
+    requiresAdvisorDecision: true,
+    advisorNotes: [advisorNote ?? defaultAdvisorNote],
     debug: {
       originalClassification: classification,
       inputMode,
       extractionMode,
+      extractionPhilosophy: "best_effort_stub",
     },
   };
 }

@@ -323,6 +323,8 @@ export const documentReviewEnvelopeSchema = z.object({
     rawPrimaryClassification: z.string().optional(),
     textCoverageEstimate: z.number().min(0).max(1).optional(),
     extractionRoute: z.string().optional(),
+    /** Extraction mode used: "specialized" | "best_effort" | "partial". Set on all outputs. */
+    extractionMode: z.string().optional(),
   }),
   parties: z.record(z.string(), z.unknown()).default({}),
   productsOrObligations: z.array(z.record(z.string(), z.unknown())).default([]),
@@ -381,6 +383,15 @@ export const documentReviewEnvelopeSchema = z.object({
 });
 
 export type DocumentReviewEnvelope = z.infer<typeof documentReviewEnvelopeSchema> & {
+  /**
+   * Extraction philosophy fields — set on all partial/stub outputs.
+   *
+   * ADVISOR DECISION RULE: When `requiresAdvisorDecision` is true, the advisor decides
+   * whether to save as supporting document, partially apply, or ignore.
+   * Auto-apply is blocked; the review layer always produces non-empty output.
+   */
+  requiresAdvisorDecision?: boolean;
+  advisorNotes?: string[];
   /**
    * Phase 2 — Packet segmentation metadata.
    * Present when the upload was identified as a multi-document bundle.

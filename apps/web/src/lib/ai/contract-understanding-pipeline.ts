@@ -374,6 +374,9 @@ export async function runContractUnderstandingPipeline(
   }
 
   if (extractionRoute === "manual_review_only") {
+    // EXTRACTION PHILOSOPHY: manual_review_only blocks AUTO-APPLY, not the review output itself.
+    // Stub preserves the detected type + advisor note so advisors always see meaningful data.
+    const manualNote = `Typ dokumentu (${classification.primaryType}) nebyl rozpoznán s dostatečnou jistotou pro automatickou extrakci. Výstup je orientační — finální rozhodnutí o zápisu je na poradci.`;
     const stub = buildManualReviewStubEnvelope({
       classification,
       inputMode: inputModeResult.inputMode as string,
@@ -381,12 +384,17 @@ export async function runContractUnderstandingPipeline(
       pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
       norm: normPipeline,
       route: extractionRoute,
+      advisorNote: manualNote,
     });
     stub.documentMeta.textCoverageEstimate = textCov;
     stub.documentMeta.preprocessMode = options?.preprocessMeta?.preprocessMode;
     stub.documentMeta.preprocessStatus = options?.preprocessMeta?.preprocessStatus;
     trace.selectedSchema = "manual_review_only";
     logPipelineEvent("branch_manual_review", { normalizedPipeline: normPipeline });
+    // Preserve detected type — do not downgrade to "unsupported_or_unknown" if classifier found something
+    const detectedType = classification.primaryType !== "unsupported_or_unknown"
+      ? classification.primaryType
+      : "unsupported_or_unknown";
     return {
       ok: true,
       processingStatus: "review_required",
@@ -395,7 +403,7 @@ export async function runContractUnderstandingPipeline(
       reasonsForReview: [...new Set([...allReasons, "manual_review_only"])],
       inputMode: inputModeResult.inputMode,
       extractionMode: inputModeResult.extractionMode,
-      detectedDocumentType: "unsupported_or_unknown",
+      detectedDocumentType: detectedType,
       extractionTrace: trace,
       validationWarnings: stub.reviewWarnings,
       fieldConfidenceMap: null,
@@ -704,10 +712,15 @@ export async function runContractUnderstandingPipeline(
     data.contentFlags.containsAdvisorData = true;
   }
   deriveEnvelopeFlags(data);
-  const extractionConfidence =
+  const rawExtractionConfidence =
     typeof data.documentMeta.overallConfidence === "number"
       ? data.documentMeta.overallConfidence
       : data.documentClassification.confidence ?? 0.5;
+  // Clamp to [0,1]: guard against models returning confidence as integer percentage (e.g. 54, 98, 99)
+  const extractionConfidence =
+    rawExtractionConfidence > 1
+      ? Math.min(1, rawExtractionConfidence / 100)
+      : Math.max(0, Math.min(1, rawExtractionConfidence));
   data.documentMeta.overallConfidence = extractionConfidence;
   const fieldConfidenceMap = Object.fromEntries(
     Object.entries(data.extractedFields).map(([key, field]) => [

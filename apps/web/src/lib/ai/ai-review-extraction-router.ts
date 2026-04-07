@@ -151,7 +151,7 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
         return { outcome: "extract", promptKey: "insuranceContractExtraction", reasonCodes: ["life_contract"] };
       }
     }
-    if (dt === "proposal" || dt === "modelation") {
+    if (dt === "proposal" || dt === "modelation" || dt === "offer") {
       return { outcome: "extract", promptKey: "insuranceProposalModelation", reasonCodes: ["life_proposal_modelation"] };
     }
     if (dt === "amendment") {
@@ -355,9 +355,30 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
 
   // §12 Consent / AML / mandate
   if (dt === "consent_or_identification_document") {
-    const okSub = new Set(["aml_kyc_form", "direct_debit_mandate"]);
+    const okSub = new Set([
+      "aml_kyc_form",
+      "direct_debit_mandate",
+      // DPS/PP/DIP participant consent and enrollment documents — must not be unsupported
+      "dps_participant_consent",
+      "pp_participant_consent",
+      "dip_participant_consent",
+      "pension_enrollment",
+      "pension_consent",
+      "participant_consent",
+      "participant_declaration",
+      "investment_consent",
+      "client_consent",
+      "gdpr_consent",
+    ]);
     if (!okSub.has(sub) && sub !== ANY) {
-      return { outcome: "manual_review", reasonCodes: ["consent_unsupported_subtype"] };
+      // When family is pension/investment (DPS/PP/DIP), still allow extraction with retirement prompt
+      // instead of blocking as unsupported — document has useful data even if not AML/mandate.
+      const isPensionFamily = fam === "dps" || fam === "pp" || fam === "dip" || fam === "investment";
+      if (isPensionFamily) {
+        return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["consent_pension_family_fallback"] };
+      }
+      // Non-pension consent with unknown subtype — try legacy rather than hard block
+      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["consent_unknown_subtype_legacy_fallback"] };
     }
     if (getAiReviewPromptId("consentIdentificationExtraction")) {
       return { outcome: "extract", promptKey: "consentIdentificationExtraction", reasonCodes: ["consent_kyc"] };
@@ -400,15 +421,51 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
 
   // §13 Confirmation
   if (dt === "confirmation_document") {
-    const okSub = new Set(["confirmation_of_contract", "confirmation_of_payment"]);
+    const okSub = new Set([
+      "confirmation_of_contract",
+      "confirmation_of_payment",
+      // DPS/PP/DIP confirmation documents — must not be blocked as unsupported
+      "dps_contract_confirmation",
+      "pp_contract_confirmation",
+      "dip_contract_confirmation",
+      "pension_contract_confirmation",
+      "pension_confirmation",
+      "contract_confirmation",
+      "policy_confirmation",
+      "bundle_confirmation",
+    ]);
     if (!okSub.has(sub) && sub !== ANY) {
-      return { outcome: "manual_review", reasonCodes: ["confirmation_unsupported_subtype"] };
+      // When family is pension/investment (DPS/PP/DIP), route to retirement extraction
+      // instead of blocking — confirmation docs carry usable client/product/payment data.
+      const isPensionFamily = fam === "dps" || fam === "pp" || fam === "dip";
+      if (isPensionFamily) {
+        return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["confirmation_pension_family_fallback"] };
+      }
+      // For other families with unknown confirmation subtype — use legacy rather than hard block
+      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["confirmation_unknown_subtype_legacy_fallback"] };
     }
     if (getAiReviewPromptId("confirmationDocumentExtraction")) {
       return { outcome: "extract", promptKey: "confirmationDocumentExtraction", reasonCodes: ["confirmation"] };
     }
-    return { outcome: "manual_review", reasonCodes: ["prompt_missing_confirmation"] };
+    // Fallback: use retirement extraction if family is pension, otherwise legacy
+    if (fam === "dps" || fam === "pp" || fam === "dip") {
+      return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["confirmation_pension_no_dedicated_prompt"] };
+    }
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["confirmation_no_dedicated_prompt_legacy_fallback"] };
   }
 
-  return { outcome: "manual_review", reasonCodes: ["no_matching_route"] };
+  // EXTRACTION PHILOSOPHY: no_matching_route should not block extraction.
+  // Try best-effort via legacyFinancialProductExtraction — it handles generic financial docs.
+  // The router never returns empty; advisor always gets classification + orientační výstup.
+  // Only genuinely non-financial or unreadable docs end up here; even then we attempt extraction.
+  if (fam !== "unknown" && fam !== "") {
+    // Known family but no matching route → use legacy as best-effort
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["no_matching_route_best_effort_legacy"] };
+  }
+  if (dt !== "unknown" && dt !== "") {
+    // Known document type but unknown family → try legacy
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["no_matching_route_known_dt_legacy"] };
+  }
+  // Truly triple-unknown that slipped past the early guard — still attempt extraction
+  return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["no_matching_route_generic_fallback"] };
 }
