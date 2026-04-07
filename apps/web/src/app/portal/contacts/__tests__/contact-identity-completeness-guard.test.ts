@@ -1,14 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { resolveIdentityCompleteness } from "../[id]/ContactIdentityCompletenessGuard";
-import type { ContactAiProvenanceResult } from "@/app/actions/contacts";
+import { resolveIdentityCompleteness } from "../[id]/contact-identity-completeness-logic";
+import type { ContactProvenanceInput } from "../[id]/contact-identity-completeness-logic";
 
-const baseProvenance = (overrides: Partial<NonNullable<ContactAiProvenanceResult>> = {}): NonNullable<ContactAiProvenanceResult> => ({
+const baseProvenance = (overrides: Partial<NonNullable<ContactProvenanceInput>> = {}): NonNullable<ContactProvenanceInput> => ({
   reviewId: "rev-001",
-  appliedAt: "2025-01-15T10:00:00.000Z",
   confirmedFields: [],
   autoAppliedFields: [],
   pendingFields: [],
-  manualRequiredFields: [],
   ...overrides,
 });
 
@@ -126,5 +124,76 @@ describe("resolveIdentityCompleteness", () => {
       }),
     );
     expect(result.every((r) => r.status === "ok")).toBe(true);
+  });
+
+  // -----------------------------------------------------------------------
+  // H) Fáze 15: Po inline confirmu — pole přejde z pending_ai do ok
+  //    (simulace: confirmedFields nyní obsahuje potvrzené pole)
+  // -----------------------------------------------------------------------
+  it("Phase 15: after confirm, birthDate moves to ok (appears in confirmedFields)", () => {
+    const result = resolveIdentityCompleteness(
+      { birthDate: null, personalId: null },
+      baseProvenance({
+        confirmedFields: ["birthDate"],
+        pendingFields: ["personalId"],
+      }),
+    );
+    expect(result.find((r) => r.key === "birthDate")!.status).toBe("ok");
+    expect(result.find((r) => r.key === "personalId")!.status).toBe("pending_ai");
+  });
+
+  it("Phase 15: after confirming all pending fields, guard returns empty (all ok)", () => {
+    const result = resolveIdentityCompleteness(
+      { birthDate: null, personalId: null },
+      baseProvenance({
+        confirmedFields: ["birthDate", "personalId"],
+        pendingFields: [],
+      }),
+    );
+    expect(result.every((r) => r.status === "ok")).toBe(true);
+  });
+
+  // -----------------------------------------------------------------------
+  // I) Fáze 15: Supporting docs — nesmí generovat pending_ai CTA
+  //    (pendingFields je prázdné, pokud contact enforcement nevznikl)
+  // -----------------------------------------------------------------------
+  it("Phase 15: C022/C040 supporting doc — no pending_ai CTA when pendingFields empty", () => {
+    const result = resolveIdentityCompleteness(
+      { birthDate: null, personalId: null },
+      baseProvenance({
+        pendingFields: [],
+        autoAppliedFields: [],
+        confirmedFields: [],
+      }),
+    );
+    expect(result.every((r) => r.status === "manual")).toBe(true);
+  });
+
+  // -----------------------------------------------------------------------
+  // J) Fáze 15: Must-pass anchor C030 IŽP Generali
+  //    birthDate + personalId pending → oba v pending_ai
+  // -----------------------------------------------------------------------
+  it("C030 anchor: both identity fields pending → both pending_ai", () => {
+    const result = resolveIdentityCompleteness(
+      { birthDate: null, personalId: null },
+      baseProvenance({ pendingFields: ["birthDate", "personalId"] }),
+    );
+    expect(result.find((r) => r.key === "birthDate")!.status).toBe("pending_ai");
+    expect(result.find((r) => r.key === "personalId")!.status).toBe("pending_ai");
+  });
+
+  // -----------------------------------------------------------------------
+  // K) Fáze 15: manual pole nesmí dostat pending_ai status
+  //    i když reviewId existuje (jen protože provenance je přítomna)
+  // -----------------------------------------------------------------------
+  it("Phase 15: manual fields stay manual even when provenance/reviewId present", () => {
+    const result = resolveIdentityCompleteness(
+      { birthDate: null, personalId: null },
+      baseProvenance({
+        pendingFields: ["birthDate"],
+        // personalId není v pendingFields → manual
+      }),
+    );
+    expect(result.find((r) => r.key === "personalId")!.status).toBe("manual");
   });
 });

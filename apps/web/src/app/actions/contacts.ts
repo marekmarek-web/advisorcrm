@@ -879,3 +879,31 @@ async function loadContactAiProvenance(contactId: string): Promise<ContactAiProv
 }
 
 export const getContactAiProvenance = cache(loadContactAiProvenance);
+
+// ─── Fáze 15: Inline Pending Confirm z contact detailu ────────────────────────
+
+export type ConfirmContactPendingFieldResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Fáze 15: Thin wrapper přes confirmPendingField pro inline potvrzení
+ * pending AI identity pole přímo z klientského detailu.
+ *
+ * Bezpečnostní guardy (z confirmPendingField):
+ * - Pole musí být v pendingConfirmationFields (prefill_confirm policy)
+ * - manual_required a do_not_apply pole nelze potvrdit
+ * - Supporting document guard zůstává tvrdý
+ * - Idempotentní: druhé potvrzení je bezpečně ignorováno
+ */
+export async function confirmContactPendingFieldAction(
+  reviewId: string,
+  fieldKey: string,
+): Promise<ConfirmContactPendingFieldResult> {
+  const { confirmPendingField } = await import("./contract-review");
+  const result = await confirmPendingField(reviewId, fieldKey, "contact");
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+  return { ok: true };
+}
