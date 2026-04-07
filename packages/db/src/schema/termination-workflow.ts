@@ -60,6 +60,11 @@ export const terminationRequests = pgTable("termination_requests", {
     .default("not_yet_set")
     .$type<TerminationDeliveryChannel>(),
   deliveryAddressSnapshot: jsonb("delivery_address_snapshot").$type<Record<string, unknown>>(),
+  /** Volitelná data pro šablonu dopisu (firemní pojistník, poznámka pro review, claimEventDate, …). */
+  documentBuilderExtras: jsonb("document_builder_extras")
+    .notNull()
+    .default({})
+    .$type<Record<string, unknown>>(),
   status: text("status").notNull().default("draft").$type<TerminationRequestStatus>(),
   reviewRequiredReason: text("review_required_reason"),
   confidence: numeric("confidence", { precision: 5, scale: 4 }),

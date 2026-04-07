@@ -33,6 +33,11 @@ import {
   type InsurerRegistryRowLike,
 } from "@/lib/terminations/termination-letter-builder";
 import type { TerminationLetterBuildResult } from "@/lib/terminations/termination-letter-types";
+import {
+  parseDocumentBuilderExtras,
+  serializeDocumentBuilderExtras,
+  type TerminationDocumentBuilderExtras,
+} from "@/lib/terminations/termination-document-extras";
 
 export type TerminationWizardPrefill = {
   mode: "crm" | "contact_only" | "standalone";
@@ -206,6 +211,8 @@ export type CreateTerminationDraftPayload = {
   terminationReasonCode: TerminationReasonCode;
   /** Fáze 5: uživatel označí nejistou identifikaci pojišťovny → vždy review. */
   uncertainInsurer: boolean;
+  /** Volitelná pole šablony dopisu (firma, průvodní texty, …). */
+  documentBuilderExtras?: TerminationDocumentBuilderExtras | null;
 };
 
 export type CreateTerminationDraftResult = {
@@ -357,6 +364,7 @@ export async function createTerminationDraft(
           confidence:
             rules.confidence != null ? String(Math.min(1, Math.max(0, rules.confidence))) : null,
           sourceKind: payload.sourceKind,
+          documentBuilderExtras: serializeDocumentBuilderExtras(payload.documentBuilderExtras ?? {}),
           createdBy: auth.userId,
           updatedBy: auth.userId,
         })
@@ -506,6 +514,8 @@ export async function getTerminationLetterPreview(requestId: string): Promise<Te
       )
     );
 
+  const extras = parseDocumentBuilderExtras(req.documentBuilderExtras);
+
   const data = buildTerminationLetterResult({
     request: {
       insurerName: req.insurerName,
@@ -529,6 +539,7 @@ export async function getTerminationLetterPreview(requestId: string): Promise<Te
     insurerRegistry,
     reasonLabel,
     attachmentLabels: attRows.map((a) => a.label),
+    documentBuilderExtras: extras,
   });
 
   return { ok: true, data };

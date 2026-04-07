@@ -14,6 +14,8 @@ export type TerminationLetterPreviewBadge = "free_form" | "official_form" | "rev
 /** Stav publikovatelnosti (sekce 6 – interní guardrails). */
 export type TerminationLetterPublishState = "ready_to_send" | "draft_only" | "review_required";
 
+import type { TerminationPolicyholderKind } from "./termination-document-extras";
+
 export interface TerminationLetterViewModel {
   documentType: typeof TERMINATION_DOCUMENT_TYPE;
   terminationModeLabel: string;
@@ -23,7 +25,12 @@ export interface TerminationLetterViewModel {
   place: string;
   signatureRequired: boolean;
 
+  policyholderKind: TerminationPolicyholderKind;
+  /** U fyzické osoby jméno příjemce; u firmy název společnosti pro adresaci. */
   policyholderName: string;
+  policyholderCompanyName: string | null;
+  policyholderAuthorizedPersonName: string | null;
+  policyholderAuthorizedPersonRole: string | null;
   policyholderTitleBefore: string | null;
   policyholderTitleAfter: string | null;
   policyholderBirthDate: string | null;
@@ -83,5 +90,13 @@ export interface TerminationLetterBuildResult {
   /** Plný text dopisu – null pokud `official_form` nebo blokováno. */
   letterPlainText: string | null;
   officialForm: TerminationOfficialFormOutput | null;
+  /** Průvodní list / cover letter při formulářovém režimu (draft §8). */
+  coveringLetterPlainText: string | null;
+  /** Krátká věta pod badge, pokud náhled není finální. */
+  previewWatermark: string | null;
   validityReasons: string[];
+  /** Escapovaný HTML náhled dopisu (null stejně jako letterPlainText). */
+  letterHtml: string | null;
+  /** HTML průvodního dopisu při formulářovém režimu. */
+  coveringLetterHtml: string | null;
 }

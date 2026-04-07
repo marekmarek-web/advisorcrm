@@ -60,10 +60,13 @@ function publishLabel(state: TerminationLetterBuildResult["publishState"]): stri
   }
 }
 
+type PreviewTab = "text" | "html";
+
 export function TerminationLetterPreviewPanel({ requestId }: { requestId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TerminationLetterBuildResult | null>(null);
+  const [previewTab, setPreviewTab] = useState<PreviewTab>("text");
 
   useEffect(() => {
     let cancelled = false;
@@ -99,10 +102,25 @@ export function TerminationLetterPreviewPanel({ requestId }: { requestId: string
     );
   }
 
-  const { viewModel: vm, badge, publishState, letterPlainText, officialForm, validityReasons } = data;
+  const {
+    viewModel: vm,
+    badge,
+    publishState,
+    letterPlainText,
+    letterHtml,
+    officialForm,
+    coveringLetterPlainText,
+    coveringLetterHtml,
+    validityReasons,
+    previewWatermark,
+  } = data;
   const eff = vm.computedEffectiveDate ?? vm.requestedEffectiveDate ?? "—";
   const attachmentsUi =
     vm.attachments.length > 0 ? vm.attachmentsSummaryText : "Bez příloh";
+
+  const hasLetterPreview = Boolean(letterPlainText || letterHtml);
+  const hasCoverPreview = Boolean(coveringLetterPlainText || coveringLetterHtml);
+  const showTabSwitch = hasLetterPreview || hasCoverPreview;
 
   return (
     <div className="space-y-4 rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)]/40 p-4">
@@ -115,11 +133,35 @@ export function TerminationLetterPreviewPanel({ requestId }: { requestId: string
         <span className="text-xs text-[color:var(--wp-text-secondary)]">{publishLabel(publishState)}</span>
       </div>
 
+      {previewWatermark ? (
+        <p className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-[var(--wp-radius)] px-3 py-2">
+          {previewWatermark}
+        </p>
+      ) : null}
+
+      {vm.advisorNoteForReview?.trim() ? (
+        <div className="rounded-[var(--wp-radius)] border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800">
+          <span className="font-semibold">Poznámka pro kontrolu: </span>
+          {vm.advisorNoteForReview.trim()}
+        </div>
+      ) : null}
+
       <div className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-3 text-xs space-y-1.5 text-[color:var(--wp-text-secondary)]">
         <p>
-          <span className="font-semibold text-[color:var(--wp-text)]">Klient:</span>{" "}
-          {vm.policyholderName.trim() || "—"}
+          <span className="font-semibold text-[color:var(--wp-text)]">Pojistník (dopis):</span>{" "}
+          {vm.policyholderKind === "company"
+            ? `${(vm.policyholderCompanyName ?? vm.policyholderName).trim() || "—"} (firma)`
+            : vm.policyholderName.trim() || "—"}
         </p>
+        {vm.policyholderKind === "company" && vm.policyholderAuthorizedPersonName?.trim() ? (
+          <p>
+            <span className="font-semibold text-[color:var(--wp-text)]">Oprávněná osoba:</span>{" "}
+            {vm.policyholderAuthorizedPersonName.trim()}
+            {vm.policyholderAuthorizedPersonRole?.trim()
+              ? `, ${vm.policyholderAuthorizedPersonRole.trim()}`
+              : ""}
+          </p>
+        ) : null}
         <p>
           <span className="font-semibold text-[color:var(--wp-text)]">Pojišťovna:</span> {vm.insurerName}
         </p>
@@ -170,12 +212,64 @@ export function TerminationLetterPreviewPanel({ requestId }: { requestId: string
         </div>
       ) : null}
 
-      {letterPlainText ? (
+      {showTabSwitch ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPreviewTab("text")}
+            className={`rounded-[var(--wp-radius)] px-3 py-1.5 text-xs font-semibold min-h-[36px] ${
+              previewTab === "text"
+                ? "bg-[var(--wp-accent)] text-white"
+                : "border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)]"
+            }`}
+          >
+            Prostý text
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreviewTab("html")}
+            className={`rounded-[var(--wp-radius)] px-3 py-1.5 text-xs font-semibold min-h-[36px] ${
+              previewTab === "html"
+                ? "bg-[var(--wp-accent)] text-white"
+                : "border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)]"
+            }`}
+          >
+            HTML náhled
+          </button>
+        </div>
+      ) : null}
+
+      {hasCoverPreview ? (
+        <div>
+          <p className="text-xs font-semibold text-[color:var(--wp-text-muted)] mb-2">Průvodní dopis</p>
+          {previewTab === "text" && coveringLetterPlainText ? (
+            <pre className="whitespace-pre-wrap rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(320px,40vh)] overflow-y-auto font-sans">
+              {coveringLetterPlainText}
+            </pre>
+          ) : null}
+          {previewTab === "html" && coveringLetterHtml ? (
+            <div
+              className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(320px,40vh)] overflow-y-auto [&_.termination-letter-html_p]:mb-3"
+              dangerouslySetInnerHTML={{ __html: coveringLetterHtml }}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {hasLetterPreview ? (
         <div>
           <p className="text-xs font-semibold text-[color:var(--wp-text-muted)] mb-2">Náhled dopisu</p>
-          <pre className="whitespace-pre-wrap rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(480px,55vh)] overflow-y-auto font-sans">
-            {letterPlainText}
-          </pre>
+          {previewTab === "text" && letterPlainText ? (
+            <pre className="whitespace-pre-wrap rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(480px,55vh)] overflow-y-auto font-sans">
+              {letterPlainText}
+            </pre>
+          ) : null}
+          {previewTab === "html" && letterHtml ? (
+            <div
+              className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(480px,55vh)] overflow-y-auto [&_.termination-letter-html_p]:mb-3"
+              dangerouslySetInnerHTML={{ __html: letterHtml }}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>

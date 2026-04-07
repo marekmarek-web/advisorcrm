@@ -88,6 +88,8 @@ Skript je idempotentní (`IF NOT EXISTS`). Spusť ho celý v Supabase SQL editor
 
 Alternativa pro lokální vývoj: po sladění schématu lze znovu použít `drizzle-kit generate`, ale zdroj pravdy pro produkci může zůstat tento soubor, dokud nebude migrační historie sjednocená.
 
+Doplněk (šablona dopisu – volitelná pole): `packages/db/migrations/termination_document_builder_extras_2026-04-08.sql` přidává na `termination_requests` sloupec `document_builder_extras` (JSONB, výchozí `{}`) pro firemního pojistníka, poznámku pro review, datum PU, přepsání místa v záhlaví atd.
+
 ## Fáze 4 a 5 – CRM a externí intak (implementováno v aplikaci)
 
 - **Stránka průvodce:** `/portal/terminations/new`
@@ -103,6 +105,7 @@ Alternativa pro lokální vývoj: po sladění schématu lze znovu použít `dri
 - **Typy (canonical view model):** `apps/web/src/lib/terminations/termination-letter-types.ts`
 - **Builder (mapování DB → VM, validace, plain text dopis / formulářový blok):** `apps/web/src/lib/terminations/termination-letter-builder.ts`
 - **Server action náhledu:** `getTerminationLetterPreview(requestId)` v `apps/web/src/app/actions/terminations.ts`
-- **UI:** po uložení žádosti wizard zobrazí `TerminationLetterPreviewPanel` (badge Volná forma / Oficiální formulář / Vyžaduje kontrolu, audit panel, náhled textu nebo strukturovaný blok formuláře).
+- **UI:** po uložení žádosti wizard zobrazí `TerminationLetterPreviewPanel` (badge, validační důvody, text vs. HTML náhled, průvodní dopis u formulářové pojišťovny, vodoznak u konceptu).
+- **Extras:** `document_builder_extras` + builder (`termination-letter-builder.ts`, `termination-document-extras.ts`, `termination-letter-html.ts`).
 
-Logika odpovídá draftu: volná forma jen pokud není `requiresOfficialForm` a registr dovoluje volný dopis; oficiální formulář negeneruje hlavní dopis; datum v textu preferuje `computedEffectiveDate`; odstoupení na dálku má samostatnou šablonu (sekce 3.6).
+Logika odpovídá draftu: volná forma jen pokud není `requiresOfficialForm` a registr dovoluje volný dopis; oficiální formulář negeneruje hlavní dopis, ale generuje průvodní list; datum v textu preferuje `computedEffectiveDate`; odstoupení na dálku má samostatnou šablonu (sekce 3.6); rozpor `requested` vs `computed` a nepotvrzené `fixed_date` mají odlišnou textaci / varování.

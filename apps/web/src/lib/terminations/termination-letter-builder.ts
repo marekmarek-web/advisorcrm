@@ -1,5 +1,7 @@
 import { segmentLabel } from "@/app/lib/segment-labels";
 import type { TerminationMode } from "db";
+import type { TerminationDocumentBuilderExtras } from "./termination-document-extras";
+import { plainTextToLetterHtml } from "./termination-letter-html";
 import {
   TERMINATION_DOCUMENT_TYPE,
   type TerminationLetterBuildResult,
@@ -65,6 +67,8 @@ export type TerminationLetterBuildInput = {
   advisorNoteForReview?: string | null;
   customReasonText?: string | null;
   claimEventDate?: string | null;
+  /** Uložená pole z `termination_requests.document_builder_extras`. */
+  documentBuilderExtras?: TerminationDocumentBuilderExtras | null;
 };
 
 export function mapDbDeliveryToLetterChannel(db: string): TerminationLetterDeliveryChannel {
@@ -204,7 +208,55 @@ function buildAttachmentsSummary(labels: string[]): { list: string[]; summaryTex
   };
 }
 
-function buildReasonParagraph(vm: TerminationLetterViewModel): string {
+function buildMainBodyIntro(vm: TerminationLetterViewModel): string {
+  const effDisplay = formatDateCs(vm.computedEffectiveDate ?? vm.requestedEffectiveDate);
+  if (vm.policyholderKind === "company") {
+    const cn = (vm.policyholderCompanyName ?? vm.policyholderName).trim() || "………………";
+    const ap = vm.policyholderAuthorizedPersonName?.trim();
+    const role = vm.policyholderAuthorizedPersonRole?.trim();
+    const rep = ap ? `${ap}${role ? `, ${role}` : ""}` : "oprávněný zástupce";
+    return `Společnost ${cn}, zastoupená ${rep}, tímto jako pojistník žádá o ukončení / výpověď pojistné smlouvy č. ${vm.contractNumber}, vedené u Vaší společnosti na jméno uvedené společnosti.\n\nPožadujeme, aby ukončení této smlouvy nastalo ${vm.terminationModeLabelLower}, a to ke dni ${effDisplay}.`;
+  }
+  const titleBefore = vm.policyholderTitleBefore ? `${vm.policyholderTitleBefore} ` : "";
+  const phName = `${titleBefore}${vm.policyholderName}`.trim();
+  return `jako pojistník tímto žádám o ukončení / výpověď pojistné smlouvy č. ${vm.contractNumber}, vedené u Vaší společnosti na jméno ${phName}.\n\nPožaduji, aby ukončení této smlouvy nastalo ${vm.terminationModeLabelLower}, a to ke dni ${effDisplay}.`;
+}
+
+function buildLetterSignatureBlock(vm: TerminationLetterViewModel): string {
+  const emailLine = vm.policyholderEmail ? `E-mail: ${vm.policyholderEmail}` : "";
+  const phoneLine = vm.policyholderPhone ? `Telefon: ${vm.policyholderPhone}` : "";
+  if (vm.policyholderKind === "company") {
+    const cn = (vm.policyholderCompanyName ?? vm.policyholderName).trim();
+    const lines = [
+      vm.policyholderAuthorizedPersonName?.trim(),
+      vm.policyholderAuthorizedPersonRole?.trim(),
+      cn || undefined,
+      vm.policyholderAddressLine1,
+      vm.policyholderAddressLine2,
+      emailLine,
+      phoneLine,
+    ].filter((x) => x && String(x).trim());
+    return `S pozdravem\n\n${lines.join("\n")}\n\n---\nPodpis oprávněné osoby / razítko společnosti\n---`;
+  }
+  const titleBefore = vm.policyholderTitleBefore ? `${vm.policyholderTitleBefore} ` : "";
+  const phName = `${titleBefore}${vm.policyholderName}`.trim();
+  return `S pozdravem\n\n${phName}\n${vm.policyholderAddressLine1}\n${vm.policyholderAddressLine2}\n${emailLine}\n${phoneLine}\n\n---\nPodpis pojistníka\n---`;
+}
+
+function buildDistanceWithdrawalBody(vm: TerminationLetterViewModel): string {
+  if (vm.policyholderKind === "company") {
+    const cn = (vm.policyholderCompanyName ?? vm.policyholderName).trim() || "………………";
+    const ap = vm.policyholderAuthorizedPersonName?.trim();
+    const role = vm.policyholderAuthorizedPersonRole?.trim();
+    const rep = ap ? `${ap}${role ? `, ${role}` : ""}` : "oprávněný zástupce";
+    return `Společnost ${cn}, zastoupená ${rep}, tímto odstupuje od pojistné smlouvy č. ${vm.contractNumber}, uzavřené na dálku, a žádá o její ukončení v souladu s příslušnými podmínkami a právní úpravou.\n\nŽádáme o potvrzení přijetí tohoto odstoupení a informaci o dalším postupu.`;
+  }
+  const titleBefore = vm.policyholderTitleBefore ? `${vm.policyholderTitleBefore} ` : "";
+  const phName = `${titleBefore}${vm.policyholderName}`.trim();
+  return `jako pojistník tímto odstupuji od pojistné smlouvy č. ${vm.contractNumber}, uzavřené na dálku, a žádám o její ukončení v souladu s příslušnými podmínkami a právní úpravou.\n\nŽádám o potvrzení přijetí tohoto odstoupení a informaci o dalším postupu.`;
+}
+
+function buildReasonParagraph(vm: TerminationLetterViewModel, hasConfirmedEffectiveDate: boolean): string {
   const eff = formatDateCs(vm.computedEffectiveDate ?? vm.requestedEffectiveDate);
   const code = vm.terminationReasonCode;
 
@@ -212,6 +264,9 @@ function buildReasonParagraph(vm: TerminationLetterViewModel): string {
     case "end_of_period_6_weeks":
       return `Tímto podávám výpověď výše uvedené pojistné smlouvy ke konci pojistného období, resp. k nejbližšímu možnému datu účinnosti podle smluvních a zákonných podmínek, které v tomto případě připadá na den ${eff}.`;
     case "fixed_date_if_contractually_allowed":
+      if (!hasConfirmedEffectiveDate) {
+        return `Tímto žádám o ukončení výše uvedené pojistné smlouvy ke dni ${eff}. Uvedené datum je předběžné a musí být ověřeno vůči textu pojistné smlouvy a pravidlům pojišťovny; pokud ke dni ${eff} ukončení přípustné není, žádám o sdělení nejbližšího možného data účinnosti v souladu se smlouvou a zákonem.`;
+      }
       return `Tímto žádám o ukončení výše uvedené pojistné smlouvy ke dni ${eff}, pokud je tento způsob ukončení podle smluvních a zákonných podmínek přípustný.`;
     case "within_2_months_from_inception":
       return `Tímto podávám výpověď pojistné smlouvy ve lhůtě umožňující ukončení smlouvy do 2 měsíců od jejího sjednání, s účinností ke dni ${eff}.`;
@@ -242,7 +297,10 @@ function buildAttachmentsParagraph(vm: TerminationLetterViewModel): string {
   return `Přílohou této žádosti zasílám následující dokumenty: ${vm.attachmentsSummaryText}.`;
 }
 
-export function renderTerminationLetterPlainText(vm: TerminationLetterViewModel): string {
+export function renderTerminationLetterPlainText(
+  vm: TerminationLetterViewModel,
+  hasConfirmedEffectiveDate: boolean
+): string {
   if (vm.distanceContractWithdrawal || vm.terminationReasonCode === "distance_contract_withdrawal") {
     return renderDistanceWithdrawalLetter(vm);
   }
@@ -252,12 +310,10 @@ export function renderTerminationLetterPlainText(vm: TerminationLetterViewModel)
     .filter((x) => x && String(x).trim())
     .join("\n");
 
-  const reasonParagraph = buildReasonParagraph(vm);
+  const reasonParagraph = buildReasonParagraph(vm, hasConfirmedEffectiveDate);
   const att = buildAttachmentsParagraph(vm);
-  const emailLine = vm.policyholderEmail ? `E-mail: ${vm.policyholderEmail}` : "";
-  const phoneLine = vm.policyholderPhone ? `Telefon: ${vm.policyholderPhone}` : "";
-  const titleBefore = vm.policyholderTitleBefore ? `${vm.policyholderTitleBefore} ` : "";
-  const phName = `${titleBefore}${vm.policyholderName}`.trim();
+  const intro = buildMainBodyIntro(vm);
+  const sign = buildLetterSignatureBlock(vm);
 
   return `${placeDate}
 
@@ -267,9 +323,7 @@ Věc: Výpověď pojistné smlouvy č. ${vm.contractNumber}
 
 Vážení,
 
-jako pojistník tímto žádám o ukončení / výpověď pojistné smlouvy č. ${vm.contractNumber}, vedené u Vaší společnosti na jméno ${phName}.
-
-Požaduji, aby ukončení této smlouvy nastalo ${vm.terminationModeLabelLower}, a to ke dni ${formatDateCs(vm.computedEffectiveDate ?? vm.requestedEffectiveDate)}.
+${intro}
 
 ${reasonParagraph}
 
@@ -277,42 +331,53 @@ ${reasonParagraph}
 
 ${att}
 
-S pozdravem
-
-${phName}
-${vm.policyholderAddressLine1}
-${vm.policyholderAddressLine2}
-${emailLine}
-${phoneLine}
-
----
-Podpis pojistníka
----
+${sign}
 `;
 }
 
 function renderDistanceWithdrawalLetter(vm: TerminationLetterViewModel): string {
   const placeDate = `${vm.place}, dne ${vm.generatedAt}`;
-  const titleBefore = vm.policyholderTitleBefore ? `${vm.policyholderTitleBefore} ` : "";
-  const phName = `${titleBefore}${vm.policyholderName}`.trim();
+  const body = buildDistanceWithdrawalBody(vm);
+  const sign = buildLetterSignatureBlock(vm);
   return `${placeDate}
 
 Věc: Odstoupení od pojistné smlouvy č. ${vm.contractNumber}
 
 Vážení,
 
-jako pojistník tímto odstupuji od pojistné smlouvy č. ${vm.contractNumber}, uzavřené na dálku, a žádám o její ukončení v souladu s příslušnými podmínkami a právní úpravou.
+${body}
 
-Žádám o potvrzení přijetí tohoto odstoupení a informaci o dalším postupu.
-
-S pozdravem
-
-${phName}
-
----
-Podpis pojistníka
----
+${sign}
 `;
+}
+
+function buildCoveringLetter(vm: TerminationLetterViewModel): string {
+  const placeDate = `${vm.place}, dne ${vm.generatedAt}`;
+  const addrInsurer = [vm.insurerName, vm.insurerDepartment, vm.insurerAddressLine1, vm.insurerAddressLine2, vm.insurerAddressLine3]
+    .filter((x) => x && String(x).trim())
+    .join("\n");
+  const intro =
+    vm.policyholderKind === "company"
+      ? `Společnost ${(vm.policyholderCompanyName ?? vm.policyholderName).trim() || "………………"} zasílá v příloze vyplněný formulář k žádosti o ukončení pojistné smlouvy č. ${vm.contractNumber}.`
+      : `V příloze zasílám vyplněný formulář Vaší společnosti k žádosti o ukončení pojistné smlouvy č. ${vm.contractNumber}.`;
+  const formLine = `Použitý formulář: ${vm.officialFormName ?? "dle pokynů pojišťovny"}.`;
+  const sign = buildLetterSignatureBlock(vm);
+  const closingAsk = vm.policyholderKind === "company" ? "Žádáme" : "Žádám";
+  return `${placeDate}
+
+${addrInsurer}
+
+Věc: Průvodní dopis – ukončení smlouvy ${vm.contractNumber}
+
+Vážení,
+
+${intro}
+
+${formLine}
+
+${closingAsk} o potvrzení přijetí a zpracování.
+
+${sign}`;
 }
 
 function buildOfficialFormOutput(vm: TerminationLetterViewModel): TerminationOfficialFormOutput {
@@ -426,9 +491,26 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
   const ct = input.contract;
   const ir = input.insurerRegistry;
 
-  const policyholderName = c ? `${c.firstName} ${c.lastName}`.trim() : "";
+  const extras = input.documentBuilderExtras ?? {};
+  const contactDisplayName = c ? `${c.firstName} ${c.lastName}`.trim() : "";
   const policyholderAddressLine1 = c?.street?.trim() ?? "";
   const policyholderAddressLine2 = [c?.zip, c?.city].filter(Boolean).join(" ").trim();
+
+  const kind = extras.policyholderKind === "company" ? "company" : "person";
+  const companyNameRaw = extras.companyName?.trim() ?? "";
+  const policyholderName =
+    kind === "company" ? companyNameRaw || contactDisplayName : contactDisplayName;
+  const policyholderCompanyName = kind === "company" ? companyNameRaw || null : null;
+  const policyholderAuthorizedPersonName =
+    kind === "company" ? extras.authorizedPersonName?.trim() || null : null;
+  const policyholderAuthorizedPersonRole =
+    kind === "company" ? extras.authorizedPersonRole?.trim() || null : null;
+
+  const advisorNoteForReview =
+    input.advisorNoteForReview?.trim() || extras.advisorNoteForReview?.trim() || null;
+  const claimEventDate =
+    input.claimEventDate?.trim() || extras.claimEventDate?.trim() || null;
+  const placeHeader = input.place?.trim() || extras.placeOverride?.trim() || "………………";
 
   const mailing = parseMailing(
     (r.deliveryAddressSnapshot as Record<string, unknown> | null) ??
@@ -458,6 +540,21 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
   if (r.status === "awaiting_data") {
     internalWarnings.push("Chybí vstupní data – dokument pouze jako koncept.");
   }
+  if (
+    r.requestedEffectiveDate &&
+    r.computedEffectiveDate &&
+    r.requestedEffectiveDate !== r.computedEffectiveDate
+  ) {
+    internalWarnings.push(
+      `Zadané datum účinnosti (${formatDateCs(r.requestedEffectiveDate)}) se liší od data dopočítaného pravidly (${formatDateCs(r.computedEffectiveDate)}). Před odesláním ověřte správné datum.`
+    );
+  }
+  if (kind === "company" && !companyNameRaw) {
+    internalWarnings.push("U firemního pojistníka doplňte obchodní firmu.");
+  }
+  if (kind === "company" && !policyholderAuthorizedPersonName) {
+    internalWarnings.push("Pro firemní podpis doplňte jméno oprávněné osoby.");
+  }
 
   const effectiveConfirmed = effectiveDateConfirmed(input);
   const distance =
@@ -468,10 +565,14 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
     terminationModeLabel: modeLabels.title,
     terminationModeLabelLower: modeLabels.lower,
     generatedAt: formatDateCs(new Date().toISOString().slice(0, 10)),
-    place: input.place?.trim() || "………………",
+    place: placeHeader,
     signatureRequired: true,
 
+    policyholderKind: kind,
     policyholderName,
+    policyholderCompanyName,
+    policyholderAuthorizedPersonName,
+    policyholderAuthorizedPersonRole,
     policyholderTitleBefore: c?.title ?? null,
     policyholderTitleAfter: null,
     policyholderBirthDate: c?.birthDate ?? null,
@@ -503,12 +604,12 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
     computedEffectiveDate: r.computedEffectiveDate,
     legalBasisShort: legalBasisShortForReason(r.terminationReasonCode),
     customReasonText: input.customReasonText ?? null,
-    claimEventDate: input.claimEventDate ?? null,
+    claimEventDate,
     distanceContractWithdrawal: distance,
 
     attachments,
     attachmentsSummaryText: summaryText,
-    advisorNoteForReview: input.advisorNoteForReview ?? null,
+    advisorNoteForReview,
     internalWarnings,
 
     freeformLetterAllowed: freeform,
@@ -523,12 +624,25 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
 
   let letterPlainText: string | null = null;
   let officialForm: TerminationOfficialFormOutput | null = null;
+  let coveringLetterPlainText: string | null = null;
 
   if (requiresOfficialForm) {
     officialForm = buildOfficialFormOutput(vm);
     letterPlainText = null;
+    coveringLetterPlainText = buildCoveringLetter(vm);
   } else {
-    letterPlainText = renderTerminationLetterPlainText(vm);
+    letterPlainText = renderTerminationLetterPlainText(vm, effectiveConfirmed !== null);
+  }
+
+  const letterHtml = letterPlainText ? plainTextToLetterHtml(letterPlainText) : null;
+  const coveringLetterHtml = coveringLetterPlainText ? plainTextToLetterHtml(coveringLetterPlainText) : null;
+
+  let previewWatermark: string | null = null;
+  if (publishState !== "ready_to_send" || badge === "official_form") {
+    previewWatermark =
+      badge === "official_form"
+        ? "Formulářový režim – průvodní dopis slouží k přípravě podání; finální dokument je formulář pojišťovny."
+        : "Náhled pro interní použití – před odesláním ověřte údaje, datum účinnosti a podpis.";
   }
 
   return {
@@ -537,6 +651,10 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
     publishState,
     letterPlainText,
     officialForm,
+    coveringLetterPlainText,
+    previewWatermark,
     validityReasons,
+    letterHtml,
+    coveringLetterHtml,
   };
 }

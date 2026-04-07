@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/terminations";
 import type { TerminationMode, TerminationReasonCode, TerminationRequestSource } from "db";
 import type { TerminationRulesResult } from "@/lib/terminations";
+import type { TerminationPolicyholderKind } from "@/lib/terminations/termination-document-extras";
 import { TerminationLetterPreviewPanel } from "./TerminationLetterPreviewPanel";
 
 const MODE_OPTIONS: { value: TerminationMode; label: string }[] = [
@@ -78,6 +79,13 @@ export function TerminationIntakeWizard({
     (initialReasons[0]?.reasonCode as TerminationReasonCode) ?? "end_of_period_6_weeks"
   );
   const [terminationMode, setTerminationMode] = useState<TerminationMode>("end_of_insurance_period");
+  const [policyholderKind, setPolicyholderKind] = useState<TerminationPolicyholderKind>("person");
+  const [companyName, setCompanyName] = useState("");
+  const [authorizedPersonName, setAuthorizedPersonName] = useState("");
+  const [authorizedPersonRole, setAuthorizedPersonRole] = useState("");
+  const [advisorNoteForReview, setAdvisorNoteForReview] = useState("");
+  const [claimEventDate, setClaimEventDate] = useState("");
+  const [placeOverride, setPlaceOverride] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     requestId: string;
@@ -125,6 +133,21 @@ export function TerminationIntakeWizard({
       terminationMode,
       terminationReasonCode,
       uncertainInsurer,
+      documentBuilderExtras: {
+        ...(policyholderKind === "company" ? { policyholderKind: "company" as const } : {}),
+        ...(policyholderKind === "company" && companyName.trim()
+          ? { companyName: companyName.trim() }
+          : {}),
+        ...(policyholderKind === "company" && authorizedPersonName.trim()
+          ? { authorizedPersonName: authorizedPersonName.trim() }
+          : {}),
+        ...(policyholderKind === "company" && authorizedPersonRole.trim()
+          ? { authorizedPersonRole: authorizedPersonRole.trim() }
+          : {}),
+        ...(advisorNoteForReview.trim() ? { advisorNoteForReview: advisorNoteForReview.trim() } : {}),
+        ...(claimEventDate.trim() ? { claimEventDate: claimEventDate.trim() } : {}),
+        ...(placeOverride.trim() ? { placeOverride: placeOverride.trim() } : {}),
+      },
     };
 
     startTransition(async () => {
@@ -339,6 +362,107 @@ export function TerminationIntakeWizard({
             value={requestedEffectiveDate}
             onChange={(e) => setRequestedEffectiveDate(e.target.value)}
             className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+          />
+        </div>
+
+        <fieldset className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] p-3 space-y-2">
+          <legend className="text-xs font-medium text-[color:var(--wp-text-muted)] px-1">
+            Pojistník v dopise
+          </legend>
+          <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer">
+            <input
+              type="radio"
+              name="ph-kind"
+              checked={policyholderKind === "person"}
+              onChange={() => setPolicyholderKind("person")}
+              className="h-4 w-4"
+            />
+            Fyzická osoba (jméno z kontaktu)
+          </label>
+          <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer">
+            <input
+              type="radio"
+              name="ph-kind"
+              checked={policyholderKind === "company"}
+              onChange={() => setPolicyholderKind("company")}
+              className="h-4 w-4"
+            />
+            Právnická osoba / firma
+          </label>
+          {policyholderKind === "company" ? (
+            <div className="grid gap-2 pt-1 sm:grid-cols-1">
+              <div>
+                <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+                  Obchodní firma
+                </label>
+                <input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+                  placeholder="např. Example s.r.o."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+                  Oprávněná osoba (podpis)
+                </label>
+                <input
+                  value={authorizedPersonName}
+                  onChange={(e) => setAuthorizedPersonName(e.target.value)}
+                  className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+                  Role (volitelné)
+                </label>
+                <input
+                  value={authorizedPersonRole}
+                  onChange={(e) => setAuthorizedPersonRole(e.target.value)}
+                  className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+                  placeholder="např. jednatel"
+                />
+              </div>
+            </div>
+          ) : null}
+        </fieldset>
+
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+            Místo v záhlaví dopisu (volitelné)
+          </label>
+          <input
+            value={placeOverride}
+            onChange={(e) => setPlaceOverride(e.target.value)}
+            className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+            placeholder="např. Praha"
+          />
+        </div>
+
+        {terminationReasonCode === "after_claim_event" ? (
+          <div>
+            <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+              Datum oznámení / pojistné události (volitelné)
+            </label>
+            <input
+              type="date"
+              value={claimEventDate}
+              onChange={(e) => setClaimEventDate(e.target.value)}
+              className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+            />
+          </div>
+        ) : null}
+
+        <div>
+          <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+            Interní poznámka pro kontrolu (volitelné)
+          </label>
+          <textarea
+            value={advisorNoteForReview}
+            onChange={(e) => setAdvisorNoteForReview(e.target.value)}
+            rows={3}
+            className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm"
+            placeholder="Viditelné v náhledu dokumentu, ne v textu dopisu vůči pojišťovně."
           />
         </div>
 
