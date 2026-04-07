@@ -166,7 +166,7 @@ export {
   clearImageIntakeConfigOverride,
   clearAllImageIntakeConfigOverrides,
 } from "./image-intake-config";
-export type { ImageIntakeConfigKey } from "./image-intake-config";
+export type { ImageIntakeConfigKey, ImageIntakeResolvedConfig } from "./image-intake-config";
 export { runMultiImageCombinedPass } from "./multimodal";
 export { runIntentChangeAssist } from "./intent-change-assist";
 export { submitToAiReviewQueue } from "./handoff-queue-integration";
@@ -184,6 +184,7 @@ export {
   getImageIntakeStitchingFlagState,
   getImageIntakeReviewHandoffFlagState,
   getImageIntakeFlagSummary,
+  getImageIntakeRuntimeHealthSummary,
 } from "./feature-flag";
 
 // --- Multimodal combined pass (Phase 3) ---

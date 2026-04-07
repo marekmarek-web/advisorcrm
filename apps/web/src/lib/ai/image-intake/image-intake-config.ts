@@ -201,7 +201,11 @@ function resolveValue(key: ImageIntakeConfigKey): number | boolean | string {
 // Typed accessors
 // ---------------------------------------------------------------------------
 
-export function getImageIntakeConfig(): {
+/**
+ * Resolved runtime config for image intake (explicit exported shape).
+ * Cron routes and admin UI depend on this — keep in sync with getImageIntakeConfig().
+ */
+export type ImageIntakeResolvedConfig = {
   crossSessionTtlMs: number;
   crossSessionMaxArtifacts: number;
   combinedPassMaxImages: number;
@@ -213,12 +217,12 @@ export function getImageIntakeConfig(): {
   handoffQueueSubmitEnabled: boolean;
   /**
    * Phase 11: interval (hours) for the dedicated intent-assist cache cleanup cron.
-   * Default 2h — aligns with 30-min cache TTL so entries are cleaned within a reasonable window.
-   * This value is informational only (actual schedule is set in vercel.json).
-   * Exposed here for ops visibility and potential future dynamic scheduling.
+   * Default 2h — informational; vercel.json holds the actual schedule.
    */
   cacheCleanupIntervalHours: number;
-} {
+};
+
+export function getImageIntakeConfig(): ImageIntakeResolvedConfig {
   return {
     crossSessionTtlMs: (resolveValue("cross_session_ttl_hours") as number) * 60 * 60 * 1000,
     crossSessionMaxArtifacts: resolveValue("cross_session_max_artifacts") as number,
