@@ -53,10 +53,15 @@ describe("resolveAiReviewExtractionRoute", () => {
     });
   });
 
-  it("manual_review when confidence is below AI_REVIEW_CLASSIFIER_CONFIDENCE_MIN", () => {
+  it("low classifier confidence still routes life contract to extract (best-effort)", () => {
     withEnv({ AI_REVIEW_CLASSIFIER_CONFIDENCE_MIN: "0.9" }, () => {
       const r = resolveAiReviewExtractionRoute({ ...base, confidence: 0.2 });
-      expect(r).toEqual({ outcome: "manual_review", reasonCodes: ["low_classifier_confidence"] });
+      expect(r.outcome).toBe("extract");
+      if (r.outcome === "extract") {
+        expect(r.promptKey).toBe("insuranceContractExtraction");
+        expect(r.reasonCodes).toContain("low_classifier_confidence");
+        expect(r.reasonCodes).toContain("life_contract");
+      }
     });
   });
 
@@ -70,19 +75,20 @@ describe("resolveAiReviewExtractionRoute", () => {
     expect(r).toEqual({ outcome: "manual_review", reasonCodes: ["triple_unknown"] });
   });
 
-  it("review_required when document type uncertain with known family", () => {
+  it("document type uncertain with known family still extracts (no review_required stub)", () => {
     const r = resolveAiReviewExtractionRoute({
       ...base,
       documentType: "unknown",
       documentTypeUncertain: true,
     });
-    expect(r).toEqual({
-      outcome: "review_required",
-      reasonCodes: ["document_type_uncertain_with_known_family"],
-    });
+    expect(r.outcome).toBe("extract");
+    if (r.outcome === "extract") {
+      expect(r.promptKey).toBe("legacyFinancialProductExtraction");
+      expect(r.reasonCodes).toContain("no_matching_route_best_effort_legacy");
+    }
   });
 
-  it("non-life car amendment below amendment threshold → review_required", () => {
+  it("non-life car amendment below amendment threshold still extracts with warning code", () => {
     withEnv({ AI_REVIEW_AMENDMENT_CONFIDENCE_MIN: "0.8" }, () => {
       const r = resolveAiReviewExtractionRoute({
         ...base,
@@ -91,10 +97,12 @@ describe("resolveAiReviewExtractionRoute", () => {
         productSubtype: "car_insurance",
         confidence: 0.5,
       });
-      expect(r).toEqual({
-        outcome: "review_required",
-        reasonCodes: ["nonlife_car_amendment_low_confidence"],
-      });
+      expect(r.outcome).toBe("extract");
+      if (r.outcome === "extract") {
+        expect(r.promptKey).toBe("carInsuranceExtraction");
+        expect(r.reasonCodes).toContain("nonlife_car_amendment_low_confidence");
+        expect(r.reasonCodes).toContain("nonlife_car_amendment");
+      }
     });
   });
 

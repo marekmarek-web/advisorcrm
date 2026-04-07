@@ -116,26 +116,28 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
   const { min: minConf, amendment: amendTh } = getClassifierConfidenceThresholds();
 
   const reasonCodes: string[] = [];
+  /** Prepend accumulated router reasons (e.g. low_classifier_confidence) onto extract outcomes. */
+  const extendReasons = (...tail: string[]): string[] => [...reasonCodes, ...tail];
 
   if (route === "manual_review" || route === "manual") {
-    return { outcome: "manual_review", reasonCodes: ["recommended_route_manual"] };
+    return { outcome: "manual_review", reasonCodes: extendReasons("recommended_route_manual") };
   }
   if (intent === "manual_review_only") {
-    return { outcome: "manual_review", reasonCodes: ["business_intent_manual_review_only"] };
+    return { outcome: "manual_review", reasonCodes: extendReasons("business_intent_manual_review_only") };
   }
   if (input.confidence < minConf) {
-    return { outcome: "manual_review", reasonCodes: ["low_classifier_confidence"] };
+    reasonCodes.push("low_classifier_confidence");
+    // Do not return manual_review here — known families/types below still route to extract.
+    // Empty extraction is worse than best-effort when the document text is available.
   }
   if (dt === "unknown" && fam === "unknown" && sub === "unknown") {
-    return { outcome: "manual_review", reasonCodes: ["triple_unknown"] };
+    return { outcome: "manual_review", reasonCodes: [...reasonCodes, "triple_unknown"] };
   }
-  if (input.documentTypeUncertain && fam !== "unknown") {
-    return { outcome: "review_required", reasonCodes: ["document_type_uncertain_with_known_family"] };
-  }
+  // documentTypeUncertain: do not block — fall through so life/loan/supporting routes can pick a promptKey
 
   // §8 Invariant
   if (dt === "payment_instructions") {
-    return { outcome: "extract", promptKey: "paymentInstructionsExtraction", reasonCodes: ["payment_invariant"] };
+    return { outcome: "extract", promptKey: "paymentInstructionsExtraction", reasonCodes: extendReasons("payment_invariant") };
   }
 
   // §1 Life insurance
@@ -148,14 +150,14 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
         "unknown",
       ]);
       if (okSub.has(sub) || sub === ANY) {
-        return { outcome: "extract", promptKey: "insuranceContractExtraction", reasonCodes: ["life_contract"] };
+        return { outcome: "extract", promptKey: "insuranceContractExtraction", reasonCodes: extendReasons("life_contract") };
       }
     }
     if (dt === "proposal" || dt === "modelation" || dt === "offer") {
-      return { outcome: "extract", promptKey: "insuranceProposalModelation", reasonCodes: ["life_proposal_modelation"] };
+      return { outcome: "extract", promptKey: "insuranceProposalModelation", reasonCodes: extendReasons("life_proposal_modelation") };
     }
     if (dt === "amendment") {
-      return { outcome: "extract", promptKey: "insuranceAmendment", reasonCodes: ["life_amendment"] };
+      return { outcome: "extract", promptKey: "insuranceAmendment", reasonCodes: extendReasons("life_amendment") };
     }
   }
 
@@ -173,7 +175,7 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
     const isCarFam = fam === "car_insurance" || fam === "motor_insurance";
     if (dt === "contract") {
       if (sub === "car_insurance" || isCarFam) {
-        return { outcome: "extract", promptKey: "carInsuranceExtraction", reasonCodes: ["car_contract"] };
+        return { outcome: "extract", promptKey: "carInsuranceExtraction", reasonCodes: extendReasons("car_contract") };
       }
       const nonLifeSubs = new Set([
         "property_insurance",
@@ -184,93 +186,98 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
         "unknown",
       ]);
       if (nonLifeSubs.has(sub) || sub === ANY) {
-        return { outcome: "extract", promptKey: "nonLifeInsuranceExtraction", reasonCodes: ["nonlife_contract"] };
+        return { outcome: "extract", promptKey: "nonLifeInsuranceExtraction", reasonCodes: extendReasons("nonlife_contract") };
       }
       // Accept any other sub for non-life contract rather than falling through
-      return { outcome: "extract", promptKey: "nonLifeInsuranceExtraction", reasonCodes: ["nonlife_contract_any_sub"] };
+      return { outcome: "extract", promptKey: "nonLifeInsuranceExtraction", reasonCodes: extendReasons("nonlife_contract_any_sub") };
     }
     if (dt === "proposal" || dt === "offer" || dt === "modelation") {
-      return { outcome: "extract", promptKey: "insuranceProposalModelation", reasonCodes: ["nonlife_proposal_modelation"] };
+      return { outcome: "extract", promptKey: "insuranceProposalModelation", reasonCodes: extendReasons("nonlife_proposal_modelation") };
     }
     if (dt === "amendment") {
       if (sub === "car_insurance" || isCarFam) {
+        const rc = [...reasonCodes];
         if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-          return { outcome: "review_required", reasonCodes: ["nonlife_car_amendment_low_confidence"] };
+          rc.push("nonlife_car_amendment_low_confidence");
         }
-        return { outcome: "extract", promptKey: "carInsuranceExtraction", reasonCodes: ["nonlife_car_amendment"] };
+        return { outcome: "extract", promptKey: "carInsuranceExtraction", reasonCodes: [...rc, "nonlife_car_amendment"] };
       }
+      const rcNl = [...reasonCodes];
       if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-        return { outcome: "review_required", reasonCodes: ["nonlife_amendment_low_confidence"] };
+        rcNl.push("nonlife_amendment_low_confidence");
       }
-      return { outcome: "extract", promptKey: "insuranceAmendment", reasonCodes: ["nonlife_amendment"] };
+      return { outcome: "extract", promptKey: "insuranceAmendment", reasonCodes: [...rcNl, "nonlife_amendment"] };
     }
     // Fallback: any non-life document with known family but unknown documentType → extract
     if (dt === "unknown" || dt === "") {
-      return { outcome: "extract", promptKey: "nonLifeInsuranceExtraction", reasonCodes: ["nonlife_unknown_dt_fallback"] };
+      return { outcome: "extract", promptKey: "nonLifeInsuranceExtraction", reasonCodes: extendReasons("nonlife_unknown_dt_fallback") };
     }
   }
 
   // §3 Investment (vč. FUNDOO / Amundi — čistá investice, ne DPS/PP)
   if (fam === "investment") {
     if (dt === "contract") {
-      return { outcome: "extract", promptKey: "investmentContractExtraction", reasonCodes: ["investment_contract"] };
+      return { outcome: "extract", promptKey: "investmentContractExtraction", reasonCodes: extendReasons("investment_contract") };
     }
     if (dt === "proposal" || dt === "modelation") {
       if (getAiReviewPromptId("investmentProposal")) {
-        return { outcome: "extract", promptKey: "investmentProposal", reasonCodes: ["investment_proposal_dedicated"] };
+        return { outcome: "extract", promptKey: "investmentProposal", reasonCodes: extendReasons("investment_proposal_dedicated") };
       }
-      return { outcome: "extract", promptKey: "insuranceProposalModelation", reasonCodes: ["investment_proposal_fallback"] };
+      return { outcome: "extract", promptKey: "insuranceProposalModelation", reasonCodes: extendReasons("investment_proposal_fallback") };
     }
   }
 
   // §4 PP (penzijní připojištění) a DPS (doplňkové penzijní spoření) — nelze zaměňovat
   if (fam === "pp" || fam === "dps") {
     if (dt === "contract") {
-      return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["pension_contract"] };
+      return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: extendReasons("pension_contract") };
     }
     if (dt === "amendment") {
+      const rcP = [...reasonCodes];
       if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-        return { outcome: "review_required", reasonCodes: ["pension_amendment_low_confidence"] };
+        rcP.push("pension_amendment_low_confidence");
       }
-      return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["pension_amendment"] };
+      return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: [...rcP, "pension_amendment"] };
     }
     if (dt === "statement") {
-      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["pension_statement"] };
+      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("pension_statement") };
     }
   }
 
   // §5 DIP (dlouhodobý investiční produkt; pozor na záměnu s fondovým příkazem / FUNDOO)
   if (fam === "dip") {
     if (dt === "contract") {
-      return { outcome: "extract", promptKey: "dipExtraction", reasonCodes: ["dip_contract"] };
+      return { outcome: "extract", promptKey: "dipExtraction", reasonCodes: extendReasons("dip_contract") };
     }
     if (dt === "amendment") {
+      const rcD = [...reasonCodes];
       if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-        return { outcome: "review_required", reasonCodes: ["dip_amendment_low_confidence"] };
+        rcD.push("dip_amendment_low_confidence");
       }
-      return { outcome: "extract", promptKey: "dipExtraction", reasonCodes: ["dip_amendment"] };
+      return { outcome: "extract", promptKey: "dipExtraction", reasonCodes: [...rcD, "dip_amendment"] };
     }
     if (dt === "statement") {
-      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["dip_statement"] };
+      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("dip_statement") };
     }
   }
 
   // §6 Building savings
   if (fam === "building_savings") {
     if (dt === "contract") {
-      return { outcome: "extract", promptKey: "buildingSavingsExtraction", reasonCodes: ["ss_contract"] };
+      return { outcome: "extract", promptKey: "buildingSavingsExtraction", reasonCodes: extendReasons("ss_contract") };
     }
     if (dt === "amendment") {
+      const rcS = [...reasonCodes];
       if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-        return { outcome: "review_required", reasonCodes: ["ss_amendment_low_confidence"] };
+        rcS.push("ss_amendment_low_confidence");
       }
-      return { outcome: "extract", promptKey: "buildingSavingsExtraction", reasonCodes: ["ss_amendment"] };
+      return { outcome: "extract", promptKey: "buildingSavingsExtraction", reasonCodes: [...rcS, "ss_amendment"] };
     }
     if (dt === "payment_instructions") {
-      return { outcome: "extract", promptKey: "paymentInstructionsExtraction", reasonCodes: ["ss_payment"] };
+      return { outcome: "extract", promptKey: "paymentInstructionsExtraction", reasonCodes: extendReasons("ss_payment") };
     }
     if (dt === "statement") {
-      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["ss_statement"] };
+      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("ss_statement") };
     }
   }
 
@@ -278,65 +285,67 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
   if (fam === "loan") {
     if (dt === "contract") {
       if (sub === "consumer_loan" || sub === "unknown" || sub === ANY) {
-        return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: ["loan_contract"] };
+        return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: extendReasons("loan_contract") };
       }
     }
     if (dt === "amendment") {
+      const rcL = [...reasonCodes];
       if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-        return { outcome: "review_required", reasonCodes: ["loan_amendment_low_confidence"] };
+        rcL.push("loan_amendment_low_confidence");
       }
-      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: ["loan_amendment"] };
+      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: [...rcL, "loan_amendment"] };
     }
   }
   if (fam === "mortgage") {
     if (dt === "contract" || dt === "proposal" || dt === "offer") {
-      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: ["mortgage_via_loan"] };
+      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: extendReasons("mortgage_via_loan") };
     }
     if (dt === "amendment") {
+      const rcM = [...reasonCodes];
       if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-        return { outcome: "review_required", reasonCodes: ["mortgage_amendment_low_confidence"] };
+        rcM.push("mortgage_amendment_low_confidence");
       }
-      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: ["mortgage_amendment"] };
+      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: [...rcM, "mortgage_amendment"] };
     }
     // Unknown doc type but family is mortgage — try extraction rather than manual_review
     if (dt === "unknown" || dt === "") {
-      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: ["mortgage_unknown_dt_fallback"] };
+      return { outcome: "extract", promptKey: "loanContractExtraction", reasonCodes: extendReasons("mortgage_unknown_dt_fallback") };
     }
   }
 
   // §9 Statements / supporting
   if (dt === "supporting_document") {
-    return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["supporting_doc"] };
+    return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("supporting_doc") };
   }
   if (dt === "statement") {
     if (fam === "banking" && sub === "bank_statement_standard") {
-      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["bank_statement"] };
+      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("bank_statement") };
     }
     if (fam === "legacy_financial_product") {
       if (input.confidence < amendTh) {
-        return { outcome: "manual_review", reasonCodes: ["legacy_statement_low_confidence"] };
+        return { outcome: "manual_review", reasonCodes: extendReasons("legacy_statement_low_confidence") };
       }
-      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["legacy_statement"] };
+      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("legacy_statement") };
     }
-    return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["generic_statement"] };
+    return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("generic_statement") };
   }
 
   // §10 Legacy
   if (fam === "legacy_financial_product") {
     if (dt === "contract") {
-      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["legacy_contract"] };
+      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("legacy_contract") };
     }
     if (dt === "unknown") {
-      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["legacy_unknown_dt"] };
+      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("legacy_unknown_dt") };
     }
   }
 
   // §11 Termination
   if (dt === "termination_document") {
     if (getAiReviewPromptId("terminationDocumentExtraction")) {
-      return { outcome: "extract", promptKey: "terminationDocumentExtraction", reasonCodes: ["termination"] };
+      return { outcome: "extract", promptKey: "terminationDocumentExtraction", reasonCodes: extendReasons("termination") };
     }
-    return { outcome: "manual_review", reasonCodes: ["prompt_missing_termination"] };
+    return { outcome: "manual_review", reasonCodes: extendReasons("prompt_missing_termination") };
   }
 
   // §X Leasing / financial lease / fleet financing — dedicated prompt with leasing field set
@@ -348,7 +357,7 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
         // - When OPENAI_PROMPT_AI_REVIEW_LEASING_EXTRACTION_ID is set: uses stored OpenAI prompt
         // - When not configured: falls to allowTextSecondPass → local LEASING_EXTRACTION_TEMPLATE
         //   (leasing-specific field set: customer, lender, VIN, installment, etc.)
-        return { outcome: "extract", promptKey: "leasingExtraction", reasonCodes: ["leasing_contract_dedicated"] };
+        return { outcome: "extract", promptKey: "leasingExtraction", reasonCodes: extendReasons("leasing_contract_dedicated") };
       }
     }
   }
@@ -375,17 +384,17 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
       // instead of blocking as unsupported — document has useful data even if not AML/mandate.
       const isPensionFamily = fam === "dps" || fam === "pp" || fam === "dip" || fam === "investment";
       if (isPensionFamily) {
-        return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["consent_pension_family_fallback"] };
+        return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: extendReasons("consent_pension_family_fallback") };
       }
       // Non-pension consent with unknown subtype — try legacy rather than hard block
-      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["consent_unknown_subtype_legacy_fallback"] };
+      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("consent_unknown_subtype_legacy_fallback") };
     }
     if (getAiReviewPromptId("consentIdentificationExtraction")) {
-      return { outcome: "extract", promptKey: "consentIdentificationExtraction", reasonCodes: ["consent_kyc"] };
+      return { outcome: "extract", promptKey: "consentIdentificationExtraction", reasonCodes: extendReasons("consent_kyc") };
     }
     // Fallback when dedicated consent prompt is not configured — use legacy extraction
     // so primaryType can be properly set (manual_review stub returns unsupported_or_unknown)
-    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["consent_kyc_legacy_fallback"] };
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("consent_kyc_legacy_fallback") };
   }
 
   // §X2 Compliance family — distinguish amendment, supporting and generic
@@ -396,10 +405,11 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
       dt === "insurance_policy_change_or_service_doc" ||
       dt === "life_insurance_change_request"
     ) {
+      const rcC = [...reasonCodes];
       if (!amendmentConfidenceOk(input.confidence, amendTh)) {
-        return { outcome: "review_required", reasonCodes: ["compliance_amendment_low_confidence"] };
+        rcC.push("compliance_amendment_low_confidence");
       }
-      return { outcome: "extract", promptKey: "insuranceAmendment", reasonCodes: ["compliance_insurance_amendment"] };
+      return { outcome: "extract", promptKey: "insuranceAmendment", reasonCodes: [...rcC, "compliance_insurance_amendment"] };
     }
     // Tax returns, payslips, income proofs, and other supporting docs
     const SUPPORTING_DT = new Set([
@@ -414,9 +424,9 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
       "statement",
     ]);
     if (SUPPORTING_DT.has(dt) || sub === "tax_return" || sub === "payslip") {
-      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: ["compliance_supporting_doc"] };
+      return { outcome: "extract", promptKey: "supportingDocumentExtraction", reasonCodes: extendReasons("compliance_supporting_doc") };
     }
-    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["compliance_document"] };
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("compliance_document") };
   }
 
   // §13 Confirmation
@@ -439,19 +449,19 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
       // instead of blocking — confirmation docs carry usable client/product/payment data.
       const isPensionFamily = fam === "dps" || fam === "pp" || fam === "dip";
       if (isPensionFamily) {
-        return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["confirmation_pension_family_fallback"] };
+        return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: extendReasons("confirmation_pension_family_fallback") };
       }
       // For other families with unknown confirmation subtype — use legacy rather than hard block
-      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["confirmation_unknown_subtype_legacy_fallback"] };
+      return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("confirmation_unknown_subtype_legacy_fallback") };
     }
     if (getAiReviewPromptId("confirmationDocumentExtraction")) {
-      return { outcome: "extract", promptKey: "confirmationDocumentExtraction", reasonCodes: ["confirmation"] };
+      return { outcome: "extract", promptKey: "confirmationDocumentExtraction", reasonCodes: extendReasons("confirmation") };
     }
     // Fallback: use retirement extraction if family is pension, otherwise legacy
     if (fam === "dps" || fam === "pp" || fam === "dip") {
-      return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: ["confirmation_pension_no_dedicated_prompt"] };
+      return { outcome: "extract", promptKey: "retirementProductExtraction", reasonCodes: extendReasons("confirmation_pension_no_dedicated_prompt") };
     }
-    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["confirmation_no_dedicated_prompt_legacy_fallback"] };
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("confirmation_no_dedicated_prompt_legacy_fallback") };
   }
 
   // EXTRACTION PHILOSOPHY: no_matching_route should not block extraction.
@@ -460,12 +470,12 @@ export function resolveAiReviewExtractionRoute(input: AiReviewRouterInput): AiRe
   // Only genuinely non-financial or unreadable docs end up here; even then we attempt extraction.
   if (fam !== "unknown" && fam !== "") {
     // Known family but no matching route → use legacy as best-effort
-    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["no_matching_route_best_effort_legacy"] };
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("no_matching_route_best_effort_legacy") };
   }
   if (dt !== "unknown" && dt !== "") {
     // Known document type but unknown family → try legacy
-    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["no_matching_route_known_dt_legacy"] };
+    return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("no_matching_route_known_dt_legacy") };
   }
   // Truly triple-unknown that slipped past the early guard — still attempt extraction
-  return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: ["no_matching_route_generic_fallback"] };
+  return { outcome: "extract", promptKey: "legacyFinancialProductExtraction", reasonCodes: extendReasons("no_matching_route_generic_fallback") };
 }

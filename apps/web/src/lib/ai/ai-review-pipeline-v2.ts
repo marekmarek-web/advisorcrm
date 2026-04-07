@@ -915,7 +915,7 @@ export async function runAiReviewV2Pipeline(
     }
   }
 
-  const router = resolveAiReviewExtractionRoute({
+  let router = resolveAiReviewExtractionRoute({
     documentType: effectiveDocumentType,
     productFamily: routerInputOverride.overrideApplied ? routerInputOverride.productFamily : effectiveProductFamily,
     productSubtype: effectiveProductSubtype,
@@ -924,6 +924,19 @@ export async function runAiReviewV2Pipeline(
     confidence: ai.confidence,
     documentTypeUncertain: ai.documentTypeUncertain === true,
   });
+  if (router.outcome === "review_required") {
+    // Defensive: router should not emit review_required (amendments always extract).
+    allReasons.push(...router.reasonCodes.map((c) => `router_review_required_defensive:${c}`));
+    trace.warnings = [
+      ...(trace.warnings ?? []),
+      `router_review_required_upgraded_to_legacy_extract:${router.reasonCodes.join(",")}`,
+    ];
+    router = {
+      outcome: "extract",
+      promptKey: "legacyFinancialProductExtraction",
+      reasonCodes: [...router.reasonCodes, "pipeline_defensive_legacy_extract"],
+    };
+  }
   trace.aiReviewRouterOutcome = router.outcome;
   trace.aiReviewRouterReasonCodes = router.reasonCodes;
   trace.aiReviewExtractionPromptKey =
@@ -980,40 +993,6 @@ export async function runAiReviewV2Pipeline(
     };
   }
 
-  if (router.outcome === "review_required") {
-    const reviewReasonNote = `Dokument vyžaduje kontrolu před extrakcí (kódy: ${router.reasonCodes.join(", ")}). Klasifikovaný typ: ${classification.primaryType}. Finální rozhodnutí o zápisu je na poradci.`;
-    const stub = buildManualReviewStubEnvelope({
-      classification,
-      inputMode: inputModeResult.inputMode as string,
-      extractionMode: inputModeResult.extractionMode as string,
-      pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
-      norm: normPipeline,
-      route: "manual_review_only",
-      advisorNote: reviewReasonNote,
-    });
-    stub.documentMeta.textCoverageEstimate = textCov;
-    stub.reviewWarnings.push({
-      code: "ai_review_router_review_required",
-      message: `Dokument vyžaduje kontrolu před extrakcí (${router.reasonCodes.join(", ")}).`,
-      severity: "warning",
-    });
-    trace.selectedSchema = "router_review_required";
-    return {
-      ok: true,
-      processingStatus: "review_required",
-      extractedPayload: stub,
-      confidence: classification.confidence * 0.6,
-      reasonsForReview: [...new Set([...allReasons, ...router.reasonCodes])],
-      inputMode: inputModeResult.inputMode,
-      extractionMode: inputModeResult.extractionMode,
-      detectedDocumentType: classification.primaryType,
-      extractionTrace: trace,
-      validationWarnings: stub.reviewWarnings as ValidationWarning[],
-      fieldConfidenceMap: null,
-      classificationReasons: classification.reasons,
-    };
-  }
-
   const promptKey = router.promptKey as AiReviewPromptKey;
 
   // Prompt keys that must always proceed to extraction regardless of supportedForDirectExtraction flag.
@@ -1034,6 +1013,7 @@ export async function runAiReviewV2Pipeline(
     "carInsuranceExtraction",
     "nonLifeInsuranceExtraction",
     "leasingExtraction",
+    "mortgageExtraction",
     "legacyFinancialProductExtraction",
     "supportingDocumentExtraction",
     // Additional keys: consent, confirmation, termination — always extract, never block
@@ -1043,41 +1023,12 @@ export async function runAiReviewV2Pipeline(
   ]);
 
   if (ai.supportedForDirectExtraction === false && !ALWAYS_EXTRACT_PROMPT_KEYS.has(promptKey)) {
-    // EXTRACTION PHILOSOPHY: direct_extraction_unsupported flag blocks AUTO-APPLY only.
-    // Extraction still runs as best_effort — stub carries all classification metadata + advisor note.
-    // The advisor decides whether to save as supporting doc, partially apply, or ignore.
-    const unsupportedNote = `Klasifikátor označil dokument jako nevhodný pro plnou automatickou extrakci (promptKey: ${promptKey}, typ: ${classification.primaryType}). Výstup je orientační — finální rozhodnutí o zápisu je na poradci.`;
-    const stub = buildManualReviewStubEnvelope({
-      classification,
-      inputMode: inputModeResult.inputMode as string,
-      extractionMode: inputModeResult.extractionMode as string,
-      pageCount: inputModeResult.pageCount ?? trace.pageCount ?? null,
-      norm: normPipeline,
-      route: extractionRoute,
-      advisorNote: unsupportedNote,
-    });
-    stub.documentMeta.textCoverageEstimate = textCov;
-    stub.reviewWarnings.push({
-      code: "not_supported_for_direct_extraction",
-      message:
-        "Klasifikátor označil dokument jako nevhodný pro plnou automatickou extrakci — zpracujte ručně nebo upravte vstup.",
-      severity: "warning",
-    });
-    trace.selectedSchema = "direct_extraction_unsupported";
-    return {
-      ok: true,
-      processingStatus: "review_required",
-      extractedPayload: stub,
-      confidence: classification.confidence * 0.55,
-      reasonsForReview: [...new Set([...allReasons, "direct_extraction_unsupported"])],
-      inputMode: inputModeResult.inputMode,
-      extractionMode: inputModeResult.extractionMode,
-      detectedDocumentType: classification.primaryType,
-      extractionTrace: trace,
-      validationWarnings: stub.reviewWarnings as ValidationWarning[],
-      fieldConfidenceMap: null,
-      classificationReasons: classification.reasons,
-    };
+    // EXTRACTION PHILOSOPHY: flag blocks auto-apply only — extraction still runs (no empty stub).
+    allReasons.push("direct_extraction_unsupported_flag");
+    trace.warnings = [
+      ...(trace.warnings ?? []),
+      `direct_extraction_unsupported_continuing_extraction:${promptKey}`,
+    ];
   }
 
   const modeEarly = inputModeResult.extractionMode as string;
