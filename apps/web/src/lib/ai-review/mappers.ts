@@ -19,6 +19,13 @@ import type { InputMode } from "../ai/input-mode-detection";
 import { formatAiClassifierForAdvisor } from "./czech-labels";
 import { advisorFieldPresentation, advisorFieldPresentationWithEvidence, shouldCountFieldForAttentionBanner } from "./advisor-confidence-policy";
 import type { EvidenceTier, SourceKind } from "../ai/document-review-types";
+import {
+  fieldQualityGate,
+  isNameFieldRedundant,
+  detectPaymentFrequencyConflict,
+  detectContractVsVariableSymbolConflict,
+  shouldSuppressGroup,
+} from "../ai/field-quality-gate";
 import { buildAdvisorReviewViewModel } from "./advisor-review-view-model";
 
 type ApiReviewDetail = Record<string, unknown>;
@@ -417,6 +424,13 @@ const HIDDEN_REASON_CODES = new Set([
   "partial_extraction_merged_into_stub",
   "critical_review_warning",
   "missing_required_data",
+  // Pipeline/routing internals — not actionable for advisors
+  "leasing_contract_dedicated",
+  "leasing_contract_legacy_fallback",
+  "supporting_document_review",
+  "reference_lane",
+  "adobe_preprocess_reused",
+  "preprocess_succeeded",
 ]);
 
 function fieldLabelForPath(field?: string): string | undefined {
@@ -497,18 +511,32 @@ function resolveFieldGroupId(rawKey: string): string {
 
 function humanizeReasonForAdvisor(reason: string): string | null {
   if (!reason || HIDDEN_REASON_CODES.has(reason)) return null;
+
+  // Suppress technical pipeline reasons that are not actionable for advisors
+  const SUPPRESS_PIPELINE_REASONS = new Set([
+    "leasing_contract_dedicated", "leasing_contract_legacy_fallback",
+    "supporting_document_review", "supporting_document_reference",
+    "proposal_or_modelation_not_final_contract",  // already in summary
+    "proposal_not_final_contract",                 // already in summary
+    "hybrid_contract_signals_detected",            // technical classifier detail
+    "supporting_doc_family", "reference_lane",
+    "adobe_preprocess_reused", "preprocess_succeeded", "preprocess_reused_cached_result",
+    "localTemplateFallback", "storedPromptDivergenceDetected",
+  ]);
+  if (SUPPRESS_PIPELINE_REASONS.has(reason)) return null;
+
+  // Suppress snake_case internal routing codes
+  if (/^[a-z][a-z0-9_]*$/.test(reason) && reason.includes("_") && reason.length > 40) return null;
+
   if (reason === "low_confidence") return "AI si výsledkem není dost jistá. Ověřte hlavní údaje oproti dokumentu.";
   if (reason === "scan_or_ocr_unusable") {
     return "OCR nepřečetlo dokument dost spolehlivě. Doplňte údaje ručně nebo použijte kvalitnější PDF.";
   }
-  if (reason === "proposal_or_modelation_not_final_contract") {
-    return "Dokument působí jako návrh nebo modelace, ne jako finální smlouva.";
+  if (reason === "ambiguous_client_match") {
+    return "V CRM je více možných klientů — vyberte správného.";
   }
-  if (reason === "proposal_not_final_contract") {
-    return "Rozpoznání ukazuje spíš na návrh než na finální smlouvu.";
-  }
-  if (reason === "hybrid_contract_signals_detected") {
-    return "Dokument obsahuje smluvní údaje, proto byl posouzen jako smlouva i přes modelační prvky.";
+  if (reason === "incomplete_payment_details") {
+    return "Platební údaje nejsou kompletní — doplňte nebo ověřte.";
   }
   return null;
 }
@@ -693,16 +721,26 @@ function flattenEnvelopeToGroups(
   fieldConfidenceMap: Record<string, number> | undefined,
   globalConfidence01: number,
   ctx: ReadabilityCtx,
-  productFamily?: string
+  productFamily?: string,
+  outputMode?: string,
+  primaryType?: string,
 ): ExtractedGroup[] {
   const groupedFields = new Map<string, ExtractedField[]>();
   const pushGroupedField = (field: ExtractedField, rawKey: string) => {
     const groupId = resolveFieldGroupId(rawKey);
+    // Suppress entire groups based on family/output mode
+    if (shouldSuppressGroup(groupId, outputMode ?? "", productFamily ?? "")) return;
     const nextField = { ...field, groupId };
     const bucket = groupedFields.get(groupId) ?? [];
     bucket.push(nextField);
     groupedFields.set(groupId, bucket);
   };
+
+  // Pre-scan for payment conflict and contract/VS conflict to add contextual messages
+  const efRaw = envelope.extractedFields as Record<string, { value?: unknown; status?: string } | undefined> | undefined;
+  const paymentConflict = efRaw ? detectPaymentFrequencyConflict(efRaw) : { hasConflict: false };
+  const contractConflict = efRaw ? detectContractVsVariableSymbolConflict(efRaw) : { hasConflict: false };
+
   const ef = envelope.extractedFields as
     | Record<string, { value?: unknown; status?: string; confidence?: number }>
     | undefined;
@@ -710,30 +748,67 @@ function flattenEnvelopeToGroups(
     for (const [fKey, fObj] of Object.entries(ef)) {
       if (!fObj || typeof fObj !== "object" || fKey.startsWith("_")) continue;
       const rawVal = fObj.value;
-      const strVal = isDateFieldKey(fKey)
-        ? normalizeDateForAdvisorDisplay(rawVal == null ? null : String(rawVal)) || formatExtractedValue(rawVal)
-        : formatExtractedValue(rawVal);
+
+      // Name redundancy: skip inferred firstName/lastName if fullName already covers them
+      if (isNameFieldRedundant(fKey, ef as Record<string, { value?: unknown; status?: string; evidenceTier?: EvidenceTier } | undefined>)) continue;
+
+      const evidenceTier = (fObj as Record<string, unknown>).evidenceTier as EvidenceTier | undefined;
+      const sourceKind = (fObj as Record<string, unknown>).sourceKind as SourceKind | undefined;
+      const sourceLabel = (fObj as Record<string, unknown>).sourceLabel as string | undefined;
       const conf01 =
         typeof fObj.confidence === "number" && Number.isFinite(fObj.confidence)
           ? fObj.confidence
           : globalConfidence01;
+
+      // Field quality gate
+      const gateResult = fieldQualityGate(fKey, rawVal, {
+        productFamily,
+        outputMode,
+        primaryType,
+        evidenceTier,
+        sourceKind,
+        extractionStatus: fObj.status,
+        confidence: conf01,
+      });
+
+      // Suppress fields that fail quality gate
+      if (gateResult.level === "suppress_from_main_view" || gateResult.level === "diagnostic_only") continue;
+
+      const strVal = isDateFieldKey(fKey)
+        ? normalizeDateForAdvisorDisplay(rawVal == null ? null : String(rawVal)) || formatExtractedValue(rawVal)
+        : formatExtractedValue(rawVal);
+
+      // Skip if display value is empty dash
+      if (strVal === "—") continue;
+
       const confPct = fieldConfidence(fKey, fieldConfidenceMap, globalConfidence01);
-      const evidenceTier = (fObj as Record<string, unknown>).evidenceTier as EvidenceTier | undefined;
-      const sourceKind = (fObj as Record<string, unknown>).sourceKind as SourceKind | undefined;
-      const sourceLabel = (fObj as Record<string, unknown>).sourceLabel as string | undefined;
       const pres = advisorFieldPresentationWithEvidence(rawVal, fObj.status, conf01, {
         inputMode: ctx.inputMode as InputMode | undefined,
         textCoverageEstimate: ctx.textCoverageEstimate,
         preprocessStatus: ctx.preprocessStatus,
       }, evidenceTier, sourceKind, sourceLabel);
+
+      // Add contextual conflict message to affected fields
+      let finalMessage = pres.message;
+      if (paymentConflict.hasConflict &&
+        (fKey === "paymentFrequency" || fKey === "totalMonthlyPremium" || fKey === "annualPremium")) {
+        finalMessage = paymentConflict.reason ?? "Frekvence plateb nebo výše pojistného si odporují — ověřte v dokumentu.";
+      }
+      if (contractConflict.hasConflict &&
+        (fKey === "contractNumber" || fKey === "variableSymbol")) {
+        finalMessage = contractConflict.reason ?? "Číslo smlouvy a variabilní symbol si mohou odporovat.";
+      }
+
       pushGroupedField({
         id: `extractedFields.${fKey}`,
         groupId: "extractedFields",
         label: fieldLabelForKeyAndFamily(fKey, productFamily),
         value: strVal,
         confidence: confPct,
-        status: pres.status,
-        message: pres.message,
+        status: gateResult.level === "displayable_with_review" ? "warning" : pres.status,
+        message: gateResult.level === "displayable_with_review" && !finalMessage
+          ? "Ověřte oproti originálu dokumentu."
+          : finalMessage,
         sourceType: "ai",
         isConfirmed: false,
         isEdited: false,
@@ -1063,9 +1138,8 @@ function buildSummary(
     containsPaymentInstructions: contentFlags.containsPaymentInstructions ?? false,
     reasonsForReview: detail.reasonsForReview as string[] | undefined,
   });
-
-  const techDetail = `AI vytěžila ${diagnostics.extractedFields} z ${diagnostics.totalFields} polí.`;
-  return `${humanSummary} ${techDetail}`;
+  // Removed tech suffix ("AI vytěžila X z Y polí") — diagnostics shown separately in Technické detaily
+  return humanSummary;
 }
 
 /**
@@ -1212,6 +1286,14 @@ function appendSyntheticEnvelopeGroups(
     // These produce generic messages that duplicate the per-field "Chybí: X" entries — advisor-irrelevant at this level.
     "missing_required_data",
     "critical_review_warning",
+    // Source priority violations are handled by field suppression / clearing — no need to surface separately
+    "client_field_institution_value",
+    "intermediary_institution_value",
+    // Technical pipeline internals — shown in trace, not in advisor panel
+    "storedPromptDivergenceDetected",
+    "multi_section_bundle_detected",
+    "missing_prompt_vars",
+    "preprocess_warning",
   ]);
 
   const statusFields: ExtractedField[] = [];
@@ -1364,10 +1446,18 @@ export function mapApiToExtractionDocument(
       ?.productFamily as string | undefined
   );
 
+  const envelopePrimaryType = (
+    ((extracted as Record<string, unknown>).documentClassification as Record<string, unknown> | undefined)
+      ?.primaryType as string | undefined
+  ) ?? (detail.detectedDocumentType as string | undefined);
+
+  const envelopeOutputMode = (detail as Record<string, unknown>).outputMode as string | undefined
+    ?? (trace as Record<string, unknown> | undefined)?.outputMode as string | undefined;
+
   let groups =
     Object.keys(extracted).length > 0
       ? looksLikeDocumentEnvelope(extracted)
-        ? flattenEnvelopeToGroups(extracted, fieldConfidenceMap, confidence, readCtx, classifierProductFamily)
+        ? flattenEnvelopeToGroups(extracted, fieldConfidenceMap, confidence, readCtx, classifierProductFamily, envelopeOutputMode, envelopePrimaryType)
         : flattenPayload(extracted, fieldConfidenceMap, confidence)
       : [];
   let documentTypeLabel = humanPrimaryTypeHeading(baseType);

@@ -51,6 +51,24 @@ export function getDocumentTypeLabel(primaryType: PrimaryDocumentType): string {
  * Generate the main human-friendly summary after extraction.
  * This is what the AI "says" to the advisor after processing.
  */
+const SUPPORTING_PRIMARY_TYPES = new Set([
+  "payslip_document", "income_proof_document", "income_confirmation",
+  "corporate_tax_return", "self_employed_tax_or_income_document",
+  "financial_analysis_document", "bank_statement",
+  "medical_questionnaire", "consent_or_declaration", "identity_document",
+  "insurance_policy_change_or_service_doc", "service_agreement",
+]);
+
+const REVIEW_REASON_SUPPRESS = new Set([
+  // Pipeline internals — not actionable
+  "leasing_contract_dedicated", "leasing_contract_legacy_fallback",
+  "supporting_document_review", "reference_lane",
+  "adobe_preprocess_reused", "preprocess_succeeded",
+  "localTemplateFallback", "storedPromptDivergenceDetected",
+  "partial_extraction_coerced", "partial_extraction_merged_into_stub",
+  "critical_review_warning", "missing_required_data",
+]);
+
 export function buildHumanSummary(params: {
   primaryType: PrimaryDocumentType;
   lifecycleStatus: DocumentLifecycleStatus;
@@ -78,65 +96,75 @@ export function buildHumanSummary(params: {
 
   const parts: string[] = [];
   const label = getDocumentTypeLabel(primaryType);
+  const isSupporting = SUPPORTING_PRIMARY_TYPES.has(primaryType);
 
   // Main identification
   parts.push(`Rozpoznala jsem ${label}.`);
 
-  // Product / institution detail
-  if (productName && institutionName) {
-    parts.push(`Produkt: ${productName} od ${institutionName}.`);
-  } else if (institutionName) {
-    parts.push(`Instituce: ${institutionName}.`);
-  } else if (productName) {
-    parts.push(`Produkt: ${productName}.`);
+  if (isSupporting) {
+    // Supporting docs: short, focused summary
+    if (clientName) parts.push(`Vystaveno pro: ${clientName}.`);
+    if (institutionName) parts.push(`Instituce: ${institutionName}.`);
+    // No contract numbers, no payment instructions, no product for supporting docs
+  } else {
+    // Product / institution detail
+    if (productName && institutionName) {
+      parts.push(`Produkt: ${productName} od ${institutionName}.`);
+    } else if (institutionName) {
+      parts.push(`Instituce: ${institutionName}.`);
+    } else if (productName) {
+      parts.push(`Produkt: ${productName}.`);
+    }
+
+    // Contract number — only for product docs
+    if (contractNumber) {
+      parts.push(`Číslo smlouvy: ${contractNumber}.`);
+    }
+
+    // Client
+    if (clientName) {
+      parts.push(`Klient: ${clientName}.`);
+    }
+
+    // Lifecycle — important for advisor to know proposal vs final
+    if (lifecycleStatus === "proposal" || lifecycleStatus === "offer") {
+      parts.push("Jedná se o návrh/nabídku, ne o finálně uzavřenou smlouvu.");
+    } else if (lifecycleStatus === "illustration" || lifecycleStatus === "modelation" || lifecycleStatus === "non_binding_projection") {
+      parts.push("Jedná se o modelaci/ilustraci — nezávazný dokument.");
+    } else if (lifecycleStatus === "policy_change_request" || lifecycleStatus === "endorsement_request") {
+      parts.push("Žádost o změnu existující smlouvy.");
+    }
+
+    // Payment instructions
+    if (containsPaymentInstructions) {
+      parts.push("Dokument obsahuje platební instrukce.");
+    }
   }
 
-  // Contract number
-  if (contractNumber) {
-    parts.push(`Číslo smlouvy: ${contractNumber}.`);
-  }
-
-  // Client
-  if (clientName) {
-    parts.push(`Klient: ${clientName}.`);
-  }
-
-  // Lifecycle warning
-  if (lifecycleStatus === "proposal" || lifecycleStatus === "offer") {
-    parts.push("Upozornění: Jedná se o návrh/nabídku, ne o finálně uzavřenou smlouvu.");
-  } else if (lifecycleStatus === "illustration" || lifecycleStatus === "modelation" || lifecycleStatus === "non_binding_projection") {
-    parts.push("Jedná se o modelaci/ilustraci, ne o závazný smluvní dokument.");
-  } else if (lifecycleStatus === "policy_change_request" || lifecycleStatus === "endorsement_request") {
-    parts.push("Jedná se o žádost o změnu existující smlouvy.");
-  }
-
+  // Scan/OCR quality — relevant for all document types
   const modeStr = inputMode as string;
   if (modeStr === "scanned_pdf" || modeStr === "image_document") {
-    parts.push("Dokument je scan. Přepnula jsem na OCR režim – některé údaje mohou vyžadovat kontrolu.");
+    parts.push("Dokument je scan — ověřte klíčové údaje oproti originálu.");
   } else if (modeStr === "mixed_pdf") {
-    parts.push("Dokument obsahuje kombinaci textu a scanů. Některé části mohou vyžadovat kontrolu.");
+    parts.push("Dokument obsahuje scan i text — některé části mohou vyžadovat kontrolu.");
   }
 
-  // Payment instructions
-  if (containsPaymentInstructions) {
-    parts.push("Dokument obsahuje platební instrukce, které mohu přenést do klientského portálu.");
-  }
-
-  // Confidence
+  // Confidence — only surface if genuinely low
   if (confidence < 0.5) {
-    parts.push("Kvalita čtení je nízká. Doporučuji důkladnou kontrolu všech údajů.");
-  } else if (confidence < 0.7) {
-    parts.push("Některé údaje mají nižší jistotu čtení. Doporučuji ověřit klíčové položky.");
+    parts.push("Nízká kvalita čtení — důkladně zkontrolujte všechny údaje.");
+  } else if (confidence < 0.65) {
+    parts.push("Doporučuji ověřit klíčové položky oproti PDF.");
   }
 
-  // Review reasons (never show raw snake_case codes to advisors)
+  // Actionable review reasons only
   if (reasonsForReview && reasonsForReview.length > 0) {
-    const relevant = reasonsForReview.filter((r) => !r.startsWith("low_") && r !== "model_flagged");
-    const humanized = relevant
+    const humanized = reasonsForReview
+      .filter((r) => !REVIEW_REASON_SUPPRESS.has(r) && !r.startsWith("low_") && r !== "model_flagged")
       .map((r) => humanizeReviewReasonForAdvisorSummary(r))
-      .filter((s): s is string => Boolean(s));
+      .filter((s): s is string => Boolean(s))
+      .slice(0, 2);
     if (humanized.length > 0) {
-      parts.push(`Kontrola: ${humanized.slice(0, 3).join(" ")}`);
+      parts.push(humanized.join(" "));
     }
   }
 
