@@ -224,9 +224,11 @@ export async function buildAiReviewPdfBlob(
     rgb
   );
   if (doc.globalConfidence > 0) {
+    // globalConfidence is already 0-100 (percent) from mapApiToExtractionDocument — do NOT multiply by 100 again
+    const confDisplayPct = doc.globalConfidence > 1 ? Math.round(doc.globalConfidence) : Math.round(doc.globalConfidence * 100);
     state = drawLines(
       state,
-      wrapLineToWidth(`Celková jistota modelu: ${Math.round(doc.globalConfidence * 100)} %`, font, 10, contentWidth),
+      wrapLineToWidth(`Celková jistota modelu: ${confDisplayPct} %`, font, 10, contentWidth),
       10,
       MUTED,
       rgb

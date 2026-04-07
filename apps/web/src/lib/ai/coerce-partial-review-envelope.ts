@@ -553,6 +553,40 @@ const LOAN_MORTGAGE_PRIMARY_TYPES = new Set<string>([
   "consumer_loan_with_payment_protection",
 ]);
 
+const NONLIFE_PRIMARY_TYPES = new Set<string>([
+  "nonlife_insurance_contract",
+  "liability_insurance_offer",
+  "precontract_information",
+]);
+
+/**
+ * Infer insuredObject for non-life insurance documents when model omitted it.
+ * GČP odpovědnost case: if product/text clearly mentions liability/odpovědnost, infer from productName.
+ */
+function inferInsuredObjectForNonlife(
+  ef: Record<string, Record<string, unknown>>,
+): void {
+  if (ef.insuredObject) {
+    const v = ef.insuredObject.value;
+    if (v != null && String(v).trim() && String(v) !== "null") return;
+  }
+  // Try inferring from productName or coverageSummary
+  const productName = String(ef.productName?.value ?? ef.institutionName?.value ?? "").toLowerCase();
+  const coverageSummary = String(ef.coverageSummary?.value ?? "").toLowerCase();
+  const combined = productName + " " + coverageSummary;
+
+  if (/odpověd|odpoved|liability|responsibility|pojištění odpověd/i.test(combined)) {
+    const label = productName
+      ? `Odpovědnost z činnosti (odvozeno z: ${String(ef.productName?.value ?? "").slice(0, 60)})`
+      : "Odpovědnost (inferred from product classification)";
+    ef.insuredObject = {
+      ...normalizeExtractedFieldCell("insuredObject", label),
+      status: "inferred_low_confidence",
+      confidence: 0.55,
+    };
+  }
+}
+
 /**
  * Mutates a shallow-cloned envelope-shaped object, then runs `documentReviewEnvelopeSchema.safeParse`.
  */
@@ -596,6 +630,11 @@ export function tryCoerceReviewEnvelopeAfterValidationFailure(
   // For leasing/financing docs: flatten nested legacy format (customer, vehicleDetails, financingTerms)
   if (forcedPrimaryType === "generic_financial_document") {
     flattenLegacyLeasingNestedFields(draft, mergedEf);
+  }
+
+  // For non-life insurance: infer insuredObject when missing (GČP odpovědnost case)
+  if (NONLIFE_PRIMARY_TYPES.has(forcedPrimaryType)) {
+    inferInsuredObjectForNonlife(mergedEf);
   }
 
   draft.extractedFields = mergedEf;

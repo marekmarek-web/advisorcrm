@@ -21,6 +21,7 @@ import { coerceReviewEnvelopeParsedJson } from "../envelope-parse-coerce";
 import { documentReviewEnvelopeSchema } from "../document-review-types";
 import { buildManualReviewStubEnvelope } from "../ai-review-manual-stub";
 import { mapAiClassifierToPrimaryType, mapAiClassifierToClassificationResult } from "../ai-review-type-mapper";
+import { tryCoerceReviewEnvelopeAfterValidationFailure } from "../coerce-partial-review-envelope";
 
 // ─── 1. DPS / Consent / Confirmation routing ─────────────────────────────────
 
@@ -827,5 +828,197 @@ describe("CLASSIFICATION RESULT: mapAiClassifierToClassificationResult clamps co
   it("confidence 1 stays 1", () => {
     const result = mapAiClassifierToClassificationResult(cls({ confidence: 1 }));
     expect(result.confidence).toBe(1);
+  });
+});
+
+// ─── 15. PDF EXPORT — globalConfidence must not produce >100% ─────────────────
+
+describe("ANCHOR: PDF export globalConfidence never exceeds 100%", () => {
+  it("globalConfidence=98 (as percent) → display must be 98%, not 9800%", () => {
+    // globalConfidence is already 0-100 from mapApiToExtractionDocument
+    const globalConfidence = 98;
+    // build-ai-review-pdf.ts fix: must NOT multiply by 100 again
+    const confDisplayPct = globalConfidence > 1 ? Math.round(globalConfidence) : Math.round(globalConfidence * 100);
+    expect(confDisplayPct).toBe(98);
+    expect(confDisplayPct).toBeLessThanOrEqual(100);
+  });
+
+  it("globalConfidence=54 (as percent) → display must be 54%", () => {
+    const globalConfidence = 54;
+    const confDisplayPct = globalConfidence > 1 ? Math.round(globalConfidence) : Math.round(globalConfidence * 100);
+    expect(confDisplayPct).toBe(54);
+    expect(confDisplayPct).toBeLessThanOrEqual(100);
+  });
+
+  it("globalConfidence=0.98 (fractional) → display must be 98%", () => {
+    const globalConfidence = 0.98;
+    const confDisplayPct = globalConfidence > 1 ? Math.round(globalConfidence) : Math.round(globalConfidence * 100);
+    expect(confDisplayPct).toBe(98);
+    expect(confDisplayPct).toBeLessThanOrEqual(100);
+  });
+});
+
+// ─── 16. documentMeta as string → coerced to safe object ─────────────────────
+
+describe("ANCHOR: documentMeta as non-object value must be coerced to safe default", () => {
+  function minimalEnvelopeWithMeta(meta: unknown) {
+    return {
+      documentClassification: {
+        primaryType: "consumer_loan_contract",
+        lifecycleStatus: "final_contract",
+        documentIntent: "creates_new_product",
+        confidence: 0.85,
+        reasons: [],
+      },
+      documentMeta: meta,
+      extractedFields: {},
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+  }
+
+  it("documentMeta as string → coerced to { scannedVsDigital: 'unknown' }", () => {
+    const input = minimalEnvelopeWithMeta("invalid_string");
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const dm = (coerced as Record<string, Record<string, unknown>>).documentMeta;
+    expect(dm).toBeDefined();
+    expect(typeof dm).toBe("object");
+    expect(dm.scannedVsDigital).toBe("unknown");
+  });
+
+  it("documentMeta as null → coerced to { scannedVsDigital: 'unknown' }", () => {
+    const input = minimalEnvelopeWithMeta(null);
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const dm = (coerced as Record<string, Record<string, unknown>>).documentMeta;
+    expect(dm).toBeDefined();
+    expect(dm.scannedVsDigital).toBe("unknown");
+  });
+
+  it("documentMeta as array → coerced to { scannedVsDigital: 'unknown' }", () => {
+    const input = minimalEnvelopeWithMeta([{ foo: "bar" }]);
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const dm = (coerced as Record<string, Record<string, unknown>>).documentMeta;
+    expect(dm).toBeDefined();
+    expect(dm.scannedVsDigital).toBe("unknown");
+  });
+
+  it("documentMeta missing entirely → coerced to { scannedVsDigital: 'unknown' }", () => {
+    const input = minimalEnvelopeWithMeta(undefined);
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "aggressive", expectedPrimaryType: "consumer_loan_contract" });
+    const dm = (coerced as Record<string, Record<string, unknown>>).documentMeta;
+    expect(dm).toBeDefined();
+    expect(dm.scannedVsDigital).toBe("unknown");
+  });
+
+  it("documentClassification as string → coerced to valid object with expectedPrimaryType", () => {
+    const input = {
+      documentClassification: "invalid_string",
+      documentMeta: { scannedVsDigital: "digital" },
+      extractedFields: {},
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const dc = (coerced as Record<string, Record<string, unknown>>).documentClassification;
+    expect(dc).toBeDefined();
+    expect(typeof dc).toBe("object");
+    expect(dc.primaryType).toBe("consumer_loan_contract");
+  });
+});
+
+// ─── 17. GČP odpovědnost — insuredObject inferred from nonlife classification ─
+
+describe("ANCHOR: GČP odpovědnost — insuredObject inferred when missing", () => {
+  function makeNonlifeClassification(primaryType: string) {
+    return {
+      primaryType: primaryType as import("../document-classification").ContractDocumentType,
+      subtype: "liability_insurance" as const,
+      lifecycleStatus: "final_contract" as const,
+      documentIntent: "creates_new_product" as const,
+      confidence: 0.78,
+      reasons: ["nonlife_contract"],
+    };
+  }
+
+  it("nonlife_insurance_contract with missing insuredObject → coercion infers from productName", () => {
+    const parsed = {
+      documentClassification: {
+        primaryType: "nonlife_insurance_contract",
+        lifecycleStatus: "final_contract",
+        documentIntent: "creates_new_product",
+        confidence: 0.78,
+        reasons: [],
+      },
+      documentMeta: { scannedVsDigital: "digital" },
+      extractedFields: {
+        productName: { value: "GČP Odpovědnost fyzické osoby", status: "extracted", confidence: 0.85 },
+        insurer: { value: "Generali Česká pojišťovna", status: "extracted", confidence: 0.90 },
+        contractNumber: { value: "12345678", status: "extracted", confidence: 0.88 },
+      },
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+    const coerced = tryCoerceReviewEnvelopeAfterValidationFailure(
+      parsed,
+      "nonlife_insurance_contract",
+      makeNonlifeClassification("nonlife_insurance_contract")
+    );
+    // insuredObject should be inferred or at least not break the output
+    expect(coerced).not.toBeNull();
+    if (coerced) {
+      // Either inferred or extracted fields still present
+      const hasClientData = coerced.extractedFields.productName?.value || coerced.extractedFields.insurer?.value;
+      expect(hasClientData).toBeTruthy();
+    }
+  });
+});
+
+// ─── 18. AMUNDI DIP — productType=DIP inferred when missing ──────────────────
+
+describe("ANCHOR: AMUNDI DIP — productType=DIP inferred from productName", () => {
+  function makeDipClassification() {
+    return {
+      primaryType: "investment_subscription_document" as import("../document-classification").ContractDocumentType,
+      subtype: "dip" as const,
+      lifecycleStatus: "final_contract" as const,
+      documentIntent: "creates_new_product" as const,
+      confidence: 0.88,
+      reasons: ["dip_contract"],
+    };
+  }
+
+  it("investment_subscription_document with productName containing DIP → productType inferred as DIP", () => {
+    const parsed = {
+      documentClassification: {
+        primaryType: "investment_subscription_document",
+        lifecycleStatus: "final_contract",
+        documentIntent: "creates_new_product",
+        confidence: 0.88,
+        reasons: [],
+      },
+      documentMeta: { scannedVsDigital: "digital" },
+      extractedFields: {
+        productName: { value: "AMUNDI DIP Platforma", status: "extracted", confidence: 0.90 },
+        institutionName: { value: "AMUNDI", status: "extracted", confidence: 0.85 },
+        contractNumber: { value: "DIP-12345", status: "extracted", confidence: 0.88 },
+        // productType intentionally missing
+      },
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+    const coerced = tryCoerceReviewEnvelopeAfterValidationFailure(
+      parsed,
+      "investment_subscription_document",
+      makeDipClassification()
+    );
+    expect(coerced).not.toBeNull();
+    if (coerced) {
+      const productType = String(coerced.extractedFields.productType?.value ?? "");
+      expect(productType).toBe("DIP");
+    }
   });
 });

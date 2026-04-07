@@ -1012,7 +1012,18 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
 
   mergeFromAliases(ef, "documentStatus", ["status", "contractStatus", "documentState", "agreementStatus"]);
 
-  mergeFromAliases(ef, "insuredObject", ["subjectOfInsurance", "insuredItem", "insuredProperty", "vehicleInfo"]);
+  mergeFromAliases(ef, "insuredObject", [
+    "subjectOfInsurance",
+    "insuredItem",
+    "insuredProperty",
+    "vehicleInfo",
+    "predmetPojisteni",
+    "pojistenaVec",
+    "pojistenaPredmet",
+    "insuredSubject",
+    "coverageObject",
+    "pojistenyPredmet",
+  ]);
 
   deriveInvestmentStrategyFromNested(ef);
   mergeCompositeReferenceFields(ef);

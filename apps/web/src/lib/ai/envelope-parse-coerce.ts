@@ -47,15 +47,21 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
   const root = deepCloneJson(input) as Record<string, unknown>;
   const dcIn = root.documentClassification;
   if (!dcIn || typeof dcIn !== "object" || Array.isArray(dcIn)) {
-    // Create a minimal documentClassification when missing
-    if (options.expectedPrimaryType && PRIMARY_SET.has(options.expectedPrimaryType)) {
-      root.documentClassification = {
-        primaryType: options.expectedPrimaryType,
-        lifecycleStatus: "unknown",
-        documentIntent: "reference_only",
-        confidence: 0.5,
-        reasons: [],
-      };
+    // Create a minimal documentClassification when missing/invalid
+    root.documentClassification = {
+      primaryType: (options.expectedPrimaryType && PRIMARY_SET.has(options.expectedPrimaryType))
+        ? options.expectedPrimaryType
+        : "unsupported_or_unknown",
+      lifecycleStatus: "unknown",
+      documentIntent: "reference_only",
+      confidence: 0.5,
+      reasons: [],
+    };
+    // Still fix documentMeta before returning — do NOT early-return here
+    // Fall through to documentMeta fix below, then return root.
+    const dmInEarly = root.documentMeta;
+    if (!dmInEarly || typeof dmInEarly !== "object" || Array.isArray(dmInEarly)) {
+      root.documentMeta = { scannedVsDigital: "unknown" };
     }
     return root;
   }
@@ -139,7 +145,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
     }
   }
 
-  // Fix documentMeta: scannedVsDigital must be one of "scanned" | "digital" | "unknown"
+  // Fix documentMeta: must always be a valid object. Non-object values (string, number, null) become safe defaults.
   const dmIn = root.documentMeta;
   if (dmIn && typeof dmIn === "object" && !Array.isArray(dmIn)) {
     const dm = { ...(dmIn as Record<string, unknown>) };
@@ -155,8 +161,9 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
           : Math.max(0, Math.min(1, dm.overallConfidence));
     }
     root.documentMeta = dm;
-  } else if (!dmIn) {
-    // If documentMeta is missing entirely, provide minimal valid shape
+  } else {
+    // documentMeta is missing, null, string, or any non-object — always provide minimal valid shape
+    // This covers cases where LLM returns documentMeta as a string or omits it entirely
     root.documentMeta = { scannedVsDigital: "unknown" };
   }
 

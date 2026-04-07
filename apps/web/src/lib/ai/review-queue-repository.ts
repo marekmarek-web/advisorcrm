@@ -158,6 +158,20 @@ export type ExtractionTrace = {
   aiReviewInputMode?: string;
   /** Estimated chars sent to Claude as primary document content (proxy for token cost). */
   aiReviewInputSizeChars?: number;
+  /**
+   * Runtime extraction debug trace — captured at key pipeline steps for diagnostics.
+   * Set when AI_REVIEW_DEBUG=1 or in non-production environments.
+   * Steps: classifierRaw → routerDecision → rawModelOutput → beforeZod → afterCoercion → exportViewModel
+   */
+  debugTrace?: {
+    classifierRaw?: Record<string, unknown>;
+    routerDecision?: { outcome: string; promptKey?: string; reasonCodes: string[] };
+    rawModelOutputHead?: string;
+    beforeZodKeys?: string[];
+    afterCoercionFieldCount?: number;
+    afterCoercionStatus?: string;
+    exportViewModelGroups?: number;
+  };
 };
 
 /** Validation warning item. */

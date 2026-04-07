@@ -942,6 +942,14 @@ export async function runAiReviewV2Pipeline(
   trace.aiReviewExtractionPromptKey =
     router.outcome === "extract" ? router.promptKey : undefined;
 
+  // debugTrace: capture classifier + router for runtime diagnostics
+  if (isAiReviewPipelineDebug() || process.env.NODE_ENV !== "production") {
+    trace.debugTrace = {
+      classifierRaw: { documentType: ai.documentType, productFamily: ai.productFamily, productSubtype: ai.productSubtype, confidence: ai.confidence },
+      routerDecision: { outcome: router.outcome, promptKey: router.outcome === "extract" ? router.promptKey : undefined, reasonCodes: router.reasonCodes },
+    };
+  }
+
   logPipelineEvent("routed", { outcome: router.outcome, codes: router.reasonCodes });
 
   const effectivePrimary =
@@ -1418,6 +1426,12 @@ export async function runAiReviewV2Pipeline(
       ? Object.keys(parsedExtractionObj).slice(0, 24)
       : [];
 
+  // debugTrace: capture before-Zod state
+  if (trace.debugTrace) {
+    trace.debugTrace.rawModelOutputHead = rawExtraction.slice(0, 300);
+    trace.debugTrace.beforeZodKeys = parsedExtractionTopKeys;
+  }
+
   if (!validationOutcome.ok) {
     if (process.env.NODE_ENV !== "production") {
       console.warn("[ai-review] extraction_validation_soft_fail", {
@@ -1436,6 +1450,11 @@ export async function runAiReviewV2Pipeline(
       : null;
     if (coercedData) {
       trace.warnings = [...(trace.warnings ?? []), "extraction_validation_coerced"];
+      // debugTrace: capture after-coercion state
+      if (trace.debugTrace) {
+        trace.debugTrace.afterCoercionFieldCount = Object.keys(coercedData.extractedFields ?? {}).length;
+        trace.debugTrace.afterCoercionStatus = "coerced_ok";
+      }
       if (process.env.NODE_ENV !== "production") {
         console.warn("[ai-review] extraction_validation_coerced", {
           documentType,
