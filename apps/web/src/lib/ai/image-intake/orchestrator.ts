@@ -73,12 +73,14 @@ import { decideBatchMultimodalStrategy } from "./batch-multimodal";
 import { executeBatchMultimodalStrategy } from "./combined-multimodal-execution";
 import { extractCaseSignals, mergeCaseSignalBundles } from "./case-signal-extraction";
 import { resolveCaseBindingWithSignals } from "./binding-v2";
-import { reconstructCrossSessionThread, persistThreadArtifact } from "./cross-session-reconstruction";
+import { reconstructCrossSessionThread, persistThreadArtifact, mergePersistedArtifacts } from "./cross-session-reconstruction";
 import { detectIntentChange, buildIntentChangeSummary } from "./intent-change-detection";
+import { runIntentChangeAssist } from "./intent-change-assist";
 import {
   isImageIntakeCombinedMultimodalEnabledForUser,
   isImageIntakeCrossSessionEnabledForUser,
 } from "./feature-flag";
+import { getImageIntakeConfig } from "./image-intake-config";
 import type {
   ThreadReconstructionResult,
   ReviewHandoffPayload,
@@ -466,6 +468,20 @@ export async function processImageIntake(
   let crossSessionReconstruction: CrossSessionReconstructionResult | null = null;
   const crossSessionEnabled = isImageIntakeCrossSessionEnabledForUser(effectiveRequest.userId ?? "");
   if (crossSessionEnabled && threadReconstruction) {
+    // Phase 7: Load persisted artifacts from DB (non-blocking, degrades gracefully)
+    const ph7Config = getImageIntakeConfig();
+    if (ph7Config.crossSessionPersistenceEnabled && clientBinding.clientId) {
+      try {
+        const { loadArtifactsFromDb } = await import("./cross-session-persistence");
+        const dbArtifacts = await loadArtifactsFromDb(effectiveRequest.tenantId, clientBinding.clientId);
+        if (dbArtifacts.length > 0) {
+          mergePersistedArtifacts(effectiveRequest.tenantId, clientBinding.clientId, dbArtifacts);
+        }
+      } catch {
+        // Safe degradation — in-process store only
+      }
+    }
+
     crossSessionReconstruction = reconstructCrossSessionThread(
       effectiveRequest.tenantId,
       clientBinding.clientId ?? null,
@@ -482,6 +498,29 @@ export async function processImageIntake(
         threadReconstruction.mergedFacts,
         threadReconstruction.latestActionableSignal,
       );
+      // Phase 7: Also persist to DB asynchronously (non-blocking)
+      if (ph7Config.crossSessionPersistenceEnabled) {
+        const currentArtifacts = threadReconstruction.mergedFacts.length > 0 ? [{
+          artifactId: `${effectiveRequest.tenantId}:${clientBinding.clientId}:${Date.now()}`,
+          tenantId: effectiveRequest.tenantId,
+          userId: effectiveRequest.userId ?? "",
+          clientId: clientBinding.clientId,
+          lastUpdatedAt: new Date().toISOString(),
+          priorMergedFacts: threadReconstruction.mergedFacts,
+          priorLatestSignal: threadReconstruction.latestActionableSignal,
+          sourceSessionIds: [intakeId],
+        }] : [];
+        if (currentArtifacts.length > 0) {
+          import("./cross-session-persistence").then(({ persistArtifactsToDb }) => {
+            persistArtifactsToDb(
+              effectiveRequest.tenantId,
+              effectiveRequest.userId ?? "",
+              clientBinding.clientId!,
+              currentArtifacts,
+            ).catch(() => {}); // non-blocking, fire-and-forget
+          }).catch(() => {});
+        }
+      }
     }
   }
 
@@ -492,6 +531,12 @@ export async function processImageIntake(
       threadReconstruction.mergedFacts,
       request.assets.length >= 2,
     );
+
+    // Phase 7: Optional model assist for ambiguous intent (max 1 extra call)
+    if (intentChange?.status === "ambiguous") {
+      const assisted = await runIntentChangeAssist(intentChange, threadReconstruction.mergedFacts);
+      if (assisted) intentChange = assisted;
+    }
   }
 
   // Phase 5: Structured handoff payload (when handoff recommended)

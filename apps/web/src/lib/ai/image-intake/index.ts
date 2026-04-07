@@ -142,6 +142,7 @@ export {
   persistThreadArtifact,
   reconstructCrossSessionThread,
   clearAllArtifacts,
+  mergePersistedArtifacts,
 } from "./cross-session-reconstruction";
 export {
   isHandoffConfirmAction,
@@ -156,6 +157,19 @@ export {
   isImageIntakeCrossSessionEnabledForUser,
   isImageIntakeHandoffSubmitEnabledForUser,
 } from "./feature-flag";
+
+// --- Phase 7 modules ---
+export {
+  getImageIntakeConfig,
+  getImageIntakeConfigSummary,
+  setImageIntakeConfigOverride,
+  clearImageIntakeConfigOverride,
+  clearAllImageIntakeConfigOverrides,
+} from "./image-intake-config";
+export type { ImageIntakeConfigKey } from "./image-intake-config";
+export { runMultiImageCombinedPass } from "./multimodal";
+export { runIntentChangeAssist } from "./intent-change-assist";
+export { submitToAiReviewQueue } from "./handoff-queue-integration";
 
 // --- Feature flag ---
 export {

@@ -21,13 +21,11 @@ import type {
   CrossSessionReconstructionResult,
   FactType,
 } from "./types";
+import { getImageIntakeConfig } from "./image-intake-config";
 
 // ---------------------------------------------------------------------------
-// In-process artifact store (bounded by TTL and count)
+// In-process artifact store (bounded by TTL and count — Phase 7: also backed by DB)
 // ---------------------------------------------------------------------------
-
-const ARTIFACT_TTL_MS = 72 * 60 * 60 * 1000; // 72 hours
-const MAX_ARTIFACTS_PER_CLIENT = 20;
 
 const artifactStore = new Map<string, CrossSessionThreadArtifact[]>();
 
@@ -36,8 +34,11 @@ function storeKey(tenantId: string, clientId: string): string {
 }
 
 function pruneExpired(artifacts: CrossSessionThreadArtifact[]): CrossSessionThreadArtifact[] {
-  const cutoff = Date.now() - ARTIFACT_TTL_MS;
-  return artifacts.filter((a) => new Date(a.lastUpdatedAt).getTime() > cutoff);
+  const { crossSessionTtlMs, crossSessionMaxArtifacts } = getImageIntakeConfig();
+  const cutoff = Date.now() - crossSessionTtlMs;
+  return artifacts
+    .filter((a) => new Date(a.lastUpdatedAt).getTime() > cutoff)
+    .slice(0, crossSessionMaxArtifacts);
 }
 
 // ---------------------------------------------------------------------------
@@ -58,10 +59,10 @@ export function persistThreadArtifact(
 ): void {
   if (!clientId || mergedFacts.length === 0) return;
 
+  const { crossSessionMaxArtifacts } = getImageIntakeConfig();
   const key = storeKey(tenantId, clientId);
   let existing = pruneExpired(artifactStore.get(key) ?? []);
 
-  // Find existing artifact for this session (update) or create new
   const existingIdx = existing.findIndex((a) => a.sourceSessionIds.includes(sessionId));
 
   const artifact: CrossSessionThreadArtifact = {
@@ -78,10 +79,29 @@ export function persistThreadArtifact(
   if (existingIdx >= 0) {
     existing[existingIdx] = artifact;
   } else {
-    existing = [artifact, ...existing].slice(0, MAX_ARTIFACTS_PER_CLIENT);
+    existing = [artifact, ...existing].slice(0, crossSessionMaxArtifacts);
   }
 
   artifactStore.set(key, existing);
+}
+
+/**
+ * Phase 7: Merges DB-loaded artifacts into the in-process store.
+ * Call during request warm-up when persistence is enabled.
+ * Non-throwing — failures degrade to in-process only.
+ */
+export function mergePersistedArtifacts(
+  tenantId: string,
+  clientId: string,
+  dbArtifacts: CrossSessionThreadArtifact[],
+): void {
+  if (dbArtifacts.length === 0) return;
+  const key = storeKey(tenantId, clientId);
+  const existing = pruneExpired(artifactStore.get(key) ?? []);
+  const existingIds = new Set(existing.map((a) => a.artifactId));
+  const newOnes = dbArtifacts.filter((a) => !existingIds.has(a.artifactId));
+  const { crossSessionMaxArtifacts } = getImageIntakeConfig();
+  artifactStore.set(key, [...newOnes, ...existing].slice(0, crossSessionMaxArtifacts));
 }
 
 // ---------------------------------------------------------------------------

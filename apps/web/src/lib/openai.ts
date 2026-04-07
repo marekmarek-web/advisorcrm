@@ -824,6 +824,110 @@ export async function createResponseStructuredWithImage<T>(
   };
 }
 
+/**
+ * Structured response with multiple image URL inputs (multimodal — Responses API).
+ * Sends up to MAX_IMAGES image URLs as input_image content items + textPrompt.
+ * Used by image-intake combined multimodal pass v2 (Phase 7).
+ *
+ * Images are sent in order: each becomes a separate input_image content block.
+ * Hard cap: max 5 images (enforced here, caller should also enforce lower limit).
+ * Server-side only.
+ */
+export async function createResponseStructuredWithImages<T>(
+  imageUrls: string[],
+  textPrompt: string,
+  jsonSchema: Record<string, unknown>,
+  options?: {
+    model?: string;
+    store?: boolean;
+    routing?: OpenAICallRoutingOptions;
+    schemaName?: string;
+    maxImages?: number;
+  }
+): Promise<CreateStructuredResponseResult<T>> {
+  const maxImages = Math.min(options?.maxImages ?? 3, 5);
+  const cappedUrls = imageUrls.slice(0, maxImages);
+
+  if (cappedUrls.length === 0) {
+    throw new Error("createResponseStructuredWithImages: at least 1 imageUrl required");
+  }
+
+  // Single image: delegate to existing single-image function to keep code path simple
+  if (cappedUrls.length === 1) {
+    return createResponseStructuredWithImage<T>(cappedUrls[0]!, textPrompt, jsonSchema, options);
+  }
+
+  const client = getClient();
+  if (!client) {
+    throw new Error("OPENAI_API_KEY není nastaven.");
+  }
+
+  const primaryModel = resolveOpenAIModel({
+    explicit: options?.model,
+    category: options?.routing?.category,
+  });
+  const store = options?.store ?? false;
+  const start = Date.now();
+  const schemaName = options?.schemaName?.trim() || "image_group_extraction";
+
+  // Build content: all images first, then the text prompt
+  const imageContent = cappedUrls.map((url) => ({
+    type: "input_image" as const,
+    image_url: url,
+  }));
+
+  const input = [
+    {
+      role: "user" as const,
+      content: [
+        ...imageContent,
+        { type: "input_text" as const, text: textPrompt },
+      ],
+    },
+  ];
+
+  let response: Awaited<ReturnType<OpenAI["responses"]["create"]>>;
+  let usedModel = primaryModel;
+
+  const body = buildResponsesCreateBody({
+    model: primaryModel,
+    input,
+    store,
+    routing: options?.routing,
+    textFormat: {
+      type: "json_schema",
+      name: schemaName,
+      schema: jsonSchema,
+      strict: false,
+    },
+  });
+
+  try {
+    response = await withOpenAIRateLimitRetry(
+      () =>
+        client.responses.create(
+          body as Parameters<OpenAI["responses"]["create"]>[0],
+          buildOpenAIRequestOptions(options?.routing) as Parameters<OpenAI["responses"]["create"]>[1]
+        ),
+      { label: "responses.create_structured_images", maxAttempts: resolveOpenAIRetryAttempts(options?.routing) }
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logOpenAICall({ endpoint: "responses.create_structured_images", model: usedModel, latencyMs: Date.now() - start, success: false, error: message });
+    throw err instanceof Error ? err : new Error(message);
+  }
+
+  const latencyMs = Date.now() - start;
+  logOpenAICall({ endpoint: "responses.create_structured_images", model: usedModel, latencyMs, success: true });
+
+  const parsedDirect = (response as { output_parsed?: T }).output_parsed;
+  const text = extractResponseText(response as { output_text?: string; output?: unknown[] });
+  if (parsedDirect !== undefined) {
+    return { text, parsed: parsedDirect, model: usedModel };
+  }
+  return { text, parsed: JSON.parse(text) as T, model: usedModel };
+}
+
 export function hasOpenAIKey(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }

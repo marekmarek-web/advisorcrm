@@ -13,7 +13,7 @@
  * Never called twice for the same asset in one request.
  */
 
-import { createResponseStructuredWithImage } from "@/lib/openai";
+import { createResponseStructuredWithImage, createResponseStructuredWithImages } from "@/lib/openai";
 import { IMAGE_INPUT_TYPES } from "./types";
 import type { ImageInputType, MultimodalCombinedPassResult, MultimodalFactItem } from "./types";
 import { getImageIntakeMultimodalConfig } from "./feature-flag";
@@ -330,5 +330,59 @@ export async function runCombinedMultimodalPass(
     return { result: normalizeCombinedOutput(response.parsed), usedModel: true };
   } catch {
     return { result: fallbackCombinedResult(), usedModel: true };
+  }
+}
+
+/**
+ * Phase 7: Run structured vision call with multiple related image URLs.
+ * Sends all images in one call for grouped-thread understanding.
+ *
+ * Safety:
+ * - maxImages enforced at provider layer (max 5) and caller layer
+ * - Only for related grouped assets (caller responsibility)
+ * - Falls back to single-image pass if multi-image call fails
+ */
+export async function runMultiImageCombinedPass(
+  imageUrls: string[],
+  inputTypeHint: ImageInputType | null,
+  accompanyingText: string | null,
+  maxImages = 3,
+): Promise<MultimodalPassDecision & { imageCount: number }> {
+  const cappedUrls = imageUrls.slice(0, Math.min(maxImages, 5));
+  if (cappedUrls.length === 0) {
+    return { result: fallbackCombinedResult(), usedModel: true, imageCount: 0 };
+  }
+
+  if (cappedUrls.length === 1) {
+    const single = await runCombinedMultimodalPass(cappedUrls[0]!, inputTypeHint, accompanyingText);
+    return { ...single, imageCount: 1 };
+  }
+
+  const config = getImageIntakeMultimodalConfig();
+  const prompt = buildCombinedPassPrompt(inputTypeHint, accompanyingText);
+
+  try {
+    const response = await createResponseStructuredWithImages<RawCombinedOutput>(
+      cappedUrls,
+      prompt,
+      COMBINED_PASS_SCHEMA as Record<string, unknown>,
+      {
+        model: config.model,
+        store: false,
+        routing: { category: config.routingCategory },
+        schemaName: "image_intake_multi_combined",
+        maxImages,
+      },
+    );
+
+    return { result: normalizeCombinedOutput(response.parsed), usedModel: true, imageCount: cappedUrls.length };
+  } catch {
+    // Fallback to primary image single pass
+    try {
+      const fallback = await runCombinedMultimodalPass(cappedUrls[0]!, inputTypeHint, accompanyingText);
+      return { ...fallback, imageCount: 1 };
+    } catch {
+      return { result: fallbackCombinedResult(), usedModel: true, imageCount: 0 };
+    }
   }
 }

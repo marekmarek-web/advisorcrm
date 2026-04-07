@@ -166,11 +166,12 @@ describe("combined multimodal pass execution", () => {
     expect(result.visionCallsMade).toBeLessThanOrEqual(1);
   });
 
-  it("falls back to per_asset when combined pass returns no result", async () => {
+  it("falls back to per_asset when multi-image combined pass returns no result (imageCount=0)", async () => {
     const multimodalMod = await import("../image-intake/multimodal");
-    vi.spyOn(multimodalMod, "runCombinedMultimodalPass").mockResolvedValueOnce({
+    vi.spyOn(multimodalMod, "runMultiImageCombinedPass").mockResolvedValueOnce({
       result: null as unknown as MultimodalCombinedPassResult,
-      skipped: true,
+      usedModel: true,
+      imageCount: 0,
     });
 
     const decision = makeBatchDecision("combined_pass", ["a1", "a2"], []);
@@ -180,9 +181,9 @@ describe("combined multimodal pass execution", () => {
     expect(result.visionCallsMade).toBe(1);
   });
 
-  it("falls back to per_asset when combined pass throws", async () => {
+  it("falls back to per_asset when multi-image combined pass throws", async () => {
     const multimodalMod = await import("../image-intake/multimodal");
-    vi.spyOn(multimodalMod, "runCombinedMultimodalPass").mockRejectedValueOnce(new Error("API error"));
+    vi.spyOn(multimodalMod, "runMultiImageCombinedPass").mockRejectedValueOnce(new Error("API error"));
 
     const decision = makeBatchDecision("combined_pass", ["a1", "a2"], []);
     const assets = [makeAsset("a1"), makeAsset("a2")];
@@ -589,13 +590,14 @@ describe("golden dataset guardrails — Phase 6", () => {
 
   it("GD6-1: no combined pass call multiplication — combined_pass makes 1 call max", async () => {
     const multimodalMod = await import("../image-intake/multimodal");
-    const spy = vi.spyOn(multimodalMod, "runCombinedMultimodalPass").mockResolvedValue({
+    const spy = vi.spyOn(multimodalMod, "runMultiImageCombinedPass").mockResolvedValue({
       result: {
         inputType: "screenshot_client_communication", confidence: 0.85,
         possibleClientNameSignal: null, draftReplyIntent: null,
         facts: [], ambiguityReasons: [], rawJson: "{}",
       },
-      skipped: false,
+      usedModel: true,
+      imageCount: 3,
     });
 
     const decision = makeBatchDecision("combined_pass", ["a1", "a2", "a3"], []);

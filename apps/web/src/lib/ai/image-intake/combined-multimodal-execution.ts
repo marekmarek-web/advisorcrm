@@ -22,48 +22,9 @@ import type {
   BatchMultimodalDecision,
   ExtractedFactBundle,
 } from "./types";
-import { getImageIntakeMultimodalConfig } from "./feature-flag";
-import { runCombinedMultimodalPass } from "./multimodal";
+import { runMultiImageCombinedPass } from "./multimodal";
 import { extractFactsFromMultimodalPass } from "./extractor";
-
-// ---------------------------------------------------------------------------
-// Combined pass prompt for grouped thread
-// ---------------------------------------------------------------------------
-
-function buildGroupedThreadPrompt(assetCount: number, accompanyingText: string | null): string {
-  const textLine = accompanyingText
-    ? `Průvodní text poradce: "${accompanyingText.slice(0, 200)}"`
-    : "";
-
-  return [
-    `Jsi AI systém pro zpracování ${assetCount} screenshotů komunikace, které pravděpodobně tvoří jedno vlákno.`,
-    textLine,
-    "",
-    "Analyzuj VŠECHNY přiložené obrázky jako celek a vrať JSON podle schématu.",
-    "Klasifikuj jako jeden z typů: screenshot_client_communication, photo_or_scan_document,",
-    "screenshot_payment_details, screenshot_bank_or_finance_info, supporting_reference_image,",
-    "general_unusable_image, mixed_or_uncertain_image",
-    "",
-    "Pro komunikační screenshot extrahuj fakta s klíči:",
-    "- what_client_said: souhrn ze VŠECH screenshotů (max 300 znaků)",
-    "- what_client_wants: co klient žádá nebo potřebuje",
-    "- what_changed: co je nové oproti dřívější části vlákna",
-    "- required_follow_up: co je potřeba udělat jako reakci",
-    "- urgency_signal: 'high'/'medium'/'low' nebo null",
-    "- possible_date_mention: zmíněné datum nebo čas",
-    "",
-    "Pravidla:",
-    "- possibleClientNameSignal: jméno/příjmení osoby viditelné v obrázcích, nebo null",
-    "- draftReplyIntent: krátký záměr odpovědi (max 100 znaků) pro screenshot_client_communication, nebo null",
-    "- facts: pouze fakta přímo viditelná nebo rozumně odvozená",
-    "- NIKDY nevymýšlej data, čísla, jména nebo fakta",
-    "- source=observed: přímo čitelné z textu v obrázku",
-    "- source=inferred: odvozené z kontextu/vizuálu",
-    "- při nejistotě preferuj mixed_or_uncertain_image a nízkou confidence",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
+import { getImageIntakeConfig } from "./image-intake-config";
 
 // ---------------------------------------------------------------------------
 // Execution result
@@ -77,6 +38,10 @@ export type CombinedMultimodalExecutionResult = {
   multimodalResult: MultimodalCombinedPassResult | null;
   /** Number of vision calls actually made. */
   visionCallsMade: number;
+  /** Number of images sent in combined pass (Phase 7: multi-image). */
+  imagesSentInPass: number;
+  /** Asset IDs sent in combined pass. */
+  assetIdsSent: string[];
   /** Primary asset ID this result is attributed to. */
   primaryAssetId: string | null;
   costRationale: string;
@@ -103,66 +68,74 @@ export async function executeBatchMultimodalStrategy(
   assets: NormalizedImageAsset[],
   accompanyingText: string | null,
 ): Promise<CombinedMultimodalExecutionResult> {
+  const config = getImageIntakeConfig();
+
   if (decision.strategy === "skip_all") {
     return {
       strategy: "skipped",
       groupFactBundle: null,
       multimodalResult: null,
       visionCallsMade: 0,
+      imagesSentInPass: 0,
+      assetIdsSent: [],
       primaryAssetId: null,
       costRationale: decision.costRationale,
     };
   }
 
   if (decision.strategy === "per_asset") {
-    // Caller handles per-asset processing — we just report no combined call
     return {
       strategy: "per_asset_fallback",
       groupFactBundle: null,
       multimodalResult: null,
       visionCallsMade: 0,
+      imagesSentInPass: 0,
+      assetIdsSent: [],
       primaryAssetId: decision.perAssetIds[0] ?? null,
       costRationale: decision.costRationale,
     };
   }
 
-  // combined_pass: execute one vision call for all assets in the group
+  // combined_pass: Phase 7 — use multi-image path
   const combinedAssets = decision.combinedPassAssetIds
     .map((id) => assets.find((a) => a.assetId === id))
-    .filter((a): a is NormalizedImageAsset => a != null && a.storageUrl != null);
+    .filter((a): a is NormalizedImageAsset => a != null && a.storageUrl != null)
+    .slice(0, config.combinedPassMaxImages);
 
   if (combinedAssets.length < 2) {
-    // Not enough assets with URLs → fall back to per-asset
     const firstId = decision.combinedPassAssetIds[0] ?? null;
     return {
       strategy: "per_asset_fallback",
       groupFactBundle: null,
       multimodalResult: null,
       visionCallsMade: 0,
+      imagesSentInPass: 0,
+      assetIdsSent: [],
       primaryAssetId: firstId,
       costRationale: "Combined pass degraded — less than 2 assets have storage URLs.",
     };
   }
 
-  // Use the primary asset URL for combined call (first asset in group)
-  // The model sees all assets described, but the image API receives the primary URL
-  // and the prompt conveys the multi-image context
   const primaryAsset = combinedAssets[0]!;
-  const prompt = buildGroupedThreadPrompt(combinedAssets.length, accompanyingText);
+  const imageUrls = combinedAssets.map((a) => a.storageUrl!);
 
   try {
-    const passDecision = await runCombinedMultimodalPass(
-      primaryAsset.storageUrl!,
-      "screenshot_client_communication", // hint for fact schema
+    // Phase 7: use runMultiImageCombinedPass to send all images in one call
+    const passDecision = await runMultiImageCombinedPass(
+      imageUrls,
+      "screenshot_client_communication",
       accompanyingText,
+      config.combinedPassMaxImages,
     );
 
-    if (!passDecision.result) {
+    if (!passDecision.result || passDecision.imageCount === 0) {
       return {
         strategy: "per_asset_fallback",
         groupFactBundle: null,
         multimodalResult: null,
         visionCallsMade: 1,
+        imagesSentInPass: 0,
+        assetIdsSent: [],
         primaryAssetId: primaryAsset.assetId,
         costRationale: "Combined pass produced no result — falling back.",
       };
@@ -175,8 +148,10 @@ export async function executeBatchMultimodalStrategy(
       groupFactBundle,
       multimodalResult: passDecision.result,
       visionCallsMade: 1,
+      imagesSentInPass: passDecision.imageCount,
+      assetIdsSent: combinedAssets.slice(0, passDecision.imageCount).map((a) => a.assetId),
       primaryAssetId: primaryAsset.assetId,
-      costRationale: `${combinedAssets.length} assety zpracovány v jednom combined multimodal passu.`,
+      costRationale: `${passDecision.imageCount} image(s) zpracovány v jednom multi-image combined passu.`,
     };
   } catch {
     return {
@@ -184,6 +159,8 @@ export async function executeBatchMultimodalStrategy(
       groupFactBundle: null,
       multimodalResult: null,
       visionCallsMade: 0,
+      imagesSentInPass: 0,
+      assetIdsSent: [],
       primaryAssetId: primaryAsset.assetId,
       costRationale: "Combined pass threw — falling back to per-asset.",
     };
