@@ -19,6 +19,7 @@ import type {
   ImageOutputMode,
   ExtractedFactBundle,
   ReviewHandoffRecommendation,
+  DocumentMultiImageResult,
 } from "./types";
 import { safeOutputModeForUncertainInput } from "./guardrails";
 
@@ -380,4 +381,86 @@ export function buildActionPlanV1(
     needsAdvisorInput,
     safetyFlags: binding.warnings.length > 0 ? binding.warnings : [],
   };
+}
+
+/**
+ * Phase 10: action planning v4.
+ * Extends v3 with document-set outcome awareness.
+ *
+ * Rules:
+ * - supporting_reference_set → never generates structured fact actions (archive only)
+ * - review_handoff_candidate  → stays handoff candidate; no extra actions added
+ * - mixed_document_set        → conservative: keeps v3 output but adds safety flag
+ * - consolidated_document_facts → allows structured fact actions (safe pass-through of v3)
+ * - insufficient_for_merge    → conservative pass-through, no upscaling
+ *
+ * Cost: zero model calls.
+ */
+export function buildActionPlanV4(
+  classification: InputClassificationResult,
+  binding: ClientBindingResult,
+  factBundle: ExtractedFactBundle,
+  draftReplyText: string | null,
+  reviewHandoff: ReviewHandoffRecommendation | null,
+  documentSetResult: DocumentMultiImageResult | null,
+): ImageIntakeActionPlan {
+  const base = buildActionPlanV3(classification, binding, factBundle, draftReplyText, reviewHandoff);
+
+  if (!documentSetResult) return base;
+
+  switch (documentSetResult.decision) {
+    case "supporting_reference_set":
+      // Strip any structured fact/note actions; reduce to archive only
+      base.outputMode = "supporting_reference_image";
+      base.recommendedActions = base.recommendedActions.filter(
+        (a) => a.writeAction === "attachDocumentToClient",
+      );
+      if (base.recommendedActions.length === 0) {
+        base.recommendedActions = [
+          makeAction(
+            "create_internal_note",
+            "createInternalNote",
+            "Uložit skupinu referenčních podkladů jako poznámku",
+            "Skupina referenčních obrázků — archivováno.",
+            { _imageIntakeOutputMode: "supporting_reference_image", _documentSetDecision: "supporting_reference_set" },
+          ),
+        ];
+      }
+      base.whyThisAction = documentSetResult.documentSetSummary ?? base.whyThisAction;
+      break;
+
+    case "review_handoff_candidate":
+      // Keep as handoff candidate — no extra actions, ensure handoff signal is preserved
+      if (!base.safetyFlags.some((f) => f.includes("AI_REVIEW_HANDOFF"))) {
+        base.safetyFlags.push(
+          `DOCUMENT_SET_REVIEW_CANDIDATE: ${documentSetResult.documentSetSummary?.slice(0, 120) ?? "Vícestránkový dokument doporučen pro AI Review."}`,
+        );
+      }
+      base.needsAdvisorInput = true;
+      break;
+
+    case "mixed_document_set":
+      // Conservative: add safety flag, do not allow auto-merge
+      base.safetyFlags.push(
+        `DOCUMENT_SET_MIXED: ${documentSetResult.documentSetSummary?.slice(0, 100) ?? "Smíšená skupina — zpracováno samostatně."}`,
+      );
+      base.needsAdvisorInput = true;
+      break;
+
+    case "consolidated_document_facts":
+      // Merged facts already in factBundle (done by orchestrator) — safe pass-through
+      // Enrich whyThisAction with document set note
+      base.whyThisAction =
+        `${documentSetResult.documentSetSummary ?? ""} ${base.whyThisAction}`.trim();
+      break;
+
+    case "insufficient_for_merge":
+      // Conservative — no upscaling, add note
+      base.safetyFlags.push(
+        `DOCUMENT_SET_INSUFFICIENT: Dokumentové stránky zpracovány samostatně (nízká jistota).`,
+      );
+      break;
+  }
+
+  return base;
 }

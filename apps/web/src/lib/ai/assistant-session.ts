@@ -10,8 +10,32 @@ import type {
   ContextLockState,
   ExecutionPlan,
 } from "./assistant-domain-model";
+import type { ExtractedFactBundle, ImageIntakeActionPlan, ReviewHandoffPayload } from "./image-intake/types";
 import { defaultContextLock } from "./assistant-domain-model";
 import { randomUUID } from "crypto";
+
+/**
+ * Saved state from an ambiguous_needs_input image intake that needs client resolution.
+ * On next text message, the route checks for this and resumes the intake instead of
+ * falling through to generic chat.
+ */
+export type PendingImageIntakeResolution = {
+  intakeId: string;
+  /** Pre-extracted facts from the multimodal pass — reused on resume to avoid re-parsing. */
+  factBundle: ExtractedFactBundle;
+  /** The original action plan (outputMode = "ambiguous_needs_input"). */
+  actionPlan: ImageIntakeActionPlan;
+  /** Why binding failed: "insufficient_binding" | "multiple_candidates" | "weak_candidate". */
+  bindingState: string;
+  /** Candidate list when bindingState is "multiple_candidates". */
+  candidates: Array<{ id: string; label: string }>;
+  /** Name signal extracted from the image, if any. */
+  imageNameSignal: string | null;
+  /** Classification input type, forwarded for resume context. */
+  inputType: string | null;
+  /** ISO timestamp — expires after 15 min regardless of session TTL. */
+  createdAt: string;
+};
 
 export type AssistantSession = {
   sessionId: string;
@@ -46,6 +70,25 @@ export type AssistantSession = {
    * Updated after each successful chat turn; never sent back to the client as-is.
    */
   conversationDigest?: string;
+  /**
+   * Phase 10: After advisor confirms a handoff submit action, the AI Review queue row ID is stored
+   * here so that lifecycle feedback can be surfaced in the next response without a polling loop.
+   * Reset when a new intake is started or session is cleared.
+   */
+  lastImageIntakeHandoffReviewRowId?: string | null;
+  /**
+   * Phase 11: Typed field for the last image intake handoff payload produced by the orchestrator.
+   * Stored by the route-handler after each successful intake run when a handoff is recommended.
+   * Used by confirm-flow-lifecycle to submit to AI Review queue on advisor confirm.
+   * Not persisted beyond session TTL.
+   */
+  lastImageIntakeHandoffPayload?: ReviewHandoffPayload | null;
+  /**
+   * Continuation: pending image intake resolution waiting for client disambiguation.
+   * Set when image intake ends as ambiguous_needs_input due to missing/ambiguous client.
+   * Cleared after successful resume or after 15 min expiry.
+   */
+  pendingImageIntakeResolution?: PendingImageIntakeResolution | null;
 };
 
 const SESSION_TTL_MS = 30 * 60 * 1000;
@@ -197,6 +240,10 @@ export function setAssistantMode(session: AssistantSession, mode: AssistantMode)
 export function setAssistantChannel(session: AssistantSession, channel: AssistantChannel): void {
   session.activeChannel = channel;
   session.contextLock.activeChannel = channel;
+}
+
+export function clearPendingImageIntakeResolution(session: AssistantSession): void {
+  session.pendingImageIntakeResolution = null;
 }
 
 export function clearAssistantClientLock(session: AssistantSession): void {

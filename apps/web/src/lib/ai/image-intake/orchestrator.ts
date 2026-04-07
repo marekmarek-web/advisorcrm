@@ -44,7 +44,7 @@ import { emptyFactBundle, emptyActionPlan } from "./types";
 import { runBatchPreflight } from "./preflight";
 import { enforceImageIntakeGuardrails } from "./guardrails";
 import { classifyBatch } from "./classifier";
-import { buildActionPlanV3, buildActionPlanV4 } from "./planner";
+import { buildActionPlanV4 } from "./planner";
 import {
   shouldRunMultimodalPass,
   runCombinedMultimodalPass,

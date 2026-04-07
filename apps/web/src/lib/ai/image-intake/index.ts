@@ -106,7 +106,7 @@ export { classifyImageInput, classifyBatch } from "./classifier";
 export type { ClassifierDecision } from "./classifier";
 
 // --- Planner v1 + v2 + v3 ---
-export { buildActionPlanV1, buildActionPlanV2, buildActionPlanV3 } from "./planner";
+export { buildActionPlanV1, buildActionPlanV2, buildActionPlanV3, buildActionPlanV4 } from "./planner";
 
 // --- Multi-image stitching v1 (Phase 4) ---
 export {
