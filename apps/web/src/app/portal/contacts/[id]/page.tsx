@@ -33,6 +33,7 @@ import { ContactFinancialAnalysesSection } from "@/app/dashboard/contacts/[id]/C
 import { ClientFinancialSummaryBlock } from "./ClientFinancialSummaryBlock";
 import { ClientServiceBlock } from "./ClientServiceBlock";
 import { ContactDetailEditButton } from "./ContactDetailEditButton";
+import { ContactIdentityCompletenessGuard } from "./ContactIdentityCompletenessGuard";
 import { ContactPaymentSetupsSection } from "./ContactPaymentSetupsSection";
 import { ClientReferralSection } from "./ClientReferralSection";
 import { Suspense, type ReactNode } from "react";
@@ -491,6 +492,12 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
             </div>
           </div>
         </div>
+
+        <ContactIdentityCompletenessGuard
+          contact={contact}
+          provenance={contactProvenance}
+          contactId={contactId}
+        />
 
         <Suspense
           fallback={

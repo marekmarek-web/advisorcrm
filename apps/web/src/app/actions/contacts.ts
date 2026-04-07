@@ -795,6 +795,10 @@ export type ContactAiProvenanceResult = {
   confirmedFields: string[];
   /** Pole auto-aplikovaná z AI Review (z policyEnforcementTrace.contactEnforcement.autoAppliedFields) */
   autoAppliedFields: string[];
+  /** Pole čekající na potvrzení poradcem (prefill_confirm policy) */
+  pendingFields: string[];
+  /** Pole vyžadující ruční doplnění (manual_required policy) */
+  manualRequiredFields: string[];
 } | null;
 
 async function loadContactAiProvenance(contactId: string): Promise<ContactAiProvenanceResult> {
@@ -840,10 +844,16 @@ async function loadContactAiProvenance(contactId: string): Promise<ContactAiProv
       }
     }
 
-    // Auto-applied fields: z policyEnforcementTrace.contactEnforcement.autoAppliedFields
+    // Auto-applied, pending, manualRequired fields: z policyEnforcementTrace.contactEnforcement
     const policyTrace = payload?.policyEnforcementTrace as Record<string, unknown> | null | undefined;
-    const contactEnforcement = policyTrace?.contactEnforcement as { autoAppliedFields?: string[] } | null | undefined;
+    const contactEnforcement = policyTrace?.contactEnforcement as {
+      autoAppliedFields?: string[];
+      pendingConfirmationFields?: string[];
+      manualRequiredFields?: string[];
+    } | null | undefined;
     const autoAppliedFields: string[] = contactEnforcement?.autoAppliedFields ?? [];
+    const pendingFields: string[] = contactEnforcement?.pendingConfirmationFields ?? [];
+    const manualRequiredFields: string[] = contactEnforcement?.manualRequiredFields ?? [];
 
     // Pokud pro tento kontakt nenajdeme žádná concrete pole, ale review ho vytvořilo/linkovalo,
     // označíme základní identity pole jako auto_applied (kontakt byl vytvořen z AI Review).
@@ -860,6 +870,8 @@ async function loadContactAiProvenance(contactId: string): Promise<ContactAiProv
       appliedAt: row.appliedAt ? row.appliedAt.toISOString() : null,
       confirmedFields,
       autoAppliedFields: effectiveAutoApplied,
+      pendingFields,
+      manualRequiredFields,
     };
   } catch {
     return null;
