@@ -591,6 +591,11 @@ function humanizeValidationMessage(
   };
 }
 
+function clampConfTo01(v: number): number {
+  if (v > 1 && v <= 100) return v / 100;
+  return Math.max(0, Math.min(1, v));
+}
+
 function fieldConfidence(
   fieldKey: string,
   fieldConfidenceMap: Record<string, number> | undefined,
@@ -599,26 +604,26 @@ function fieldConfidence(
   if (fieldConfidenceMap) {
     const fkLower = fieldKey.toLowerCase();
     const exact = fieldConfidenceMap[fieldKey] ?? fieldConfidenceMap[fkLower];
-    if (typeof exact === "number") return Math.round(exact * 100);
+    if (typeof exact === "number") return Math.round(clampConfTo01(exact) * 100);
 
     const dotStripped = fkLower.replace(/^extractedfields\./, "");
     const exact2 = fieldConfidenceMap[dotStripped];
-    if (typeof exact2 === "number") return Math.round(exact2 * 100);
+    if (typeof exact2 === "number") return Math.round(clampConfTo01(exact2) * 100);
 
     let bestLen = 0;
     let bestVal: number | undefined;
     for (const [section, val] of Object.entries(fieldConfidenceMap)) {
       const sLower = section.toLowerCase();
       if (fkLower === sLower || dotStripped === sLower) {
-        return Math.round(val * 100);
+        return Math.round(clampConfTo01(val) * 100);
       }
       if (fkLower.endsWith(`.${sLower}`) || sLower.endsWith(`.${dotStripped}`)) {
         if (sLower.length > bestLen) { bestLen = sLower.length; bestVal = val; }
       }
     }
-    if (bestVal != null) return Math.round(bestVal * 100);
+    if (bestVal != null) return Math.round(clampConfTo01(bestVal) * 100);
   }
-  return Math.round(globalConfidence * 100);
+  return Math.round(clampConfTo01(globalConfidence) * 100);
 }
 
 function fieldStatus(conf: number, value: unknown): FieldStatus {
@@ -757,10 +762,11 @@ function flattenEnvelopeToGroups(
       const evidenceTier = (fObj as Record<string, unknown>).evidenceTier as EvidenceTier | undefined;
       const sourceKind = (fObj as Record<string, unknown>).sourceKind as SourceKind | undefined;
       const sourceLabel = (fObj as Record<string, unknown>).sourceLabel as string | undefined;
-      const conf01 =
+      const rawConf01 =
         typeof fObj.confidence === "number" && Number.isFinite(fObj.confidence)
           ? fObj.confidence
           : globalConfidence01;
+      const conf01 = clampConfTo01(rawConf01);
 
       // Field quality gate
       const gateResult = fieldQualityGate(fKey, rawVal, {
@@ -1432,7 +1438,8 @@ export function mapApiToExtractionDocument(
   pdfUrl: string
 ): ExtractionDocument {
   const extracted = (detail.extractedPayload ?? {}) as Record<string, unknown>;
-  const confidence = (detail.confidence as number | null) ?? 0;
+  const rawConf = (detail.confidence as number | null) ?? 0;
+  const confidence = clampConfTo01(rawConf);
   const fieldConfidenceMap = detail.fieldConfidenceMap as Record<string, number> | undefined;
   const processingStatus = (detail.processingStatus as string) ?? "uploaded";
   const reviewStatus = (detail.reviewStatus as string) ?? "pending";

@@ -348,9 +348,9 @@ function inferSupportingSubtypeFromPromptResponse(
   if (bankStatementSignals.some((s) => allKeys.has(s))) return null;
 
   // Payslip: must have employer OR employee — these don't appear in tax returns
-  const strongPayslipSignals = ["employer", "employee", "employeename", "employername", "payoutaccount", "grosspay", "netpay", "hrubazmda", "cistamzda", "hrubamzda"];
+  const strongPayslipSignals = ["employer", "employee", "employeename", "employername", "payoutaccount", "grosspay", "netpay", "hrubazmda", "cistamzda", "hrubamzda", "grosswage", "netwage", "zamestnavatel", "zamestnanec", "vyplatnilistek", "mzda", "plat"];
   // Tax return: must have tax-specific signals that don't appear in payslips
-  const strongTaxReturnSignals = ["taxperiodfrom", "taxperiodto", "taxtype", "taxpayername", "taxamountdue", "taxbase", "mainbusinessactivity", "danoveobdobi", "zakladDane", "ico", "dic"];
+  const strongTaxReturnSignals = ["taxperiodfrom", "taxperiodto", "taxtype", "taxpayername", "taxamountdue", "taxbase", "mainbusinessactivity", "danoveobdobi", "zakladDane", "ico", "dic", "resultofoperations", "vysledekhospodareni", "obrat", "danoveprIznani", "danprijmu", "zdanovacIobdobi", "hlavnicinnost"];
 
   if (strongTaxReturnSignals.some((s) => allKeys.has(s))) return "corporate_tax_return";
   if (strongPayslipSignals.some((s) => allKeys.has(s))) return "payslip_document";
@@ -1440,6 +1440,20 @@ export async function runAiReviewV2Pipeline(
       } else if (combined.includes("payslip") || combined.includes("salary") || combined.includes("mzda") || combined.includes("payroll") || combined.includes("incomeproof")) {
         documentType = "payslip_document";
         trace.selectedSchema = documentType;
+      } else {
+        // Tier 3: infer from document text content when classifier and prompt both returned generic type
+        const textLower = documentTextForExtraction.slice(0, 4000).toLowerCase();
+        const TAX_TEXT_SIGNALS = ["daňové přiznání", "danove priznani", "přiznání k dani", "výsledek hospodaření", "výsledovka", "hlavní činnost", "ičo:", "dič:", "finanční úřad", "zdaňovací období"];
+        const PAYSLIP_TEXT_SIGNALS = ["výplatní lístek", "vyplatni listek", "hrubá mzda", "čistá mzda", "zaměstnavatel", "zaměstnanec", "srážky", "odvody", "sociální pojištění", "zdravotní pojištění"];
+        const taxHits = TAX_TEXT_SIGNALS.filter((s) => textLower.includes(s)).length;
+        const payslipHits = PAYSLIP_TEXT_SIGNALS.filter((s) => textLower.includes(s)).length;
+        if (taxHits >= 2 && taxHits > payslipHits) {
+          documentType = "corporate_tax_return";
+          trace.selectedSchema = documentType;
+        } else if (payslipHits >= 2 && payslipHits > taxHits) {
+          documentType = "payslip_document";
+          trace.selectedSchema = documentType;
+        }
       }
     }
   }

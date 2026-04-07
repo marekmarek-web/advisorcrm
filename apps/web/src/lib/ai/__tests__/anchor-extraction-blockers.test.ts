@@ -20,6 +20,7 @@ import { resolveAiReviewExtractionRoute } from "../ai-review-extraction-router";
 import { coerceReviewEnvelopeParsedJson } from "../envelope-parse-coerce";
 import { documentReviewEnvelopeSchema } from "../document-review-types";
 import { buildManualReviewStubEnvelope } from "../ai-review-manual-stub";
+import { mapAiClassifierToPrimaryType, mapAiClassifierToClassificationResult } from "../ai-review-type-mapper";
 
 // ─── 1. DPS / Consent / Confirmation routing ─────────────────────────────────
 
@@ -587,5 +588,244 @@ describe("EXTRACTION PHILOSOPHY: no_matching_route → best-effort extraction, n
     if (r.outcome === "extract") {
       expect(r.promptKey).toBe("leasingExtraction");
     }
+  });
+});
+
+// ─── 11. TYPE MAPPER — DPS/PP/DIP confirmation/consent → correct primary type ──
+
+function cls(partial: Record<string, unknown>) {
+  return {
+    documentType: "contract",
+    productFamily: "life_insurance",
+    productSubtype: "unknown",
+    businessIntent: "standard",
+    recommendedRoute: "extract",
+    confidence: 0.8,
+    reasons: [],
+    warnings: [],
+    ...partial,
+  } as Parameters<typeof mapAiClassifierToPrimaryType>[0];
+}
+
+describe("TYPE MAPPER: DPS/PP confirmation/consent → pension_contract (not income_confirmation)", () => {
+  it("DPS + confirmation_document → pension_contract", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "confirmation_document",
+      productFamily: "dps",
+      productSubtype: "dps_confirmation",
+    }))).toBe("pension_contract");
+  });
+
+  it("DPS + consent_or_identification_document → pension_contract", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "consent_or_identification_document",
+      productFamily: "dps",
+      productSubtype: "dps_participant_consent",
+    }))).toBe("pension_contract");
+  });
+
+  it("PP + confirmation_document → pension_contract", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "confirmation_document",
+      productFamily: "pp",
+      productSubtype: "pension_confirmation",
+    }))).toBe("pension_contract");
+  });
+
+  it("DPS + proposal → pension_contract", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "proposal",
+      productFamily: "dps",
+      productSubtype: "dps_proposal",
+    }))).toBe("pension_contract");
+  });
+
+  it("DIP + confirmation_document → investment_subscription_document", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "confirmation_document",
+      productFamily: "dip",
+      productSubtype: "dip_confirmation",
+    }))).toBe("investment_subscription_document");
+  });
+
+  it("DIP + proposal → investment_subscription_document", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "proposal",
+      productFamily: "dip",
+      productSubtype: "dip_proposal",
+    }))).toBe("investment_subscription_document");
+  });
+});
+
+// ─── 12. TYPE MAPPER — supporting docs must use specific types when subtype signals exist ──
+
+describe("TYPE MAPPER: Payslip/tax_return subtype signals → specific types (not bank_statement)", () => {
+  it("statement + payslip subtype → payslip_document", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "statement",
+      productFamily: "compliance",
+      productSubtype: "payslip",
+    }))).toBe("payslip_document");
+  });
+
+  it("supporting_document + mzda subtype → payslip_document", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "supporting_document",
+      productFamily: "compliance",
+      productSubtype: "výplatní_lístek_mzda",
+    }))).toBe("payslip_document");
+  });
+
+  it("statement + tax_return subtype → corporate_tax_return", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "statement",
+      productFamily: "compliance",
+      productSubtype: "danove_priznani_sro",
+    }))).toBe("corporate_tax_return");
+  });
+
+  it("supporting_document + corporate_tax subtype → corporate_tax_return", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "supporting_document",
+      productFamily: "compliance",
+      productSubtype: "corporate_tax_return",
+    }))).toBe("corporate_tax_return");
+  });
+
+  it("statement without specific subtype → bank_statement (default)", () => {
+    expect(mapAiClassifierToPrimaryType(cls({
+      documentType: "statement",
+      productFamily: "banking",
+      productSubtype: "monthly_statement",
+    }))).toBe("bank_statement");
+  });
+});
+
+// ─── 13. CONFIDENCE CLAMPING — per-field confidence in envelope coercion ──
+
+describe("CONFIDENCE CLAMPING: per-field confidence > 1 must be clamped before Zod parse", () => {
+  function envelopeWithFieldConf(fieldConf: number) {
+    return {
+      documentClassification: {
+        primaryType: "consumer_loan_contract",
+        lifecycleStatus: "final_contract",
+        documentIntent: "creates_new_product",
+        confidence: 0.85,
+        reasons: [],
+      },
+      documentMeta: { scannedVsDigital: "digital" },
+      extractedFields: {
+        loanAmount: { value: "500000", status: "extracted", confidence: fieldConf },
+        lender: { value: "ČSOB", status: "extracted", confidence: fieldConf },
+      },
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+  }
+
+  it("field confidence 0.85 passes Zod directly", () => {
+    const input = envelopeWithFieldConf(0.85);
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const result = documentReviewEnvelopeSchema.safeParse(coerced);
+    expect(result.success).toBe(true);
+  });
+
+  it("field confidence 85 (integer) is clamped to 0.85 and passes Zod", () => {
+    const input = envelopeWithFieldConf(85);
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const ef = (coerced as { extractedFields: Record<string, { confidence: number }> }).extractedFields;
+    expect(ef.loanAmount.confidence).toBeLessThanOrEqual(1);
+    expect(ef.loanAmount.confidence).toBeGreaterThan(0);
+    const result = documentReviewEnvelopeSchema.safeParse(coerced);
+    expect(result.success).toBe(true);
+  });
+
+  it("field confidence 98 (integer) is clamped to 0.98 and passes Zod", () => {
+    const input = envelopeWithFieldConf(98);
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const ef = (coerced as { extractedFields: Record<string, { confidence: number }> }).extractedFields;
+    expect(ef.loanAmount.confidence).toBeCloseTo(0.98, 2);
+    const result = documentReviewEnvelopeSchema.safeParse(coerced);
+    expect(result.success).toBe(true);
+  });
+
+  it("documentClassification.confidence 85 (integer) is clamped to 0.85", () => {
+    const input = {
+      documentClassification: {
+        primaryType: "consumer_loan_contract",
+        lifecycleStatus: "final_contract",
+        documentIntent: "creates_new_product",
+        confidence: 85,
+        reasons: [],
+      },
+      documentMeta: { scannedVsDigital: "digital" },
+      extractedFields: {},
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const dc = (coerced as { documentClassification: { confidence: number } }).documentClassification;
+    expect(dc.confidence).toBeLessThanOrEqual(1);
+    expect(dc.confidence).toBeCloseTo(0.85, 2);
+    const result = documentReviewEnvelopeSchema.safeParse(coerced);
+    expect(result.success).toBe(true);
+  });
+
+  it("missing lifecycleStatus is defaulted to unknown", () => {
+    const input = {
+      documentClassification: {
+        primaryType: "consumer_loan_contract",
+        confidence: 0.8,
+        reasons: [],
+      },
+      documentMeta: { scannedVsDigital: "digital" },
+      extractedFields: {},
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const dc = (coerced as { documentClassification: { lifecycleStatus: string } }).documentClassification;
+    expect(dc.lifecycleStatus).toBe("unknown");
+    const result = documentReviewEnvelopeSchema.safeParse(coerced);
+    expect(result.success).toBe(true);
+  });
+
+  it("missing documentClassification entirely → created with expectedPrimaryType", () => {
+    const input = {
+      documentMeta: { scannedVsDigital: "digital" },
+      extractedFields: {
+        loanAmount: { value: "500000", status: "extracted", confidence: 0.85 },
+      },
+      parties: {},
+      reviewWarnings: [],
+      suggestedActions: [],
+    };
+    const coerced = coerceReviewEnvelopeParsedJson(input, { mode: "light", expectedPrimaryType: "consumer_loan_contract" });
+    const dc = (coerced as { documentClassification: { primaryType: string } }).documentClassification;
+    expect(dc.primaryType).toBe("consumer_loan_contract");
+    const result = documentReviewEnvelopeSchema.safeParse(coerced);
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── 14. CLASSIFICATION RESULT — confidence always 0-1 ──
+
+describe("CLASSIFICATION RESULT: mapAiClassifierToClassificationResult clamps confidence", () => {
+  it("confidence 0.85 stays 0.85", () => {
+    const result = mapAiClassifierToClassificationResult(cls({ confidence: 0.85 }));
+    expect(result.confidence).toBe(0.85);
+  });
+
+  it("confidence 0 stays 0", () => {
+    const result = mapAiClassifierToClassificationResult(cls({ confidence: 0 }));
+    expect(result.confidence).toBe(0);
+  });
+
+  it("confidence 1 stays 1", () => {
+    const result = mapAiClassifierToClassificationResult(cls({ confidence: 1 }));
+    expect(result.confidence).toBe(1);
   });
 });

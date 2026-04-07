@@ -19,6 +19,9 @@ function lifecycleFromDocType(dt: string): DocumentLifecycleStatus {
   if (d === "amendment" || d === "life_insurance_change_request") return "policy_change_request";
   if (d === "statement") return "statement";
   if (d === "payment_instructions") return "confirmation";
+  if (d === "confirmation_document") return "confirmation";
+  if (d === "consent_or_identification_document") return "unknown";
+  if (d === "supporting_document") return "unknown";
   return "unknown";
 }
 
@@ -88,10 +91,14 @@ export function mapAiClassifierToPrimaryType(c: AiClassifierOutput): PrimaryDocu
   }
   if (fam === "pp" || fam === "dps") {
     if (dt === "contract" || dt === "amendment" || dt === "pension_contract") return "pension_contract";
+    if (dt === "confirmation_document" || dt === "consent_or_identification_document" || dt === "statement" || dt === "supporting_document") return "pension_contract";
+    if (dt === "proposal" || dt === "offer" || dt === "modelation") return "pension_contract";
   }
   if (fam === "dip") {
     if (dt === "investment_subscription_document") return "investment_subscription_document";
     if (dt === "contract" || dt === "amendment") return "investment_subscription_document";
+    if (dt === "confirmation_document" || dt === "consent_or_identification_document") return "investment_subscription_document";
+    if (dt === "proposal" || dt === "offer" || dt === "modelation") return "investment_subscription_document";
   }
   if (fam === "building_savings" && (dt === "contract" || dt === "amendment")) return "generic_financial_document";
   if (fam === "loan" && (dt === "contract" || dt === "consumer_loan_contract")) return "consumer_loan_contract";
@@ -108,20 +115,20 @@ export function mapAiClassifierToPrimaryType(c: AiClassifierOutput): PrimaryDocu
     // Tax returns and payslips
     if (dt === "corporate_tax_return" || dt === "self_employed_tax_or_income_document") return "corporate_tax_return";
     if (dt === "payslip_document" || dt === "income_proof_document" || dt === "income_confirmation") return "payslip_document";
-    if (dt === "bank_statement" || dt === "statement") return "bank_statement";
-    if (dt === "supporting_document") {
-      // Try to resolve to specific subtype using productSubtype signal from classifier
-      if (sub.includes("payslip") || sub.includes("mzda") || sub.includes("salary") || sub.includes("income_proof")) return "payslip_document";
-      if (sub.includes("tax_return") || sub.includes("tax_declaration") || sub.includes("danove_priznani") || sub.includes("corporate_tax")) return "corporate_tax_return";
-      // If subtype is not specific, fall through to bank_statement as generic supporting-doc label.
-      // The pipeline will refine this further after extraction via inferSupportingSubtypeFromPromptResponse.
+    if (dt === "bank_statement" || dt === "statement" || dt === "supporting_document") {
+      if (sub.includes("payslip") || sub.includes("mzda") || sub.includes("salary") || sub.includes("income_proof") || sub.includes("vyplatni")) return "payslip_document";
+      if (sub.includes("tax_return") || sub.includes("tax_declaration") || sub.includes("danove") || sub.includes("corporate_tax") || sub.includes("priznani")) return "corporate_tax_return";
       return "bank_statement";
     }
     // Service agreements detected via compliance path
     if (dt === "contract") return "service_agreement";
     return "consent_or_declaration";
   }
-  if (dt === "statement" || dt === "supporting_document") return "bank_statement";
+  if (dt === "statement" || dt === "supporting_document") {
+    if (sub.includes("payslip") || sub.includes("mzda") || sub.includes("salary") || sub.includes("income_proof") || sub.includes("vyplatni")) return "payslip_document";
+    if (sub.includes("tax_return") || sub.includes("tax_declaration") || sub.includes("danove") || sub.includes("corporate_tax") || sub.includes("priznani")) return "corporate_tax_return";
+    return "bank_statement";
+  }
   if (fam === "legacy_financial_product") return "generic_financial_document";
   if (dt === "termination_document") return "generic_financial_document";
   if (dt === "consent_or_identification_document") return "consent_or_declaration";
@@ -197,12 +204,16 @@ export function primaryTypeFallbackFromPromptKey(
 
 export function mapAiClassifierToClassificationResult(c: AiClassifierOutput): ClassificationResult {
   const primaryType = mapAiClassifierToPrimaryType(c);
+  const rawConf = c.confidence;
+  const confidence = typeof rawConf === "number" && Number.isFinite(rawConf)
+    ? rawConf > 1 ? Math.min(1, rawConf / 100) : Math.max(0, rawConf)
+    : 0;
   return {
     primaryType,
     subtype: c.productSubtype || "unknown",
     lifecycleStatus: lifecycleFromDocType(c.documentType),
     documentIntent: intentFromClassifier(c),
-    confidence: c.confidence,
+    confidence,
     reasons: [...(c.reasons ?? []), ...c.warnings],
   };
 }
