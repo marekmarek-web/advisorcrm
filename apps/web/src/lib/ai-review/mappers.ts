@@ -813,6 +813,8 @@ function flattenEnvelopeToGroups(
         isConfirmed: false,
         isEdited: false,
         originalAiValue: strVal,
+        displayStatus: pres.displayStatus,
+        displaySource: pres.displaySource || undefined,
       }, fKey);
     }
   }

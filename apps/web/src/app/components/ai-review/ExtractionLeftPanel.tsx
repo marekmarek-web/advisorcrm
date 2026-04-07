@@ -951,7 +951,7 @@ function ExtractedFieldRow({
       } ${isActive ? "ring-2 ring-indigo-300 rounded-xl" : ""}`}
     >
       <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2 ml-1 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 min-w-0">
+        <span className="flex items-center gap-1.5 min-w-0 flex-1">
           <span className="truncate">{field.label}</span>
           {isConfirmed && (
             <span className="inline-flex items-center gap-0.5 text-emerald-600">
@@ -964,6 +964,11 @@ function ExtractedFieldRow({
             </span>
           )}
         </span>
+        {field.displayStatus === "Chybí" && !field.value && (
+          <span className="text-[8px] font-bold uppercase tracking-wide text-slate-400 normal-case shrink-0">
+            chybí
+          </span>
+        )}
       </label>
 
       <div className="relative group/input">
@@ -1027,13 +1032,38 @@ function ExtractedFieldRow({
         </div>
       )}
 
+      {/* Evidence status + source — from Fáze 5/6 evidence model */}
+      <div className="mt-1 ml-1 flex items-center gap-2 flex-wrap min-h-[14px]">
+        {field.displayStatus && (
+          <span
+            className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md leading-none ${
+              field.displayStatus === "Nalezeno"
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                : field.displayStatus === "Odvozeno"
+                ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+                : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+            }`}
+          >
+            {field.displayStatus}
+          </span>
+        )}
+        {field.displaySource && field.displaySource.trim() && (
+          <span className="text-[10px] text-[color:var(--wp-text-tertiary)] leading-none truncate max-w-[160px]">
+            {field.displaySource}
+          </span>
+        )}
+        {!field.displayStatus && !field.displaySource && field.page && (
+          <span className="text-[10px] text-[color:var(--wp-text-tertiary)]">Strana {field.page}</span>
+        )}
+        {field.displayStatus && field.page && (
+          <span className="text-[10px] text-[color:var(--wp-text-tertiary)]">· s. {field.page}</span>
+        )}
+      </div>
+
       {field.sourceType && field.sourceType !== "ai" ? (
-        <div className="mt-1 ml-1 text-[10px] text-[color:var(--wp-text-tertiary)] flex items-center gap-2">
+        <div className="mt-0.5 ml-1 text-[10px] text-[color:var(--wp-text-tertiary)] flex items-center gap-2">
           <span>Zdroj: {field.sourceType}</span>
-          {field.page ? <span>Strana {field.page}</span> : null}
         </div>
-      ) : field.page ? (
-        <div className="mt-1 ml-1 text-[10px] text-[color:var(--wp-text-tertiary)]">Strana {field.page}</div>
       ) : null}
     </div>
   );

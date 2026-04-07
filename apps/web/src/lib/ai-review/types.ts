@@ -50,6 +50,10 @@ export type ExtractedField = {
   manualValue?: string;
   updatedBy?: string;
   updatedAt?: string;
+  /** Advisor-facing evidence status: "Nalezeno" | "Odvozeno" | "Chybí" */
+  displayStatus?: "Nalezeno" | "Odvozeno" | "Chybí";
+  /** Advisor-facing source label: e.g. "z bloku Pojistník", "z tabulky plateb" */
+  displaySource?: string;
 };
 
 export type ExtractedGroup = {
