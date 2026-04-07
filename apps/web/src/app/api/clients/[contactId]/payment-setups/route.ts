@@ -67,6 +67,7 @@ export async function GET(
       paymentInstructionsText: clientPaymentSetups.paymentInstructionsText,
       confidence: clientPaymentSetups.confidence,
       needsHumanReview: clientPaymentSetups.needsHumanReview,
+      sourceContractReviewId: clientPaymentSetups.sourceContractReviewId,
       createdAt: clientPaymentSetups.createdAt,
       updatedAt: clientPaymentSetups.updatedAt,
     })

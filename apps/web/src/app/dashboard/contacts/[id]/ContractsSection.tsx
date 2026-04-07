@@ -34,6 +34,7 @@ import {
 } from "@/lib/contracts/contract-form-payload";
 import type { ContractFormState } from "@/lib/contracts/contract-form-payload";
 import { getSegmentUiGroup } from "@/lib/contracts/contract-segment-wizard-config";
+import { AiReviewProvenanceBadge, resolveAiProvenanceKind } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
 
 function sourceKindLabel(kind: string): string {
   switch (kind) {
@@ -305,39 +306,25 @@ export function ContractsSection({ contactId }: { contactId: string }) {
                   {c.partnerName && (
                     <ZpRatingBadge partnerName={c.partnerName} productName={c.productName ?? undefined} segment={c.segment} />
                   )}
-                  <span className="block text-[11px] text-[color:var(--wp-text-muted)] mt-1">
-                    Zdroj evidence: {sourceKindLabel(c.sourceKind)}
-                    {c.sourceDocumentId ? (
-                      <>
-                        {" · "}
-                        <a
-                          href={`/api/documents/${c.sourceDocumentId}/download`}
-                          className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Dokument <ExternalLink className="w-3 h-3" aria-hidden />
-                        </a>
-                      </>
-                    ) : null}
-                    {c.sourceContractReviewId ? (
-                      <>
-                        {" · "}
-                        <Link
-                          href={`/portal/contracts/review/${c.sourceContractReviewId}`}
-                          className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
-                        >
-                          AI kontrola <ExternalLink className="w-3 h-3" aria-hidden />
-                        </Link>
-                      </>
-                    ) : null}
-                    {c.extractionConfidence ? (
-                      <span
-                        className="ml-1 cursor-help border-b border-dotted border-[color:var(--wp-text-muted)]"
-                        title={`Interní: úroveň jistoty extrakce ${c.extractionConfidence}`}
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[color:var(--wp-text-muted)] mt-1">
+                    {resolveAiProvenanceKind(c.sourceKind, c.advisorConfirmedAt) ? (
+                      <AiReviewProvenanceBadge
+                        kind={resolveAiProvenanceKind(c.sourceKind, c.advisorConfirmedAt)!}
+                        reviewId={c.sourceContractReviewId}
+                        confirmedAt={c.advisorConfirmedAt}
+                      />
+                    ) : (
+                      <span>Zdroj: {sourceKindLabel(c.sourceKind)}</span>
+                    )}
+                    {c.sourceDocumentId && c.sourceKind !== "ai_review" ? (
+                      <a
+                        href={`/api/documents/${c.sourceDocumentId}/download`}
+                        className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
+                        target="_blank"
+                        rel="noreferrer"
                       >
-                        (interní jistota)
-                      </span>
+                        Dokument <ExternalLink className="w-3 h-3" aria-hidden />
+                      </a>
                     ) : null}
                   </span>
                 </span>
@@ -388,48 +375,32 @@ export function ContractsSection({ contactId }: { contactId: string }) {
                 ? ` • ${Number(c.premiumAmount).toLocaleString("cs-CZ")} Kč`
                 : ""}
               {c.partnerName && <ZpRatingBadge partnerName={c.partnerName} productName={c.productName ?? undefined} segment={c.segment} />}
-              <span className="block text-[11px] text-[color:var(--wp-text-muted)] mt-1">
-                {c.visibleToClient === false ? "Skryto v klientské zóně" : "V klientské zóně"}
-                {c.portfolioStatus && c.portfolioStatus !== "active" ? ` · ${c.portfolioStatus}` : ""}
-                {" · "}
-                Zdroj: {sourceKindLabel(c.sourceKind)}
-                {c.sourceDocumentId ? (
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[color:var(--wp-text-muted)] mt-1">
+                <span>
+                  {c.visibleToClient === false ? "Skryto v klientské zóně" : "V klientské zóně"}
+                  {c.portfolioStatus && c.portfolioStatus !== "active" ? ` · ${c.portfolioStatus}` : ""}
+                </span>
+                {resolveAiProvenanceKind(c.sourceKind, c.advisorConfirmedAt) ? (
+                  <AiReviewProvenanceBadge
+                    kind={resolveAiProvenanceKind(c.sourceKind, c.advisorConfirmedAt)!}
+                    reviewId={c.sourceContractReviewId}
+                    confirmedAt={c.advisorConfirmedAt}
+                  />
+                ) : (
                   <>
-                    {" · "}
-                    <a
-                      href={`/api/documents/${c.sourceDocumentId}/download`}
-                      className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Dokument <ExternalLink className="w-3 h-3" aria-hidden />
-                    </a>
+                    <span>· Zdroj: {sourceKindLabel(c.sourceKind)}</span>
+                    {c.sourceDocumentId ? (
+                      <a
+                        href={`/api/documents/${c.sourceDocumentId}/download`}
+                        className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Dokument <ExternalLink className="w-3 h-3" aria-hidden />
+                      </a>
+                    ) : null}
                   </>
-                ) : null}
-                {c.sourceContractReviewId ? (
-                  <>
-                    {" · "}
-                    <Link
-                      href={`/portal/contracts/review/${c.sourceContractReviewId}`}
-                      className="text-[var(--wp-accent)] underline font-medium inline-flex items-center gap-0.5"
-                    >
-                      AI kontrola <ExternalLink className="w-3 h-3" aria-hidden />
-                    </Link>
-                  </>
-                ) : null}
-                {c.advisorConfirmedAt ? (
-                  <span className="block sm:inline sm:ml-1">
-                    Potvrzeno {new Date(c.advisorConfirmedAt).toLocaleString("cs-CZ")}
-                  </span>
-                ) : null}
-                {c.extractionConfidence ? (
-                  <span
-                    className="ml-1 cursor-help border-b border-dotted border-[color:var(--wp-text-muted)]"
-                    title={`Interní: úroveň jistoty extrakce ${c.extractionConfidence}`}
-                  >
-                    (interní jistota)
-                  </span>
-                ) : null}
+                )}
               </span>
             </span>
             <div className="flex gap-2 shrink-0">

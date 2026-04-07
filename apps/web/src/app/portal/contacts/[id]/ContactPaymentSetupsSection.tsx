@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CreditCard, Loader2 } from "lucide-react";
+import { AiReviewProvenanceBadge } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
 
 type PaymentSetupRow = {
   id: string;
@@ -18,6 +19,7 @@ type PaymentSetupRow = {
   frequency: string | null;
   firstPaymentDate: string | null;
   needsHumanReview: boolean | null;
+  sourceContractReviewId: string | null;
 };
 
 export function ContactPaymentSetupsSection({ contactId }: { contactId: string }) {
@@ -100,6 +102,14 @@ export function ContactPaymentSetupsSection({ contactId }: { contactId: string }
               {row.frequency ? <div>Frekvence: {row.frequency}</div> : null}
               {row.firstPaymentDate ? <div>První platba: {row.firstPaymentDate}</div> : null}
             </div>
+            {row.sourceContractReviewId ? (
+              <div className="mt-2">
+                <AiReviewProvenanceBadge
+                  kind="auto_applied"
+                  reviewId={row.sourceContractReviewId}
+                />
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>
