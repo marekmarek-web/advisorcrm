@@ -223,10 +223,10 @@ function toLegacyProjection(envelope: DocumentReviewEnvelope): ExtractedContract
         ""
     ),
     expirationDate: String(fieldValue(envelope, "policyEndDate") ?? fieldValue(envelope, "lastInstallmentDate") ?? ""),
-    notes: envelope.reviewWarnings.map((w) => w.message),
+    notes: (envelope.reviewWarnings ?? []).map((w) => w.message),
     missingFields: [],
-    confidence: envelope.documentMeta.overallConfidence ?? envelope.documentClassification.confidence,
-    needsHumanReview: envelope.reviewWarnings.some((w) => w.severity === "critical"),
+    confidence: envelope.documentMeta?.overallConfidence ?? envelope.documentClassification?.confidence ?? 0,
+    needsHumanReview: (envelope.reviewWarnings ?? []).some((w) => w.severity === "critical"),
   };
 }
 
@@ -438,7 +438,7 @@ export function buildAllDraftActions(
       type: "request_manual_review",
       label: "Požádat o manuální review",
       payload: {
-        reason: maybeEnvelope.reviewWarnings.map((w) => w.code).join(", "),
+        reason: (maybeEnvelope.reviewWarnings ?? []).map((w) => w.code).join(", "),
       },
     });
   }
