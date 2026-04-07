@@ -333,6 +333,37 @@ export function getImageIntakeUserRolloutSummary(userId: string, tenantId?: stri
 }
 
 /**
+ * Returns a runtime health summary of the capability for operator / monitoring use.
+ * No model calls, no DB reads — pure env/flag state snapshot.
+ * Useful for health endpoints, Slack alerts, and post-deploy verification.
+ */
+export function getImageIntakeRuntimeHealthSummary(): {
+  capabilityEnabled: boolean;
+  multimodalEnabled: boolean;
+  stitchingEnabled: boolean;
+  reviewHandoffEnabled: boolean;
+  rolloutPercentage: number;
+  classifierModel: string;
+  multimodalModel: string;
+  flagSummary: Record<string, "enabled" | "disabled">;
+} {
+  const pct = process.env.IMAGE_INTAKE_ROLLOUT_PERCENTAGE?.trim();
+  const pctNum = pct ? Math.min(100, Math.max(0, parseInt(pct, 10) || 0)) : 100;
+  const classifierCfg = getImageIntakeClassifierConfig();
+  const multimodalCfg = getImageIntakeMultimodalConfig();
+  return {
+    capabilityEnabled: isImageIntakeEnabled(),
+    multimodalEnabled: isImageIntakeMultimodalEnabled(),
+    stitchingEnabled: isImageIntakeStitchingEnabled(),
+    reviewHandoffEnabled: isImageIntakeReviewHandoffEnabled(),
+    rolloutPercentage: pctNum,
+    classifierModel: classifierCfg.model ?? "(category default)",
+    multimodalModel: multimodalCfg.model ?? "(category default)",
+    flagSummary: getImageIntakeFlagSummary(),
+  };
+}
+
+/**
  * Returns the model routing config for the multimodal combined pass.
  * Uses copilot category (same as classifier) for consistent model routing.
  */
