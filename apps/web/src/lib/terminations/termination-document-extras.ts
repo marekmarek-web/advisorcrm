@@ -2,6 +2,9 @@
  * Volitelná pole uložená v `termination_requests.document_builder_extras` (JSON).
  */
 
+/** Zástupný text v DB u rozepsaného konceptu bez názvu pojišťovny (dokončení ho odmítne). */
+export const TERMINATION_PARTIAL_INSURER_PLACEHOLDER = "— (koncept, doplňte pojišťovnu)";
+
 export type TerminationPolicyholderKind = "person" | "company";
 
 export type TerminationDocumentBuilderExtras = {
@@ -14,6 +17,8 @@ export type TerminationDocumentBuilderExtras = {
   claimEventDate?: string;
   /** Přepíše výchozí „místo“ v záhlaví dopisu. */
   placeOverride?: string;
+  /** Uloženo u rozepsaného konceptu (wizard). */
+  uncertainInsurer?: boolean;
 };
 
 export function parseDocumentBuilderExtras(raw: unknown): TerminationDocumentBuilderExtras {
@@ -30,6 +35,7 @@ export function parseDocumentBuilderExtras(raw: unknown): TerminationDocumentBui
   if (typeof o.advisorNoteForReview === "string") out.advisorNoteForReview = o.advisorNoteForReview;
   if (typeof o.claimEventDate === "string") out.claimEventDate = o.claimEventDate;
   if (typeof o.placeOverride === "string") out.placeOverride = o.placeOverride;
+  if (o.uncertainInsurer === true) out.uncertainInsurer = true;
   return out;
 }
 
@@ -42,5 +48,6 @@ export function serializeDocumentBuilderExtras(e: TerminationDocumentBuilderExtr
   if (e.advisorNoteForReview?.trim()) out.advisorNoteForReview = e.advisorNoteForReview.trim();
   if (e.claimEventDate?.trim()) out.claimEventDate = e.claimEventDate.trim();
   if (e.placeOverride?.trim()) out.placeOverride = e.placeOverride.trim();
+  if (e.uncertainInsurer) out.uncertainInsurer = true;
   return out;
 }

@@ -7,6 +7,7 @@ import {
   contacts,
   tasks,
   advisorMaterialRequests,
+  terminationRequests,
   eq,
   and,
   asc,
@@ -38,7 +39,7 @@ export async function loadAdvisorChatAiBundle(
     ? Promise.resolve(options.crmSnapshot)
     : getChatContextPanelSnapshot(contactId);
 
-  const [snapshot, contactRow, msgDesc, taskRows, matRows] = await Promise.all([
+  const [snapshot, contactRow, msgDesc, taskRows, matRows, termRows] = await Promise.all([
     snapshotPromise,
     db
       .select({
@@ -85,6 +86,19 @@ export async function loadAdvisorChatAiBundle(
       )
       .orderBy(desc(advisorMaterialRequests.updatedAt))
       .limit(8),
+    db
+      .select({
+        id: terminationRequests.id,
+        status: terminationRequests.status,
+        insurerName: terminationRequests.insurerName,
+        updatedAt: terminationRequests.updatedAt,
+      })
+      .from(terminationRequests)
+      .where(
+        and(eq(terminationRequests.tenantId, auth.tenantId), eq(terminationRequests.contactId, contactId)),
+      )
+      .orderBy(desc(terminationRequests.updatedAt))
+      .limit(6),
   ]);
 
   const c = contactRow[0];
@@ -169,5 +183,11 @@ export async function loadAdvisorChatAiBundle(
       opportunitiesReadable: snapshot.opportunitiesReadable,
     },
     attachmentHints,
+    terminationRequests: termRows.map((t) => ({
+      id: t.id,
+      status: t.status,
+      insurerName: t.insurerName,
+      updatedAt: t.updatedAt.toISOString(),
+    })),
   };
 }

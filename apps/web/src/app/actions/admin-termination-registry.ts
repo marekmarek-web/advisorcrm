@@ -10,6 +10,8 @@ export type InsurerRegistryAdminRow = {
   catalogKey: string;
   insurerName: string;
   registryNeedsVerification: boolean;
+  lastVerifiedAt: string | null;
+  registryInternalNotes: string | null;
   officialFormNotes: string | null;
   webFormUrl: string | null;
   email: string | null;
@@ -35,6 +37,8 @@ export async function listInsurerTerminationRegistryAdmin(): Promise<ListRegistr
       catalogKey: insurerTerminationRegistry.catalogKey,
       insurerName: insurerTerminationRegistry.insurerName,
       registryNeedsVerification: insurerTerminationRegistry.registryNeedsVerification,
+      lastVerifiedAt: insurerTerminationRegistry.lastVerifiedAt,
+      registryInternalNotes: insurerTerminationRegistry.registryInternalNotes,
       officialFormNotes: insurerTerminationRegistry.officialFormNotes,
       webFormUrl: insurerTerminationRegistry.webFormUrl,
       email: insurerTerminationRegistry.email,
@@ -57,6 +61,7 @@ export async function listInsurerTerminationRegistryAdmin(): Promise<ListRegistr
     ok: true,
     rows: rows.map((r) => ({
       ...r,
+      lastVerifiedAt: r.lastVerifiedAt?.toISOString() ?? null,
       mailingAddress: (r.mailingAddress as Record<string, unknown> | null) ?? null,
     })),
   };
@@ -65,6 +70,9 @@ export async function listInsurerTerminationRegistryAdmin(): Promise<ListRegistr
 export type UpdateRegistryPayload = {
   id: string;
   registryNeedsVerification?: boolean;
+  /** ISO datetime nebo prázdné pro vymazání */
+  lastVerifiedAt?: string | null;
+  registryInternalNotes?: string | null;
   officialFormNotes?: string | null;
   webFormUrl?: string | null;
   email?: string | null;
@@ -120,6 +128,17 @@ export async function updateInsurerTerminationRegistryAdmin(payload: UpdateRegis
     .set({
       ...(payload.registryNeedsVerification !== undefined
         ? { registryNeedsVerification: payload.registryNeedsVerification }
+        : {}),
+      ...(payload.lastVerifiedAt !== undefined
+        ? {
+            lastVerifiedAt:
+              payload.lastVerifiedAt && payload.lastVerifiedAt.trim()
+                ? new Date(payload.lastVerifiedAt)
+                : null,
+          }
+        : {}),
+      ...(payload.registryInternalNotes !== undefined
+        ? { registryInternalNotes: payload.registryInternalNotes }
         : {}),
       ...(payload.officialFormNotes !== undefined ? { officialFormNotes: payload.officialFormNotes } : {}),
       ...(payload.webFormUrl !== undefined ? { webFormUrl: payload.webFormUrl } : {}),

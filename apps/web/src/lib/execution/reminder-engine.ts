@@ -6,7 +6,8 @@
 export type ReminderType =
   | "pending_review" | "missing_client_data" | "blocked_payment_setup"
   | "no_followup_after_upload" | "expiring_contract" | "income_doc_refresh"
-  | "overdue_task" | "apply_ready_untouched";
+  | "overdue_task" | "apply_ready_untouched"
+  | "termination_delivery_check";
 
 export type ReminderSeverity = "low" | "medium" | "high" | "critical";
 

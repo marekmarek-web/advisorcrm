@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { getContractSegments } from "@/app/actions/contracts";
-import { getTerminationWizardPrefill } from "@/app/actions/terminations";
+import {
+  getTerminationIntakeDraftForWizard,
+  getTerminationWizardPrefill,
+  type TerminationIntakeDraftWizardState,
+} from "@/app/actions/terminations";
 import { getReasonsForSegment } from "@/lib/terminations";
 import { TerminationIntakeWizard, type WizardReasonOption } from "./TerminationIntakeWizard";
-import { isTerminationsModuleEnabled } from "@/lib/terminations/terminations-feature-flag";
+import { isTerminationsModuleEnabledOnServer } from "@/lib/terminations/terminations-feature-flag";
 
 export const metadata: Metadata = {
   title: "Výpověď smlouvy",
@@ -23,6 +28,7 @@ export default async function TerminationNewPage({
     insurerName?: string;
     requestedEffectiveDate?: string;
     sourceDocumentId?: string;
+    draftId?: string;
   }>;
 }) {
   const auth = await requireAuth();
@@ -34,7 +40,7 @@ export default async function TerminationNewPage({
     );
   }
 
-  if (!isTerminationsModuleEnabled()) {
+  if (!isTerminationsModuleEnabledOnServer()) {
     return (
       <div className="p-4 md:p-8">
         <p className="text-sm text-[color:var(--wp-text-secondary)]">Modul výpovědí je vypnutý.</p>
@@ -48,9 +54,24 @@ export default async function TerminationNewPage({
   const sourceQuick = sp.source === "quick";
   const sourceFromAi = sp.source === "ai_chat";
 
-  const prefill = await getTerminationWizardPrefill(contactId, contractId);
+  const draftId = sp.draftId?.trim() || null;
+  let loadedDraft: TerminationIntakeDraftWizardState | null = null;
+  let draftLoadError: string | null = null;
+  if (draftId) {
+    const d = await getTerminationIntakeDraftForWizard(draftId);
+    if (d.ok) {
+      loadedDraft = d.data;
+    } else {
+      draftLoadError = d.error;
+    }
+  }
+
+  const effectiveContactId = loadedDraft?.contactId ?? contactId;
+  const effectiveContractId = loadedDraft?.contractId ?? contractId;
+  const prefill = await getTerminationWizardPrefill(effectiveContactId, effectiveContractId);
   const segments = await getContractSegments();
-  const seg = prefill.productSegment ?? segments[0] ?? "ZP";
+  const seg =
+    loadedDraft?.productSegment?.trim() || prefill.productSegment || segments[0] || "ZP";
   const reasonRows = await getReasonsForSegment(auth.tenantId, seg);
   const initialReasons: WizardReasonOption[] = reasonRows.map((r) => ({
     id: r.id,
@@ -68,15 +89,19 @@ export default async function TerminationNewPage({
 
   return (
     <div className="p-4 md:p-8">
-      <TerminationIntakeWizard
-        prefill={prefill}
-        segments={segments.length ? segments : ["ZP"]}
-        initialReasons={initialReasons}
-        canWrite={canWrite}
-        sourceQuick={sourceQuick}
-        sourceFromAi={sourceFromAi}
-        urlPrefill={urlPrefill}
-      />
+      <Suspense fallback={<p className="text-sm text-[color:var(--wp-text-secondary)]">Načítání průvodce…</p>}>
+        <TerminationIntakeWizard
+          prefill={prefill}
+          segments={segments.length ? segments : ["ZP"]}
+          initialReasons={initialReasons}
+          canWrite={canWrite}
+          sourceQuick={sourceQuick}
+          sourceFromAi={sourceFromAi}
+          urlPrefill={urlPrefill}
+          loadedDraft={loadedDraft}
+          draftLoadError={draftLoadError}
+        />
+      </Suspense>
     </div>
   );
 }

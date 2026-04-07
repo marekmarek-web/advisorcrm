@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
+import { getContractSegments } from "@/app/actions/contracts";
 import { getTerminationRequestDetail } from "@/app/actions/terminations";
-import { isTerminationsModuleEnabled } from "@/lib/terminations/terminations-feature-flag";
+import { isTerminationsModuleEnabledOnServer } from "@/lib/terminations/terminations-feature-flag";
 import { TerminationRequestDetailClient } from "./TerminationRequestDetailClient";
 import type { TerminationRequestDetail } from "@/app/actions/terminations";
 
@@ -22,7 +23,7 @@ export default async function TerminationRequestDetailPage({
   if (auth.roleName === "Client" || !hasPermission(auth.roleName, "contacts:read")) {
     notFound();
   }
-  if (!isTerminationsModuleEnabled()) {
+  if (!isTerminationsModuleEnabledOnServer()) {
     return (
       <div className="p-4 md:p-8">
         <p className="text-sm text-[color:var(--wp-text-secondary)]">Modul výpovědí je vypnutý.</p>
@@ -37,10 +38,17 @@ export default async function TerminationRequestDetailPage({
   }
 
   const initial = JSON.parse(JSON.stringify(res.data)) as TerminationRequestDetail;
+  const segments = await getContractSegments();
+  const canWriteFields = hasPermission(auth.roleName, "contacts:write");
 
   return (
     <div className="p-4 md:p-8">
-      <TerminationRequestDetailClient requestId={requestId} initial={initial} />
+      <TerminationRequestDetailClient
+        requestId={requestId}
+        initial={initial}
+        segments={segments.length ? segments : ["ZP"]}
+        canWriteFields={canWriteFields}
+      />
     </div>
   );
 }

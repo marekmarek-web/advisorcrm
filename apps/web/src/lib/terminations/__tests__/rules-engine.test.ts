@@ -117,4 +117,26 @@ describe("evaluateTerminationRules", () => {
     expect(r.computedEffectiveDate).toBe("2099-09-15");
     expect(r.reasonCatalogId).toBe("rc-1");
   });
+
+  it("golden: registryNeedsVerification forces review when otherwise ready", async () => {
+    vi.mocked(findInsurerByName).mockResolvedValue({ ...baseInsurer, registryNeedsVerification: true });
+    vi.mocked(findReasonByCode).mockResolvedValue({ ...baseReason });
+
+    const r = await evaluateTerminationRules("tenant-1", {
+      source: "manual_intake",
+      contactId: null,
+      advisorId: "u1",
+      contractNumber: null,
+      productSegment: "ZP",
+      insurerName: "Test PV",
+      contractStartDate: null,
+      contractAnniversaryDate: null,
+      requestedEffectiveDate: "2099-09-15",
+      terminationMode: "fixed_calendar_date",
+      terminationReasonCode: "fixed_date_if_contractually_allowed",
+    });
+
+    expect(r.outcome).toBe("review_required");
+    expect(r.reviewRequiredReason).toMatch(/ověřen/i);
+  });
 });

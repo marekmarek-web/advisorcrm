@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getTerminationLetterPreview } from "@/app/actions/terminations";
+import { useEffect, useState, useTransition } from "react";
+import { getTerminationLetterPreview, saveTerminationGeneratedDocumentAction } from "@/app/actions/terminations";
 import type { TerminationLetterBuildResult } from "@/lib/terminations/termination-letter-types";
 
 function badgeClasses(badge: TerminationLetterBuildResult["badge"]): string {
@@ -62,11 +62,20 @@ function publishLabel(state: TerminationLetterBuildResult["publishState"]): stri
 
 type PreviewTab = "text" | "html";
 
-export function TerminationLetterPreviewPanel({ requestId }: { requestId: string }) {
+export function TerminationLetterPreviewPanel({
+  requestId,
+  showPersistButtons = true,
+}: {
+  requestId: string;
+  /** Uložení do CRM dokumentů (vyžaduje documents:write). */
+  showPersistButtons?: boolean;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TerminationLetterBuildResult | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("text");
+  const [persistMsg, setPersistMsg] = useState<string | null>(null);
+  const [persistPending, startPersist] = useTransition();
 
   useEffect(() => {
     let cancelled = false;
@@ -209,6 +218,59 @@ export function TerminationLetterPreviewPanel({ requestId }: { requestId: string
           <p className="text-xs text-indigo-800/90">
             Doporučené akce: {officialForm.ctaHints.join(" · ")}
           </p>
+        </div>
+      ) : null}
+
+      {showPersistButtons ? (
+        <div className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-3 space-y-2">
+          <p className="text-xs font-semibold text-[color:var(--wp-text-muted)]">Uložit do dokumentů (CRM)</p>
+          <div className="flex flex-wrap gap-2">
+            {letterPlainText?.trim() ? (
+              <button
+                type="button"
+                disabled={persistPending}
+                onClick={() => {
+                  setPersistMsg(null);
+                  startPersist(async () => {
+                    const r = await saveTerminationGeneratedDocumentAction(requestId, "draft_letter");
+                    setPersistMsg(r.ok ? `Dopis uložen (dokument ${r.documentId.slice(0, 8)}…).` : r.error);
+                  });
+                }}
+                className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-xs font-semibold min-h-[40px] disabled:opacity-50"
+              >
+                Uložit hlavní dopis
+              </button>
+            ) : null}
+            {coveringLetterPlainText?.trim() ? (
+              <button
+                type="button"
+                disabled={persistPending}
+                onClick={() => {
+                  setPersistMsg(null);
+                  startPersist(async () => {
+                    const r = await saveTerminationGeneratedDocumentAction(requestId, "cover_letter");
+                    setPersistMsg(r.ok ? `Průvodní dopis uložen (dokument ${r.documentId.slice(0, 8)}…).` : r.error);
+                  });
+                }}
+                className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-xs font-semibold min-h-[40px] disabled:opacity-50"
+              >
+                Uložit průvodní dopis
+              </button>
+            ) : null}
+          </div>
+          {!letterPlainText?.trim() && !coveringLetterPlainText?.trim() ? (
+            <p className="text-xs text-[color:var(--wp-text-secondary)]">
+              Není co uložit jako textový soubor (zkontrolujte režim výpovědi).
+            </p>
+          ) : null}
+          {persistMsg ? (
+            <p
+              className={`text-xs ${persistMsg.includes("uložen") ? "text-emerald-800" : "text-red-700"}`}
+              role="status"
+            >
+              {persistMsg}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

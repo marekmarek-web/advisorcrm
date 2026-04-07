@@ -44,6 +44,15 @@ export function formatAdvisorChatBundleForPrompt(bundle: AdvisorChatAiBundle): s
     }
   }
 
+  if (bundle.terminationRequests.length) {
+    lines.push("Žádosti o výpověď u tohoto klienta (stav, pojišťovna, poslední změna):");
+    for (const t of bundle.terminationRequests) {
+      lines.push(`- ${t.id.slice(0, 8)}… · ${t.status} · ${t.insurerName} · ${t.updatedAt}`);
+    }
+  } else {
+    lines.push("Žádosti o výpověď u klienta: žádné v posledních záznamech.");
+  }
+
   lines.push("");
   lines.push("=== KONVERZACE (chronologicky, klient / poradce) ===");
   if (!bundle.messages.length) {

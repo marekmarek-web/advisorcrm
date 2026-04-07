@@ -95,4 +95,17 @@ describe("tool handlers", () => {
     const result = await tool.handler({ title: "Test task" }, ctx);
     expect(result.data.draft).toBeDefined();
   });
+
+  it("prepare_termination_request builds wizard URL with ai_chat source", async () => {
+    const tool = getToolByName("prepare_termination_request")!;
+    const result = await tool.handler({ contactId: "c1", insurerName: "Kooperativa" }, ctx);
+    expect(String((result.data as { wizardPath?: string }).wizardPath)).toContain("/portal/terminations/new?");
+    expect(String((result.data as { wizardPath?: string }).wizardPath)).toContain("source=ai_chat");
+  });
+
+  it("registers createTerminationIntakeDraft with draft permission", () => {
+    const t = getToolByName("createTerminationIntakeDraft");
+    expect(t).toBeDefined();
+    expect(t?.requiredPermission).toBe("assistant:create_draft");
+  });
 });

@@ -12,6 +12,14 @@ export type AdvisorChatAiAttachmentLine = { fileName: string; mimeType: string |
 
 export type AdvisorChatAiPendingMaterial = { title: string; category: string };
 
+/** Otevřené / nedávné žádosti o výpověď u kontaktu (modul terminací). */
+export type AdvisorChatAiTerminationLine = {
+  id: string;
+  status: string;
+  insurerName: string;
+  updatedAt: string;
+};
+
 export type AdvisorChatAiPrimaryOpportunity = {
   title: string;
   caseType: string;
@@ -36,6 +44,7 @@ export type AdvisorChatAiBundle = {
     opportunitiesReadable: boolean;
   };
   attachmentHints: AdvisorChatAiAttachmentLine[];
+  terminationRequests: AdvisorChatAiTerminationLine[];
 };
 
 /** Strukturovaný souhrn pro pravý panel. */

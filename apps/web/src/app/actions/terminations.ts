@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAuth, requireAuthInAction } from "@/lib/auth/require-auth";
+import { requireAuth, requireAuthInAction, type AuthContext } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import type { RoleName } from "@/shared/rolePermissions";
 import { db } from "db";
@@ -14,7 +14,9 @@ import {
   terminationRequestEvents,
   terminationRequiredAttachments,
   terminationDispatchLog,
+  terminationGeneratedDocuments,
   terminationRequestStatuses,
+  reminders,
 } from "db";
 import { and, desc, eq } from "db";
 import { evaluateTerminationRules, getReasonsForSegment } from "@/lib/terminations";
@@ -25,6 +27,7 @@ import type {
 } from "@/lib/terminations";
 import type {
   TerminationDeliveryChannel,
+  TerminationGeneratedDocumentKind,
   TerminationMode,
   TerminationReasonCode,
   TerminationRequestSource,
@@ -37,11 +40,15 @@ import {
   type InsurerRegistryRowLike,
 } from "@/lib/terminations/termination-letter-builder";
 import type { TerminationLetterBuildResult } from "@/lib/terminations/termination-letter-types";
+import { createAdminClient } from "@/lib/supabase/server";
+import { createReminder } from "@/lib/execution/reminder-engine";
 import {
   parseDocumentBuilderExtras,
   serializeDocumentBuilderExtras,
+  TERMINATION_PARTIAL_INSURER_PLACEHOLDER,
   type TerminationDocumentBuilderExtras,
 } from "@/lib/terminations/termination-document-extras";
+import { isTerminationsModuleEnabledOnServer } from "@/lib/terminations/terminations-feature-flag";
 
 export type TerminationWizardPrefill = {
   mode: "crm" | "contact_only" | "standalone";
@@ -217,6 +224,8 @@ export type CreateTerminationDraftPayload = {
   uncertainInsurer: boolean;
   /** Volitelná pole šablony dopisu (firma, průvodní texty, …). */
   documentBuilderExtras?: TerminationDocumentBuilderExtras | null;
+  /** Dokončení rozepsaného konceptu (`status` = intake) místo nového insertu. */
+  resumeRequestId?: string | null;
 };
 
 export type CreateTerminationDraftResult = {
@@ -232,6 +241,9 @@ export async function createTerminationDraft(
   payload: CreateTerminationDraftPayload
 ): Promise<CreateTerminationDraftResult> {
   const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
   if (auth.roleName === "Client") {
     return { ok: false, error: "Nepovoleno." };
   }
@@ -239,9 +251,33 @@ export async function createTerminationDraft(
     return { ok: false, error: "Nemáte oprávnění vytvářet žádosti o výpověď." };
   }
 
+  const resumeId = payload.resumeRequestId?.trim() || null;
+  if (resumeId) {
+    const [existingResume] = await db
+      .select({ id: terminationRequests.id, status: terminationRequests.status })
+      .from(terminationRequests)
+      .where(and(eq(terminationRequests.id, resumeId), eq(terminationRequests.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!existingResume) {
+      return { ok: false, error: "Koncept nenalezen." };
+    }
+    if (existingResume.status !== "intake") {
+      return {
+        ok: false,
+        error: "Tuto žádost už nelze z průvodce dokončit jako koncept (změnil se stav).",
+      };
+    }
+  }
+
   const insurerName = payload.insurerName?.trim();
   if (!insurerName) {
     return { ok: false, error: "Vyplňte název pojišťovny." };
+  }
+  if (insurerName === TERMINATION_PARTIAL_INSURER_PLACEHOLDER) {
+    return {
+      ok: false,
+      error: "Doplňte skutečný název pojišťovny (koncept používal zástupný text).",
+    };
   }
 
   if (payload.contractId && payload.contactId) {
@@ -343,50 +379,75 @@ export async function createTerminationDraft(
     mailing = ir?.mailingAddress ?? null;
   }
 
+  const rowValues = {
+    contactId: payload.contactId,
+    contractId: payload.contractId,
+    sourceDocumentId: payload.sourceDocumentId,
+    sourceConversationId: payload.sourceConversationId,
+    advisorId: auth.userId,
+    insurerName,
+    insurerRegistryId: rules.insurerRegistryId,
+    contractNumber: payload.contractNumber,
+    productSegment: payload.productSegment,
+    terminationMode: payload.terminationMode,
+    terminationReasonCode: payload.terminationReasonCode,
+    reasonCatalogId: rules.reasonCatalogId,
+    requestedEffectiveDate: payload.requestedEffectiveDate ?? undefined,
+    computedEffectiveDate: rules.computedEffectiveDate ?? undefined,
+    contractStartDate: payload.contractStartDate ?? undefined,
+    contractAnniversaryDate: payload.contractAnniversaryDate ?? undefined,
+    freeformLetterAllowed: rules.freeformLetterAllowed,
+    requiresInsurerForm: rules.requiresOfficialForm,
+    requiredAttachments: {
+      snapshot: rules.requiredAttachments,
+      missingFields: rules.missingFields,
+      outcome: rules.outcome,
+    },
+    deliveryChannel: rules.defaultDeliveryChannel,
+    deliveryAddressSnapshot: mailing && typeof mailing === "object" ? (mailing as Record<string, unknown>) : undefined,
+    status,
+    reviewRequiredReason: rules.reviewRequiredReason,
+    confidence: rules.confidence != null ? String(Math.min(1, Math.max(0, rules.confidence))) : null,
+    sourceKind: payload.sourceKind,
+    documentBuilderExtras: serializeDocumentBuilderExtras({
+      ...(payload.documentBuilderExtras ?? {}),
+      uncertainInsurer: payload.uncertainInsurer ? true : undefined,
+    }),
+    updatedBy: auth.userId,
+    updatedAt: new Date(),
+  };
+
   try {
     const requestId = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(terminationRequests)
-        .values({
-          tenantId: auth.tenantId,
-          contactId: payload.contactId,
-          contractId: payload.contractId,
-          sourceDocumentId: payload.sourceDocumentId,
-          sourceConversationId: payload.sourceConversationId,
-          advisorId: auth.userId,
-          insurerName,
-          insurerRegistryId: rules.insurerRegistryId,
-          contractNumber: payload.contractNumber,
-          productSegment: payload.productSegment,
-          terminationMode: payload.terminationMode,
-          terminationReasonCode: payload.terminationReasonCode,
-          reasonCatalogId: rules.reasonCatalogId,
-          requestedEffectiveDate: payload.requestedEffectiveDate ?? undefined,
-          computedEffectiveDate: rules.computedEffectiveDate ?? undefined,
-          contractStartDate: payload.contractStartDate ?? undefined,
-          contractAnniversaryDate: payload.contractAnniversaryDate ?? undefined,
-          freeformLetterAllowed: rules.freeformLetterAllowed,
-          requiresInsurerForm: rules.requiresOfficialForm,
-          requiredAttachments: {
-            snapshot: rules.requiredAttachments,
-            missingFields: rules.missingFields,
-            outcome: rules.outcome,
-          },
-          deliveryChannel: rules.defaultDeliveryChannel,
-          deliveryAddressSnapshot: mailing && typeof mailing === "object" ? (mailing as Record<string, unknown>) : undefined,
-          status,
-          reviewRequiredReason: rules.reviewRequiredReason,
-          confidence:
-            rules.confidence != null ? String(Math.min(1, Math.max(0, rules.confidence))) : null,
-          sourceKind: payload.sourceKind,
-          documentBuilderExtras: serializeDocumentBuilderExtras(payload.documentBuilderExtras ?? {}),
-          createdBy: auth.userId,
-          updatedBy: auth.userId,
-        })
-        .returning({ id: terminationRequests.id });
+      let id: string;
 
-      const id = row?.id;
-      if (!id) throw new Error("Insert failed");
+      if (resumeId) {
+        id = resumeId;
+        await tx
+          .delete(terminationRequiredAttachments)
+          .where(
+            and(
+              eq(terminationRequiredAttachments.requestId, id),
+              eq(terminationRequiredAttachments.tenantId, auth.tenantId)
+            )
+          );
+        await tx
+          .update(terminationRequests)
+          .set(rowValues)
+          .where(and(eq(terminationRequests.id, id), eq(terminationRequests.tenantId, auth.tenantId)));
+      } else {
+        const [row] = await tx
+          .insert(terminationRequests)
+          .values({
+            tenantId: auth.tenantId,
+            ...rowValues,
+            createdBy: auth.userId,
+          })
+          .returning({ id: terminationRequests.id });
+        const newId = row?.id;
+        if (!newId) throw new Error("Insert failed");
+        id = newId;
+      }
 
       await tx.insert(terminationRequestEvents).values({
         tenantId: auth.tenantId,
@@ -398,6 +459,7 @@ export async function createTerminationDraft(
           reviewRequiredReason: rules.reviewRequiredReason,
           missingFields: rules.missingFields,
           debug: rules._debug,
+          resumedFromPartial: Boolean(resumeId),
         },
         actorUserId: auth.userId,
       });
@@ -427,22 +489,487 @@ export async function createTerminationDraft(
   }
 }
 
+export type SaveTerminationPartialResult =
+  | { ok: true; requestId: string }
+  | { ok: false; error: string };
+
+/**
+ * Rozepsaný koncept bez rules engine — `status` = intake. Lze později dokončit přes `createTerminationDraft` + `resumeRequestId`.
+ */
+export async function saveTerminationIntakePartialAction(
+  payload: CreateTerminationDraftPayload & { partialRequestId?: string | null }
+): Promise<SaveTerminationPartialResult> {
+  const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!canWriteContacts(auth.roleName)) {
+    return { ok: false, error: "Nemáte oprávnění." };
+  }
+
+  const partialId = payload.partialRequestId?.trim() || null;
+
+  if (payload.contractId && payload.contactId) {
+    const [c] = await db
+      .select({ contactId: contracts.contactId })
+      .from(contracts)
+      .where(and(eq(contracts.id, payload.contractId), eq(contracts.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!c || c.contactId !== payload.contactId) {
+      return { ok: false, error: "Smlouva nepatří k vybranému kontaktu." };
+    }
+  }
+
+  if (payload.contactId) {
+    const [p] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, payload.contactId), eq(contacts.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!p) return { ok: false, error: "Kontakt neexistuje." };
+  }
+
+  if (payload.sourceDocumentId) {
+    const [doc] = await db
+      .select({ id: documents.id })
+      .from(documents)
+      .where(and(eq(documents.id, payload.sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!doc) {
+      return { ok: false, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
+    }
+  }
+
+  const insurerName =
+    payload.insurerName?.trim() || TERMINATION_PARTIAL_INSURER_PLACEHOLDER;
+
+  const extras = {
+    ...(payload.documentBuilderExtras ?? {}),
+    uncertainInsurer: payload.uncertainInsurer ? true : undefined,
+  };
+
+  try {
+    const requestId = await db.transaction(async (tx) => {
+      if (partialId) {
+        const [ex] = await tx
+          .select({ id: terminationRequests.id, status: terminationRequests.status })
+          .from(terminationRequests)
+          .where(and(eq(terminationRequests.id, partialId), eq(terminationRequests.tenantId, auth.tenantId)))
+          .limit(1);
+        if (!ex) throw new Error("Koncept nenalezen.");
+        if (ex.status !== "intake") {
+          throw new Error("Ukládání rozepsaného stavu je možné jen u konceptu (stav intake).");
+        }
+        await tx
+          .update(terminationRequests)
+          .set({
+            contactId: payload.contactId,
+            contractId: payload.contractId,
+            sourceDocumentId: payload.sourceDocumentId,
+            sourceConversationId: payload.sourceConversationId,
+            insurerName,
+            contractNumber: payload.contractNumber,
+            productSegment: payload.productSegment,
+            terminationMode: payload.terminationMode,
+            terminationReasonCode: payload.terminationReasonCode,
+            requestedEffectiveDate: payload.requestedEffectiveDate ?? undefined,
+            contractStartDate: payload.contractStartDate ?? undefined,
+            contractAnniversaryDate: payload.contractAnniversaryDate ?? undefined,
+            sourceKind: payload.sourceKind,
+            documentBuilderExtras: serializeDocumentBuilderExtras(extras),
+            requiredAttachments: { partialDraft: true },
+            status: "intake",
+            updatedBy: auth.userId,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(terminationRequests.id, partialId), eq(terminationRequests.tenantId, auth.tenantId)));
+
+        await tx.insert(terminationRequestEvents).values({
+          tenantId: auth.tenantId,
+          requestId: partialId,
+          eventType: "note",
+          payload: { kind: "partial_intake_save" },
+          actorUserId: auth.userId,
+        });
+        return partialId;
+      }
+
+      const [row] = await tx
+        .insert(terminationRequests)
+        .values({
+          tenantId: auth.tenantId,
+          contactId: payload.contactId,
+          contractId: payload.contractId,
+          sourceDocumentId: payload.sourceDocumentId,
+          sourceConversationId: payload.sourceConversationId,
+          advisorId: auth.userId,
+          insurerName,
+          contractNumber: payload.contractNumber,
+          productSegment: payload.productSegment,
+          terminationMode: payload.terminationMode,
+          terminationReasonCode: payload.terminationReasonCode,
+          requestedEffectiveDate: payload.requestedEffectiveDate ?? undefined,
+          contractStartDate: payload.contractStartDate ?? undefined,
+          contractAnniversaryDate: payload.contractAnniversaryDate ?? undefined,
+          sourceKind: payload.sourceKind,
+          documentBuilderExtras: serializeDocumentBuilderExtras(extras),
+          requiredAttachments: { partialDraft: true },
+          status: "intake",
+          deliveryChannel: "not_yet_set",
+          createdBy: auth.userId,
+          updatedBy: auth.userId,
+        })
+        .returning({ id: terminationRequests.id });
+
+      const id = row?.id;
+      if (!id) throw new Error("Insert failed");
+
+      await tx.insert(terminationRequestEvents).values({
+        tenantId: auth.tenantId,
+        requestId: id,
+        eventType: "created",
+        payload: { partialDraft: true },
+        actorUserId: auth.userId,
+      });
+      return id;
+    });
+
+    return { ok: true, requestId };
+  } catch (e) {
+    console.error("saveTerminationIntakePartialAction", e);
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Uložení konceptu se nezdařilo.",
+    };
+  }
+}
+
+export type TerminationIntakeDraftWizardState = {
+  requestId: string;
+  sourceKind: TerminationRequestSource;
+  contactId: string | null;
+  contractId: string | null;
+  sourceDocumentId: string | null;
+  insurerName: string;
+  contractNumber: string | null;
+  productSegment: string | null;
+  contractStartDate: string | null;
+  contractAnniversaryDate: string | null;
+  requestedEffectiveDate: string | null;
+  terminationMode: TerminationMode;
+  terminationReasonCode: TerminationReasonCode;
+  uncertainInsurer: boolean;
+  documentBuilderExtras: TerminationDocumentBuilderExtras;
+};
+
+export type GetTerminationIntakeDraftResponse =
+  | { ok: true; data: TerminationIntakeDraftWizardState }
+  | { ok: false; error: string };
+
+export async function getTerminationIntakeDraftForWizard(
+  requestId: string
+): Promise<GetTerminationIntakeDraftResponse> {
+  const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
+
+  const [row] = await db
+    .select()
+    .from(terminationRequests)
+    .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
+    .limit(1);
+  if (!row) return { ok: false, error: "Koncept nenalezen." };
+  if (row.status !== "intake") {
+    return { ok: false, error: "Žádost není rozepsaným konceptem." };
+  }
+
+  const extras = parseDocumentBuilderExtras(row.documentBuilderExtras);
+  const uncertainInsurer = extras.uncertainInsurer === true;
+  const { uncertainInsurer: _u, ...restExtras } = extras;
+
+  return {
+    ok: true,
+    data: {
+      requestId: row.id,
+      sourceKind: row.sourceKind,
+      contactId: row.contactId,
+      contractId: row.contractId,
+      sourceDocumentId: row.sourceDocumentId,
+      insurerName:
+        row.insurerName === TERMINATION_PARTIAL_INSURER_PLACEHOLDER ? "" : row.insurerName,
+      contractNumber: row.contractNumber,
+      productSegment: row.productSegment,
+      contractStartDate: row.contractStartDate,
+      contractAnniversaryDate: row.contractAnniversaryDate,
+      requestedEffectiveDate: row.requestedEffectiveDate,
+      terminationMode: row.terminationMode,
+      terminationReasonCode: row.terminationReasonCode as TerminationReasonCode,
+      uncertainInsurer,
+      documentBuilderExtras: restExtras,
+    },
+  };
+}
+
+export type UpdateTerminationFieldsPayload = {
+  requestId: string;
+  sourceKind?: TerminationRequestSource;
+  contactId?: string | null;
+  contractId?: string | null;
+  sourceDocumentId?: string | null;
+  insurerName: string;
+  contractNumber?: string | null;
+  productSegment?: string | null;
+  contractStartDate?: string | null;
+  contractAnniversaryDate?: string | null;
+  requestedEffectiveDate?: string | null;
+  terminationMode: TerminationMode;
+  terminationReasonCode: TerminationReasonCode;
+  uncertainInsurer: boolean;
+  documentBuilderExtras?: TerminationDocumentBuilderExtras | null;
+};
+
+/**
+ * Úprava polí žádosti na detailu + nové vyhodnocení rules engine (přílohy se přegenerují).
+ */
+export async function updateTerminationRequestFieldsAndReevaluateAction(
+  payload: UpdateTerminationFieldsPayload
+): Promise<CreateTerminationDraftResult> {
+  const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!canWriteContacts(auth.roleName)) {
+    return { ok: false, error: "Nemáte oprávnění." };
+  }
+
+  const [existing] = await db
+    .select()
+    .from(terminationRequests)
+    .where(
+      and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+    )
+    .limit(1);
+  if (!existing) return { ok: false, error: "Žádost nenalezena." };
+  if (existing.status === "completed" || existing.status === "cancelled") {
+    return { ok: false, error: "Dokončenou nebo zrušenou žádost nelze tímto způsobem měnit." };
+  }
+
+  const insurerName = payload.insurerName?.trim();
+  if (!insurerName) return { ok: false, error: "Vyplňte název pojišťovny." };
+  if (insurerName === TERMINATION_PARTIAL_INSURER_PLACEHOLDER) {
+    return { ok: false, error: "Vyplňte skutečný název pojišťovny." };
+  }
+
+  const contactId = payload.contactId !== undefined ? payload.contactId : existing.contactId;
+  const contractId = payload.contractId !== undefined ? payload.contractId : existing.contractId;
+  const sourceDocumentId =
+    payload.sourceDocumentId !== undefined ? payload.sourceDocumentId : existing.sourceDocumentId;
+  const sourceKind = payload.sourceKind ?? existing.sourceKind;
+  const sourceConversationId = existing.sourceConversationId;
+
+  if (contractId && contactId) {
+    const [c] = await db
+      .select({ contactId: contracts.contactId })
+      .from(contracts)
+      .where(and(eq(contracts.id, contractId), eq(contracts.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!c || c.contactId !== contactId) {
+      return { ok: false, error: "Smlouva nepatří k vybranému kontaktu." };
+    }
+  }
+
+  if (contactId) {
+    const [p] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!p) return { ok: false, error: "Kontakt neexistuje." };
+  }
+
+  if (sourceDocumentId) {
+    const [doc] = await db
+      .select({ id: documents.id })
+      .from(documents)
+      .where(and(eq(documents.id, sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!doc) {
+      return { ok: false, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
+    }
+  }
+
+  let rulesInput: TerminationRulesInput;
+  if (contractId && contactId) {
+    rulesInput = {
+      source: "crm_contract",
+      contractId,
+      contactId,
+      advisorId: auth.userId,
+      contractNumber: payload.contractNumber ?? "",
+      productSegment: payload.productSegment ?? "",
+      insurerName,
+      contractStartDate: payload.contractStartDate ?? null,
+      contractAnniversaryDate: payload.contractAnniversaryDate ?? null,
+      requestedEffectiveDate: payload.requestedEffectiveDate ?? null,
+      terminationMode: payload.terminationMode,
+      terminationReasonCode: payload.terminationReasonCode,
+      sourceDocumentId,
+      sourceConversationId,
+    };
+  } else {
+    const manualSource: TerminationManualInput["source"] =
+      sourceKind === "quick_action"
+        ? "quick_action"
+        : sourceKind === "ai_chat"
+          ? "ai_chat"
+          : "manual_intake";
+    rulesInput = {
+      source: manualSource,
+      contactId,
+      advisorId: auth.userId,
+      contractNumber: payload.contractNumber ?? null,
+      productSegment: payload.productSegment ?? null,
+      insurerName,
+      contractStartDate: payload.contractStartDate ?? null,
+      contractAnniversaryDate: payload.contractAnniversaryDate ?? null,
+      requestedEffectiveDate: payload.requestedEffectiveDate ?? null,
+      terminationMode: payload.terminationMode,
+      terminationReasonCode: payload.terminationReasonCode,
+      sourceDocumentId,
+      sourceConversationId,
+    };
+  }
+
+  let rules = await evaluateTerminationRules(auth.tenantId, rulesInput);
+
+  if (payload.uncertainInsurer) {
+    rules = {
+      ...rules,
+      outcome: rules.outcome === "hard_fail" ? rules.outcome : "review_required",
+      reviewRequiredReason:
+        "Nejistá identifikace pojišťovny – vyžaduje ruční ověření." +
+        (rules.reviewRequiredReason ? ` ${rules.reviewRequiredReason}` : ""),
+    };
+  }
+
+  const status = mapOutcomeToStatus(rules);
+
+  let mailing: unknown = null;
+  if (rules.insurerRegistryId) {
+    const [ir] = await db
+      .select({ mailingAddress: insurerTerminationRegistry.mailingAddress })
+      .from(insurerTerminationRegistry)
+      .where(eq(insurerTerminationRegistry.id, rules.insurerRegistryId))
+      .limit(1);
+    mailing = ir?.mailingAddress ?? null;
+  }
+
+  const rowValues = {
+    contactId,
+    contractId,
+    sourceDocumentId,
+    sourceConversationId,
+    advisorId: existing.advisorId,
+    insurerName,
+    insurerRegistryId: rules.insurerRegistryId,
+    contractNumber: payload.contractNumber ?? null,
+    productSegment: payload.productSegment ?? null,
+    terminationMode: payload.terminationMode,
+    terminationReasonCode: payload.terminationReasonCode,
+    reasonCatalogId: rules.reasonCatalogId,
+    requestedEffectiveDate: payload.requestedEffectiveDate ?? undefined,
+    computedEffectiveDate: rules.computedEffectiveDate ?? undefined,
+    contractStartDate: payload.contractStartDate ?? undefined,
+    contractAnniversaryDate: payload.contractAnniversaryDate ?? undefined,
+    freeformLetterAllowed: rules.freeformLetterAllowed,
+    requiresInsurerForm: rules.requiresOfficialForm,
+    requiredAttachments: {
+      snapshot: rules.requiredAttachments,
+      missingFields: rules.missingFields,
+      outcome: rules.outcome,
+    },
+    deliveryChannel: rules.defaultDeliveryChannel,
+    deliveryAddressSnapshot: mailing && typeof mailing === "object" ? (mailing as Record<string, unknown>) : undefined,
+    status,
+    reviewRequiredReason: rules.reviewRequiredReason,
+    confidence: rules.confidence != null ? String(Math.min(1, Math.max(0, rules.confidence))) : null,
+    sourceKind,
+    documentBuilderExtras: serializeDocumentBuilderExtras({
+      ...(payload.documentBuilderExtras ?? {}),
+      uncertainInsurer: payload.uncertainInsurer ? true : undefined,
+    }),
+    updatedBy: auth.userId,
+    updatedAt: new Date(),
+  };
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(terminationRequiredAttachments)
+        .where(
+          and(
+            eq(terminationRequiredAttachments.requestId, payload.requestId),
+            eq(terminationRequiredAttachments.tenantId, auth.tenantId)
+          )
+        );
+      await tx
+        .update(terminationRequests)
+        .set(rowValues)
+        .where(
+          and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+        );
+
+      await tx.insert(terminationRequestEvents).values({
+        tenantId: auth.tenantId,
+        requestId: payload.requestId,
+        eventType: "rules_result",
+        payload: {
+          outcome: rules.outcome,
+          source: "detail_field_update",
+          computedEffectiveDate: rules.computedEffectiveDate,
+          reviewRequiredReason: rules.reviewRequiredReason,
+          missingFields: rules.missingFields,
+          debug: rules._debug,
+        },
+        actorUserId: auth.userId,
+      });
+
+      let sort = 0;
+      for (const a of rules.requiredAttachments) {
+        await tx.insert(terminationRequiredAttachments).values({
+          tenantId: auth.tenantId,
+          requestId: payload.requestId,
+          requirementCode: a.requirementCode,
+          label: a.label,
+          status: a.required ? "required" : "optional",
+          sortOrder: sort++,
+        });
+      }
+    });
+
+    return { ok: true, requestId: payload.requestId, rules };
+  } catch (e) {
+    console.error("updateTerminationRequestFieldsAndReevaluateAction", e);
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Uložení se nezdařilo.",
+    };
+  }
+}
+
 export type TerminationLetterPreviewResponse =
   | { ok: true; data: TerminationLetterBuildResult }
   | { ok: false; error: string };
 
-/**
- * Fáze 6 – náhled dopisu / formulářového režimu z uložené žádosti.
- */
-export async function getTerminationLetterPreview(requestId: string): Promise<TerminationLetterPreviewResponse> {
-  const auth = await requireAuthInAction();
-  if (auth.roleName === "Client") {
-    return { ok: false, error: "Nepovoleno." };
-  }
-  if (!hasPermission(auth.roleName, "contacts:read")) {
-    return { ok: false, error: "Forbidden" };
-  }
-
+async function loadTerminationLetterBuildResult(
+  requestId: string,
+  auth: AuthContext
+): Promise<TerminationLetterPreviewResponse> {
   const [req] = await db
     .select()
     .from(terminationRequests)
@@ -560,6 +1087,173 @@ export async function getTerminationLetterPreview(requestId: string): Promise<Te
   return { ok: true, data };
 }
 
+/**
+ * Fáze 6 – náhled dopisu / formulářového režimu z uložené žádosti.
+ */
+export async function getTerminationLetterPreview(requestId: string): Promise<TerminationLetterPreviewResponse> {
+  const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
+  if (auth.roleName === "Client") {
+    return { ok: false, error: "Nepovoleno." };
+  }
+  if (!hasPermission(auth.roleName, "contacts:read")) {
+    return { ok: false, error: "Forbidden" };
+  }
+  return loadTerminationLetterBuildResult(requestId, auth);
+}
+
+export type SaveTerminationDocKind = "draft_letter" | "cover_letter";
+
+export type SaveTerminationGeneratedDocumentResponse =
+  | { ok: true; documentId: string }
+  | { ok: false; error: string };
+
+/**
+ * Uloží aktuální text dopisu / průvodního dopisu do `documents` + `termination_generated_documents` (Supabase Storage .txt).
+ */
+export async function saveTerminationGeneratedDocumentAction(
+  requestId: string,
+  kind: SaveTerminationDocKind
+): Promise<SaveTerminationGeneratedDocumentResponse> {
+  const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
+  if (!hasPermission(auth.roleName, "documents:write")) {
+    return { ok: false, error: "Chybí oprávnění k zápisu dokumentů." };
+  }
+
+  const preview = await loadTerminationLetterBuildResult(requestId, auth);
+  if (!preview.ok) return { ok: false, error: preview.error };
+
+  const built = preview.data;
+  const docKind: TerminationGeneratedDocumentKind = kind;
+  const plain =
+    kind === "draft_letter" ? built.letterPlainText : built.coveringLetterPlainText;
+  const htmlExtra = kind === "draft_letter" ? built.letterHtml : built.coveringLetterHtml;
+
+  if (!plain?.trim()) {
+    return {
+      ok: false,
+      error:
+        kind === "draft_letter"
+          ? "Pro tuto žádost není k dispozici text hlavního dopisu (např. formulářový režim)."
+          : "Průvodní dopis není k dispozici (jen u formulářové pojišťovny).",
+    };
+  }
+
+  const [reqRow] = await db
+    .select({
+      id: terminationRequests.id,
+      contractNumber: terminationRequests.contractNumber,
+      contactId: terminationRequests.contactId,
+      contractId: terminationRequests.contractId,
+    })
+    .from(terminationRequests)
+    .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
+    .limit(1);
+  if (!reqRow) return { ok: false, error: "Žádost nenalezena." };
+
+  const labelShort = (reqRow.contractNumber ?? requestId.slice(0, 8)).replace(/[^\w\d\-./]/g, "_");
+  const fileBase =
+    kind === "draft_letter"
+      ? `vyhrozeni-dopis-${labelShort}`
+      : `pruvodni-dopis-${labelShort}`;
+  const storagePath = `${auth.tenantId}/terminations/${requestId}/${Date.now()}-${fileBase}.txt`;
+  const displayName =
+    kind === "draft_letter"
+      ? `Výpověď – dopis (${reqRow.contractNumber ?? "smlouva"}).txt`
+      : `Výpověď – průvodní dopis (${reqRow.contractNumber ?? "smlouva"}).txt`;
+
+  const body = new TextEncoder().encode(plain);
+  const admin = createAdminClient();
+  const { error: uploadError } = await admin.storage.from("documents").upload(storagePath, body, {
+    contentType: "text/plain; charset=utf-8",
+    upsert: false,
+  });
+  if (uploadError) {
+    return {
+      ok: false,
+      error:
+        uploadError.message?.toLowerCase().includes("bucket") || uploadError.message?.toLowerCase().includes("not found")
+          ? "Bucket „documents“ v úložišti není dostupný."
+          : uploadError.message,
+    };
+  }
+
+  try {
+    const documentId = await db.transaction(async (tx) => {
+      await tx
+        .update(terminationGeneratedDocuments)
+        .set({ isCurrent: false })
+        .where(
+          and(
+            eq(terminationGeneratedDocuments.requestId, requestId),
+            eq(terminationGeneratedDocuments.tenantId, auth.tenantId),
+            eq(terminationGeneratedDocuments.kind, docKind)
+          )
+        );
+
+      const [doc] = await tx
+        .insert(documents)
+        .values({
+          tenantId: auth.tenantId,
+          contactId: reqRow.contactId,
+          contractId: reqRow.contractId,
+          name: displayName,
+          documentType: kind === "draft_letter" ? "termination_draft_letter" : "termination_cover_letter",
+          storagePath,
+          mimeType: "text/plain; charset=utf-8",
+          sizeBytes: body.length,
+          tags: ["termination", `termination_request:${requestId}`],
+          visibleToClient: false,
+          uploadSource: "web",
+          sourceChannel: "backoffice_import",
+          uploadedBy: auth.userId,
+          markdownContent: htmlExtra ?? null,
+          processingStatus: "none",
+          businessStatus: "none",
+        })
+        .returning({ id: documents.id });
+
+      const newDocId = doc?.id;
+      if (!newDocId) throw new Error("Insert document failed");
+
+      await tx.insert(terminationGeneratedDocuments).values({
+        tenantId: auth.tenantId,
+        requestId,
+        documentId: newDocId,
+        kind: docKind,
+        versionLabel: new Date().toISOString().slice(0, 10),
+        isCurrent: true,
+        metadata: { savedFrom: "termination_letter_builder", hasHtmlSnapshot: Boolean(htmlExtra) },
+      });
+
+      await tx.insert(terminationRequestEvents).values({
+        tenantId: auth.tenantId,
+        requestId,
+        eventType: "document_linked",
+        payload: { documentId: newDocId, kind: docKind, storagePath },
+        actorUserId: auth.userId,
+      });
+
+      return newDocId;
+    });
+
+    return { ok: true, documentId };
+  } catch (e) {
+    console.error("saveTerminationGeneratedDocumentAction", e);
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Uložení dokumentu se nezdařilo.",
+    };
+  }
+}
+
 // --- Fáze 8 / 9: detail žádosti, stav, dispatch log ---
 
 export type TerminationRequestEventRow = {
@@ -594,6 +1288,9 @@ export type TerminationRequestDetailResponse =
 
 export async function getTerminationRequestDetail(requestId: string): Promise<TerminationRequestDetailResponse> {
   const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
 
@@ -661,6 +1358,9 @@ export async function updateTerminationRequestStatusAction(
   payload: UpdateTerminationStatusPayload
 ): Promise<SimpleOk> {
   const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!canWriteContacts(auth.roleName)) return { ok: false, error: "Nemáte oprávnění." };
 
@@ -718,6 +1418,9 @@ export async function appendTerminationDispatchLogAction(
   payload: AppendTerminationDispatchPayload
 ): Promise<SimpleOk> {
   const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!canWriteContacts(auth.roleName)) return { ok: false, error: "Nemáte oprávnění." };
 
@@ -756,6 +1459,53 @@ export async function appendTerminationDispatchLogAction(
       actorUserId: auth.userId,
     });
   });
+
+  if (payload.status === "sent" || payload.status === "delivered") {
+    try {
+      const [pendingDup] = await db
+        .select({ id: reminders.id })
+        .from(reminders)
+        .where(
+          and(
+            eq(reminders.tenantId, auth.tenantId),
+            eq(reminders.reminderType, "termination_delivery_check"),
+            eq(reminders.relatedEntityType, "termination_request"),
+            eq(reminders.relatedEntityId, payload.requestId),
+            eq(reminders.status, "pending")
+          )
+        )
+        .limit(1);
+      if (!pendingDup) {
+        const r = createReminder({
+          tenantId: auth.tenantId,
+          reminderType: "termination_delivery_check",
+          title: "Zkontrolovat doručení výpovědi",
+          description: `Kanál: ${payload.channel}. Sledování: ${payload.trackingReference?.trim() || "—"}.`,
+          dueAt: new Date(Date.now() + 7 * 86400000),
+          severity: "medium",
+          relatedEntityType: "termination_request",
+          relatedEntityId: payload.requestId,
+          assignedTo: auth.userId,
+          suggestionOrigin: "rule",
+        });
+        await db.insert(reminders).values({
+          tenantId: r.tenantId,
+          reminderType: r.reminderType,
+          title: r.title,
+          description: r.description,
+          dueAt: r.dueAt,
+          severity: r.severity,
+          relatedEntityType: r.relatedEntityType,
+          relatedEntityId: r.relatedEntityId,
+          assignedTo: r.assignedTo,
+          suggestionOrigin: r.suggestionOrigin,
+          status: r.status,
+        });
+      }
+    } catch (e) {
+      console.error("appendTerminationDispatchLogAction reminder", e);
+    }
+  }
 
   return { ok: true };
 }

@@ -30,6 +30,8 @@ export const insurerTerminationRegistry = pgTable(
     attachmentRules: jsonb("attachment_rules").$type<Record<string, unknown>>(),
     /** Backoffice: záznam z katalogu ještě nebyl ověřen právně/ops. */
     registryNeedsVerification: boolean("registry_needs_verification").notNull().default(false),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    registryInternalNotes: text("registry_internal_notes"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

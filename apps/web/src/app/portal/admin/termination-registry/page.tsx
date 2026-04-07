@@ -47,6 +47,8 @@ export default function TerminationRegistryAdminPage() {
       const res = await updateInsurerTerminationRegistryAdmin({
         id: editingId,
         registryNeedsVerification: draft.registryNeedsVerification,
+        lastVerifiedAt: draft.lastVerifiedAt ?? null,
+        registryInternalNotes: draft.registryInternalNotes ?? null,
         officialFormNotes: draft.officialFormNotes ?? null,
         webFormUrl: draft.webFormUrl ?? null,
         email: draft.email ?? null,
@@ -109,6 +111,49 @@ export default function TerminationRegistryAdminPage() {
                   />
                   Záznam vyžaduje ověření (review)
                 </label>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+                      Poslední ověření (last_verified_at)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={draft.lastVerifiedAt ? draft.lastVerifiedAt.slice(0, 16) : ""}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          lastVerifiedAt: e.target.value
+                            ? new Date(e.target.value).toISOString()
+                            : null,
+                        }))
+                      }
+                      className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-xs font-semibold min-h-[44px]"
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        lastVerifiedAt: new Date().toISOString(),
+                      }))
+                    }
+                  >
+                    Nastavit „nyní“
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+                    Interní poznámka (registry_internal_notes)
+                  </label>
+                  <textarea
+                    value={draft.registryInternalNotes ?? ""}
+                    onChange={(e) => setDraft((d) => ({ ...d, registryInternalNotes: e.target.value }))}
+                    rows={2}
+                    className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
                     Poznámky k formuláři
@@ -193,7 +238,15 @@ export default function TerminationRegistryAdminPage() {
                   <p className="text-xs mt-1 text-[color:var(--wp-text-secondary)]">
                     Ověření: {r.registryNeedsVerification ? "ano (review)" : "ne"}
                     {r.tenantId ? " · tenant override" : " · globální"}
+                    {r.lastVerifiedAt
+                      ? ` · ověřeno ${r.lastVerifiedAt.slice(0, 10)}`
+                      : " · bez data ověření"}
                   </p>
+                  {r.registryInternalNotes ? (
+                    <p className="text-xs text-[color:var(--wp-text-muted)] mt-1 line-clamp-2">
+                      Interní: {r.registryInternalNotes}
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"

@@ -34,6 +34,10 @@ describe("resolveDeepLink", () => {
     expect(resolveDeepLink("opportunity", "opp-1")).toBe("/portal/pipeline/opp-1");
   });
 
+  it("maps termination_request to terminations detail", () => {
+    expect(resolveDeepLink("termination_request", "tr-1")).toBe("/portal/terminations/tr-1");
+  });
+
   it("falls back to /portal/today for unknown", () => {
     expect(resolveDeepLink("whatever", "x")).toBe("/portal/today");
   });

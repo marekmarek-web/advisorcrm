@@ -32,6 +32,8 @@ export function resolveDeepLink(entityType: string, entityId: string): string {
       return `/portal/today`;
     case "advisor_material_request":
       return `/portal/today`;
+    case "termination_request":
+      return `/portal/terminations/${encodeURIComponent(entityId)}`;
     default:
       return "/portal/today";
   }

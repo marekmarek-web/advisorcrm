@@ -9,12 +9,15 @@ import {
   type TerminationRequestDetail,
 } from "@/app/actions/terminations";
 import { TerminationLetterPreviewPanel } from "../new/TerminationLetterPreviewPanel";
+import { TerminationRequestFieldsForm } from "./TerminationRequestFieldsForm";
 import type { TerminationDeliveryChannel, TerminationRequestStatus } from "@/lib/db/schema-for-client";
 import { terminationDeliveryChannels, terminationRequestStatuses } from "@/lib/db/schema-for-client";
 
 type Props = {
   requestId: string;
   initial: TerminationRequestDetail;
+  segments: string[];
+  canWriteFields: boolean;
 };
 
 const DISPATCH_STATUS = ["pending", "sent", "delivered", "failed", "bounced", "cancelled"] as const;
@@ -38,7 +41,12 @@ function statusLabelCs(s: string): string {
   return map[s] ?? s;
 }
 
-export function TerminationRequestDetailClient({ requestId, initial }: Props) {
+export function TerminationRequestDetailClient({
+  requestId,
+  initial,
+  segments,
+  canWriteFields,
+}: Props) {
   const [detail, setDetail] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -153,6 +161,15 @@ export function TerminationRequestDetailClient({ requestId, initial }: Props) {
           </p>
         ) : null}
       </section>
+
+      {canWriteFields ? (
+        <TerminationRequestFieldsForm
+          requestId={requestId}
+          detail={detail}
+          segments={segments}
+          onApplied={refresh}
+        />
+      ) : null}
 
       <section className="rounded-[var(--wp-radius-lg)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 space-y-3">
         <h2 className="text-sm font-bold text-[color:var(--wp-text)]">Změna stavu (review)</h2>

@@ -193,7 +193,7 @@ async function handleSearchContacts(
   };
 }
 
-async function handlePrepareTerminationIntake(
+async function handlePrepareTerminationRequest(
   params: Record<string, unknown>,
   _ctx: ToolHandlerContext,
 ): Promise<ToolResult> {
@@ -238,6 +238,98 @@ async function handlePrepareTerminationIntake(
         requestedEffectiveDate: requestedEffectiveDate || null,
         sourceDocumentId: sourceDocumentId || null,
       },
+    },
+    sourceReferences: contactId
+      ? [{ sourceType: "client", sourceId: contactId, freshness: "live", visibilityScope: "tenant" }]
+      : [],
+    warnings: [],
+  };
+}
+
+async function handleCreateTerminationIntakeDraft(
+  params: Record<string, unknown>,
+  _ctx: ToolHandlerContext,
+): Promise<ToolResult> {
+  const { saveTerminationIntakePartialAction } = await import("@/app/actions/terminations");
+  type Mode = import("@/lib/db/schema-for-client").TerminationMode;
+  type Reason = import("@/lib/db/schema-for-client").TerminationReasonCode;
+
+  const contactId = typeof params.contactId === "string" ? params.contactId.trim() : "";
+  const contractId = typeof params.contractId === "string" ? params.contractId.trim() : "";
+  const insurerName = typeof params.insurerName === "string" ? params.insurerName.trim() : "";
+  const partialRequestId =
+    typeof params.partialRequestId === "string" ? params.partialRequestId.trim() : "";
+  const sourceDocumentId =
+    typeof params.sourceDocumentId === "string" ? params.sourceDocumentId.trim() : "";
+
+  if (!partialRequestId && !contactId && !contractId && !insurerName) {
+    return {
+      data: {
+        error: "missing_context",
+        hint: "Po potvrzení uživatele zadejte contactId, contractId nebo insurerName — nebo partialRequestId pro aktualizaci konceptu.",
+      },
+      sourceReferences: [],
+      warnings: [],
+    };
+  }
+
+  const terminationMode = (params.terminationMode as Mode) || "end_of_insurance_period";
+  const terminationReasonCode = (params.terminationReasonCode as Reason) || "end_of_period_6_weeks";
+
+  const res = await saveTerminationIntakePartialAction({
+    sourceKind: "ai_chat",
+    contactId: contactId || null,
+    contractId: contractId || null,
+    sourceDocumentId: sourceDocumentId || null,
+    sourceConversationId: null,
+    insurerName,
+    contractNumber:
+      typeof params.contractNumber === "string" && params.contractNumber.trim()
+        ? params.contractNumber.trim()
+        : null,
+    productSegment:
+      typeof params.productSegment === "string" && params.productSegment.trim()
+        ? params.productSegment.trim()
+        : null,
+    contractStartDate:
+      typeof params.contractStartDate === "string" && params.contractStartDate.trim()
+        ? params.contractStartDate.trim()
+        : null,
+    contractAnniversaryDate:
+      typeof params.contractAnniversaryDate === "string" && params.contractAnniversaryDate.trim()
+        ? params.contractAnniversaryDate.trim()
+        : null,
+    requestedEffectiveDate:
+      typeof params.requestedEffectiveDate === "string" && params.requestedEffectiveDate.trim()
+        ? params.requestedEffectiveDate.trim()
+        : null,
+    terminationMode,
+    terminationReasonCode,
+    uncertainInsurer: Boolean(params.uncertainInsurer),
+    documentBuilderExtras: {},
+    partialRequestId: partialRequestId || null,
+  });
+
+  if (!res.ok) {
+    return {
+      data: { error: res.error },
+      sourceReferences: [],
+      warnings: [res.error],
+    };
+  }
+
+  const qs = new URLSearchParams();
+  qs.set("draftId", res.requestId);
+  qs.set("source", "ai_chat");
+  if (contactId) qs.set("contactId", contactId);
+  if (contractId) qs.set("contractId", contractId);
+
+  return {
+    data: {
+      requestId: res.requestId,
+      continueWizardPath: `/portal/terminations/new?${qs.toString()}`,
+      instructions:
+        "Koncept je v CRM (stav intake). Otevřete continueWizardPath, doplňte údaje a dokončete průvodcem — proběhne rules engine.",
     },
     sourceReferences: contactId
       ? [{ sourceType: "client", sourceId: contactId, freshness: "live", visibilityScope: "tenant" }]
@@ -343,9 +435,9 @@ export const ASSISTANT_TOOLS: AssistantTool[] = [
     handler: handlePrepareContractApply,
   },
   {
-    name: "prepareTerminationIntake",
+    name: "prepare_termination_request",
     description:
-      "Sestaví odkaz do průvodce „Výpověď smlouvy“ s předvyplněnými parametry (klient, smlouva, pojišťovna, datum, zdrojový dokument). Nevytváří záznam v databázi — ten vznikne až po uložení průvodce a projde rules engine.",
+      "Masterplan intent: sestaví odkaz do průvodce „Výpověď smlouvy“ s předvyplněnými parametry (klient, smlouva, pojišťovna, datum, zdrojový dokument). Nevytváří záznam v DB — ten vznikne po uložení průvodce a projde rules engine. (Dříve prepareTerminationIntake.)",
     parameters: {
       contactId: { type: "string", description: "UUID kontaktu (volitelné)" },
       contractId: { type: "string", description: "UUID smlouvy z CRM (volitelné)" },
@@ -353,7 +445,29 @@ export const ASSISTANT_TOOLS: AssistantTool[] = [
       requestedEffectiveDate: { type: "string", description: "Požadované datum účinnosti YYYY-MM-DD (volitelné)" },
       sourceDocumentId: { type: "string", description: "UUID nahraného dokumentu ve stejném tenantu (volitelné)" },
     },
-    handler: handlePrepareTerminationIntake,
+    handler: handlePrepareTerminationRequest,
+  },
+  {
+    name: "createTerminationIntakeDraft",
+    description:
+      "Po výslovném potvrzení uživatele vytvoří nebo aktualizuje rozepsaný koncept žádosti o výpověď (stav intake, bez rules engine). Vrací odkaz k pokračování v průvodci. Nevolejte bez potvrzení.",
+    parameters: {
+      contactId: { type: "string", description: "UUID kontaktu (volitelné)" },
+      contractId: { type: "string", description: "UUID smlouvy (volitelné)" },
+      insurerName: { type: "string", description: "Název pojišťovny (volitelné u nového konceptu)" },
+      contractNumber: { type: "string", description: "Číslo smlouvy (volitelné)" },
+      productSegment: { type: "string", description: "Segment např. ZP (volitelné)" },
+      contractStartDate: { type: "string", description: "YYYY-MM-DD (volitelné)" },
+      contractAnniversaryDate: { type: "string", description: "YYYY-MM-DD (volitelné)" },
+      requestedEffectiveDate: { type: "string", description: "YYYY-MM-DD (volitelné)" },
+      terminationMode: { type: "string", description: "Režim wizardu (volitelné, výchozí end_of_insurance_period)" },
+      terminationReasonCode: { type: "string", description: "Kód důvodu z katalogu (volitelné)" },
+      uncertainInsurer: { type: "boolean", description: "Nejistá pojišťovna → review" },
+      sourceDocumentId: { type: "string", description: "UUID dokumentu (volitelné)" },
+      partialRequestId: { type: "string", description: "UUID existujícího konceptu k přepsání (volitelné)" },
+    },
+    handler: handleCreateTerminationIntakeDraft,
+    requiredPermission: "assistant:create_draft",
   },
 ];
 
