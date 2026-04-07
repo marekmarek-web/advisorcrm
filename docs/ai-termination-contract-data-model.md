@@ -87,3 +87,13 @@ Kompletní **`CREATE TABLE`**, cizí klíče, partial unikátní indexy a zákla
 Skript je idempotentní (`IF NOT EXISTS`). Spusť ho celý v Supabase SQL editoru (nebo psql) na databázi, kde už existují `contacts`, `contracts`, `documents`, `assistant_conversations`.
 
 Alternativa pro lokální vývoj: po sladění schématu lze znovu použít `drizzle-kit generate`, ale zdroj pravdy pro produkci může zůstat tento soubor, dokud nebude migrační historie sjednocená.
+
+## Fáze 4 a 5 – CRM a externí intak (implementováno v aplikaci)
+
+- **Stránka průvodce:** `/portal/terminations/new`
+  - Query: `contactId`, `contractId` (CRM + konkrétní smlouva), jen `contactId` (klient bez smlouvy), bez parametrů (obecný intak).
+  - `source=quick` – otevřeno z menu „+ Nový“ → `source_kind` = `quick_action`.
+- **Server actions:** `apps/web/src/app/actions/terminations.ts` – `getTerminationWizardPrefill`, `listTerminationReasonsAction`, `createTerminationDraft` (rules engine + insert `termination_requests`, událost `rules_result`, řádky `termination_required_attachments`).
+- **CRM UI:** v sekci smluv u kontaktu tlačítko **Výpověď** u každé smlouvy a odkaz **Výpověď bez smlouvy** (`ContractsSection.tsx`).
+- **Rychlá akce:** položka „Výpověď smlouvy“ v katalogu `quick-actions.ts` (`termination_intake`).
+- **Oprávnění:** čtení předvyplnění vyžaduje `contacts:read`, vytvoření draftu `contacts:write` (Viewer jen čte formulář).

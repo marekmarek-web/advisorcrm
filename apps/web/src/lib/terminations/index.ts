@@ -6,7 +6,7 @@
  *   - catalog helpers (getAllInsurers, findInsurerByName, findReasonByCode, …)
  *   - rules engine (evaluateTerminationRules)
  *
- * Fáze 4+ (CRM wizard, actions, UI, dokumenty): mimo tento barrel.
+ * Server actions a UI průvodce: `apps/web/src/app/actions/terminations.ts`, `/portal/terminations/new`.
  */
 
 // --- Typy ---

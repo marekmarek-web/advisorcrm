@@ -13,7 +13,8 @@ export type QuickActionId =
   | "mindmap"
   | "note"
   | "document"
-  | "household";
+  | "household"
+  | "termination_intake";
 
 /** Konfigurace nabídky „+ Nový“ (pořadí a viditelnost položek). */
 export type QuickActionsConfig = {
@@ -26,7 +27,17 @@ export type QuickActionItem = {
   label: string;
   href: string;
   /** Název ikony pro QuickNewMenu (UserPlus | Briefcase | CheckSquare | CalendarPlus | …) */
-  iconName?: "UserPlus" | "Briefcase" | "CheckSquare" | "CalendarPlus" | "Calendar" | "Network" | "StickyNote" | "FileText" | "Building";
+  iconName?:
+    | "UserPlus"
+    | "Briefcase"
+    | "CheckSquare"
+    | "CalendarPlus"
+    | "Calendar"
+    | "Network"
+    | "StickyNote"
+    | "FileText"
+    | "Building"
+    | "ScrollText";
   /** Tailwind text color třída pro ikonu */
   iconColor?: string;
   /** Tailwind třídy pro hover animaci (1:1 jako sidebar), např. group-hover:scale-110 */
@@ -39,6 +50,14 @@ export const QUICK_ACTIONS_CATALOG: QuickActionItem[] = [
   { id: "new_task", label: "Rychlý úkol", href: "/portal/tasks#new-task-form", iconName: "CheckSquare", iconColor: "text-emerald-500", hoverAnim: "group-hover:rotate-12 group-hover:scale-110" },
   { id: "new_meeting", label: "Nová schůzka", href: "/portal/calendar?new=1", iconName: "CalendarPlus", iconColor: "text-indigo-500", hoverAnim: "group-hover:-translate-y-1 group-hover:scale-110" },
   { id: "new_contact", label: "Nový klient", href: "/portal/contacts?newClient=1", iconName: "UserPlus", iconColor: "text-blue-500", hoverAnim: "group-hover:scale-110" },
+  {
+    id: "termination_intake",
+    label: "Výpověď smlouvy",
+    href: "/portal/terminations/new?source=quick",
+    iconName: "ScrollText",
+    iconColor: "text-rose-500",
+    hoverAnim: "group-hover:translate-x-0.5",
+  },
   { id: "new_deal", label: "Nový obchod", href: "/portal/pipeline", iconName: "Briefcase", iconColor: "text-amber-500", hoverAnim: "group-hover:rotate-[-12deg] group-hover:scale-110" },
   { id: "calendar", label: "Kalendář", href: "/portal/calendar", iconName: "Calendar", iconColor: "text-slate-500", hoverAnim: "group-hover:-translate-y-1 group-hover:scale-110" },
   { id: "mindmap", label: "Strategická mapa", href: "/portal/mindmap", iconName: "Network", iconColor: "text-slate-500", hoverAnim: "group-hover:-translate-y-1" },

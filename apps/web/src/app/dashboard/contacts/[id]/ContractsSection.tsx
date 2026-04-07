@@ -27,7 +27,8 @@ import { NewContractWizard } from "@/app/components/aidvisora/NewContractWizard"
 import { DocumentUploadZone } from "@/app/components/upload/DocumentUploadZone";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { ContractParametersFields } from "@/app/components/aidvisora/ContractParametersFields";
-import { ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText, ScrollText } from "lucide-react";
+import Link from "next/link";
 import {
   initialContractFormState,
   resetContractFormForNewSegment,
@@ -247,7 +248,16 @@ export function ContractsSection({ contactId }: { contactId: string }) {
         onCancel={() => setDeleteConfirmId(null)}
         loading={deletePending}
       />
-      <h2 className="font-semibold text-[color:var(--wp-text)] mb-2">Produkty / Smlouvy</h2>
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="font-semibold text-[color:var(--wp-text)]">Produkty / Smlouvy</h2>
+        <Link
+          href={`/portal/terminations/new?contactId=${encodeURIComponent(contactId)}`}
+          className="inline-flex items-center justify-center gap-1.5 rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-xs font-semibold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)] min-h-[44px] shrink-0"
+        >
+          <ScrollText className="size-4 shrink-0" aria-hidden />
+          Výpověď bez smlouvy
+        </Link>
+      </div>
       <p className="text-xs text-[color:var(--wp-text-muted)] mb-4">
         {EUCS_ZP_DISCLAIMER}
       </p>
@@ -345,6 +355,12 @@ export function ContractsSection({ contactId }: { contactId: string }) {
                     >
                       {publishBusyId === c.id ? "Zveřejňuji…" : "Schválit pro klienta"}
                     </button>
+                    <Link
+                      href={`/portal/terminations/new?contactId=${encodeURIComponent(contactId)}&contractId=${encodeURIComponent(c.id)}`}
+                      className="inline-flex items-center justify-center rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm font-semibold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)] min-h-[44px]"
+                    >
+                      Výpověď
+                    </Link>
                     <button
                       type="button"
                       onClick={() => startEdit(c)}
@@ -422,7 +438,13 @@ export function ContractsSection({ contactId }: { contactId: string }) {
                   )}
                 </span>
               </span>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <Link
+                  href={`/portal/terminations/new?contactId=${encodeURIComponent(contactId)}&contractId=${encodeURIComponent(c.id)}`}
+                  className="inline-flex items-center justify-center rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm font-semibold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)] min-h-[44px]"
+                >
+                  Výpověď
+                </Link>
                 <button type="button" onClick={() => startEdit(c)} className="px-3 py-2 rounded-[var(--wp-radius)] text-[var(--wp-accent)] font-medium hover:bg-[color:var(--wp-surface-muted)] min-h-[44px]">
                   Upravit
                 </button>
