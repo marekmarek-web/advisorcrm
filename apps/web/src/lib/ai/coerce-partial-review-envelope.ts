@@ -318,6 +318,124 @@ function flattenLegacyLoanNestedFields(
 }
 
 /**
+ * Stored Prompt Builder / older DIP extraction JSON often returns a flat "insurance-shaped"
+ * object (document_meta, client, payments, investment) instead of DocumentReviewEnvelope.
+ * Lift those into canonical extractedFields so Zod + verification can succeed.
+ */
+function liftLegacyDipStoredPromptBlocks(
+  parsed: Record<string, unknown>,
+  ef: Record<string, Record<string, unknown>>,
+): void {
+  const dmRaw = parsed.document_meta ?? parsed.documentMeta;
+  if (dmRaw && typeof dmRaw === "object" && !Array.isArray(dmRaw)) {
+    const dm = dmRaw as Record<string, unknown>;
+    const pairs: [string, string][] = [
+      ["insurer", "institutionName"],
+      ["product_name", "productName"],
+      ["contract_number", "contractNumber"],
+      ["proposal_number", "proposalNumber"],
+      ["policy_start_date", "policyStartDate"],
+      ["policy_end_date", "policyEndDate"],
+    ];
+    for (const [src, dest] of pairs) {
+      if (ef[dest]) continue;
+      const v = dm[src];
+      if (v == null || (typeof v === "string" && !v.trim())) continue;
+      ef[dest] = normalizeExtractedFieldCell(dest, v);
+    }
+  }
+
+  const payRaw = parsed.payments ?? parsed.paymentDetails;
+  if (payRaw && typeof payRaw === "object" && !Array.isArray(payRaw)) {
+    const pay = payRaw as Record<string, unknown>;
+    const payPairs: [string, string][] = [
+      ["bank_account", "bankAccount"],
+      ["variable_symbol", "variableSymbol"],
+      ["specific_symbol", "specificSymbol"],
+      ["constant_symbol", "constantSymbol"],
+      ["iban", "iban"],
+      ["bank_code", "bankCode"],
+    ];
+    for (const [src, dest] of payPairs) {
+      if (ef[dest]) continue;
+      const v = pay[src];
+      if (v == null || (typeof v === "string" && !v.trim())) continue;
+      ef[dest] = normalizeExtractedFieldCell(dest, v);
+    }
+  }
+
+  const invRaw = parsed.investment;
+  if (invRaw && typeof invRaw === "object" && !Array.isArray(invRaw)) {
+    const inv = invRaw as Record<string, unknown>;
+    if (!ef.investmentStrategy && inv.investment_strategy != null) {
+      const v = inv.investment_strategy;
+      if (typeof v === "string" && v.trim()) {
+        ef.investmentStrategy = normalizeExtractedFieldCell("investmentStrategy", v);
+      }
+    }
+    if (!ef.intendedInvestment && inv.total_investment_amount != null) {
+      const v = inv.total_investment_amount;
+      if (v != null && String(v).trim()) {
+        ef.intendedInvestment = normalizeExtractedFieldCell("intendedInvestment", v);
+      }
+    }
+  }
+
+  const prodRaw = parsed.product;
+  if (prodRaw && typeof prodRaw === "object" && !Array.isArray(prodRaw)) {
+    const prod = prodRaw as Record<string, unknown>;
+    if (!ef.currency && prod.currency != null) {
+      const v = prod.currency;
+      if (typeof v === "string" && v.trim()) {
+        ef.currency = normalizeExtractedFieldCell("currency", v);
+      }
+    }
+    if (!ef.paymentFrequency && prod.payment_frequency != null) {
+      const v = prod.payment_frequency;
+      if (typeof v === "string" && v.trim()) {
+        ef.paymentFrequency = normalizeExtractedFieldCell("paymentFrequency", v);
+      }
+    }
+  }
+
+  const clientRaw = parsed.client;
+  if (clientRaw && typeof clientRaw === "object" && !Array.isArray(clientRaw)) {
+    const c = clientRaw as Record<string, unknown>;
+    if (!ef.investorFullName) {
+      const name =
+        (typeof c.full_name === "string" && c.full_name.trim() ? c.full_name : null) ??
+        (typeof c.fullName === "string" && c.fullName.trim() ? c.fullName : null);
+      if (name) {
+        ef.investorFullName = normalizeExtractedFieldCell("investorFullName", name);
+      }
+    }
+  }
+}
+
+function inferProductTypeForInvestmentSubscription(
+  ef: Record<string, Record<string, unknown>>,
+): void {
+  if (ef.productType) {
+    const v = ef.productType.value;
+    if (v != null && String(v).trim() && String(v) !== "null") return;
+  }
+  const productName = String(ef.productName?.value ?? "").toLowerCase();
+  const strategy = String(ef.investmentStrategy?.value ?? "").trim();
+  if (productName.includes("dip") || productName.includes("dlouhodobý investiční") || productName.includes("amundi platforma")) {
+    ef.productType = normalizeExtractedFieldCell("productType", "DIP");
+    return;
+  }
+  if (strategy) {
+    const label = strategy.length > 80 ? `${strategy.slice(0, 77)}…` : strategy;
+    ef.productType = normalizeExtractedFieldCell("productType", label);
+    return;
+  }
+  if (productName) {
+    ef.productType = normalizeExtractedFieldCell("productType", "investment_subscription");
+  }
+}
+
+/**
  * For investment/subscription stored-prompt responses that return nested legacy format:
  * { investor: {fullName,...}, fund: {isin,...}, payment: {bankAccount,...} }
  */
@@ -325,6 +443,8 @@ function flattenLegacyInvestmentNestedFields(
   parsed: Record<string, unknown>,
   ef: Record<string, Record<string, unknown>>,
 ): void {
+  liftLegacyDipStoredPromptBlocks(parsed, ef);
+
   const INVESTMENT_NESTED_BLOCKS: Record<string, string[]> = {
     investor: ["fullName", "birthDate", "personalId", "address", "phone", "email",
                "investorFullName", "investorName", "klient"],
@@ -365,6 +485,8 @@ function flattenLegacyInvestmentNestedFields(
       ef.institutionName = normalizeExtractedFieldCell("institutionName", providerRaw);
     }
   }
+
+  inferProductTypeForInvestmentSubscription(ef);
 }
 
 /**

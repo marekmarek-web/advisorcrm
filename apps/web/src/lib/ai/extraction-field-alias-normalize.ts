@@ -91,6 +91,24 @@ function formatUnknownValue(v: unknown): string {
   return String(v);
 }
 
+/** Required schema field for investment_subscription_document — models often omit it on DIP PDFs. */
+function ensureProductTypeForSubscriptionDocument(ef: Record<string, ExtractedField>): void {
+  if (valuePresent(ef.productType)) return;
+  const pn = String(ef.productName?.value ?? "").toLowerCase();
+  if (
+    pn.includes("dip") ||
+    pn.includes("dlouhodobý investiční") ||
+    pn.includes("dlouhodoby investicni") ||
+    pn.includes("amundi platforma")
+  ) {
+    ef.productType = {
+      value: "DIP",
+      status: "inferred_low_confidence",
+      confidence: 0.72,
+    };
+  }
+}
+
 function deriveInvestmentStrategyFromNested(ef: Record<string, ExtractedField>): void {
   if (valuePresent(ef.investmentStrategy)) return;
   const nestedKeys = [
@@ -315,6 +333,18 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "vysaUveru",
         "celkovaVyseUveru",
         "limitUveru",
+        // ČSOB and other Czech bank specific field names
+        "vyseUveru",
+        "celkovyLimitUveru",
+        "hlavniJistina",
+        "jistina",
+        "celkoveZapujceneJistiny",
+        "totalCredit",
+        "loanCapital",
+        "uverovaJistina",
+        "spotrebitelskiUver",
+        "uverovyLimit",
+        "uverCastka",
       ]);
       mergeFromAliases(ef, "installmentAmount", [
         "monthlyInstallment",
@@ -337,6 +367,12 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "pocetMesicnichSplatek",
         "pocetAnuitnichSplatek",
         "pocetPlateb",
+        // ČSOB and other Czech bank specific
+        "dobaSplaceniMesice",
+        "dobaSplaceni",
+        "dobaUveru",
+        "pocetSplatkove",
+        "splatkovychObdobi",
       ]);
       mergeFromAliases(ef, "interestRate", [
         "nominalInterestRate",
@@ -603,6 +639,17 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "cisloUctu",
       ]);
       deriveInvestmentStrategyFromNested(ef);
+      mergeFromAliases(ef, "productType", [
+        "investmentStrategy",
+        "productCategory",
+        "productKind",
+        "documentFamily",
+        "subscriptionType",
+        "fundType",
+      ]);
+      if (primary === "investment_subscription_document") {
+        ensureProductTypeForSubscriptionDocument(ef);
+      }
       break;
 
     case "generic_financial_document":

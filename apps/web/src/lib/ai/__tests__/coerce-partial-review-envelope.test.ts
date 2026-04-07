@@ -124,4 +124,49 @@ describe("coerce-partial-review-envelope", () => {
     expect(stub.extractedFields.contractNumber?.value).toBe("3282880076");
     expect(stub.parties.policyholder).toEqual({ fullName: "Hanna Havdan" });
   });
+
+  it("lifts stored-prompt AMUNDI DIP legacy JSON into envelope (productType, client, payments)", () => {
+    const legacy = {
+      document_family: "dip",
+      document_type: "final_contract",
+      document_meta: {
+        insurer: "Amundi Czech Republic Asset Management, a. s.",
+        product_name: "AMUNDI PLATFORMA - Dlouhodobý investiční produkt",
+        contract_number: "7023402804",
+        policy_start_date: "2024-05-01",
+      },
+      client: {
+        full_name: "Marco Lucka",
+        birth_date: "1972-06-12",
+      },
+      payments: {
+        bank_account: "266988191/0300",
+        variable_symbol: "7023402804",
+        iban: "CZ8803000000000266988191",
+      },
+      investment: {
+        investment_strategy: "KLASIK",
+      },
+      product: { currency: "CZK" },
+    };
+    const dipClassification: ClassificationResult = {
+      primaryType: "investment_subscription_document",
+      subtype: "dip",
+      lifecycleStatus: "final_contract",
+      documentIntent: "creates_new_product",
+      confidence: 0.85,
+      reasons: [],
+    };
+    const coerced = tryCoerceReviewEnvelopeAfterValidationFailure(
+      legacy as unknown as Record<string, unknown>,
+      "investment_subscription_document",
+      dipClassification
+    );
+    expect(coerced).not.toBeNull();
+    expect(String(coerced!.extractedFields.productType?.value)).toBe("DIP");
+    expect(String(coerced!.extractedFields.productName?.value)).toContain("AMUNDI");
+    expect(String(coerced!.extractedFields.investorFullName?.value)).toBe("Marco Lucka");
+    expect(String(coerced!.extractedFields.bankAccount?.value)).toBe("266988191/0300");
+    expect(String(coerced!.extractedFields.iban?.value)).toContain("CZ88");
+  });
 });
