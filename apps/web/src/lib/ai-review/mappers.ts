@@ -28,7 +28,7 @@ import {
 } from "../ai/field-quality-gate";
 import { buildAdvisorReviewViewModel } from "./advisor-review-view-model";
 import { deriveFieldApplyPolicy } from "./field-apply-policy";
-import { isAiReviewPipelineDebug } from "@/lib/ai/ai-review-debug";
+import { isAiReviewPipelineDebug } from "../ai/ai-review-debug";
 
 type ApiReviewDetail = Record<string, unknown>;
 
