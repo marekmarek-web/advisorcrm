@@ -10,7 +10,7 @@ import type {
   TerminationRequestSource,
   TerminationDeliveryChannel,
   TerminationDefaultDateComputation,
-} from "db";
+} from "../db/schema-for-client";
 
 // Re-export pro pohodlí konzumentů modulu
 export type {

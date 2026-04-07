@@ -9,7 +9,7 @@ import {
   savePublicBookingSettings,
   regeneratePublicBookingToken,
 } from "@/app/actions/public-booking-settings";
-import type { BookingWeeklyAvailability } from "db";
+import type { BookingWeeklyAvailability } from "@/lib/db/schema-for-client";
 import { defaultBookingAvailability } from "@/lib/public-booking/defaults";
 import { useToast } from "@/app/components/Toast";
 

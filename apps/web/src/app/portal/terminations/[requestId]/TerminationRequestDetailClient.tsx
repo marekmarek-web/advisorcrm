@@ -9,8 +9,8 @@ import {
   type TerminationRequestDetail,
 } from "@/app/actions/terminations";
 import { TerminationLetterPreviewPanel } from "../new/TerminationLetterPreviewPanel";
-import type { TerminationDeliveryChannel, TerminationRequestStatus } from "db";
-import { terminationDeliveryChannels, terminationRequestStatuses } from "db";
+import type { TerminationDeliveryChannel, TerminationRequestStatus } from "@/lib/db/schema-for-client";
+import { terminationDeliveryChannels, terminationRequestStatuses } from "@/lib/db/schema-for-client";
 
 type Props = {
   requestId: string;

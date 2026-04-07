@@ -1,5 +1,5 @@
 import { segmentLabel } from "@/app/lib/segment-labels";
-import type { TerminationMode } from "db";
+import type { TerminationMode } from "./types";
 import type { TerminationDocumentBuilderExtras } from "./termination-document-extras";
 import { plainTextToLetterHtml } from "./termination-letter-html";
 import {

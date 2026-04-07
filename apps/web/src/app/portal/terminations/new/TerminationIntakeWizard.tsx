@@ -9,7 +9,7 @@ import {
   type CreateTerminationDraftPayload,
   type TerminationWizardPrefill,
 } from "@/app/actions/terminations";
-import type { TerminationMode, TerminationReasonCode, TerminationRequestSource } from "db";
+import type { TerminationMode, TerminationReasonCode, TerminationRequestSource } from "@/lib/db/schema-for-client";
 import type { TerminationRulesResult } from "@/lib/terminations";
 import type { TerminationPolicyholderKind } from "@/lib/terminations/termination-document-extras";
 import { TerminationLetterPreviewPanel } from "./TerminationLetterPreviewPanel";
