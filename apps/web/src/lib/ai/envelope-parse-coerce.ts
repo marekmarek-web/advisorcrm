@@ -79,6 +79,8 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   nabidka_pojisteni: "life_insurance_proposal",
   nabídka_pojistění: "life_insurance_proposal",
   offer: "life_insurance_proposal",
+  proposal: "life_insurance_proposal",
+  insurance_proposal: "life_insurance_proposal",
   // tax return variants
   tax_return_corporate_income: "corporate_tax_return",
   corporate_income_tax_return: "corporate_tax_return",
@@ -87,6 +89,9 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   // payslip variants
   pay_slip: "payslip_document",
   pay_stub: "payslip_document",
+  supporting_document_pay_slip: "payslip_document",
+  supporting_document_payslip: "payslip_document",
+  payslip: "payslip_document",
   // nonlife / vehicle / property insurance short forms
   car_insurance: "nonlife_insurance_contract",
   vehicle_insurance: "nonlife_insurance_contract",
@@ -299,7 +304,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       return "nonlife_insurance_contract";
     }
     if (hasKw("danove_priznani", "dan_z_prijmu", "dan_z_pr", "tax_return", "dppo", "dpfo", "dph")) return "corporate_tax_return";
-    if (hasKw("vyplatni", "payslip", "mzda", "payroll", "vyplatni_listek")) return "payslip_document";
+    if (hasKw("vyplatni", "payslip", "pay_slip", "pay_stub", "mzda", "payroll", "vyplatni_listek")) return "payslip_document";
     if (hasKw("investicni_smlouva", "upis", "investment_subscription", "investicni_sluzb")) return "investment_subscription_document";
     if (hasKw("penzijni", "pension", "dps_smlouva", "pp_smlouva")) return "pension_contract";
     if (hasKw("smlouva_o_poskyto", "service_agreement", "sluzbach")) return "service_agreement";
