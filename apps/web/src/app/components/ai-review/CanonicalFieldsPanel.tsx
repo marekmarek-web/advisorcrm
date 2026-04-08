@@ -147,7 +147,7 @@ function PublishHintsSection({ ph }: { ph: NonNullable<CanonicalFields["publishH
       icon={ph.contractPublishable ? CheckCircle2 : Lock}
       title="Publikovatelnost"
       badgeVariant={isOk ? "ok" : "error"}
-      badge={ph.contractPublishable ? "Publikovatelné" : "Blokováno"}
+      badge={ph.contractPublishable ? "Publikovatelné" : "Vyžaduje kontrolu"}
     >
       {ph.contractPublishable ? (
         <div className="flex items-center gap-2 text-xs text-emerald-700">

@@ -34,6 +34,15 @@ export type PaymentApplyPayload = {
   productName?: string | null;
   needsHumanReview?: boolean;
   confidence?: number;
+  /** Extended fields for client portal payment setup */
+  monthlyPremium?: string | number | null;
+  annualPremium?: string | number | null;
+  totalPremium?: string | number | null;
+  firstPaymentAmount?: string | number | null;
+  firstPaymentDate?: string | null;
+  dueDate?: string | null;
+  paymentMethod?: string | null;
+  accountForRepayment?: string | null;
 };
 
 const CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.55;
@@ -61,7 +70,7 @@ const PROPOSAL_TYPES = new Set([
   "insurance_comparison",
 ]);
 
-const UNSUPPORTED_FOR_DIRECT_APPLY = new Set([
+const WARN_ONLY_DOCUMENT_TYPES = new Set([
   "unknown",
   "supporting_document",
   "bank_statement",
@@ -125,8 +134,8 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
     applyBarrier.push("NON_FINAL_LIFECYCLE");
   }
 
-  if (UNSUPPORTED_FOR_DIRECT_APPLY.has(normalizedType) || UNSUPPORTED_FOR_DIRECT_APPLY.has(docType)) {
-    blocked.push("UNSUPPORTED_DOCUMENT_TYPE");
+  if (WARN_ONLY_DOCUMENT_TYPES.has(normalizedType) || WARN_ONLY_DOCUMENT_TYPES.has(docType)) {
+    warnings.push("UNSUPPORTED_DOCUMENT_TYPE");
   }
 
   const textCoverage = trace?.textCoverageEstimate;
@@ -182,30 +191,30 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
     PAYMENT_INSTRUCTION_TYPES.has(docType) ||
     PAYMENT_INSTRUCTION_TYPES.has(primaryTypeFromEnvelope);
   if (isPaymentType && extractionRoute !== "payment_instructions") {
-    blocked.push("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
+    warnings.push("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
   }
 
-  // Phase 2+3: publishHints hard gate
+  // Sensitivity / publishability → section-level warnings, never document-level blocks.
   const publishHints = payload?.publishHints as Record<string, unknown> | null | undefined;
   if (publishHints) {
     if (publishHints.contractPublishable === false) {
-      blocked.push("PUBLISH_HINTS_NOT_PUBLISHABLE");
+      warnings.push("PUBLISH_HINTS_NOT_PUBLISHABLE");
     }
     if (publishHints.sensitiveAttachmentOnly === true) {
-      blocked.push("PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY");
+      warnings.push("PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY");
     }
     if (publishHints.needsSplit === true) {
-      applyBarrier.push("PUBLISH_HINTS_NEEDS_SPLIT");
+      warnings.push("PUBLISH_HINTS_NEEDS_SPLIT");
     }
     if (publishHints.needsManualValidation === true) {
-      applyBarrier.push("PUBLISH_HINTS_NEEDS_MANUAL_VALIDATION");
+      warnings.push("PUBLISH_HINTS_NEEDS_MANUAL_VALIDATION");
     }
   }
 
-  // Phase 2+3: packet bundle with sensitive attachment → manual validation required
+  // Bundle with sensitive attachment → warning, not barrier.
   const packetMeta = payload?.packetMeta as Record<string, unknown> | null | undefined;
   if (packetMeta?.isBundle === true && packetMeta?.hasSensitiveAttachment === true) {
-    applyBarrier.push("PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT");
+    warnings.push("PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT");
   }
 
   const payPayload = extractPaymentFromRow(row);
@@ -232,11 +241,10 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
 }
 
 export function evaluatePaymentApplyReadiness(p: PaymentApplyPayload): ApplyGateResult {
-  const blocked: string[] = [];
   const warnings: string[] = [];
 
   if (!hasVal(p.amount)) {
-    blocked.push("PAYMENT_MISSING_AMOUNT");
+    warnings.push("PAYMENT_MISSING_AMOUNT");
   }
 
   if (!hasVal(p.paymentFrequency)) {
@@ -244,7 +252,7 @@ export function evaluatePaymentApplyReadiness(p: PaymentApplyPayload): ApplyGate
   }
 
   if (!hasPaymentTarget(p)) {
-    blocked.push("PAYMENT_MISSING_TARGET");
+    warnings.push("PAYMENT_MISSING_TARGET");
   }
 
   if (!hasVal(p.variableSymbol) && !hasVal(p.constantSymbol)) {
@@ -264,13 +272,11 @@ export function evaluatePaymentApplyReadiness(p: PaymentApplyPayload): ApplyGate
   }
 
   const readiness: ApplyReadiness =
-    blocked.length > 0
-      ? "blocked_for_apply"
-      : warnings.length > 0
-        ? "review_required"
-        : "ready_for_apply";
+    warnings.length > 0
+      ? "review_required"
+      : "ready_for_apply";
 
-  return { readiness, blockedReasons: blocked, applyBarrierReasons: [], warnings };
+  return { readiness, blockedReasons: [], applyBarrierReasons: [], warnings };
 }
 
 function extractPaymentFromRow(row: ContractReviewRow): PaymentApplyPayload | null {
@@ -290,13 +296,21 @@ function extractPaymentFromRow(row: ContractReviewRow): PaymentApplyPayload | nu
         amount: amount as string | undefined,
         currency: fv("currency") || undefined,
         paymentFrequency: fv("paymentFrequency") || undefined,
-        iban: fv("iban") || fv("ibanMasked") || undefined,
+        iban: fv("iban") || undefined,
         accountNumber: fv("bankAccount") || fv("accountNumber") || undefined,
         bankCode: fv("bankCode") || undefined,
         variableSymbol: fv("variableSymbol") || undefined,
         constantSymbol: fv("constantSymbol") || undefined,
         institutionName: fv("insurer") || fv("institutionName") || undefined,
         productName: fv("productName") || undefined,
+        monthlyPremium: fv("totalMonthlyPremium") || undefined,
+        annualPremium: fv("annualPremium") || undefined,
+        totalPremium: fv("totalMonthlyPremium") || fv("premiumAmount") || undefined,
+        firstPaymentAmount: fv("firstPaymentAmount") || undefined,
+        firstPaymentDate: fv("firstPaymentDate") || undefined,
+        dueDate: fv("dueDate") || fv("firstPaymentDate") || undefined,
+        paymentMethod: fv("paymentType") || fv("paymentMethod") || undefined,
+        accountForRepayment: fv("accountForRepayment") || undefined,
         confidence: typeof (ef.totalMonthlyPremium ?? ef.premiumAmount)?.value === "number"
           ? undefined
           : (row.confidence ?? undefined),

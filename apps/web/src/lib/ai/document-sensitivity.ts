@@ -88,7 +88,26 @@ function maskValue(raw: unknown): unknown {
   return `${value.slice(0, 2)}***${value.slice(-2)}`;
 }
 
+/**
+ * Internal advisor review NEVER masks PII — masking belongs only to external/public outputs.
+ * This function returns an unmasked deep clone with section sensitivity tags preserved.
+ */
 export function maskSensitiveEnvelopeForUi(
+  envelope: DocumentReviewEnvelope
+): DocumentReviewEnvelope {
+  const clone: DocumentReviewEnvelope = JSON.parse(JSON.stringify(envelope));
+  clone.sectionSensitivity = clone.sectionSensitivity ?? {};
+  if (!Object.keys(clone.sectionSensitivity).length) {
+    clone.sectionSensitivity = detectSectionSensitivity(clone);
+  }
+  return clone;
+}
+
+/**
+ * Mask PII for external/public outputs (client portal, PDF export, analytics).
+ * NOT used in internal advisor review.
+ */
+export function maskSensitiveEnvelopeForExternalOutput(
   envelope: DocumentReviewEnvelope
 ): DocumentReviewEnvelope {
   const clone: DocumentReviewEnvelope = JSON.parse(JSON.stringify(envelope));

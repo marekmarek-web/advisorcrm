@@ -120,40 +120,16 @@ export async function applyContractReview(
     return { ok: false, error: "Publish guard: review musí být schválena před aplikací do CRM." };
   }
 
-  // Phase 2+3: hard publish gate based on publishHints
+  // Sensitivity / publishability signals are logged for audit but NEVER block apply.
+  // The advisor has already reviewed and approved — these are section-level warnings.
   const extractedPayloadForGate = row.extractedPayload as Record<string, unknown> | null | undefined;
   const publishHintsForGate = extractedPayloadForGate?.publishHints as Record<string, unknown> | null | undefined;
-  if (publishHintsForGate) {
-    // Check sensitiveAttachmentOnly first — it is the most specific block
-    if (publishHintsForGate.sensitiveAttachmentOnly === true) {
-      const msg = "Dokument je označen pouze jako citlivá příloha (zdravotní dotazník, AML). Apply jako smlouva do CRM není povoleno.";
-      capturePublishGuardFailure({ tenantId, reviewId, reason: "publishHints.sensitiveAttachmentOnly=true" });
-      return { ok: false, error: msg };
-    }
-    if (publishHintsForGate.contractPublishable === false) {
-      const reasons = Array.isArray(publishHintsForGate.reasons)
-        ? (publishHintsForGate.reasons as string[]).join(", ")
-        : "";
-      const msg = `Dokument není označen jako publikovatelný${reasons ? ` (${reasons})` : ""}. Apply bylo zablokováno. Zkontrolujte typ dokumentu nebo proveďte ruční override.`;
-      capturePublishGuardFailure({ tenantId, reviewId, reason: `publishHints.contractPublishable=false: ${reasons}` });
-      return { ok: false, error: msg };
-    }
-  }
-
-  // Phase 2+3: block modelation / health questionnaire / AML by document type from packet
-  const packetMetaForGate = extractedPayloadForGate?.packetMeta as Record<string, unknown> | null | undefined;
-  if (packetMetaForGate?.primarySubdocumentType) {
-    const nonPublishableSubdocTypes = new Set([
-      "health_questionnaire",
-      "aml_fatca_form",
-      "attachment_only",
-      "other_non_publishable",
-    ]);
-    if (nonPublishableSubdocTypes.has(String(packetMetaForGate.primarySubdocumentType))) {
-      const msg = `Primární typ subdokumentu je "${packetMetaForGate.primarySubdocumentType}" — tento typ nelze publikovat jako finální smlouvu.`;
-      capturePublishGuardFailure({ tenantId, reviewId, reason: `primarySubdocumentType=${packetMetaForGate.primarySubdocumentType}` });
-      return { ok: false, error: msg };
-    }
+  if (publishHintsForGate?.sensitiveAttachmentOnly === true || publishHintsForGate?.contractPublishable === false) {
+    capturePublishGuardFailure({
+      tenantId,
+      reviewId,
+      reason: `publishHints warning (non-blocking): sensitiveAttachmentOnly=${publishHintsForGate.sensitiveAttachmentOnly}, contractPublishable=${publishHintsForGate.contractPublishable}`,
+    });
   }
 
   const draftActions = row.draftActions as Array<{

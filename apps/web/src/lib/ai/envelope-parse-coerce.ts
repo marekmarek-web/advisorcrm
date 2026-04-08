@@ -87,6 +87,32 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   nabídka_pojistění: "life_insurance_proposal",
   offer: "life_insurance_proposal",
   insurance_proposal: "life_insurance_proposal",
+  // liability / nonlife proposal
+  liability_insurance_proposal: "liability_insurance_offer",
+  pojisteni_odpovednosti: "liability_insurance_offer",
+  pojištění_odpovědnosti: "liability_insurance_offer",
+  pojisteni_odpovednosti_v_zamestnaní: "liability_insurance_offer",
+  pojištění_odpovědnosti_v_zaměstnání: "liability_insurance_offer",
+  pojisteni_podnikatelu: "nonlife_insurance_contract",
+  pojištění_podnikatelů: "nonlife_insurance_contract",
+  business_insurance: "nonlife_insurance_contract",
+  business_insurance_contract: "nonlife_insurance_contract",
+  // investment life
+  investicni_zivotni_pojisteni_navrh: "life_insurance_proposal",
+  izp_navrh: "life_insurance_proposal",
+  // service agreement extras
+  servisni_smlouva: "service_agreement",
+  service_agreement_contract: "service_agreement",
+  // mortgage extras
+  mortgage: "mortgage_document",
+  mortgage_contract: "mortgage_document",
+  mortgage_loan: "mortgage_document",
+  hypoteka: "mortgage_document",
+  // consumer loan extras
+  consumer_loan: "consumer_loan_contract",
+  consumer_credit: "consumer_loan_contract",
+  uver: "consumer_loan_contract",
+  uvěr: "consumer_loan_contract",
   // tax return variants
   tax_return_corporate_income: "corporate_tax_return",
   corporate_income_tax_return: "corporate_tax_return",

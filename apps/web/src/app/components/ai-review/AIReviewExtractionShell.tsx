@@ -71,19 +71,19 @@ const APPLY_GATE_REASON_LABELS: Record<string, string> = {
   PIPELINE_FAILED_STEP: "Část pipeline během zpracování selhala.",
   AMBIGUOUS_CLIENT_MATCH: "V CRM je více možných klientů a je potřeba vybrat správného.",
   LLM_CLIENT_MATCH_AMBIGUOUS: "AI našla více možných klientů.",
-  UNSUPPORTED_DOCUMENT_TYPE: "Tento typ dokumentu nelze zapsat přímo do CRM.",
-  PAYMENT_MISSING_AMOUNT: "Chybí částka platby.",
-  PAYMENT_MISSING_TARGET: "Chybí účet nebo cíl platby.",
-  PAYMENT_MISSING_FREQUENCY: "Chybí frekvence platby.",
-  PAYMENT_MISSING_IDENTIFIER: "Chybí variabilní nebo konstantní symbol.",
-  PAYMENT_MISSING_INSTITUTION: "Chybí příjemce nebo produkt platby.",
+  UNSUPPORTED_DOCUMENT_TYPE: "Typ dokumentu nebyl jednoznačně rozpoznán — ověřte a doplňte ručně.",
+  PAYMENT_MISSING_AMOUNT: "Chybí částka platby — doplňte ručně.",
+  PAYMENT_MISSING_TARGET: "Chybí účet nebo cíl platby — doplňte ručně.",
+  PAYMENT_MISSING_FREQUENCY: "Chybí frekvence platby — doplňte ručně.",
+  PAYMENT_MISSING_IDENTIFIER: "Chybí variabilní nebo konstantní symbol — doplňte ručně.",
+  PAYMENT_MISSING_INSTITUTION: "Chybí příjemce nebo produkt platby — doplňte ručně.",
   PAYMENT_NEEDS_HUMAN_REVIEW: "Platební údaje potřebují ruční kontrolu.",
-  PAYMENT_LOW_CONFIDENCE: "Platební údaje mají nízkou jistotu.",
-  PUBLISH_HINTS_NOT_PUBLISHABLE: "Dokument není označen jako publikovatelný — není možné aplikovat jako finální smlouvu.",
-  PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY: "Dokument obsahuje pouze citlivou přílohu (zdravotní dotazník, AML) — apply jako smlouva je blokován.",
-  PUBLISH_HINTS_NEEDS_SPLIT: "Dokument obsahuje více logických sekcí a vyžaduje rozdělení před apply.",
-  PUBLISH_HINTS_NEEDS_MANUAL_VALIDATION: "Dokument vyžaduje ruční ověření před apply.",
-  PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT: "Upload obsahuje bundle s citlivou přílohou — potvrďte správnou sekci před apply.",
+  PAYMENT_LOW_CONFIDENCE: "Platební údaje mají nízkou jistotu — ověřte v dokumentu.",
+  PUBLISH_HINTS_NOT_PUBLISHABLE: "Dokument není označen jako finální smlouva — ověřte typ a doplňte chybějící údaje.",
+  PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY: "Dokument obsahuje citlivou přílohu (zdravotní dotazník, AML) — hlavní data byla vytěžena, citlivé sekce ke kontrole.",
+  PUBLISH_HINTS_NEEDS_SPLIT: "Dokument obsahuje více logických sekcí — ověřte, zda jsou všechny údaje správně přiřazeny.",
+  PUBLISH_HINTS_NEEDS_MANUAL_VALIDATION: "Dokument vyžaduje ruční ověření před uložením.",
+  PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT: "Upload obsahuje bundle s citlivou přílohou — ověřte správnou sekci.",
   PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT: "Platební instrukce byly rozpoznány jako smlouva — ověřte typ dokumentu.",
 };
 
@@ -699,8 +699,8 @@ export function AIReviewExtractionShell({
             <div className="max-w-6xl mx-auto flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
               <div className="min-w-0 flex flex-col gap-2 text-xs">
                 {doc.applyGate && doc.applyGate.blockedReasons.length > 0 ? (
-                  <span className="text-sm text-red-800 font-semibold leading-snug">
-                    Blokace: {doc.applyGate.blockedReasons.map(humanizeApplyGateReason).join(" ")}
+                  <span className="text-sm text-amber-800 font-semibold leading-snug">
+                    Ke kontrole: {doc.applyGate.blockedReasons.map(humanizeApplyGateReason).join(" ")}
                   </span>
                 ) : null}
                 {effectiveApplyBarrierReasons.length > 0 ? (

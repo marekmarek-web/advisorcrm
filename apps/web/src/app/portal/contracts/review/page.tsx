@@ -47,7 +47,7 @@ const PROCESSING_LABELS: Record<ProcessingStatus, string> = {
   review_required: "Vyžaduje kontrolu",
   failed: "Chyba",
   scan_pending_ocr: "Čeká na OCR",
-  blocked: "Blokováno (kontrola)",
+  blocked: "Vyžaduje kontrolu",
 };
 
 const REVIEW_LABELS: Record<ReviewStatus, string> = {
@@ -106,7 +106,7 @@ function getStatusConfig(
   if (processingStatus === "blocked") {
     return {
       icon: <ShieldAlert size={16} />,
-      text: "Blokováno — zkontrolujte údaje",
+      text: "Vyžaduje ruční kontrolu — ověřte údaje",
       color:
         "text-orange-800 bg-orange-50 border-orange-200 dark:text-orange-100 dark:bg-orange-950/40 dark:border-orange-500/35",
       dot: "bg-orange-500",

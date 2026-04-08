@@ -4,16 +4,16 @@
 
 const DOC_TYPE: Record<string, string> = {
   contract: "Smlouva",
-  proposal: "Nabídka / návrh",
+  proposal: "Návrh",
   modelation: "Modelace",
   amendment: "Dodatek / změna",
   statement: "Výpis",
   payment_instructions: "Platební pokyny",
-  supporting_document: "Podpůrný dokument",
+  supporting_document: "Podkladový dokument",
   termination_document: "Ukončení / výpověď",
   consent_or_identification_document: "Souhlas / identifikace",
   confirmation_document: "Potvrzení",
-  unknown: "Neurčeno",
+  unknown: "Jiný dokument",
 };
 
 const FAMILY: Record<string, string> = {
@@ -28,7 +28,7 @@ const FAMILY: Record<string, string> = {
   mortgage: "Hypotéka",
   banking: "Bankovnictví",
   legacy_financial_product: "Starší finanční produkt",
-  unknown: "Neurčeno",
+  unknown: "Nerozpoznaná rodina",
 };
 
 const SUBTYPE: Record<string, string> = {
@@ -52,7 +52,7 @@ const SUBTYPE: Record<string, string> = {
   confirmation_of_payment: "Potvrzení platby",
   fundoo: "FUNDOO (pravidelná / jednorázová investice, typicky Amundi)",
   amundi_platform: "Amundi / investiční platforma",
-  unknown: "Neurčeno",
+  unknown: "Jiný podtyp",
 };
 
 export function labelDocumentType(code: string): string {
@@ -81,9 +81,9 @@ const PIPELINE_NORMALIZED: Record<string, string> = {
   mortgage: "Hypotéka",
   investment: "Investice",
   payment_instructions: "Platební pokyny",
-  supporting_document: "Podpůrný dokument",
+  supporting_document: "Podkladový dokument",
   manual_review_only: "Vyžaduje ruční kontrolu",
-  unknown: "Neurčeno",
+  unknown: "Jiný dokument",
 };
 
 export function labelNormalizedPipelineClassification(code: string): string {

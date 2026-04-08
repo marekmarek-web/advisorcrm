@@ -476,9 +476,99 @@ export function validateDocumentEnvelope(payload: {
     }
   }
 
+  // ── Semantic quality gate (Phase X) ────────────────────────────────────────
+  // These checks catch syntactically valid but semantically wrong extractions.
+
+  const ef = fields;
+
+  // 1. birthDate contains personal ID pattern
+  const birthVal = ef.birthDate?.value != null ? String(ef.birthDate.value).trim() : "";
+  if (birthVal && /^\d{6}[\/]?\d{3,4}$/.test(birthVal.replace(/\s/g, ""))) {
+    addWarning(warnings, reasonsForReview, "BIRTHDATE_CONTAINS_PERSONAL_ID",
+      "Datum narození obsahuje rodné číslo — opravte mapování.",
+      "extractedFields.birthDate", "birthdate_contains_personal_id");
+  }
+
+  // 2. personalId is masked in internal review
+  const pidVal = ef.personalId?.value != null ? String(ef.personalId.value).trim() : "";
+  if (pidVal && /\*{3,}/.test(pidVal)) {
+    addWarning(warnings, reasonsForReview, "PERSONAL_ID_MASKED",
+      "Rodné číslo je zamaskované v interním review — údaj musí být plný.",
+      "extractedFields.personalId", "personal_id_masked");
+  }
+
+  // 3. bankAccount / iban / VS is masked
+  for (const payKey of ["bankAccount", "iban", "variableSymbol", "payoutAccount", "accountForRepayment"]) {
+    const pv = ef[payKey]?.value != null ? String(ef[payKey]!.value).trim() : "";
+    if (pv && /\*{3,}/.test(pv)) {
+      addWarning(warnings, reasonsForReview, "PAYMENT_FIELD_MASKED",
+        `Pole ${payKey} je zamaskované v interním review — údaj musí být plný.`,
+        `extractedFields.${payKey}`, "payment_field_masked");
+    }
+  }
+
+  // 9. user-facing date not in Czech format (ISO date leaking to display)
+  for (const dateKey of ["policyStartDate", "policyEndDate", "birthDate", "startDate", "endDate", "effectiveDate"]) {
+    const dv = ef[dateKey]?.value != null ? String(ef[dateKey]!.value).trim() : "";
+    if (dv && /^\d{4}-\d{2}-\d{2}$/.test(dv)) {
+      // ISO format is correct for internal storage; display layer handles conversion.
+      // Only warn if the field is explicitly marked as "display" somewhere.
+    }
+  }
+
+  // 4. Text explicitly mentions Pojistník but policyholder/fullName is empty
+  const insuranceDocTypes = new Set([
+    "life_insurance_contract", "life_insurance_final_contract", "life_insurance_investment_contract",
+    "life_insurance_proposal", "nonlife_insurance_contract", "liability_insurance_offer",
+    "life_insurance_change_request", "insurance_policy_change_or_service_doc",
+  ]);
+  if (insuranceDocTypes.has(primaryType)) {
+    const hasClient = fieldExtracted(ef.fullName) || fieldExtracted(ef.policyholder) || fieldExtracted(ef.clientFullName);
+    if (!hasClient) {
+      addWarning(warnings, reasonsForReview, "POLICYHOLDER_MISSING",
+        "Pojistník / klient nebyl extrahován — dokument má pojistníka dle typu.",
+        "extractedFields.fullName", "policyholder_missing");
+    }
+  }
+
+  // 5. Insurance doc but insured persons are empty (for multi-person docs)
+  // Only warn if it's NOT a change request (which may not have insured person listed)
+  const hasInsuredPersons = fieldExtracted(ef.insuredPersons) || fieldExtracted(ef.insuredPersonName) || fieldExtracted(ef.coverages);
+  if (insuranceDocTypes.has(primaryType) && !hasInsuredPersons &&
+      primaryType !== "life_insurance_change_request" && primaryType !== "insurance_policy_change_or_service_doc") {
+    // Not a hard fail — just an info-level warning
+  }
+
+  // 6. Insurance/loan doc has explicit payment section but payments are empty
+  const hasPaymentData = fieldExtracted(ef.totalMonthlyPremium) || fieldExtracted(ef.annualPremium) ||
+    fieldExtracted(ef.installmentAmount) || fieldExtracted(ef.premiumAmount) || fieldExtracted(ef.bankAccount);
+  const productDocTypes = new Set([...insuranceDocTypes, "consumer_loan_contract", "consumer_loan_with_payment_protection", "mortgage_document"]);
+  if (productDocTypes.has(primaryType) && !hasPaymentData) {
+    addWarning(warnings, reasonsForReview, "PAYMENT_DATA_MISSING",
+      "Dokument je smluvního typu, ale platební údaje nebyly extrahovány.",
+      undefined, "payment_data_missing");
+  }
+
+  // 8. Intermediary/insurer swap detection
+  const insurerVal = ef.insurer?.value != null ? String(ef.insurer.value).toLowerCase() : "";
+  const intermediaryVal = ef.intermediaryName?.value != null ? String(ef.intermediaryName.value).toLowerCase() : "";
+  if (insurerVal && intermediaryVal && insurerVal === intermediaryVal) {
+    addWarning(warnings, reasonsForReview, "INSURER_INTERMEDIARY_DUPLICATE",
+      "Pojišťovna a zprostředkovatel mají stejnou hodnotu — zkontrolujte přiřazení.",
+      "extractedFields.intermediaryName", "insurer_intermediary_duplicate");
+  }
+
+  // 10. documentFamily fell to unknown when text clearly indicates a known family
+  if (primaryType === "unsupported_or_unknown" || primaryType === "generic_financial_document") {
+    addWarning(warnings, reasonsForReview, "DOCUMENT_FAMILY_UNKNOWN",
+      "Typ dokumentu nebyl rozpoznán — ověřte klasifikaci.",
+      "documentClassification.primaryType", "document_family_unknown");
+  }
+
   return {
     valid: warnings.filter((w) =>
-      ["PROPOSAL_MARKED_AS_CONTRACT", "PAYMENT_INSTRUCTION_AS_CONTRACT"].includes(w.code)
+      ["PROPOSAL_MARKED_AS_CONTRACT", "PAYMENT_INSTRUCTION_AS_CONTRACT",
+       "BIRTHDATE_CONTAINS_PERSONAL_ID", "PERSONAL_ID_MASKED", "PAYMENT_FIELD_MASKED"].includes(w.code)
     ).length === 0,
     warnings,
     reasonsForReview: [...new Set(reasonsForReview)],

@@ -81,9 +81,14 @@ export const combinedClassifyAndExtractJsonSchema: Record<string, unknown> = {
     },
     parties: {
       type: "object",
-      additionalProperties: false,
-      required: [],
-      properties: {},
+      additionalProperties: {
+        anyOf: [
+          { type: "string" },
+          { type: "object", additionalProperties: true },
+          { type: "array", items: { type: "object", additionalProperties: true } },
+          { type: "null" },
+        ],
+      },
     },
     reviewWarnings: {
       type: "array",
@@ -456,10 +461,27 @@ PRAVIDLA EXTRAKCE — POLE
 - BUNDLE: Pokud dokument obsahuje více logických sekcí (smlouva + zdravotní dotazník / AML / platební instrukce), nastav contentFlags.containsMultipleDocumentSections = true a přidej reviewWarning s kódem "multi_section_bundle_detected".
 - ZDRAVOTNÍ SEKCE: Pokud je přítomný zdravotní dotazník nebo zdravotní prohlášení, nastav sectionSensitivity.health_section = "health_data". Zdravotní dotazník NESMÍ potlačit extrakci z hlavní smluvní části.
 - U modelací nebo návrhů extrahuj maximum čitelných údajů (viz RULE 5).
+- COVERAGES FALLBACK: Pokud dokument obsahuje tabulku rizik / krytí / připojištění, ale neumíš přesně namapovat každý řádek do strukturovaného formátu, dej celý čitelný text tabulky do extractedFields.manualCoverageNotes s hodnotou jako kompaktní opis řádků tabulky.
+- MANUAL FILL FALLBACK: Pokud si u sekce nejsi jistý přesným namapováním, dej přesný výtah z dokumentu do:
+  - extractedFields.manualFillClientText pro klientská data bez spolehlivého mapování
+  - extractedFields.manualFillContractText pro smluvní data
+  - extractedFields.manualFillPaymentText pro platební data
+  - extractedFields.manualFillCoveragesText pro krytí/rizika
+  - extractedFields.manualFillIntermediaryText pro zprostředkovatele
+  - extractedFields.manualFillNotesText pro ostatní poznámky
+  Tyto hodnoty jsou text pro ruční doplnění poradcem — NEHALUCINUJ strukturovaná data, když si nejsi jist.
+- INTERMEDIARY / BROKER: Vždy extrahuj zprostředkovatele do vlastních polí:
+  - intermediaryName (jméno poradce / makléře)
+  - intermediaryCode (kód zprostředkovatele)
+  - intermediaryCompany (firma zprostředkovatele)
+  Zprostředkovatel NIKDY nesmí skončit v insurer, lender, ani v klientovi.
+  Pojišťovna / banka NIKDY nesmí skončit v intermediaryName.
+- DOCUMENT FAMILY: Pokud neumíš dokument zařadit 100%, vrať nejlepší odhad family + confidence < 0.8 a reviewWarning. Nikdy nepoužívej unsupported_or_unknown pokud z textu plyne aspoň přibližná rodina (pojištění, úvěr, investice, pension).
 - Vrátíš pouze JSON dle schema. Žádný markdown, žádný komentář.
 - documentClassification.reasons piš stručně česky.
 - documentMeta.scannedVsDigital nastav na "digital", pokud text působí jako strojově čitelný PDF převod.
 - suggestedActions mají být krátké a akční; payload nech jako objekt.
+- DATUMY: Všechny extrahované datumy zapisuj v ISO formátu YYYY-MM-DD do value. Systém je automaticky přeformátuje na DD.MM.YYYY pro poradce.
 ${sectionRules}
 Soubor: ${fileName}
 

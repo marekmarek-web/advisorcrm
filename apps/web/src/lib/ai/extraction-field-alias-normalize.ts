@@ -983,6 +983,16 @@ const DESCRIPTIVE_KEY_MAP: Record<string, string> = {
   "Investiční strategie": "investmentStrategy",
   "Produkt": "productName",
   "Rizika a připojištění": "coverages",
+  "Druhý pojištěný": "secondInsuredName",
+  "2. pojištěný": "secondInsuredName",
+  "Zprostředkovatel": "intermediaryName",
+  "Makléř": "intermediaryName",
+  "Pojišťovací zprostředkovatel": "intermediaryName",
+  "Pojistník/pojištěný": "fullName",
+  "Pojistník / Pojištěný": "fullName",
+  "Pojištěný a oprávněná osoba": "insuredPersonName",
+  "Oprávněná osoba": "beneficiary",
+  "Obmyšlená osoba": "beneficiary",
   // English descriptive keys
   "client": "fullName",
   "client_name": "fullName",
@@ -1144,6 +1154,43 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
   ]);
 
   mergeFromAliases(ef, "iban", ["ibanMasked"]);
+
+  mergeFromAliases(ef, "secondInsuredName", [
+    "secondInsured",
+    "additionalInsuredName",
+    "insuredPerson2",
+    "druhyPojisteny",
+    "druhaPojistena",
+  ]);
+
+  mergeFromAliases(ef, "intermediaryName", [
+    "advisorName",
+    "brokerName",
+    "zprostredkovatel",
+    "intermediary",
+    "agentName",
+    "makler",
+  ]);
+
+  mergeFromAliases(ef, "intermediaryCompany", [
+    "brokerCompany",
+    "intermediaryFirm",
+    "zprostredkovatelFirma",
+    "agentCompany",
+  ]);
+
+  mergeFromAliases(ef, "intermediaryCode", [
+    "brokerCode",
+    "agentCode",
+    "zprostredkovatelKod",
+    "kodZprostredkovatele",
+  ]);
+
+  mergeFromAliases(ef, "accountForRepayment", [
+    "repaymentAccount",
+    "cisloUctuProSplaceni",
+    "splatkovyUcet",
+  ]);
 
   mergeFromAliases(ef, "documentStatus", ["status", "contractStatus", "documentState", "agreementStatus"]);
 

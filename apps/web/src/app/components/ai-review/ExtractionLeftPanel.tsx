@@ -560,7 +560,7 @@ function CrmMappingProposalCard({ doc }: { doc: ExtractionDocument }) {
     readiness === "ready_for_publish"
       ? { cls: "bg-emerald-100 text-emerald-700", label: "Připraveno" }
       : readiness === "blocked"
-        ? { cls: "bg-rose-100 text-rose-700", label: "Blokováno" }
+        ? { cls: "bg-amber-100 text-amber-700", label: "Vyžaduje kontrolu" }
         : readiness === "review_required"
           ? { cls: "bg-amber-100 text-amber-700", label: "Vyžaduje kontrolu" }
           : { cls: "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]", label: "Zpracovává se" };
