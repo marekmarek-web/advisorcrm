@@ -72,13 +72,17 @@ const COMM_TEXT_HINTS = /zpráv|message|chat|napsal|napsal|poslal|whatsapp|sms|e
 const PAYMENT_TEXT_HINTS = /platb|zaplatit|platební|platební údaje|QR|variabilní symbol|číslo účtu|IBAN/i;
 const BANK_TEXT_HINTS = /stav účtu|zůstatek|transakce|banka|bankovní výpis|výpis/i;
 const DOCUMENT_TEXT_HINTS = /smlouva|potvrzení|dokument|sken|scan|formulář|dopis/i;
+const CRM_EXTRACTION_TEXT_HINTS = /(?:přiřaď|doplň|ulož|vyplň|přiřadit|doplnit|uložit).*(?:údaj|klient|CRM|kontakt|portál|rodné|adres|telefon|email)/i;
+const NOTE_TASK_TEXT_HINTS = /(?:udělej|vytvoř|zapiš|založ).*(?:poznámk|úkol|follow|záznam)/i;
 
 function classifyByTextHints(text: string | null): ImageInputType | null {
   if (!text || text.trim().length < 3) return null;
-  if (COMM_TEXT_HINTS.test(text)) return "screenshot_client_communication";
+  if (COMM_TEXT_HINTS.test(text) && !CRM_EXTRACTION_TEXT_HINTS.test(text)) return "screenshot_client_communication";
   if (PAYMENT_TEXT_HINTS.test(text)) return "screenshot_payment_details";
   if (BANK_TEXT_HINTS.test(text)) return "screenshot_bank_or_finance_info";
+  if (CRM_EXTRACTION_TEXT_HINTS.test(text)) return "photo_or_scan_document";
   if (DOCUMENT_TEXT_HINTS.test(text)) return "photo_or_scan_document";
+  if (NOTE_TASK_TEXT_HINTS.test(text)) return "screenshot_client_communication";
   return null;
 }
 

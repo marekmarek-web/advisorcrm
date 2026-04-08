@@ -63,6 +63,8 @@ import {
 } from "./extractor";
 import { resolveClientBindingV2, resolveCaseBindingV2, toCaseBindingResult, parseExplicitClientNameFromText } from "./binding-v2";
 import { tryBuildDraftReply } from "./draft-reply";
+import { parseExplicitIntent, textSignalsCrmExtractionIntent } from "./explicit-intent-parser";
+import type { ParsedExplicitIntent } from "./explicit-intent-parser";
 import {
   isImageIntakeMultimodalEnabledForUser,
   isImageIntakeStitchingEnabled,
@@ -479,9 +481,27 @@ export async function processImageIntake(
     factBundle = buildSupportingReferenceFacts(primaryAsset?.assetId ?? intakeId);
   }
 
+  // 6b. Parse explicit intent from accompanying text (structured, reusable)
+  const parsedIntent = parseExplicitIntent(request.accompanyingText);
+
+  // 6c. Intent-aware classification boost: when user explicitly asks for CRM extraction
+  // and classifier was uncertain, upgrade to structured_image_fact_intake confidence
+  if (
+    classification &&
+    textSignalsCrmExtractionIntent(parsedIntent) &&
+    classification.confidence < 0.70 &&
+    classification.inputType !== "general_unusable_image"
+  ) {
+    classification = {
+      ...classification,
+      confidence: Math.max(classification.confidence, 0.72),
+      uncertaintyFlags: classification.uncertaintyFlags.filter((f) => f !== "low_confidence"),
+    };
+  }
+
   // 7. CRM-aware binding v2 (uses name signal from multimodal + explicit name from user text)
   const nameSignal = multimodalResult?.possibleClientNameSignal ?? null;
-  const nameFromText = parseExplicitClientNameFromText(request.accompanyingText);
+  const nameFromText = parsedIntent.clientName ?? parseExplicitClientNameFromText(request.accompanyingText);
   let clientBinding = await resolveClientBindingV2(effectiveRequest, session, nameSignal, nameFromText);
 
   // 8. Case/opportunity binding v2 (Phase 4 — DB lookup when client is known)
@@ -700,7 +720,6 @@ export async function processImageIntake(
   );
 
   // 11. Action planning v4 (Phase 10 — adds document-set outcome awareness)
-  // documentSetResult already computed above (Phase 9 block); v4 uses it for conservative plan shaping
   let actionPlan = buildActionPlanV4(
     classification,
     clientBinding,
@@ -708,6 +727,7 @@ export async function processImageIntake(
     draftReplyText,
     reviewHandoff,
     documentSetResult,
+    parsedIntent,
   );
 
   const identityIntakeEligible = detectIdentityContactIntakeSignals(

@@ -52,6 +52,8 @@ export const IMAGE_OUTPUT_MODES = [
   "client_message_update",
   "structured_image_fact_intake",
   "identity_contact_intake",
+  "contact_update_from_image",
+  "payment_details_portal_update",
   "supporting_reference_image",
   "ambiguous_needs_input",
   "no_action_archive_only",

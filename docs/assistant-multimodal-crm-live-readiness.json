@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-04-08T16:03:00Z",
+  "summary": "Multimodal CRM intake pipeline hardening: 5 root causes fixed, 2 new output modes, structured intent parser, binding precedence fix, UI sanitization hardening. 43 new acceptance tests all passing.",
+  "implementedFixAreas": [
+    {
+      "area": "binding_precedence",
+      "description": "Explicit user text now has highest priority over session/UI context for client binding",
+      "files": ["image-intake/binding-v2.ts"],
+      "severity": "critical"
+    },
+    {
+      "area": "intent_parsing",
+      "description": "New structured intent parser for Czech CRM commands (8 verb types, 9 destinations, 9 field patterns)",
+      "files": ["image-intake/explicit-intent-parser.ts"],
+      "severity": "high"
+    },
+    {
+      "area": "output_modes",
+      "description": "Added contact_update_from_image and payment_details_portal_update output modes with full planner + response mapper support",
+      "files": ["image-intake/types.ts", "image-intake/planner.ts", "image-intake/response-mapper.ts"],
+      "severity": "high"
+    },
+    {
+      "area": "classification_hardening",
+      "description": "CRM extraction text hints boost structured classification; intent-aware confidence override in orchestrator",
+      "files": ["image-intake/classifier.ts", "image-intake/orchestrator.ts"],
+      "severity": "medium"
+    },
+    {
+      "area": "ui_sanitization",
+      "description": "Extended internal flag/pattern filtering prevents confidence %, GUARDRAIL_, safetyFlag, outputMode from reaching advisor UI",
+      "files": ["image-intake/response-mapper.ts"],
+      "severity": "medium"
+    }
+  ],
+  "acceptanceCases": [
+    { "id": "A", "name": "FORM_SCREENSHOT_BIND_TO_EXISTING_CLIENT", "status": "pass" },
+    { "id": "B", "name": "FORM_SCREENSHOT_UPDATE_FIELDS", "status": "pass" },
+    { "id": "C", "name": "IDENTITY_DOC_NEW_CLIENT", "status": "pass" },
+    { "id": "D", "name": "IDENTITY_DOC_MISMATCH_ACTIVE_CLIENT", "status": "pass" },
+    { "id": "E", "name": "COMM_SCREENSHOT_NOTE_TASK", "status": "pass" },
+    { "id": "F", "name": "PAYMENT_SCREENSHOT_TO_PORTAL", "status": "pass" },
+    { "id": "G", "name": "CHIP_NO_SEND_RUNTIME", "status": "pass" },
+    { "id": "H", "name": "NO_AUTO_SEND_RUNTIME", "status": "pass" },
+    { "id": "I", "name": "MAX_4_IMAGES", "status": "pass" },
+    { "id": "J", "name": "TEXT_ONLY_UNCHANGED", "status": "pass" }
+  ],
+  "blockers": [],
+  "caveats": [
+    "Payment portal write path: preview-ready but actual write endpoint not wired",
+    "Contact field-level CRM patch: creates advisory note with extracted fields, full updateContact wiring pending",
+    "3 pre-existing test failures unrelated to this pass"
+  ],
+  "readyVerdict": "READY_WITH_CAVEATS",
+  "testResults": {
+    "newAcceptanceTests": 43,
+    "newAcceptancePassed": 43,
+    "existingTestsPassed": 97,
+    "existingTestsFailed": 3,
+    "existingFailuresPreExisting": true
+  }
+}

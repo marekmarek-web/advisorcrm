@@ -24,6 +24,7 @@ import type {
 import { safeOutputModeForUncertainInput } from "./guardrails";
 import { mapFactBundleToCreateContactDraft } from "./identity-contact-intake";
 import { looksLikeStructuredFormScreenshot } from "./review-handoff";
+import type { ParsedExplicitIntent } from "./explicit-intent-parser";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -54,28 +55,53 @@ function makeAction(
 function resolveOutputMode(
   classification: InputClassificationResult,
   binding: ClientBindingResult,
+  intent?: ParsedExplicitIntent | null,
 ): ImageOutputMode {
   if (classification.inputType === "general_unusable_image") {
     return "no_action_archive_only";
   }
 
-  // Fix 1: communication screenshots get their specialized mode even without a client.
-  // Binding state is checked later (in planClientMessageUpdate) to decide which actions
-  // to include — attach_document only when bound, but note/task always available.
+  // Communication screenshots get their specialized mode even without a client.
   if (classification.inputType === "screenshot_client_communication") {
-    if (classification.confidence < 0.65) return "ambiguous_needs_input";
+    if (classification.confidence < 0.65 && !intent?.hasExplicitTarget) return "ambiguous_needs_input";
     return "client_message_update";
   }
+
+  // Payment intent from user text OR payment screenshot → payment mode when bound
+  if (
+    intent?.operation === "portal_payment_update" ||
+    (classification.inputType === "screenshot_payment_details" &&
+      binding.state === "bound_client_confident")
+  ) {
+    return "payment_details_portal_update";
+  }
+
+  // Contact update intent from user text with bound client → contact update mode
+  if (
+    intent?.operation === "update_contact" &&
+    (binding.state === "bound_client_confident" || binding.state === "bound_case_confident")
+  ) {
+    return "contact_update_from_image";
+  }
+
+  // When user explicitly targets CRM extraction and has a client, allow structured mode
+  // even with weaker classification confidence
+  const intentBoost = intent?.hasExplicitTarget && intent.operation !== "unknown";
 
   if (
     binding.state === "insufficient_binding" ||
     binding.state === "multiple_candidates" ||
     binding.state === "weak_candidate"
   ) {
+    // Communication screenshots and explicit note/task intents still get their mode
+    if (intent?.operation === "create_note" || intent?.operation === "create_task" || intent?.operation === "create_followup") {
+      return "client_message_update";
+    }
     return "ambiguous_needs_input";
   }
 
   if (classification.inputType === "mixed_or_uncertain_image" || classification.confidence < 0.5) {
+    if (intentBoost) return "structured_image_fact_intake";
     return "ambiguous_needs_input";
   }
 
@@ -85,10 +111,19 @@ function resolveOutputMode(
 
   if (
     classification.inputType === "screenshot_payment_details" ||
-    classification.inputType === "screenshot_bank_or_finance_info" ||
-    classification.inputType === "photo_or_scan_document"
+    classification.inputType === "screenshot_bank_or_finance_info"
   ) {
-    return classification.confidence >= 0.60 ? "structured_image_fact_intake" : "ambiguous_needs_input";
+    if (classification.confidence >= 0.60 || intentBoost) {
+      return classification.inputType === "screenshot_payment_details"
+        ? "payment_details_portal_update"
+        : "structured_image_fact_intake";
+    }
+    return "ambiguous_needs_input";
+  }
+
+  if (classification.inputType === "photo_or_scan_document") {
+    if (classification.confidence >= 0.60 || intentBoost) return "structured_image_fact_intake";
+    return "ambiguous_needs_input";
   }
 
   return safeOutputModeForUncertainInput(classification, binding);
@@ -194,18 +229,178 @@ function planSupportingReference(binding: ClientBindingResult): ImageIntakeActio
   return base;
 }
 
+// ---------------------------------------------------------------------------
+// Contact update from image (structured form → existing client update)
+// ---------------------------------------------------------------------------
+
+function planContactUpdateFromImage(
+  binding: ClientBindingResult,
+  factBundle: ExtractedFactBundle,
+): ImageIntakeActionCandidate[] {
+  const actions: ImageIntakeActionCandidate[] = [];
+
+  const contactFields = factBundle.facts.filter(
+    (f) =>
+      CONTACT_PATCH_FACT_KEYS.has(f.factKey) &&
+      f.value !== null &&
+      String(f.value).trim().length > 0,
+  );
+
+  if (contactFields.length > 0 && binding.clientId) {
+    const patchParams: Record<string, unknown> = { contactId: binding.clientId };
+    for (const f of contactFields) {
+      const targetField = FACT_KEY_TO_CONTACT_FIELD[f.factKey];
+      if (targetField) {
+        patchParams[targetField] = f.value;
+        if (f.needsConfirmation) {
+          patchParams[`_confirm_${targetField}`] = true;
+        }
+      }
+    }
+
+    actions.push(
+      makeAction(
+        "create_internal_note",
+        "createInternalNote",
+        "Aktualizovat údaje klienta",
+        `Rozpoznáno ${contactFields.length} polí k aktualizaci v CRM.`,
+        {
+          ...patchParams,
+          _imageIntakeOutputMode: "contact_update_from_image",
+          _fieldCount: contactFields.length,
+        },
+      ),
+    );
+  }
+
+  if (binding.clientId) {
+    actions.push(
+      makeAction(
+        "attach_document",
+        "attachDocumentToClient",
+        "Přiložit zdrojový screenshot ke klientovi",
+        "Archivovat zdrojový obrázek u klienta.",
+        { contactId: binding.clientId },
+      ),
+    );
+  }
+
+  return actions;
+}
+
+// ---------------------------------------------------------------------------
+// Payment / portal update from image
+// ---------------------------------------------------------------------------
+
+function planPaymentPortalUpdate(
+  binding: ClientBindingResult,
+  factBundle: ExtractedFactBundle,
+): ImageIntakeActionCandidate[] {
+  const actions: ImageIntakeActionCandidate[] = [];
+
+  const paymentFields = factBundle.facts.filter(
+    (f) =>
+      PAYMENT_FACT_KEYS.has(f.factKey) &&
+      f.value !== null &&
+      String(f.value).trim().length > 0,
+  );
+
+  const paymentParams: Record<string, unknown> = {};
+  if (binding.clientId) paymentParams.contactId = binding.clientId;
+  for (const f of paymentFields) {
+    paymentParams[f.factKey] = f.value;
+  }
+
+  actions.push(
+    makeAction(
+      "create_internal_note",
+      "createInternalNote",
+      "Uložit platební údaje",
+      paymentFields.length > 0
+        ? `Rozpoznáno ${paymentFields.length} platebních polí.`
+        : "Platební screenshot — údaje k ověření.",
+      {
+        ...paymentParams,
+        _imageIntakeOutputMode: "payment_details_portal_update",
+        _paymentFieldCount: paymentFields.length,
+      },
+    ),
+  );
+
+  if (binding.clientId) {
+    actions.push(
+      makeAction(
+        "attach_document",
+        "attachDocumentToClient",
+        "Přiložit platební doklad ke klientovi",
+        "Archivovat platební screenshot.",
+        { contactId: binding.clientId },
+      ),
+    );
+  }
+
+  return actions;
+}
+
+// ---------------------------------------------------------------------------
+// Fact key → contact field mapping for contact update mode
+// ---------------------------------------------------------------------------
+
+const FACT_KEY_TO_CONTACT_FIELD: Record<string, string> = {
+  first_name: "firstName",
+  last_name: "lastName",
+  client_name: "firstName",
+  birth_date: "birthDate",
+  birth_number: "personalId",
+  street: "street",
+  city: "city",
+  zip: "zip",
+  phone: "phone",
+  email: "email",
+  id_doc_first_name: "firstName",
+  id_doc_last_name: "lastName",
+  id_doc_birth_date: "birthDate",
+  id_doc_personal_id: "personalId",
+  id_doc_street: "street",
+  id_doc_city: "city",
+  id_doc_zip: "zip",
+  id_doc_email: "email",
+  id_doc_phone: "phone",
+  id_doc_title: "title",
+};
+
+const CONTACT_PATCH_FACT_KEYS = new Set(Object.keys(FACT_KEY_TO_CONTACT_FIELD));
+
+const PAYMENT_FACT_KEYS = new Set([
+  "amount",
+  "account_number",
+  "variable_symbol",
+  "due_date",
+  "recipient",
+  "payment_method",
+  "iban",
+  "bank_code",
+  "specific_symbol",
+  "payment_note",
+  "balance_or_amount",
+]);
+
 function whyThisAction(outputMode: ImageOutputMode, classification: InputClassificationResult): string {
   switch (outputMode) {
     case "identity_contact_intake":
       return "Rozpoznán osobní doklad — připravíme návrh nového klienta z extrahovaných údajů.";
     case "client_message_update":
-      return `Obrázek byl rozpoznán jako screenshot klientské komunikace (confidence ${(classification.confidence * 100).toFixed(0)}%). Navrhujeme zaznamenat obsah a případně vytvořit úkol.`;
+      return "Rozpoznán screenshot klientské komunikace. Navrhujeme zaznamenat obsah a případně vytvořit úkol.";
     case "structured_image_fact_intake":
-      return `Obrázek byl rozpoznán jako ${inputTypeLabel(classification.inputType)} (confidence ${(classification.confidence * 100).toFixed(0)}%). Navrhujeme uložit klíčová fakta.`;
+      return `Rozpoznán ${inputTypeLabel(classification.inputType)}. Navrhujeme uložit klíčová fakta.`;
+    case "contact_update_from_image":
+      return "Rozpoznány klientské údaje vhodné k aktualizaci v CRM. Připravili jsme návrh změn.";
+    case "payment_details_portal_update":
+      return "Rozpoznány platební údaje. Připravili jsme náhled k uložení.";
     case "supporting_reference_image":
-      return "Obrázek byl rozpoznán jako referenční podklad — není vhodné ho násilně strukturovat. Doporučujeme přiložit ke klientovi nebo archivovat.";
+      return "Obrázek vypadá jako referenční podklad. Doporučujeme přiložit ke klientovi nebo archivovat.";
     case "ambiguous_needs_input":
-      return `Vstup je nejasný (confidence ${(classification.confidence * 100).toFixed(0)}%) nebo klient není jistě identifikován. Poradce musí potvrdit, jak pokračovat.`;
+      return "Vstup není jednoznačný nebo klient není identifikován. Upřesněte záměr.";
     case "no_action_archive_only":
       return "Obrázek neobsahuje použitelné CRM informace. Žádná akce není doporučena.";
   }
@@ -238,8 +433,9 @@ export function buildActionPlanV2(
   binding: ClientBindingResult,
   factBundle: ExtractedFactBundle,
   draftReplyText: string | null,
+  intent?: ParsedExplicitIntent | null,
 ): ImageIntakeActionPlan {
-  const base = buildActionPlanV1(classification, binding);
+  const base = buildActionPlanV1(classification, binding, factBundle, intent);
 
   // Enrich note actions with extracted facts summary
   if (factBundle.facts.length > 0) {
@@ -310,8 +506,9 @@ export function buildActionPlanV3(
   factBundle: ExtractedFactBundle,
   draftReplyText: string | null,
   reviewHandoff: ReviewHandoffRecommendation | null,
+  intent?: ParsedExplicitIntent | null,
 ): ImageIntakeActionPlan {
-  const base = buildActionPlanV2(classification, binding, factBundle, draftReplyText);
+  const base = buildActionPlanV2(classification, binding, factBundle, draftReplyText, intent);
 
   if (!reviewHandoff?.recommended) return base;
 
@@ -353,8 +550,10 @@ export function buildActionPlanV3(
 export function buildActionPlanV1(
   classification: InputClassificationResult,
   binding: ClientBindingResult,
+  factBundle?: ExtractedFactBundle,
+  intent?: ParsedExplicitIntent | null,
 ): ImageIntakeActionPlan {
-  const outputMode = resolveOutputMode(classification, binding);
+  const outputMode = resolveOutputMode(classification, binding, intent);
 
   let recommendedActions: ImageIntakeActionCandidate[] = [];
 
@@ -368,13 +567,16 @@ export function buildActionPlanV1(
     case "identity_contact_intake":
       recommendedActions = [];
       break;
+    case "contact_update_from_image":
+      recommendedActions = planContactUpdateFromImage(binding, factBundle ?? { facts: [], missingFields: [], ambiguityReasons: [], extractionSource: "stub" });
+      break;
+    case "payment_details_portal_update":
+      recommendedActions = planPaymentPortalUpdate(binding, factBundle ?? { facts: [], missingFields: [], ambiguityReasons: [], extractionSource: "stub" });
+      break;
     case "supporting_reference_image":
       recommendedActions = planSupportingReference(binding);
       break;
     case "ambiguous_needs_input":
-      // Fix 2: always offer create_internal_note as a safe fallback so the advisor
-      // has at least one actionable button even when the client is unknown.
-      // No contactId required — the note is unlinked until the advisor resolves the client.
       recommendedActions = [
         makeAction(
           "create_internal_note",
@@ -431,8 +633,9 @@ export function buildActionPlanV4(
   draftReplyText: string | null,
   reviewHandoff: ReviewHandoffRecommendation | null,
   documentSetResult: DocumentMultiImageResult | null,
+  intent?: ParsedExplicitIntent | null,
 ): ImageIntakeActionPlan {
-  const base = buildActionPlanV3(classification, binding, factBundle, draftReplyText, reviewHandoff);
+  const base = buildActionPlanV3(classification, binding, factBundle, draftReplyText, reviewHandoff, intent);
 
   if (!documentSetResult) return base;
 

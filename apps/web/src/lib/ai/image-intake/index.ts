@@ -202,6 +202,10 @@ export {
 // --- CRM-aware binding v2 (Phase 3) + case binding v2 (Phase 4) ---
 export { resolveClientBindingV2, resolveCaseBindingV2, toCaseBindingResult } from "./binding-v2";
 
+// --- Explicit intent parser ---
+export { parseExplicitIntent, textSignalsCrmExtractionIntent, textSignalsPaymentIntent, textSignalsNoteOrTaskIntent } from "./explicit-intent-parser";
+export type { ParsedExplicitIntent, ExplicitIntentVerb, IntentTargetDestination, IntentTargetOperation } from "./explicit-intent-parser";
+
 // --- Draft reply preview (Phase 3) ---
 export {
   checkDraftReplyEligibility,

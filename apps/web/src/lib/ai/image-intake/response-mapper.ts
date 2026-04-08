@@ -146,8 +146,41 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       return `${intro}${factText}${missing}`;
     }
 
+    case "contact_update_from_image": {
+      const client = clientLabel ? ` klienta **${clientLabel}**` : "";
+      const factLines = buildFactsSummaryLines(result.response.factBundle, 8);
+      const factText = factLines.length > 0 ? `\n\nÚdaje k aktualizaci:\n${factLines.map((l) => `• ${l}`).join("\n")}` : "";
+      const confirmNote = "\n\nCitlivé údaje (rodné číslo, datum narození) vyžadují vaše potvrzení.";
+      return `Připravil jsem návrh aktualizace údajů${client} na základě nahraných obrázků.${factText}${confirmNote}`;
+    }
+
+    case "payment_details_portal_update": {
+      const client = clientLabel ? ` pro klienta **${clientLabel}**` : "";
+      const paymentFacts = result.response.factBundle.facts.filter(
+        (f) => ["amount", "account_number", "variable_symbol", "due_date", "recipient", "iban", "bank_code"].includes(f.factKey),
+      );
+      const factLines = paymentFacts
+        .filter((f) => f.value !== null)
+        .slice(0, 6)
+        .map((f) => {
+          const label = f.factKey === "amount" ? "Částka"
+            : f.factKey === "account_number" ? "Číslo účtu"
+            : f.factKey === "variable_symbol" ? "VS"
+            : f.factKey === "due_date" ? "Splatnost"
+            : f.factKey === "recipient" ? "Příjemce"
+            : f.factKey === "iban" ? "IBAN"
+            : f.factKey;
+          return `• ${label}: ${String(f.value).slice(0, 80)}`;
+        });
+      const factText = factLines.length > 0 ? `\n\nRozpoznané platební údaje:\n${factLines.join("\n")}` : "";
+      const status = paymentFacts.length > 0
+        ? "\n\nNáhled je připraven k ověření a uložení."
+        : "\n\nPlatební údaje nebyly plně rozpoznány — ověřte obsah screenshotu.";
+      return `Rozpoznal jsem platební screenshot${client}.${factText}${status}`;
+    }
+
     default:
-      return "Obrázek byl zpracován v režimu image intake.";
+      return "Obrázek byl zpracován.";
   }
 }
 
@@ -190,14 +223,26 @@ export function mapImageIntakeToAssistantResponse(
     "DOCUMENT_SET_REVIEW_CANDIDATE",
     "DOCUMENT_SET_MIXED",
     "DOCUMENT_SET_INSUFFICIENT",
+    "LANE_VIOLATION",
+    "BINDING_VIOLATION",
+    "GUARDRAIL_",
+    "SAFETY_FLAG_",
+  ];
+
+  const INTERNAL_CONTENT_PATTERNS = [
+    /confidence\s+\d+%/i,
+    /^[A-Z_]{3,}:/,
+    /safetyFlag/i,
+    /outputMode/i,
+    /imageIntakeOutputMode/i,
   ];
 
   function sanitizeWarning(w: string): string | null {
     if (INTERNAL_FLAG_PREFIXES.some((p) => w.startsWith(p))) return null;
+    if (INTERNAL_CONTENT_PATTERNS.some((p) => p.test(w))) return null;
     if (w.startsWith("BINDING_VIOLATION")) {
       return identityMode ? null : "Bez jistého klienta nelze připravit write-ready plán.";
     }
-    if (w.startsWith("LANE_VIOLATION")) return null;
     return w;
   }
 
@@ -326,6 +371,8 @@ export function mapImageIntakeToAssistantResponse(
     : `Image intake (${response.actionPlan.outputMode})`;
 
   const suggestedActions: ActionPayload[] = [];
+  const outputMode = response.actionPlan.outputMode;
+
   if (identityMode) {
     const draft = mapFactBundleToCreateContactDraft(response.factBundle);
     const q = buildContactNewPrefillQuery(draft);
@@ -350,6 +397,30 @@ export function mapImageIntakeToAssistantResponse(
         executionMode: "manual_only",
       });
     }
+  }
+
+  if (outputMode === "contact_update_from_image" && response.clientBinding.clientId) {
+    suggestedActions.push({
+      actionType: "open_portal_path",
+      label: "Otevřít kartu klienta",
+      entityType: "portal",
+      entityId: response.clientBinding.clientId,
+      payload: { path: `/portal/contacts/${response.clientBinding.clientId}` },
+      requiresConfirmation: false,
+      executionMode: "manual_only",
+    });
+  }
+
+  if (outputMode === "payment_details_portal_update" && response.clientBinding.clientId) {
+    suggestedActions.push({
+      actionType: "show_portal_payment_preview",
+      label: "Náhled platby",
+      entityType: "payment",
+      entityId: response.clientBinding.clientId,
+      payload: { contactId: response.clientBinding.clientId },
+      requiresConfirmation: false,
+      executionMode: "manual_only",
+    });
   }
 
   return {

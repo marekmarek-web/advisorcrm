@@ -33,8 +33,9 @@ import type {
 // ---------------------------------------------------------------------------
 
 const CLIENT_NAME_PATTERNS = [
-  /(?:ke\s+klientovi|pro\s+klienta|klientovi|klienta|klient)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})/i,
-  /(?:přiřaď|přiřadit|ulož|uložit|připoj|připojit).*(?:klientovi|klienta|klient)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})/i,
+  /(?:ke\s+klientovi|pro\s+klienta|pod\s+klienta|pod\s+klientem|u\s+klienta|klientovi|klienta|klient)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})/i,
+  /(?:přiřaď|přiřadit|ulož|uložit|připoj|připojit|doplň|doplnit|pošli|odešli).*(?:klientovi|klienta|klientem|klient)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})/i,
+  /(?:kontaktu|kontakt|pro\s+kontakt)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})/i,
 ];
 
 /**
@@ -179,8 +180,16 @@ async function bindFromNameSignal(
 
 /**
  * Resolves client binding v2.
- * Priority: session lock → active session → UI context →
- *           explicit name from user text → CRM name from image → unresolved.
+ *
+ * Priority (production-critical):
+ * A. Explicit client name from user text (highest — advisor typed the name)
+ * B. Identity extracted from document (via nameSignalFromImage)
+ * C. Session lock / active session / UI context
+ * D. Weak CRM signal from image only
+ * E. Unresolved
+ *
+ * Explicit text always wins over route/session context because the advisor
+ * may have a different client open but explicitly names the target.
  */
 export async function resolveClientBindingV2(
   request: ImageIntakeRequest,
@@ -188,16 +197,10 @@ export async function resolveClientBindingV2(
   nameSignalFromImage: string | null,
   nameSignalFromText?: string | null,
 ): Promise<ClientBindingResult> {
-  // 1. Session-based (always preferred, free)
-  const sessionBinding = bindFromSession(session, request);
-  if (sessionBinding) return sessionBinding;
-
-  // 2. Explicit client name from user text (stronger than image-derived signal)
+  // A. Explicit client name from user text — HIGHEST PRIORITY
   if (nameSignalFromText) {
     const textBinding = await bindFromNameSignal(nameSignalFromText, request.tenantId);
     if (textBinding) {
-      // Upgrade single match from weak_candidate to bound_client_confident
-      // when the advisor explicitly wrote the name
       if (textBinding.state === "weak_candidate" && textBinding.clientId) {
         return {
           ...textBinding,
@@ -207,17 +210,34 @@ export async function resolveClientBindingV2(
           warnings: [],
         };
       }
+      if (textBinding.state === "multiple_candidates") {
+        return { ...textBinding, source: "explicit_user_text" };
+      }
       return { ...textBinding, source: "explicit_user_text" };
     }
+    // Explicit name given but no CRM match → explicit not-found
+    return {
+      state: "insufficient_binding",
+      clientId: null,
+      clientLabel: null,
+      confidence: 0.0,
+      candidates: [],
+      source: "explicit_user_text",
+      warnings: [`Klient "${nameSignalFromText}" nebyl nalezen v CRM — zkontrolujte jméno.`],
+    };
   }
 
-  // 3. CRM lookup from image signal (only when no session/text context)
+  // B. Session-based (when no explicit text override)
+  const sessionBinding = bindFromSession(session, request);
+  if (sessionBinding) return sessionBinding;
+
+  // C. CRM lookup from image signal (only when no session/text context)
   if (nameSignalFromImage) {
     const crmBinding = await bindFromNameSignal(nameSignalFromImage, request.tenantId);
     if (crmBinding) return crmBinding;
   }
 
-  // 4. Unresolved
+  // D. Unresolved
   return {
     state: "insufficient_binding",
     clientId: null,
