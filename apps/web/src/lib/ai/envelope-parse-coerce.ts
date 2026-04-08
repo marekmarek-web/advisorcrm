@@ -277,24 +277,32 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       if (candidate === "unsupported_or_unknown") continue;
       if (normalized.includes(candidate) || candidate.includes(normalized)) return candidate;
     }
-    // Keyword-based fuzzy match for common Czech long-form descriptions
+    // Keyword-based fuzzy match for common Czech long-form descriptions.
+    // Strip diacritics for easier matching.
     const lower = normalized;
-    if (lower.includes("zivotni") || lower.includes("životní") || lower.includes("pojistna_smlouva") || lower.includes("pojistná_smlouva")) {
-      if (lower.includes("dodatek") || lower.includes("zmena") || lower.includes("změna") || lower.includes("servis")) return "insurance_policy_change_or_service_doc";
-      if (lower.includes("investicni") || lower.includes("investiční") || lower.includes("dip") || lower.includes("dps")) return "life_insurance_investment_contract";
-      if (lower.includes("navrh") || lower.includes("návrh") || lower.includes("nabidka") || lower.includes("nabídka") || lower.includes("offer")) return "life_insurance_proposal";
+    const ascii = lower
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9_]/g, "_");
+    const hasKw = (...kws: string[]) => kws.some((kw) => lower.includes(kw) || ascii.includes(kw));
+    if (hasKw("zivotni", "zivotního", "pojistna_smlouva", "pojistne_smlouvy", "pojisteni") || lower.includes("životní") || lower.includes("pojistná")) {
+      if (hasKw("dodatek", "zmena", "zmen", "servis", "change")) return "insurance_policy_change_or_service_doc";
+      if (hasKw("investicni", "investicnich", "dip", "dps", "investicn")) return "life_insurance_investment_contract";
+      if (hasKw("navrh", "nabidka", "offer", "nabidku", "uzavreni", "uzavreni_pojistne")) return "life_insurance_proposal";
       return "life_insurance_contract";
     }
-    if (lower.includes("uverova") || lower.includes("úvěrová") || lower.includes("uver") || lower.includes("úvěr") || lower.includes("spotrebitelsky") || lower.includes("spotřebitelský")) return "consumer_loan_contract";
-    if (lower.includes("hypoteka") || lower.includes("hypotéka") || lower.includes("hypotecni") || lower.includes("hypoteční")) return "mortgage_document";
-    if (lower.includes("pojisteni") || lower.includes("pojistění") || lower.includes("pojistna") || lower.includes("pojistná") || lower.includes("insurance")) {
-      if (lower.includes("odpoved") || lower.includes("odpověd") || lower.includes("majet") || lower.includes("vozidl") || lower.includes("ruceni") || lower.includes("ručení") || lower.includes("podnikat")) return "nonlife_insurance_contract";
+    if (hasKw("uverova", "uver", "spotrebitelsky", "spotrebitelskem", "loan_contract", "smlouva_o_uveru")) return "consumer_loan_contract";
+    if (hasKw("hypoteka", "hypotecni", "hypotecni", "mortgage")) return "mortgage_document";
+    if (hasKw("pojisteni", "pojistna", "pojistne", "insurance", "pojistovaci")) {
+      if (hasKw("odpoved", "majet", "vozidl", "ruceni", "podnikat", "nonlife", "nezivotn")) return "nonlife_insurance_contract";
+      if (hasKw("navrh", "nabidka", "offer")) return "life_insurance_proposal";
       return "nonlife_insurance_contract";
     }
-    if (lower.includes("danove") || lower.includes("daňové") || lower.includes("dan") || lower.includes("daň") || lower.includes("tax_return")) return "corporate_tax_return";
-    if (lower.includes("vyplatni") || lower.includes("výplatní") || lower.includes("payslip") || lower.includes("mzda") || lower.includes("payroll")) return "payslip_document";
-    if (lower.includes("investicni") || lower.includes("investiční") || lower.includes("upis") || lower.includes("úpis") || lower.includes("investment")) return "investment_subscription_document";
-    if (lower.includes("penzijni") || lower.includes("penzijní") || lower.includes("pension") || lower.includes("dps") || lower.includes("dip")) return "pension_contract";
+    if (hasKw("danove_priznani", "dan_z_prijmu", "dan_z_pr", "tax_return", "dppo", "dpfo", "dph")) return "corporate_tax_return";
+    if (hasKw("vyplatni", "payslip", "mzda", "payroll", "vyplatni_listek")) return "payslip_document";
+    if (hasKw("investicni_smlouva", "upis", "investment_subscription", "investicni_sluzb")) return "investment_subscription_document";
+    if (hasKw("penzijni", "pension", "dps_smlouva", "pp_smlouva")) return "pension_contract";
+    if (hasKw("smlouva_o_poskyto", "service_agreement", "sluzbach")) return "service_agreement";
     return null;
   };
 
