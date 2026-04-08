@@ -6,14 +6,15 @@
  *   entityType = "image_intake_intent_assist_cache"
  *   createdAt < NOW() - intentAssistCacheTtlMs (default 30 min)
  *
- * Schedule: every 2 hours ("0 *\/2 * * *") — aligns with 30-min default TTL
- * so that stale cache entries are cleaned up within a reasonable window.
+ * Schedule (vercel.json): once daily — Vercel Hobby allows only ≤1 run per day per cron.
+ * With daily cleanup, stale intent-assist cache rows may live longer than the 30-min TTL until
+ * the next run; acceptable trade-off on Hobby. For Pro, you can use a more frequent schedule.
  *
  * Configurable via IMAGE_INTAKE_INTENT_ASSIST_CACHE_TTL_HOURS env var or runtime override.
  *
- * Phase 11 rationale: the main cleanup cron runs 1x daily which left intent-assist
- * cache entries alive for up to 24h past their TTL, causing unnecessary DB bloat.
- * This dedicated endpoint solves that without touching artifact cleanup schedule.
+ * Phase 11 rationale: separate from daily artifact cleanup; on Hobby both run at most once
+ * per day per Vercel cron entry, so this endpoint still trims cache when cross-session
+ * persistence is enabled.
  *
  * Safety:
  * - Only deletes rows with entityType = "image_intake_intent_assist_cache" — no other data
