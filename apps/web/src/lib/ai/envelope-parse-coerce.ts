@@ -44,7 +44,11 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   change_request: "life_insurance_change_request",
   // loan
   loan: "consumer_loan_contract",
+  loan_contract: "consumer_loan_contract",
+  loan_agreement: "consumer_loan_contract",
+  credit_agreement: "consumer_loan_contract",
   uverova_smlouva: "consumer_loan_contract",
+  smlouva_o_uveru: "consumer_loan_contract",
   úvěrová_smlouva: "consumer_loan_contract",
   spotrebitelsky_uver: "consumer_loan_contract",
   spotřebitelský_úvěr: "consumer_loan_contract",
@@ -296,7 +300,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       if (hasKw("navrh", "nabidka", "offer", "nabidku", "uzavreni", "uzavreni_pojistne")) return "life_insurance_proposal";
       return "life_insurance_contract";
     }
-    if (hasKw("uverova", "uver", "spotrebitelsky", "spotrebitelskem", "loan_contract", "smlouva_o_uveru")) return "consumer_loan_contract";
+    if (hasKw("uverova", "uver", "spotrebitelsky", "spotrebitelskem", "loan_contract", "loan_agreement", "loan", "credit_agreement", "smlouva_o_uveru")) return "consumer_loan_contract";
     if (hasKw("hypoteka", "hypotecni", "hypotecni", "mortgage")) return "mortgage_document";
     if (hasKw("pojisteni", "pojistna", "pojistne", "insurance", "pojistovaci")) {
       if (hasKw("odpoved", "majet", "vozidl", "ruceni", "podnikat", "nonlife", "nezivotn")) return "nonlife_insurance_contract";
