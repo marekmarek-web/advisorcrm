@@ -477,11 +477,15 @@ export default function ContractReviewListPage() {
                                 <AiAssistantBrandIcon size={16} className="shrink-0" />
                                 Extrahovaná data
                               </span>
-                              {row.confidence != null && (
-                                <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-200">
-                                  Jistota {Math.round(row.confidence * 100)}%
-                                </span>
-                              )}
+                              {row.confidence != null && (() => {
+                                const raw = row.confidence;
+                                const pct = Math.round((raw > 1 ? Math.min(1, raw / 100) : Math.max(0, Math.min(1, raw))) * 100);
+                                return (
+                                  <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-200">
+                                    Jistota {pct}%
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {insights.map((chip, idx) => (

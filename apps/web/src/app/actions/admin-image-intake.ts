@@ -230,3 +230,117 @@ export async function clearImageIntakeConfigValue(
     return { ok: false, error: err instanceof Error ? err.message : "Neznámá chyba." };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 10: Household ambiguity resolution flow
+// ---------------------------------------------------------------------------
+
+import { logAudit } from "@/lib/audit";
+import type { HouseholdMember } from "@/lib/ai/image-intake/types";
+
+export type HouseholdResolutionResult = {
+  ok: boolean;
+  resolvedClientId: string | null;
+  resolvedClientLabel: string | null;
+  auditRef: string | null;
+  error?: string;
+};
+
+/**
+ * Resolves household ambiguity by explicitly selecting a household member as the
+ * primary binding target for a given image intake session/context.
+ *
+ * Safety rules:
+ * - Requires advisor-level permission (settings:write)
+ * - The resolved clientId must be a current member of the household
+ * - Resolution is surfaced in audit log
+ * - Does NOT auto-pick without explicit clientId — empty/null = keep ambiguity
+ * - No silent write to CRM; UI must subsequently use the returned clientId for any action
+ *
+ * @param householdId     The household where ambiguity was detected
+ * @param members         Current household members (from resolveHouseholdBinding result)
+ * @param selectedClientId The clientId the advisor explicitly chose
+ * @param intakeContext   Optional: intake session ID or context label for audit trail
+ */
+export async function resolveHouseholdAmbiguity(
+  householdId: string,
+  members: HouseholdMember[],
+  selectedClientId: string,
+  intakeContext?: string,
+): Promise<HouseholdResolutionResult> {
+  try {
+    const { auth, membership } = await requireImageIntakeAdmin();
+
+    // Validate that selectedClientId is actually a member of this household
+    const member = members.find(
+      (m) => m.clientId === selectedClientId && m.householdId === householdId,
+    );
+    if (!member) {
+      return {
+        ok: false,
+        resolvedClientId: null,
+        resolvedClientLabel: null,
+        auditRef: null,
+        error: `Klient ${selectedClientId} není členem domácnosti ${householdId}.`,
+      };
+    }
+
+    const { randomUUID } = await import("crypto");
+    const auditRef = randomUUID();
+
+    await logAudit({
+      tenantId: membership.tenantId,
+      userId: auth.userId,
+      action: "image_intake_household_ambiguity_resolved",
+      entityType: "household",
+      entityId: householdId,
+      meta: {
+        householdId,
+        selectedClientId,
+        selectedClientLabel: member.clientLabel,
+        intakeContext: intakeContext ?? null,
+        memberCount: members.length,
+        auditRef,
+      },
+    });
+
+    return {
+      ok: true,
+      resolvedClientId: selectedClientId,
+      resolvedClientLabel: member.clientLabel,
+      auditRef,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      resolvedClientId: null,
+      resolvedClientLabel: null,
+      auditRef: null,
+      error: err instanceof Error ? err.message : "Neznámá chyba při řešení ambiguity domácnosti.",
+    };
+  }
+}
+
+/**
+ * Returns the household binding state for a given client — useful for admin UI to surface
+ * ambiguity before initiating a resolution flow.
+ *
+ * Read-only; never throws.
+ */
+export async function getHouseholdBindingStateForAdmin(
+  clientId: string,
+  activeClientId?: string | null,
+): Promise<{ ok: boolean; result: import("@/lib/ai/image-intake/types").HouseholdBindingResult | null; error?: string }> {
+  try {
+    const { membership } = await requireImageIntakeAdmin();
+    const { resolveHouseholdBinding } = await import("@/lib/ai/image-intake/binding-household");
+    const result = await resolveHouseholdBinding(membership.tenantId, clientId, activeClientId);
+    return { ok: true, result };
+  } catch (err) {
+    return {
+      ok: false,
+      result: null,
+      error: err instanceof Error ? err.message : "Chyba při načítání stavu domácnosti.",
+    };
+  }
+}

@@ -1,6 +1,11 @@
 /**
- * Odvodí výroční den (stejný měsíc/den jako počátek smlouvy) pro nejbližší
- * kalendářní výskyt v aktuálním nebo následujícím roce — lokální datum jako v rules-engine.
+ * Termínové utility pro wizard výpovědí.
+ *
+ * Exporty:
+ *  - parseIsoYmd
+ *  - suggestedAnniversaryFromContractStart  – nejbližší výroční den od dnešku
+ *  - computeTwoMonthDeadline               – limit "do 2 měsíců od sjednání"
+ *  - computeSuggestedRequestedDate         – navržené datum účinnosti dle modu
  */
 
 function pad2(n: number): string {
@@ -48,4 +53,31 @@ export function suggestedAnniversaryFromContractStart(contractStartIso: string, 
     }
   }
   return null;
+}
+
+/**
+ * Limitní datum výpovědi „do 2 měsíců od sjednání" — vrátí ISO YYYY-MM-DD.
+ * Datum je datum+2 měsíce (den v měsíci se zachová, pokud v daném měsíci existuje).
+ */
+export function computeTwoMonthDeadline(contractStartIso: string): string | null {
+  const p = parseIsoYmd(contractStartIso);
+  if (!p) return null;
+  const start = new Date(p.y, p.m - 1, p.d);
+  start.setHours(0, 0, 0, 0);
+  const deadline = new Date(start);
+  deadline.setMonth(deadline.getMonth() + 2);
+  return toIsoLocal(deadline);
+}
+
+/**
+ * True pokud je dnešní datum ≤ deadline (2 měsíce od počátku).
+ */
+export function isTwoMonthWindowOpen(contractStartIso: string, now: Date = new Date()): boolean {
+  const deadline = computeTwoMonthDeadline(contractStartIso);
+  if (!deadline) return false;
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(deadline);
+  d.setHours(0, 0, 0, 0);
+  return today <= d;
 }

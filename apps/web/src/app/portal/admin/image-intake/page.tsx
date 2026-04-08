@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * Admin control surface for AI Photo / Image Intake (Phase 8).
+ * Admin control surface for AI Photo / Image Intake (Phase 8 / Phase 11).
  *
  * Provides:
  * - Feature flag toggles (tenant-scoped, global_admin only)
  * - Runtime config overrides (TTL, limits, enable flags)
  * - Intent-assist cache stats
+ * - Household ambiguity resolution form (Phase 11)
  * - Read-only config summary with source attribution
  *
  * Access: requires settings:write permission (same as ai-quality page).
@@ -19,10 +20,13 @@ import {
   setImageIntakeFeatureFlag,
   clearImageIntakeFeatureFlag,
   setImageIntakeConfigValue,
+  getHouseholdBindingStateForAdmin,
+  resolveHouseholdAmbiguity,
   type ImageIntakeAdminState,
 } from "@/app/actions/admin-image-intake";
+import type { HouseholdBindingResult } from "@/lib/ai/image-intake/types";
 
-type ActiveTab = "flags" | "config" | "cache";
+type ActiveTab = "flags" | "config" | "cache" | "household";
 
 function Badge({ on }: { on: boolean }) {
   return (
@@ -63,6 +67,17 @@ export default function ImageIntakeAdminPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("flags");
+
+  // Household resolution state
+  const [householdClientId, setHouseholdClientId] = useState("");
+  const [householdActiveClientId, setHouseholdActiveClientId] = useState("");
+  const [householdLookup, setHouseholdLookup] = useState<HouseholdBindingResult | null>(null);
+  const [householdLookupLoading, setHouseholdLookupLoading] = useState(false);
+  const [householdLookupError, setHouseholdLookupError] = useState<string | null>(null);
+  const [householdSelectedMemberId, setHouseholdSelectedMemberId] = useState<string>("");
+  const [householdResolving, setHouseholdResolving] = useState(false);
+  const [householdResolveResult, setHouseholdResolveResult] = useState<string | null>(null);
+  const [householdResolveError, setHouseholdResolveError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -123,6 +138,50 @@ export default function ImageIntakeAdminPage() {
     setSaving(null);
   }, [load]);
 
+  const handleHouseholdLookup = useCallback(async () => {
+    if (!householdClientId.trim()) return;
+    setHouseholdLookupLoading(true);
+    setHouseholdLookupError(null);
+    setHouseholdLookup(null);
+    setHouseholdSelectedMemberId("");
+    setHouseholdResolveResult(null);
+    setHouseholdResolveError(null);
+    const res = await getHouseholdBindingStateForAdmin(
+      householdClientId.trim(),
+      householdActiveClientId.trim() || undefined,
+    );
+    if (res.ok && res.result) {
+      setHouseholdLookup(res.result);
+    } else {
+      setHouseholdLookupError(res.error ?? "Chyba při načítání stavu domácnosti.");
+    }
+    setHouseholdLookupLoading(false);
+  }, [householdClientId, householdActiveClientId]);
+
+  const handleHouseholdResolve = useCallback(async () => {
+    if (!householdLookup || !householdSelectedMemberId) return;
+    const householdId = householdLookup.householdMembers[0]?.householdId;
+    if (!householdId) return;
+    setHouseholdResolving(true);
+    setHouseholdResolveError(null);
+    setHouseholdResolveResult(null);
+    const res = await resolveHouseholdAmbiguity(
+      householdId,
+      householdLookup.householdMembers,
+      householdSelectedMemberId,
+      `admin_panel:${householdClientId}`,
+    );
+    if (res.ok) {
+      setHouseholdResolveResult(
+        `Ambiguita vyřešena: ${res.resolvedClientLabel ?? res.resolvedClientId} (audit: ${res.auditRef ?? "n/a"})`,
+      );
+      setHouseholdLookup(null);
+    } else {
+      setHouseholdResolveError(res.error ?? "Řešení selhalo.");
+    }
+    setHouseholdResolving(false);
+  }, [householdLookup, householdSelectedMemberId, householdClientId]);
+
   if (loading) {
     return (
       <div className="p-8 text-[color:var(--wp-text-secondary)] text-sm">Načítám…</div>
@@ -147,8 +206,8 @@ export default function ImageIntakeAdminPage() {
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-black text-[color:var(--wp-text)]">Image Intake — Admin</h1>
-        <div className="flex gap-2">
-          {(["flags", "config", "cache"] as ActiveTab[]).map((t) => (
+        <div className="flex gap-2 flex-wrap">
+          {(["flags", "config", "cache", "household"] as ActiveTab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -159,7 +218,7 @@ export default function ImageIntakeAdminPage() {
                   : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-card-border)]"
               }`}
             >
-              {t === "flags" ? "Feature flags" : t === "config" ? "Runtime config" : "Cache"}
+              {t === "flags" ? "Feature flags" : t === "config" ? "Runtime config" : t === "cache" ? "Cache" : "Household"}
             </button>
           ))}
         </div>
@@ -298,6 +357,153 @@ export default function ImageIntakeAdminPage() {
           <p className="text-xs text-[color:var(--wp-text-secondary)]">
             Cache je in-process (neresetuje se automaticky, resetuje se restartem serveru nebo přirozeným TTL eviction).
           </p>
+        </div>
+      )}
+
+      {/* Household ambiguity resolution tab (Phase 11) */}
+      {activeTab === "household" && (
+        <div className="space-y-5">
+          <SectionTitle>Household — řešení ambiguity</SectionTitle>
+          <p className="text-xs text-[color:var(--wp-text-secondary)]">
+            Slouží k ručnímu vyřešení případu, kdy image intake detekoval více členů domácnosti bez jednoznačné priority.
+            Výběr je auditován a nezmění CRM — slouží jen jako referenční signál pro daný intake kontext.
+          </p>
+
+          {/* Lookup form */}
+          <div className="space-y-3 rounded-xl border border-[color:var(--wp-surface-card-border)] p-4">
+            <p className="text-sm font-semibold text-[color:var(--wp-text)]">1. Vyhledat stav domácnosti klienta</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                type="text"
+                placeholder="Client ID (UUID)"
+                value={householdClientId}
+                onChange={(e) => setHouseholdClientId(e.target.value)}
+                className="flex-1 rounded-lg border border-[color:var(--wp-surface-card-border)] px-3 py-2 text-sm bg-[color:var(--wp-surface)] text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-secondary)]"
+              />
+              <input
+                type="text"
+                placeholder="Active context client ID (volitelné)"
+                value={householdActiveClientId}
+                onChange={(e) => setHouseholdActiveClientId(e.target.value)}
+                className="flex-1 rounded-lg border border-[color:var(--wp-surface-card-border)] px-3 py-2 text-sm bg-[color:var(--wp-surface)] text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-secondary)]"
+              />
+              <button
+                type="button"
+                disabled={householdLookupLoading || !householdClientId.trim()}
+                onClick={handleHouseholdLookup}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-indigo-700 whitespace-nowrap"
+              >
+                {householdLookupLoading ? "Načítám…" : "Vyhledat"}
+              </button>
+            </div>
+            {householdLookupError && (
+              <p className="text-xs text-red-600">{householdLookupError}</p>
+            )}
+          </div>
+
+          {/* Lookup result + resolution */}
+          {householdLookup && (
+            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-amber-900">
+                  Stav domácnosti:{" "}
+                  <span className="font-mono">{householdLookup.state}</span>
+                </p>
+                <span className="text-xs text-amber-700">
+                  Jistota: {Math.round(householdLookup.confidence * 100)}%
+                </span>
+              </div>
+
+              {householdLookup.ambiguityNote && (
+                <p className="text-xs text-amber-800 bg-amber-100 rounded px-3 py-2">
+                  {householdLookup.ambiguityNote}
+                </p>
+              )}
+
+              {householdLookup.householdMembers.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-amber-900">
+                    2. Vyberte správného klienta ({householdLookup.householdMembers.length} členů):
+                  </p>
+                  <div className="divide-y divide-amber-200 rounded-lg border border-amber-200 overflow-hidden">
+                    {householdLookup.householdMembers.map((member) => (
+                      <label
+                        key={member.clientId}
+                        className={`flex items-center gap-3 cursor-pointer px-4 py-3 transition-colors ${
+                          householdSelectedMemberId === member.clientId
+                            ? "bg-indigo-50"
+                            : "bg-white hover:bg-amber-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="householdMember"
+                          value={member.clientId}
+                          checked={householdSelectedMemberId === member.clientId}
+                          onChange={() => setHouseholdSelectedMemberId(member.clientId)}
+                          className="accent-indigo-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[color:var(--wp-text)] truncate">
+                            {member.clientLabel}
+                          </p>
+                          <p className="text-xs text-[color:var(--wp-text-secondary)] font-mono truncate">
+                            {member.clientId}
+                          </p>
+                          {member.role && (
+                            <p className="text-xs text-amber-700">{member.role}</p>
+                          )}
+                        </div>
+                        {householdLookup.primaryClientId === member.clientId && (
+                          <span className="text-xs font-bold text-indigo-600 shrink-0">
+                            (aktivní kontext)
+                          </span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {householdSelectedMemberId && (
+                <div className="space-y-2">
+                  <p className="text-xs text-amber-800">
+                    3. Potvrďte volbu — akce bude zaznamenána v audit logu.
+                    CRM se nezmění; výsledek slouží jako signál pro daný intake kontext.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={householdResolving}
+                    onClick={handleHouseholdResolve}
+                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-indigo-700"
+                  >
+                    {householdResolving ? "Ukládám…" : "Potvrdit výběr člena domácnosti"}
+                  </button>
+                  {householdResolveError && (
+                    <p className="text-xs text-red-600">{householdResolveError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {householdResolveResult && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 font-semibold">
+              {householdResolveResult}
+            </div>
+          )}
+
+          {/* Safe case: no ambiguity */}
+          {householdLookup && householdLookup.state === "single_client" && (
+            <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm text-[color:var(--wp-text-secondary)]">
+              Klient patří do jednoznačné vazby (single_client) — žádná ambiguita k řešení.
+            </div>
+          )}
+          {householdLookup && householdLookup.state === "no_household" && (
+            <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm text-[color:var(--wp-text-secondary)]">
+              Klient není součástí žádné domácnosti.
+            </div>
+          )}
         </div>
       )}
     </div>

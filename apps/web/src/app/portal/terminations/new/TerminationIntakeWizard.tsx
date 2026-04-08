@@ -28,7 +28,6 @@ import type { TerminationLetterBuildResult } from "@/lib/terminations/terminatio
 import { TerminationFinishOutputLayout } from "./TerminationFinishOutputLayout";
 import type { TerminationMode, TerminationReasonCode, TerminationRequestSource } from "@/lib/db/schema-for-client";
 import { modeToReasonCode, terminationDeliveryChannelLabel } from "@/lib/terminations/client";
-import type { TerminationRulesResult } from "@/lib/terminations/types";
 import { suggestedAnniversaryFromContractStart } from "@/lib/terminations/suggested-anniversary-from-contract-start";
 
 function insurerSearchItemMeta(addressLine: string | null | undefined, channelHint: string | null | undefined): string | null {
@@ -45,6 +44,10 @@ import { formatCzDate, formatIsoDateForUiCs } from "@/lib/forms/cz-date";
 import { FriendlyDateInput } from "@/components/forms/FriendlyDateInput";
 import { SearchCombobox, type SearchComboboxItem } from "@/components/ui/SearchCombobox";
 import { TerminationLetterPreviewPanel } from "./TerminationLetterPreviewPanel";
+import {
+  computeTwoMonthDeadline,
+  isTwoMonthWindowOpen,
+} from "@/lib/terminations/suggested-anniversary-from-contract-start";
 
 const MODE_OPTIONS: { value: TerminationMode; label: string }[] = [
   { value: "end_of_insurance_period", label: "Ke konci pojistného období / výročnímu dni" },
@@ -83,21 +86,6 @@ type Props = {
 };
 
 type SourceCard = "crm" | "upload" | "manual";
-
-function outcomeLabel(outcome: TerminationRulesResult["outcome"]): string {
-  switch (outcome) {
-    case "ready":
-      return "Připraveno k dalšímu kroku (generování dokumentu)";
-    case "awaiting_data":
-      return "Doplňte chybějící údaje";
-    case "review_required":
-      return "Vyžaduje ruční kontrolu";
-    case "hard_fail":
-      return "Nelze automaticky pokračovat";
-    default:
-      return outcome;
-  }
-}
 
 function cx(...parts: (string | false | undefined | null)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -195,7 +183,6 @@ export function TerminationIntakeWizard({
     () => loadedDraft?.documentBuilderExtras?.placeOverride ?? "",
   );
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ requestId: string; rules: TerminationRulesResult } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [previewNonce, setPreviewNonce] = useState(0);
   const [previewSyncBusy, setPreviewSyncBusy] = useState(false);
@@ -238,6 +225,16 @@ export function TerminationIntakeWizard({
     if (requestedEffectiveDate.trim()) return;
     setRequestedEffectiveDate(ann);
   }, [terminationMode, contractAnniversaryDate, requestedEffectiveDate]);
+
+  /** Do 2 měsíců od sjednání: předvyplnit dnešní datum jako navrhované datum odeslání, pokud je prázdné. */
+  useEffect(() => {
+    if (terminationMode !== "within_two_months_from_inception") return;
+    if (requestedEffectiveDate.trim()) return;
+    const today = new Date();
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const iso = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
+    setRequestedEffectiveDate(iso);
+  }, [terminationMode, requestedEffectiveDate]);
 
   const onSegmentChange = useCallback((seg: string) => {
     setProductSegment(seg);
@@ -511,7 +508,7 @@ export function TerminationIntakeWizard({
         setError(res.error);
         return;
       }
-      setResult({ requestId: res.requestId, rules: res.rules });
+      router.push(`/portal/terminations/${res.requestId}`);
     });
   }
 
@@ -551,6 +548,13 @@ export function TerminationIntakeWizard({
     ? formatCzDate(requestedEffectiveDate)
     : "—";
 
+  const twoMonthDeadline = contractStartDate.trim()
+    ? computeTwoMonthDeadline(contractStartDate)
+    : null;
+  const twoMonthOpen = contractStartDate.trim()
+    ? isTwoMonthWindowOpen(contractStartDate)
+    : null;
+
   const isComplete =
     Boolean(insurerQuery.trim()) &&
     Boolean(contractNumber.trim()) &&
@@ -573,90 +577,6 @@ export function TerminationIntakeWizard({
           : sourceQuick
             ? "Rychlá akce"
             : "Ruční zadání";
-
-  if (result) {
-    const { rules, requestId } = result;
-    return (
-      <div className="mx-auto max-w-2xl space-y-6 rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-        <h1 className="text-xl font-semibold text-slate-900">Žádost uložena</h1>
-        <p className="text-sm text-slate-500">
-          ID žádosti: <span className="font-mono">{requestId}</span>
-        </p>
-        <div
-          className={cx(
-            "rounded-2xl border p-4 text-sm",
-            rules.outcome === "hard_fail" && "border-red-200 bg-red-50 text-red-900",
-            rules.outcome === "review_required" && "border-amber-200 bg-amber-50 text-amber-950",
-            rules.outcome === "awaiting_data" && "border-indigo-200 bg-indigo-50 text-indigo-950",
-            rules.outcome === "ready" && "border-emerald-200 bg-emerald-50 text-emerald-950",
-          )}
-        >
-          <p className="font-semibold">{outcomeLabel(rules.outcome)}</p>
-          {rules.computedEffectiveDate ? (
-            <p className="mt-2">
-              Navrhované datum účinnosti: {formatIsoDateForUiCs(rules.computedEffectiveDate)}
-            </p>
-          ) : null}
-          {rules.reviewRequiredReason ? <p className="mt-2">{rules.reviewRequiredReason}</p> : null}
-          {rules.missingFields.length > 0 ? (
-            <ul className="mt-2 list-disc pl-5">
-              {rules.missingFields.map((m) => (
-                <li key={m.field}>{m.labelCs}</li>
-              ))}
-            </ul>
-          ) : null}
-          {rules.requiredAttachments.length > 0 ? (
-            <div className="mt-2">
-              <p className="font-medium">Přílohy</p>
-              <ul className="list-disc pl-5">
-                {rules.requiredAttachments.map((a) => (
-                  <li key={a.requirementCode}>
-                    {a.label}
-                    {a.required ? " (povinné)" : " (doporučené)"}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-slate-900">Náhled dokumentu</h2>
-          <TerminationLetterPreviewPanel requestId={requestId} />
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href={`/portal/terminations/${requestId}`}
-            className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white min-h-[44px] inline-flex items-center"
-          >
-            Detail žádosti
-          </Link>
-          {contactId ? (
-            <Link
-              href={`/portal/contacts/${contactId}`}
-              className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white min-h-[44px] inline-flex items-center"
-            >
-              Zpět na kontakt
-            </Link>
-          ) : (
-            <Link
-              href="/portal/contacts"
-              className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white min-h-[44px] inline-flex items-center"
-            >
-              Na kontakty
-            </Link>
-          )}
-          <Link
-            href="/portal/terminations/new"
-            className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold min-h-[44px] inline-flex items-center"
-          >
-            Nová žádost
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   const stepper = (
     <div className="grid gap-3 md:grid-cols-3">
@@ -1262,7 +1182,7 @@ export function TerminationIntakeWizard({
                   disabled={!canWrite || isPending}
                   className="inline-flex h-11 min-h-[44px] items-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 disabled:opacity-50"
                 >
-                  Exportovat PDF
+                  Dokončit žádost
                   <ChevronRight className="h-4 w-4" />
                 </button>
               ) : null}
