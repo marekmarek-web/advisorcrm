@@ -35,6 +35,12 @@ import type {
 } from "@/lib/db/schema-for-client";
 import { modeToReasonCode, terminationDeliveryChannelLabel } from "@/lib/terminations/client";
 import type { TerminationPolicyholderKind } from "@/lib/terminations/termination-document-extras";
+import {
+  getAllowedTerminationModes,
+  getDefaultTerminationMode,
+  isTerminationModeAllowedForSegment,
+} from "@/lib/terminations/segment-termination-matrix";
+import { classifyInsuranceSegment } from "@/lib/terminations/segment-classifier";
 import { plainTextToLetterHtml } from "@/lib/terminations/termination-letter-html";
 import { replaceTerminationLetterPlaceDateLine } from "@/lib/terminations/termination-letter-builder";
 import {
@@ -262,6 +268,18 @@ export function TerminationIntakeWizard({
   const [placeOverride, setPlaceOverride] = useState(
     () => loadedDraft?.documentBuilderExtras?.placeOverride ?? "",
   );
+  const [policyholderAddressLine1Override, setPolicyholderAddressLine1Override] = useState(
+    () => loadedDraft?.documentBuilderExtras?.policyholderAddressLine1Override ?? "",
+  );
+  const [policyholderAddressLine2Override, setPolicyholderAddressLine2Override] = useState(
+    () => loadedDraft?.documentBuilderExtras?.policyholderAddressLine2Override ?? "",
+  );
+  /** Poradce musí potvrdit správnost výstupu před exportem – audit + ochrana před automatickým výstupem. */
+  const [advisorConfirmed, setAdvisorConfirmed] = useState(
+    () => Boolean(loadedDraft?.documentBuilderExtras?.advisorConfirmedAt),
+  );
+  /** Banner z AI klasifikátoru segmentu (null = nezobrazovat). */
+  const [segmentSuggestionBanner, setSegmentSuggestionBanner] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [previewSyncBusy, setPreviewSyncBusy] = useState(false);
@@ -308,9 +326,17 @@ export function TerminationIntakeWizard({
     setRequestedSubmissionDate(localIsoDateToday());
   }, [terminationMode, submissionManual]);
 
-  const onSegmentChange = useCallback((seg: string) => {
-    setProductSegment(seg);
-  }, []);
+  const onSegmentChange = useCallback(
+    (seg: string) => {
+      setProductSegment(seg);
+      // Pokud aktuální mód není povolen pro nový segment, přepni na výchozí povolený mód
+      if (!isTerminationModeAllowedForSegment(terminationMode, seg)) {
+        const fallback = getDefaultTerminationMode(seg);
+        setTerminationMode(fallback);
+      }
+    },
+    [terminationMode],
+  );
 
   const buildBasePayload = useCallback((): CreateTerminationDraftPayload => {
     return {
@@ -348,6 +374,15 @@ export function TerminationIntakeWizard({
         ...(attachmentsDeclared.trim() ? { attachmentsDeclared: attachmentsDeclared.trim() } : {}),
         ...(letterPlainTextDraft.trim() ? { letterPlainTextDraft: letterPlainTextDraft.trim() } : {}),
         ...(letterHeaderDateIso.trim() ? { letterHeaderDateIso: letterHeaderDateIso.trim() } : {}),
+        ...(policyholderAddressLine1Override.trim()
+          ? { policyholderAddressLine1Override: policyholderAddressLine1Override.trim() }
+          : {}),
+        ...(policyholderAddressLine2Override.trim()
+          ? { policyholderAddressLine2Override: policyholderAddressLine2Override.trim() }
+          : {}),
+        ...(advisorConfirmed
+          ? { advisorConfirmedAt: new Date().toISOString() }
+          : {}),
       },
     };
   }, [
@@ -376,6 +411,9 @@ export function TerminationIntakeWizard({
     selectedInsurerRegistryId,
     letterPlainTextDraft,
     letterHeaderDateIso,
+    policyholderAddressLine1Override,
+    policyholderAddressLine2Override,
+    advisorConfirmed,
   ]);
 
   useEffect(() => {
@@ -516,6 +554,58 @@ export function TerminationIntakeWizard({
       if (extracted.policyholderName) {
         setClientQuery(extracted.policyholderName);
         updates.push("pojistník");
+      }
+      // Adresa pojistníka z dokumentu
+      const street = extracted.policyholderStreet;
+      const cityZip = [extracted.policyholderPostalCode, extracted.policyholderCity]
+        .filter(Boolean)
+        .join(" ");
+      if (street) {
+        setPolicyholderAddressLine1Override(street);
+        updates.push("ulice pojistníka");
+      }
+      if (cityZip) {
+        setPolicyholderAddressLine2Override(cityZip);
+        updates.push("město/PSČ pojistníka");
+      }
+      // Datum počátku pojištění
+      if (extracted.contractStartDate && !contractStartDate.trim()) {
+        setContractStartDate(extracted.contractStartDate);
+        updates.push("počátek pojištění");
+      }
+      // Výroční datum
+      if (extracted.contractAnniversaryDate && !contractAnniversaryDate.trim()) {
+        setContractAnniversaryDate(extracted.contractAnniversaryDate);
+        setAnniversaryManual(true);
+        updates.push("výroční datum");
+      }
+      // Segment – klasifikace z AI + lokální classifier
+      const rawSegmentCandidate = extracted.segmentCandidate ?? null;
+      const localClassification = classifyInsuranceSegment(
+        extracted.productName,
+        extracted.productTypeRaw,
+      );
+      const proposedSegment =
+        rawSegmentCandidate && segments.includes(rawSegmentCandidate)
+          ? rawSegmentCandidate
+          : localClassification.segment && segments.includes(localClassification.segment)
+            ? localClassification.segment
+            : null;
+      if (proposedSegment && proposedSegment !== productSegment) {
+        setProductSegment(proposedSegment);
+        // Zkontrolovat kompatibilitu módu s novým segmentem
+        if (!isTerminationModeAllowedForSegment(terminationMode, proposedSegment)) {
+          setTerminationMode(getDefaultTerminationMode(proposedSegment));
+        }
+        const segLabel = proposedSegment;
+        const confidence =
+          rawSegmentCandidate === proposedSegment
+            ? "AI z dokumentu"
+            : `${Math.round(localClassification.confidence * 100)} % jistota`;
+        setSegmentSuggestionBanner(
+          `Segment automaticky nastaven na „${segLabel}" (${confidence}). Zkontrolujte a upravte podle potřeby.`,
+        );
+        updates.push(`segment (${segLabel})`);
       }
       if (extracted.insurerNameOrAddressText) {
         setInsurerQuery(extracted.insurerNameOrAddressText);
@@ -832,6 +922,20 @@ export function TerminationIntakeWizard({
         </div>
       ) : null}
 
+      {segmentSuggestionBanner ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+          <p className="text-sm text-blue-900">{segmentSuggestionBanner}</p>
+          <button
+            type="button"
+            onClick={() => setSegmentSuggestionBanner(null)}
+            className="ml-auto text-xs text-blue-600 underline shrink-0"
+          >
+            Zavřít
+          </button>
+        </div>
+      ) : null}
+
       {uploadError ? (
         <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
           Nahrání dokumentu: {uploadError}
@@ -1111,12 +1215,20 @@ export function TerminationIntakeWizard({
                     }}
                     className={TERMINATION_FIELD_CLASS}
                   >
-                    {MODE_OPTIONS.map((m) => (
+                    {MODE_OPTIONS.filter((m) =>
+                      isTerminationModeAllowedForSegment(m.value, productSegment),
+                    ).map((m) => (
                       <option key={m.value} value={m.value}>
                         {m.label}
                       </option>
                     ))}
                   </select>
+                  {!isTerminationModeAllowedForSegment(terminationMode, productSegment) && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      Zvolený způsob ukončení není obvykle dostupný pro segment{" "}
+                      {segmentLabel(productSegment)}. Byl automaticky přepnut.
+                    </p>
+                  )}
                 </div>
                 {terminationMode === "within_two_months_from_inception" ? (
                   <FriendlyDateInput
@@ -1258,6 +1370,27 @@ export function TerminationIntakeWizard({
                     ) : null}
                   </fieldset>
 
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={`${TERMINATION_DATE_LABEL_CLASS} mb-1`}>Adresa pojistníka – ulice (doplní dopis, není-li v CRM)</label>
+                      <input
+                        value={policyholderAddressLine1Override}
+                        onChange={(e) => setPolicyholderAddressLine1Override(e.target.value)}
+                        className={TERMINATION_FIELD_CLASS}
+                        placeholder="Např. Sněmovní 4"
+                      />
+                    </div>
+                    <div>
+                      <label className={`${TERMINATION_DATE_LABEL_CLASS} mb-1`}>Adresa pojistníka – PSČ a město</label>
+                      <input
+                        value={policyholderAddressLine2Override}
+                        onChange={(e) => setPolicyholderAddressLine2Override(e.target.value)}
+                        className={TERMINATION_FIELD_CLASS}
+                        placeholder="Např. 118 00 Praha 1"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className={`${TERMINATION_DATE_LABEL_CLASS} mb-1`}>Místo v záhlaví dopisu (volitelné)</label>
                     <input
@@ -1301,6 +1434,27 @@ export function TerminationIntakeWizard({
                   </div>
                 </div>
               </details>
+
+              {/* Advisor confirmation checkpoint – povinné před exportem */}
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-900 mb-2">Potvrzení poradce před exportem</p>
+                <p className="text-xs text-amber-800 mb-3">
+                  Aidvisora generuje návrh dokumentu na základě zadaných údajů. Zodpovědnost za
+                  správnost výstupu, jeho odeslání a právní důsledky nese poradce.
+                </p>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={advisorConfirmed}
+                    onChange={(e) => setAdvisorConfirmed(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-amber-300"
+                  />
+                  <span className="text-sm text-amber-950">
+                    Zkontroloval/a jsem pojistníka, číslo smlouvy, pojišťovnu, adresu a datum
+                    účinnosti. Výstup je připraven k odeslání a přebírám za něj odpovědnost.
+                  </span>
+                </label>
+              </div>
 
               {previewSyncBusy ? (
                 <p className="text-xs text-slate-500">Aktualizuji náhled…</p>
@@ -1416,9 +1570,14 @@ export function TerminationIntakeWizard({
               ) : null}
               {wizardStep === STEP_LABELS.length - 1 ? (
                 <>
+                  {!advisorConfirmed && (
+                    <p className="text-xs text-amber-700 self-center">
+                      Nejdříve potvrďte správnost výstupu výše.
+                    </p>
+                  )}
                   <button
                     type="button"
-                    disabled={!canWrite || isPending || !partialRequestId}
+                    disabled={!canWrite || isPending || !partialRequestId || !advisorConfirmed}
                     onClick={() => onExportPdf()}
                     className="inline-flex h-11 min-h-[44px] items-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm disabled:opacity-50"
                   >
@@ -1426,7 +1585,7 @@ export function TerminationIntakeWizard({
                   </button>
                   <button
                     type="button"
-                    disabled={!canWrite || isPending}
+                    disabled={!canWrite || isPending || !advisorConfirmed}
                     onClick={() => onCompleteRequest()}
                     className="inline-flex h-11 min-h-[44px] items-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 disabled:opacity-50"
                   >

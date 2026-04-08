@@ -47,6 +47,16 @@ export {
 } from "./termination-delivery-labels";
 export { formatTerminationRegistryMailingOneLine } from "./termination-registry-mail";
 
+// --- Segment classifier + termination mode matrix ---
+export { classifyInsuranceSegment } from "./segment-classifier";
+export type { SegmentClassification } from "./segment-classifier";
+export {
+  getAllowedTerminationModes,
+  isTerminationModeAllowedForSegment,
+  getDefaultTerminationMode,
+  ALL_TERMINATION_MODES,
+} from "./segment-termination-matrix";
+
 // --- Fáze 6: document builder (termination_letter) ---
 export type {
   TerminationLetterViewModel,

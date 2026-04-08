@@ -1817,6 +1817,30 @@ export type ExtractTerminationFieldsResult =
       insurerNameOrAddressText: string | null;
       contractNumber: string | null;
       policyholderName: string | null;
+      /** Jméno pojistníka (první). */
+      policyholderFirstName: string | null;
+      /** Příjmení pojistníka. */
+      policyholderLastName: string | null;
+      /** Ulice a číslo popisné z adresy pojistníka. */
+      policyholderStreet: string | null;
+      /** Město z adresy pojistníka. */
+      policyholderCity: string | null;
+      /** PSČ z adresy pojistníka. */
+      policyholderPostalCode: string | null;
+      /** Počátek pojištění ve formátu yyyy-mm-dd nebo null. */
+      contractStartDate: string | null;
+      /** Výroční datum smlouvy ve formátu yyyy-mm-dd nebo null. */
+      contractAnniversaryDate: string | null;
+      /** Název produktu / pojistné smlouvy (volný text z dokumentu). */
+      productName: string | null;
+      /** Typ produktu (volný text, např. „životní pojištění", „havarijní pojištění"). */
+      productTypeRaw: string | null;
+      /** Navrhovaný segment (klasifikátor ho dopočítá v UI, ale AI ho může naznačit). */
+      segmentCandidate: string | null;
+      /** SPZ vozidla (auto segmenty). */
+      registrationPlate: string | null;
+      /** VIN vozidla. */
+      vehicleVin: string | null;
     }
   | { ok: false; error: string };
 
@@ -1853,15 +1877,32 @@ export async function extractTerminationFieldsFromDocumentAction(
 
   const { createResponseWithFile } = await import("@/lib/openai");
 
-  const prompt = `Z přiloženého pojistného dokumentu extrahuj tato tři pole ve formátu JSON.
-Vrať POUZE validní JSON, žádný jiný text.
-Schema:
+  const prompt = `Z přiloženého pojistného dokumentu vytěž tato pole ve formátu JSON.
+Vrať POUZE validní JSON objekt, žádný jiný text, žádné markdown bloky.
+
+Schema (všechna pole jsou string nebo null):
 {
-  "insurerNameOrAddressText": "celé jméno pojišťovny nebo adresní blok pojišťovny tak jak je v dokumentu, string nebo null",
-  "contractNumber": "číslo pojistné smlouvy, string nebo null",
-  "policyholderName": "jméno pojistníka (ne pojistitele), string nebo null"
+  "insurerNameOrAddressText": "celé jméno pojišťovny nebo adresní blok pojišťovny tak jak je v dokumentu",
+  "contractNumber": "číslo pojistné smlouvy / pojistky",
+  "policyholderName": "celé jméno pojistníka (fyzická nebo právnická osoba, ne pojistitel)",
+  "policyholderFirstName": "křestní jméno pojistníka",
+  "policyholderLastName": "příjmení pojistníka",
+  "policyholderStreet": "ulice a číslo popisné z adresy pojistníka",
+  "policyholderCity": "město z adresy pojistníka",
+  "policyholderPostalCode": "PSČ z adresy pojistníka",
+  "contractStartDate": "počátek pojištění ve formátu YYYY-MM-DD; pokud je jen měsíc/rok, použij první den měsíce",
+  "contractAnniversaryDate": "datum výročí smlouvy ve formátu YYYY-MM-DD, pokud je přímo uvedeno",
+  "productName": "název produktu nebo smlouvy tak jak je v dokumentu",
+  "productTypeRaw": "typ pojistného produktu (např. životní pojištění, havarijní pojištění, povinné ručení)",
+  "segmentCandidate": "navrhovaná kategorie z těchto hodnot: ZP, MAJ, ODP, AUTO_PR, AUTO_HAV, CEST, INV, DIP, DPS, HYPO, UVER, FIRMA_POJ – nebo null pokud nejsi jistý",
+  "registrationPlate": "státní poznávací značka vozidla, pokud jde o auto pojištění",
+  "vehicleVin": "VIN vozidla, pokud jde o auto pojištění"
 }
-Pokud pole nenajdeš, použij null. Nikdy nehádej.`;
+
+Pravidla:
+- Pokud pole v dokumentu nenajdeš nebo si nejsi jistý, vrať null.
+- Nikdy neodhad ani nevymýšlej. Jen vytěž co je v dokumentu.
+- Datumy normalizuj do formátu YYYY-MM-DD.`;
 
   let raw: string;
   try {
@@ -1883,10 +1924,40 @@ Pokud pole nenajdeš, použij null. Nikdy nehádej.`;
   const toString = (v: unknown): string | null =>
     typeof v === "string" && v.trim() ? v.trim() : null;
 
+  // Zkusíme normalizovat datum na YYYY-MM-DD
+  const toIsoDate = (v: unknown): string | null => {
+    const s = toString(v);
+    if (!s) return null;
+    // Pokud je ve formátu YYYY-MM-DD, vrátime as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // Jinak zkusíme Date.parse
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.toISOString().split("T")[0]!;
+    return null;
+  };
+
+  // Jméno z firstName+lastName nebo celého policyholderName
+  const firstName = toString(parsed.policyholderFirstName);
+  const lastName = toString(parsed.policyholderLastName);
+  const fullFromParts = [firstName, lastName].filter(Boolean).join(" ") || null;
+  const policyholderName = toString(parsed.policyholderName) ?? fullFromParts;
+
   return {
     ok: true,
     insurerNameOrAddressText: toString(parsed.insurerNameOrAddressText),
     contractNumber: toString(parsed.contractNumber),
-    policyholderName: toString(parsed.policyholderName),
+    policyholderName,
+    policyholderFirstName: firstName,
+    policyholderLastName: lastName,
+    policyholderStreet: toString(parsed.policyholderStreet),
+    policyholderCity: toString(parsed.policyholderCity),
+    policyholderPostalCode: toString(parsed.policyholderPostalCode),
+    contractStartDate: toIsoDate(parsed.contractStartDate),
+    contractAnniversaryDate: toIsoDate(parsed.contractAnniversaryDate),
+    productName: toString(parsed.productName),
+    productTypeRaw: toString(parsed.productTypeRaw),
+    segmentCandidate: toString(parsed.segmentCandidate),
+    registrationPlate: toString(parsed.registrationPlate),
+    vehicleVin: toString(parsed.vehicleVin),
   };
 }

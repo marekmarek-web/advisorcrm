@@ -605,13 +605,21 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
 
   const extras = input.documentBuilderExtras ?? {};
   const contactDisplayName = c ? `${c.firstName} ${c.lastName}`.trim() : "";
-  const policyholderAddressLine1 = c?.street?.trim() ?? "";
-  const policyholderAddressLine2 = [c?.zip, c?.city].filter(Boolean).join(" ").trim();
+  // Adresa pojistníka: extras override (z AI extrakce / ručního zadání) má přednost před CRM kontaktem,
+  // aby bylo možné vyplnit adresu i bez CRM záznamu.
+  const policyholderAddressLine1 =
+    extras.policyholderAddressLine1Override?.trim() || c?.street?.trim() || "";
+  const policyholderAddressLine2 =
+    extras.policyholderAddressLine2Override?.trim() ||
+    [c?.zip, c?.city].filter(Boolean).join(" ").trim();
 
   const kind = extras.policyholderKind === "company" ? "company" : "person";
   const companyNameRaw = extras.companyName?.trim() ?? "";
+  // Fallback: pokud není CRM kontakt, použij jméno z AI extrakce (extras.extractedPolicyholderName)
+  const effectivePolicyholderName =
+    contactDisplayName || extras.extractedPolicyholderName?.trim() || "";
   const policyholderName =
-    kind === "company" ? companyNameRaw || contactDisplayName : contactDisplayName;
+    kind === "company" ? companyNameRaw || effectivePolicyholderName : effectivePolicyholderName;
   const policyholderCompanyName = kind === "company" ? companyNameRaw || null : null;
   const policyholderAuthorizedPersonName =
     kind === "company" ? extras.authorizedPersonName?.trim() || null : null;
