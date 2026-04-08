@@ -1679,3 +1679,84 @@ export async function appendTerminationDispatchLogAction(
 
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// AI extrakce polí z nahraného dokumentu pro wizard
+// ---------------------------------------------------------------------------
+
+export type ExtractTerminationFieldsResult =
+  | {
+      ok: true;
+      insurerNameOrAddressText: string | null;
+      contractNumber: string | null;
+      policyholderName: string | null;
+    }
+  | { ok: false; error: string };
+
+export async function extractTerminationFieldsFromDocumentAction(
+  documentId: string,
+): Promise<ExtractTerminationFieldsResult> {
+  const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
+  if (!hasPermission(auth.roleName as RoleName, "documents:read")) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const [doc] = await db
+    .select({ id: documents.id, storagePath: documents.storagePath, mimeType: documents.mimeType, tenantId: documents.tenantId })
+    .from(documents)
+    .where(and(eq(documents.id, documentId), eq(documents.tenantId, auth.tenantId)))
+    .limit(1);
+  if (!doc) return { ok: false, error: "Dokument nenalezen." };
+
+  const { createSignedStorageUrl } = await import("@/lib/storage/signed-url");
+  const admin = createAdminClient();
+  const { signedUrl } = await createSignedStorageUrl({
+    adminClient: admin,
+    bucket: "documents",
+    path: doc.storagePath,
+    purpose: "internal_processing",
+  });
+  if (!signedUrl) return { ok: false, error: "Nepodařilo se získat přístup k dokumentu." };
+
+  const { createResponseWithFile } = await import("@/lib/openai");
+
+  const prompt = `Z přiloženého pojistného dokumentu extrahuj tato tři pole ve formátu JSON.
+Vrať POUZE validní JSON, žádný jiný text.
+Schema:
+{
+  "insurerNameOrAddressText": "celé jméno pojišťovny nebo adresní blok pojišťovny tak jak je v dokumentu, string nebo null",
+  "contractNumber": "číslo pojistné smlouvy, string nebo null",
+  "policyholderName": "jméno pojistníka (ne pojistitele), string nebo null"
+}
+Pokud pole nenajdeš, použij null. Nikdy nehádej.`;
+
+  let raw: string;
+  try {
+    raw = await createResponseWithFile(signedUrl, prompt, {
+      routing: { category: "ai_review" },
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Chyba AI extrakce." };
+  }
+
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    return { ok: false, error: "AI vrátilo neplatnou odpověď – zkuste znovu." };
+  }
+
+  const toString = (v: unknown): string | null =>
+    typeof v === "string" && v.trim() ? v.trim() : null;
+
+  return {
+    ok: true,
+    insurerNameOrAddressText: toString(parsed.insurerNameOrAddressText),
+    contractNumber: toString(parsed.contractNumber),
+    policyholderName: toString(parsed.policyholderName),
+  };
+}

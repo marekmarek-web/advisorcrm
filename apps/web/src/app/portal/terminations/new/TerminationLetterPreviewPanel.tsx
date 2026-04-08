@@ -51,12 +51,18 @@ export function TerminationLetterPreviewPanel({
   requestId,
   showPersistButtons = true,
   showPrintButton = true,
+  suppressValidityBanner = false,
+  onBuildResult,
 }: {
   requestId: string;
   /** Uložení do CRM dokumentů (vyžaduje documents:write). */
   showPersistButtons?: boolean;
   /** Tisk / uložení jako PDF přes dialog prohlížeče. */
   showPrintButton?: boolean;
+  /** Skrýt žlutý seznam validityReasons uvnitř panelu (hlášky se pak posílají přes onBuildResult). */
+  suppressValidityBanner?: boolean;
+  /** Callback po úspěšném načtení výsledku buildu (pro banner nad wizardem). */
+  onBuildResult?: (data: TerminationLetterBuildResult) => void;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +95,7 @@ export function TerminationLetterPreviewPanel({
         return;
       }
       setData(res.data);
+      onBuildResult?.(res.data);
     });
     return () => {
       cancelled = true;
@@ -236,7 +243,7 @@ export function TerminationLetterPreviewPanel({
         ) : null}
       </div>
 
-      {validityReasons.length > 0 ? (
+      {!suppressValidityBanner && validityReasons.length > 0 ? (
         <ul className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-[var(--wp-radius)] px-3 py-2 list-disc pl-5">
           {validityReasons.map((r) => (
             <li key={r}>{r}</li>

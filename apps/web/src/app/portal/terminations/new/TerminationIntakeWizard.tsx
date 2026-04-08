@@ -9,15 +9,14 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  FileSignature,
   FileText,
   MapPin,
   Upload,
-  UserRound,
 } from "lucide-react";
 import { segmentLabel } from "@/app/lib/segment-labels";
 import {
   createTerminationDraft,
+  extractTerminationFieldsFromDocumentAction,
   saveTerminationIntakePartialAction,
   searchContactsForTerminationWizardAction,
   searchTerminationInsurerRegistryAction,
@@ -25,6 +24,8 @@ import {
   type TerminationIntakeDraftWizardState,
   type TerminationWizardPrefill,
 } from "@/app/actions/terminations";
+import type { TerminationLetterBuildResult } from "@/lib/terminations/termination-letter-types";
+import { TerminationFinishOutputLayout } from "./TerminationFinishOutputLayout";
 import type { TerminationMode, TerminationReasonCode, TerminationRequestSource } from "@/lib/db/schema-for-client";
 import { modeToReasonCode, terminationDeliveryChannelLabel } from "@/lib/terminations/client";
 import type { TerminationRulesResult } from "@/lib/terminations/types";
@@ -188,14 +189,21 @@ export function TerminationIntakeWizard({
   const [isPending, startTransition] = useTransition();
   const [previewNonce, setPreviewNonce] = useState(0);
   const [previewSyncBusy, setPreviewSyncBusy] = useState(false);
+  const [previewGapMessages, setPreviewGapMessages] = useState<string[]>([]);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [aiExtractBusy, setAiExtractBusy] = useState(false);
+  const [aiExtractMsg, setAiExtractMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const sourceKind: TerminationRequestSource = useMemo(() => {
     if (loadedDraft?.sourceKind) return loadedDraft.sourceKind;
     if (sourceFromAi) return "ai_chat";
     if (sourceQuick) return "quick_action";
     if (sourceCard === "crm" && prefill.mode === "crm") return "crm_contract";
+    if (sourceCard === "upload" && sourceDocumentId.trim()) return "document_upload";
     return "manual_intake";
-  }, [loadedDraft?.sourceKind, prefill.mode, sourceFromAi, sourceQuick, sourceCard]);
+  }, [loadedDraft?.sourceKind, prefill.mode, sourceFromAi, sourceQuick, sourceCard, sourceDocumentId]);
 
   useEffect(() => {
     setTerminationReasonCode(modeToReasonCode(terminationMode));
@@ -365,6 +373,68 @@ export function TerminationIntakeWizard({
     next.set("contactId", item.id);
     next.delete("contractId");
     router.replace(`/portal/terminations/new?${next.toString()}`);
+  }
+
+  async function onFileSelected(file: File) {
+    setUploadError(null);
+    setAiExtractMsg(null);
+    setUploadBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("uploadSource", "web");
+      if (contactId) fd.append("contactId", contactId);
+      const res = await fetch("/api/documents/upload", { method: "POST", body: fd });
+      const json = (await res.json()) as { ok?: boolean; documentId?: string; error?: string };
+      if (!res.ok || !json.documentId) {
+        setUploadError(json.error ?? "Nahrání selhalo.");
+        return;
+      }
+      setSourceDocumentId(json.documentId);
+      // AI extraction
+      setAiExtractBusy(true);
+      setAiExtractMsg("Čtu dokument s AI…");
+      const extracted = await extractTerminationFieldsFromDocumentAction(json.documentId);
+      if (!extracted.ok) {
+        setAiExtractMsg(`AI extrakce selhala: ${extracted.error}`);
+        return;
+      }
+      const updates: string[] = [];
+      if (extracted.contractNumber && !contractNumber.trim()) {
+        setContractNumber(extracted.contractNumber);
+        updates.push("číslo smlouvy");
+      }
+      if (extracted.policyholderName && !clientQuery.trim()) {
+        setClientQuery(extracted.policyholderName);
+        updates.push("pojistník");
+      }
+      if (extracted.insurerNameOrAddressText) {
+        if (!insurerQuery.trim()) {
+          setInsurerQuery(extracted.insurerNameOrAddressText);
+        }
+        // Try registry search
+        const regRes = await searchTerminationInsurerRegistryAction(extracted.insurerNameOrAddressText);
+        if (regRes.ok && regRes.items.length === 1) {
+          const hit = regRes.items[0]!;
+          setSelectedInsurerRegistryId(hit.id);
+          setInsurerQuery(hit.insurerName);
+          setRegistryDeliveryMeta({ addressLine: hit.addressLine, channelHint: hit.channelHint });
+          updates.push("pojišťovna z registru");
+        } else if (!insurerQuery.trim()) {
+          updates.push("název pojišťovny");
+        }
+      }
+      setAiExtractMsg(
+        updates.length > 0
+          ? `Předvyplněno: ${updates.join(", ")}.`
+          : "Dokument nahrán, AI nenašlo jednoznačná data.",
+      );
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Chyba nahrání.");
+    } finally {
+      setUploadBusy(false);
+      setAiExtractBusy(false);
+    }
   }
 
   function onSavePartial() {
@@ -640,6 +710,17 @@ export function TerminationIntakeWizard({
         </p>
       ) : null}
 
+      {previewGapMessages.length > 0 ? (
+        <div className="rounded-[var(--wp-radius)] border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-xs font-semibold text-amber-900 mb-1">Chybějící údaje</p>
+          <ul className="list-disc pl-4 space-y-0.5">
+            {previewGapMessages.map((m) => (
+              <li key={m} className="text-xs text-amber-900">{m}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {stepper}
 
       <form onSubmit={onSubmit} className="space-y-6">
@@ -696,7 +777,7 @@ export function TerminationIntakeWizard({
                   </div>
                   <div className="text-sm font-semibold text-[color:var(--wp-text)]">Nahrát smlouvu</div>
                   <div className="mt-1 text-sm leading-6 text-[color:var(--wp-text-secondary)]">
-                    Propojte žádost se souborem v dokumentech (UUID).
+                    AI přečte pojišťovnu, číslo smlouvy a pojistníka.
                   </div>
                 </button>
                 <button
@@ -784,22 +865,84 @@ export function TerminationIntakeWizard({
                 </div>
               </div>
 
-              <div>
-                <label className="mb-2 block text-xs font-medium text-[color:var(--wp-text-muted)]">
-                  Identifikátor dokumentu ve vašich souborech (volitelné)
-                </label>
-                <input
-                  value={sourceDocumentId}
-                  onChange={(e) => setSourceDocumentId(e.target.value)}
-                  className="h-12 w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] px-4 text-sm min-h-[44px] font-mono text-xs"
-                  placeholder="UUID dokumentu z CRM"
-                />
-                <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                  <Link href={contactDocsHref} className="font-semibold text-[var(--wp-accent)] underline">
-                    Otevřít dokumenty klienta
-                  </Link>
+              {sourceCard === "upload" ? (
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf,image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void onFileSelected(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <div
+                    className="flex flex-col items-center justify-center gap-3 rounded-[var(--wp-radius)] border-2 border-dashed border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)]/40 p-6 cursor-pointer hover:border-[var(--wp-accent)]/50 transition"
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) void onFileSelected(f);
+                    }}
+                  >
+                    <Upload className="h-8 w-8 text-[color:var(--wp-text-secondary)]" />
+                    <div className="text-sm font-medium text-[color:var(--wp-text)]">
+                      {uploadBusy || aiExtractBusy
+                        ? uploadBusy
+                          ? "Nahrávám soubor…"
+                          : "AI čte dokument…"
+                        : sourceDocumentId.trim()
+                          ? "Soubor nahrán — klikněte pro nový"
+                          : "Přetáhněte soubor nebo klikněte pro výběr"}
+                    </div>
+                    <div className="text-xs text-[color:var(--wp-text-secondary)]">PDF nebo obrázek, max 20 MB</div>
+                  </div>
+                  {aiExtractMsg ? (
+                    <p
+                      className={`text-xs rounded-[var(--wp-radius)] px-3 py-2 ${
+                        aiExtractMsg.startsWith("AI extrakce selhala")
+                          ? "bg-amber-50 text-amber-900 border border-amber-200"
+                          : "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                      }`}
+                    >
+                      {aiExtractMsg}
+                    </p>
+                  ) : null}
+                  {uploadError ? (
+                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-[var(--wp-radius)] px-3 py-2">
+                      {uploadError}
+                    </p>
+                  ) : null}
+                  {sourceDocumentId.trim() ? (
+                    <p className="text-xs text-[color:var(--wp-text-secondary)] font-mono">
+                      Dok: {sourceDocumentId.slice(0, 16)}…
+                    </p>
+                  ) : null}
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-[color:var(--wp-text-muted)]">
+                    Identifikátor dokumentu ve vašich souborech (volitelné)
+                  </label>
+                  <input
+                    value={sourceDocumentId}
+                    onChange={(e) => setSourceDocumentId(e.target.value)}
+                    className="h-12 w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] px-4 text-sm min-h-[44px] font-mono text-xs"
+                    placeholder="UUID dokumentu z CRM"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                    <Link href={contactDocsHref} className="font-semibold text-[var(--wp-accent)] underline">
+                      Otevřít dokumenty klienta
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               <label className="flex items-center gap-3 rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)]/30 px-4 py-3 text-sm text-[color:var(--wp-text)] cursor-pointer min-h-[44px]">
                 <input
@@ -887,144 +1030,120 @@ export function TerminationIntakeWizard({
           ) : null}
 
           {wizardStep === 2 ? (
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-[color:var(--wp-text)]">Souhrn</h2>
-                <div className="rounded-[var(--wp-radius)] bg-[color:var(--wp-surface-muted)]/60 p-4">
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-[color:var(--wp-text-muted)]">
-                    Klient
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-[color:var(--wp-text)]">
-                    <UserRound className="h-4 w-4 text-[color:var(--wp-text-secondary)]" />
-                    {clientQuery.trim() || "—"}
-                  </div>
-                </div>
-                <div className="rounded-[var(--wp-radius)] bg-[color:var(--wp-surface-muted)]/60 p-4">
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-[color:var(--wp-text-muted)]">
-                    Pojišťovna
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-[color:var(--wp-text)]">{insurerQuery.trim() || "—"}</div>
-                  {registryDeliveryMeta?.addressLine ? (
-                    <div className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">{registryDeliveryMeta.addressLine}</div>
-                  ) : null}
-                </div>
-                <div className="rounded-[var(--wp-radius)] bg-[color:var(--wp-surface-muted)]/60 p-4 space-y-2 text-sm text-[color:var(--wp-text)]">
-                  <div>
-                    <span className="font-medium">Číslo smlouvy:</span> {contractNumber.trim() || "—"}
-                  </div>
-                  <div>
-                    <span className="font-medium">Typ ukončení:</span>{" "}
-                    {MODE_OPTIONS.find((m) => m.value === terminationMode)?.label ?? terminationMode}
-                  </div>
-                  <div>
-                    <span className="font-medium">Datum účinnosti (zadání):</span> {effectivePreviewLabel}
-                  </div>
-                  {registryDeliveryMeta?.channelHint ? (
-                    <div>
-                      <span className="font-medium">Kanál:</span>{" "}
-                      {terminationDeliveryChannelLabel(registryDeliveryMeta.channelHint)}
-                    </div>
-                  ) : null}
-                </div>
+            <div className="space-y-6">
+              {/* Detail fields: policyholder, place, note */}
+              <details className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)]">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-[color:var(--wp-text)] select-none">
+                  Upřesnit pojistníka a poznámku
+                </summary>
+                <div className="space-y-4 p-4 pt-2">
+                  <fieldset className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] p-3 space-y-2">
+                    <legend className="text-xs font-medium text-[color:var(--wp-text-muted)] px-1">Pojistník v dopise</legend>
+                    <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer">
+                      <input
+                        type="radio"
+                        name="ph-kind"
+                        checked={policyholderKind === "person"}
+                        onChange={() => setPolicyholderKind("person")}
+                        className="h-4 w-4"
+                      />
+                      Fyzická osoba (jméno z kontaktu)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer">
+                      <input
+                        type="radio"
+                        name="ph-kind"
+                        checked={policyholderKind === "company"}
+                        onChange={() => setPolicyholderKind("company")}
+                        className="h-4 w-4"
+                      />
+                      Právnická osoba / firma
+                    </label>
+                    {policyholderKind === "company" ? (
+                      <div className="grid gap-2 pt-1">
+                        <input
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+                          placeholder="Obchodní firma"
+                        />
+                        <input
+                          value={authorizedPersonName}
+                          onChange={(e) => setAuthorizedPersonName(e.target.value)}
+                          className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+                          placeholder="Oprávněná osoba (podpis)"
+                        />
+                        <input
+                          value={authorizedPersonRole}
+                          onChange={(e) => setAuthorizedPersonRole(e.target.value)}
+                          className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+                          placeholder="Role (volitelné)"
+                        />
+                      </div>
+                    ) : null}
+                  </fieldset>
 
-                <fieldset className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] p-3 space-y-2">
-                  <legend className="text-xs font-medium text-[color:var(--wp-text-muted)] px-1">Pojistník v dopise</legend>
-                  <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer">
+                  <div>
+                    <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+                      Místo v záhlaví dopisu (volitelné)
+                    </label>
                     <input
-                      type="radio"
-                      name="ph-kind"
-                      checked={policyholderKind === "person"}
-                      onChange={() => setPolicyholderKind("person")}
-                      className="h-4 w-4"
+                      value={placeOverride}
+                      onChange={(e) => setPlaceOverride(e.target.value)}
+                      className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
+                      placeholder="např. Praha"
                     />
-                    Fyzická osoba (jméno z kontaktu)
-                  </label>
-                  <label className="flex items-center gap-2 text-sm min-h-[40px] cursor-pointer">
-                    <input
-                      type="radio"
-                      name="ph-kind"
-                      checked={policyholderKind === "company"}
-                      onChange={() => setPolicyholderKind("company")}
-                      className="h-4 w-4"
+                  </div>
+
+                  {terminationMode === "after_claim" ? (
+                    <FriendlyDateInput
+                      label="Datum oznámení / pojistné události (volitelné)"
+                      value={claimEventDate}
+                      onChange={setClaimEventDate}
                     />
-                    Právnická osoba / firma
-                  </label>
-                  {policyholderKind === "company" ? (
-                    <div className="grid gap-2 pt-1">
-                      <input
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
-                        placeholder="Obchodní firma"
-                      />
-                      <input
-                        value={authorizedPersonName}
-                        onChange={(e) => setAuthorizedPersonName(e.target.value)}
-                        className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
-                        placeholder="Oprávněná osoba (podpis)"
-                      />
-                      <input
-                        value={authorizedPersonRole}
-                        onChange={(e) => setAuthorizedPersonRole(e.target.value)}
-                        className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
-                        placeholder="Role (volitelné)"
-                      />
-                    </div>
                   ) : null}
-                </fieldset>
 
-                <div>
-                  <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
-                    Místo v záhlaví dopisu (volitelné)
-                  </label>
-                  <input
-                    value={placeOverride}
-                    onChange={(e) => setPlaceOverride(e.target.value)}
-                    className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm min-h-[44px]"
-                    placeholder="např. Praha"
-                  />
-                </div>
-
-                {terminationMode === "after_claim" ? (
-                  <FriendlyDateInput
-                    label="Datum oznámení / pojistné události (volitelné)"
-                    value={claimEventDate}
-                    onChange={setClaimEventDate}
-                  />
-                ) : null}
-
-                <div>
-                  <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
-                    Interní poznámka pro kontrolu (volitelné)
-                  </label>
-                  <textarea
-                    value={advisorNoteForReview}
-                    onChange={(e) => setAdvisorNoteForReview(e.target.value)}
-                    rows={3}
-                    className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm"
-                    placeholder="Viditelné v náhledu, ne v textu dopisu vůči pojišťovně."
-                  />
-                </div>
-              </div>
-
-              <div className="min-w-0">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--wp-text)]">
-                    <FileSignature className="h-4 w-4 text-[var(--wp-accent)]" />
-                    Náhled dokumentu
+                  <div>
+                    <label className="block text-xs font-medium text-[color:var(--wp-text-muted)] mb-1">
+                      Interní poznámka pro kontrolu (volitelné)
+                    </label>
+                    <textarea
+                      value={advisorNoteForReview}
+                      onChange={(e) => setAdvisorNoteForReview(e.target.value)}
+                      rows={3}
+                      className="w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] px-3 py-2 text-sm"
+                      placeholder="Viditelné v náhledu, ne v textu dopisu vůči pojišťovně."
+                    />
                   </div>
-                  {previewSyncBusy ? (
-                    <span className="text-xs text-[color:var(--wp-text-secondary)]">Aktualizuji náhled…</span>
-                  ) : null}
                 </div>
-                {partialRequestId ? (
-                  <TerminationLetterPreviewPanel key={previewNonce} requestId={partialRequestId} />
-                ) : (
-                  <div className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] p-4 text-sm text-[color:var(--wp-text-secondary)]">
-                    {previewSyncBusy ? "Připravuji koncept pro náhled…" : "Náhled bude k dispozici po uložení konceptu."}
-                  </div>
-                )}
-              </div>
+              </details>
+
+              {previewSyncBusy ? (
+                <p className="text-xs text-[color:var(--wp-text-secondary)]">Aktualizuji náhled…</p>
+              ) : null}
+
+              {partialRequestId ? (
+                <TerminationFinishOutputLayout
+                  key={previewNonce}
+                  requestId={partialRequestId}
+                  leftPanel={{
+                    clientName: clientQuery.trim() || null,
+                    insurerName: insurerQuery.trim() || null,
+                    insurerAddress: registryDeliveryMeta?.addressLine ?? null,
+                    contractNumber: contractNumber.trim() || null,
+                    terminationModeLabel: MODE_OPTIONS.find((m) => m.value === terminationMode)?.label ?? terminationMode,
+                    effectiveDateLabel: effectivePreviewLabel,
+                    deliveryChannelHint: registryDeliveryMeta?.channelHint ?? null,
+                  }}
+                  onBuildResult={(data: TerminationLetterBuildResult) => {
+                    setPreviewGapMessages(data.validityReasons);
+                  }}
+                />
+              ) : (
+                <div className="rounded-[28px] border border-slate-200 bg-white p-8 text-center text-sm text-[color:var(--wp-text-secondary)] shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                  {previewSyncBusy ? "Připravuji koncept pro náhled…" : "Náhled bude k dispozici po uložení konceptu."}
+                </div>
+              )}
             </div>
           ) : null}
         </div>

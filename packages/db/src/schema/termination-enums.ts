@@ -54,6 +54,7 @@ export const terminationRequestSources = [
   "ai_chat",
   "manual_intake",
   "review_queue",
+  "document_upload",
 ] as const;
 export type TerminationRequestSource = (typeof terminationRequestSources)[number];
 
