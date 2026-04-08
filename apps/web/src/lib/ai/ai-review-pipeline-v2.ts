@@ -772,6 +772,23 @@ export async function runAiReviewV2Pipeline(
       trace.normalizedPipelineClassification = combinedNormPipeline;
       trace.extractionRoute = combinedExtractionRoute;
 
+      // debugTrace for combined path — mirrors classifier+router path for anchor-debug-runner
+      if (isAiReviewPipelineDebug() || process.env.NODE_ENV !== "production") {
+        trace.debugTrace = {
+          classifierRaw: {
+            documentType: combinedDocumentType,
+            productFamily: combined.envelope.documentClassification?.subtype ?? "combined",
+            productSubtype: null,
+            confidence: combinedClassification.confidence,
+          },
+          routerDecision: {
+            outcome: "combined_single_call",
+            promptKey: "combined_classify_and_extract",
+            reasonCodes: ["combined_single_call"],
+          },
+        };
+      }
+
       const resolvedDocumentType = resolveHybridInvestmentDocumentType(
         combinedDocumentType,
         combined.envelope,
