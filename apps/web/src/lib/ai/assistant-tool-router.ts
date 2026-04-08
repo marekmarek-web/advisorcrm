@@ -2,7 +2,7 @@
  * Assistant tool router — intent-first CRM writes, optional tools, no default dashboard.
  */
 
-import { createResponseSafe } from "@/lib/openai";
+import { createResponseSafe, createResponseStructuredWithImage, createResponseStructuredWithImages } from "@/lib/openai";
 import { getToolByName, getToolDescriptions, type ToolResult, type ToolHandlerContext } from "./assistant-tools";
 import { buildDashboardContext, buildClientDetailContext, buildReviewDetailContext, buildPaymentDetailContext } from "./assistant-context-builder";
 import {
@@ -52,6 +52,7 @@ import { mapErrorForAdvisor } from "./assistant-error-mapping";
 import { getPlaybookGuidanceLines } from "./playbooks";
 import { AssistantTelemetryAction, logAssistantTelemetry } from "./assistant-telemetry";
 import { tryRatingLookupReply } from "./ratings/toplists";
+import type { ImageAssetPayload } from "./assistant-chat-request";
 
 import type { StepPreviewItem } from "./assistant-execution-ui";
 
@@ -163,8 +164,83 @@ type ToolCall = {
   params: Record<string, unknown>;
 };
 
+type RecentAssistantPromptMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
+type VisionAssistantReply = {
+  reply: string;
+};
+
+const VISION_ASSISTANT_REPLY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply"],
+  properties: {
+    reply: { type: "string" },
+  },
+} as const;
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function sanitizePromptLine(text: string, limit = 500): string {
+  return text.replace(/\s+/g, " ").trim().slice(0, limit);
+}
+
+function buildRecentConversationBlock(messages: RecentAssistantPromptMessage[] | undefined): string {
+  if (!messages || messages.length === 0) return "";
+  const lines = messages
+    .filter((m) => m.content.trim().length > 0)
+    .map((m) => `${m.role === "assistant" ? "Asistent" : m.role === "system" ? "Systém" : "Uživatel"}: ${sanitizePromptLine(m.content)}`)
+    .slice(-8);
+  return lines.length > 0 ? `Poslední průběh konverzace:\n${lines.join("\n")}` : "";
+}
+
+function extractVisionUrls(imageAssets: ImageAssetPayload[] | undefined): string[] {
+  if (!imageAssets) return [];
+  return imageAssets
+    .map((asset) => (typeof asset.url === "string" ? asset.url.trim() : ""))
+    .filter((url) => url.length > 0)
+    .slice(0, 3);
+}
+
+async function createGeneralAssistantReply(params: {
+  fullPrompt: string;
+  imageAssets?: ImageAssetPayload[];
+}): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+  const imageUrls = extractVisionUrls(params.imageAssets);
+  if (imageUrls.length === 0) {
+    return createResponseSafe(params.fullPrompt, { routing: { category: "advisor_chat" } });
+  }
+
+  try {
+    const multimodal = imageUrls.length === 1
+      ? await createResponseStructuredWithImage<VisionAssistantReply>(
+          imageUrls[0]!,
+          params.fullPrompt,
+          VISION_ASSISTANT_REPLY_SCHEMA,
+          { routing: { category: "advisor_chat" }, schemaName: "advisor_chat_vision_reply" },
+        )
+      : await createResponseStructuredWithImages<VisionAssistantReply>(
+          imageUrls,
+          params.fullPrompt,
+          VISION_ASSISTANT_REPLY_SCHEMA,
+          { routing: { category: "advisor_chat" }, schemaName: "advisor_chat_vision_reply", maxImages: 3 },
+        );
+    const reply = multimodal.parsed?.reply?.trim();
+    if (!reply) return { ok: false, error: "Prázdná vision odpověď." };
+    return { ok: true, text: reply };
+  } catch (err) {
+    const fallback = await createResponseSafe(params.fullPrompt, { routing: { category: "advisor_chat" } });
+    if (fallback.ok) return fallback;
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Vision odpověď selhala.",
+    };
+  }
 }
 
 /** Active assistant channel for API payloads — `AssistantSession` has no `context`; use locks + top-level fields. */
@@ -298,7 +374,12 @@ export async function routeAssistantMessage(
   message: string,
   session: AssistantSession,
   activeContext?: ActiveContext,
-  options?: { roleName?: RoleName; skipIncrement?: boolean },
+  options?: {
+    roleName?: RoleName;
+    skipIncrement?: boolean;
+    recentMessages?: RecentAssistantPromptMessage[];
+    imageAssets?: ImageAssetPayload[];
+  },
 ): Promise<AssistantResponse> {
   if (!options?.skipIncrement) {
     incrementMessageCount(session);
@@ -428,8 +509,16 @@ export async function routeAssistantMessage(
     activeContactLine,
     toolInstructions,
   ].join("\n\n");
-
-  const fullPrompt = `${system}\n\nKontext:\n${context}\n\nUživatel: ${message}\n\nAsistent:`;
+  const historyBlock = buildRecentConversationBlock(options?.recentMessages);
+  const fullPrompt = [
+    system,
+    `Kontext:\n${context}`,
+    historyBlock,
+    `Uživatel: ${message}`,
+    "Asistent:",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const allWarnings: string[] = [];
   const allSources: string[] = [];
@@ -437,7 +526,10 @@ export async function routeAssistantMessage(
   let responseMessage = "";
   let confidence = 0.8;
 
-  const result = await createResponseSafe(fullPrompt, { routing: { category: "advisor_chat" } });
+  const result = await createGeneralAssistantReply({
+    fullPrompt,
+    imageAssets: options?.imageAssets,
+  });
 
   if (result.ok) {
     responseMessage = result.text.trim();
@@ -795,6 +887,8 @@ export async function routeAssistantMessageCanonical(
     bootstrapPostUploadReviewPlan?: boolean;
     /** P5: prepended to the model prompt only (short rolling digest from prior turns). */
     intentPromptAugment?: string;
+    recentMessages?: RecentAssistantPromptMessage[];
+    imageAssets?: ImageAssetPayload[];
   },
 ): Promise<AssistantResponse> {
   incrementMessageCount(session);
@@ -895,6 +989,8 @@ export async function routeAssistantMessageCanonical(
     return routeAssistantMessage(message, session, activeContext, {
       roleName: options?.roleName,
       skipIncrement: true,
+      recentMessages: options?.recentMessages,
+      imageAssets: options?.imageAssets,
     });
   }
 

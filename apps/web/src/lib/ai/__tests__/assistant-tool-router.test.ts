@@ -28,6 +28,12 @@ vi.mock("db", () => ({
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/openai", () => ({
   createResponseSafe: vi.fn().mockResolvedValue({ ok: true, text: "Dobrý den, máte 0 urgentních položek." }),
+  createResponseStructuredWithImage: vi.fn().mockResolvedValue({
+    parsed: { reply: "Na obrázku vidím kontaktní údaje klienta." },
+  }),
+  createResponseStructuredWithImages: vi.fn().mockResolvedValue({
+    parsed: { reply: "Na obrázcích vidím kontaktní údaje klienta." },
+  }),
   logOpenAICall: vi.fn(),
 }));
 vi.mock("@/lib/client-ai-context", () => ({
@@ -76,6 +82,7 @@ const { parseModelToolCalls, formatToolResultForModel, routeAssistantMessage, ro
 const { getOrCreateSession } = await import("../assistant-session");
 const { extractCanonicalIntent } = await import("../assistant-intent-extract");
 const entityResolution = await import("../assistant-entity-resolution");
+const openai = await import("@/lib/openai");
 
 describe("parseModelToolCalls", () => {
   it("extracts tool calls from text", () => {
@@ -135,6 +142,31 @@ describe("routeAssistantMessage", () => {
     expect(session.messageCount).toBe(0);
     await routeAssistantMessage("Test", session);
     expect(session.messageCount).toBe(1);
+  });
+
+  it("includes recent conversation lines in general chat prompt", async () => {
+    const session = getOrCreateSession(undefined, "t1", "u1");
+    await routeAssistantMessage("Navaz prosím na předchozí konverzaci.", session, undefined, {
+      recentMessages: [
+        { role: "user", content: "Klient poslal screenshot plateb.", },
+        { role: "assistant", content: "Pošli mi prosím jméno klienta.", },
+      ],
+    });
+
+    expect(vi.mocked(openai.createResponseSafe)).toHaveBeenCalledWith(
+      expect.stringContaining("Poslední průběh konverzace:\nUživatel: Klient poslal screenshot plateb.\nAsistent: Pošli mi prosím jméno klienta."),
+      expect.objectContaining({ routing: { category: "advisor_chat" } }),
+    );
+  });
+
+  it("uses multimodal fallback when image assets are provided", async () => {
+    const session = getOrCreateSession(undefined, "t1", "u1");
+    const response = await routeAssistantMessage("Co je na obrázku?", session, undefined, {
+      imageAssets: [{ url: "https://example.com/image.png", mimeType: "image/png" }],
+    });
+
+    expect(vi.mocked(openai.createResponseStructuredWithImage)).toHaveBeenCalled();
+    expect(response.message).toContain("Na obrázku");
   });
 });
 

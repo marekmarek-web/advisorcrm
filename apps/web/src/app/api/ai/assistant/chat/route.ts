@@ -23,6 +23,7 @@ import {
 import {
   appendConversationMessage,
   loadConversationHydration,
+  loadRecentConversationMessagesForUser,
   loadResumableExecutionPlanSnapshot,
   upsertConversationFromSession,
 } from "@/lib/ai/assistant-conversation-repository";
@@ -216,6 +217,12 @@ export async function POST(request: Request) {
           }
 
           const hydrated = await loadConversationHydration(session.sessionId, tenantId, userId);
+          const recentMessages = await loadRecentConversationMessagesForUser(
+            session.sessionId,
+            tenantId,
+            userId,
+            8,
+          );
           const incomingClientId = typeof activeContext?.clientId === "string" ? activeContext.clientId : undefined;
           if (hydrated) {
             const hydratedClientMismatch =
@@ -344,8 +351,30 @@ export async function POST(request: Request) {
                         intentPromptAugment: session.conversationDigest?.trim()
                           ? `[Předchozí zkrácené dotazy ve vlákně]\n${session.conversationDigest}`
                           : undefined,
+                        recentMessages: recentMessages.map((row) => ({
+                          role: row.role,
+                          content: row.content,
+                        })),
+                        imageAssets: rawImageAssets.map((asset) => ({
+                          url: asset.url ?? "",
+                          mimeType: asset.mimeType,
+                          filename: asset.filename,
+                          sizeBytes: asset.sizeBytes,
+                        })).filter((asset) => asset.url),
                       })
-                    : await routeAssistantMessage(message, session, activeContext, { roleName: membership.roleName });
+                    : await routeAssistantMessage(message, session, activeContext, {
+                        roleName: membership.roleName,
+                        recentMessages: recentMessages.map((row) => ({
+                          role: row.role,
+                          content: row.content,
+                        })),
+                        imageAssets: rawImageAssets.map((asset) => ({
+                          url: asset.url ?? "",
+                          mimeType: asset.mimeType,
+                          filename: asset.filename,
+                          sizeBytes: asset.sizeBytes,
+                        })).filter((asset) => asset.url),
+                      });
               }
             } else {
               response = resumeResult;
@@ -413,8 +442,30 @@ export async function POST(request: Request) {
                     intentPromptAugment: session.conversationDigest?.trim()
                       ? `[Předchozí zkrácené dotazy ve vlákně]\n${session.conversationDigest}`
                       : undefined,
+                    recentMessages: recentMessages.map((row) => ({
+                      role: row.role,
+                      content: row.content,
+                    })),
+                    imageAssets: rawImageAssets.map((asset) => ({
+                      url: asset.url ?? "",
+                      mimeType: asset.mimeType,
+                      filename: asset.filename,
+                      sizeBytes: asset.sizeBytes,
+                    })).filter((asset) => asset.url),
                   })
-                : await routeAssistantMessage(message, session, activeContext, { roleName: membership.roleName });
+                : await routeAssistantMessage(message, session, activeContext, {
+                    roleName: membership.roleName,
+                    recentMessages: recentMessages.map((row) => ({
+                      role: row.role,
+                      content: row.content,
+                    })),
+                    imageAssets: rawImageAssets.map((asset) => ({
+                      url: asset.url ?? "",
+                      mimeType: asset.mimeType,
+                      filename: asset.filename,
+                      sizeBytes: asset.sizeBytes,
+                    })).filter((asset) => asset.url),
+                  });
           }
 
           const conflictWarnings = [...(response.warnings ?? [])];

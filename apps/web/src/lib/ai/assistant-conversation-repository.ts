@@ -176,6 +176,52 @@ export async function loadRecentConversationMessages(
   }));
 }
 
+export async function loadRecentConversationMessagesForUser(
+  conversationId: string,
+  tenantId: string,
+  userId: string,
+  limit = 20,
+): Promise<
+  {
+    id: string;
+    role: "user" | "assistant" | "system";
+    content: string;
+    createdAt: Date;
+    meta: Record<string, unknown> | null;
+  }[]
+> {
+  const rows = await db
+    .select({
+      id: assistantMessages.id,
+      role: assistantMessages.role,
+      content: assistantMessages.content,
+      createdAt: assistantMessages.createdAt,
+      meta: assistantMessages.meta,
+    })
+    .from(assistantMessages)
+    .innerJoin(
+      assistantConversations,
+      eq(assistantMessages.conversationId, assistantConversations.id),
+    )
+    .where(
+      and(
+        eq(assistantMessages.conversationId, conversationId),
+        eq(assistantConversations.tenantId, tenantId),
+        eq(assistantConversations.userId, userId),
+      ),
+    )
+    .orderBy(desc(assistantMessages.createdAt))
+    .limit(Math.max(1, Math.min(limit, 100)));
+
+  return rows.map((r) => ({
+    id: r.id,
+    role: r.role as "user" | "assistant" | "system",
+    content: r.content,
+    createdAt: r.createdAt,
+    meta: (r.meta as Record<string, unknown> | null) ?? null,
+  }));
+}
+
 export type AssistantConversationListRow = {
   id: string;
   channel: string | null;

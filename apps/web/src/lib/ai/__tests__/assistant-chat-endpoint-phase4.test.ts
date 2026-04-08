@@ -5,6 +5,9 @@ const CONTACT_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
 const repoMocks = vi.hoisted(() => ({
   loadConversationHydration: vi.fn().mockResolvedValue(null),
+  loadRecentConversationMessagesForUser: vi.fn().mockResolvedValue([
+    { id: "m1", role: "user", content: "Předchozí otázka na klienta.", createdAt: new Date(), meta: null },
+  ]),
   loadResumableExecutionPlanSnapshot: vi.fn().mockResolvedValue(null),
   upsertConversationFromSession: vi.fn().mockResolvedValue(undefined),
   appendConversationMessage: vi.fn().mockResolvedValue(undefined),
@@ -38,8 +41,17 @@ vi.mock("@/lib/observability/assistant-sentry", () => ({
   captureAssistantApiError: vi.fn(),
 }));
 
+vi.mock("next/server", async () => {
+  const actual = await vi.importActual<typeof import("next/server")>("next/server");
+  return {
+    ...actual,
+    after: (cb: () => unknown) => cb(),
+  };
+});
+
 vi.mock("@/lib/ai/assistant-conversation-repository", () => ({
   loadConversationHydration: repoMocks.loadConversationHydration,
+  loadRecentConversationMessagesForUser: repoMocks.loadRecentConversationMessagesForUser,
   loadResumableExecutionPlanSnapshot: repoMocks.loadResumableExecutionPlanSnapshot,
   upsertConversationFromSession: repoMocks.upsertConversationFromSession,
   appendConversationMessage: repoMocks.appendConversationMessage,
@@ -48,6 +60,8 @@ vi.mock("@/lib/ai/assistant-conversation-repository", () => ({
 vi.mock("@/lib/openai", () => ({
   createResponseStructured: vi.fn().mockResolvedValue({ parsed: {} }),
   createResponseSafe: vi.fn().mockResolvedValue({ ok: true, text: "ok" }),
+  createResponseStructuredWithImage: vi.fn().mockResolvedValue({ parsed: { reply: "vision ok" } }),
+  createResponseStructuredWithImages: vi.fn().mockResolvedValue({ parsed: { reply: "vision ok" } }),
   logOpenAICall: vi.fn(),
 }));
 
@@ -90,6 +104,7 @@ import { POST } from "../../../app/api/ai/assistant/chat/route";
 import { clearSession, getOrCreateSession } from "../assistant-session";
 import { extractCanonicalIntent } from "../assistant-intent-extract";
 import * as entityResolution from "../assistant-entity-resolution";
+import * as openai from "@/lib/openai";
 
 type CanonicalIntentResult = Awaited<ReturnType<typeof extractCanonicalIntent>>;
 type EntityResolutionResult = Awaited<ReturnType<typeof entityResolution.resolveEntities>>;
@@ -284,5 +299,16 @@ describe("Phase 4: assistant chat endpoint parity", () => {
 
     expect(json.message).not.toMatch(/contactId|planId|sessionId|tenantId|[0-9a-f]{8}-[0-9a-f]{4}/i);
     expect(json.executionState?.stepPreviews?.every((s: { description?: string }) => !/raw|json|contactId|entityId/i.test(s.description ?? ""))).toBe(true);
+  });
+
+  it("passes recent messages and image assets into generic assistant fallback", async () => {
+    const { json } = await postChat({
+      orchestration: "legacy",
+      message: "Co je na tom screenshotu?",
+      imageAssets: [{ url: "https://example.com/screen.png", mimeType: "image/png" }],
+    });
+
+    expect(json.message).toBe("vision ok");
+    expect(vi.mocked(openai.createResponseStructuredWithImage)).toHaveBeenCalled();
   });
 });
