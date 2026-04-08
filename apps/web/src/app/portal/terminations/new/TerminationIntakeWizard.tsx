@@ -41,7 +41,7 @@ function insurerSearchItemMeta(addressLine: string | null | undefined, channelHi
   return null;
 }
 import type { TerminationPolicyholderKind } from "@/lib/terminations/termination-document-extras";
-import { formatCzDate } from "@/lib/forms/cz-date";
+import { formatCzDate, formatIsoDateForUiCs } from "@/lib/forms/cz-date";
 import { FriendlyDateInput } from "@/components/forms/FriendlyDateInput";
 import { SearchCombobox, type SearchComboboxItem } from "@/components/ui/SearchCombobox";
 import { TerminationLetterPreviewPanel } from "./TerminationLetterPreviewPanel";
@@ -593,7 +593,9 @@ export function TerminationIntakeWizard({
         >
           <p className="font-semibold">{outcomeLabel(rules.outcome)}</p>
           {rules.computedEffectiveDate ? (
-            <p className="mt-2">Navrhované datum účinnosti: {rules.computedEffectiveDate}</p>
+            <p className="mt-2">
+              Navrhované datum účinnosti: {formatIsoDateForUiCs(rules.computedEffectiveDate)}
+            </p>
           ) : null}
           {rules.reviewRequiredReason ? <p className="mt-2">{rules.reviewRequiredReason}</p> : null}
           {rules.missingFields.length > 0 ? (

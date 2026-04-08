@@ -158,6 +158,14 @@ export function formatCzDate(iso: string | null | undefined): string {
   return `${day}. ${month}. ${year}`;
 }
 
+/**
+ * ISO `yyyy-mm-dd` v UI vždy jako české datum (den. měsíc. rok), nikdy americký ani ISO zápis.
+ */
+export function formatIsoDateForUiCs(iso: string | null | undefined): string {
+  const cz = formatCzDate(iso);
+  return cz || "—";
+}
+
 /** Parse "d. m. yyyy" (flexible spaces) to ISO or null. */
 export function parseCzDateToIso(display: string): string | null {
   const m = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$/.exec(display.trim());

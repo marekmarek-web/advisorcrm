@@ -6,7 +6,7 @@ import { formatCzDate, formatCzDateTyping, validateCzDateComplete } from "@/lib/
 type Props = {
   id?: string;
   label: string;
-  /** ISO yyyy-mm-dd or empty */
+  /** Uložená hodnota pro API/DB: ISO yyyy-mm-dd; v poli se vždy zobrazuje česky den. měsíc. rok. */
   value: string;
   onChange: (iso: string) => void;
   className?: string;

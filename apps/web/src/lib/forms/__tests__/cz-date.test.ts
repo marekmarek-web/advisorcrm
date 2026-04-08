@@ -4,6 +4,7 @@ import {
   formatCzDate,
   formatCzDateFromDigits,
   formatCzDateTyping,
+  formatIsoDateForUiCs,
   normalizeDateForApi,
   parseCzDateToIso,
   validateCzDateComplete,
@@ -75,6 +76,18 @@ describe("formatCzDateTyping", () => {
   it("completes full date with dots", () => {
     expect(formatCzDateTyping("13.9.2026")).toBe("13. 9. 2026");
     expect(validateCzDateComplete(formatCzDateTyping("13.9.2026")).ok).toBe(true);
+  });
+});
+
+describe("formatIsoDateForUiCs", () => {
+  it("shows Czech day-first order", () => {
+    expect(formatIsoDateForUiCs("2026-05-04")).toBe("4. 5. 2026");
+  });
+
+  it("uses em dash when empty or invalid (no ISO leak)", () => {
+    expect(formatIsoDateForUiCs("")).toBe("—");
+    expect(formatIsoDateForUiCs(null)).toBe("—");
+    expect(formatIsoDateForUiCs("2026-13-40")).toBe("—");
   });
 });
 

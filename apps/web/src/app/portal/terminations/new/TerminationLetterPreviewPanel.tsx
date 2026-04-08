@@ -5,6 +5,7 @@ import { getTerminationLetterPreview, saveTerminationGeneratedDocumentAction } f
 import { terminationDeliveryChannelLabel } from "@/lib/terminations/client";
 import type { TerminationLetterBuildResult } from "@/lib/terminations/termination-letter-types";
 import { plainTextToLetterHtml } from "@/lib/terminations/termination-letter-html";
+import { formatIsoDateForUiCs } from "@/lib/forms/cz-date";
 
 function badgeClasses(badge: TerminationLetterBuildResult["badge"]): string {
   switch (badge) {
@@ -160,7 +161,7 @@ export function TerminationLetterPreviewPanel({
     validityReasons,
     previewWatermark,
   } = data;
-  const eff = vm.computedEffectiveDate ?? vm.requestedEffectiveDate ?? "—";
+  const eff = formatIsoDateForUiCs(vm.computedEffectiveDate ?? vm.requestedEffectiveDate ?? null);
   const attachmentsUi =
     vm.attachments.length > 0 ? vm.attachmentsSummaryText : "Bez příloh";
 
