@@ -400,6 +400,84 @@ Soubor: ${fileName}
 ${documentBlock}`;
 }
 
+/** Strip ```json ... ``` fences if the model wrapped the payload. */
+function stripMarkdownJsonFence(text: string): string {
+  const t = text.trim();
+  const fullFence = t.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/im);
+  if (fullFence) return fullFence[1].trim();
+  const inner = t.match(/```(?:json)?\s*([\s\S]*?)```/im);
+  if (inner) return inner[1].trim();
+  return t;
+}
+
+/**
+ * First balanced `{ ... }` slice, respecting JSON string quotes and backslash escapes.
+ * Greedy `/\{[\s\S]*\}/` can include trailing prose or span multiple objects incorrectly.
+ */
+function extractFirstBalancedJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === "\\") {
+        escape = true;
+        continue;
+      }
+      if (c === "\"") inString = false;
+      continue;
+    }
+    if (c === "\"") {
+      inString = true;
+      continue;
+    }
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function tryParseJsonObjectLenient(s: string): Record<string, unknown> | null {
+  const variants = [s, s.replace(/,\s*([}\]])/g, "$1")];
+  for (const v of variants) {
+    try {
+      const p = JSON.parse(v) as unknown;
+      if (p && typeof p === "object" && !Array.isArray(p)) return p as Record<string, unknown>;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+/** Parse combined-classify model output: whole JSON, fenced JSON, or first balanced object. */
+function tryParseCombinedJsonResponse(rawText: string): Record<string, unknown> | null {
+  const stripped = stripMarkdownJsonFence(rawText);
+  const whole = tryParseJsonObjectLenient(stripped);
+  if (whole) return whole;
+  const balanced = extractFirstBalancedJsonObject(stripped);
+  if (balanced) {
+    const o = tryParseJsonObjectLenient(balanced);
+    if (o) return o;
+  }
+  const balancedRaw = extractFirstBalancedJsonObject(rawText);
+  if (balancedRaw && balancedRaw !== balanced) {
+    const o2 = tryParseJsonObjectLenient(balancedRaw);
+    if (o2) return o2;
+  }
+  return null;
+}
+
 export async function runCombinedClassifyAndExtract(params: {
   documentText: string;
   sourceFileName?: string | null;
@@ -417,15 +495,8 @@ export async function runCombinedClassifyAndExtract(params: {
     }
   );
 
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  const jsonStr = jsonMatch ? jsonMatch[0] : rawText;
-  let parsedObject: Record<string, unknown> = {};
-  try {
-    const p = JSON.parse(jsonStr) as unknown;
-    if (p && typeof p === "object" && !Array.isArray(p)) {
-      parsedObject = p as Record<string, unknown>;
-    }
-  } catch {
+  const parsedObject = tryParseCombinedJsonResponse(rawText);
+  if (!parsedObject) {
     throw new Error(`combined_classify_extract: failed to parse JSON response (length=${rawText.length})`);
   }
 

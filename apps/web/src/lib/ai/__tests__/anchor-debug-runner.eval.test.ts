@@ -259,7 +259,7 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
 
           let result: Awaited<ReturnType<typeof runContractUnderstandingPipeline>>;
           try {
-            // When textHint is available (>= 800 chars), use pdf_parse_fallback preprocessMode
+            // When textHint is available (>= 400 chars), use pdf_parse_fallback preprocessMode
             // so tryInferInputModeFromPreprocess can infer text_pdf and skip detectInputMode API call.
             // This prevents 407 errors when OpenAI tries to download the local PDF server URL.
             const hasGoodHint = textHint != null && textHint.length >= 400;

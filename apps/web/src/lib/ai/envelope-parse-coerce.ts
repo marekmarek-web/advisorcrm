@@ -57,6 +57,7 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   hypoteční_smlouva: "mortgage_document",
   // investment
   investment: "investment_subscription_document",
+  investment_contract: "investment_subscription_document",
   investment_subscription: "investment_subscription_document",
   investicni_smlouva: "investment_subscription_document",
   investicni_smlouva_dip: "investment_subscription_document",
