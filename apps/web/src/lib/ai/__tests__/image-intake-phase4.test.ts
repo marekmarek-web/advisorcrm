@@ -63,6 +63,7 @@ import type {
   ExtractedFactBundle,
   ImageIntakeRequest,
   MultimodalCombinedPassResult,
+  ReviewHandoffRecommendation,
 } from "../image-intake/types";
 import { emptyFactBundle } from "../image-intake/types";
 import { db } from "db";
@@ -139,6 +140,38 @@ function makeDocumentFactBundle(): ExtractedFactBundle {
         isActionable: false, needsConfirmation: false,
         observedVsInferred: "observed", factKey: "looks_like_contract",
       },
+    ],
+    missingFields: [],
+    ambiguityReasons: [],
+    extractionSource: "multimodal_pass",
+  };
+}
+
+/** Backoffice / CRM form screenshot: many structured fields + insurance wording. */
+function makeStructuredFormFactBundle(): ExtractedFactBundle {
+  const f = (
+    factKey: string,
+    value: string,
+  ): ExtractedFactBundle["facts"][number] => ({
+    factType: "document_received",
+    value,
+    normalizedValue: null,
+    confidence: 0.85,
+    evidence: null,
+    isActionable: true,
+    needsConfirmation: false,
+    observedVsInferred: "observed",
+    factKey,
+  });
+  return {
+    facts: [
+      f("first_name", "Roman"),
+      f("last_name", "Koloburda"),
+      f("email", "komas157@seznam.cz"),
+      f("phone", "+420608619703"),
+      // Would otherwise contribute to contract_like / insurance handoff signals
+      f("document_type", "pojistná smlouva"),
+      f("contract_number", "8801837082"),
     ],
     missingFields: [],
     ambiguityReasons: [],
@@ -484,6 +517,16 @@ describe("evaluateReviewHandoff", () => {
     const result = evaluateReviewHandoff(null, emptyFactBundle(), true);
     expect(result.recommended).toBe(false);
   });
+
+  it("does NOT recommend handoff for structured backoffice form screenshot (CRM extraction path)", () => {
+    const classification = makeClassification("photo_or_scan_document", 0.85);
+    const factBundle = makeStructuredFormFactBundle();
+    const result = evaluateReviewHandoff(classification, factBundle, true);
+
+    expect(result.recommended).toBe(false);
+    expect(result.handoffReady).toBe(false);
+    expect(result.signals).toHaveLength(0);
+  });
 });
 
 // ===========================================================================
@@ -531,6 +574,25 @@ describe("buildActionPlanV3", () => {
 
     expect(plan.outputMode).toBe("client_message_update");
     expect(plan.recommendedActions.length).toBeGreaterThan(0);
+  });
+
+  it("structured form facts: synthetic handoff does NOT downgrade CRM plan or add AI_REVIEW safety flag", () => {
+    const classification = makeClassification("photo_or_scan_document", 0.85);
+    const binding = makeConfidentClientBinding();
+    const factBundle = makeStructuredFormFactBundle();
+    const syntheticHandoff: ReviewHandoffRecommendation = {
+      recommended: true,
+      signals: ["contract_like_document"],
+      confidence: 0.75,
+      orientationSummary: null,
+      advisorExplanation: "Interní test handoff textu.",
+      handoffReady: true,
+    };
+    const plan = buildActionPlanV3(classification, binding, factBundle, null, syntheticHandoff);
+
+    expect(plan.outputMode).toBe("structured_image_fact_intake");
+    expect(plan.safetyFlags.every((f) => !f.includes("AI_REVIEW_HANDOFF"))).toBe(true);
+    expect(plan.recommendedActions.some((a) => a.writeAction === "createInternalNote")).toBe(true);
   });
 });
 

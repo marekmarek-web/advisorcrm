@@ -28,9 +28,15 @@ import {
   type ExecutionStatus,
 } from "@/lib/ai/assistant-execution-ui";
 import type { SuggestedNextStepItem } from "@/lib/ai/suggested-next-step-types";
-import { dispatchSuggestedNextStepItem } from "@/lib/ai/suggested-next-step-dispatch";
+import {
+  dispatchSuggestedNextStepItem,
+  effectiveLegacySuggestedNextSteps,
+} from "@/lib/ai/suggested-next-step-dispatch";
 
-export { dispatchSuggestedNextStepItem } from "@/lib/ai/suggested-next-step-dispatch";
+export {
+  dispatchSuggestedNextStepItem,
+  effectiveLegacySuggestedNextSteps,
+} from "@/lib/ai/suggested-next-step-dispatch";
 
 // ─── UTILITY ─────────────────────────────────────────────────────────────────
 
@@ -342,7 +348,8 @@ export function SuggestedNextStepsChips({
   onFocusComposer,
 }: SuggestedNextStepsChipsProps) {
   const hasItems = (stepItems?.length ?? 0) > 0;
-  const hasSteps = steps.length > 0;
+  const effectiveLegacySteps = effectiveLegacySuggestedNextSteps(steps, stepItems);
+  const hasSteps = effectiveLegacySteps.length > 0;
   if (!hasItems && !hasSteps) return null;
 
   return (
@@ -374,7 +381,7 @@ export function SuggestedNextStepsChips({
             </button>
           );
         })}
-        {steps.map((s, i) => (
+        {effectiveLegacySteps.map((s, i) => (
           <button
             key={`legacy-${i}`}
             type="button"

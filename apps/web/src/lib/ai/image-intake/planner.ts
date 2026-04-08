@@ -23,6 +23,7 @@ import type {
 } from "./types";
 import { safeOutputModeForUncertainInput } from "./guardrails";
 import { mapFactBundleToCreateContactDraft } from "./identity-contact-intake";
+import { looksLikeStructuredFormScreenshot } from "./review-handoff";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -314,14 +315,18 @@ export function buildActionPlanV3(
 
   if (!reviewHandoff?.recommended) return base;
 
+  // Structured form screenshots: handoff is advisory-only, never overrides CRM extraction.
+  const isStructuredForm = looksLikeStructuredFormScreenshot(factBundle);
+  if (isStructuredForm) {
+    return base;
+  }
+
   // Handoff is recommended: surface it as safety flag + note action
   base.safetyFlags.push(
     `AI_REVIEW_HANDOFF_RECOMMENDED: ${reviewHandoff.advisorExplanation.slice(0, 150)}`,
   );
 
   if (reviewHandoff.handoffReady) {
-    // When handoff flag is on AND confidence is sufficient, downgrade to archive-only
-    // and add an explicit "consider AI Review" note action
     if (base.outputMode !== "no_action_archive_only") {
       base.outputMode = "no_action_archive_only";
       base.needsAdvisorInput = true;

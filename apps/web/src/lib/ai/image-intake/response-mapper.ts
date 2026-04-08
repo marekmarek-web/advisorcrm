@@ -19,6 +19,7 @@ import { buildThreadSummaryLines } from "./thread-reconstruction";
 import { buildHandoffPreviewNote } from "./handoff-payload";
 import { buildIntentChangeSummary } from "./intent-change-detection";
 import { buildContactNewPrefillQuery, mapFactBundleToCreateContactDraft } from "./identity-contact-intake";
+import { looksLikeStructuredFormScreenshot } from "./review-handoff";
 
 // ---------------------------------------------------------------------------
 // Message templates by output mode
@@ -88,10 +89,9 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
     }
 
     case "no_action_archive_only": {
-      // Check for review handoff recommendation
       const handoff = result.reviewHandoff;
       if (handoff?.recommended) {
-        return `Obrázek vypadá jako kandidát na AI Review: ${handoff.advisorExplanation.slice(0, 200)} Image intake zpracovala jen orientační přehled.`;
+        return `Obrázek vypadá jako kandidát na podrobnější analýzu. ${handoff.advisorExplanation.slice(0, 200)}`;
       }
       return "Na obrázku jsem nenašel použitelné CRM informace. Obrázek lze archivovat, ale navrhovat žádnou CRM akci nemám.";
     }
@@ -127,17 +127,23 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
 
     case "structured_image_fact_intake": {
       const client = clientLabel ? ` ke klientovi **${clientLabel}**` : "";
-      const typeLabel = inputType === "screenshot_payment_details"
-        ? "platební screenshotem"
-        : inputType === "screenshot_bank_or_finance_info"
-          ? "bankovním screenshotem"
-          : "dokumentem";
-      const factLines = buildFactsSummaryLines(result.response.factBundle, 4);
-      const factText = factLines.length > 0 ? `\n\nExtrahovaná fakta:\n${factLines.map((l) => `• ${l}`).join("\n")}` : "";
+      const isForm = looksLikeStructuredFormScreenshot(result.response.factBundle);
+      const typeLabel = isForm
+        ? "formulářem s klientskými údaji"
+        : inputType === "screenshot_payment_details"
+          ? "platební screenshotem"
+          : inputType === "screenshot_bank_or_finance_info"
+            ? "bankovním screenshotem"
+            : "dokumentem";
+      const factLines = buildFactsSummaryLines(result.response.factBundle, isForm ? 6 : 4);
+      const factText = factLines.length > 0 ? `\n\nRozpoznané údaje:\n${factLines.map((l) => `• ${l}`).join("\n")}` : "";
       const missing = result.response.factBundle.missingFields.length > 0
         ? `\n\nChybějící údaje: ${result.response.factBundle.missingFields.slice(0, 3).join(", ")}.`
         : "";
-      return `Rozpoznal jsem obrázek s ${typeLabel}. Navrhuji uložit klíčové informace${client}.${factText}${missing}`;
+      const intro = isForm
+        ? `Našel jsem údaje z formuláře a připravil návrh k uložení do CRM${client}.`
+        : `Rozpoznal jsem obrázek s ${typeLabel}. Navrhuji uložit klíčové informace${client}.`;
+      return `${intro}${factText}${missing}`;
     }
 
     default:
@@ -177,26 +183,34 @@ export function mapImageIntakeToAssistantResponse(
 
   const identityMode = response.actionPlan.outputMode === "identity_contact_intake";
 
+  // Internal safety flags and technical identifiers must never reach the advisor UI.
+  // Translate known prefixes to human-readable Czech or drop them entirely.
+  const INTERNAL_FLAG_PREFIXES = [
+    "AI_REVIEW_HANDOFF_RECOMMENDED",
+    "DOCUMENT_SET_REVIEW_CANDIDATE",
+    "DOCUMENT_SET_MIXED",
+    "DOCUMENT_SET_INSUFFICIENT",
+  ];
+
+  function sanitizeWarning(w: string): string | null {
+    if (INTERNAL_FLAG_PREFIXES.some((p) => w.startsWith(p))) return null;
+    if (w.startsWith("BINDING_VIOLATION")) {
+      return identityMode ? null : "Bez jistého klienta nelze připravit write-ready plán.";
+    }
+    if (w.startsWith("LANE_VIOLATION")) return null;
+    return w;
+  }
+
   const warnings: string[] = [
     ...previewPayload.warnings,
     ...(response.clientBinding.warnings ?? []),
-    ...response.trace.guardrailsTriggered
-      .filter((v) => {
-        if (identityMode && v.startsWith("BINDING_VIOLATION")) return false;
-        return true;
-      })
-      .map((v) =>
-        v.startsWith("BINDING_VIOLATION")
-          ? "Bez jistého klienta nelze připravit write-ready plán."
-          : v.startsWith("LANE_VIOLATION")
-            ? "Tato zpráva patří do image intake lane, ne AI Review."
-            : v,
-      ),
-    // Surface missing fields as warnings
+    ...response.trace.guardrailsTriggered,
     ...response.factBundle.missingFields
       .slice(0, 2)
       .map((f) => `Chybějící údaj: ${f}`),
-  ].filter(Boolean);
+  ]
+    .map(sanitizeWarning)
+    .filter((w): w is string => w !== null && w.length > 0);
 
   const confidence =
     response.classification?.confidence ??
@@ -354,7 +368,9 @@ export function mapImageIntakeToAssistantResponse(
       lockedClientId: response.clientBinding.clientId,
       lockedClientLabel: response.clientBinding.clientLabel ?? null,
     },
-    suggestedNextSteps,
+    // Legacy suggestedNextSteps MUST stay empty when stepItems exist.
+    // Hints must never appear as sendable messages.
+    suggestedNextSteps: suggestedNextStepItems.length > 0 ? [] : suggestedNextSteps,
     suggestedNextStepItems:
       suggestedNextStepItems.length > 0 ? suggestedNextStepItems : undefined,
     hasPartialFailure: false,

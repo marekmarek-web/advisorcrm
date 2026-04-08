@@ -55,7 +55,7 @@ import {
   buildSupportingReferenceFacts,
   buildFactsSummaryLines,
 } from "../image-intake/extractor";
-import { resolveClientBindingV2 } from "../image-intake/binding-v2";
+import { resolveClientBindingV2, parseExplicitClientNameFromText } from "../image-intake/binding-v2";
 import {
   checkDraftReplyEligibility,
   tryBuildDraftReply,
@@ -245,6 +245,26 @@ describe("buildFactsSummaryLines", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Explicit client name from user text (accompanying message)
+// ---------------------------------------------------------------------------
+
+describe("parseExplicitClientNameFromText", () => {
+  it("parses ke klientovi Roman Koloburda", () => {
+    expect(
+      parseExplicitClientNameFromText("přiřaď údaje z fotky ke klientovi Roman Koloburda"),
+    ).toBe("Roman Koloburda");
+  });
+
+  it("parses pro klienta Jan Novák", () => {
+    expect(parseExplicitClientNameFromText("ulož to pro klienta Jan Novák")).toBe("Jan Novák");
+  });
+
+  it("returns null when no pattern matches", () => {
+    expect(parseExplicitClientNameFromText("jen obecný text bez jména")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // CRM-aware Binding v2 Tests
 // ---------------------------------------------------------------------------
 
@@ -296,6 +316,44 @@ describe("resolveClientBindingV2", () => {
     expect(result.source).toBe("crm_match");
     expect(result.confidence).toBeLessThan(0.7);
     expect(result.warnings.length).toBeGreaterThan(0);
+  });
+
+  it("explicit name from user text → bound_client_confident when CRM returns single match", async () => {
+    mockSearchContacts.mockResolvedValueOnce([
+      { id: "crm-rk", displayName: "Roman Koloburda", hint: "" },
+    ]);
+    const result = await resolveClientBindingV2(makeRequest(), null, null, "Roman Koloburda");
+
+    expect(result.state).toBe("bound_client_confident");
+    expect(result.clientId).toBe("crm-rk");
+    expect(result.source).toBe("explicit_user_text");
+    expect(mockSearchContacts).toHaveBeenCalled();
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("same single CRM match from image signal only stays weak_candidate", async () => {
+    mockSearchContacts.mockResolvedValueOnce([
+      { id: "crm-rk", displayName: "Roman Koloburda", hint: "" },
+    ]);
+    const result = await resolveClientBindingV2(makeRequest(), null, "Roman Koloburda", null);
+
+    expect(result.state).toBe("weak_candidate");
+    expect(result.source).toBe("crm_match");
+  });
+
+  it("explicit text name is resolved before image name signal (one lookup)", async () => {
+    mockSearchContacts.mockResolvedValueOnce([
+      { id: "explicit-id", displayName: "Jan Novák", hint: "" },
+    ]);
+    const result = await resolveClientBindingV2(
+      makeRequest(),
+      null,
+      "Jiné Jméno Z Obrázku",
+      "Jan Novák",
+    );
+
+    expect(result.clientId).toBe("explicit-id");
+    expect(mockSearchContacts).toHaveBeenCalledTimes(1);
   });
 
   it("returns multiple_candidates when CRM lookup finds multiple matches", async () => {

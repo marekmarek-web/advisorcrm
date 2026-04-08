@@ -157,7 +157,8 @@ export type ClientBindingResult = {
     | "image_signal"
     | "crm_match"
     | "none"
-    | "identity_context_mismatch";
+    | "identity_context_mismatch"
+    | "explicit_user_text";
   warnings: string[];
   /**
    * When the document identity disagrees with the CRM route context, binding is cleared

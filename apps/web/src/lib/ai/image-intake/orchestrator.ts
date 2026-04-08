@@ -61,7 +61,7 @@ import {
   buildSupportingReferenceFacts,
   buildUnusableFacts,
 } from "./extractor";
-import { resolveClientBindingV2, resolveCaseBindingV2, toCaseBindingResult } from "./binding-v2";
+import { resolveClientBindingV2, resolveCaseBindingV2, toCaseBindingResult, parseExplicitClientNameFromText } from "./binding-v2";
 import { tryBuildDraftReply } from "./draft-reply";
 import {
   isImageIntakeMultimodalEnabledForUser,
@@ -479,9 +479,10 @@ export async function processImageIntake(
     factBundle = buildSupportingReferenceFacts(primaryAsset?.assetId ?? intakeId);
   }
 
-  // 7. CRM-aware binding v2 (uses name signal from multimodal if available)
+  // 7. CRM-aware binding v2 (uses name signal from multimodal + explicit name from user text)
   const nameSignal = multimodalResult?.possibleClientNameSignal ?? null;
-  let clientBinding = await resolveClientBindingV2(effectiveRequest, session, nameSignal);
+  const nameFromText = parseExplicitClientNameFromText(request.accompanyingText);
+  let clientBinding = await resolveClientBindingV2(effectiveRequest, session, nameSignal, nameFromText);
 
   // 8. Case/opportunity binding v2 (Phase 4 — DB lookup when client is known)
   let resolvedClientId = clientBinding.clientId;

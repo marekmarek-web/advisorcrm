@@ -39,6 +39,25 @@ const NEVER_HANDOFF_TYPES = new Set<ImageInputType>([
 ]);
 
 // ---------------------------------------------------------------------------
+// Structured form detection — backoffice / admin UI screenshots
+// ---------------------------------------------------------------------------
+
+const STRUCTURED_FORM_FACT_KEYS = new Set([
+  "client_name", "first_name", "last_name", "birth_date", "birth_number",
+  "street", "city", "zip", "state", "country", "phone", "email",
+  "contract_number", "product", "partner", "payment_frequency",
+  "validity_from", "validity_to", "document_number", "document_type_id",
+  "gender", "citizenship", "birth_place", "title",
+]);
+
+export function looksLikeStructuredFormScreenshot(factBundle: ExtractedFactBundle): boolean {
+  const formFieldCount = factBundle.facts.filter(
+    (f) => STRUCTURED_FORM_FACT_KEYS.has(f.factKey) || /^(field_|form_|input_)/.test(f.factKey),
+  ).length;
+  return formFieldCount >= 4;
+}
+
+// ---------------------------------------------------------------------------
 // Signal detection from classification + extraction facts
 // ---------------------------------------------------------------------------
 
@@ -50,6 +69,12 @@ function detectHandoffSignals(
 
   if (classification.inputType !== "photo_or_scan_document" &&
       classification.inputType !== "mixed_or_uncertain_image") {
+    return signals;
+  }
+
+  // Structured form screenshots (backoffice / admin UI) are NOT review candidates.
+  // They contain CRM-extractable fields, not dense legal text.
+  if (looksLikeStructuredFormScreenshot(factBundle)) {
     return signals;
   }
 

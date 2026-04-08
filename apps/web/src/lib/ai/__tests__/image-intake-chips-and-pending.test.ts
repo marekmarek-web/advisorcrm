@@ -3,12 +3,30 @@
  * Also covers: chip no-send behavior, response mapper hints, identity-doc flow guard.
  */
 import { describe, it, expect, vi } from "vitest";
-import { dispatchSuggestedNextStepItem } from "@/lib/ai/suggested-next-step-dispatch";
+import {
+  dispatchSuggestedNextStepItem,
+  effectiveLegacySuggestedNextSteps,
+} from "@/lib/ai/suggested-next-step-dispatch";
 import { looksLikeClientNameInput } from "@/lib/ai/image-intake/client-name-input-heuristic";
 import { buildPendingImageIntakeResolutionFromOrchestratorResult } from "@/lib/ai/image-intake/pending-resolution-metadata";
 import { mapImageIntakeToAssistantResponse } from "@/lib/ai/image-intake/response-mapper";
 import type { ImageIntakeOrchestratorResult } from "@/lib/ai/image-intake/orchestrator";
 import type { SuggestedNextStepItem } from "@/lib/ai/suggested-next-step-types";
+
+describe("effectiveLegacySuggestedNextSteps", () => {
+  it("returns empty legacy steps when stepItems are present (stitching hint must not be sendable)", () => {
+    const legacy = ["2 navazujících obrázků bylo zpracováno jako jeden balíček."];
+    const stepItems: SuggestedNextStepItem[] = [
+      { label: legacy[0]!, kind: "hint" },
+      { label: "Nebo sdělte jméno klienta v textovém poli.", kind: "focus_composer" },
+    ];
+    expect(effectiveLegacySuggestedNextSteps(legacy, stepItems)).toEqual([]);
+  });
+
+  it("passes through legacy steps only when no structured items", () => {
+    expect(effectiveLegacySuggestedNextSteps(["Odeslat shrnutí"], undefined)).toEqual(["Odeslat shrnutí"]);
+  });
+});
 
 describe("dispatchSuggestedNextStepItem", () => {
   it("focus_composer calls onFocusComposer and not onSend", () => {
@@ -310,5 +328,103 @@ describe("response mapper: chip routing — no send_message for contextual hints
     // No generic "jak vám mohu pomoci" or capability dump
     expect(resp.message).not.toContain("jak vám mohu pomoci");
     expect(resp.message).not.toContain("Obrázek byl zpracován v režimu image intake.");
+  });
+
+  it("strips AI_REVIEW_HANDOFF_RECOMMENDED and DOCUMENT_SET_* from advisor warnings", () => {
+    const r = minimalAmbiguousOrchestratorResult();
+    r.previewPayload.warnings = [
+      "AI_REVIEW_HANDOFF_RECOMMENDED: interní text",
+      "DOCUMENT_SET_MIXED: smíšená sada",
+      "DOCUMENT_SET_INSUFFICIENT: nízká jistota",
+      "DOCUMENT_SET_REVIEW_CANDIDATE: kandidát",
+    ];
+    const resp = mapImageIntakeToAssistantResponse(r, "sess");
+    expect(resp.warnings?.some((w) => w.includes("AI_REVIEW_HANDOFF"))).toBe(false);
+    expect(resp.warnings?.some((w) => w.includes("DOCUMENT_SET_"))).toBe(false);
+  });
+
+  it("structured_image_fact_intake + form-like facts uses CRM-friendly intro", () => {
+    const r = minimalAmbiguousOrchestratorResult();
+    r.response.actionPlan = {
+      ...r.response.actionPlan,
+      outputMode: "structured_image_fact_intake",
+      recommendedActions: [],
+      needsAdvisorInput: false,
+      safetyFlags: [],
+    };
+    r.response.classification = {
+      inputType: "photo_or_scan_document",
+      subtype: null,
+      confidence: 0.85,
+      containsText: true,
+      likelyMessageThread: false,
+      likelyDocument: true,
+      likelyPayment: false,
+      likelyFinancialInfo: false,
+      uncertaintyFlags: [],
+    };
+    r.response.clientBinding = {
+      state: "bound_client_confident",
+      clientId: "c1",
+      clientLabel: "Roman Koloburda",
+      confidence: 0.65,
+      candidates: [],
+      source: "explicit_user_text",
+      warnings: [],
+    };
+    r.response.factBundle = {
+      facts: [
+        {
+          factType: "document_received",
+          value: "Roman",
+          normalizedValue: null,
+          confidence: 0.9,
+          evidence: null,
+          isActionable: true,
+          needsConfirmation: false,
+          observedVsInferred: "observed",
+          factKey: "first_name",
+        },
+        {
+          factType: "document_received",
+          value: "Koloburda",
+          normalizedValue: null,
+          confidence: 0.9,
+          evidence: null,
+          isActionable: true,
+          needsConfirmation: false,
+          observedVsInferred: "observed",
+          factKey: "last_name",
+        },
+        {
+          factType: "document_received",
+          value: "x@seznam.cz",
+          normalizedValue: null,
+          confidence: 0.85,
+          evidence: null,
+          isActionable: true,
+          needsConfirmation: false,
+          observedVsInferred: "observed",
+          factKey: "email",
+        },
+        {
+          factType: "document_received",
+          value: "+420",
+          normalizedValue: null,
+          confidence: 0.8,
+          evidence: null,
+          isActionable: true,
+          needsConfirmation: false,
+          observedVsInferred: "observed",
+          factKey: "phone",
+        },
+      ],
+      missingFields: [],
+      ambiguityReasons: [],
+      extractionSource: "multimodal_pass",
+    };
+    const resp = mapImageIntakeToAssistantResponse(r, "sess");
+    expect(resp.message).toContain("Našel jsem údaje z formuláře");
+    expect(resp.message).toContain("Roman Koloburda");
   });
 });
