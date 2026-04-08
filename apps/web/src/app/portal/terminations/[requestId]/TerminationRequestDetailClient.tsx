@@ -13,6 +13,7 @@ import { TerminationRequestFieldsForm } from "./TerminationRequestFieldsForm";
 import type { TerminationDeliveryChannel, TerminationRequestStatus } from "@/lib/db/schema-for-client";
 import { terminationDeliveryChannels, terminationRequestStatuses } from "@/lib/db/schema-for-client";
 import { terminationDeliveryChannelLabel, terminationDispatchStatusLabel } from "@/lib/terminations/client";
+import { formatIsoDateForUiCs } from "@/lib/forms/cz-date";
 
 type Props = {
   requestId: string;
@@ -23,10 +24,12 @@ type Props = {
 
 const DISPATCH_STATUS = ["pending", "sent", "delivered", "failed", "bounced", "cancelled"] as const;
 
+const EDITABLE_STATUSES = new Set(["draft", "intake", "awaiting_data"]);
+
 function statusLabelCs(s: string): string {
   const map: Record<string, string> = {
     draft: "Koncept",
-    intake: "Intak",
+    intake: "Intake",
     rules_evaluating: "Vyhodnocování pravidel",
     awaiting_data: "Čeká na data",
     awaiting_review: "Kontrola",
@@ -113,6 +116,14 @@ export function TerminationRequestDetailClient({
           <p className="text-sm text-[color:var(--wp-text-secondary)] font-mono">{requestId}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {EDITABLE_STATUSES.has(r.status) ? (
+            <Link
+              href={`/portal/terminations/new?draftId=${requestId}`}
+              className="rounded-[var(--wp-radius)] bg-violet-600 px-3 py-2 text-sm font-semibold text-white min-h-[44px] inline-flex items-center"
+            >
+              Pokračovat v úpravách
+            </Link>
+          ) : null}
           {r.contactId ? (
             <Link
               href={`/portal/contacts/${r.contactId}`}
