@@ -973,12 +973,21 @@ export function TerminationIntakeWizard({
                 <div className="lg:col-span-2 rounded-3xl border border-slate-200 bg-violet-50 p-4">
                   <div className="flex items-start gap-3">
                     <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
-                    <div>
+                    <div className="flex-1">
                       <div className="text-sm font-semibold text-slate-900">Navržené datum účinnosti (náhled)</div>
                       <div className="mt-1 text-sm text-slate-900">{effectivePreviewLabel}</div>
                       <div className="mt-2 text-xs leading-5 text-slate-500">
-                        Po dokončení žádosti dopočítá pravidla definitivní datum; u režimu ke konci období ověřte výsledek v
-                        souhrnu.
+                        {terminationMode === "end_of_insurance_period" && contractAnniversaryDate.trim()
+                          ? `Doplněno automaticky z výročního dne smlouvy. Po dokončení žádosti pravidla ověří přesné datum s ohledem na 6týdenní výpovědní lhůtu.`
+                          : terminationMode === "within_two_months_from_inception"
+                            ? twoMonthDeadline
+                              ? twoMonthOpen
+                                ? `Zákonná lhůta pro výpověď do 2 měsíců od sjednání platí do ${formatIsoDateForUiCs(twoMonthDeadline)}. Datum účinnosti je den doručení — doplněno dnešním datem.`
+                                : `Zákonná lhůta pro výpověď do 2 měsíců od sjednání pravděpodobně uplynula (limit byl ${formatIsoDateForUiCs(twoMonthDeadline)}). Pravidla to potvrdí po odeslání.`
+                              : "Zadejte počátek pojištění v kroku 1 — pak se automaticky vypočítá lhůta."
+                            : terminationMode === "fixed_calendar_date"
+                              ? "Zadejte požadované datum ručně. Pravidla ověří, zda je datum přípustné."
+                              : "Po dokončení žádosti pravidla dopočítají definitivní datum."}
                       </div>
                     </div>
                   </div>
