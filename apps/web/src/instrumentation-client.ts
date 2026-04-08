@@ -14,6 +14,8 @@ if (dsn) {
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     enableLogs: true,
+    // V browser bundle je jen NEXT_PUBLIC_* — pro verbose log v devtools nastav NEXT_PUBLIC_SENTRY_DEBUG=true.
+    debug: process.env.NEXT_PUBLIC_SENTRY_DEBUG === "true",
     integrations: [Sentry.replayIntegration()],
     // Sentry.io injected scripts / browser extensions (not our app).
     ignoreErrors: [/has no method ['"]updateFrom['"]/, /sentry\/scripts\//i],

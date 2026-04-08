@@ -12,6 +12,8 @@ if (dsn) {
     tracesSampleRate: resolveSentryTracesSampleRate("node"),
     includeLocalVariables: true,
     enableLogs: true,
+    /** Verbose výstup SDK do konzole (lokálně / staging). */
+    debug: process.env.SENTRY_DEBUG === "true",
     ignoreErrors: [/has no method ['"]updateFrom['"]/, /sentry\/scripts\//i],
   });
 }

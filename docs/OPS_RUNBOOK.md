@@ -120,6 +120,17 @@ V repu je manuální setup podle [sentry-for-ai `sentry-nextjs-sdk/SKILL.md`](ht
 3. Volitelně interaktivní wizard (jiný výstup než ruční soubory): `npx @sentry/wizard@latest -i nextjs` ve `apps/web`.
 4. Ověření: dočasně `throw new Error("Sentry test")` v API route → Issues v Sentry do ~30 s.
 
+**Verbose log SDK (debug):**
+
+- **Server / Edge:** `SENTRY_DEBUG=true` — podrobný výstup Sentry SDK v logu Node (Vercel Functions / lokální terminál).
+- **Prohlížeč:** `NEXT_PUBLIC_SENTRY_DEBUG=true` — stejné v konzoli devtools (běžné `SENTRY_DEBUG` se do client bundle nepropíše).
+
+### 3b) Langfuse + souhrnný health
+
+- Env: `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, volitelně `LANGFUSE_HOST` (self-hosted nebo jiný region), `LANGFUSE_ENVIRONMENT`, vypnutí `LANGFUSE_ENABLED=false`.
+- OpenAI volání v `lib/openai.ts` končí `OpenAiResponsesLangfuseObservation` + `flushAsync()` — trace by měly jít do Langfuse, pokud jsou klíče nastavené.
+- **Rychlá kontrola (po přihlášení poradce):** `GET /api/ai/health` vrací v těle `observability.sentry` a `observability.langfuse` (bez tajných hodnot): DSN jen boolean „nastaveno“, u Langfuse i `sdkClientActive` a `hostReachable` (HTTP ping na `…/api/public/health`).
+
 ### 4) Ověření cronů
 
 1. Vercel → **Cron Jobs** (nebo **Settings → Cron Jobs**) – měly by být cesty z `vercel.json`.

@@ -11,6 +11,7 @@ if (dsn) {
     sendDefaultPii: process.env.NODE_ENV !== "production",
     tracesSampleRate: resolveSentryTracesSampleRate("node"),
     enableLogs: true,
+    debug: process.env.SENTRY_DEBUG === "true",
     ignoreErrors: [/has no method ['"]updateFrom['"]/, /sentry\/scripts\//i],
   });
 }

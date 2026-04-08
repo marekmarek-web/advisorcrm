@@ -3,6 +3,12 @@ import OpenAI from "openai";
 import { logOpenAICall } from "@/lib/openai";
 import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
+import {
+  checkLangfuseHostReachable,
+  getLangfuseObservabilityStatus,
+  getSentryObservabilityStatus,
+} from "@/lib/observability/observability-status";
+import { isLangfuseServerClientActive } from "@/lib/observability/langfuse-openai";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +35,29 @@ export async function GET(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const apiKeyPresent = Boolean(apiKey);
 
+  const sentry = getSentryObservabilityStatus();
+  const langfuseMeta = getLangfuseObservabilityStatus();
+  const langfuseHostReachable = await checkLangfuseHostReachable();
+
   const basePayload = {
     ok: false,
     provider: "openai" as const,
     apiKeyPresent,
     model: process.env.OPENAI_MODEL ?? defaultModel,
     fallbackModel: null as string | null,
+    observability: {
+      sentry,
+      langfuse: {
+        ...langfuseMeta,
+        /** Langfuse JS SDK má načtené klíče a může odesílat trace. */
+        sdkClientActive: isLangfuseServerClientActive(),
+        /**
+         * HTTP GET …/api/public/health na LANGFUSE_HOST (nebo cloud).
+         * null = Langfuse není nakonfigurován, kontrola se přeskočila.
+         */
+        hostReachable: langfuseHostReachable,
+      },
+    },
   };
 
   if (!apiKey) {

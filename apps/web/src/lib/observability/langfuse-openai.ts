@@ -29,6 +29,11 @@ export function getLangfuseServerClient(): Langfuse | null {
   return langfuseSingleton;
 }
 
+/** True když je v paměti aktivní Langfuse klient (klíče + LANGFUSE_ENABLED). */
+export function isLangfuseServerClientActive(): boolean {
+  return getLangfuseServerClient() != null;
+}
+
 export function clipForLangfuse(text: string): string {
   if (text.length <= MAX_LANGFUSE_TEXT_CHARS) return text;
   return `${text.slice(0, MAX_LANGFUSE_TEXT_CHARS)}\n… [truncated ${text.length - MAX_LANGFUSE_TEXT_CHARS} chars]`;
