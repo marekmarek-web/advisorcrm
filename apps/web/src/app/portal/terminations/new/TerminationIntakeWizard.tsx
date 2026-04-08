@@ -604,14 +604,6 @@ export function TerminationIntakeWizard({
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[color:var(--wp-text-secondary)]">
             Vyberte klienta, pojišťovnu a typ ukončení. V posledním kroku zkontrolujte náhled dopisu před dokončením.
           </p>
-          <p className="mt-2 text-sm">
-            <Link
-              href="/portal/terminations/registry"
-              className="font-semibold text-[var(--wp-accent)] underline underline-offset-2"
-            >
-              Kompletní seznam pojišťoven a adres
-            </Link>
-          </p>
           {contextBanner}
           {aiBanner}
         </div>

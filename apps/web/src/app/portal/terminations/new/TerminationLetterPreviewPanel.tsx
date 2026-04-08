@@ -387,12 +387,12 @@ export function TerminationLetterPreviewPanel({
                 setEditSaveMsg(null);
               }}
               spellCheck={false}
-              className="min-h-[280px] w-full resize-y rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] font-mono"
+              className="min-h-[min(520px,60vh)] w-full resize-y rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] font-mono"
             />
           ) : null}
           {previewTab === "html" && coveringLetterPlainText ? (
             <div
-              className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(320px,40vh)] overflow-y-auto [&_.termination-letter-html_p]:mb-3"
+              className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(520px,60vh)] overflow-y-auto [&_.termination-letter-html_p]:mb-3"
               dangerouslySetInnerHTML={{ __html: plainTextToLetterHtml(coverSaved) }}
             />
           ) : null}
@@ -410,12 +410,12 @@ export function TerminationLetterPreviewPanel({
                 setEditSaveMsg(null);
               }}
               spellCheck={false}
-              className="min-h-[280px] w-full resize-y rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] font-mono"
+              className="min-h-[min(520px,60vh)] w-full resize-y rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] font-mono"
             />
           ) : null}
           {previewTab === "html" && letterPlainText ? (
             <div
-              className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(480px,55vh)] overflow-y-auto [&_.termination-letter-html_p]:mb-3"
+              className="rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 text-sm text-[color:var(--wp-text)] max-h-[min(520px,60vh)] overflow-y-auto [&_.termination-letter-html_p]:mb-3"
               dangerouslySetInnerHTML={{ __html: plainTextToLetterHtml(letterSaved) }}
             />
           ) : null}

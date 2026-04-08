@@ -150,6 +150,27 @@ function formatDateCs(iso: string | null | undefined): string {
   return d.toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" });
 }
 
+/**
+ * Základ = mailing z registru; snapshot z žádosti doplní / přepíše jen neprázdné hodnoty,
+ * aby neúplný `delivery_address_snapshot` nezahodil ulici/město z aktuálního registru.
+ */
+function mergeRegistryMailingWithSnapshot(
+  registry: Record<string, unknown> | null | undefined,
+  snapshot: Record<string, unknown> | null | undefined
+): Record<string, unknown> | null {
+  const base: Record<string, unknown> = {
+    ...(registry && typeof registry === "object" ? registry : {}),
+  };
+  if (snapshot && typeof snapshot === "object") {
+    for (const [k, v] of Object.entries(snapshot)) {
+      if (v == null) continue;
+      if (typeof v === "string" && v.trim() === "") continue;
+      base[k] = v;
+    }
+  }
+  return Object.keys(base).length > 0 ? base : null;
+}
+
 function parseMailing(
   raw: Record<string, unknown> | null,
   fallbackInsurerName: string
@@ -311,9 +332,13 @@ export function buildPolicyholderAddressBlock(vm: TerminationLetterViewModel): s
 }
 
 export function buildInsurerAddressBlock(vm: TerminationLetterViewModel): string {
-  const lines = [vm.insurerName?.trim(), vm.insurerDepartment?.trim(), vm.insurerAddressLine2?.trim(), vm.insurerAddressLine3?.trim()].filter(
-    (x): x is string => Boolean(x && String(x).trim())
-  );
+  const nameLine = vm.insurerAddressLine1?.trim() || vm.insurerName?.trim();
+  const lines = [
+    nameLine,
+    vm.insurerDepartment?.trim(),
+    vm.insurerAddressLine2?.trim(),
+    vm.insurerAddressLine3?.trim(),
+  ].filter((x): x is string => Boolean(x && String(x).trim()));
   const inner = lines.join("\n");
   return inner.trim() ? `Pojišťovna\n${inner}` : "Pojišťovna\n………………";
 }
@@ -541,12 +566,11 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
     input.claimEventDate?.trim() || extras.claimEventDate?.trim() || null;
   const placeHeader = input.place?.trim() || extras.placeOverride?.trim() || "………………";
 
-  const mailing = parseMailing(
-    (r.deliveryAddressSnapshot as Record<string, unknown> | null) ??
-      ir?.mailingAddress ??
-      null,
-    r.insurerName
+  const mailingRaw = mergeRegistryMailingWithSnapshot(
+    ir?.mailingAddress ?? null,
+    r.deliveryAddressSnapshot as Record<string, unknown> | null
   );
+  const mailing = parseMailing(mailingRaw, r.insurerName);
 
   const officialFormName = ir?.officialFormName ?? null;
   const officialFormNotes = ir?.officialFormNotes ?? null;

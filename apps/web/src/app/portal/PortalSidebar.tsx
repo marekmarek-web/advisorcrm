@@ -36,7 +36,6 @@ import {
   User,
   Command,
   FileX2,
-  ClipboardList,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { usePortalBadgeCounts } from "@/app/portal/PortalBadgeCountsContext";
@@ -140,12 +139,6 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
         activePathPrefix: "/portal/terminations",
         activePathPrefixExclude: "/portal/terminations/registry",
         hoverAnim: "group-hover:-translate-y-0.5 group-hover:scale-110",
-      },
-      {
-        href: "/portal/terminations/registry",
-        label: "Registr pojišťoven",
-        Icon: ClipboardList,
-        hoverAnim: "group-hover:scale-105",
       },
       { href: "/portal/analyses", label: "Finanční analýzy", Icon: BarChart3, isHighlighted: true, hoverAnim: "group-hover:scale-110 group-hover:rotate-6" },
       { href: "/portal/calculators", label: "Kalkulačky", Icon: Calculator, hoverAnim: "group-hover:rotate-12 group-hover:scale-110" },
@@ -259,7 +252,7 @@ function filterSectionsByRole(sections: SectionConfig[], showTeamOverview: boole
 
 function filterTerminationNavItem(sections: SectionConfig[], terminationsEnabled: boolean): SectionConfig[] {
   if (terminationsEnabled) return sections;
-  const termHrefs = new Set(["/portal/terminations/new", "/portal/terminations/registry"]);
+  const termHrefs = new Set(["/portal/terminations/new"]);
   return sections.map((sec) =>
     sec.id === "sec-nastroje"
       ? { ...sec, items: sec.items.filter((i) => !termHrefs.has(i.href)) }
