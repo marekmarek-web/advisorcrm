@@ -21,9 +21,18 @@ type Props = {
   leftPanel: LeftPanelData;
   onBuildResult?: (data: TerminationLetterBuildResult) => void;
   showPersistButtons?: boolean;
+  letterPlainTextDraft: string;
+  onLetterPlainTextDraftChange: (plain: string) => void;
 };
 
-export function TerminationFinishOutputLayout({ requestId, leftPanel, onBuildResult, showPersistButtons = true }: Props) {
+export function TerminationFinishOutputLayout({
+  requestId,
+  leftPanel,
+  onBuildResult,
+  showPersistButtons = true,
+  letterPlainTextDraft,
+  onLetterPlainTextDraftChange,
+}: Props) {
   const deliveryLabel = leftPanel.deliveryChannelHint
     ? terminationDeliveryChannelLabel(leftPanel.deliveryChannelHint)
     : null;
@@ -36,7 +45,8 @@ export function TerminationFinishOutputLayout({ requestId, leftPanel, onBuildRes
           <div>
             <div className="text-lg font-semibold text-slate-950">Dokončit výstup</div>
             <div className="mt-1 text-sm text-slate-500">
-              Zkontrolujte náhled dopisu. Tlačítkem „Tisk / PDF" v náhledu otevřete tiskový dialog prohlížeče.
+              Upravte text výpovědi v poli vpravo. „Náhled tisk / PDF“ ověří vzhled; úplné uložení je tlačítkem „Export
+              do PDF“ dole.
             </div>
           </div>
           <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -94,7 +104,7 @@ export function TerminationFinishOutputLayout({ requestId, leftPanel, onBuildRes
               </div>
               <div className="flex gap-3">
                 <Printer className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
-                <span>Tisk / PDF otevře tiskový dialog prohlížeče — uložte jako PDF nebo vytiskněte</span>
+                <span>Export do PDF uloží žádost a otevře tisk / uložení jako PDF</span>
               </div>
               <div className="flex gap-3">
                 <Mail className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
@@ -112,6 +122,8 @@ export function TerminationFinishOutputLayout({ requestId, leftPanel, onBuildRes
             suppressValidityBanner
             onBuildResult={onBuildResult}
             showPersistButtons={showPersistButtons}
+            wizardLetterDraft={letterPlainTextDraft}
+            onWizardLetterDraftChange={onLetterPlainTextDraftChange}
           />
         </div>
       </div>

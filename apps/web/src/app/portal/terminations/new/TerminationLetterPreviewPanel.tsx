@@ -55,6 +55,8 @@ export function TerminationLetterPreviewPanel({
   suppressValidityBanner = false,
   layout = "default",
   onBuildResult,
+  wizardLetterDraft,
+  onWizardLetterDraftChange,
 }: {
   requestId: string;
   /** Uložení do CRM dokumentů (vyžaduje documents:write). */
@@ -67,6 +69,9 @@ export function TerminationLetterPreviewPanel({
   layout?: "default" | "wizardFinish";
   /** Callback po úspěšném načtení výsledku buildu (pro banner nad wizardem). */
   onBuildResult?: (data: TerminationLetterBuildResult) => void;
+  /** Wizard: řízený text dopisu z rodiče (editovatelný výstup před PDF). */
+  wizardLetterDraft?: string;
+  onWizardLetterDraftChange?: (plain: string) => void;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,13 +118,18 @@ export function TerminationLetterPreviewPanel({
     if (lastSeededRequestIdRef.current === requestId) return;
     const lp = data.letterPlainText ?? "";
     const cp = data.coveringLetterPlainText ?? "";
-    setLetterDraft(lp);
-    setLetterSaved(lp);
+    if (layout === "wizardFinish" && onWizardLetterDraftChange) {
+      onWizardLetterDraftChange(lp);
+      setLetterSaved(lp);
+    } else {
+      setLetterDraft(lp);
+      setLetterSaved(lp);
+    }
     setCoverDraft(cp);
     setCoverSaved(cp);
     setEditSaveMsg(null);
     lastSeededRequestIdRef.current = requestId;
-  }, [data, loading, requestId]);
+  }, [data, loading, requestId, layout, onWizardLetterDraftChange]);
 
   if (loading) {
     return (
@@ -195,27 +205,34 @@ export function TerminationLetterPreviewPanel({
   }
 
   if (layout === "wizardFinish") {
-    const letterT = letterSaved.trim() || (letterPlainText ?? "").trim();
-    const primaryHtml = letterT ? plainTextToLetterHtml(letterT) : letterHtml ?? null;
+    const controlled = Boolean(onWizardLetterDraftChange);
+    const letterBody =
+      (controlled ? wizardLetterDraft?.trim() : letterSaved.trim()) || (letterPlainText ?? "").trim();
     const coverT = coverSaved.trim() || (coveringLetterPlainText ?? "").trim();
-    const secondaryHtml = coverT ? plainTextToLetterHtml(coverT) : coveringLetterHtml ?? null;
-    const htmlContent = primaryHtml || secondaryHtml;
     const canPrint =
-      Boolean(htmlContent) ||
+      Boolean(letterBody) ||
       Boolean(officialForm) ||
-      Boolean(letterSaved.trim() && hasLetterPreview) ||
-      Boolean(letterHtml) ||
-      Boolean(coverSaved.trim() && hasCoverPreview) ||
+      Boolean(coverT && hasCoverPreview) ||
       Boolean(coveringLetterHtml);
+
+    function printWizardLetter() {
+      const t = letterBody;
+      if (!t) return;
+      const w = window.open("", "_blank");
+      if (!w) return;
+      const html = plainTextToLetterHtml(t);
+      w.document.write(
+        `<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8"/><title>Výpověď – tisk</title></head><body style="margin:24px;font-family:system-ui,sans-serif">${html}</body></html>`,
+      );
+      w.document.close();
+      w.focus();
+      w.print();
+      w.close();
+    }
 
     return (
       <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
-        {htmlContent ? (
-          <div
-            className="termination-letter-html max-h-[min(640px,70vh)] overflow-y-auto text-sm leading-7 text-slate-700 [&_p]:mb-3"
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
-          />
-        ) : officialForm ? (
+        {officialForm ? (
           <div className="space-y-3 text-sm text-slate-700">
             <p className="text-base font-bold text-slate-950">{officialForm.title}</p>
             <p className="whitespace-pre-wrap">{officialForm.body}</p>
@@ -226,16 +243,34 @@ export function TerminationLetterPreviewPanel({
             </ul>
           </div>
         ) : (
-          <p className="text-sm text-slate-400">Dopis bude vygenerován po dokončení žádosti.</p>
+          <>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Text dopisu (upravte přímo)
+            </label>
+            <textarea
+              value={controlled ? (wizardLetterDraft ?? "") : letterDraft}
+              onChange={(e) => {
+                if (controlled) {
+                  onWizardLetterDraftChange?.(e.target.value);
+                } else {
+                  setLetterDraft(e.target.value);
+                  setLetterSaved(e.target.value);
+                }
+              }}
+              spellCheck={false}
+              placeholder="Načítám nebo doplňte text výpovědi…"
+              className="min-h-[min(520px,70vh)] w-full resize-y rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-relaxed text-slate-900 whitespace-pre-wrap outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            />
+          </>
         )}
         {showPrintButton ? (
           <button
             type="button"
-            onClick={() => printCurrentPreview()}
+            onClick={() => (officialForm ? printCurrentPreview() : printWizardLetter())}
             disabled={!canPrint}
-            className="mt-4 text-xs text-slate-500 underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline"
+            className="mt-4 inline-flex min-h-[44px] items-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Tisk / PDF
+            Náhled tisk / PDF
           </button>
         ) : null}
       </div>

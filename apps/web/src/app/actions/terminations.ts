@@ -40,6 +40,7 @@ import type {
 } from "db";
 import {
   buildTerminationLetterResult,
+  mergeRegistryMailingWithSnapshot,
   type ContactRowLike,
   type ContractRowLike,
   type InsurerRegistryRowLike,
@@ -71,6 +72,35 @@ export type TerminationWizardPrefill = {
 
 function canWriteContacts(roleName: RoleName): boolean {
   return hasPermission(roleName, "contacts:write");
+}
+
+/** Výběr instituce z registru ve wizardu — doplní mailing pro koncept i náhled před rules. */
+async function resolveInsurerRegistryRowForHint(
+  hintId: string | null | undefined,
+  tenantId: string
+): Promise<{ id: string; mailing: Record<string, unknown> | null } | null> {
+  const id = hintId?.trim();
+  if (!id) return null;
+  const [ir] = await db
+    .select({
+      id: insurerTerminationRegistry.id,
+      mailingAddress: insurerTerminationRegistry.mailingAddress,
+    })
+    .from(insurerTerminationRegistry)
+    .where(
+      and(
+        eq(insurerTerminationRegistry.id, id),
+        eq(insurerTerminationRegistry.active, true),
+        or(isNull(insurerTerminationRegistry.tenantId), eq(insurerTerminationRegistry.tenantId, tenantId))
+      )
+    )
+    .limit(1);
+  if (!ir) return null;
+  const m = ir.mailingAddress;
+  return {
+    id: ir.id,
+    mailing: m && typeof m === "object" && !Array.isArray(m) ? (m as Record<string, unknown>) : null,
+  };
 }
 
 /**
@@ -396,6 +426,11 @@ export type CreateTerminationDraftPayload = {
   documentBuilderExtras?: TerminationDocumentBuilderExtras | null;
   /** Dokončení rozepsaného konceptu (`status` = intake) místo nového insertu. */
   resumeRequestId?: string | null;
+  /**
+   * ID řádku `insurer_termination_registry` vybrané v comboboxu — u konceptu doplní `insurer_registry_id`
+   * a `delivery_address_snapshot`, aby náhled dopisu měl adresu pojišťovny už před finálním rules.
+   */
+  insurerRegistryIdHint?: string | null;
 };
 
 export type CreateTerminationDraftResult = {
@@ -548,6 +583,16 @@ export async function createTerminationDraft(
       .limit(1);
     mailing = ir?.mailingAddress ?? null;
   }
+  const hintRow = await resolveInsurerRegistryRowForHint(payload.insurerRegistryIdHint ?? null, auth.tenantId);
+  if (hintRow?.mailing) {
+    mailing = mergeRegistryMailingWithSnapshot(
+      mailing && typeof mailing === "object" && !Array.isArray(mailing)
+        ? (mailing as Record<string, unknown>)
+        : null,
+      hintRow.mailing
+    );
+  }
+  const insurerRegistryIdResolved = rules.insurerRegistryId ?? hintRow?.id ?? null;
 
   const rowValues = {
     contactId: payload.contactId,
@@ -556,7 +601,7 @@ export async function createTerminationDraft(
     sourceConversationId: payload.sourceConversationId,
     advisorId: auth.userId,
     insurerName,
-    insurerRegistryId: rules.insurerRegistryId,
+    insurerRegistryId: insurerRegistryIdResolved,
     contractNumber: payload.contractNumber,
     productSegment: payload.productSegment,
     terminationMode: payload.terminationMode,
@@ -574,7 +619,10 @@ export async function createTerminationDraft(
       outcome: rules.outcome,
     },
     deliveryChannel: rules.defaultDeliveryChannel,
-    deliveryAddressSnapshot: mailing && typeof mailing === "object" ? (mailing as Record<string, unknown>) : undefined,
+    deliveryAddressSnapshot:
+      mailing && typeof mailing === "object" && !Array.isArray(mailing)
+        ? (mailing as Record<string, unknown>)
+        : undefined,
     status,
     reviewRequiredReason: rules.reviewRequiredReason,
     confidence: rules.confidence != null ? String(Math.min(1, Math.max(0, rules.confidence))) : null,
@@ -719,6 +767,17 @@ export async function saveTerminationIntakePartialAction(
     uncertainInsurer: payload.uncertainInsurer ? true : undefined,
   };
 
+  let insurerRegistryIdPartial: string | null = null;
+  let deliverySnapshotPartial: Record<string, unknown> | null = null;
+  const regHint = payload.insurerRegistryIdHint?.trim();
+  if (regHint) {
+    const resolved = await resolveInsurerRegistryRowForHint(regHint, auth.tenantId);
+    if (resolved) {
+      insurerRegistryIdPartial = resolved.id;
+      deliverySnapshotPartial = resolved.mailing;
+    }
+  }
+
   try {
     const requestId = await db.transaction(async (tx) => {
       if (partialId) {
@@ -748,6 +807,8 @@ export async function saveTerminationIntakePartialAction(
             contractAnniversaryDate: payload.contractAnniversaryDate ?? undefined,
             sourceKind: payload.sourceKind,
             documentBuilderExtras: serializeDocumentBuilderExtras(extras),
+            insurerRegistryId: insurerRegistryIdPartial,
+            deliveryAddressSnapshot: deliverySnapshotPartial ?? undefined,
             requiredAttachments: { partialDraft: true },
             status: "intake",
             updatedBy: auth.userId,
@@ -784,6 +845,8 @@ export async function saveTerminationIntakePartialAction(
           contractAnniversaryDate: payload.contractAnniversaryDate ?? undefined,
           sourceKind: payload.sourceKind,
           documentBuilderExtras: serializeDocumentBuilderExtras(extras),
+          insurerRegistryId: insurerRegistryIdPartial,
+          deliveryAddressSnapshot: deliverySnapshotPartial ?? undefined,
           requiredAttachments: { partialDraft: true },
           status: "intake",
           deliveryChannel: "not_yet_set",
@@ -822,6 +885,8 @@ export type TerminationIntakeDraftWizardState = {
   contractId: string | null;
   sourceDocumentId: string | null;
   insurerName: string;
+  /** Vybraný řádek registru (pro náhled adresy v dopise u konceptu). */
+  insurerRegistryId: string | null;
   contractNumber: string | null;
   productSegment: string | null;
   contractStartDate: string | null;
@@ -831,6 +896,9 @@ export type TerminationIntakeDraftWizardState = {
   terminationReasonCode: TerminationReasonCode;
   uncertainInsurer: boolean;
   documentBuilderExtras: TerminationDocumentBuilderExtras;
+  /** Odvozeno z registru při načtení konceptu (levý panel / konzistence s dopisem). */
+  insurerRegistryOneLine: string | null;
+  insurerRegistryChannelHint: string | null;
 };
 
 export type GetTerminationIntakeDraftResponse =
@@ -861,6 +929,37 @@ export async function getTerminationIntakeDraftForWizard(
   const uncertainInsurer = extras.uncertainInsurer === true;
   const { uncertainInsurer: _u, ...restExtras } = extras;
 
+  let insurerRegistryOneLine: string | null = null;
+  let insurerRegistryChannelHint: string | null = null;
+  if (row.insurerRegistryId) {
+    const [ir] = await db
+      .select({
+        mailingAddress: insurerTerminationRegistry.mailingAddress,
+        allowedChannels: insurerTerminationRegistry.allowedChannels,
+        email: insurerTerminationRegistry.email,
+      })
+      .from(insurerTerminationRegistry)
+      .where(
+        and(
+          eq(insurerTerminationRegistry.id, row.insurerRegistryId),
+          or(
+            isNull(insurerTerminationRegistry.tenantId),
+            eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+          )
+        )
+      )
+      .limit(1);
+    if (ir) {
+      insurerRegistryOneLine = formatTerminationRegistryMailingOneLine(
+        (ir.mailingAddress as Record<string, unknown> | null) ?? null
+      );
+      insurerRegistryChannelHint = formatTerminationChannelHint(
+        ir.allowedChannels as string[] | null | undefined,
+        ir.email
+      );
+    }
+  }
+
   return {
     ok: true,
     data: {
@@ -871,6 +970,7 @@ export async function getTerminationIntakeDraftForWizard(
       sourceDocumentId: row.sourceDocumentId,
       insurerName:
         row.insurerName === TERMINATION_PARTIAL_INSURER_PLACEHOLDER ? "" : row.insurerName,
+      insurerRegistryId: row.insurerRegistryId,
       contractNumber: row.contractNumber,
       productSegment: row.productSegment,
       contractStartDate: row.contractStartDate,
@@ -880,6 +980,8 @@ export async function getTerminationIntakeDraftForWizard(
       terminationReasonCode: row.terminationReasonCode as TerminationReasonCode,
       uncertainInsurer,
       documentBuilderExtras: restExtras,
+      insurerRegistryOneLine,
+      insurerRegistryChannelHint,
     },
   };
 }

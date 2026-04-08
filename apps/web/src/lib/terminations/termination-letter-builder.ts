@@ -154,7 +154,8 @@ function formatDateCs(iso: string | null | undefined): string {
  * Základ = mailing z registru; snapshot z žádosti doplní / přepíše jen neprázdné hodnoty,
  * aby neúplný `delivery_address_snapshot` nezahodil ulici/město z aktuálního registru.
  */
-function mergeRegistryMailingWithSnapshot(
+/** Sloučení mailing JSON z registru a snapshotu uloženého u žádosti (server i letter builder). */
+export function mergeRegistryMailingWithSnapshot(
   registry: Record<string, unknown> | null | undefined,
   snapshot: Record<string, unknown> | null | undefined
 ): Record<string, unknown> | null {
@@ -188,12 +189,25 @@ function parseMailing(
       line3: "",
     };
   }
-  const name = typeof raw.name === "string" ? raw.name : fallbackInsurerName;
-  const street = typeof raw.street === "string" ? raw.street : "";
-  const city = typeof raw.city === "string" ? raw.city : "";
-  const zip = typeof raw.zip === "string" ? raw.zip : "";
-  const country = typeof raw.country === "string" ? raw.country : "";
-  const department = typeof raw.department === "string" ? raw.department : null;
+  const str = (k: string): string => {
+    const v = raw[k];
+    return typeof v === "string" ? v.trim() : "";
+  };
+  const name = str("name") || fallbackInsurerName;
+  let street = str("street");
+  const city = str("city");
+  const zip = str("zip");
+  const country = str("country");
+  const department = str("department") || null;
+  const combined =
+    str("addressLine") ||
+    str("address") ||
+    str("postalAddress") ||
+    str("fullAddress") ||
+    str("line2");
+  if (!street && combined) {
+    street = combined;
+  }
   const line2 = street;
   const line3 = [zip, city, country].filter(Boolean).join(", ");
   return { department, line1: name, line2, line3 };
@@ -689,10 +703,14 @@ export function buildTerminationLetterResult(input: TerminationLetterBuildInput)
   let officialForm: TerminationOfficialFormOutput | null = null;
   let coveringLetterPlainText: string | null = null;
 
+  const letterDraftOverride = extras.letterPlainTextDraft?.trim() ?? "";
+
   if (requiresOfficialForm) {
     officialForm = buildOfficialFormOutput(vm);
     letterPlainText = null;
     coveringLetterPlainText = buildCoveringLetter(vm);
+  } else if (letterDraftOverride) {
+    letterPlainText = letterDraftOverride;
   } else {
     letterPlainText = renderTerminationLetterPlainText(vm, effectiveConfirmed !== null);
   }

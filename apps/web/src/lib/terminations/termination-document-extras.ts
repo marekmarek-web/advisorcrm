@@ -21,6 +21,11 @@ export type TerminationDocumentBuilderExtras = {
   uncertainInsurer?: boolean;
   /** Volný text příloh zadaný poradcem ve wizardu (doplní odstavec v dopise). */
   attachmentsDeclared?: string;
+  /**
+   * Uložený text hlavního dopisu z wizardu (úpravy poradce). Když je neprázdný, použije se místo
+   * automaticky generovaného dopisu (kromě režimu oficiálního formuláře).
+   */
+  letterPlainTextDraft?: string;
 };
 
 export function parseDocumentBuilderExtras(raw: unknown): TerminationDocumentBuilderExtras {
@@ -39,6 +44,7 @@ export function parseDocumentBuilderExtras(raw: unknown): TerminationDocumentBui
   if (typeof o.placeOverride === "string") out.placeOverride = o.placeOverride;
   if (o.uncertainInsurer === true) out.uncertainInsurer = true;
   if (typeof o.attachmentsDeclared === "string") out.attachmentsDeclared = o.attachmentsDeclared;
+  if (typeof o.letterPlainTextDraft === "string") out.letterPlainTextDraft = o.letterPlainTextDraft;
   return out;
 }
 
@@ -53,5 +59,6 @@ export function serializeDocumentBuilderExtras(e: TerminationDocumentBuilderExtr
   if (e.placeOverride?.trim()) out.placeOverride = e.placeOverride.trim();
   if (e.uncertainInsurer) out.uncertainInsurer = true;
   if (e.attachmentsDeclared?.trim()) out.attachmentsDeclared = e.attachmentsDeclared.trim();
+  if (e.letterPlainTextDraft?.trim()) out.letterPlainTextDraft = e.letterPlainTextDraft.trim();
   return out;
 }

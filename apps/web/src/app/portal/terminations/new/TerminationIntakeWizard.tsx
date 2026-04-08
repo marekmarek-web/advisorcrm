@@ -17,6 +17,7 @@ import { segmentLabel } from "@/app/lib/segment-labels";
 import {
   createTerminationDraft,
   extractTerminationFieldsFromDocumentAction,
+  getTerminationLetterPreview,
   saveTerminationIntakePartialAction,
   searchContactsForTerminationWizardAction,
   searchTerminationInsurerRegistryAction,
@@ -28,7 +29,17 @@ import type { TerminationLetterBuildResult } from "@/lib/terminations/terminatio
 import { TerminationFinishOutputLayout } from "./TerminationFinishOutputLayout";
 import type { TerminationMode, TerminationReasonCode, TerminationRequestSource } from "@/lib/db/schema-for-client";
 import { modeToReasonCode, terminationDeliveryChannelLabel } from "@/lib/terminations/client";
-import { suggestedAnniversaryFromContractStart } from "@/lib/terminations/suggested-anniversary-from-contract-start";
+import type { TerminationPolicyholderKind } from "@/lib/terminations/termination-document-extras";
+import { plainTextToLetterHtml } from "@/lib/terminations/termination-letter-html";
+import {
+  computeTwoMonthDeadline,
+  isTwoMonthWindowOpen,
+  suggestedAnniversaryFromContractStart,
+} from "@/lib/terminations/suggested-anniversary-from-contract-start";
+import { formatCzDate, formatIsoDateForUiCs } from "@/lib/forms/cz-date";
+import { FriendlyDateInput } from "@/components/forms/FriendlyDateInput";
+import { SearchCombobox, type SearchComboboxItem } from "@/components/ui/SearchCombobox";
+import { TerminationLetterPreviewPanel } from "./TerminationLetterPreviewPanel";
 
 function insurerSearchItemMeta(addressLine: string | null | undefined, channelHint: string | null | undefined): string | null {
   const addr = addressLine?.trim() || "";
@@ -39,15 +50,6 @@ function insurerSearchItemMeta(addressLine: string | null | undefined, channelHi
   if (chLabel) return chLabel;
   return null;
 }
-import type { TerminationPolicyholderKind } from "@/lib/terminations/termination-document-extras";
-import { formatCzDate, formatIsoDateForUiCs } from "@/lib/forms/cz-date";
-import { FriendlyDateInput } from "@/components/forms/FriendlyDateInput";
-import { SearchCombobox, type SearchComboboxItem } from "@/components/ui/SearchCombobox";
-import { TerminationLetterPreviewPanel } from "./TerminationLetterPreviewPanel";
-import {
-  computeTwoMonthDeadline,
-  isTwoMonthWindowOpen,
-} from "@/lib/terminations/suggested-anniversary-from-contract-start";
 
 const MODE_OPTIONS: { value: TerminationMode; label: string }[] = [
   { value: "end_of_insurance_period", label: "Ke konci pojistného období / výročnímu dni" },
@@ -123,11 +125,27 @@ export function TerminationIntakeWizard({
   const [insurerQuery, setInsurerQuery] = useState(
     () => loadedDraft?.insurerName || urlPrefill?.insurerName?.trim() || prefill.insurerName || "",
   );
-  const [selectedInsurerRegistryId, setSelectedInsurerRegistryId] = useState<string | null>(null);
+  const [selectedInsurerRegistryId, setSelectedInsurerRegistryId] = useState<string | null>(
+    () => loadedDraft?.insurerRegistryId ?? null,
+  );
   const [registryDeliveryMeta, setRegistryDeliveryMeta] = useState<{
     addressLine: string | null;
     channelHint: string | null;
-  } | null>(null);
+  } | null>(() =>
+    loadedDraft?.insurerRegistryOneLine
+      ? {
+          addressLine: loadedDraft.insurerRegistryOneLine,
+          channelHint: loadedDraft.insurerRegistryChannelHint,
+        }
+      : null,
+  );
+  const [letterPlainTextDraft, setLetterPlainTextDraft] = useState(
+    () => loadedDraft?.documentBuilderExtras?.letterPlainTextDraft ?? "",
+  );
+
+  const onLetterPlainTextDraftChange = useCallback((plain: string) => {
+    setLetterPlainTextDraft(plain);
+  }, []);
 
   const [clientQuery, setClientQuery] = useState(() => prefill.contactLabel?.trim() ?? "");
   const [insurerItems, setInsurerItems] = useState<SearchComboboxItem[]>([]);
@@ -256,6 +274,7 @@ export function TerminationIntakeWizard({
       terminationMode,
       terminationReasonCode,
       uncertainInsurer,
+      insurerRegistryIdHint: selectedInsurerRegistryId,
       documentBuilderExtras: {
         ...(policyholderKind === "company" ? { policyholderKind: "company" as const } : {}),
         ...(policyholderKind === "company" && companyName.trim() ? { companyName: companyName.trim() } : {}),
@@ -269,6 +288,7 @@ export function TerminationIntakeWizard({
         ...(claimEventDate.trim() ? { claimEventDate: claimEventDate.trim() } : {}),
         ...(placeOverride.trim() ? { placeOverride: placeOverride.trim() } : {}),
         ...(attachmentsDeclared.trim() ? { attachmentsDeclared: attachmentsDeclared.trim() } : {}),
+        ...(letterPlainTextDraft.trim() ? { letterPlainTextDraft: letterPlainTextDraft.trim() } : {}),
       },
     };
   }, [
@@ -293,6 +313,8 @@ export function TerminationIntakeWizard({
     claimEventDate,
     placeOverride,
     attachmentsDeclared,
+    selectedInsurerRegistryId,
+    letterPlainTextDraft,
   ]);
 
   useEffect(() => {
@@ -507,6 +529,23 @@ export function TerminationIntakeWizard({
       if (!res.ok) {
         setError(res.error);
         return;
+      }
+      const preview = await getTerminationLetterPreview(res.requestId);
+      if (preview.ok) {
+        const plain = preview.data.letterPlainText?.trim();
+        if (plain) {
+          const html = plainTextToLetterHtml(plain);
+          const w = window.open("", "_blank");
+          if (w) {
+            w.document.write(
+              `<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8"/><title>Výpověď – PDF</title></head><body style="margin:24px;font-family:system-ui,sans-serif">${html}</body></html>`,
+            );
+            w.document.close();
+            w.focus();
+            w.print();
+            w.close();
+          }
+        }
       }
       router.push(`/portal/terminations/${res.requestId}`);
     });
@@ -1103,6 +1142,8 @@ export function TerminationIntakeWizard({
                 <TerminationFinishOutputLayout
                   key={previewNonce}
                   requestId={partialRequestId}
+                  letterPlainTextDraft={letterPlainTextDraft}
+                  onLetterPlainTextDraftChange={onLetterPlainTextDraftChange}
                   leftPanel={{
                     clientName: clientQuery.trim() || null,
                     insurerName: insurerQuery.trim() || null,
@@ -1191,7 +1232,7 @@ export function TerminationIntakeWizard({
                   disabled={!canWrite || isPending}
                   className="inline-flex h-11 min-h-[44px] items-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 disabled:opacity-50"
                 >
-                  Dokončit žádost
+                  Export do PDF
                   <ChevronRight className="h-4 w-4" />
                 </button>
               ) : null}
