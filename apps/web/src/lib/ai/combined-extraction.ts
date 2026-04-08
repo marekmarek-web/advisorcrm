@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiReviewCreateResponseStructured as createResponseStructured } from "./review-llm-provider";
+import { aiReviewCreateResponse as createResponse } from "./review-llm-provider";
 import {
   DOCUMENT_INTENTS,
   DOCUMENT_LIFECYCLE_STATUSES,
@@ -8,6 +8,7 @@ import {
   documentReviewEnvelopeSchema,
   type DocumentReviewEnvelope,
 } from "./document-review-types";
+import { coerceReviewEnvelopeParsedJson } from "./envelope-parse-coerce";
 
 export const COMBINED_CLASSIFY_AND_EXTRACT_MIN_HINT_CHARS = 800;
 
@@ -35,10 +36,10 @@ export const combinedClassifyAndExtractJsonSchema: Record<string, unknown> = {
     documentClassification: {
       type: "object",
       additionalProperties: false,
-      required: ["primaryType", "lifecycleStatus", "documentIntent", "confidence", "reasons"],
+      required: ["primaryType", "lifecycleStatus", "documentIntent", "confidence", "reasons", "subtype"],
       properties: {
         primaryType: { type: "string", enum: [...PRIMARY_DOCUMENT_TYPES] },
-        subtype: { type: "string" },
+        subtype: { anyOf: [{ type: "string" }, { type: "null" }] },
         lifecycleStatus: { type: "string", enum: [...DOCUMENT_LIFECYCLE_STATUSES] },
         documentIntent: { type: "string", enum: [...DOCUMENT_INTENTS] },
         confidence: { type: "number", minimum: 0, maximum: 1 },
@@ -51,15 +52,15 @@ export const combinedClassifyAndExtractJsonSchema: Record<string, unknown> = {
     documentMeta: {
       type: "object",
       additionalProperties: false,
-      required: ["scannedVsDigital"],
+      required: ["scannedVsDigital", "fileName", "pageCount", "issuer", "documentDate", "language", "overallConfidence"],
       properties: {
-        fileName: { type: "string" },
-        pageCount: { type: "integer", minimum: 1 },
-        issuer: { type: "string" },
-        documentDate: { type: "string" },
-        language: { type: "string" },
+        fileName: { anyOf: [{ type: "string" }, { type: "null" }] },
+        pageCount: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
+        issuer: { anyOf: [{ type: "string" }, { type: "null" }] },
+        documentDate: { anyOf: [{ type: "string" }, { type: "null" }] },
+        language: { anyOf: [{ type: "string" }, { type: "null" }] },
         scannedVsDigital: { type: "string", enum: ["scanned", "digital", "unknown"] },
-        overallConfidence: { type: "number", minimum: 0, maximum: 1 },
+        overallConfidence: { anyOf: [{ type: "number", minimum: 0, maximum: 1 }, { type: "null" }] },
       },
     },
     extractedFields: {
@@ -67,31 +68,33 @@ export const combinedClassifyAndExtractJsonSchema: Record<string, unknown> = {
       additionalProperties: {
         type: "object",
         additionalProperties: false,
-        required: ["value", "status", "confidence"],
+        required: ["value", "status", "confidence", "sourcePage", "evidenceSnippet", "sensitive"],
         properties: {
           value: jsonScalarSchema,
           confidence: { type: "number", minimum: 0, maximum: 1 },
-          sourcePage: { type: "integer", minimum: 1 },
-          evidenceSnippet: { type: "string" },
+          sourcePage: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
+          evidenceSnippet: { anyOf: [{ type: "string" }, { type: "null" }] },
           status: { type: "string", enum: [...EXTRACTION_FIELD_STATUSES] },
-          sensitive: { type: "boolean" },
+          sensitive: { anyOf: [{ type: "boolean" }, { type: "null" }] },
         },
       },
     },
     parties: {
       type: "object",
-      additionalProperties: true,
+      additionalProperties: false,
+      required: [],
+      properties: {},
     },
     reviewWarnings: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["code", "message", "severity"],
+        required: ["code", "message", "severity", "field"],
         properties: {
           code: { type: "string" },
           message: { type: "string" },
-          field: { type: "string" },
+          field: { anyOf: [{ type: "string" }, { type: "null" }] },
           severity: { type: "string", enum: ["info", "warning", "critical"] },
         },
       },
@@ -101,14 +104,10 @@ export const combinedClassifyAndExtractJsonSchema: Record<string, unknown> = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["type", "label", "payload"],
+        required: ["type", "label"],
         properties: {
           type: { type: "string" },
           label: { type: "string" },
-          payload: {
-            type: "object",
-            additionalProperties: true,
-          },
         },
       },
     },
@@ -408,37 +407,120 @@ export async function runCombinedClassifyAndExtract(params: {
   /** Pre-sliced section texts for bundle-context enrichment. Reduces cross-section contamination. */
   sectionTexts?: BundleSectionTexts | null;
 }): Promise<{ raw: string; envelope: DocumentReviewEnvelope }> {
-  const response = await createResponseStructured<unknown>(
+  // Use plain text response instead of Structured Outputs — extractedFields has dynamic keys
+  // which OpenAI Structured Outputs cannot represent with additionalProperties: false.
+  // We parse the JSON manually and validate with Zod.
+  const rawText = await createResponse(
     buildCombinedClassifyAndExtractPrompt(params.documentText, params.sourceFileName, params.bundleHint, params.sectionTexts),
-    combinedClassifyAndExtractJsonSchema,
     {
       routing: { category: "ai_review" },
-      schemaName: "document_review_envelope",
     }
   );
 
-  const parsedObject =
-    response.parsed && typeof response.parsed === "object" && !Array.isArray(response.parsed)
-      ? (response.parsed as Record<string, unknown>)
-      : {};
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  const jsonStr = jsonMatch ? jsonMatch[0] : rawText;
+  let parsedObject: Record<string, unknown> = {};
+  try {
+    const p = JSON.parse(jsonStr) as unknown;
+    if (p && typeof p === "object" && !Array.isArray(p)) {
+      parsedObject = p as Record<string, unknown>;
+    }
+  } catch {
+    throw new Error(`combined_classify_extract: failed to parse JSON response (length=${rawText.length})`);
+  }
+
+  // Merge fileName into documentMeta before coerce+parse
   const parsedMeta =
     parsedObject.documentMeta &&
     typeof parsedObject.documentMeta === "object" &&
     !Array.isArray(parsedObject.documentMeta)
       ? (parsedObject.documentMeta as Record<string, unknown>)
       : {};
-  const parsed = documentReviewEnvelopeSchema.safeParse({
+  const withMeta = {
     ...parsedObject,
     documentMeta: {
       ...parsedMeta,
       ...(params.sourceFileName?.trim() ? { fileName: params.sourceFileName.trim() } : {}),
     },
-  });
-  if (!parsed.success) {
-    throw new z.ZodError(parsed.error.issues);
-  }
-  return {
-    raw: response.text,
-    envelope: parsed.data,
   };
+
+  // Log raw classification for debug — helps identify what model actually returned
+  if (process.env.NODE_ENV !== "production" || process.env.ANCHOR_DEBUG) {
+    const dc = (withMeta as Record<string, unknown>).documentClassification;
+    const pt = dc && typeof dc === "object" ? (dc as Record<string, unknown>).primaryType : undefined;
+    const ef = (withMeta as Record<string, unknown>).extractedFields;
+    const efKeys = ef && typeof ef === "object" ? Object.keys(ef as object).slice(0, 5) : [];
+    const topKeys = Object.keys(withMeta as object).slice(0, 10);
+    const dcKeys = dc && typeof dc === "object" ? Object.keys(dc as object).slice(0, 10) : [];
+    console.info("[combined-extraction] raw model classification:", { primaryType: pt, dcKeys, efKeysHead: efKeys, topKeys, rawHead: rawText.slice(0, 600) });
+  }
+
+  // First attempt: strict Zod parse
+  const parsed = documentReviewEnvelopeSchema.safeParse(withMeta);
+  if (parsed.success) {
+    return {
+      raw: rawText,
+      envelope: parsed.data,
+    };
+  }
+
+  // Second attempt: light coercion (fix enum values, clamp confidence, etc.)
+  const coerced = coerceReviewEnvelopeParsedJson(withMeta, { mode: "light" });
+  const parsedCoerced = documentReviewEnvelopeSchema.safeParse(coerced);
+  if (parsedCoerced.success) {
+    return {
+      raw: rawText,
+      envelope: parsedCoerced.data,
+    };
+  }
+
+  // Third attempt: aggressive coercion
+  const coercedAggressive = coerceReviewEnvelopeParsedJson(withMeta, { mode: "aggressive" });
+  const parsedAggressive = documentReviewEnvelopeSchema.safeParse(coercedAggressive);
+  if (parsedAggressive.success) {
+    return {
+      raw: rawText,
+      envelope: parsedAggressive.data,
+    };
+  }
+
+  // Fourth attempt: nuclear fallback — strip all problematic fields and parse with minimal valid shape.
+  // Preserves documentClassification and valid extractedFields, drops everything else to defaults.
+  const nuclear = coercedAggressive as Record<string, unknown>;
+  const nuclearMinimal = {
+    ...nuclear,
+    // Strip potentially broken nested objects to let Zod defaults take over
+    productsOrObligations: [],
+    financialTerms: {},
+    serviceTerms: {},
+    evidence: [],
+    candidateMatches: undefined,
+    sectionSensitivity: {},
+    relationshipInference: undefined,
+    reviewWarnings: Array.isArray(nuclear.reviewWarnings) ? nuclear.reviewWarnings : [],
+    suggestedActions: Array.isArray(nuclear.suggestedActions) ? nuclear.suggestedActions : [],
+    parties: (nuclear.parties && typeof nuclear.parties === "object" && !Array.isArray(nuclear.parties)) ? nuclear.parties : {},
+    extractedFields: (nuclear.extractedFields && typeof nuclear.extractedFields === "object" && !Array.isArray(nuclear.extractedFields)) ? nuclear.extractedFields : {},
+    contentFlags: (nuclear.contentFlags && typeof nuclear.contentFlags === "object" && !Array.isArray(nuclear.contentFlags)) ? nuclear.contentFlags : undefined,
+  };
+  const parsedNuclear = documentReviewEnvelopeSchema.safeParse(nuclearMinimal);
+  if (parsedNuclear.success) {
+    console.warn("[combined-extraction] nuclear fallback succeeded — some fields dropped", {
+      aggressiveErrors: parsedAggressive.error.issues.slice(0, 3).map((i) => ({ path: i.path.join("."), message: i.message })),
+      rawHead: rawText.slice(0, 200),
+    });
+    return {
+      raw: rawText,
+      envelope: parsedNuclear.data,
+    };
+  }
+
+  // All coercion attempts failed — throw coerced error (better signal) so combined path falls back
+  console.warn("[combined-extraction] all coercion attempts failed", {
+    firstAttemptErrors: parsed.error.issues.slice(0, 5).map((i) => ({ path: i.path.join("."), message: i.message })),
+    aggressiveErrors: parsedAggressive.error.issues.slice(0, 5).map((i) => ({ path: i.path.join("."), message: i.message })),
+    nuclearErrors: parsedNuclear.error.issues.slice(0, 5).map((i) => ({ path: i.path.join("."), message: i.message })),
+    rawHead: rawText.slice(0, 300),
+  });
+  throw new z.ZodError(parsedAggressive.error.issues);
 }

@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import {
+  aiReviewCreateResponse as createRawResponse,
   aiReviewCreateResponseFromPrompt as createAiReviewResponseFromPrompt,
   aiReviewCreateResponseWithFile as createResponseWithFile,
 } from "./review-llm-provider";
@@ -35,6 +36,19 @@ const CLASSIFIER_FILE_PROMPT = `Finanční dokument (ČR). Výstup = jediný pla
 
 Povinná pole: documentType, productFamily, productSubtype, businessIntent, recommendedRoute (snake_case EN), confidence (0–1), warnings (krátké stringy, cs).
 Volitelně: reasons, documentTypeLabel, productFamilyLabel, productSubtypeLabel, businessIntentLabel (cs), documentTypeUncertain (boolean), supportedForDirectExtraction (boolean, default true — false když dokument není vhodný pro plnou automatickou extrakci).`;
+
+/**
+ * Returns true when a URL points to a local address (127.x or ::1).
+ * Passing such URLs to OpenAI's file download API causes 407 / proxy errors.
+ */
+function isLocalhostUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "127.0.0.1" || host === "localhost" || host === "::1" || host.startsWith("127.");
+  } catch {
+    return false;
+  }
+}
 
 function parseClassifierJson(raw: string): AiClassifierOutput {
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -125,6 +139,10 @@ export async function runAiReviewClassifier(params: {
   const version = getAiReviewPromptVersion("docClassifierV2");
   const excerpt = params.documentTextExcerpt.trim();
 
+  // Never pass a localhost/127.x URL to OpenAI's file download — it causes 407.
+  // Fall through to text-only path when fileUrl is local.
+  const isLocalFile = isLocalhostUrl(params.fileUrl);
+
   try {
     let raw: string;
     if (promptId && excerpt.length >= 500) {
@@ -157,6 +175,14 @@ export async function runAiReviewClassifier(params: {
         return { ok: false, error: res.error, durationMs: Date.now() - started };
       }
       raw = res.text;
+    } else if (isLocalFile) {
+      // Cannot pass localhost URL to OpenAI file download — it causes 407 proxy errors.
+      // Use inline text-only instruction instead.
+      const ocrCtx = excerpt.length > 0
+        ? selectExcerptForExtraction(excerpt, { maxChars: 20_000 }).text
+        : "(no text available — local file cannot be accessed remotely)";
+      const instruction = `${CLASSIFIER_FILE_PROMPT}\n\n--- Kontext z OCR/textu ---\n${ocrCtx}`;
+      raw = await createRawResponse(instruction, { store: false, routing: { category: "ai_review" } });
     } else {
       const ocrCtx =
         promptId && excerpt.length > 0

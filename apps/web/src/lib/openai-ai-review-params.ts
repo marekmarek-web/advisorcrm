@@ -30,9 +30,10 @@ export function buildAiReviewResponsesCreateExtras(
     if (typeof maxOutputTokens === "number" && Number.isFinite(maxOutputTokens) && maxOutputTokens > 0) {
       cap = Math.floor(maxOutputTokens);
     }
+    // Do NOT set text.verbosity — "low" would truncate JSON extraction output and cause
+    // combined extraction to return empty/minimal envelopes with unsupported_or_unknown.
     return {
       reasoning: { effort: "none" },
-      text: { verbosity: "low" },
       max_output_tokens: cap,
     };
   }

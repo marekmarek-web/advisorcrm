@@ -24,12 +24,12 @@ describe("isGpt5FamilyResponsesModel", () => {
 });
 
 describe("buildAiReviewResponsesCreateExtras", () => {
-  it("omits temperature for GPT-5; adds reasoning, text, max_output_tokens", () => {
+  it("omits temperature for GPT-5; adds reasoning and max_output_tokens, no verbosity", () => {
     const ex = buildAiReviewResponsesCreateExtras("gpt-5.4-mini");
     expect(ex).not.toHaveProperty("temperature");
+    expect(ex).not.toHaveProperty("text");
     expect(ex).toMatchObject({
       reasoning: { effort: "none" },
-      text: { verbosity: "low" },
       max_output_tokens: 16_384,
     });
   });
