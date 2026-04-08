@@ -109,24 +109,6 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
     ],
   },
   {
-    id: "sec-databaze",
-    section: "Klientská databáze",
-    items: [
-      { href: "/portal/contacts", label: "Klienti", Icon: Users, hoverAnim: "group-hover:scale-110" },
-      { href: "/portal/households", label: "Domácnosti", Icon: Building2, hoverAnim: "group-hover:-translate-y-1" },
-    ],
-  },
-  {
-    id: "sec-byznys",
-    section: "Obchod a Byznys",
-    items: [
-      { href: "/portal/pipeline", label: "Obchody", Icon: Briefcase, hoverAnim: "group-hover:rotate-[-12deg] group-hover:scale-110" },
-      { href: "/portal/board", label: "Board", Icon: LayoutGrid, hoverAnim: "group-hover:scale-110" },
-      { href: "/portal/production", label: "Produkce", Icon: TrendingUp, hoverAnim: "group-hover:translate-x-1 group-hover:-translate-y-1" },
-      { href: "/portal/business-plan", label: "Business plán", Icon: Target, hoverAnim: "group-hover:scale-110" },
-    ],
-  },
-  {
     id: "sec-nastroje",
     section: "Nástroje poradce",
     specialBg: true,
@@ -145,6 +127,24 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
       { href: "/portal/mindmap", label: "Mindmap", Icon: Network, hoverAnim: "group-hover:-translate-y-1" },
       { href: "/portal/tools/drive", label: "Google Disk", Icon: GoogleDriveLogo, hoverAnim: "group-hover:scale-110" },
       { href: "/portal/tools/gmail", label: "Gmail", Icon: GmailLogo, hoverAnim: "group-hover:scale-110" },
+    ],
+  },
+  {
+    id: "sec-databaze",
+    section: "Klientská databáze",
+    items: [
+      { href: "/portal/contacts", label: "Klienti", Icon: Users, hoverAnim: "group-hover:scale-110" },
+      { href: "/portal/households", label: "Domácnosti", Icon: Building2, hoverAnim: "group-hover:-translate-y-1" },
+    ],
+  },
+  {
+    id: "sec-byznys",
+    section: "Obchod a Byznys",
+    items: [
+      { href: "/portal/pipeline", label: "Obchody", Icon: Briefcase, hoverAnim: "group-hover:rotate-[-12deg] group-hover:scale-110" },
+      { href: "/portal/board", label: "Board", Icon: LayoutGrid, hoverAnim: "group-hover:scale-110" },
+      { href: "/portal/production", label: "Produkce", Icon: TrendingUp, hoverAnim: "group-hover:translate-x-1 group-hover:-translate-y-1" },
+      { href: "/portal/business-plan", label: "Business plán", Icon: Target, hoverAnim: "group-hover:scale-110" },
     ],
   },
   {
