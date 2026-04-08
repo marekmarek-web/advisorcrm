@@ -21,23 +21,10 @@ import { SUPPORTED_IMAGE_MIMES, MAX_IMAGE_SIZE_BYTES, MAX_IMAGES_PER_INTAKE } fr
 import { processImageIntake } from "./orchestrator";
 import { mapImageIntakeToAssistantResponse } from "./response-mapper";
 import { getImageIntakeFlagState } from "./feature-flag";
+import { inferMimeTypeForIntakeAsset, normalizeIntakeImageAssetsForVision } from "./normalize-intake-image-input";
+import type { ImageAssetInput } from "./image-asset-input";
 
-// ---------------------------------------------------------------------------
-// Raw input type from request body
-// ---------------------------------------------------------------------------
-
-export type ImageAssetInput = {
-  /** Optional — generated if missing. */
-  assetId?: string;
-  /** Storage URL or data URL. Required. */
-  url: string;
-  mimeType: string;
-  filename?: string | null;
-  sizeBytes?: number;
-  width?: number | null;
-  height?: number | null;
-  contentHash?: string | null;
-};
+export type { ImageAssetInput } from "./image-asset-input";
 
 // ---------------------------------------------------------------------------
 // Parse and normalize imageAssets from request body
@@ -117,6 +104,24 @@ function imageIntakeFallbackResponse(sessionId: string, reason: string): Assista
   };
 }
 
+function imageIntakeAdvisorMessageResponse(
+  sessionId: string,
+  message: string,
+  reason: string,
+): AssistantResponse {
+  return {
+    message,
+    referencedEntities: [],
+    suggestedActions: [],
+    warnings: [`image_intake_error: ${reason}`],
+    confidence: 0.0,
+    sourcesSummary: ["image_intake_error"],
+    sessionId,
+    executionState: null,
+    contextState: null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Main handler — called from chat route
 // ---------------------------------------------------------------------------
@@ -144,8 +149,10 @@ export async function handleImageIntakeFromChatRoute(
     );
   }
 
+  const assetsWithInferredMime = rawAssets.map(inferMimeTypeForIntakeAsset);
+
   // Basic validation (cheap, no model)
-  const validation = validateAssetsBasic(rawAssets);
+  const validation = validateAssetsBasic(assetsWithInferredMime);
   if (!validation.ok) {
     logAuditAction({
       tenantId: opts.tenantId,
@@ -158,7 +165,24 @@ export async function handleImageIntakeFromChatRoute(
     return imageIntakeFallbackResponse(session.sessionId, validation.reason ?? "invalid_assets");
   }
 
-  const normalizedAssets = rawAssets.map(normalizeAsset);
+  const visionNorm = await normalizeIntakeImageAssetsForVision(assetsWithInferredMime);
+  if (!visionNorm.ok) {
+    logAuditAction({
+      tenantId: opts.tenantId,
+      userId: opts.userId,
+      action: "image_intake.heic_normalization_failed",
+      entityType: "assistant_run",
+      entityId: runStore?.assistantRunId ?? "unknown",
+      meta: { reason: visionNorm.reasonCode, flagState },
+    });
+    return imageIntakeAdvisorMessageResponse(
+      session.sessionId,
+      visionNorm.advisorMessage,
+      visionNorm.reasonCode,
+    );
+  }
+
+  const normalizedAssets = visionNorm.assets.map(normalizeAsset);
 
   const request = {
     sessionId: session.sessionId,

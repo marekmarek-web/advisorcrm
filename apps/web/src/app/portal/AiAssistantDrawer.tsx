@@ -70,6 +70,26 @@ import type { AdvisorAssistantHistoryMessageDto } from "@/lib/ai/assistant-histo
 
 const AI_ASSISTANT_API_SESSION_KEY = "aidvisora_ai_assistant_api_session_id";
 
+const MAX_ASSISTANT_CHAT_IMAGES = 10;
+
+function imageMimeForAssistantFile(file: File): string {
+  if (file.type && file.type.startsWith("image/")) return file.type;
+  const n = file.name.toLowerCase();
+  if (n.endsWith(".heif")) return "image/heif";
+  if (n.endsWith(".heic")) return "image/heic";
+  if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "image/jpeg";
+  if (n.endsWith(".png")) return "image/png";
+  if (n.endsWith(".webp")) return "image/webp";
+  if (n.endsWith(".gif")) return "image/gif";
+  return file.type || "application/octet-stream";
+}
+
+function isLikelyAssistantImageFile(file: File): boolean {
+  if (file.type && file.type.startsWith("image/")) return true;
+  const n = file.name.toLowerCase();
+  return /\.(heic|heif|jpg|jpeg|png|webp|gif)$/i.test(n);
+}
+
 type DraftAction = { type: string; label: string; payload: Record<string, unknown> };
 type ClientCandidate = { clientId: string; displayName?: string };
 
@@ -197,6 +217,7 @@ export function AiAssistantDrawer() {
   /** Po nahrání smlouvy — posílá se v activeContext.reviewId, aby server zahrnul AI review do chatu. */
   const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const assistantChatImageInputRef = useRef<HTMLInputElement>(null);
   const contactsImportFileRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -803,8 +824,32 @@ export function AiAssistantDrawer() {
 
   const handleFile = async (file: File) => {
     if (!file?.size) return;
+    if (isLikelyAssistantImageFile(file)) {
+      if (chatLoading || chatSubmitLockRef.current) {
+        toast.showToast("Počkejte na dokončení aktuální zprávy.", "error");
+        return;
+      }
+      const accompanyingText = inputRef.current?.value.trim() ?? "";
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const asset: ImageAssetPayload = {
+          url: dataUrl,
+          mimeType: imageMimeForAssistantFile(file),
+          filename: file.name || null,
+          sizeBytes: file.size,
+        };
+        setInput("");
+        void sendChatMessageRef.current(accompanyingText, [asset]);
+      };
+      reader.onerror = () => {
+        toast.showToast("Soubor se nepodařilo načíst.", "error");
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
     if (!isLikelyPdfUpload(file)) {
-      toast.showToast("Povolený formát je pouze PDF.", "error");
+      toast.showToast("Povolený formát je PDF (smlouva) nebo obrázek (JPEG, PNG, HEIC…).", "error");
       return;
     }
     setUploadError(null);
@@ -949,6 +994,49 @@ export function AiAssistantDrawer() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (file) handleFile(file);
+  };
+
+  const handleAssistantChatImageInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    e.target.value = "";
+    if (!files?.length) return;
+    if (chatLoading || chatSubmitLockRef.current) {
+      toast.showToast("Počkejte na dokončení aktuální zprávy.", "error");
+      return;
+    }
+    const list = Array.from(files)
+      .filter((f) => isLikelyAssistantImageFile(f))
+      .slice(0, MAX_ASSISTANT_CHAT_IMAGES);
+    if (list.length === 0) {
+      toast.showToast("Vyberte obrázek (JPEG, PNG, HEIC…).", "error");
+      return;
+    }
+    const accompanyingText = inputRef.current?.value.trim() ?? "";
+    void Promise.all(
+      list.map(
+        (file) =>
+          new Promise<ImageAssetPayload>((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => {
+              resolve({
+                url: r.result as string,
+                mimeType: imageMimeForAssistantFile(file),
+                filename: file.name || null,
+                sizeBytes: file.size,
+              });
+            };
+            r.onerror = () => reject(new Error("read_failed"));
+            r.readAsDataURL(file);
+          }),
+      ),
+    )
+      .then((assets) => {
+        setInput("");
+        void sendChatMessageRef.current(accompanyingText, assets);
+      })
+      .catch(() => {
+        toast.showToast("Soubory se nepodařilo načíst.", "error");
+      });
   };
 
   const handleImportContactsClick = () => {
@@ -1186,6 +1274,14 @@ export function AiAssistantDrawer() {
           onChange={handleUploadInput}
         />
         <input
+          ref={assistantChatImageInputRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          className="hidden"
+          onChange={handleAssistantChatImageInput}
+        />
+        <input
           ref={contactsImportFileRef}
           type="file"
           accept=".csv,.txt,.xlsx"
@@ -1218,6 +1314,16 @@ export function AiAssistantDrawer() {
                       ? "Klepněte pro výběr souboru."
                       : "Přetáhněte soubor sem nebo klikněte pro výběr z disku."}
                   </p>
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      assistantChatImageInputRef.current?.click();
+                    }}
+                    className="mt-1.5 text-xs font-bold text-indigo-600 hover:underline text-left"
+                  >
+                    Fotka do konverzace (JPEG, PNG, HEIC…)
+                  </button>
                 </div>
               </>
             )}
