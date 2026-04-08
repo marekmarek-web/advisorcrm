@@ -562,11 +562,31 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       }));
   }
 
-  // Fix reviewWarnings — model sometimes returns an object instead of array
-  if (root.reviewWarnings != null && !Array.isArray(root.reviewWarnings)) {
-    if (typeof root.reviewWarnings === "object") {
-      root.reviewWarnings = [];
-    }
+  // Fix reviewWarnings — model sometimes returns an object instead of array; fix severity enum
+  const SEVERITY_VALID = new Set(["info", "warning", "critical"]);
+  const SEVERITY_ALIASES: Record<string, string> = {
+    error: "critical", high: "critical", important: "warning", note: "info",
+    low: "info", medium: "warning", severe: "critical",
+    chyba: "critical", varování: "warning", informace: "info",
+  };
+  if (!Array.isArray(root.reviewWarnings)) {
+    root.reviewWarnings = [];
+  } else {
+    root.reviewWarnings = (root.reviewWarnings as unknown[])
+      .filter((w): w is Record<string, unknown> => w != null && typeof w === "object" && !Array.isArray(w))
+      .map((w) => {
+        if (typeof w.severity !== "string" || !SEVERITY_VALID.has(w.severity)) {
+          const rawSev = typeof w.severity === "string" ? w.severity.toLowerCase().trim() : "";
+          w.severity = SEVERITY_ALIASES[rawSev] ?? "warning";
+        }
+        if (typeof w.code !== "string" || !w.code) {
+          w.code = "REVIEW_FLAG";
+        }
+        if (typeof w.message !== "string") {
+          w.message = String(w.message ?? w.code ?? "");
+        }
+        return w;
+      });
   }
 
   // Fix parties — model sometimes returns an array instead of record

@@ -498,7 +498,7 @@ export async function runCombinedClassifyAndExtract(params: {
     candidateMatches: undefined,
     sectionSensitivity: {},
     relationshipInference: undefined,
-    reviewWarnings: Array.isArray(nuclear.reviewWarnings) ? nuclear.reviewWarnings : [],
+    reviewWarnings: [],  // nuclear: strip to empty — severity coercion should have run first; if still failing, drop all
     suggestedActions: Array.isArray(nuclear.suggestedActions) ? nuclear.suggestedActions : [],
     parties: (nuclear.parties && typeof nuclear.parties === "object" && !Array.isArray(nuclear.parties)) ? nuclear.parties : {},
     extractedFields: (nuclear.extractedFields && typeof nuclear.extractedFields === "object" && !Array.isArray(nuclear.extractedFields)) ? nuclear.extractedFields : {},
