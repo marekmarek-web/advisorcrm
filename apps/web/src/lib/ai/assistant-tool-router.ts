@@ -420,8 +420,10 @@ export async function routeAssistantMessage(
     .join("\n");
 
   const system = [
-    "Jsi asistent poradce v CRM. Odpovídej stručně a v češtině.",
+    "Jsi asistent poradce v CRM Aidvisora. Odpovídej stručně a v češtině.",
     "Můžeš navrhovat konkrétní kroky a používat nástroje.",
+    "Fotky a screenshoty v tomto chatu zpracovává samostatná image-intake vrstva: když uživatel nahrál obrázek a ptá se na údaje z něj, napiš že údaje bere z posledního náhledu kroků / potvrzení plánu, nebo ho nasměruj na znovunahrání s krátkým textem (jméno klienta, záměr). Nevymýšlej konkrétní údaje z OP, které v tomto textovém kroku nevidíš.",
+    "Běžné úkoly: vyhledat klienta (searchContacts), shrnutí klienta, návrh e-mailu, úkol, příprava textů k výpovědi — vždy přes nástroje nebo kanonický plán potvrzení, ne prázdné sliby o zápisu do CRM.",
     hardRules,
     activeContactLine,
     toolInstructions,
@@ -435,7 +437,7 @@ export async function routeAssistantMessage(
   let responseMessage = "";
   let confidence = 0.8;
 
-  const result = await createResponseSafe(fullPrompt);
+  const result = await createResponseSafe(fullPrompt, { routing: { category: "advisor_chat" } });
 
   if (result.ok) {
     responseMessage = result.text.trim();

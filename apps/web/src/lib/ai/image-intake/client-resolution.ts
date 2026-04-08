@@ -21,6 +21,7 @@ import { isPendingImageIntakeResolutionExpired } from "./pending-resolution-meta
 import { buildExecutionPlanAfterIntakeResume } from "./resume-intake-execution-plan";
 import { mapToPreviewItems } from "./intake-execution-plan-mapper";
 import { looksLikeClientNameInput } from "./client-name-input-heuristic";
+import { parseExplicitClientNameFromText } from "./binding-v2";
 
 export { looksLikeClientNameInput } from "./client-name-input-heuristic";
 
@@ -101,13 +102,15 @@ export async function resumeImageIntakeWithClientResolution(
     return expiredResponse(session.sessionId);
   }
 
-  if (!looksLikeClientNameInput(userMessage)) {
+  const extractedName = parseExplicitClientNameFromText(userMessage);
+  if (!looksLikeClientNameInput(userMessage) && !extractedName) {
     // The message looks like a new chat query — do NOT consume the pending state.
     // Return a sentinel so the caller knows to fall through to the text router.
     return fallThroughSentinel(session.sessionId);
   }
 
-  const resolution = await resolveClientFromText(tenantId, userMessage, pending.candidates);
+  const queryForCrm = (extractedName ?? userMessage).trim();
+  const resolution = await resolveClientFromText(tenantId, queryForCrm, pending.candidates);
 
   if (resolution.state === "not_found") {
     // Keep the pending state active so the user can try again

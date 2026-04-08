@@ -262,6 +262,16 @@ describe("parseExplicitClientNameFromText", () => {
   it("returns null when no pattern matches", () => {
     expect(parseExplicitClientNameFromText("jen obecný text bez jména")).toBeNull();
   });
+
+  it("parses pod Roman Koloburda without klient", () => {
+    expect(parseExplicitClientNameFromText("přiřaď údaje v této fotce pod Roman Koloburda")).toBe(
+      "Roman Koloburda",
+    );
+  });
+
+  it("parses najdi mi klienta with mixed case", () => {
+    expect(parseExplicitClientNameFromText("Najdi mi klienta ROman koloburda")).toBe("ROman koloburda");
+  });
 });
 
 // ---------------------------------------------------------------------------

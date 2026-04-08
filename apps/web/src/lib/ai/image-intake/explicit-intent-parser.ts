@@ -67,6 +67,9 @@ const CLIENT_NAME_PATTERNS = [
   /(?:přiřaď|přiřadit|ulož|uložit|připoj|připojit|doplň|doplnit|pošli|odešli).*(?:klientovi|klienta|klientem|klient)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})/i,
   /(?:klientovi|klienta|klientem|klient)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})(?:\s|$|,|\.)/i,
   /(?:kontaktu|kontakt|pro\s+kontakt)\s+([A-ZÁ-Žá-ž][a-zá-ž]+(?:\s+[A-ZÁ-Žá-ž][a-zá-ž]+){1,2})/i,
+  /\bpod\s+([A-ZÁ-Ž][A-Za-zÁ-Žá-ž]*(?:\s+[A-ZÁ-Ž][A-Za-zÁ-Žá-ž]*){0,2})\b/u,
+  /\bklienta\s+([A-Za-zÁ-Žá-ž]{2,}(?:\s+[A-Za-zÁ-Žá-ž]{2,}){0,2})\b/u,
+  /\bklientovi\s+([A-Za-zÁ-Žá-ž]{2,}(?:\s+[A-Za-zÁ-Žá-ž]{2,}){0,2})\b/u,
 ];
 
 function extractClientName(text: string): string | null {

@@ -105,7 +105,8 @@ confidence: 0.0-1.0 jak jistý jsi záměrem.
 
 Složené požadavky: pokud uživatel chce více věcí najednou (např. schůzka + smlouva), vyplň multi_action nebo několik položek v requestedActions v rozumném pořadí (závislosti řeší plánovač).
 Negace / zrušení: „zruš“, „nechci“, „nevytvářej“, „stop“ — bez jasného cíle zápisu použij general_chat nebo příslušný negovaný záměr bez write akcí, které by šly proti záměru.
-Kontextové odkazy („ten klient“, „ten obchod“, „to co jsme řešili“): vyčti z horního bloku historie v uživatelské zprávě (pokud je přítomen) a doplň targetClient / opportunityRef podle obsahu.`;
+Kontextové odkazy („ten klient“, „ten obchod“, „to co jsme řešili“): vyčti z horního bloku historie v uživatelské zprávě (pokud je přítomen) a doplň targetClient / opportunityRef podle obsahu.
+Obrázky / doklady / screenshoty: pokud uživatel chce zapsat údaje z fotky, založit klienta z dokladu, přiřadit data ke kontaktu nebo připojit snímek — vyplň clientRef z textu (i když v UI není otevřená karta), zvol vhodný intent (např. create_contact, prepare_email, attach_document, create_note) a requiresConfirmation podle rizikovosti; u neurčitého záměru general_chat.`;
 
 const CANONICAL_INTENT_PROMPT_VARIANT_B = `
 Režim promptu B (experimentální): upřednostni rozdělení složených vět do více requestedActions; u negace vrať bezpečně general_chat pokud není explicitní cíl zápisu; kontextové zájmena vyřeš z bloku historie nad oddělovačem ---.`;
