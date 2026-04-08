@@ -507,15 +507,6 @@ export function validateDocumentEnvelope(payload: {
     }
   }
 
-  // 9. user-facing date not in Czech format (ISO date leaking to display)
-  for (const dateKey of ["policyStartDate", "policyEndDate", "birthDate", "startDate", "endDate", "effectiveDate"]) {
-    const dv = ef[dateKey]?.value != null ? String(ef[dateKey]!.value).trim() : "";
-    if (dv && /^\d{4}-\d{2}-\d{2}$/.test(dv)) {
-      // ISO format is correct for internal storage; display layer handles conversion.
-      // Only warn if the field is explicitly marked as "display" somewhere.
-    }
-  }
-
   // 4. Text explicitly mentions Pojistník but policyholder/fullName is empty
   const insuranceDocTypes = new Set([
     "life_insurance_contract", "life_insurance_final_contract", "life_insurance_investment_contract",

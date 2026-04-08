@@ -11,12 +11,12 @@
  * - GH04: multi-person life insurance → participants canonical
  * - GH05: investment strategy extraction → investmentData canonical
  * - GH06: payment data extraction → paymentData canonical
- * - GH07: non-publishable attachment-only → apply gate blocks
- * - GH08: apply gate hard block for non-publishable publishHints
+ * - GH07: non-publishable attachment-only → apply gate warns (fail-open)
+ * - GH08: applyContractReview no longer hard-blocks publishHints (audit log only)
  * - GH09: review UI mapper produces canonicalFields from extractedPayload
  * - GH10: packet segmentation detects bundle via keywords
  * - GH11: canonical normalizer maps parties to participants
- * - GH12: sensitive attachment type blocks applyContractReview
+ * - GH12: apply blocked when review not approved
  *
  * Run: pnpm test:ai-review (or pnpm vitest)
  */
@@ -81,6 +81,7 @@ vi.mock("@/lib/ai/payment-field-contract", () => ({
 // ── Imports under test ────────────────────────────────────────────────────────
 import { evaluateApplyReadiness } from "../quality-gates";
 import { applyContractReview } from "../apply-contract-review";
+import { capturePublishGuardFailure } from "@/lib/observability/portal-sentry";
 import { segmentDocumentPacket } from "../document-packet-segmentation";
 import { normalizeLifeInsuranceCanonical } from "../life-insurance-canonical-normalizer";
 import { mapApiToExtractionDocument } from "../../ai-review/mappers";
@@ -219,16 +220,18 @@ describe("GH02 — G01 finální smlouva: apply gate ready", () => {
 // ── GH03: bundle → publishHints gates ────────────────────────────────────────
 
 describe("GH03 — G03 bundle smlouva + zdravotní dotazníky", () => {
-  it("PUBLISH_HINTS_NOT_PUBLISHABLE in blockedReasons when contractPublishable=false", () => {
+  it("PUBLISH_HINTS_NOT_PUBLISHABLE in warnings when contractPublishable=false", () => {
     const env = { ...baseEnvelope(), publishHints: { contractPublishable: false, needsSplit: true, sensitiveAttachmentOnly: false, reasons: ["bundle_not_split"] } };
     const row = baseRow({}, env as unknown as Partial<DocumentReviewEnvelope>);
     (row.extractedPayload as Record<string, unknown>).publishHints = env.publishHints;
     const gate = evaluateApplyReadiness(row);
-    expect(gate.blockedReasons).toContain("PUBLISH_HINTS_NOT_PUBLISHABLE");
-    expect(gate.readiness).toBe("blocked_for_apply");
+    expect(gate.warnings).toContain("PUBLISH_HINTS_NOT_PUBLISHABLE");
+    expect(gate.warnings).toContain("PUBLISH_HINTS_NEEDS_SPLIT");
+    expect(gate.blockedReasons).not.toContain("PUBLISH_HINTS_NOT_PUBLISHABLE");
+    expect(gate.readiness).toBe("review_required");
   });
 
-  it("PUBLISH_HINTS_NEEDS_SPLIT in applyBarrierReasons when needsSplit=true but publishable", () => {
+  it("PUBLISH_HINTS_NEEDS_SPLIT in warnings when needsSplit=true but publishable", () => {
     const env = baseEnvelope();
     const row = baseRow();
     (row.extractedPayload as Record<string, unknown>).publishHints = {
@@ -236,17 +239,19 @@ describe("GH03 — G03 bundle smlouva + zdravotní dotazníky", () => {
       needsSplit: true,
     };
     const gate = evaluateApplyReadiness(row);
-    expect(gate.applyBarrierReasons).toContain("PUBLISH_HINTS_NEEDS_SPLIT");
+    expect(gate.warnings).toContain("PUBLISH_HINTS_NEEDS_SPLIT");
+    expect(gate.applyBarrierReasons).not.toContain("PUBLISH_HINTS_NEEDS_SPLIT");
   });
 
-  it("PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT in applyBarrierReasons", () => {
+  it("PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT in warnings", () => {
     const row = baseRow();
     (row.extractedPayload as Record<string, unknown>).packetMeta = {
       isBundle: true,
       hasSensitiveAttachment: true,
     };
     const gate = evaluateApplyReadiness(row);
-    expect(gate.applyBarrierReasons).toContain("PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT");
+    expect(gate.warnings).toContain("PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT");
+    expect(gate.applyBarrierReasons).not.toContain("PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT");
   });
 });
 
@@ -336,52 +341,54 @@ describe("GH06 — G05/G06 payment data: paymentData canonical", () => {
 
 // ── GH07: non-publishable attachment → gate blocks ───────────────────────────
 
-describe("GH07 — G09 AML/servisní: sensitiveAttachmentOnly blocks apply", () => {
-  it("PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY in blockedReasons", () => {
+describe("GH07 — G09 AML/servisní: sensitiveAttachmentOnly warns (fail-open)", () => {
+  it("PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY in warnings", () => {
     const row = baseRow();
     (row.extractedPayload as Record<string, unknown>).publishHints = {
       contractPublishable: false,
       sensitiveAttachmentOnly: true,
     };
     const gate = evaluateApplyReadiness(row);
-    expect(gate.blockedReasons).toContain("PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY");
-    expect(gate.readiness).toBe("blocked_for_apply");
+    expect(gate.warnings).toContain("PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY");
+    expect(gate.blockedReasons).not.toContain("PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY");
+    expect(gate.readiness).toBe("review_required");
   });
 });
 
-// ── GH08: applyContractReview hard gate for non-publishable ──────────────────
+// ── GH08: applyContractReview — publishHints are audit-only (non-blocking) ───
 
-describe("GH08 — applyContractReview: hard write gate blocks non-publishable", () => {
-  it("returns ok:false when publishHints.contractPublishable=false", async () => {
+describe("GH08 — applyContractReview: publishHints no longer hard-block CRM apply", () => {
+  it("returns ok:true and logs guard when publishHints.contractPublishable=false", async () => {
+    vi.mocked(capturePublishGuardFailure).mockClear();
     const row = baseRow();
     (row.extractedPayload as Record<string, unknown>).publishHints = {
       contractPublishable: false,
       reasons: ["bundle_not_split"],
     };
     const result = await applyContractReview({ reviewId: BASE_REVIEW_ID, tenantId: TENANT_ID, userId: USER_ID, row });
-    expect(result.ok).toBe(false);
-    expect((result as { ok: false; error: string }).error).toMatch(/publikovatel|blokován/i);
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(capturePublishGuardFailure)).toHaveBeenCalled();
   });
 
-  it("returns ok:false when primarySubdocumentType=health_questionnaire", async () => {
+  it("returns ok:true when primarySubdocumentType=health_questionnaire (no write block)", async () => {
     const row = baseRow();
     (row.extractedPayload as Record<string, unknown>).packetMeta = {
       primarySubdocumentType: "health_questionnaire",
     };
     const result = await applyContractReview({ reviewId: BASE_REVIEW_ID, tenantId: TENANT_ID, userId: USER_ID, row });
-    expect(result.ok).toBe(false);
-    expect((result as { ok: false; error: string }).error).toContain("health_questionnaire");
+    expect(result.ok).toBe(true);
   });
 
-  it("returns ok:false when sensitiveAttachmentOnly=true", async () => {
+  it("returns ok:true when sensitiveAttachmentOnly=true (logs guard, apply allowed)", async () => {
+    vi.mocked(capturePublishGuardFailure).mockClear();
     const row = baseRow();
     (row.extractedPayload as Record<string, unknown>).publishHints = {
       contractPublishable: false,
       sensitiveAttachmentOnly: true,
     };
     const result = await applyContractReview({ reviewId: BASE_REVIEW_ID, tenantId: TENANT_ID, userId: USER_ID, row });
-    expect(result.ok).toBe(false);
-    expect((result as { ok: false; error: string }).error).toMatch(/citlivá příloha|sensitive/i);
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(capturePublishGuardFailure)).toHaveBeenCalled();
   });
 });
 

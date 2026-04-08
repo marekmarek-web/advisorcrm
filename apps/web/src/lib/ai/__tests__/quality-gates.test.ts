@@ -85,12 +85,13 @@ describe("evaluateApplyReadiness", () => {
     expect(result.applyBarrierReasons).toContain("PROPOSAL_NOT_FINAL");
   });
 
-  it("blocks unsupported document types", () => {
+  it("warns on unsupported document types (no hard block)", () => {
     const result = evaluateApplyReadiness(
       baseRow({ detectedDocumentType: "unknown" }),
     );
-    expect(result.readiness).toBe("blocked_for_apply");
-    expect(result.blockedReasons).toContain("UNSUPPORTED_DOCUMENT_TYPE");
+    expect(result.readiness).toBe("review_required");
+    expect(result.warnings).toContain("UNSUPPORTED_DOCUMENT_TYPE");
+    expect(result.blockedReasons).not.toContain("UNSUPPORTED_DOCUMENT_TYPE");
   });
 
   it("blocks on low classification confidence", () => {
@@ -242,24 +243,26 @@ describe("evaluatePaymentApplyReadiness", () => {
     expect(result.applyBarrierReasons).toEqual([]);
   });
 
-  it("blocks when amount is missing", () => {
+  it("warns when amount is missing (no hard block)", () => {
     const result = evaluatePaymentApplyReadiness({
       iban: "CZ6508000000192000145399",
       paymentFrequency: "monthly",
       variableSymbol: "123456",
     });
-    expect(result.readiness).toBe("blocked_for_apply");
-    expect(result.blockedReasons).toContain("PAYMENT_MISSING_AMOUNT");
+    expect(result.readiness).toBe("review_required");
+    expect(result.warnings).toContain("PAYMENT_MISSING_AMOUNT");
+    expect(result.blockedReasons).toEqual([]);
   });
 
-  it("blocks when payment target is missing", () => {
+  it("warns when payment target is missing (no hard block)", () => {
     const result = evaluatePaymentApplyReadiness({
       amount: "500",
       paymentFrequency: "monthly",
       variableSymbol: "123456",
     });
-    expect(result.readiness).toBe("blocked_for_apply");
-    expect(result.blockedReasons).toContain("PAYMENT_MISSING_TARGET");
+    expect(result.readiness).toBe("review_required");
+    expect(result.warnings).toContain("PAYMENT_MISSING_TARGET");
+    expect(result.blockedReasons).toEqual([]);
   });
 
   it("warns when frequency is missing", () => {
@@ -307,7 +310,7 @@ describe("evaluatePaymentApplyReadiness", () => {
 });
 
 describe("F4 publish safety guards (corrective plan)", () => {
-  it("F4: payment_instruction in normalizedType on contract route → hard block (PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT)", () => {
+  it("F4: payment_instruction in normalizedType on contract route → warning (PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT)", () => {
     const row = baseRow({
       extractionTrace: {
         classificationConfidence: 0.9,
@@ -316,11 +319,12 @@ describe("F4 publish safety guards (corrective plan)", () => {
       },
     });
     const result = evaluateApplyReadiness(row);
-    expect(result.readiness).toBe("blocked_for_apply");
-    expect(result.blockedReasons).toContain("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
+    expect(result.readiness).toBe("review_required");
+    expect(result.warnings).toContain("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
+    expect(result.blockedReasons).not.toContain("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
   });
 
-  it("F4: envelope primaryType = payment_instruction on contract route → hard block (PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT)", () => {
+  it("F4: envelope primaryType = payment_instruction on contract route → warning (PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT)", () => {
     const row = baseRow({
       extractedPayload: {
         documentClassification: {
@@ -330,11 +334,12 @@ describe("F4 publish safety guards (corrective plan)", () => {
       },
     });
     const result = evaluateApplyReadiness(row);
-    expect(result.readiness).toBe("blocked_for_apply");
-    expect(result.blockedReasons).toContain("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
+    expect(result.readiness).toBe("review_required");
+    expect(result.warnings).toContain("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
+    expect(result.blockedReasons).not.toContain("PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT");
   });
 
-  it("F4: payment_instructions route with no payment fields → payment gate blocks (PAYMENT_MISSING_AMOUNT)", () => {
+  it("F4: payment_instructions route with no payment fields → payment gate warns (PAYMENT_MISSING_AMOUNT)", () => {
     const row = baseRow({
       extractionTrace: {
         classificationConfidence: 0.9,
@@ -354,8 +359,8 @@ describe("F4 publish safety guards (corrective plan)", () => {
       },
     });
     const result = evaluateApplyReadiness(row);
-    // Payment gate is invoked on payment_instructions route
-    expect(result.blockedReasons).toContain("PAYMENT_MISSING_AMOUNT");
+    expect(result.warnings).toContain("PAYMENT_MISSING_AMOUNT");
+    expect(result.blockedReasons).not.toContain("PAYMENT_MISSING_AMOUNT");
   });
 
   it("F4: client visibility requires reviewStatus approved/applied (guard in linkContractReviewFileToContactDocuments)", () => {

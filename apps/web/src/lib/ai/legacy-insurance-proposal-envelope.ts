@@ -381,13 +381,22 @@ export function maybeRewriteInsuranceProposalExtractionRaw(
 ): string {
   if (ctx.promptKey !== "insuranceProposalModelation") return raw;
 
-  const already = safeParseReviewEnvelope(raw, { expectedPrimaryType: ctx.documentType });
-  if (already.ok) return raw;
-
   const parsed = parseJsonObjectFromAiReviewRaw(raw);
   if (!parsed) return raw;
 
-  if (!isLegacyInsuranceProposalPayload(parsed)) return raw;
+  const already = safeParseReviewEnvelope(raw, { expectedPrimaryType: ctx.documentType });
+  const looksLegacy = isLegacyInsuranceProposalPayload(parsed);
+  const extractedKeyCount = already.ok
+    ? Object.keys(already.data.extractedFields ?? {}).filter((k) => !k.startsWith("_")).length
+    : 0;
+
+  // Coercion can now yield a schema-valid envelope with empty extractedFields for flat legacy JSON.
+  // In that case we must still run the legacy upgrader so client/payment blobs become cells.
+  if (already.ok && (extractedKeyCount > 0 || !looksLegacy)) {
+    return raw;
+  }
+
+  if (!looksLegacy) return raw;
 
   const upgraded = buildEnvelopeFromLegacyInsuranceProposalJson(parsed, {
     documentType: ctx.documentType,
