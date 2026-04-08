@@ -85,7 +85,6 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   nabidka_pojisteni: "life_insurance_proposal",
   nabídka_pojistění: "life_insurance_proposal",
   offer: "life_insurance_proposal",
-  proposal: "life_insurance_proposal",
   insurance_proposal: "life_insurance_proposal",
   // tax return variants
   tax_return_corporate_income: "corporate_tax_return",
@@ -97,7 +96,6 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   pay_stub: "payslip_document",
   supporting_document_pay_slip: "payslip_document",
   supporting_document_payslip: "payslip_document",
-  payslip: "payslip_document",
   // nonlife / vehicle / property insurance short forms
   car_insurance: "nonlife_insurance_contract",
   vehicle_insurance: "nonlife_insurance_contract",
