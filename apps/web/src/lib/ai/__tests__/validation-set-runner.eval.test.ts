@@ -212,6 +212,39 @@ function missingRequiredFields(envelope: DocumentReviewEnvelope): string[] {
     .map((w) => w.field ?? w.message ?? "?");
 }
 
+// ─── Semantic quality gate ─────────────────────────────────────────────────────
+function semanticQualityIssues(envelope: DocumentReviewEnvelope): string[] {
+  const issues: string[] = [];
+  const ef = envelope.extractedFields as Record<string, { value?: unknown }> | undefined;
+  if (!ef) return issues;
+
+  // birthDate must not look like a Czech personalId
+  const birthDateVal = String(ef.birthDate?.value ?? "");
+  if (/\d{6}\/\d{4}/.test(birthDateVal) || /^\d{9,10}$/.test(birthDateVal.replace(/\D/g, ""))) {
+    issues.push(`birthDate obsahuje personalId-like pattern: "${birthDateVal}"`);
+  }
+
+  // personalId must not be masked
+  const personalIdVal = String(ef.personalId?.value ?? "");
+  if (/[X*]{4,}/.test(personalIdVal) || /XX\/XX/.test(personalIdVal)) {
+    issues.push(`personalId je maskované: "${personalIdVal}"`);
+  }
+
+  // bankAccount must not be masked
+  const bankAccountVal = String(ef.bankAccount?.value ?? ef.payoutAccount?.value ?? "");
+  if (/[X*]{4,}/.test(bankAccountVal)) {
+    issues.push(`bankAccount/payoutAccount je maskované: "${bankAccountVal}"`);
+  }
+
+  // variableSymbol must not be masked
+  const vsVal = String(ef.variableSymbol?.value ?? "");
+  if (/[X*]{4,}/.test(vsVal)) {
+    issues.push(`variableSymbol je maskované: "${vsVal}"`);
+  }
+
+  return issues;
+}
+
 function metaFlags(envelope: DocumentReviewEnvelope) {
   const dc = envelope.documentClassification;
   const dm = envelope.documentMeta;
@@ -437,9 +470,13 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("VALIDATION SET RUNNER — blocker te
           if (!clientOk && !isSupportingDoc) lossPoints.push("client stále chybí ve final export payload");
           if (!paymentsOk && !isSupportingDoc) lossPoints.push("payments stále chybí ve final export payload");
 
+          // ── Semantic quality gate ──────────────────────────────────────────────
+          const semanticIssues = semanticQualityIssues(envelope);
+          for (const s of semanticIssues) lossPoints.push(`[SEMANTIC] ${s}`);
+
           const docPass = isSupportingDoc
-            ? (notEmptyStub && classificationValid && confidenceOk)
-            : (notEmptyStub && classificationValid && confidenceOk && (insurerOk || clientOk));
+            ? (notEmptyStub && classificationValid && confidenceOk && semanticIssues.length === 0)
+            : (notEmptyStub && classificationValid && confidenceOk && (insurerOk || clientOk) && semanticIssues.length === 0);
 
           const docRow: Record<string, unknown> = {
             id: doc.id,
@@ -474,6 +511,8 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("VALIDATION SET RUNNER — blocker te
               confidence_lte_100: confidenceOk,
               unsupported_empty_stub: !notEmptyStub,
               is_supporting_doc: isSupportingDoc,
+              semantic_issues: semanticIssues,
+              semantic_ok: semanticIssues.length === 0,
               freeze_gate_pass: docPass,
             },
             firstLossPoints: lossPoints,

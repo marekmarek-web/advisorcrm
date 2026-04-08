@@ -172,6 +172,40 @@ function missingRequiredFields(envelope: DocumentReviewEnvelope): string[] {
     .map((w) => w.field ?? w.message ?? "?");
 }
 
+// ─── Semantic quality gate ─────────────────────────────────────────────────────
+/** Detects semantic blunders even when Zod parse passes ("syntactically PASS, semantically wrong"). */
+function semanticQualityIssues(envelope: DocumentReviewEnvelope): string[] {
+  const issues: string[] = [];
+  const ef = envelope.extractedFields as Record<string, { value?: unknown }> | undefined;
+  if (!ef) return issues;
+
+  // 1. birthDate must not look like a Czech personalId (rodné číslo: 6 digits / 4 digits)
+  const birthDateVal = String(ef.birthDate?.value ?? "");
+  if (/\d{6}\/\d{4}/.test(birthDateVal) || /^\d{9,10}$/.test(birthDateVal.replace(/\D/g, ""))) {
+    issues.push(`birthDate obsahuje personalId-like pattern: "${birthDateVal}"`);
+  }
+
+  // 2. personalId must not be masked (XX/XXXX, ******, etc.)
+  const personalIdVal = String(ef.personalId?.value ?? "");
+  if (/[X*]{4,}/.test(personalIdVal) || /XX\/XX/.test(personalIdVal)) {
+    issues.push(`personalId je maskované: "${personalIdVal}"`);
+  }
+
+  // 3. bankAccount must not be masked
+  const bankAccountVal = String(ef.bankAccount?.value ?? ef.payoutAccount?.value ?? "");
+  if (/[X*]{4,}/.test(bankAccountVal)) {
+    issues.push(`bankAccount/payoutAccount je maskované: "${bankAccountVal}"`);
+  }
+
+  // 4. variableSymbol must not be masked
+  const vsVal = String(ef.variableSymbol?.value ?? "");
+  if (/[X*]{4,}/.test(vsVal)) {
+    issues.push(`variableSymbol je maskované: "${vsVal}"`);
+  }
+
+  return issues;
+}
+
 // ─── Invalid meta flags ───────────────────────────────────────────────────────
 function metaFlags(envelope: DocumentReviewEnvelope) {
   const dc = envelope.documentClassification;
@@ -384,15 +418,19 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
           if (!clientOk) lossPoints.push("client stále chybí ve final export payload");
           if (!paymentsOk) lossPoints.push("payments stále chybí ve final export payload");
 
-          // PASS criteria (new freeze gate):
+          // ── Semantic quality gate (catches "syntactically PASS, semantically wrong") ──────
+          const semanticIssues = semanticQualityIssues(envelope);
+          for (const s of semanticIssues) lossPoints.push(`[SEMANTIC] ${s}`);
+
+          // PASS criteria (semantic freeze gate):
           // - non-empty export payload (notEmptyStub)
           // - valid meta (classificationValid)
           // - confidence <= 100%
-          // - no unsupported_empty_stub
+          // - no semantic issues (birthDate=personalId, masked fields, etc.)
           // For supporting docs: just need any field extracted + valid classification + confidence OK
           const anchorPass = isSupportingDoc
-            ? (notEmptyStub && classificationValid && confidenceOk)
-            : (notEmptyStub && classificationValid && confidenceOk && (insurerOk || clientOk));
+            ? (notEmptyStub && classificationValid && confidenceOk && semanticIssues.length === 0)
+            : (notEmptyStub && classificationValid && confidenceOk && (insurerOk || clientOk) && semanticIssues.length === 0);
 
           const anchorRow = {
             id: anchor.id,
@@ -435,6 +473,8 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
               confidence_lte_100: confidenceOk,
               unsupported_empty_stub: !notEmptyStub,
               is_supporting_doc: isSupportingDoc,
+              semantic_issues: semanticIssues,
+              semantic_ok: semanticIssues.length === 0,
               freeze_gate_pass: anchorPass,
             },
             // First loss point

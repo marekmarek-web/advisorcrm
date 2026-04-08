@@ -307,7 +307,7 @@ export function buildCombinedClassifyAndExtractPrompt(
   const sectionRules = buildSectionSpecificRules(sectionTexts);
   const documentBlock = buildSectionAwareDocumentBlock(trimmedText, sectionTexts);
 
-  return `Jsi extrakční systém pro finanční dokumenty.
+  return `Jsi extrakční systém pro finanční dokumenty (interní AI Review Aidvisory).
 ${bundlePreamble}
 
 Z textu dokumentu proveď v jednom kroku:
@@ -317,14 +317,85 @@ Z textu dokumentu proveď v jednom kroku:
 4. stručná reviewWarnings jen když je skutečný problém,
 5. suggestedActions jen když dávají praktický smysl pro poradce.
 
+══════════════════════════════════════════════════════════
+RULE 1 — COMPOSITE FIELD PARSING (RČ vs. datum narození)
+══════════════════════════════════════════════════════════
+Dokumenty často obsahují sdílené labely:
+  "RČ / Datum narození", "Datum narození / RČ", "RČ / datum nar.", "IČ / Datum nar."
+
+Pravidlo:
+- Pokud hodnota odpovídá vzoru rodného čísla (XXXXXX/XXXX nebo XXXXXXXXXX) → ulož do personalId, pole birthDate NECH null.
+- Pokud hodnota odpovídá datu (DD.MM.RRRR, RRRR-MM-DD, DD/MM/RRRR) → ulož do birthDate, pole personalId NECH null.
+- Pokud jsou oba formáty přítomny odděleně → vyplň obě pole ze správných zdrojů.
+- birthDate NESMÍ nikdy obsahovat číslo tvaru XXXXXX/XXXX ani XXXXXXXXXX (rodné číslo).
+- Pokud je hodnota nejednoznačná → ulož jako personalId a birthDate nech null.
+- Příklady: "825916/1234" → personalId="825916/1234", birthDate=null. "16.9.1982" → birthDate="1982-09-16", personalId=null.
+
+══════════════════════════════════════════════════════════
+RULE 2 — INTERNÍ IDENTIFIKÁTORY BEZ MASKOVÁNÍ
+══════════════════════════════════════════════════════════
+Toto je INTERNÍ review nástroj pro finančního poradce. Výstup NIKDY neputuje na veřejnost.
+NIKDY nemaskuj:
+- personalId (rodné číslo) — NIKDY jako "XX/XXXX" nebo "******"
+- bankAccount — NIKDY jako "XXXXXX/0800"
+- iban — NIKDY jako "CZ** **** ****"
+- variableSymbol — NIKDY jako "****"
+- accountForRepayment — NIKDY jako maskované číslo
+Výjimka pro masking NEEXISTUJE ani pro "GDPR", ani pro "ochranu dat". Toto je interní advisory tool.
+
+══════════════════════════════════════════════════════════
+RULE 3 — PARTY ROLE RESOLUTION
+══════════════════════════════════════════════════════════
+Globální pravidla pro osoby:
+- policyholder: vždy vyplň z bloku "Pojistník" nebo "Klient" nebo "Žadatel". Pokud text říká "Pojistník je shodný s hlavním pojištěným" nebo "Pojistník = Pojištěný", nastav pojistníka I tak.
+- insured (pojištěný/á): primární pojištěná osoba — může být shodná s pojistníkem.
+- "2. pojištěný" / "Druhý pojištěný" / "Vedlejší pojištěná" → role "second_insured", vždy přidej do parties.
+- child_insured: "Pojistník je zákonný zástupce", "Dítě", "Pojištěné dítě" → role "child_insured".
+- co_applicant / coBorrower: "Spoludlužník" → role "co_applicant".
+- legal_representative: "Zákonný zástupce", "Jednatel", "Prokurista" → role "legal_representative".
+- beneficiary: "Obmyšlená osoba", "Obmyšlený", "Oprávněná osoba" → role "beneficiary".
+- investor: "Investor", "Klient / Investor" → role "investor".
+Každá role má: { role, fullName, birthDate?, personalId?, address?, email?, phone?, occupation? }.
+Pokud je v dokumentu explicitně uveden 2. pojištěný nebo spoludlužník, MUSÍ se objevit v parties — i u proposal docs.
+fullName (hlavní klient) ber VÝHRADNĚ z bloku pojistník/klient — NIKDY z hlavičky pojistitele, banky nebo pojišťovny.
+
+══════════════════════════════════════════════════════════
+RULE 4 — PAYMENT BLOCK PRIORITY
+══════════════════════════════════════════════════════════
+Platební sekce mají prioritu:
+  "Platební údaje", "Údaje o smlouvě a platební údaje", "Informace k pojistnému",
+  "Způsob placení", "Bankovní spojení", "Splatnost", "Platební instrukce"
+
 Pravidla:
+- payment fields (totalMonthlyPremium, bankAccount, variableSymbol, paymentFrequency) taháš VŽDY z těchto explicitních bloků pokud existují.
+- Pokud je uvedeno "variabilní symbol = číslo smlouvy / návrhu" → propisuj VS z contractNumber nebo proposalNumber.
+- proposal / offer dokumenty mají payments stejně jako final_contract — NEIGNORUJ platby jen kvůli lifecycleStatus.
+- Pokud obsahuje "Rozsah pojistného krytí", "Přehled pojistného krytí" nebo tabulku rizik → extrahuj coverages jako JSON string array [{ riskType, riskLabel, insuredAmount, premium }].
+- Risk/coverage tables extrahuj i u proposal docs a offer docs.
+
+══════════════════════════════════════════════════════════
+RULE 5 — PROPOSAL/MODELATION/SUPPORTING: ŽÁDNÉ POTLAČENÍ CORE PAYLOADU
+══════════════════════════════════════════════════════════
+Lifecycle warning ANO, suppression core payloadu NE.
+Dokumenty typu: proposal, offer, modelation, amendment, service_doc, supporting_doc MUSÍ vrátit:
+- klienta (fullName nebo borrowerName),
+- produkt / typ (insurer, productName, productType),
+- platby / payment summary pokud existují v textu,
+- parties pokud existují,
+- coverages pokud jsou přítomny.
+Příklad: MAXIMA nabídka má platební blok → totalMonthlyPremium MUSÍ být vyplněno.
+Zdravotní dotazník jako příloha NESMÍ potlačit klientská data z hlavní smluvní části.
+
+══════════════════════════════════════════════════════════
+PRAVIDLA EXTRAKCE — POLE
+══════════════════════════════════════════════════════════
 - Vycházej pouze z textu dokumentu níže.
 - Nevymýšlej hodnoty. Pokud si nejsi jistý, dej field status "missing" nebo pole vůbec neuváděj.
 - Extrahuj co nejvíce praktických údajů pro finančního poradce a CRM.
 - Preferované kategorie v extractedFields:
   - Klient / dlužník: fullName, birthDate, personalId, address, permanentAddress, phone, email, occupation, sports.
   - Smlouva / úvěr: contractNumber, proposalNumber, insurer, lender, productName, productType, documentStatus, policyStartDate, policyEndDate, policyDuration, dateSigned, businessCaseNumber.
-  - Rizika a připojištění: coverages, riders, insuredRisks, insuredPersons, deathBenefit, accidentBenefit, disabilityBenefit, hospitalizationBenefit, seriousIllnessBenefit.
+  - Rizika a připojištění: coverages (JSON array [{ riskType, riskLabel, insuredAmount, termEnd?, premium? }]), riders, insuredRisks, insuredPersons, deathBenefit, accidentBenefit, disabilityBenefit, hospitalizationBenefit, seriousIllnessBenefit.
   - Platby pojistné: totalMonthlyPremium, annualPremium, riskPremium, investmentPremium, paymentFrequency, paymentAccountNumber, bankAccount, iban, variableSymbol, bankCode, firstPaymentDate, paymentPurpose.
   - Úvěr / hypotéka (povinné pokud jde o úvěrový dokument):
     loanAmount (výše úvěru / "Výše Úvěru" / "celkový limit úvěru"),
@@ -336,7 +407,7 @@ Pravidla:
     lender (věřitel / banka — z hlavičky věřitele, NIKOLI z bloku klienta),
     borrowerName (dlužník — z bloku "Dlužník" nebo "Klient"),
     coBorrowerName (spoludlužník — z bloku "Spoludlužník" pokud existuje),
-    accountForRepayment (číslo účtu pro splácení),
+    accountForRepayment (číslo účtu pro splácení — NEMASKOVAT),
     startDate (datum uzavření / datum čerpání),
     maturityDate (datum splatnosti),
     purpose (účel úvěru),
@@ -373,23 +444,18 @@ Pravidla:
     Pro daňové přiznání: companyName, ico, taxPeriodFrom, taxPeriodTo, taxType, taxAmountDue.
     Nikdy netvoř contractNumber nebo insurer pro supporting docs.
   - Zprostředkovatel: intermediaryName, intermediaryCode, intermediaryCompany, advisorName, brokerName.
-  - Investice: investmentStrategy, investmentFunds, fundAllocation, investmentAllocation, investmentScenario.
+  - Investice: investmentStrategy, investmentFunds (JSON array [{ name, allocation }]), fundAllocation, investmentAllocation, investmentScenario.
   - Oprávněné osoby: beneficiaries.
-- KLIENTSKÝ BLOK — KRITICKÉ PRAVIDLO:
-  Pro pojištění: fullName ber VÝHRADNĚ z bloku "Pojistník", "Klient", "Žadatel", "Pojištěný" — NIKDY z hlavičky pojistitele.
-  Pro úvěr / hypotéku: borrowerName / fullName ber VÝHRADNĚ z bloku "Dlužník", "Klient", "Žadatel" — NIKDY z hlavičky věřitele/banky. Spoludlužník → coBorrowerName + parties[role=co_applicant].
-  Pokud dokument začíná logem a adresou pojišťovny nebo banky (Generali, UNIQA, Raiffeisenbank, ČSOB atd.), tato data NEPATŘÍ do fullName klienta.
 - VĚŘITEL / BANKA: Pro úvěrové dokumenty lender je institucionální strana (Raiffeisenbank, ČSOB, Moneta atd.). NIKDY ji nevkládej do pole insurer. Použij pole lender.
 - ZPROSTŘEDKOVATEL vs INSTITUCE: intermediaryName je poradce/makléř klienta. Osoba podepsaná za pojišťovnu/banku NENÍ zprostředkovatel. Zprostředkovatel pochází z bloku "Zprostředkovatel" nebo "Zprostředkovatel úvěru".
 - PLATBY — FREKVENCE: paymentFrequency extrahuj přesně. Rozlišuj: "měsíčně" / "ročně" / "čtvrtletně" / "pololetně" / "jednorázově". Nesmíš zaměnit roční pojistné za měsíční.
-- INTERNÍ IDENTIFIKÁTORY: personalId (rodné číslo), bankAccount, iban, datum narození extrahuj bez maskování — jde o interní review flow Aidvisory. Nenahrazuj rodné číslo za "XX/XXXX".
-- MULTI-PERSON: Více osob (pojistník ≠ pojištěný, děti, spoludlužník) extrahuj každou zvlášť do parties jako { role, fullName, birthDate, personalId?, address?, email?, phone?, occupation? }. Role: "policyholder", "insured", "legal_representative", "beneficiary", "child_insured", "co_applicant".
-- MULTI-RISK: Pro každé sjednané riziko/připojištění vyplň insuredPersons a coverages jako JSON string pole prvků [{ person, riskType, riskLabel, insuredAmount, termEnd?, premium? }].
+- MULTI-PERSON: Více osob (pojistník ≠ pojištěný, děti, spoludlužník) extrahuj každou zvlášť do parties viz RULE 3 výše.
+- MULTI-RISK: Pro každé sjednané riziko/připojištění vyplň coverages jako JSON string array [{ riskType, riskLabel, insuredAmount, termEnd?, premium? }].
 - INVESTICE: Extrahuj investmentStrategy (string), investmentFunds jako JSON string [{ name, allocation }], investmentPremium. U modelace napiš lifecycleStatus = "modelation" nebo "non_binding_projection".
-- PLATBY: bankAccount, variableSymbol, iban, bankCode, paymentFrequency extrahuj vždy, pokud jsou v dokumentu. Neodhaduj — pouze hodnoty z textu.
+- PLATBY: bankAccount, variableSymbol, iban, bankCode, paymentFrequency extrahuj vždy, pokud jsou v dokumentu. Neodhaduj — pouze hodnoty z textu. NEMASKOVAT (viz RULE 2).
 - BUNDLE: Pokud dokument obsahuje více logických sekcí (smlouva + zdravotní dotazník / AML / platební instrukce), nastav contentFlags.containsMultipleDocumentSections = true a přidej reviewWarning s kódem "multi_section_bundle_detected".
-- ZDRAVOTNÍ SEKCE: Pokud je přítomný zdravotní dotazník nebo zdravotní prohlášení, nastav sectionSensitivity.health_section = "health_data".
-- U modelací nebo návrhů extrahuj maximum čitelných údajů.
+- ZDRAVOTNÍ SEKCE: Pokud je přítomný zdravotní dotazník nebo zdravotní prohlášení, nastav sectionSensitivity.health_section = "health_data". Zdravotní dotazník NESMÍ potlačit extrakci z hlavní smluvní části.
+- U modelací nebo návrhů extrahuj maximum čitelných údajů (viz RULE 5).
 - Vrátíš pouze JSON dle schema. Žádný markdown, žádný komentář.
 - documentClassification.reasons piš stručně česky.
 - documentMeta.scannedVsDigital nastav na "digital", pokud text působí jako strojově čitelný PDF převod.
