@@ -660,6 +660,18 @@ export function TeamOverviewView({
           </div>
         </div>
 
+        {kpis && scope !== "me" && !kpis.hierarchyParentLinksConfigured ? (
+          <div
+            className="mb-5 rounded-2xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 shadow-sm sm:px-5"
+            role="status"
+          >
+            <p className="font-semibold text-amber-950">Hierarchie týmu není zatím kompletně nastavena.</p>
+            <p className="mt-1.5 text-xs leading-relaxed text-amber-900/95 sm:text-sm">
+              V tenantu nejsou vyplněné vazby nadřízenosti (parent_id). Rozsah „Můj tým“ zobrazí jen vás, dokud se vazby nedoplní — jde o ochranu rozsahu, ne o prázdný tým. Rozsah „Celá struktura“ může zobrazit všechny členy jako samostatné kořeny; po doplnění nadřízených se strom srovná.
+            </p>
+          </div>
+        ) : null}
+
         {/* 1. Manažerský briefing — first fold */}
         <section
           className="mb-8 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50/95 via-[color:var(--wp-surface-card)] to-indigo-50/30 p-5 sm:p-7 shadow-sm ring-1 ring-slate-900/[0.04]"
@@ -1039,6 +1051,7 @@ export function TeamOverviewView({
           currentUserId={currentUserId}
           scope={scope}
           memberDetailQuery={`?period=${encodeURIComponent(period)}`}
+          hierarchyParentLinksConfigured={kpis?.hierarchyParentLinksConfigured !== false}
         />
 
         <div className="mb-6 border-t border-slate-200/70 pt-8">

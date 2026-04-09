@@ -8,6 +8,8 @@ import { createEvent } from "@/app/actions/events";
 import { createOpportunity, getOpportunityStages } from "@/app/actions/pipeline";
 import { createAiFeedback } from "@/app/actions/ai-feedback";
 import { logActivity } from "@/app/actions/activity";
+import { getVisibleUserIds, resolveScopeForRole } from "@/lib/team-hierarchy";
+import type { RoleName } from "@/shared/rolePermissions";
 import { validateActionSuggestion } from "./action-guardrails";
 import { checkForDuplicates, checkTeamActionDuplicates } from "./duplicate-check";
 import type { AiActionExecutionResult, AiActionSuggestion } from "./action-suggestions";
@@ -241,6 +243,11 @@ export async function executeTeamAiAction(
     }
 
     const assignee = memberId ?? auth.userId;
+    const maxScope = resolveScopeForRole(auth.roleName as RoleName, "full");
+    const visibleIds = await getVisibleUserIds(auth.tenantId, auth.userId, auth.roleName as RoleName, maxScope);
+    if (!visibleIds.includes(assignee)) {
+      return { ok: false, error: "Forbidden", code: "FORBIDDEN" };
+    }
     const idempotencyKey =
       options?.idempotencyKey ??
       `${auth.tenantId}:${assignee}:${actionType}:${safeSuggestion.title.toLowerCase()}`;

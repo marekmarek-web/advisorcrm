@@ -62,6 +62,8 @@ export type TeamOverviewKpis = {
   pipelineValue: number;
   conversionRate: number;
   scope: TeamOverviewScope;
+  /** True pokud v tenantu existuje aspoň jedna vazba nadřízenosti (parent_id) — jinak je „Můj tým“ omezený. */
+  hierarchyParentLinksConfigured: boolean;
 };
 
 function getPeriodRange(
@@ -423,6 +425,16 @@ function buildAlertsFromMetric(metric: TeamMemberMetrics): TeamAlert[] {
   return alerts;
 }
 
+/** Sdílené odvození alertů z metrik (Team Overview, AI kontext, detail člena). */
+export function buildTeamAlertsFromMemberMetrics(metrics: TeamMemberMetrics[]): TeamAlert[] {
+  return metrics
+    .flatMap((m) => buildAlertsFromMetric(m))
+    .sort((a, b) => {
+      if (a.severity === b.severity) return 0;
+      return a.severity === "critical" ? -1 : 1;
+    });
+}
+
 export async function getTeamOverviewKpis(
   period: TeamOverviewPeriod = "month",
   scope?: TeamOverviewScope
@@ -437,9 +449,8 @@ export async function getTeamOverviewKpis(
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
-  const [metrics, alerts, newcomers, activeCountRows, meetingsThisWeekRows] = await Promise.all([
+  const [metrics, newcomers, activeCountRows, meetingsThisWeekRows] = await Promise.all([
     getTeamMemberMetrics(period, ctx.scope),
-    getTeamAlerts(period, ctx.scope),
     getNewcomerAdaptation(ctx.scope),
     db
       .select({ userId: activityLog.userId })
@@ -466,6 +477,9 @@ export async function getTeamOverviewKpis(
         )
       ),
   ]);
+
+  const alerts = buildTeamAlertsFromMemberMetrics(metrics);
+  const hierarchyParentLinksConfigured = ctx.tenantMembers.some((m) => !!m.parentId);
 
   const unitsThisPeriod = metrics.reduce((sum, m) => sum + m.unitsThisPeriod, 0);
   const productionThisPeriod = metrics.reduce((sum, m) => sum + m.productionThisPeriod, 0);
@@ -526,6 +540,7 @@ export async function getTeamOverviewKpis(
     pipelineValue,
     conversionRate,
     scope: ctx.scope,
+    hierarchyParentLinksConfigured,
   };
 }
 
@@ -680,12 +695,7 @@ export async function getTeamAlerts(
   scope?: TeamOverviewScope
 ): Promise<TeamAlert[]> {
   const metrics = await getTeamMemberMetrics(period, scope);
-  return metrics
-    .flatMap((m) => buildAlertsFromMetric(m))
-    .sort((a, b) => {
-      if (a.severity === b.severity) return 0;
-      return a.severity === "critical" ? -1 : 1;
-    });
+  return buildTeamAlertsFromMemberMetrics(metrics);
 }
 
 export type AdaptationStep = {
@@ -908,14 +918,14 @@ export async function getTeamMemberDetail(
   const member = tenantMembersForDetail.find((m) => m.userId === userId);
   if (!member) return null;
 
-  const [metricsList, alerts, newcomers] = await Promise.all([
+  const [metricsList, newcomers] = await Promise.all([
     getTeamMemberMetrics(period, scope),
-    getTeamAlerts(period, scope),
     getNewcomerAdaptation(scope),
   ]);
 
+  const allAlerts = buildTeamAlertsFromMemberMetrics(metricsList);
   const metrics = metricsList.find((m) => m.userId === userId) ?? null;
-  const memberAlerts = alerts.filter((a) => a.memberId === userId);
+  const memberAlerts = allAlerts.filter((a) => a.memberId === userId);
   const adaptation = newcomers.find((n) => n.userId === userId) ?? null;
 
   const careerEvaluation =

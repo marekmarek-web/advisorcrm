@@ -5,11 +5,11 @@ import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createResponseSafe } from "@/lib/openai";
 import { logOpenAICall } from "@/lib/openai";
-import type { TeamOverviewScope } from "@/lib/team-hierarchy-types";
+import { resolveScopeForRole, type TeamOverviewScope } from "@/lib/team-hierarchy-types";
 import {
   getTeamOverviewKpis,
   getTeamMemberMetrics,
-  getTeamAlerts,
+  buildTeamAlertsFromMemberMetrics,
   getNewcomerAdaptation,
   listTeamMembersWithNames,
 } from "@/app/actions/team-overview";
@@ -50,15 +50,15 @@ export async function GET(request: Request) {
         : membership.roleName === "Director" || membership.roleName === "Admin"
           ? "full"
           : "my_team";
-    const scope = requestedScope ?? defaultScope;
+    const scope = resolveScopeForRole(membership.roleName as RoleName, requestedScope ?? defaultScope);
 
-    const [kpis, metrics, alerts, newcomers, members] = await Promise.all([
+    const [kpis, metrics, newcomers, members] = await Promise.all([
       getTeamOverviewKpis(period, scope),
       getTeamMemberMetrics(period, scope),
-      getTeamAlerts(period, scope),
       getNewcomerAdaptation(scope),
       listTeamMembersWithNames(scope),
     ]);
+    const alerts = buildTeamAlertsFromMemberMetrics(metrics);
 
     const memberNames = new Map(members.map((m) => [m.userId, m.displayName || "Člen týmu"]));
 

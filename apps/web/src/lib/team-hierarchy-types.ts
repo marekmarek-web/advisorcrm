@@ -70,7 +70,9 @@ export function getVisibleUserIdsFromMembers(
   if (roleName === "Manager" || roleName === "Director" || roleName === "Admin") {
     const descendants = getDescendantIds(members, currentUserId);
     if (scope === "my_team") {
-      if (!hasAnyHierarchy) return Array.from(new Set([currentUserId, ...allIds]));
+      // Bez jediného parent_id nelze bezpečně určit větev — dříve to padlo na „všichni v tenantu“
+      // (scope leak pro managery). Konzervativně jen aktuální uživatel + banner v UI.
+      if (!hasAnyHierarchy) return [currentUserId];
       return Array.from(new Set([currentUserId, ...descendants]));
     }
     return allIds;

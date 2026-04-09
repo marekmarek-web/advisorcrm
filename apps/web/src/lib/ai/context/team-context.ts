@@ -6,7 +6,7 @@ import type { RoleName } from "@/shared/rolePermissions";
 import {
   getTeamOverviewKpis,
   getTeamMemberMetrics,
-  getTeamAlerts,
+  buildTeamAlertsFromMemberMetrics,
   getNewcomerAdaptation,
   listTeamMembersWithNames,
   type TeamOverviewPeriod,
@@ -38,13 +38,13 @@ export async function buildTeamAiContextRaw(
   const resolvedScope = resolveScopeForRole(role, requested);
 
   const periodTyped = period as TeamOverviewPeriod;
-  const [kpis, members, metrics, alerts, newcomers] = await Promise.all([
+  const [kpis, members, metrics, newcomers] = await Promise.all([
     getTeamOverviewKpis(periodTyped, resolvedScope).catch(() => null),
     listTeamMembersWithNames(resolvedScope).catch(() => []),
     getTeamMemberMetrics(periodTyped, resolvedScope).catch(() => []),
-    getTeamAlerts(periodTyped, resolvedScope).catch(() => []),
     getNewcomerAdaptation(resolvedScope).catch(() => []),
   ]);
+  const alerts = buildTeamAlertsFromMemberMetrics(metrics ?? []);
 
   const periodLabel =
     kpis?.periodLabel ?? (period === "week" ? "tento týden" : period === "quarter" ? "toto čtvrtletí" : "tento měsíc");

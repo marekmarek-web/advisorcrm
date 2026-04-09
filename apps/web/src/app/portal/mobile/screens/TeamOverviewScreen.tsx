@@ -12,11 +12,10 @@ import {
   Activity,
 } from "lucide-react";
 import {
-  getTeamAlerts,
+  buildTeamAlertsFromMemberMetrics,
   getTeamHierarchy,
   getTeamMemberMetrics,
   getTeamOverviewKpis,
-  getTeamPerformanceOverTime,
   listTeamMembersWithNames,
   type TeamAlert,
   type TeamMemberInfo,
@@ -177,18 +176,16 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
     startTransition(async () => {
       setError(null);
       try {
-        const [nextKpis, nextMembers, nextMetrics, nextAlerts, nextHierarchy] = await Promise.all([
+        const [nextKpis, nextMembers, nextMetrics, nextHierarchy] = await Promise.all([
           getTeamOverviewKpis(period, scope),
           listTeamMembersWithNames(scope),
           getTeamMemberMetrics(period, scope),
-          getTeamAlerts(period, scope),
           getTeamHierarchy(scope),
-          getTeamPerformanceOverTime(period, scope),
         ]);
         setKpis(nextKpis);
         setMembers(nextMembers);
         setMetrics(nextMetrics);
-        setAlerts(nextAlerts);
+        setAlerts(buildTeamAlertsFromMemberMetrics(nextMetrics));
         setHierarchy(nextHierarchy);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Týmový přehled se nepodařilo načíst.");
@@ -355,6 +352,15 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
           />
         </div>
       </div>
+
+      {kpis && scope !== "me" && !kpis.hierarchyParentLinksConfigured ? (
+        <MobileCard className="mx-4 mt-3 border-amber-200 bg-amber-50/90 p-3">
+          <p className="text-xs font-bold text-amber-950">Hierarchie není kompletně nastavena</p>
+          <p className="mt-1 text-[11px] leading-snug text-amber-900/90">
+            Chybí vazby nadřízenosti — „Můj tým“ může zobrazit jen vás. Doplňte parent_id u členů v Nastavení → Tým.
+          </p>
+        </MobileCard>
+      ) : null}
 
       {/* Alert banner */}
       {criticalAlerts.length > 0 ? (

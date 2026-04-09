@@ -85,12 +85,15 @@ export function TeamStructurePanel({
   currentUserId,
   scope,
   memberDetailQuery = "",
+  hierarchyParentLinksConfigured = true,
 }: {
   roots: TeamTreeNode[];
   currentUserId: string;
   scope: TeamOverviewScope;
   /** Např. ?period=month — stejné období jako Team Overview */
   memberDetailQuery?: string;
+  /** False = v tenantu není žádný parent_id — „Můj tým“ je omezený (viz banner na přehledu). */
+  hierarchyParentLinksConfigured?: boolean;
 }) {
   const selfNode = findNodeInForest(roots, currentUserId);
   const directChildren = selfNode?.children ?? [];
@@ -126,6 +129,13 @@ export function TeamStructurePanel({
           Přehled větví podle nastavených nadřízených. Kliknutím otevřete detail člena.
         </p>
       )}
+
+      {!isPersonalOnly && !hierarchyParentLinksConfigured ? (
+        <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2.5 text-xs leading-relaxed text-amber-950 sm:text-sm">
+          <span className="font-semibold">Vazby nadřízenosti zatím chybí.</span>{" "}
+          Strom může ukázat všechny lidi jako oddělené kořeny — jde o data v CRM, ne o chybu modulu. Doplňte pole nadřízeného u členů v Nastavení → Tým.
+        </div>
+      ) : null}
 
       {!isPersonalOnly && directChildren.length > 0 && (
         <div className="mb-4 rounded-xl bg-[color:var(--wp-surface-muted)]/60 px-4 py-3">
