@@ -376,6 +376,49 @@ Další implementační prompt považujte za splněný, pokud:
 
 ---
 
+## 13. Fáze 5 – Týmový rytmus (interní termíny, cadence, follow-up)
+
+**Cíl:** Operační vrstva v Team Overview bez nového kalendářového enginu — read model nad existujícími `team_events` / `team_tasks`, doporučující cadence a CTA do stávajícího `TeamCalendarModal`.
+
+### 1) Read model interních termínů
+
+- **Server:** `getTeamRhythmCalendarData(scope)` v `apps/web/src/app/actions/team-overview.ts` — 2 lehké dotazy (události v okně −45 až +14 dní od „teď“, úkoly s `due_date` v rozsahu „od dnes do +14“ nebo po termínu v posledních 90 dnech), **filtrované průnikem `target_user_ids` se `visibleUserIds`** (stejný scope jako přehled).
+- **Typ události není v DB:** kategorie (`one_on_one_hint`, `adaptation_checkin_hint`, …) se odvozují z **názvu** v `apps/web/src/lib/team-rhythm/internal-classification.ts` — v payloadu je `disclaimerCs`.
+
+### 2) Co se považuje za interní termín / follow-up / cadence položku
+
+- **Interní termín (UI):** řádek z `team_events` v časovém okně, po přefiltrování scope.
+- **Follow-up úkol:** řádek z `team_tasks` s termínem (po termínu nebo v horizontu).
+- **Cadence položka:** odvozený řádek z `buildTeamCadenceRows` (`apps/web/src/lib/team-rhythm/build-cadence.ts`) — kombinace `deriveRecommendedCareerAction`, adaptace, a **posledního „osobního“ doteku** z týmových událostí (`lastPersonalTouchByUser`).
+
+### 3) Doporučený rytmus 1:1 / check-inů / follow-upů
+
+- **Doporučení, ne pravidlo firmy:** texty používají formulace „vhodné“, „doporučeno“.
+- **Pravidla (zjednodušeně):** aktivní adaptace + dlouho bez osobního doteku → adaptační check-in; `data_completion` → doplnění údajů; doporučené 1:1 / coaching bez nedávného doteku (21 dní, heuristika z názvů událostí) → 1:1 due; jinak follow-up nebo `monitor_only` (v panelu cadence se `monitor_only` nezobrazuje jako „vyžaduje navázání“).
+
+### 4) Propojení s career insights a coachingem
+
+- **Klient:** `computeTeamRhythmView` (`apps/web/src/lib/team-rhythm/compute-view.ts`) dostane stejná data jako `buildTeamCoachingAttentionList` a počítá **`coachingCadenceAlignedCount`** (průnik uživatelů v coaching attention a v cadence „attention“).
+- Panel odkazuje na **detail člena**, kde zůstávají **coaching** a **kariéra** (fáze 3–4).
+
+### 5) CTA a prefills
+
+- **`TeamCalendarModal`:** nový optional prop `prefill` (`title`, `description`, `notes`, `dueDate`, `startAt`, `memberUserIds`) — při otevření z panelu rytmu se předvyplní název, poznámka a výběr člena.
+- Tlačítka „Porada / follow-up úkol“ v panelu volají totéž modal bez konkrétního člena.
+
+### 6) Role a scope
+
+- Stejný **`getScopeContext`** jako ostatní gettery — žádný leak mimo hierarchii.
+- Rozsah **„Já“:** cadence sekce je zkrácená (vysvětlení v UI); data kalendáře jsou jen pro viditelné členy (typicky uživatel sám).
+
+### 7) Future phase (záměrně mimo scope)
+
+- Push notifikace, background reminders, enterprise workflow, plný kalendářový modul, mobilní Team Overview screen s rytmem, first-class `event_type` enum v DB.
+
+**Soubory:** `TeamRhythmPanel.tsx`, `compute-view.ts`, `build-cadence.ts`, `internal-classification.ts`, `last-touch.ts`, `team-overview.ts` (getter), `TeamCalendarModal.tsx`, `page.tsx`.
+
+---
+
 ## Migrace SQL
 
-Pro tento dokument (Fáze 0–1, audit a masterplan) **nejsou potřeba žádné SQL migrace**.
+Pro Fázi 5 **nejsou potřeba žádné nové SQL migrace** — read model čte existující tabulky `team_events` a `team_tasks` (schéma v `packages/db/src/schema/team-events.ts`).

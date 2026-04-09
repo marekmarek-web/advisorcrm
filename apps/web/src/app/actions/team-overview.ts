@@ -22,13 +22,16 @@ import {
   teamGoals,
   memberships,
   roles,
+  teamEvents,
+  teamTasks,
 } from "db";
 import { buildCareerEvaluationViewModel } from "@/lib/career/career-evaluation-vm";
 import { buildCareerCoachingPackage, type CareerCoachingPackage } from "@/lib/career/career-coaching";
 import { buildCareerInsights } from "@/lib/career/career-insights";
 import type { CareerEvaluationViewModel } from "@/lib/career/career-evaluation-vm";
 import type { CareerInsight } from "@/lib/career/career-insights";
-import { eq, and, gte, lt, isNull, isNotNull, sql, desc, asc, inArray } from "db";
+import { eq, and, gte, lt, lte, isNull, isNotNull, sql, desc, asc, inArray, or } from "db";
+import { classifyInternalTeamTitle } from "@/lib/team-rhythm/internal-classification";
 
 export type TeamOverviewPeriod = "week" | "month" | "quarter";
 
@@ -1026,6 +1029,94 @@ export async function getTeamMemberDetail(
     careerEvaluation,
     careerInsights,
     careerCoaching,
+  };
+}
+
+export type { TeamRhythmCalendarData } from "@/lib/team-rhythm/compute-view";
+
+function teamRhythmTargetsOverlapScope(targetUserIds: string[], visibleSet: Set<string>): boolean {
+  return targetUserIds.some((id) => visibleSet.has(id));
+}
+
+/**
+ * Lehký read model: týmové události a úkoly v časovém okně, filtrované podle Team Overview scope.
+ * Typy 1:1 / porada jsou jen z heuristiky názvu — viz disclaimer v payloadu.
+ */
+export async function getTeamRhythmCalendarData(scope?: TeamOverviewScope) {
+  const ctx = await getScopeContext(scope);
+  const now = new Date();
+  const past = new Date(now);
+  past.setDate(past.getDate() - 45);
+  const future = new Date(now);
+  future.setDate(future.getDate() + 14);
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const overdueCutoff = new Date(now);
+  overdueCutoff.setDate(overdueCutoff.getDate() - 90);
+
+  const [evRows, taskRows] = await Promise.all([
+    db
+      .select({
+        id: teamEvents.id,
+        title: teamEvents.title,
+        startAt: teamEvents.startAt,
+        targetUserIds: teamEvents.targetUserIds,
+      })
+      .from(teamEvents)
+      .where(
+        and(
+          eq(teamEvents.tenantId, ctx.auth.tenantId),
+          isNull(teamEvents.cancelledAt),
+          gte(teamEvents.startAt, past),
+          lte(teamEvents.startAt, future)
+        )
+      ),
+    db
+      .select({
+        id: teamTasks.id,
+        title: teamTasks.title,
+        dueDate: teamTasks.dueDate,
+        targetUserIds: teamTasks.targetUserIds,
+      })
+      .from(teamTasks)
+      .where(
+        and(
+          eq(teamTasks.tenantId, ctx.auth.tenantId),
+          isNull(teamTasks.cancelledAt),
+          isNotNull(teamTasks.dueDate),
+          or(
+            and(lt(teamTasks.dueDate, startOfToday), gte(teamTasks.dueDate, overdueCutoff)),
+            and(gte(teamTasks.dueDate, startOfToday), lte(teamTasks.dueDate, future))
+          )
+        )
+      ),
+  ]);
+
+  const events = evRows
+    .filter((r) => teamRhythmTargetsOverlapScope(r.targetUserIds ?? [], ctx.visibleSet))
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      startAt: r.startAt.toISOString(),
+      category: classifyInternalTeamTitle(r.title),
+      targetUserIds: r.targetUserIds ?? [],
+    }));
+
+  const tasks = taskRows
+    .filter((r) => teamRhythmTargetsOverlapScope(r.targetUserIds ?? [], ctx.visibleSet))
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      dueDate: r.dueDate ? r.dueDate.toISOString() : null,
+      category: classifyInternalTeamTitle(r.title),
+      targetUserIds: r.targetUserIds ?? [],
+    }));
+
+  return {
+    events,
+    tasks,
+    disclaimerCs:
+      "Typy událostí (1:1, adaptace, porada, follow-up) jsou odvozeny z názvu záznamu — v databázi nejsou jako striktní typ. Slouží jako operační nápověda, ne jako kalendářový systém.",
   };
 }
 

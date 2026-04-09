@@ -23,15 +23,35 @@ import {
   BarChart3,
   Briefcase,
 } from "lucide-react";
-import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint, TeamOverviewPeriod } from "@/app/actions/team-overview";
+import type {
+  TeamOverviewKpis,
+  TeamMemberInfo,
+  TeamMemberMetrics,
+  TeamAlert,
+  NewcomerAdaptation,
+  TeamPerformancePoint,
+  TeamOverviewPeriod,
+  TeamRhythmCalendarData,
+} from "@/app/actions/team-overview";
 import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
-import { getTeamOverviewKpis, getTeamMemberMetrics, getTeamAlerts, getNewcomerAdaptation, getTeamPerformanceOverTime, listTeamMembersWithNames, getTeamHierarchy } from "@/app/actions/team-overview";
+import {
+  getTeamOverviewKpis,
+  getTeamMemberMetrics,
+  getTeamAlerts,
+  getNewcomerAdaptation,
+  getTeamPerformanceOverTime,
+  listTeamMembersWithNames,
+  getTeamHierarchy,
+  getTeamRhythmCalendarData,
+} from "@/app/actions/team-overview";
 import { generateTeamSummaryAction, getLatestTeamSummaryAction, submitAiFeedbackAction } from "@/app/actions/ai-generations";
 import { createTeamActionFromAi } from "@/app/actions/ai-actions";
 import type { AiFeedbackVerdict, AiFeedbackActionTaken } from "@/app/actions/ai-feedback";
 import type { AiActionType } from "@/lib/ai/actions/action-suggestions";
 import { SkeletonBlock } from "@/app/components/Skeleton";
-import { TeamCalendarModal, TeamCalendarButtons } from "./TeamCalendarModal";
+import { TeamCalendarModal, TeamCalendarButtons, type TeamCalendarModalPrefill } from "./TeamCalendarModal";
+import { TeamRhythmPanel } from "./TeamRhythmPanel";
+import { computeTeamRhythmView } from "@/lib/team-rhythm/compute-view";
 import { TeamStructurePanel } from "./TeamStructurePanel";
 import clsx from "clsx";
 import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
@@ -257,6 +277,7 @@ interface TeamOverviewViewProps {
   initialAlerts: TeamAlert[];
   initialNewcomers: NewcomerAdaptation[];
   initialPerformanceOverTime: TeamPerformancePoint[];
+  initialRhythmCalendar?: TeamRhythmCalendarData | null;
   defaultPeriod: TeamOverviewPeriod;
   canCreateTeamCalendar?: boolean;
 }
@@ -285,6 +306,7 @@ export function TeamOverviewView({
   initialAlerts,
   initialNewcomers,
   initialPerformanceOverTime,
+  initialRhythmCalendar = null,
   defaultPeriod,
   canCreateTeamCalendar = false,
 }: TeamOverviewViewProps) {
@@ -311,11 +333,13 @@ export function TeamOverviewView({
   const [teamActionSaving, setTeamActionSaving] = useState(false);
   const [teamActionError, setTeamActionError] = useState<string | null>(null);
   const [teamCalendarModal, setTeamCalendarModal] = useState<"event" | "task" | null>(null);
+  const [calendarPrefill, setCalendarPrefill] = useState<TeamCalendarModalPrefill | null>(null);
+  const [rhythmCalendar, setRhythmCalendar] = useState<TeamRhythmCalendarData | null>(initialRhythmCalendar ?? null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [k, teamMembers, m, a, n, perf, tree] = await Promise.all([
+      const [k, teamMembers, m, a, n, perf, tree, rhythm] = await Promise.all([
         getTeamOverviewKpis(period, scope),
         listTeamMembersWithNames(scope),
         getTeamMemberMetrics(period, scope),
@@ -323,6 +347,7 @@ export function TeamOverviewView({
         getNewcomerAdaptation(scope),
         getTeamPerformanceOverTime(period, scope),
         getTeamHierarchy(scope),
+        getTeamRhythmCalendarData(scope),
       ]);
       setKpis(k ?? null);
       setMembers(teamMembers);
@@ -331,6 +356,7 @@ export function TeamOverviewView({
       setNewcomers(n);
       setPerformanceOverTime(perf);
       setHierarchy(tree);
+      setRhythmCalendar(rhythm);
     } finally {
       setLoading(false);
     }
@@ -498,6 +524,29 @@ export function TeamOverviewView({
     return buildTeamCoachingAttentionList(rows, 5);
   }, [members, metrics, newcomers, scope]);
 
+  const rhythmComputed = useMemo(
+    () => computeTeamRhythmView(rhythmCalendar, members, metrics, newcomers, coachingAttention),
+    [rhythmCalendar, members, metrics, newcomers, coachingAttention]
+  );
+
+  const openTeamEventModal = useCallback((prefill?: TeamCalendarModalPrefill | null) => {
+    setCalendarPrefill(prefill ?? null);
+    setTeamCalendarModal("event");
+  }, []);
+
+  const openTeamTaskModal = useCallback((prefill?: TeamCalendarModalPrefill | null) => {
+    setCalendarPrefill(prefill ?? null);
+    setTeamCalendarModal("task");
+  }, []);
+
+  const resolveRhythmMemberLabel = useCallback(
+    (userId: string) => {
+      const m = members.find((x) => x.userId === userId);
+      return m ? displayName(m) : "Člen týmu";
+    },
+    [members]
+  );
+
   const scopeOptions: { value: TeamOverviewScope; label: string }[] =
     currentRole === "Advisor" || currentRole === "Viewer"
       ? [{ value: "me", label: "Já" }]
@@ -587,8 +636,8 @@ export function TeamOverviewView({
             <div id="team-calendar-actions" className="flex flex-wrap gap-2">
               <TeamCalendarButtons
                 canCreate={canCreateTeamCalendar}
-                onOpenEvent={() => setTeamCalendarModal("event")}
-                onOpenTask={() => setTeamCalendarModal("task")}
+                onOpenEvent={() => openTeamEventModal(null)}
+                onOpenTask={() => openTeamTaskModal(null)}
               />
             </div>
             <CustomDropdown
@@ -742,6 +791,20 @@ export function TeamOverviewView({
             </div>
           </div>
         </section>
+
+        <TeamRhythmPanel
+          computed={rhythmComputed}
+          disclaimer={
+            rhythmCalendar?.disclaimerCs ??
+            "Týmové položky pocházejí z team_events / team_tasks a jsou filtrované podle rozsahu přehledu."
+          }
+          scope={scope}
+          canCreate={canCreateTeamCalendar}
+          memberDetailHref={memberDetailHref}
+          resolveMemberLabel={resolveRhythmMemberLabel}
+          onOpenEvent={openTeamEventModal}
+          onOpenTask={openTeamTaskModal}
+        />
 
         <TeamStructurePanel
           roots={hierarchy}
@@ -897,11 +960,15 @@ export function TeamOverviewView({
         <TeamCalendarModal
           open={teamCalendarModal != null}
           type={teamCalendarModal}
-          onClose={() => setTeamCalendarModal(null)}
+          onClose={() => {
+            setTeamCalendarModal(null);
+            setCalendarPrefill(null);
+          }}
           members={members}
           metrics={metrics}
           newcomers={newcomers}
           onSuccess={refresh}
+          prefill={calendarPrefill}
         />
 
         {/* KPI cards — sekundární detail */}

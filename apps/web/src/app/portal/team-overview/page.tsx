@@ -11,6 +11,7 @@ import {
   listTeamMembersWithNames,
   getTeamPerformanceOverTime,
   getTeamHierarchy,
+  getTeamRhythmCalendarData,
 } from "@/app/actions/team-overview";
 
 export const dynamic = "force-dynamic";
@@ -36,13 +37,14 @@ export default async function TeamOverviewPage({
         ? "full"
         : "my_team";
 
-  const [kpis, members, metrics, alerts, newcomers, performanceOverTime] = await Promise.all([
+  const [kpis, members, metrics, alerts, newcomers, performanceOverTime, rhythmCalendar] = await Promise.all([
     getTeamOverviewKpis(period, defaultScope).catch(() => null),
     listTeamMembersWithNames(defaultScope).catch(() => []),
     getTeamMemberMetrics(period, defaultScope).catch(() => []),
     getTeamAlerts(period, defaultScope).catch(() => []),
     getNewcomerAdaptation(defaultScope).catch(() => []),
     getTeamPerformanceOverTime(period, defaultScope).catch(() => []),
+    getTeamRhythmCalendarData(defaultScope).catch(() => null),
   ]);
   const hierarchy = await getTeamHierarchy(defaultScope).catch(() => []);
 
@@ -59,6 +61,7 @@ export default async function TeamOverviewPage({
       initialAlerts={alerts}
       initialNewcomers={newcomers}
       initialPerformanceOverTime={performanceOverTime}
+      initialRhythmCalendar={rhythmCalendar}
       defaultPeriod={period}
       canCreateTeamCalendar={canCreateTeamCalendar}
     />

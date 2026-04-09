@@ -233,11 +233,21 @@ Výstup evaluace: `progressEvaluation` (`on_track`, `data_missing`, `blocked`, `
 
 ---
 
+## 13. Team rhythm a cadence (Fáze 5)
+
+- **Stejný vstup jako coaching:** `deriveRecommendedCareerAction` z `career-coaching.ts` se v cadence vrstvě znovu nepřepisuje — `buildTeamCadenceRows` ho reuseuje spolu s řezy metrik a adaptace jako u `buildTeamCoachingAttentionList`.
+- **Rozdíl oproti pouhému coaching bloku:** do rozhodování vstupuje **evidence z `team_events`** — poslední událost klasifikovaná jako 1:1 / adaptace / follow-up (heuristika z názvu) sníží agresivitu doporučení „naplánovat 1:1“.
+- **UI:** panel „Týmový rytmus“ v `TeamOverviewView` zobrazuje průnik **coaching attention × cadence** a CTA s prefillem do `TeamCalendarModal` (název, poznámka, cílový člen).
+- **Dokumentace read modelu:** `docs/team-overview-masterplan.md` sekce 13.
+
+---
+
 ## Odkaz na kód
 
 - `apps/web/src/lib/career/` — `evaluate-career-progress.ts`, `career-evaluation-vm.ts`, `career-insights.ts`, `career-coaching.ts`, `team-career-aggregate.ts`, `career-write-validation.ts`, registry
 - `apps/web/src/app/actions/team.ts` (`updateMemberCareer`, tenant default)
 - `apps/web/src/app/actions/team-overview.ts` (`getTeamMemberMetrics`, `getTeamMemberDetail`, alerty)
 - `apps/web/src/app/portal/setup/SetupView.tsx`, `TeamMemberCareerFields.tsx`
-- `apps/web/src/app/portal/team-overview/TeamOverviewView.tsx`, `TeamStructurePanel.tsx`, `[userId]/TeamMemberDetailView.tsx`, `[userId]/MemberCareerQuickActions.tsx`, `[userId]/page.tsx`
+- `apps/web/src/app/portal/team-overview/TeamOverviewView.tsx`, `TeamRhythmPanel.tsx`, `TeamCalendarModal.tsx`, `TeamStructurePanel.tsx`, `[userId]/TeamMemberDetailView.tsx`, `[userId]/MemberCareerQuickActions.tsx`, `[userId]/page.tsx`
+- `apps/web/src/lib/team-rhythm/` — klasifikace názvů, cadence, `computeTeamRhythmView`
 - `packages/db/drizzle/0024_memberships_career.sql`

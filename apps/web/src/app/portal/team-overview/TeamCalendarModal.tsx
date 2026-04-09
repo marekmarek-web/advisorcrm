@@ -9,6 +9,16 @@ import type { TeamMemberInfo, TeamMemberMetrics, NewcomerAdaptation } from "@/ap
 
 type ModalType = "event" | "task" | null;
 
+export type TeamCalendarModalPrefill = {
+  title?: string;
+  description?: string;
+  notes?: string;
+  dueDate?: string;
+  startAt?: string;
+  /** Omezí výběr příjemců na tyto user id (musí být v `members`). */
+  memberUserIds?: string[];
+};
+
 export function TeamCalendarModal({
   open,
   type,
@@ -17,6 +27,7 @@ export function TeamCalendarModal({
   metrics,
   newcomers,
   onSuccess,
+  prefill,
 }: {
   open: boolean;
   type: ModalType;
@@ -25,6 +36,7 @@ export function TeamCalendarModal({
   metrics: TeamMemberMetrics[];
   newcomers: NewcomerAdaptation[];
   onSuccess: () => void;
+  prefill?: TeamCalendarModalPrefill | null;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -38,8 +50,19 @@ export function TeamCalendarModal({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (open && type) setSelectedIds(new Set(members.map((m) => m.userId)));
-  }, [open, type, members]);
+    if (!open || !type) return;
+    const all = members.map((m) => m.userId);
+    const fromPrefill = prefill?.memberUserIds?.filter((id) => members.some((m) => m.userId === id)) ?? [];
+    setSelectedIds(new Set(fromPrefill.length > 0 ? fromPrefill : all));
+    setTitle(prefill?.title ?? "");
+    setDescription(prefill?.description ?? "");
+    setNotes(prefill?.notes ?? "");
+    setDueDate(prefill?.dueDate ?? "");
+    setStartAt(prefill?.startAt ?? "");
+    setEndAt("");
+    setLocation("");
+    setError("");
+  }, [open, type, members, prefill]);
 
   if (!open || !type) return null;
 
