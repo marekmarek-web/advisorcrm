@@ -899,17 +899,22 @@ export async function processImageIntake(
     documentSetResult,
     parsedIntent,
   );
+  const createContactExplicitlyRequested = parsedIntent?.operation === "create_contact";
+  const identityDraftSource = mapFactBundleToCreateContactDraft(factBundle).draftSource;
+  const allowIdentityContactIntake =
+    identityIntakeEligible &&
+    (createContactExplicitlyRequested || identityDraftSource === "identity_document");
 
   let identityMatchedExistingClient = false;
 
   const skipIdentityVsActiveMatch = shouldSkipIdentityVersusActiveContactMatch(factBundle, parsedIntent);
 
-  if (identityIntakeEligible && clientBinding.clientId && skipIdentityVsActiveMatch) {
+  if (allowIdentityContactIntake && clientBinding.clientId && skipIdentityVsActiveMatch) {
     const materializedDocumentIds = await materializeIntakeImagesAsDocuments(
       request.assets, request.tenantId, request.userId, intakeId,
     );
     actionPlan = buildIdentityContactIntakeActionPlan(factBundle, materializedDocumentIds);
-  } else if (identityIntakeEligible && clientBinding.clientId) {
+  } else if (allowIdentityContactIntake && clientBinding.clientId) {
     const bindingFromRouteOrSession =
       clientBinding.source === "session_context" || clientBinding.source === "ui_context";
     const draft = mapFactBundleToCreateContactDraft(factBundle);
@@ -992,7 +997,7 @@ export async function processImageIntake(
       );
       actionPlan = buildIdentityContactIntakeActionPlan(factBundle, materializedDocumentIds);
     }
-  } else if (identityIntakeEligible) {
+  } else if (allowIdentityContactIntake) {
     // No binding at all → create contact
     const materializedDocumentIds = await materializeIntakeImagesAsDocuments(
       request.assets, request.tenantId, request.userId, intakeId,

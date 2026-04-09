@@ -296,6 +296,13 @@ describe("detectIdentityContactIntakeSignals — BUG 3: create_contact intent by
 
     expect(detectIdentityContactIntakeSignals(classification, bundle, null, null)).toBe(false);
   });
+
+  it("does not treat crm screenshot facts as implicit create-contact intent without explicit text", () => {
+    const classification = makeClassification("photo_or_scan_document", 0.75);
+    const bundle = makeCrmFactBundle();
+
+    expect(detectIdentityContactIntakeSignals(classification, bundle, null, null)).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -553,5 +560,18 @@ describe("processImageIntake integration — CRM screenshot + založ klienta", (
 
     expect(result.parsedIntent).not.toBeNull();
     expect(result.parsedIntent?.operation).toBe("create_contact");
+  });
+
+  it("does not create createContact plan for CRM screenshot facts when user did not explicitly ask to create a client", async () => {
+    mockClassifier("photo_or_scan_document", 0.7);
+
+    const result = await processImageIntake(
+      makeRequest(),
+      null,
+    );
+
+    expect(result.parsedIntent?.operation ?? "unknown").toBe("unknown");
+    expect(result.response.actionPlan.outputMode).not.toBe("identity_contact_intake");
+    expect(result.executionPlan?.steps.some((s) => s.action === "createContact") ?? false).toBe(false);
   });
 });

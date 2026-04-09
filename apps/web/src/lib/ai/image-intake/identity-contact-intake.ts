@@ -79,6 +79,11 @@ export function detectIdentityContactIntakeSignals(
 
   if (!classification || classification.inputType !== "photo_or_scan_document") return false;
 
+  const hasCrmOrContactFacts = factBundle.facts.some(
+    (f) => CRM_OR_CONTACT_KEY.test(f.factKey) && f.value != null && String(f.value).trim().length > 0,
+  );
+  if (hasCrmOrContactFacts) return false;
+
   const contractLike = factBundle.facts.some(
     (f) =>
       f.factKey === "looks_like_contract" &&
