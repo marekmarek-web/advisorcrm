@@ -6,7 +6,7 @@ import type { TeamOverviewScope } from "@/lib/team-hierarchy-types";
 import {
   getTeamOverviewKpis,
   getTeamMemberMetrics,
-  getTeamAlerts,
+  buildTeamAlertsFromMemberMetrics,
   getNewcomerAdaptation,
   listTeamMembersWithNames,
   getTeamPerformanceOverTime,
@@ -27,6 +27,9 @@ export default async function TeamOverviewPage({
   }
 
   const canCreateTeamCalendar = hasPermission(auth.roleName as RoleName, "team_calendar:write");
+  const canCreateAiTeamFollowUp =
+    hasPermission(auth.roleName as RoleName, "contacts:write") ||
+    hasPermission(auth.roleName as RoleName, "tasks:*");
   const sp = (await searchParams) ?? {};
   const period: "week" | "month" | "quarter" =
     sp.period === "week" || sp.period === "month" || sp.period === "quarter" ? sp.period : "month";
@@ -37,15 +40,15 @@ export default async function TeamOverviewPage({
         ? "full"
         : "my_team";
 
-  const [kpis, members, metrics, alerts, newcomers, performanceOverTime, rhythmCalendar] = await Promise.all([
+  const [kpis, members, metrics, newcomers, performanceOverTime, rhythmCalendar] = await Promise.all([
     getTeamOverviewKpis(period, defaultScope).catch(() => null),
     listTeamMembersWithNames(defaultScope).catch(() => []),
     getTeamMemberMetrics(period, defaultScope).catch(() => []),
-    getTeamAlerts(period, defaultScope).catch(() => []),
     getNewcomerAdaptation(defaultScope).catch(() => []),
     getTeamPerformanceOverTime(period, defaultScope).catch(() => []),
     getTeamRhythmCalendarData(defaultScope).catch(() => null),
   ]);
+  const alerts = buildTeamAlertsFromMemberMetrics(metrics);
   const hierarchy = await getTeamHierarchy(defaultScope).catch(() => []);
 
   return (
@@ -64,6 +67,7 @@ export default async function TeamOverviewPage({
       initialRhythmCalendar={rhythmCalendar}
       defaultPeriod={period}
       canCreateTeamCalendar={canCreateTeamCalendar}
+      canCreateAiTeamFollowUp={canCreateAiTeamFollowUp}
     />
   );
 }

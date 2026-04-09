@@ -17,49 +17,13 @@ import {
 import type { TeamMemberDetail } from "@/app/actions/team-overview";
 import { MemberCareerQuickActions } from "./MemberCareerQuickActions";
 import { formatCareerProgramLabel, formatCareerTrackLabel } from "@/lib/career/evaluate-career-progress";
-import type { EvaluationCompleteness, ProgressEvaluation } from "@/lib/career/types";
+import { careerCompletenessShortLabel, careerProgressShortLabel } from "@/lib/career/career-ui-labels";
+import type { ProgressEvaluation } from "@/lib/career/types";
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return n.toLocaleString("cs-CZ");
-}
-
-/** Zarovnáno s přehledem týmu (Team Overview) — stručné štítky, detail v hintech níže. */
-function progressEvaluationLabel(pe: ProgressEvaluation): string {
-  switch (pe) {
-    case "not_configured":
-      return "Nenastaveno";
-    case "data_missing":
-      return "Chybí data";
-    case "unknown":
-      return "Nejasné";
-    case "on_track":
-      return "Na dobré cestě";
-    case "close_to_promotion":
-      return "Blízko postupu";
-    case "blocked":
-      return "Potřebuje pozornost";
-    case "promoted_ready":
-      return "K potvrzení";
-    default:
-      return pe;
-  }
-}
-
-function evaluationCompletenessLabel(ec: EvaluationCompleteness): string {
-  switch (ec) {
-    case "full":
-      return "Kompletní";
-    case "partial":
-      return "Částečně";
-    case "low_confidence":
-      return "Nízká jistota";
-    case "manual_required":
-      return "Ruční ověření";
-    default:
-      return ec;
-  }
 }
 
 function progressBadgeClass(pe: ProgressEvaluation): string {
@@ -183,10 +147,10 @@ export function TeamMemberDetailView({
               Větev: {formatCareerTrackLabel(detail.careerEvaluation.careerTrackId)}
             </span>
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${progressBadgeClass(detail.careerEvaluation.progressEvaluation)}`}>
-              Stav: {progressEvaluationLabel(detail.careerEvaluation.progressEvaluation)}
+              Stav: {careerProgressShortLabel(detail.careerEvaluation.progressEvaluation)}
             </span>
             <span className="rounded-full border border-[color:var(--wp-surface-card-border)] px-2.5 py-0.5 text-xs text-[color:var(--wp-text-secondary)]">
-              {evaluationCompletenessLabel(detail.careerEvaluation.evaluationCompleteness)}
+              {careerCompletenessShortLabel(detail.careerEvaluation.evaluationCompleteness)}
             </span>
           </div>
           {detail.careerEvaluation.progressionOrder !== null ? (

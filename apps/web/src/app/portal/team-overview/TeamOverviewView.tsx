@@ -39,7 +39,7 @@ import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types
 import {
   getTeamOverviewKpis,
   getTeamMemberMetrics,
-  getTeamAlerts,
+  buildTeamAlertsFromMemberMetrics,
   getNewcomerAdaptation,
   getTeamPerformanceOverTime,
   listTeamMembersWithNames,
@@ -61,44 +61,8 @@ import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 import { buildTeamCoachingAttentionList } from "@/lib/career/career-coaching";
 import { buildTeamCareerSummaryBlock } from "@/lib/career/team-career-aggregate";
+import { careerCompletenessShortLabel, careerProgressShortLabel } from "@/lib/career/career-ui-labels";
 import type { EvaluationCompleteness, ProgressEvaluation } from "@/lib/career/types";
-
-/** Sjednocený slovník Team Overview ↔ detail člena (Fáze 6). */
-function teamOverviewCareerProgressShort(pe: ProgressEvaluation): string {
-  switch (pe) {
-    case "not_configured":
-      return "Nenastaveno";
-    case "data_missing":
-      return "Chybí data";
-    case "unknown":
-      return "Nejasné";
-    case "on_track":
-      return "Na dobré cestě";
-    case "close_to_promotion":
-      return "Blízko postupu";
-    case "blocked":
-      return "Potřebuje pozornost";
-    case "promoted_ready":
-      return "K potvrzení";
-    default:
-      return pe;
-  }
-}
-
-function teamOverviewCareerCompletenessShort(ec: EvaluationCompleteness): string {
-  switch (ec) {
-    case "full":
-      return "Kompletní";
-    case "partial":
-      return "Částečně";
-    case "low_confidence":
-      return "Nízká jistota";
-    case "manual_required":
-      return "Ruční ověření";
-    default:
-      return ec;
-  }
-}
 
 function overviewCareerProgressBadgeClass(pe: ProgressEvaluation): string {
   if (pe === "on_track" || pe === "close_to_promotion" || pe === "promoted_ready") {
@@ -283,6 +247,8 @@ interface TeamOverviewViewProps {
   initialRhythmCalendar?: TeamRhythmCalendarData | null;
   defaultPeriod: TeamOverviewPeriod;
   canCreateTeamCalendar?: boolean;
+  /** Úkol/schůzka z AI follow-up — stejná logika jako createTask (contacts:write | tasks:*). */
+  canCreateAiTeamFollowUp?: boolean;
 }
 
 function formatNumber(n: number): string {
@@ -312,6 +278,7 @@ export function TeamOverviewView({
   initialRhythmCalendar = null,
   defaultPeriod,
   canCreateTeamCalendar = false,
+  canCreateAiTeamFollowUp = true,
 }: TeamOverviewViewProps) {
   const [period, setPeriod] = useState<TeamOverviewPeriod>(defaultPeriod);
   const [scope, setScope] = useState<TeamOverviewScope>(initialScope);
@@ -342,11 +309,10 @@ export function TeamOverviewView({
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [k, teamMembers, m, a, n, perf, tree, rhythm] = await Promise.all([
+      const [k, teamMembers, m, n, perf, tree, rhythm] = await Promise.all([
         getTeamOverviewKpis(period, scope),
         listTeamMembersWithNames(scope),
         getTeamMemberMetrics(period, scope),
-        getTeamAlerts(period, scope),
         getNewcomerAdaptation(scope),
         getTeamPerformanceOverTime(period, scope),
         getTeamHierarchy(scope),
@@ -355,7 +321,7 @@ export function TeamOverviewView({
       setKpis(k ?? null);
       setMembers(teamMembers);
       setMetrics(m);
-      setAlerts(a);
+      setAlerts(buildTeamAlertsFromMemberMetrics(m));
       setNewcomers(n);
       setPerformanceOverTime(perf);
       setHierarchy(tree);
@@ -591,7 +557,7 @@ export function TeamOverviewView({
     scope === "me"
       ? "Váš kariérní kontext, metriky a doporučení na jednom místě — podklad pro rozhovor s vedením nebo vlastní plán."
       : attentionCount > 0
-        ? `${attentionCount} ${attentionCount === 1 ? "člověk" : "lidí"} v tomto rozsahu má signály z CRM, na které stojí za to reagovat — podpora, ne kontrola.`
+        ? `${attentionCount} ${attentionCount === 1 ? "člověk" : "lidí"} v tomto rozsahu má signály k pozornosti (CRM i kariéra), na které stojí za to reagovat — podpora, ne kontrola.`
         : newcomers.length > 0
           ? `${newcomers.length} ${newcomers.length === 1 ? "nováček potřebuje" : "nováčci potřebují"} hlavně klidný rytmus a krátké check-iny — adaptace je investice do týmu.`
           : "V tomto rozsahu neevidujeme naléhavé signály. Udržujte pravidelný kontakt, rytmus 1:1 a prostor pro růst.";
@@ -721,7 +687,7 @@ export function TeamOverviewView({
                   {attentionCount}
                 </p>
                 <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
-                  {attentionCount > 0 ? "Signály z CRM — krátká reakce pomůže" : "Žádné naléhavé signály v tomto rozsahu"}
+                  {attentionCount > 0 ? "CRM i kariéra — krátká reakce pomůže" : "Žádné naléhavé signály v tomto rozsahu"}
                 </p>
               </div>
               <div className="rounded-xl border border-blue-200/70 bg-blue-50/50 px-4 py-4 shadow-sm">
@@ -759,7 +725,7 @@ export function TeamOverviewView({
               <div className="flex flex-col rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm sm:p-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-[color:var(--wp-text)]">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-                  Signály z CRM
+                  Signály (CRM a kariéra)
                 </h3>
                 {topAttentionAlerts.length === 0 ? (
                   <div className="flex flex-1 flex-col justify-center rounded-xl border border-emerald-200/60 bg-emerald-50/35 px-4 py-5">
@@ -1162,13 +1128,13 @@ export function TeamOverviewView({
                                   className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${overviewCareerProgressBadgeClass(ce.progressEvaluation)}`}
                                   title="Technický stav evaluace (orientační)"
                                 >
-                                  {teamOverviewCareerProgressShort(ce.progressEvaluation)}
+                                  {careerProgressShortLabel(ce.progressEvaluation)}
                                 </span>
                                 <span
                                   className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${overviewCareerCompletenessBadgeClass(ce.evaluationCompleteness)}`}
                                   title="Úplnost automatické části evaluace"
                                 >
-                                  {teamOverviewCareerCompletenessShort(ce.evaluationCompleteness)}
+                                  {careerCompletenessShortLabel(ce.evaluationCompleteness)}
                                 </span>
                               </div>
                               <p className="text-[10px] leading-snug text-[color:var(--wp-text-secondary)]">{ce.hintShort}</p>
@@ -1231,12 +1197,12 @@ export function TeamOverviewView({
                               <span
                                 className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${overviewCareerProgressBadgeClass(ce.progressEvaluation)}`}
                               >
-                                {teamOverviewCareerProgressShort(ce.progressEvaluation)}
+                                {careerProgressShortLabel(ce.progressEvaluation)}
                               </span>
                               <span
                                 className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${overviewCareerCompletenessBadgeClass(ce.evaluationCompleteness)}`}
                               >
-                                {teamOverviewCareerCompletenessShort(ce.evaluationCompleteness)}
+                                {careerCompletenessShortLabel(ce.evaluationCompleteness)}
                               </span>
                             </div>
                             <p className="text-[10px] text-[color:var(--wp-text-secondary)]">{ce.hintShort}</p>
@@ -1418,6 +1384,9 @@ export function TeamOverviewView({
                 <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
                   Volitelný textový podklad z metrik — nenahrazuje vlastní úsudek ani komunikaci s týmem.
                 </p>
+                <p className="mt-1.5 text-[11px] leading-snug text-[color:var(--wp-text-tertiary)]">
+                  Uložené shrnutí nemusí odpovídat aktuálnímu rozsahu a období — po přepnutí v hlavičce znovu vygenerujte.
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -1457,14 +1426,18 @@ export function TeamOverviewView({
                 {aiFeedbackSubmitted && (
                   <p className="mt-3 text-sm text-emerald-600">Zpětná vazba byla odeslána.</p>
                 )}
-                {aiGenerationId && (
+                {aiGenerationId && canCreateAiTeamFollowUp ? (
                   <TeamSummaryFollowUp
                     members={members}
                     onCreate={createTeamFollowUp}
                     saving={teamActionSaving}
                     error={teamActionError}
                   />
-                )}
+                ) : aiGenerationId && !canCreateAiTeamFollowUp ? (
+                  <p className="mt-4 pt-4 border-t border-[color:var(--wp-surface-card-border)] text-xs text-[color:var(--wp-text-tertiary)]">
+                    Vytváření follow-up úkolů a schůzek z AI zde není pro vaši roli k dispozici.
+                  </p>
+                ) : null}
               </>
             ) : !aiLoading ? (
               <p className="text-[color:var(--wp-text-secondary)] text-sm">Načtěte uložené shrnutí nebo klikněte na „Generovat shrnutí“ — vznikne informativní manažerský podklad z metrik a upozornění, nikoli rada vůči klientům.</p>
@@ -1474,15 +1447,15 @@ export function TeamOverviewView({
 
         {/* Kompletní výpis signálů (stejné jako v kartách výše) */}
         <section className="mb-8">
-          <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Kompletní výpis signálů z CRM</h2>
+          <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Kompletní výpis signálů</h2>
           <p className="mb-3 text-xs text-[color:var(--wp-text-secondary)]">
-            Totéž, co v přehledu nahoře — zde celý seznam pro kontrolu nebo tisk.
+            CRM i kariérní upozornění — totéž, co v přehledu nahoře; zde celý seznam pro kontrolu nebo tisk.
           </p>
           {alerts.length === 0 ? (
             <div className="rounded-2xl border border-emerald-200/50 bg-emerald-50/30 px-5 py-6 text-center">
               <p className="font-medium text-emerald-900">Žádné další signály</p>
               <p className="mt-1 text-sm text-emerald-900/85">
-                V tomto období a rozsahu je výpis prázdný — tým působí z pohledu CRM stabilně.
+                V tomto období a rozsahu je výpis prázdný — žádné sledované signály z CRM ani kariéry.
               </p>
             </div>
           ) : (

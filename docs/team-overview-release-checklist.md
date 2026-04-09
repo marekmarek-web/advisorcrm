@@ -18,6 +18,7 @@ Fáze 7 (QA / stabilizace). Použijte před demem nebo produkčním vydáním mo
 - [ ] Manager nemůže přepnout na `full` (server i `/api/ai/team-summary` používají `resolveScopeForRole`).
 - [ ] Detail člena (`getTeamMemberDetail`) vrací 404 / Forbidden mimo `visibleUserIds`.
 - [ ] AI follow-up z týmového shrnutí (`executeTeamAiAction`): přiřazený uživatel musí být v **maximálním** povoleném scope pro roli (stejná logika jako Team Overview).
+- [ ] CTA „Vytvořit follow-up z shrnutí“ se nezobrazí bez `contacts:write` nebo `tasks:*` (jinak informativní text místo formuláře).
 
 ---
 
@@ -33,6 +34,7 @@ Fáze 7 (QA / stabilizace). Použijte před demem nebo produkčním vydáním mo
 
 ## 3. Career data checklist
 
+- [ ] Krátké štítky stavu a úplnosti jsou v jednom modulu: `apps/web/src/lib/career/career-ui-labels.ts` (přehled i detail).
 - [ ] `not_configured`, `data_missing`, `unknown`, `manual_required`, `low_confidence` mají čitelné štítky v přehledu i v detailu (stejný slovník kde je to záměr).
 - [ ] Alert „Kariéra: …“ odpovídá `buildAlertsFromMetric` / řádku v tabulce.
 - [ ] Nováček bez kariéry: UI se nerozsype; evaluace má konzistentní `summaryLine`.
@@ -44,6 +46,8 @@ Fáze 7 (QA / stabilizace). Použijte před demem nebo produkčním vydáním mo
 - [ ] Generování shrnutí (`generateTeamSummaryAction`) dostává **stejný** `scope` jako přepínač na stránce.
 - [ ] `buildTeamAiContextRaw` odvozuje alerty z **jedné** sady metrik (`buildTeamAlertsFromMemberMetrics`), ne třetím paralelním `getTeamAlerts`.
 - [ ] Uložené „poslední shrnutí“ může pocházet z jiného scope/období než aktuální výběr — po přepnutí scope znovu vygenerovat (viz known limitations).
+- [ ] V UI u bloku AI je vidět upozornění, že uložené shrnutí nemusí odpovídat aktuálnímu rozsahu/období.
+- [ ] Briefing a karty „Vyžaduje pozornost“ mluví konzistentně o **CRM i kariéře** (počet `riskyMemberCount` zahrnuje i kariérní alerty).
 
 ---
 
@@ -66,6 +70,7 @@ Fáze 7 (QA / stabilizace). Použijte před demem nebo produkčním vydáním mo
 
 - [ ] Banner hierarchie na mobile neřeže layout (padding `mx-4`).
 - [ ] Dlouhá jména v kartách členů: `truncate` / `min-w-0` kde je potřeba.
+- [ ] Kariérní řádek na kartě člena: `break-words` / krátký text ze `summaryLine` nebo `managerProgressLabel`.
 
 ---
 
@@ -74,6 +79,7 @@ Fáze 7 (QA / stabilizace). Použijte před demem nebo produkčním vydáním mo
 - [ ] `getTeamOverviewKpis` už znovu nevolá `getTeamAlerts` (druhé `getTeamMemberMetrics`).
 - [ ] `getTeamMemberDetail` nestahuje metriky dvakrát kvůli alertům.
 - [ ] AI kontext a `/api/ai/team-summary` nevolají `getTeamAlerts` nad stejnými metrikami znovu.
+- [ ] SSR `team-overview/page.tsx` a client `refresh` v `TeamOverviewView` odvozují alerty z již načtených metrik (`buildTeamAlertsFromMemberMetrics`), bez dalšího `getTeamAlerts`.
 - [ ] **Zbývající duplicita (known limitation):** `getTeamOverviewKpis` a paralelní `getTeamMemberMetrics` stále oba počítají metriky — odstranění vyžaduje větší refaktor (sdílený „bundle“).
 
 ---
@@ -109,4 +115,7 @@ Odkaz na dotčené soubory (repo):
 `apps/web/src/app/api/ai/team-summary/route.ts`,  
 `apps/web/src/app/portal/team-overview/TeamOverviewView.tsx`,  
 `apps/web/src/app/portal/team-overview/TeamStructurePanel.tsx`,  
-`apps/web/src/app/portal/mobile/screens/TeamOverviewScreen.tsx`.
+`apps/web/src/app/portal/mobile/screens/TeamOverviewScreen.tsx`,  
+`apps/web/src/lib/career/career-ui-labels.ts`,  
+`apps/web/src/app/portal/team-overview/page.tsx`,  
+`apps/web/src/app/portal/team-overview/[userId]/TeamMemberDetailView.tsx`.

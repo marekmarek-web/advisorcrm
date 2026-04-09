@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Users,
-  TrendingUp,
-  Calendar,
   AlertTriangle,
   AlertCircle,
   CheckCircle2,
@@ -129,6 +127,12 @@ function MemberCard({
         </div>
       </div>
 
+      {metrics?.careerEvaluation ? (
+        <p className="mt-2 text-[11px] leading-snug text-[color:var(--wp-text-secondary)] break-words hyphens-auto">
+          <span className="font-semibold text-[color:var(--wp-text)]">Kariéra: </span>
+          {metrics.careerEvaluation.summaryLine || metrics.careerEvaluation.managerProgressLabel}
+        </p>
+      ) : null}
       {metrics ? (
         <div className="mt-3 grid grid-cols-3 gap-2 pt-2.5 border-t border-[color:var(--wp-surface-card-border)]">
           <div className="text-center">
