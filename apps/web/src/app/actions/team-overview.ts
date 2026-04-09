@@ -23,6 +23,8 @@ import {
   memberships,
   roles,
 } from "db";
+import { evaluateCareerProgress } from "@/lib/career";
+import type { CareerEvaluationResult } from "@/lib/career/types";
 import { eq, and, gte, lt, isNull, isNotNull, sql, desc, asc, inArray } from "db";
 
 export type TeamOverviewPeriod = "week" | "month" | "quarter";
@@ -96,6 +98,9 @@ export type TeamMemberInfo = {
   email: string | null;
   parentId: string | null;
   managerName: string | null;
+  careerProgram: string | null;
+  careerTrack: string | null;
+  careerPositionCode: string | null;
 };
 
 export type TeamMemberMetrics = {
@@ -498,6 +503,9 @@ export async function listTeamMembersWithNames(scope?: TeamOverviewScope): Promi
       joinedAt: memberships.joinedAt,
       fullName: userProfiles.fullName,
       email: userProfiles.email,
+      careerProgram: memberships.careerProgram,
+      careerTrack: memberships.careerTrack,
+      careerPositionCode: memberships.careerPositionCode,
     })
     .from(memberships)
     .innerJoin(roles, eq(memberships.roleId, roles.id))
@@ -517,6 +525,9 @@ export async function listTeamMembersWithNames(scope?: TeamOverviewScope): Promi
       email: r.email?.trim() || null,
       parentId: r.parentId ?? null,
       managerName: manager?.displayName || manager?.email || null,
+      careerProgram: r.careerProgram ?? null,
+      careerTrack: r.careerTrack ?? null,
+      careerPositionCode: r.careerPositionCode ?? null,
     };
   });
 }
@@ -791,6 +802,10 @@ export type TeamMemberDetail = {
   performanceOverTime: TeamPerformancePoint[];
   adaptation: NewcomerAdaptation | null;
   alerts: TeamAlert[];
+  careerProgram: string | null;
+  careerTrack: string | null;
+  careerPositionCode: string | null;
+  careerEvaluation: CareerEvaluationResult;
 };
 
 export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDetail | null> {
@@ -800,7 +815,8 @@ export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDet
   const visibleIds = await getVisibleUserIds(auth.tenantId, auth.userId, auth.roleName as RoleName, "full");
   if (!visibleIds.includes(userId)) throw new Error("Forbidden");
 
-  const member = (await listTenantHierarchyMembers(auth.tenantId)).find((m) => m.userId === userId);
+  const tenantMembersForDetail = await listTenantHierarchyMembers(auth.tenantId);
+  const member = tenantMembersForDetail.find((m) => m.userId === userId);
   if (!member) return null;
 
   const [metricsList, alerts, newcomers] = await Promise.all([
@@ -812,6 +828,23 @@ export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDet
   const metrics = metricsList.find((m) => m.userId === userId) ?? null;
   const memberAlerts = alerts.filter((a) => a.memberId === userId);
   const adaptation = newcomers.find((n) => n.userId === userId) ?? null;
+
+  const directs = tenantMembersForDetail.filter((m) => m.parentId === userId);
+  const careerEvaluation = evaluateCareerProgress({
+    systemRoleName: member.roleName,
+    careerProgram: member.careerProgram,
+    careerTrack: member.careerTrack,
+    careerPositionCode: member.careerPositionCode,
+    metrics: metrics
+      ? {
+          unitsThisPeriod: metrics.unitsThisPeriod,
+          productionThisPeriod: metrics.productionThisPeriod,
+          meetingsThisPeriod: metrics.meetingsThisPeriod,
+        }
+      : null,
+    directReportsCount: directs.length,
+    directReportCareerPositionCodes: directs.map((d) => d.careerPositionCode),
+  });
 
   const advisorPoints: TeamPerformancePoint[] = [];
   const now = new Date();
@@ -851,6 +884,10 @@ export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDet
     performanceOverTime: advisorPoints,
     adaptation,
     alerts: memberAlerts,
+    careerProgram: member.careerProgram,
+    careerTrack: member.careerTrack,
+    careerPositionCode: member.careerPositionCode,
+    careerEvaluation,
   };
 }
 

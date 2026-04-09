@@ -14,6 +14,10 @@ export type TeamHierarchyMember = {
   joinedAt: Date;
   displayName: string | null;
   email: string | null;
+  /** Kariérní vrstva — nullable dokud není vyplněno v memberships */
+  careerProgram: string | null;
+  careerTrack: string | null;
+  careerPositionCode: string | null;
 };
 
 export type TeamTreeNode = TeamHierarchyMember & {

@@ -36,6 +36,7 @@ import clsx from "clsx";
 import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
+import { formatCareerSummaryLine } from "@/lib/career/evaluate-career-progress";
 
 const PERIOD_OPTIONS: { value: TeamOverviewPeriod; label: string }[] = [
   { value: "week", label: "Týden" },
@@ -935,6 +936,7 @@ export function TeamOverviewView({
                 <tbody className="divide-y divide-[color:var(--wp-surface-card-border)]">
                   {visibleMembers.map((m) => {
                     const met = metricsByUser.get(m.userId);
+                    const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerPositionCode);
                     return (
                       <tr key={m.userId} className="hover:bg-[color:var(--wp-surface-muted)]/50">
                         <td className="px-4 py-3">
@@ -942,6 +944,9 @@ export function TeamOverviewView({
                             {displayName(m)}
                           </Link>
                           <p className="text-xs text-[color:var(--wp-text-secondary)]">{m.roleName}{m.email ? ` · ${m.email}` : ""}</p>
+                          {careerLine ? (
+                            <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-0.5">{careerLine}</p>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-[color:var(--wp-text-secondary)]">{met?.unitsThisPeriod ?? "—"}</td>
                         <td className="px-4 py-3 text-right text-sm text-[color:var(--wp-text-secondary)]">{met ? formatNumber(met.productionThisPeriod) : "—"}</td>
@@ -977,12 +982,16 @@ export function TeamOverviewView({
             <div className="md:hidden divide-y divide-[color:var(--wp-surface-card-border)]">
               {visibleMembers.map((m) => {
                 const met = metricsByUser.get(m.userId);
+                const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerPositionCode);
                 return (
                   <Link key={m.userId} href={`/portal/team-overview/${m.userId}`} className="relative block p-4 hover:bg-[color:var(--wp-surface-muted)]/50 active:bg-[color:var(--wp-surface-muted)]">
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="font-medium text-[color:var(--wp-text)]">{displayName(m)}</p>
                         <p className="text-xs text-[color:var(--wp-text-secondary)]">{m.roleName}{m.email ? ` · ${m.email}` : ""}</p>
+                        {careerLine ? (
+                          <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-0.5">{careerLine}</p>
+                        ) : null}
                       </div>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         met?.riskLevel === "critical" ? "bg-rose-100 text-rose-700" :

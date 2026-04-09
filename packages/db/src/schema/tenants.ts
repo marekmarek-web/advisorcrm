@@ -30,6 +30,10 @@ export const memberships = pgTable(
     invitedBy: text("invited_by"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
     mfaEnabled: boolean("mfa_enabled").default(false),
+    /** Kariérní program (odděleně od roleId) — viz docs/team-overview-career-ladders.md */
+    careerProgram: text("career_program"),
+    careerTrack: text("career_track"),
+    careerPositionCode: text("career_position_code"),
   },
   (t) => [unique("memberships_tenant_user").on(t.tenantId, t.userId)]
 );

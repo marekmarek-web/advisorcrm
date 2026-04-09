@@ -13,11 +13,30 @@ import {
   X,
 } from "lucide-react";
 import type { TeamMemberDetail } from "@/app/actions/team-overview";
+import { formatCareerProgramLabel, formatCareerTrackLabel } from "@/lib/career/evaluate-career-progress";
+import type { ProgressStatus } from "@/lib/career/types";
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return n.toLocaleString("cs-CZ");
+}
+
+function careerProgressLabel(status: ProgressStatus): string {
+  switch (status) {
+    case "not_set":
+      return "Údaje nejsou vyplněné";
+    case "data_missing":
+      return "Chybí data nebo konfigurace";
+    case "on_track":
+      return "Automaticky ověřitelné OK (BJ/BJS jen ručně)";
+    case "close_to_promotion":
+      return "Blízko postupu (nutné ruční potvrzení)";
+    case "blocked":
+      return "Blokováno / nesoulad s pravidly";
+    default:
+      return status;
+  }
 }
 
 function buildCoachingSummary(detail: TeamMemberDetail): string[] {
@@ -71,6 +90,68 @@ export function TeamMemberDetailView({ detail }: { detail: TeamMemberDetail }) {
           {new Date(detail.joinedAt).toLocaleDateString("cs-CZ")}
         </p>
       </div>
+
+      <section>
+        <h2 className="text-lg font-semibold text-[color:var(--wp-text)] mb-3 flex items-center gap-2">
+          <Briefcase className="w-5 h-5 text-violet-500" />
+          Kariéra
+        </h2>
+        <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm space-y-3">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+              {formatCareerProgramLabel(detail.careerEvaluation.careerProgramId)}
+            </span>
+            <span className="rounded-full bg-[color:var(--wp-surface-muted)] px-2.5 py-0.5 text-xs font-medium text-[color:var(--wp-text-secondary)]">
+              {formatCareerTrackLabel(detail.careerEvaluation.careerTrackId)}
+            </span>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                detail.careerEvaluation.progressStatus === "data_missing" || detail.careerEvaluation.progressStatus === "not_set"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-emerald-100 text-emerald-800"
+              }`}
+            >
+              {careerProgressLabel(detail.careerEvaluation.progressStatus)}
+            </span>
+            <span className="text-xs text-[color:var(--wp-text-tertiary)]">
+              Jistota:{" "}
+              {detail.careerEvaluation.confidence === "high"
+                ? "vysoká"
+                : detail.careerEvaluation.confidence === "medium"
+                  ? "střední"
+                  : "nízká"}
+            </span>
+          </div>
+          {detail.careerEvaluation.positionLabel ? (
+            <p className="text-sm text-[color:var(--wp-text)]">
+              <strong>Aktuální pozice:</strong> {detail.careerEvaluation.positionLabel}
+              {detail.careerEvaluation.rawCareerPositionCode ? (
+                <span className="text-[color:var(--wp-text-tertiary)]"> ({detail.careerEvaluation.rawCareerPositionCode})</span>
+              ) : null}
+            </p>
+          ) : (
+            <p className="text-sm text-[color:var(--wp-text-secondary)]">Kód kariérní pozice není vyplněn nebo neodpovídá známému žebříčku.</p>
+          )}
+          {detail.careerEvaluation.nextPositionLabel ? (
+            <p className="text-sm text-[color:var(--wp-text-secondary)]">
+              <strong>Další krok (žebříček):</strong> {detail.careerEvaluation.nextPositionLabel}
+            </p>
+          ) : null}
+          <p className="text-xs text-[color:var(--wp-text-secondary)]">
+            Metriky níže jsou z CRM — <strong>nejsou</strong> oficiální BJ/BJS z kariérních řádů. Postup dle PDF vždy ověřte ručně.
+          </p>
+          {detail.careerEvaluation.missingRequirements.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-[color:var(--wp-text-secondary)] mb-1">Položky k doplnění / ručnímu ověření</p>
+              <ul className="list-disc list-inside text-xs text-[color:var(--wp-text-secondary)] space-y-1">
+                {detail.careerEvaluation.missingRequirements.map((r) => (
+                  <li key={r.id}>{r.labelCs}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </section>
 
       {coachingBullets.length > 0 && (
         <section>

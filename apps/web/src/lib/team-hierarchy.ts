@@ -20,6 +20,9 @@ export async function listTenantHierarchyMembers(tenantId: string): Promise<Team
       joinedAt: memberships.joinedAt,
       fullName: userProfiles.fullName,
       email: userProfiles.email,
+      careerProgram: memberships.careerProgram,
+      careerTrack: memberships.careerTrack,
+      careerPositionCode: memberships.careerPositionCode,
     })
     .from(memberships)
     .innerJoin(roles, eq(memberships.roleId, roles.id))
@@ -33,6 +36,9 @@ export async function listTenantHierarchyMembers(tenantId: string): Promise<Team
     joinedAt: r.joinedAt,
     displayName: r.fullName?.trim() || null,
     email: r.email?.trim() || null,
+    careerProgram: r.careerProgram ?? null,
+    careerTrack: r.careerTrack ?? null,
+    careerPositionCode: r.careerPositionCode ?? null,
   }));
 }
 
