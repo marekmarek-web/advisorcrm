@@ -348,6 +348,7 @@ export async function processImageIntake(
       threadReconstruction: null, handoffPayload: null, caseSignals: null, batchDecision: null,
       combinedMultimodalResult: null, crossSessionReconstruction: null, intentChange: null,
       householdBinding: null, documentSetResult: null, lifecycleFeedback: null, intentAssistCacheStatus: null,
+      parsedIntent: parseExplicitIntent(request.accompanyingText) ?? null,
     };
   }
 
