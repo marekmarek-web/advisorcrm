@@ -43,6 +43,7 @@ import { createAdvisorClientRequest } from "../assistant/create-advisor-client-r
 import { validatePartnerInCatalog, validateProductInCatalog } from "./ratings/toplists";
 import { normalizeCoverageStatus } from "./assistant-coverage-item-resolve";
 import { resolveContractSegmentFromUserText, PRODUCT_DOMAIN_DEFAULT_SEGMENT, type ProductDomain } from "./assistant-domain-model";
+import { enrichBirthDateFromPersonalIdInParams } from "./czech-personal-id-birth-date";
 
 async function assertCtx(ctx: ExecutionContext): Promise<{
   tenantId: string;
@@ -152,6 +153,7 @@ export function registerAssistantWriteAdapters(): void {
 
   registerWriteAdapter("createContact", async (params, ctx) => {
     try {
+      enrichBirthDateFromPersonalIdInParams(params);
       const auth = await assertCtx(ctx);
       if (!hasPermission(auth.roleName, "contacts:write")) {
         return errResult("Nemáte oprávnění vytvářet kontakty.");
@@ -195,6 +197,7 @@ export function registerAssistantWriteAdapters(): void {
 
   registerWriteAdapter("updateContact", async (params, ctx) => {
     try {
+      enrichBirthDateFromPersonalIdInParams(params);
       const auth = await assertCtx(ctx);
       if (!hasPermission(auth.roleName, "contacts:write")) {
         return errResult("Nemáte oprávnění upravovat kontakty.");

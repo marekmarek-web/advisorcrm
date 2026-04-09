@@ -120,4 +120,17 @@ describe("identity contact intake", () => {
     const q = buildContactNewPrefillQuery(d);
     expect(q).toContain("firstName=");
   });
+
+  it("mapFactBundleToCreateContactDraft derives birthDate from birth_number when valid RC", () => {
+    const d = mapFactBundleToCreateContactDraft(
+      bundle([
+        fact("id_doc_first_name", "A", 0.9),
+        fact("id_doc_last_name", "B", 0.9),
+        fact("birth_number", "900101/1239", 0.85),
+      ]),
+    );
+    expect(d.params.personalId).toBe("900101/1239");
+    expect(d.params.birthDate).toBe("1990-01-01");
+    expect(d.needsConfirmationLines.some((l) => l.includes("odvozeno z rodného"))).toBe(true);
+  });
 });

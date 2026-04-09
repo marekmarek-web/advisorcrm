@@ -25,6 +25,7 @@ import {
   resolveCoverageItemKeyFromText,
   normalizeCoverageStatus,
 } from "./assistant-coverage-item-resolve";
+import { enrichBirthDateFromPersonalIdInParams } from "./czech-personal-id-birth-date";
 
 const COVERAGE_STATUS_WHITELIST = [
   "done",
@@ -256,6 +257,10 @@ function buildStepParams(
         productDomain: typeof params.productDomain === "string" ? params.productDomain : null,
       });
     }
+  }
+
+  if (action === "createContact" || action === "updateContact") {
+    enrichBirthDateFromPersonalIdInParams(params);
   }
 
   return params;

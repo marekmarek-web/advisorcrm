@@ -174,7 +174,7 @@ function makeFactBundle(overrides: Partial<ExtractedFactBundle> = {}): Extracted
     facts: [
       { factType: "document_received", value: "Roman", normalizedValue: "Roman", confidence: 0.9, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "first_name" },
       { factType: "document_received", value: "Koloburda", normalizedValue: "Koloburda", confidence: 0.9, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "last_name" },
-      { factType: "document_received", value: "900101/1234", normalizedValue: "900101/1234", confidence: 0.8, evidence: null, isActionable: false, needsConfirmation: true, observedVsInferred: "observed", factKey: "birth_number" },
+      { factType: "document_received", value: "900101/1239", normalizedValue: "900101/1239", confidence: 0.8, evidence: null, isActionable: false, needsConfirmation: true, observedVsInferred: "observed", factKey: "birth_number" },
       { factType: "document_received", value: "Hlavní 42, Praha", normalizedValue: "Hlavní 42, Praha", confidence: 0.75, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "street" },
       { factType: "document_received", value: "test@email.cz", normalizedValue: "test@email.cz", confidence: 0.85, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "email" },
       { factType: "document_received", value: "+420777888999", normalizedValue: "+420777888999", confidence: 0.9, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "phone" },
@@ -849,6 +849,7 @@ describe("ACCEPTANCE: contact_update_from_image uses updateContact write action"
     expect(updateAction!.params).toHaveProperty("firstName", "Roman");
     expect(updateAction!.params).toHaveProperty("lastName", "Koloburda");
     expect(updateAction!.params).toHaveProperty("contactId", "client_123");
+    expect(updateAction!.params).toHaveProperty("birthDate", "1990-01-01");
     const noteOnly = plan.recommendedActions.filter(a =>
       a.writeAction === "createInternalNote" &&
       (a.params as any)._imageIntakeOutputMode === "contact_update_from_image",

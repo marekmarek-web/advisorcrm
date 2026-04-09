@@ -26,6 +26,7 @@ import {
   inferCreateContactDraftSource,
   mapFactBundleToCreateContactDraft,
 } from "./identity-contact-intake";
+import { enrichBirthDateFromPersonalIdInParams } from "../czech-personal-id-birth-date";
 import { looksLikeStructuredFormScreenshot } from "./review-handoff";
 import type { ParsedExplicitIntent } from "./explicit-intent-parser";
 
@@ -316,6 +317,8 @@ function planContactUpdateFromImage(
         }
       }
     }
+
+    enrichBirthDateFromPersonalIdInParams(patchParams);
 
     actions.push(
       makeAction(

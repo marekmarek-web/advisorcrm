@@ -6,6 +6,7 @@
 import type { ExtractedFactBundle, InputClassificationResult, DocumentMultiImageResult } from "./types";
 import type { ParsedExplicitIntent } from "./explicit-intent-parser";
 import { looksLikeStructuredFormScreenshot } from "./review-handoff";
+import { enrichBirthDateFromPersonalIdInParams } from "../czech-personal-id-birth-date";
 
 /** Zdroj dat pro createContact — ovlivní wording a logiku „doklad vs. screenshot formuláře“. */
 export type CreateContactDraftSource = "identity_document" | "crm_form_screenshot";
@@ -150,11 +151,15 @@ export function mapFactBundleToCreateContactDraft(
     street: get("id_doc_street") ?? get("crm_street") ?? undefined,
     city: get("id_doc_city") ?? get("crm_city") ?? undefined,
     zip: get("id_doc_zip") ?? get("crm_zip") ?? undefined,
-    personalId: get("id_doc_personal_id") ?? get("crm_personal_id") ?? undefined,
+    personalId:
+      get("id_doc_personal_id") ?? get("crm_personal_id") ?? get("birth_number") ?? undefined,
     email: get("id_doc_email") ?? get("crm_email") ?? undefined,
     phone: get("id_doc_phone") ?? get("crm_phone") ?? undefined,
     title: get("id_doc_title") ?? get("crm_title") ?? undefined,
   };
+
+  const hadExplicitBirthDate = Boolean(params.birthDate?.trim());
+  enrichBirthDateFromPersonalIdInParams(params as Record<string, unknown>);
 
   const missingAdvisorLines: string[] = [];
   const needsConfirmationLines: string[] = [];
@@ -186,6 +191,11 @@ export function mapFactBundleToCreateContactDraft(
         ? "Rodné číslo / identifikátor z formuláře — potvrďte před uložením"
         : "Rodné číslo / osobní údaj z dokladu — potvrďte před uložením",
     );
+  }
+
+  if (!hadExplicitBirthDate && params.birthDate?.trim() && params.personalId?.trim()) {
+    const line = "Datum narození odvozeno z rodného čísla — ověřte";
+    if (!needsConfirmationLines.includes(line)) needsConfirmationLines.push(line);
   }
 
   const notesPrefix =
