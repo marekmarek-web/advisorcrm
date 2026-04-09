@@ -15,7 +15,7 @@ const DEFAULT_SITE_URL =
 
 const SUPPORT_EMAIL = "podpora@aidvisora.cz";
 const LOGO_URL =
-  "https://github.com/marekmarek-web/Aidvisora/blob/main/logos/Aidvisora%20logo%20new.png?raw=true";
+  "https://www.aidvisora.cz/_next/image?url=%2Flogos%2FAidvisora%2520logo%2520new.png&w=384&q=75";
 
 function e(value: unknown): string {
   return escapeHtmlText(String(value ?? ""));
