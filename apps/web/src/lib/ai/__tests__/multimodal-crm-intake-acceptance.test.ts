@@ -107,7 +107,7 @@ import { looksLikeStructuredFormScreenshot } from "@/lib/ai/image-intake/review-
 import { mapImageIntakeToAssistantResponse } from "@/lib/ai/image-intake/response-mapper";
 
 // --- Guardrails ---
-import { isValidTerminalOutputMode } from "@/lib/ai/image-intake/guardrails";
+import { enforceImageIntakeGuardrails, isValidTerminalOutputMode } from "@/lib/ai/image-intake/guardrails";
 
 // --- Types ---
 import type {
@@ -1217,6 +1217,28 @@ describe("RUNTIME FIX: updateContact preferred over attach-only for patchable fi
     const binding = makeBinding();
     const upgraded = maybeUpgradeToContactUpdate("structured_image_fact_intake", crmFacts, binding);
     expect(upgraded).toBe("contact_update_from_image");
+  });
+
+  it("guardrails keep updateContact in allowed image-intake action surface", () => {
+    const classification = makeClassification({ inputType: "photo_or_scan_document" });
+    const binding = makeBinding({ clientLabel: "Bohuslav Plachý" });
+    const intent = parseExplicitIntent("přiřaď mi tyto údaje ke klientovi Bohuslav Plachý");
+    const crmFacts = makeFactBundle({
+      facts: [
+        { factType: "document_received", value: "Bohuslav", normalizedValue: "Bohuslav", confidence: 0.9, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "crm_first_name" },
+        { factType: "document_received", value: "Plachý", normalizedValue: "Plachý", confidence: 0.9, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "crm_last_name" },
+        { factType: "document_received", value: "bohuslav.plachy@post.cz", normalizedValue: "bohuslav.plachy@post.cz", confidence: 0.9, evidence: null, isActionable: false, needsConfirmation: false, observedVsInferred: "observed", factKey: "crm_email" },
+      ],
+    });
+    const plan = buildActionPlanV4(classification, binding, crmFacts, null, null, null, intent);
+    const verdict = enforceImageIntakeGuardrails(
+      { lane: "image_intake", confidence: 1, reason: "test", handoffReason: null },
+      classification,
+      binding,
+      plan,
+    );
+    expect(plan.recommendedActions.some((action) => action.writeAction === "updateContact")).toBe(true);
+    expect(verdict.strippedActions.some((action) => action.writeAction === "updateContact")).toBe(false);
   });
 });
 

@@ -7,7 +7,48 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), logAuditAction: vi.fn() }));
 vi.mock("@/lib/openai", () => ({ createResponseStructured: vi.fn(), createResponseSafe: vi.fn(), createResponseStructuredWithImage: vi.fn(), logOpenAICall: vi.fn() }));
 vi.mock("../assistant-contact-search", () => ({ searchContactsForAssistant: vi.fn(async () => []) }));
-vi.mock("db", () => ({ db: {}, contacts: {}, eq: vi.fn(), and: vi.fn(), or: vi.fn(), isNull: vi.fn(), sql: vi.fn(), desc: vi.fn() }));
+vi.mock("db", () => ({
+  db: {},
+  contacts: {},
+  contractUploadReviews: {
+    id: "id",
+    tenantId: "tenantId",
+    fileName: "fileName",
+    storagePath: "storagePath",
+    mimeType: "mimeType",
+    sizeBytes: "sizeBytes",
+    processingStatus: "processingStatus",
+    processingStage: "processingStage",
+    errorMessage: "errorMessage",
+    extractedPayload: "extractedPayload",
+    clientMatchCandidates: "clientMatchCandidates",
+    draftActions: "draftActions",
+    confidence: "confidence",
+    reasonsForReview: "reasonsForReview",
+    reviewStatus: "reviewStatus",
+    detectedDocumentType: "detectedDocumentType",
+    detectedDocumentSubtype: "detectedDocumentSubtype",
+    lifecycleStatus: "lifecycleStatus",
+    documentIntent: "documentIntent",
+    sensitivityProfile: "sensitivityProfile",
+    uploadedBy: "uploadedBy",
+    createdAt: "createdAt",
+    updatedAt: "updatedAt",
+  },
+  contractReviewCorrections: {
+    reviewId: "reviewId",
+    fieldKey: "fieldKey",
+    correctedValue: "correctedValue",
+    createdBy: "createdBy",
+    createdAt: "createdAt",
+  },
+  eq: vi.fn(),
+  and: vi.fn(),
+  or: vi.fn(),
+  isNull: vi.fn(),
+  sql: vi.fn(),
+  desc: vi.fn(),
+}));
 import {
   IMAGE_INPUT_TYPES,
   IMAGE_INPUT_SUBTYPES,
@@ -40,10 +81,13 @@ describe("Image Intake — type contracts", () => {
   it("output modes include all required modes", () => {
     expect(IMAGE_OUTPUT_MODES).toContain("client_message_update");
     expect(IMAGE_OUTPUT_MODES).toContain("structured_image_fact_intake");
+    expect(IMAGE_OUTPUT_MODES).toContain("identity_contact_intake");
+    expect(IMAGE_OUTPUT_MODES).toContain("contact_update_from_image");
+    expect(IMAGE_OUTPUT_MODES).toContain("payment_details_portal_update");
     expect(IMAGE_OUTPUT_MODES).toContain("supporting_reference_image");
     expect(IMAGE_OUTPUT_MODES).toContain("ambiguous_needs_input");
     expect(IMAGE_OUTPUT_MODES).toContain("no_action_archive_only");
-    expect(IMAGE_OUTPUT_MODES.length).toBe(5);
+    expect(IMAGE_OUTPUT_MODES.length).toBe(8);
   });
 
   it("lane decisions are well-defined", () => {
@@ -93,6 +137,7 @@ describe("Image Intake — type contracts", () => {
   it("allowed intents are subset of canonical intents and exclude AI Review", () => {
     expect(IMAGE_INTAKE_ALLOWED_INTENTS.has("create_task")).toBe(true);
     expect(IMAGE_INTAKE_ALLOWED_INTENTS.has("create_internal_note")).toBe(true);
+    expect(IMAGE_INTAKE_ALLOWED_INTENTS.has("update_contact")).toBe(true);
     expect(IMAGE_INTAKE_ALLOWED_INTENTS.has("attach_document")).toBe(true);
     // Must NOT include AI Review intents
     expect(IMAGE_INTAKE_ALLOWED_INTENTS.has("apply_ai_review_to_crm" as any)).toBe(false);
@@ -103,6 +148,7 @@ describe("Image Intake — type contracts", () => {
   it("allowed write actions exclude AI Review adapters", () => {
     expect(IMAGE_INTAKE_ALLOWED_WRITE_ACTIONS.has("createTask")).toBe(true);
     expect(IMAGE_INTAKE_ALLOWED_WRITE_ACTIONS.has("createInternalNote")).toBe(true);
+    expect(IMAGE_INTAKE_ALLOWED_WRITE_ACTIONS.has("updateContact")).toBe(true);
     expect(IMAGE_INTAKE_ALLOWED_WRITE_ACTIONS.has("approveAiContractReview" as any)).toBe(false);
     expect(IMAGE_INTAKE_ALLOWED_WRITE_ACTIONS.has("applyAiContractReviewToCrm" as any)).toBe(false);
   });
