@@ -5,6 +5,7 @@ import { lte, isNotNull, isNull, and, eq } from "db";
 import { Resend } from "resend";
 import { cronAuthResponse } from "@/lib/cron-auth";
 import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
+import { clientServiceDueReminderTemplate } from "@/lib/email/templates";
 
 function replyToForCron(tenantNotificationEmail: string | null): string | undefined {
   const t = tenantNotificationEmail?.trim();
@@ -49,11 +50,16 @@ export async function GET(request: Request) {
   for (const c of rows) {
     if (!c.email) continue;
     const replyTo = replyToForCron(c.tenantNotificationEmail);
+    const { subject, html } = clientServiceDueReminderTemplate({
+      firstName: c.firstName,
+      lastName: c.lastName,
+      nextServiceDue: c.nextServiceDue ?? today,
+    });
     const { error } = await resend.emails.send({
       from,
       to: c.email,
-      subject: "Připomínka servisního termínu – Aidvisora",
-      html: `<p>Dobrý den, ${c.firstName} ${c.lastName},</p><p>připomínáme Vám, že máte naplánovaný servisní termín (${c.nextServiceDue}). Obraťte se na svého poradce.</p>`,
+      subject,
+      html,
       ...(replyTo ? { replyTo } : {}),
     });
     if (!error) sent++;

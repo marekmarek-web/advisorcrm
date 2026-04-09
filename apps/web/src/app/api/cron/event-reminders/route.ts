@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cronAuthResponse } from "@/lib/cron-auth";
 import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
+import { calendarEventReminderAdvisorTemplate } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -88,6 +89,11 @@ export async function GET(request: Request) {
       timeStyle: "short",
     });
     const titleShort = row.title.length > 80 ? `${row.title.slice(0, 77)}…` : row.title;
+    const { subject: reminderSubject, html: reminderHtml } = calendarEventReminderAdvisorTemplate({
+      eventTitle: row.title,
+      startLabel,
+      calendarUrl: `${baseUrl}/portal/calendar`,
+    });
     const uid = row.assignedTo!;
 
     const userWantsPush = row.reminderPushEnabled !== false;
@@ -145,8 +151,8 @@ export async function GET(request: Request) {
         const { error } = await resend.emails.send({
           from,
           to: row.advisorEmail.trim(),
-          subject: `Připomenutí: ${titleShort}`,
-          html: `<p>Blíží se vaše aktivita v kalendáři.</p><p><strong>${escapeHtml(row.title)}</strong></p><p>Začátek: ${escapeHtml(startLabel)}</p><p><a href="${baseUrl}/portal/calendar">Otevřít kalendář</a></p>`,
+          subject: reminderSubject,
+          html: reminderHtml,
           ...(replyTo ? { replyTo } : {}),
         });
         if (!error) {
@@ -180,12 +186,4 @@ export async function GET(request: Request) {
     emailsSent,
     ...(errors.length ? { errors: errors.slice(0, 20) } : {}),
   });
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }

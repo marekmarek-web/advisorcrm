@@ -7,6 +7,7 @@ import { contracts, contacts, unsubscribeTokens } from "db";
 import { eq, and } from "db";
 import { getPaymentAccountForContract } from "./payment-accounts";
 import { loadAdvisorMailHeadersForCurrentUser } from "@/lib/email/advisor-mail-headers";
+import { paymentPdfAttachmentClientTemplate } from "@/lib/email/templates";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export type PaymentInstruction = {
@@ -109,11 +110,16 @@ export async function sendPaymentPdfToClient(contactId: string): Promise<{ ok: t
     });
     const unsubLink = `${baseUrl}/client/unsubscribe?token=${unsubToken}`;
     const mail = await loadAdvisorMailHeadersForCurrentUser();
+    const { subject, html } = paymentPdfAttachmentClientTemplate({
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      unsubscribeUrl: unsubLink,
+    });
     const { error } = await resend.emails.send({
       from: mail.from,
       to: contact.email,
-      subject: "Platební instrukce – Aidvisora",
-      html: `<p>Dobrý den, ${contact.firstName} ${contact.lastName},</p><p>v příloze naleznete platební instrukce.</p><p><a href="${unsubLink}">Odhlásit se z notifikací</a></p>`,
+      subject,
+      html,
       attachments: [{ filename: "platebni-instrukce.pdf", content: pdfBuffer }],
       ...(mail.replyTo ? { replyTo: mail.replyTo } : {}),
     });

@@ -1,16 +1,139 @@
 /**
  * Email templates for Aidvisora notifications.
  * Each returns { subject, html } ready for sendEmail().
+ *
+ * All transactional templates below now use the same branded layout as the
+ * current Aidvisora auth email style.
  */
 
 import { escapeHtmlText } from "@/lib/email/birthday/html-utils";
 
+const DEFAULT_SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+  "https://www.aidvisora.cz";
+
+const SUPPORT_EMAIL = "podpora@aidvisora.cz";
+const LOGO_URL =
+  "https://github.com/marekmarek-web/Aidvisora/blob/main/logos/Aidvisora%20logo%20new.png?raw=true";
+
+function e(value: unknown): string {
+  return escapeHtmlText(String(value ?? ""));
+}
+
+function normalizedSiteUrl(): string {
+  return DEFAULT_SITE_URL.replace(/\/$/, "");
+}
+
+function safeHref(url: string): string {
+  return e(url.trim());
+}
+
+function safeMultilineText(value: string): string {
+  return e(value).replace(/\n/g, "<br>");
+}
+
+function brandedButton(label: string, href: string): string {
+  return `<table border="0" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+    <tr>
+      <td align="center" bgcolor="#5A4BFF" style="border-radius:16px;">
+        <a href="${safeHref(href)}" target="_blank" class="button-hover" style="display:inline-block;padding:18px 32px;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:16px;border:1px solid #5A4BFF;">
+          ${e(label)}
+        </a>
+      </td>
+    </tr>
+  </table>`;
+}
+
+function ghostButton(label: string, href: string): string {
+  return `<table border="0" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+    <tr>
+      <td align="center" bgcolor="#FFFFFF" style="border-radius:16px;">
+        <a href="${safeHref(href)}" target="_blank" style="display:inline-block;padding:16px 28px;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:15px;font-weight:700;color:#5A4BFF;text-decoration:none;border-radius:16px;border:1px solid #D6D9F6;">
+          ${e(label)}
+        </a>
+      </td>
+    </tr>
+  </table>`;
+}
+
+function infoBox(params: { title: string; bodyHtml: string }): string {
+  return `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;background-color:#F8FAFC;border-radius:16px;border:1px solid #E2E8F0;">
+    <tr>
+      <td style="padding:24px;">
+        <p style="margin:0 0 8px 0;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:#0B1021;text-transform:uppercase;letter-spacing:0.05em;">
+          ${e(params.title)}
+        </p>
+        ${params.bodyHtml}
+      </td>
+    </tr>
+  </table>`;
+}
+
+function detailCard(
+  rows: Array<{ label: string; value: string; emphasize?: boolean }>
+): string {
+  const items = rows
+    .map(
+      (row, index) => `<tr>
+        <td style="padding:0 0 ${index === rows.length - 1 ? 0 : 14}px 0;font-family:'Inter',sans-serif;font-size:13px;color:#64748B;vertical-align:top;">
+          ${e(row.label)}
+        </td>
+        <td style="padding:0 0 ${index === rows.length - 1 ? 0 : 14}px 16px;font-family:'Inter',sans-serif;font-size:${
+          row.emphasize ? "16px" : "14px"
+        };color:#0B1021;vertical-align:top;text-align:right;font-weight:${
+          row.emphasize ? "700" : "600"
+        };">
+          ${row.value}
+        </td>
+      </tr>`
+    )
+    .join("");
+
+  return `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin:28px 0 0 0;background-color:#F8FAFC;border-radius:18px;border:1px solid #E2E8F0;">
+    <tr>
+      <td style="padding:22px 22px 20px 22px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          ${items}
+        </table>
+      </td>
+    </tr>
+  </table>`;
+}
+
+function bulletList(items: string[]): string {
+  return `<ul style="margin:16px 0 0 18px;padding:0;font-family:'Inter',sans-serif;font-size:15px;line-height:1.7;color:#475569;">
+    ${items.map((item) => `<li style="margin:0 0 10px 0;">${item}</li>`).join("")}
+  </ul>`;
+}
+
+function paragraph(html: string, marginBottom = 18): string {
+  return `<p style="margin:0 0 ${marginBottom}px 0;font-family:'Inter',sans-serif;font-size:16px;line-height:1.7;color:#475569;">${html}</p>`;
+}
+
+function greeting(name?: string | null): string {
+  return paragraph(name ? `Dobrý den, <strong style="color:#0B1021;">${e(name)}</strong>,` : "Dobrý den,", 20);
+}
+
+function signature(advisorName?: string): string {
+  if (!advisorName?.trim()) return "";
+  return `<p style="margin:28px 0 0 0;font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;color:#475569;">
+    S pozdravem,<br>
+    <strong style="color:#0B1021;">${e(advisorName.trim())}</strong>
+  </p>`;
+}
+
+function unsubscribeLine(unsubscribeUrl?: string): string {
+  if (!unsubscribeUrl?.trim()) return "";
+  return `<p style="margin:20px 0 0 0;font-family:'Inter',sans-serif;font-size:12px;line-height:1.6;color:#94A3B8;">
+    Tento typ oznámení již nechcete dostávat?
+    <a href="${safeHref(unsubscribeUrl)}" target="_blank" class="link-hover" style="color:#94A3B8;text-decoration:underline;">Odhlásit se z notifikací</a>
+  </p>`;
+}
+
 /**
- * Transakční / marketing layout ve stejném stylu jako ověřovací e-mail (Supabase Auth template):
- * tmavá hlavička, Plus Jakarta Sans + Inter, karta s velkým zaoblením.
- *
- * `preheaderPlain`, `badgePlain`, `headlinePlain`, `metaTitle` se escapují uvnitř.
- * `bodyHtml` a `secondaryBoxHtml` musí být bezpečné HTML (volající escapuje dynamická data).
+ * Hlavní branded dokument ve stylu aktuálního ověřovacího e-mailu.
+ * `bodyHtml` a `secondaryBoxHtml` musí být bezpečné HTML.
  */
 export function aidvisoraBrandEmailDocument(params: {
   metaTitle: string;
@@ -18,21 +141,22 @@ export function aidvisoraBrandEmailDocument(params: {
   badgePlain: string;
   headlinePlain: string;
   bodyHtml: string;
-  /** Volitelný box dole v bílé sekci (např. upozornění / tip). */
   secondaryBoxHtml?: string;
-  siteUrl: string;
+  siteUrl?: string;
 }): string {
-  const ph = escapeHtmlText(params.preheaderPlain);
-  const badge = escapeHtmlText(params.badgePlain);
-  const headline = escapeHtmlText(params.headlinePlain);
-  const docTitle = escapeHtmlText(params.metaTitle);
-  const site = params.siteUrl.trim().replace(/\/$/, "");
-  const siteHref = escapeHtmlText(site);
-  const siteLabel = escapeHtmlText(site.replace(/^https?:\/\//, ""));
+  const ph = e(params.preheaderPlain);
+  const badge = e(params.badgePlain);
+  const headline = e(params.headlinePlain);
+  const docTitle = e(params.metaTitle);
+  const site = (params.siteUrl?.trim() || normalizedSiteUrl()).replace(/\/$/, "");
+  const siteHref = safeHref(site);
+  const siteLabel = e(site.replace(/^https?:\/\//, ""));
 
   const secondary = params.secondaryBoxHtml?.trim()
-    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;background-color:#F8FAFC;border-radius:16px;border:1px solid #E2E8F0;">
-        <tr><td style="padding:24px;">${params.secondaryBoxHtml}</td></tr>
+    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;">
+        <tr>
+          <td>${params.secondaryBoxHtml}</td>
+        </tr>
       </table>`
     : "";
 
@@ -50,7 +174,14 @@ export function aidvisoraBrandEmailDocument(params: {
     img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
     table { border-collapse: collapse !important; }
     body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #F4F6FB; }
+    .button-hover:hover { background-color: #4A3DE0 !important; border-color: #4A3DE0 !important; }
     .link-hover:hover { color: #5A4BFF !important; text-decoration: underline !important; }
+    @media screen and (max-width: 640px) {
+      .email-shell { width: 100% !important; }
+      .email-padding { padding: 32px 24px !important; }
+      .email-title { font-size: 28px !important; }
+      .email-body { padding: 36px 24px !important; }
+    }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#F4F6FB;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -61,18 +192,17 @@ export function aidvisoraBrandEmailDocument(params: {
   <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#F4F6FB;padding:40px 20px;">
     <tr>
       <td align="center" style="padding:20px 0;">
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background-color:#ffffff;border-radius:32px;overflow:hidden;box-shadow:0 10px 40px -10px rgba(0,0,0,0.08);">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="email-shell" style="max-width:600px;background-color:#ffffff;border-radius:32px;overflow:hidden;box-shadow:0 10px 40px -10px rgba(0,0,0,0.08);">
           <tr>
-            <td align="center" style="background-color:#0B1021;padding:50px 40px;border-bottom:4px solid #5A4BFF;">
-              <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom:30px;">
+            <td align="center" class="email-padding" style="background-color:#0B1021;padding:50px 40px;border-bottom:4px solid #5A4BFF;">
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
                 <tr>
                   <td align="center">
-                    <div style="font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;">
-                      <span style="color:#8B5CF6;">A</span> Aidvisora
-                    </div>
+                    <img src="${safeHref(LOGO_URL)}" alt="Aidvisora" width="176" style="display:block;width:176px;max-width:100%;height:auto;">
                   </td>
                 </tr>
               </table>
+
               <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
                 <tr>
                   <td align="center" style="background-color:rgba(90,75,255,0.15);border-radius:16px;padding:12px 16px;">
@@ -82,26 +212,32 @@ export function aidvisoraBrandEmailDocument(params: {
                   </td>
                 </tr>
               </table>
-              <h1 style="margin:0;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-0.03em;line-height:1.2;">
+
+              <h1 class="email-title" style="margin:0;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-0.03em;line-height:1.2;">
                 ${headline}
               </h1>
             </td>
           </tr>
+
           <tr>
-            <td align="left" style="background-color:#ffffff;padding:48px 40px;">
+            <td align="left" class="email-body" style="background-color:#ffffff;padding:48px 40px;">
               ${params.bodyHtml}
               ${secondary}
             </td>
           </tr>
         </table>
+
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;margin-top:32px;">
           <tr>
-            <td align="center" style="font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;color:#94A3B8;">
-              <p style="margin:0 0 16px 0;">Odesláno týmem Aidvisora<br>Inteligentní platforma pro finanční poradce.</p>
+            <td align="center" style="font-family:'Inter',sans-serif;font-size:13px;line-height:1.6;color:#94A3B8;">
+              <p style="margin:0 0 16px 0;">
+                Odesláno týmem Aidvisora<br>
+                Inteligentní platforma pro finanční poradce.
+              </p>
               <p style="margin:0;">
                 <a href="${siteHref}" target="_blank" class="link-hover" style="color:#94A3B8;text-decoration:none;">${siteLabel}</a>
                 &nbsp; • &nbsp;
-                <a href="mailto:podpora@aidvisora.cz" target="_blank" class="link-hover" style="color:#94A3B8;text-decoration:none;">Podpora</a>
+                <a href="mailto:${SUPPORT_EMAIL}" target="_blank" class="link-hover" style="color:#94A3B8;text-decoration:none;">Podpora</a>
               </p>
             </td>
           </tr>
@@ -113,22 +249,26 @@ export function aidvisoraBrandEmailDocument(params: {
 </html>`;
 }
 
-function layout(bodyHtml: string): string {
-  return `<!DOCTYPE html>
-<html lang="cs">
-<head><meta charset="utf-8" /><title>Aidvisora</title></head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #323338; margin: 0; padding: 20px;">
-  <div style="max-width: 560px; margin: 0 auto;">
-    <div style="margin-bottom: 16px; font-size: 14px; font-weight: 600; color: #0073ea;">Aidvisora</div>
-    ${bodyHtml}
-    <hr style="border: none; border-top: 1px solid #e6e9ef; margin: 24px 0;" />
-    <div style="font-size: 11px; color: #676879;">
-      Tento e-mail byl odeslán automaticky systémem Aidvisora. Pokud si nepřejete dostávat oznámení,
-      klikněte na odkaz „Odhlásit se" níže.
-    </div>
-  </div>
-</body>
-</html>`;
+function buildTemplate(params: {
+  subject: string;
+  preheader: string;
+  badge: string;
+  headline: string;
+  bodyHtml: string;
+  secondaryBoxHtml?: string;
+}) {
+  return {
+    subject: params.subject,
+    html: aidvisoraBrandEmailDocument({
+      metaTitle: params.subject,
+      preheaderPlain: params.preheader,
+      badgePlain: params.badge,
+      headlinePlain: params.headline,
+      bodyHtml: params.bodyHtml,
+      secondaryBoxHtml: params.secondaryBoxHtml,
+      siteUrl: normalizedSiteUrl(),
+    }),
+  };
 }
 
 export function serviceReminderTemplate(params: {
@@ -137,21 +277,42 @@ export function serviceReminderTemplate(params: {
   nextServiceDue: string;
   unsubscribeUrl?: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Připomínka servisní schůzky</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Klient <strong>${params.contactName}</strong> má naplánovaný servisní kontakt 
-      <strong>${params.nextServiceDue}</strong>.
-    </p>
-    ${params.advisorName ? `<p style="font-size: 14px;">Přiřazeno: ${params.advisorName}</p>` : ""}
-    <p style="font-size: 14px;">Přihlaste se do Aidvisora a naplánujte schůzku nebo aktualizujte servisní cyklus.</p>
-    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
-  `);
+  const subject = `Servisní připomínka: ${params.contactName}`;
 
-  return {
-    subject: `Servisní připomínka: ${params.contactName}`,
-    html,
-  };
+  const bodyHtml = [
+    greeting(),
+    paragraph(
+      `u klienta <strong style="color:#0B1021;">${e(params.contactName)}</strong> se blíží servisní kontakt naplánovaný na <strong style="color:#0B1021;">${e(params.nextServiceDue)}</strong>.`
+    ),
+    paragraph(
+      "Otevřete Aidvisoru, navrhněte termín schůzky nebo upravte servisní cyklus, aby klient nezůstal bez navazující péče.",
+      0
+    ),
+    signature(params.advisorName),
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  const secondaryBoxHtml =
+    infoBox({
+      title: "Doporučený postup",
+      bodyHtml:
+        `<p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#64748B;">` +
+        `Zkontrolujte poslední komunikaci, připravte si další krok a klienta oslovte včas. Aktivní servis výrazně zvyšuje důvěru i retenci.` +
+        `</p>`,
+    }) +
+    `<div style="margin-top:20px;text-align:center;">${ghostButton(
+      "Otevřít Aidvisoru",
+      normalizedSiteUrl()
+    )}</div>`;
+
+  return buildTemplate({
+    subject,
+    preheader: `Blíží se servisní kontakt klienta ${params.contactName}.`,
+    badge: "Servisní připomínka",
+    headline: "Servisní kontakt čeká na akci",
+    bodyHtml,
+    secondaryBoxHtml,
+  });
 }
 
 export function newDocumentTemplate(params: {
@@ -160,19 +321,44 @@ export function newDocumentTemplate(params: {
   portalUrl?: string;
   unsubscribeUrl?: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Nový dokument</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Pro vás byl nahrán nový dokument: <strong>${params.documentName}</strong>.
-    </p>
-    ${params.portalUrl ? `<p style="font-size: 14px;"><a href="${params.portalUrl}" style="color: #0073ea;">Zobrazit v klientské zóně</a></p>` : ""}
-    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
-  `);
+  const subject = `Nový dokument: ${params.documentName}`;
 
-  return {
-    subject: `Nový dokument: ${params.documentName}`,
-    html,
-  };
+  const bodyHtml = [
+    greeting(params.contactName),
+    paragraph(
+      `do klientské zóny byl nově nahrán dokument <strong style="color:#0B1021;">${e(params.documentName)}</strong>.`
+    ),
+    paragraph(
+      params.portalUrl
+        ? "Dokument si můžete ihned otevřít a zkontrolovat v klientské zóně."
+        : "Dokument je připravený k zobrazení ve vašem přehledu v Aidvisoře.",
+      params.portalUrl ? 28 : 0
+    ),
+    params.portalUrl
+      ? `<div style="margin:0 0 6px 0;text-align:center;">${brandedButton(
+          "Zobrazit dokument",
+          params.portalUrl
+        )}</div>`
+      : "",
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  const secondaryBoxHtml = infoBox({
+    title: "Co v dokumentu zkontrolovat",
+    bodyHtml:
+      `<p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#64748B;">` +
+      `Zaměřte se hlavně na správnost údajů, úplnost příloh a návaznost na další kroky ve spolupráci.` +
+      `</p>`,
+  });
+
+  return buildTemplate({
+    subject,
+    preheader: `Byl nahrán nový dokument: ${params.documentName}.`,
+    badge: "Nový dokument",
+    headline: "Máte nový dokument k dispozici",
+    bodyHtml,
+    secondaryBoxHtml,
+  });
 }
 
 export function newPortalRequestAdvisorTemplate(params: {
@@ -181,24 +367,44 @@ export function newPortalRequestAdvisorTemplate(params: {
   descriptionPreview: string;
   pipelineUrl: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Nový požadavek z klientské zóny</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Klient <strong>${params.contactName}</strong> odeslal nový požadavek
-      (<strong>${params.caseTypeLabel}</strong>).
-    </p>
-    <p style="font-size: 14px; line-height: 1.5; color: #676879; margin: 12px 0;">
-      ${params.descriptionPreview}
-    </p>
-    <p style="font-size: 14px;">
-      <a href="${params.pipelineUrl}" style="color: #0073ea;">Otevřít příležitost v pipeline</a>
-    </p>
-  `);
+  const subject = `Nový požadavek z klientské zóny: ${params.contactName}`;
 
-  return {
-    subject: `Nový požadavek z klientské zóny: ${params.contactName}`,
-    html,
-  };
+  const bodyHtml = [
+    greeting(),
+    paragraph(
+      `klient <strong style="color:#0B1021;">${e(params.contactName)}</strong> právě odeslal nový požadavek typu <strong style="color:#0B1021;">${e(params.caseTypeLabel)}</strong>.`
+    ),
+    paragraph(
+      "Doporučujeme reagovat co nejdříve, aby klient měl jistotu, že se jeho požadavek aktivně řeší.",
+      24
+    ),
+    detailCard([
+      {
+        label: "Typ požadavku",
+        value: e(params.caseTypeLabel),
+      },
+      {
+        label: "Klient",
+        value: e(params.contactName),
+      },
+      {
+        label: "Náhled zprávy",
+        value: safeMultilineText(params.descriptionPreview),
+      },
+    ]),
+    `<div style="margin:28px 0 0 0;text-align:center;">${brandedButton(
+      "Otevřít pipeline",
+      params.pipelineUrl
+    )}</div>`,
+  ].join("");
+
+  return buildTemplate({
+    subject,
+    preheader: `Klient ${params.contactName} odeslal nový požadavek z klientské zóny.`,
+    badge: "Nový lead",
+    headline: "V klientské zóně čeká nový požadavek",
+    bodyHtml,
+  });
 }
 
 export function newMessageAdvisorTemplate(params: {
@@ -206,23 +412,32 @@ export function newMessageAdvisorTemplate(params: {
   bodyPreview: string;
   messagesUrl: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Nová zpráva od klienta</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Máte novou zprávu od klienta <strong>${params.contactName}</strong>.
-    </p>
-    <p style="font-size: 14px; line-height: 1.5; color: #676879; margin: 12px 0;">
-      ${params.bodyPreview}
-    </p>
-    <p style="font-size: 14px;">
-      <a href="${params.messagesUrl}" style="color: #0073ea;">Otevřít konverzaci v portálu</a>
-    </p>
-  `);
+  const subject = `Nová zpráva od klienta: ${params.contactName}`;
 
-  return {
-    subject: `Nová zpráva od klienta: ${params.contactName}`,
-    html,
-  };
+  const bodyHtml = [
+    greeting(),
+    paragraph(
+      `od klienta <strong style="color:#0B1021;">${e(params.contactName)}</strong> máte novou zprávu.`
+    ),
+    infoBox({
+      title: "Náhled zprávy",
+      bodyHtml: `<p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.7;color:#475569;">${safeMultilineText(
+        params.bodyPreview
+      )}</p>`,
+    }),
+    `<div style="margin:28px 0 0 0;text-align:center;">${brandedButton(
+      "Otevřít konverzaci",
+      params.messagesUrl
+    )}</div>`,
+  ].join("");
+
+  return buildTemplate({
+    subject,
+    preheader: `Máte novou zprávu od klienta ${params.contactName}.`,
+    badge: "Nová zpráva",
+    headline: "Klient vám právě napsal",
+    bodyHtml,
+  });
 }
 
 export function paymentInstructionTemplate(params: {
@@ -233,23 +448,42 @@ export function paymentInstructionTemplate(params: {
   amount?: string;
   unsubscribeUrl?: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Platební instrukce</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Platební údaje pro <strong>${params.partnerName}</strong>:
-    </p>
-    <table style="font-size: 14px; border-collapse: collapse;">
-      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Číslo účtu:</td><td><strong>${params.accountNumber}</strong></td></tr>
-      ${params.contractNumber ? `<tr><td style="padding: 4px 12px 4px 0; color: #676879;">Č. smlouvy:</td><td>${params.contractNumber}</td></tr>` : ""}
-      ${params.amount ? `<tr><td style="padding: 4px 12px 4px 0; color: #676879;">Částka:</td><td>${params.amount} Kč</td></tr>` : ""}
-    </table>
-    ${params.unsubscribeUrl ? `<p style="font-size: 12px; margin-top: 16px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
-  `);
+  const subject = `Platební instrukce – ${params.partnerName}`;
 
-  return {
-    subject: `Platební instrukce – ${params.partnerName}`,
-    html,
-  };
+  const rows = [
+    { label: "Partner", value: e(params.partnerName) },
+    { label: "Číslo účtu", value: `<strong style="color:#0B1021;">${e(params.accountNumber)}</strong>`, emphasize: true },
+    ...(params.contractNumber
+      ? [{ label: "Číslo smlouvy", value: e(params.contractNumber) }]
+      : []),
+    ...(params.amount ? [{ label: "Částka", value: `${e(params.amount)} Kč`, emphasize: true }] : []),
+  ];
+
+  const bodyHtml = [
+    greeting(params.contactName),
+    paragraph(
+      `níže najdete platební údaje pro partnera <strong style="color:#0B1021;">${e(params.partnerName)}</strong>. Před odesláním platby doporučujeme zkontrolovat správnost všech údajů.`
+    ),
+    detailCard(rows),
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  const secondaryBoxHtml = infoBox({
+    title: "Důležité upozornění",
+    bodyHtml:
+      `<p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#64748B;">` +
+      `Pokud se jakýkoli údaj liší od poslední komunikace s poradcem nebo partnerem, platbu zatím neposílejte a ověřte si informace.` +
+      `</p>`,
+  });
+
+  return buildTemplate({
+    subject,
+    preheader: `Platební instrukce pro ${params.partnerName} jsou připravené.`,
+    badge: "Platební instrukce",
+    headline: "Platební údaje máte připravené",
+    bodyHtml,
+    secondaryBoxHtml,
+  });
 }
 
 export function requestMissingDataTemplate(params: {
@@ -259,22 +493,31 @@ export function requestMissingDataTemplate(params: {
   advisorName?: string;
   unsubscribeUrl?: string;
 }) {
-  const fieldsList = params.missingFields.map((f) => `<li>${f}</li>`).join("");
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Doplnění údajů</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Dobrý den, pane/paní <strong>${params.contactName}</strong>,
-    </p>
-    <p style="font-size: 14px; line-height: 1.5;">
-      po zpracování ${params.documentName ? `dokumentu <strong>${params.documentName}</strong>` : "Vašeho dokumentu"}
-      nám chybí následující údaje:
-    </p>
-    <ul style="font-size: 14px; line-height: 1.6;">${fieldsList}</ul>
-    <p style="font-size: 14px;">Prosíme o jejich doplnění co nejdříve.</p>
-    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
-    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
-  `);
-  return { subject: `Doplnění údajů – ${params.contactName}`, html };
+  const subject = `Doplnění údajů – ${params.contactName}`;
+
+  const items = params.missingFields.map((field) => e(field));
+
+  const bodyHtml = [
+    greeting(params.contactName),
+    paragraph(
+      params.documentName
+        ? `po zpracování dokumentu <strong style="color:#0B1021;">${e(params.documentName)}</strong> nám stále chybí několik důležitých údajů.`
+        : "po zpracování vašeho podání nám stále chybí několik důležitých údajů."
+    ),
+    paragraph("Abychom mohli pokračovat bez zbytečného zdržení, prosíme o doplnění následujících informací:", 0),
+    bulletList(items),
+    paragraph("Jakmile údaje doplníte, můžeme navázat dalším krokem.", 0),
+    signature(params.advisorName),
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  return buildTemplate({
+    subject,
+    preheader: `Je potřeba doplnit údaje pro ${params.contactName}.`,
+    badge: "Doplnění údajů",
+    headline: "Bez doplnění údajů nepůjdeme dál",
+    bodyHtml,
+  });
 }
 
 export function reviewFollowupTemplate(params: {
@@ -284,17 +527,37 @@ export function reviewFollowupTemplate(params: {
   advisorName?: string;
   unsubscribeUrl?: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Stav kontroly dokumentu</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Dokument <strong>${params.reviewFileName}</strong> byl zkontrolován.
-    </p>
-    <p style="font-size: 14px;">Aktuální stav: <strong>${params.reviewStatus}</strong></p>
-    <p style="font-size: 14px;">V případě dotazů se obraťte na svého poradce.</p>
-    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
-    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
-  `);
-  return { subject: `Výsledek kontroly – ${params.reviewFileName}`, html };
+  const subject = `Výsledek kontroly – ${params.reviewFileName}`;
+
+  const bodyHtml = [
+    greeting(params.contactName),
+    paragraph(
+      `dokument <strong style="color:#0B1021;">${e(params.reviewFileName)}</strong> byl zkontrolován a jeho aktuální stav je <strong style="color:#0B1021;">${e(params.reviewStatus)}</strong>.`
+    ),
+    paragraph(
+      "Máte-li k výsledku kontroly jakékoli dotazy, navazujte prosím přímo se svým poradcem.",
+      0
+    ),
+    signature(params.advisorName),
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  const secondaryBoxHtml = infoBox({
+    title: "Co bude následovat",
+    bodyHtml:
+      `<p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#64748B;">` +
+      `Pokud je potřeba cokoli doplnit nebo upravit, poradce se s vámi spojí s konkrétními dalšími kroky.` +
+      `</p>`,
+  });
+
+  return buildTemplate({
+    subject,
+    preheader: `Kontrola dokumentu ${params.reviewFileName} byla dokončena.`,
+    badge: "Kontrola dokumentu",
+    headline: "Výsledek kontroly je připravený",
+    bodyHtml,
+    secondaryBoxHtml,
+  });
 }
 
 export function policyStatusUpdateTemplate(params: {
@@ -305,17 +568,32 @@ export function policyStatusUpdateTemplate(params: {
   advisorName?: string;
   unsubscribeUrl?: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Aktualizace stavu pojistky</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Pojistka <strong>${params.policyName}</strong> pro <strong>${params.contactName}</strong>:
-    </p>
-    <p style="font-size: 14px;">Stav: <strong>${params.status}</strong></p>
-    ${params.detail ? `<p style="font-size: 14px; color: #676879;">${params.detail}</p>` : ""}
-    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
-    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
-  `);
-  return { subject: `Status pojistky – ${params.policyName}`, html };
+  const subject = `Status pojistky – ${params.policyName}`;
+
+  const bodyHtml = [
+    greeting(params.contactName),
+    paragraph(
+      `u pojistky <strong style="color:#0B1021;">${e(params.policyName)}</strong> evidujeme nový stav <strong style="color:#0B1021;">${e(params.status)}</strong>.`
+    ),
+    params.detail
+      ? infoBox({
+          title: "Detail aktualizace",
+          bodyHtml: `<p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.7;color:#475569;">${safeMultilineText(
+            params.detail
+          )}</p>`,
+        })
+      : "",
+    signature(params.advisorName),
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  return buildTemplate({
+    subject,
+    preheader: `Pojistka ${params.policyName} má nový stav: ${params.status}.`,
+    badge: "Stav pojistky",
+    headline: "U pojistky došlo k aktualizaci",
+    bodyHtml,
+  });
 }
 
 export function reminderBeforeDeadlineTemplate(params: {
@@ -325,17 +603,28 @@ export function reminderBeforeDeadlineTemplate(params: {
   advisorName?: string;
   unsubscribeUrl?: string;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Připomínka blížícího se termínu</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Blíží se termín <strong>${params.deadlineType}</strong> pro <strong>${params.contactName}</strong>:
-      <strong>${params.deadlineDate}</strong>.
-    </p>
-    <p style="font-size: 14px;">Termín se blíží — zkontrolujte prosím stav v aplikaci.</p>
-    ${params.advisorName ? `<p style="font-size: 14px;">S pozdravem, ${params.advisorName}</p>` : ""}
-    ${params.unsubscribeUrl ? `<p style="font-size: 12px;"><a href="${params.unsubscribeUrl}" style="color: #676879;">Odhlásit se z notifikací</a></p>` : ""}
-  `);
-  return { subject: `Připomínka: ${params.deadlineType} – ${params.contactName}`, html };
+  const subject = `Připomínka: ${params.deadlineType} – ${params.contactName}`;
+
+  const bodyHtml = [
+    greeting(),
+    paragraph(
+      `blíží se termín <strong style="color:#0B1021;">${e(params.deadlineType)}</strong> pro klienta <strong style="color:#0B1021;">${e(params.contactName)}</strong>. Datum termínu je <strong style="color:#0B1021;">${e(params.deadlineDate)}</strong>.`
+    ),
+    paragraph(
+      "Zkontrolujte aktuální stav v aplikaci a vyřešte navazující kroky ještě před termínem.",
+      0
+    ),
+    signature(params.advisorName),
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  return buildTemplate({
+    subject,
+    preheader: `Blíží se termín ${params.deadlineType} pro klienta ${params.contactName}.`,
+    badge: "Blížící se termín",
+    headline: "Na obzoru je důležitý termín",
+    bodyHtml,
+  });
 }
 
 /** Pozvánka do klientské zóny s předpřipraveným účtem a dočasným heslem. */
@@ -350,93 +639,61 @@ export function clientPortalInviteTemplate(params: {
   gdprUrl: string;
   termsUrl: string;
 }) {
+  const subject = "Přístup do klientské zóny je připravený — Aidvisora";
   const who = params.tenantName?.trim() ? params.tenantName.trim() : "váš poradce";
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Váš přístup do klientské zóny je připravený</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Dobrý den${params.contactFirstName ? `, ${params.contactFirstName}` : ""},
-    </p>
-    <p style="font-size: 14px; line-height: 1.5;">
-      ${who} vám zpřístupnil(a) klientskou zónu v&nbsp;Aidvisoře — přehled smluv, dokumentů a&nbsp;zpráv na jednom místě.
-    </p>
-    <p style="font-size: 14px; line-height: 1.5;">
-      ${
-        params.reusedExistingAccount
-          ? "Přístup byl znovu připraven a dočasné heslo obnoveno."
-          : "Účet je připravený a můžete se ihned přihlásit."
-      }
-      Odkaz je platný <strong>${params.expiresInDays} dní</strong>.
-    </p>
-    <div style="margin: 18px 0; padding: 14px 16px; border-radius: 12px; background: #f4f7ff; border: 1px solid #dbe5ff;">
-      <p style="margin: 0 0 8px; font-size: 13px; color: #44546f;"><strong>Přihlašovací e-mail</strong></p>
-      <p style="margin: 0 0 12px; font-size: 14px; color: #172b4d;">${params.loginEmail}</p>
-      <p style="margin: 0 0 8px; font-size: 13px; color: #44546f;"><strong>Dočasné heslo</strong></p>
-      <p style="margin: 0; font-size: 18px; letter-spacing: 1px; font-weight: 700; color: #172b4d;">${params.temporaryPassword}</p>
-    </div>
-    <p style="font-size: 14px; line-height: 1.5; margin-bottom: 4px;">
-      <strong>Jak to funguje:</strong>
-    </p>
-    <ol style="font-size: 14px; line-height: 1.6; padding-left: 20px; margin: 0 0 16px;">
-      <li>Klikněte na tlačítko níže a zadejte e-mail + dočasné heslo</li>
-      <li>Nastavíte si vlastní heslo</li>
-      <li>Jste v klientské zóně</li>
-    </ol>
-    <p style="margin: 20px 0;">
-      <a href="${params.registerUrl}" style="display: inline-block; padding: 12px 24px; background: #0073ea; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">Dokončit přístup</a>
-    </p>
-    <p style="font-size: 12px; line-height: 1.5; color: #676879;">
-      Pokud tlačítko nefunguje, zkopírujte odkaz do prohlížeče:<br />
-      <span style="word-break: break-all;">${params.registerUrl}</span>
-    </p>
-    <p style="font-size: 12px; line-height: 1.5; color: #676879; margin-top: 16px;">
-      <a href="${params.gdprUrl}" style="color: #0073ea;">Zásady zpracování osobních údajů</a>
-    </p>
-  `);
-  return {
-    subject: "Přístup do klientské zóny je připravený — Aidvisora",
-    html,
-  };
-}
 
-/** Pozvánka člena týmu (poradce) do workspace — odkaz na přihlášení / registraci se stejným e-mailem. */
-export function staffTeamInviteTemplate(params: {
-  loginUrl: string;
-  tenantName?: string;
-  inviteeEmail: string;
-  roleLabel: string;
-  expiresInDays: number;
-}) {
-  const org = escapeHtmlText(params.tenantName?.trim() ? params.tenantName.trim() : "váš tým");
-  const role = escapeHtmlText(params.roleLabel);
-  const em = escapeHtmlText(params.inviteeEmail);
-  const loginHref = escapeHtmlText(params.loginUrl);
-  const days = escapeHtmlText(String(params.expiresInDays));
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Pozvánka do Aidvisora</h2>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Byli jste pozváni do workspace <strong>${org}</strong> v roli <strong>${role}</strong>.
-    </p>
-    <p style="font-size: 14px; line-height: 1.5;">
-      Odkaz je platný <strong>${days} dní</strong>. Použijte prosím stejný e-mail jako v této zprávě:
-      <strong>${em}</strong>
-    </p>
-    <ol style="font-size: 14px; line-height: 1.6; padding-left: 20px; margin: 0 0 16px;">
-      <li>Otevřete tlačítko níže</li>
-      <li>Přihlaste se nebo si založte účet (záložka podle potřeby)</li>
-      <li>Použijte výše uvedený e-mail</li>
-    </ol>
-    <p style="margin: 20px 0;">
-      <a href="${loginHref}" style="display: inline-block; padding: 12px 24px; background: #0073ea; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">Přijmout pozvánku</a>
-    </p>
-    <p style="font-size: 12px; line-height: 1.5; color: #676879;">
-      Pokud tlačítko nefunguje, zkopírujte odkaz do prohlížeče:<br />
-      <span style="word-break: break-all;">${loginHref}</span>
-    </p>
-  `);
-  return {
-    subject: `Pozvánka do týmu — ${org} — Aidvisora`,
-    html,
-  };
+  const bodyHtml = [
+    greeting(params.contactFirstName),
+    paragraph(
+      `${e(who)} vám zpřístupnil(a) klientskou zónu v Aidvisoře. Na jednom místě zde najdete přehled smluv, dokumentů, zpráv i další komunikaci.`
+    ),
+    paragraph(
+      params.reusedExistingAccount
+        ? `Přístup byl znovu připraven a dočasné heslo obnoveno. Odkaz je platný <strong style="color:#0B1021;">${e(params.expiresInDays)} dní</strong>.`
+        : `Účet je připravený a můžete se ihned přihlásit. Odkaz je platný <strong style="color:#0B1021;">${e(params.expiresInDays)} dní</strong>.`,
+      0
+    ),
+    detailCard([
+      { label: "Přihlašovací e-mail", value: e(params.loginEmail) },
+      { label: "Dočasné heslo", value: e(params.temporaryPassword), emphasize: true },
+    ]),
+    paragraph("Postup je jednoduchý:", 0),
+    bulletList([
+      "Klikněte na tlačítko níže.",
+      "Přihlaste se pomocí e-mailu a dočasného hesla.",
+      "Nastavíte si vlastní heslo a máte hotovo.",
+    ]),
+    `<div style="margin:28px 0 0 0;text-align:center;">${brandedButton(
+      "Dokončit přístup",
+      params.registerUrl
+    )}</div>`,
+  ].join("");
+
+  const secondaryBoxHtml =
+    infoBox({
+      title: "Když tlačítko nefunguje",
+      bodyHtml: `<p style="margin:0 0 12px 0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#64748B;">Zkopírujte si tento odkaz do prohlížeče:</p>
+        <p style="margin:0;font-family:'Inter',sans-serif;font-size:13px;line-height:1.7;color:#0B1021;word-break:break-all;">${e(
+          params.registerUrl
+        )}</p>`,
+    }) +
+    infoBox({
+      title: "Právní informace",
+      bodyHtml: `<p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#64748B;">
+        <a href="${safeHref(params.gdprUrl)}" target="_blank" class="link-hover" style="color:#5A4BFF;text-decoration:underline;">Zásady zpracování osobních údajů</a>
+        &nbsp; • &nbsp;
+        <a href="${safeHref(params.termsUrl)}" target="_blank" class="link-hover" style="color:#5A4BFF;text-decoration:underline;">Obchodní podmínky</a>
+      </p>`,
+    });
+
+  return buildTemplate({
+    subject,
+    preheader: "Váš přístup do klientské zóny Aidvisora je připravený.",
+    badge: "Klientská zóna",
+    headline: "Váš přístup do Aidvisory je připravený",
+    bodyHtml,
+    secondaryBoxHtml,
+  });
 }
 
 export function internalSummaryTemplate(params: {
@@ -447,16 +704,153 @@ export function internalSummaryTemplate(params: {
   overdueTaskCount: number;
   blockedPaymentCount: number;
 }) {
-  const html = layout(`
-    <h2 style="font-size: 16px; margin: 0 0 12px;">Denní souhrn – ${params.summaryDate}</h2>
-    <p style="font-size: 14px; line-height: 1.5;">Dobrý den, ${params.advisorName},</p>
-    <table style="font-size: 14px; border-collapse: collapse;">
-      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Urgentní položky:</td><td><strong>${params.urgentCount}</strong></td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Čekající review:</td><td><strong>${params.pendingReviewCount}</strong></td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Úkoly po termínu:</td><td><strong>${params.overdueTaskCount}</strong></td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; color: #676879;">Blokované platby:</td><td><strong>${params.blockedPaymentCount}</strong></td></tr>
-    </table>
-    <p style="font-size: 14px; margin-top: 12px;">Přihlaste se do Aidvisora pro detail.</p>
-  `);
-  return { subject: `Denní souhrn – ${params.summaryDate}`, html };
+  const subject = `Denní souhrn – ${params.summaryDate}`;
+
+  const bodyHtml = [
+    greeting(params.advisorName),
+    paragraph(
+      `níže najdete rychlý přehled klíčových položek za den <strong style="color:#0B1021;">${e(params.summaryDate)}</strong>.`
+    ),
+    detailCard([
+      { label: "Urgentní položky", value: e(params.urgentCount), emphasize: true },
+      { label: "Čekající review", value: e(params.pendingReviewCount), emphasize: true },
+      { label: "Úkoly po termínu", value: e(params.overdueTaskCount), emphasize: true },
+      { label: "Blokované platby", value: e(params.blockedPaymentCount), emphasize: true },
+    ]),
+    paragraph("Pro detailní přehled a navazující akce se přihlaste do Aidvisory.", 0),
+    `<div style="margin:28px 0 0 0;text-align:center;">${ghostButton(
+      "Otevřít Aidvisoru",
+      normalizedSiteUrl()
+    )}</div>`,
+  ].join("");
+
+  return buildTemplate({
+    subject,
+    preheader: `Denní souhrn poradce ${params.advisorName} za ${params.summaryDate}.`,
+    badge: "Denní souhrn",
+    headline: "Dnešní klíčová čísla máte po ruce",
+    bodyHtml,
+  });
+}
+
+/** Pozvánka člena týmu do workspace (cron / team action). */
+export function staffTeamInviteTemplate(params: {
+  loginUrl: string;
+  tenantName?: string;
+  inviteeEmail: string;
+  roleLabel: string;
+  expiresInDays: number;
+}) {
+  const orgLabel = params.tenantName?.trim() ? params.tenantName.trim() : "váš tým";
+  const subject = `Pozvánka do týmu — ${orgLabel} — Aidvisora`;
+
+  const bodyHtml = [
+    greeting(),
+    paragraph(
+      `byli jste pozváni do workspace <strong style="color:#0B1021;">${e(orgLabel)}</strong> v roli <strong style="color:#0B1021;">${e(params.roleLabel)}</strong>.`,
+    ),
+    paragraph(
+      `Odkaz je platný <strong style="color:#0B1021;">${e(params.expiresInDays)} dní</strong>. Použijte prosím stejný e-mail jako v této zprávě: <strong style="color:#0B1021;">${e(params.inviteeEmail)}</strong>.`,
+      0,
+    ),
+    bulletList([
+      "Klikněte na tlačítko níže.",
+      "Přihlaste se nebo si založte účet (záložka podle potřeby).",
+      "Použijte výše uvedený e-mail.",
+    ]),
+    `<div style="margin:28px 0 0 0;text-align:center;">${brandedButton("Přijmout pozvánku", params.loginUrl)}</div>`,
+  ].join("");
+
+  const secondaryBoxHtml = infoBox({
+    title: "Když tlačítko nefunguje",
+    bodyHtml: `<p style="margin:0;font-family:'Inter',sans-serif;font-size:13px;line-height:1.7;color:#0B1021;word-break:break-all;">${e(params.loginUrl)}</p>`,
+  });
+
+  return buildTemplate({
+    subject,
+    preheader: `Pozvánka do workspace ${orgLabel} v Aidvisoře.`,
+    badge: "Tým",
+    headline: "Pozvánka do Aidvisory",
+    bodyHtml,
+    secondaryBoxHtml,
+  });
+}
+
+/** Připomenutí kalendářové události (poradce) — cron `event-reminders`. */
+export function calendarEventReminderAdvisorTemplate(params: {
+  eventTitle: string;
+  startLabel: string;
+  calendarUrl: string;
+}) {
+  const titleForSubject =
+    params.eventTitle.length > 80 ? `${params.eventTitle.slice(0, 77)}…` : params.eventTitle;
+
+  const bodyHtml = [
+    greeting(),
+    paragraph("blíží se aktivita v kalendáři, kterou máte v Aidvisoře naplánovanou."),
+    detailCard([
+      { label: "Událost", value: e(params.eventTitle), emphasize: true },
+      { label: "Začátek", value: e(params.startLabel) },
+    ]),
+    `<div style="margin:28px 0 0 0;text-align:center;">${brandedButton("Otevřít kalendář", params.calendarUrl)}</div>`,
+  ].join("");
+
+  return buildTemplate({
+    subject: `Připomenutí: ${titleForSubject}`,
+    preheader: `${params.eventTitle} — začátek ${params.startLabel}`,
+    badge: "Kalendář",
+    headline: "Blíží se nadcházející aktivita",
+    bodyHtml,
+  });
+}
+
+/** Servisní připomínka klientovi — cron `service-reminders` (ne `serviceReminderTemplate` pro poradce). */
+export function clientServiceDueReminderTemplate(params: {
+  firstName: string | null;
+  lastName: string | null;
+  nextServiceDue: string;
+}) {
+  const displayName = [params.firstName, params.lastName].filter(Boolean).join(" ").trim();
+
+  const bodyHtml = [
+    greeting(displayName || undefined),
+    paragraph(
+      `připomínáme, že máte naplánovaný <strong style="color:#0B1021;">servisní termín</strong> (${e(params.nextServiceDue)}). Pro domluvení detailů se obraťte na svého poradce.`,
+      0,
+    ),
+  ].join("");
+
+  return buildTemplate({
+    subject: "Připomínka servisního termínu – Aidvisora",
+    preheader: `Servisní termín ${params.nextServiceDue}.`,
+    badge: "Servis",
+    headline: "Servisní termín se blíží",
+    bodyHtml,
+  });
+}
+
+/** E-mail s přílohou platebního PDF — `sendPaymentPdfToClient`. */
+export function paymentPdfAttachmentClientTemplate(params: {
+  firstName: string | null;
+  lastName: string | null;
+  unsubscribeUrl: string;
+}) {
+  const displayName = [params.firstName, params.lastName].filter(Boolean).join(" ").trim();
+
+  const bodyHtml = [
+    greeting(displayName || undefined),
+    paragraph(
+      `v příloze tohoto e-mailu naleznete <strong style="color:#0B1021;">platební instrukce</strong> ve formátu PDF.`,
+      0,
+    ),
+    unsubscribeLine(params.unsubscribeUrl),
+  ].join("");
+
+  return buildTemplate({
+    subject: "Platební instrukce – Aidvisora",
+    preheader: "Platební instrukce v příloze.",
+    badge: "Platba",
+    headline: "Platební instrukce v příloze",
+    bodyHtml,
+  });
 }
