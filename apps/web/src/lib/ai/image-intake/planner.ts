@@ -20,6 +20,8 @@ import type {
   ExtractedFactBundle,
   ReviewHandoffRecommendation,
   DocumentMultiImageResult,
+  ImageActionAuthorityLevel,
+  IntentContract,
 } from "./types";
 import { safeOutputModeForUncertainInput } from "./guardrails";
 import {
@@ -52,6 +54,106 @@ function makeAction(
   };
 }
 
+function authorityRank(level: ImageActionAuthorityLevel): number {
+  switch (level) {
+    case "preview_only":
+      return 0;
+    case "note":
+      return 1;
+    case "attach":
+      return 2;
+    case "update_contact":
+      return 3;
+    case "create_task":
+      return 4;
+  }
+}
+
+function actionRank(action: ImageIntakeActionCandidate): number {
+  switch (action.writeAction) {
+    case "createInternalNote":
+      return 1;
+    case "attachDocumentToClient":
+      return 2;
+    case "updateContact":
+      return 3;
+    case "createTask":
+      return 4;
+    default:
+      return 4;
+  }
+}
+
+export function buildIntentContract(
+  binding: ClientBindingResult,
+  intent?: ParsedExplicitIntent | null,
+): IntentContract {
+  const evidence: string[] = [];
+  if (intent?.clientName) evidence.push(`explicit_client:${intent.clientName}`);
+  if (intent?.requestedFields.length) evidence.push(`fields:${intent.requestedFields.join(",")}`);
+  if (binding.source) evidence.push(`binding_source:${binding.source}`);
+
+  let userGoal: IntentContract["userGoal"] = "unknown";
+  let allowedActionLevel: ImageActionAuthorityLevel = "preview_only";
+  if (intent?.operation === "create_note") {
+    userGoal = "create_note";
+    allowedActionLevel = "note";
+  } else if (intent?.operation === "update_contact") {
+    userGoal = "update_contact";
+    allowedActionLevel =
+      intent.mentionsCrmDestination || intent.mentionsClientPlacement || intent.requestedFields.length >= 2
+        ? "update_contact"
+        : "preview_only";
+  } else if (intent?.operation === "attach_to_client" || intent?.mentionsClientPlacement) {
+    userGoal = "attach_to_client";
+    allowedActionLevel = "attach";
+  } else if (intent?.operation === "create_task" || intent?.operation === "create_followup") {
+    userGoal = "create_task";
+    allowedActionLevel = "create_task";
+  } else if (intent?.operation === "create_contact") {
+    userGoal = "create_contact";
+    allowedActionLevel = "update_contact";
+  } else if (intent?.operation === "portal_payment_update") {
+    userGoal = "portal_payment_update";
+    allowedActionLevel = "update_contact";
+  } else if (intent?.operation === "draft_reply") {
+    userGoal = "draft_reply";
+    allowedActionLevel = "preview_only";
+  } else if (intent?.hasExplicitTarget || intent?.requestedFields.length) {
+    userGoal = "summarize";
+    allowedActionLevel = "note";
+  } else {
+    userGoal = "understand_image";
+    allowedActionLevel = "create_task";
+  }
+
+  const targetEntity: IntentContract["targetEntity"] =
+    intent?.clientName ? "explicit_client"
+    : binding.source === "session_context" || binding.source === "ui_context" ? "active_client"
+    : binding.source === "crm_match" || binding.source === "image_signal" ? "image_client"
+    : "unknown";
+
+  return {
+    userGoal,
+    targetEntity,
+    allowedActionLevel,
+    requiresExplicitConfirmation: allowedActionLevel !== "preview_only",
+    explanation:
+      allowedActionLevel === "preview_only"
+        ? "Uživatel zatím neřekl dost jasně, co má asistent s obrázkem provést."
+        : "Uživatel výslovně popsal cílovou CRM akci nebo její bezpečný ekvivalent.",
+    evidence,
+  };
+}
+
+function clampActionsByAuthority(
+  actions: ImageIntakeActionCandidate[],
+  authority: ImageActionAuthorityLevel,
+): ImageIntakeActionCandidate[] {
+  const maxRank = authorityRank(authority);
+  return actions.filter((action) => actionRank(action) <= maxRank);
+}
+
 // ---------------------------------------------------------------------------
 // Output mode resolution from classification
 // ---------------------------------------------------------------------------
@@ -62,6 +164,7 @@ function resolveOutputMode(
   intent?: ParsedExplicitIntent | null,
   factBundle?: ExtractedFactBundle | null,
 ): ImageOutputMode {
+  const contract = buildIntentContract(binding, intent);
   if (classification.inputType === "general_unusable_image") {
     return "no_action_archive_only";
   }
@@ -86,7 +189,9 @@ function resolveOutputMode(
     intent?.operation === "update_contact" &&
     (binding.state === "bound_client_confident" || binding.state === "bound_case_confident")
   ) {
-    return "contact_update_from_image";
+    return contract.allowedActionLevel === "update_contact"
+      ? "contact_update_from_image"
+      : "structured_image_fact_intake";
   }
 
   // When user explicitly targets CRM extraction and has a client, allow structured mode
@@ -176,11 +281,8 @@ export function maybeUpgradeToContactUpdate(
   ).length;
 
   const explicitCrmIntent =
-    intent?.operation === "update_contact" ||
-    intent?.verb === "assign" ||
-    intent?.verb === "fill" ||
-    intent?.verb === "save" ||
-    intent?.verb === "update";
+    intent?.operation === "update_contact" &&
+    (intent.mentionsCrmDestination || intent.mentionsClientPlacement || intent.requestedFields.length >= 2);
 
   if (contactFieldCount >= 3 || (contactFieldCount >= 1 && explicitCrmIntent)) {
     return "contact_update_from_image";
@@ -193,7 +295,10 @@ export function maybeUpgradeToContactUpdate(
 // Action planning by output mode
 // ---------------------------------------------------------------------------
 
-function planClientMessageUpdate(binding: ClientBindingResult): ImageIntakeActionCandidate[] {
+function planClientMessageUpdate(
+  binding: ClientBindingResult,
+  contract: IntentContract,
+): ImageIntakeActionCandidate[] {
   const actions: ImageIntakeActionCandidate[] = [
     makeAction(
       "create_internal_note",
@@ -202,18 +307,24 @@ function planClientMessageUpdate(binding: ClientBindingResult): ImageIntakeActio
       "Screenshot klientské komunikace — doporučuji zaznamenat obsah.",
       { _imageIntakeOutputMode: "client_message_update" },
     ),
-    makeAction(
-      "create_task",
-      "createTask",
-      "Vytvořit úkol na základě zprávy klienta",
-      "Pokud zpráva obsahuje požadavek, vytvoř úkol.",
-      { _imageIntakeOutputMode: "client_message_update" },
-    ),
   ];
 
+  if (contract.allowedActionLevel === "create_task") {
+    actions.push(
+      makeAction(
+        "create_task",
+        "createTask",
+        "Vytvořit úkol na základě zprávy klienta",
+        "Uživatel explicitně chce follow-up nebo úkol.",
+        { _imageIntakeOutputMode: "client_message_update" },
+      ),
+    );
+  }
+
   if (
-    binding.state === "bound_client_confident" ||
-    binding.state === "bound_case_confident"
+    contract.allowedActionLevel !== "preview_only" &&
+    (binding.state === "bound_client_confident" ||
+      binding.state === "bound_case_confident")
   ) {
     actions.push(
       makeAction(
@@ -568,6 +679,7 @@ export function buildActionPlanV2(
   intent?: ParsedExplicitIntent | null,
 ): ImageIntakeActionPlan {
   const base = buildActionPlanV1(classification, binding, factBundle, intent);
+  const contract = buildIntentContract(binding, intent);
 
   // Enrich note actions with extracted facts summary
   if (factBundle.facts.length > 0) {
@@ -593,7 +705,7 @@ export function buildActionPlanV2(
     });
 
     // If facts include required_follow_up or urgency, ensure task action is present
-    const hasUrgentFollowUp = factBundle.facts.some(
+    const hasUrgentFollowUp = contract.allowedActionLevel === "create_task" && factBundle.facts.some(
       (f) => f.factKey === "required_follow_up" && f.value,
     );
     const hasTask = base.recommendedActions.some((a) => a.writeAction === "createTask");
@@ -617,6 +729,8 @@ export function buildActionPlanV2(
 
   // Attach draft reply to plan (preview-only)
   base.draftReplyText = draftReplyText;
+  base.actionAuthority = contract.allowedActionLevel;
+  base.recommendedActions = clampActionsByAuthority(base.recommendedActions, contract.allowedActionLevel);
 
   // Enrich whyThisAction with fact extraction note
   if (factBundle.extractionSource === "multimodal_pass" && factBundle.facts.length > 0) {
@@ -686,12 +800,13 @@ export function buildActionPlanV1(
   intent?: ParsedExplicitIntent | null,
 ): ImageIntakeActionPlan {
   const outputMode = resolveOutputMode(classification, binding, intent, factBundle);
+  const contract = buildIntentContract(binding, intent);
 
   let recommendedActions: ImageIntakeActionCandidate[] = [];
 
   switch (outputMode) {
     case "client_message_update":
-      recommendedActions = planClientMessageUpdate(binding);
+      recommendedActions = planClientMessageUpdate(binding, contract);
       break;
     case "structured_image_fact_intake":
       recommendedActions = planStructuredFactIntake(binding);
@@ -727,13 +842,14 @@ export function buildActionPlanV1(
   const needsAdvisorInput =
     outputMode === "ambiguous_needs_input" ||
     outputMode === "no_action_archive_only" ||
+    contract.allowedActionLevel === "preview_only" ||
     binding.state === "insufficient_binding" ||
     binding.state === "multiple_candidates" ||
     binding.state === "weak_candidate";
 
   return {
     outputMode,
-    recommendedActions,
+    recommendedActions: clampActionsByAuthority(recommendedActions, contract.allowedActionLevel),
     draftReplyText: null,
     whyThisAction: whyThisAction(outputMode, classification),
     whyNotOtherActions:
@@ -741,9 +857,12 @@ export function buildActionPlanV1(
         ? "Obrázek neposkytuje použitelné CRM informace."
         : outputMode === "ambiguous_needs_input"
           ? "Bez jistého klienta nebo jasné klasifikace nelze bezpečně navrhovat write akce."
+          : contract.allowedActionLevel === "preview_only"
+            ? "Uživatel neřekl dost jasně, zda chce jen náhled, poznámku, přiložení nebo zápis do CRM."
           : null,
     needsAdvisorInput,
     safetyFlags: binding.warnings.length > 0 ? binding.warnings : [],
+    actionAuthority: contract.allowedActionLevel,
   };
 }
 

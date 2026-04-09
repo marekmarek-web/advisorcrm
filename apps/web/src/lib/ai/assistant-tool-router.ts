@@ -170,6 +170,27 @@ type RecentAssistantPromptMessage = {
   content: string;
 };
 
+type ResolvedAssistantContextInput = {
+  activeClientId?: string | null;
+  lockedClientId?: string | null;
+  recentMessages?: RecentAssistantPromptMessage[];
+  conversationDigest?: string | null;
+  pendingImageIntent?: boolean;
+  lastImagePreviewSummary?: string | null;
+};
+
+function buildResolvedContextBlock(ctx: ResolvedAssistantContextInput | undefined): string {
+  if (!ctx) return "";
+  const lines = [
+    ctx.activeClientId ? `Aktivní klient v UI: ${ctx.activeClientId}` : "",
+    ctx.lockedClientId ? `Zamčený klient v session: ${ctx.lockedClientId}` : "",
+    ctx.pendingImageIntent ? "Čeká nevyřešený image-intake dotaz klienta nebo záměru." : "",
+    ctx.lastImagePreviewSummary ? `Poslední multimodální náhled: ${sanitizePromptLine(ctx.lastImagePreviewSummary, 240)}` : "",
+    ctx.conversationDigest?.trim() ? `Stručný digest vlákna: ${sanitizePromptLine(ctx.conversationDigest, 400)}` : "",
+  ].filter(Boolean);
+  return lines.length > 0 ? `[Sjednocený kontext]\n${lines.join("\n")}` : "";
+}
+
 type VisionAssistantReply = {
   reply: string;
 };
@@ -890,6 +911,7 @@ export async function routeAssistantMessageCanonical(
     intentPromptAugment?: string;
     recentMessages?: RecentAssistantPromptMessage[];
     imageAssets?: ImageAssetPayload[];
+    resolvedContextBlock?: string;
   },
 ): Promise<AssistantResponse> {
   incrementMessageCount(session);
@@ -952,6 +974,8 @@ export async function routeAssistantMessageCanonical(
 
   const canonicalIntent = await extractCanonicalIntent(message, {
     historyPrefix: options?.intentPromptAugment,
+    recentMessages: options?.recentMessages,
+    resolvedContextBlock: options?.resolvedContextBlock,
   });
 
   const hasPendingDisambiguation = Boolean(session.pendingClientDisambiguation);

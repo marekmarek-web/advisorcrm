@@ -161,7 +161,10 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       const draftNote = result.response.actionPlan.draftReplyText
         ? "\n\n_Draft odpovědi je připraven k revizi (preview-only — nic nebylo odesláno)._"
         : "";
-      return `Rozpoznal jsem screenshot klientské komunikace${client}. Navrhuji zaznamenat obsah a případně vytvořit úkol nebo poznámku.${factText}${draftNote}`;
+      const previewOnly = result.response.actionPlan.actionAuthority === "preview_only";
+      return previewOnly
+        ? `Rozpoznal jsem screenshot klientské komunikace${client}. Zatím ukazuji jen náhled obsahu, protože jste výslovně neřekl(a), jestli z toho mám udělat poznámku, úkol nebo přiložení.${factText}${draftNote}`
+        : `Rozpoznal jsem screenshot klientské komunikace${client}. Navrhuji zaznamenat obsah a případně vytvořit úkol nebo poznámku.${factText}${draftNote}`;
     }
 
     case "structured_image_fact_intake": {
@@ -192,9 +195,14 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
           : `Na obrázku${client} jsem zatím nenašel použitelné údaje pro zápis do CRM.`;
         return `${intro}${bindHintForUpdate}\n\nZkuste nahrát ostřejší screenshot nebo přiložit další část formuláře.`;
       }
+      const previewOnly = result.response.actionPlan.actionAuthority === "preview_only";
       const intro = isForm
-        ? `Našel jsem údaje z formuláře a připravil návrh k uložení do CRM${client}.`
-        : `Rozpoznal jsem obrázek s ${typeLabel}. Navrhuji uložit klíčové informace${client}.`;
+        ? previewOnly
+          ? `Našel jsem údaje z formuláře${client}, ale zatím je ukazuji jen v náhledu.`
+          : `Našel jsem údaje z formuláře a připravil návrh k uložení do CRM${client}.`
+        : previewOnly
+          ? `Rozpoznal jsem obrázek s ${typeLabel}. Zatím ukazuji jen náhled rozpoznaných údajů${client}.`
+          : `Rozpoznal jsem obrázek s ${typeLabel}. Navrhuji uložit klíčové informace${client}.`;
       return `${intro}${factText}${missing}${bindHintForUpdate}`;
     }
 

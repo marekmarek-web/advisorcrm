@@ -181,6 +181,37 @@ describe("processImageIntake", () => {
     expect(result.response.clientBinding.clientLabel).toBe("Bohuslav Plachý");
   });
 
+  it("keeps preview-only mode for implicit field extraction without explicit CRM target", async () => {
+    mockModel("photo_or_scan_document", 0.82);
+    const result = await processImageIntake(
+      makeRequest({
+        activeClientId: CLIENT_ID,
+        accompanyingText: "doplň rodné číslo",
+      }),
+      null,
+    );
+
+    expect(result.response.actionPlan.actionAuthority).toBe("preview_only");
+    expect(result.response.actionPlan.recommendedActions).toEqual([]);
+    expect(result.response.actionPlan.needsAdvisorInput).toBe(true);
+  });
+
+  it("emits explainable decision trace fields", async () => {
+    mockModel("photo_or_scan_document", 0.82);
+    const result = await processImageIntake(
+      makeRequest({
+        activeClientId: CLIENT_ID,
+        accompanyingText: "ulož to ke klientovi do CRM",
+      }),
+      null,
+    );
+
+    expect(result.response.trace).toMatchObject({
+      clientBindingState: expect.any(String),
+      outputMode: expect.any(String),
+    });
+  });
+
   it("returns no_action for unsupported MIME", async () => {
     const result = await processImageIntake(
       makeRequest({ assets: [makeAsset({ mimeType: "application/pdf" })] }),
@@ -192,16 +223,16 @@ describe("processImageIntake", () => {
     expect(result.response.actionPlan.outputMode).toBe("no_action_archive_only");
   });
 
-  it("returns ambiguous output mode when classifier is uncertain or no client", async () => {
+  it("keeps communication screenshot in preview-only, not write-ready, when no client is bound", async () => {
     mockModel("mixed_or_uncertain_image", 0.3);
     // Use neutral filename (no hint) to ensure model layer runs and returns uncertain
     const result = await processImageIntake(
-      makeRequest({ assets: [makeAsset({ originalFilename: "neutral_attach.jpg" })] }),
+      makeRequest({ assets: [makeAsset({ originalFilename: "neutral_attach.jpg" })], accompanyingText: null }),
       null,
     );
 
-    expect(result.response.classification?.inputType).toBe("mixed_or_uncertain_image");
-    expect(result.response.actionPlan.outputMode).toBe("ambiguous_needs_input");
+    expect(result.response.actionPlan.outputMode).toBe("client_message_update");
+    expect(result.previewPayload.writeReady).toBe(false);
   });
 
   it("trace contains all required fields", async () => {
@@ -220,13 +251,15 @@ describe("processImageIntake", () => {
     expect(trace.timestamp).toBeInstanceOf(Date);
   });
 
-  it("no actions for ambiguous / no client", async () => {
+  it("ambiguous / no client keeps safe unlinked note fallback", async () => {
     mockModel("mixed_or_uncertain_image", 0.25);
     const result = await processImageIntake(
-      makeRequest({ assets: [makeAsset({ originalFilename: "neutral_attach.jpg" })] }),
+      makeRequest({ assets: [makeAsset({ originalFilename: "neutral_attach.jpg" })], accompanyingText: null }),
       null,
     );
-    expect(result.executionPlan).toBeNull();
+    expect(result.executionPlan).not.toBeNull();
+    expect(result.response.actionPlan.outputMode).toBe("ambiguous_needs_input");
+    expect(result.response.actionPlan.recommendedActions.some((a) => a.writeAction === "createInternalNote")).toBe(true);
   });
 });
 

@@ -39,12 +39,13 @@ import type {
   MultiImageStitchingResult,
   ReviewHandoffRecommendation,
   CaseBindingResultV2,
+  IntentContract,
 } from "./types";
 import { emptyFactBundle, emptyActionPlan } from "./types";
 import { runBatchPreflight } from "./preflight";
 import { enforceImageIntakeGuardrails } from "./guardrails";
 import { classifyBatch } from "./classifier";
-import { buildActionPlanV4, buildIdentityContactIntakeActionPlan, maybeUpgradeToContactUpdate, enrichFactsWithCrmDiff } from "./planner";
+import { buildActionPlanV4, buildIdentityContactIntakeActionPlan, maybeUpgradeToContactUpdate, enrichFactsWithCrmDiff, buildIntentContract } from "./planner";
 import {
   detectIdentityContactIntakeSignals,
   mapFactBundleToCreateContactDraft,
@@ -129,6 +130,22 @@ function shouldForceMultimodalForExplicitIntent(
     classification.inputType === "general_unusable_image" ||
     classification.inputType === "supporting_reference_image"
   );
+}
+
+function buildResolvedContextFromSession(
+  request: ImageIntakeRequest,
+  session: AssistantSession | null,
+): NonNullable<ImageIntakeRequest["resolvedContext"]> {
+  return {
+    activeClientId: request.activeClientId,
+    lockedClientId: session?.lockedClientId ?? null,
+    recentMessages: [],
+    conversationDigest: null,
+    pendingImageIntent: Boolean((session as AssistantSession | null)?.pendingImageIntakeResolution),
+    lastUserGoal: null,
+    lastClientReference: null,
+    lastImagePreviewSummary: null,
+  };
 }
 
 /**
@@ -380,6 +397,23 @@ export async function processImageIntake(
   let classifierUsedModel = false;
   let earlyExit = false;
   const parsedIntent = parseExplicitIntent(request.accompanyingText);
+  const resolvedContext = request.resolvedContext ?? buildResolvedContextFromSession(request, session);
+  let intentContract: IntentContract = buildIntentContract(
+    {
+      state: request.activeClientId ? "bound_client_confident" : "insufficient_binding",
+      clientId: request.activeClientId,
+      clientLabel: null,
+      confidence: request.activeClientId ? 0.7 : 0,
+      candidates: [],
+      source: request.activeClientId ? "ui_context" : "none",
+      warnings: [],
+      reason: request.activeClientId
+        ? "Použit aktivní klient z request contextu před plným bindingem."
+        : "Před plným bindingem není znám klient.",
+      conflicts: [],
+    },
+    parsedIntent,
+  );
 
   if (batchPreflight.eligible) {
     const eligibleAssets = batchPreflight.assetResults
@@ -500,6 +534,7 @@ export async function processImageIntake(
           asset.storageUrl,
           classification.inputType,
           request.accompanyingText,
+          intentContract,
         );
         if (pass.result) {
           bundleMap.set(id, extractFactsFromMultimodalPass(pass.result, id));
@@ -547,6 +582,7 @@ export async function processImageIntake(
       primaryAsset!.storageUrl!,
       classification.inputType,
       request.accompanyingText,
+      intentContract,
     );
     multimodalResult = passDecision.result;
     multimodalUsed = true;
@@ -594,6 +630,7 @@ export async function processImageIntake(
         ),
     };
   }
+  intentContract = buildIntentContract(clientBinding, parsedIntent);
 
   // 8. Case/opportunity binding v2 (Phase 4 — DB lookup when client is known)
   let resolvedClientId = clientBinding.clientId;
@@ -832,7 +869,19 @@ export async function processImageIntake(
   if (upgradedMode !== actionPlan.outputMode) {
     const boostedIntent = parsedIntent
       ? { ...parsedIntent, operation: "update_contact" as const }
-      : { clientName: null, verb: "update" as const, destination: "crm" as const, operation: "update_contact" as const, requestedFields: [], hasExplicitTarget: true, raw: "" };
+      : {
+          clientName: null,
+          verb: "update" as const,
+          destination: "crm" as const,
+          operation: "update_contact" as const,
+          requestedFields: [],
+          hasExplicitTarget: true,
+          mentionsClientPlacement: false,
+          mentionsCrmDestination: true,
+          mentionsTaskIntent: false,
+          mentionsNoteIntent: false,
+          raw: "",
+        };
     actionPlan = buildActionPlanV4(
       classification,
       clientBinding,
@@ -907,7 +956,19 @@ export async function processImageIntake(
       );
       const boostedIntent = parsedIntent
         ? { ...parsedIntent, operation: "update_contact" as const }
-        : { clientName: null, verb: "update" as const, destination: "crm" as const, operation: "update_contact" as const, requestedFields: [], hasExplicitTarget: true, raw: "" };
+        : {
+            clientName: null,
+            verb: "update" as const,
+            destination: "crm" as const,
+            operation: "update_contact" as const,
+            requestedFields: [],
+            hasExplicitTarget: true,
+            mentionsClientPlacement: false,
+            mentionsCrmDestination: true,
+            mentionsTaskIntent: false,
+            mentionsNoteIntent: false,
+            raw: "",
+          };
       actionPlan = buildActionPlanV4(
         classification, clientBinding, factBundle, draftReplyText,
         reviewHandoff, documentSetResult, boostedIntent,

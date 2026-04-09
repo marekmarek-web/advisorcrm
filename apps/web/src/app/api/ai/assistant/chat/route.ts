@@ -46,6 +46,7 @@ import {
   PENDING_IMAGE_INTAKE_METADATA_KEY,
 } from "@/lib/ai/image-intake/pending-resolution-metadata";
 import { buildImageAssetsForUserMessageMeta } from "@/lib/ai/assistant-user-message-images-meta";
+import type { ResolvedAssistantContext } from "@/lib/ai/image-intake/types";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,27 @@ function correlationHeaders(traceId: string, assistantRunId: string): Record<str
   return {
     "x-trace-id": traceId,
     "x-assistant-run-id": assistantRunId,
+  };
+}
+
+function buildResolvedAssistantContext(params: {
+  activeContext: Record<string, unknown>;
+  session: ReturnType<typeof getOrCreateSession>;
+  recentMessages: Array<{ role: "user" | "assistant" | "system"; content: string; meta?: Record<string, unknown> | null }>;
+}): ResolvedAssistantContext {
+  const lastUserMessage = [...params.recentMessages].reverse().find((m) => m.role === "user");
+  const lastAssistantMessage = [...params.recentMessages].reverse().find((m) => m.role === "assistant");
+  return {
+    activeClientId: typeof params.activeContext?.clientId === "string" ? params.activeContext.clientId : null,
+    lockedClientId: params.session.lockedClientId ?? null,
+    recentMessages: params.recentMessages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
+    conversationDigest: params.session.conversationDigest ?? null,
+    pendingImageIntent: Boolean(params.session.pendingImageIntakeResolution),
+    lastUserGoal: lastUserMessage?.content ?? null,
+    lastClientReference:
+      typeof params.activeContext?.clientId === "string" ? params.activeContext.clientId
+      : params.session.lockedClientId ?? null,
+    lastImagePreviewSummary: lastAssistantMessage?.content ?? null,
   };
 }
 
@@ -255,6 +277,17 @@ export async function POST(request: Request) {
           }
           session.activeChannel = channel;
           session.contextLock.activeChannel = channel;
+          const resolvedAssistantContext = buildResolvedAssistantContext({
+            activeContext,
+            session,
+            recentMessages,
+          });
+          const resolvedContextBlock = [
+            resolvedAssistantContext.activeClientId ? `Aktivní klient v UI: ${resolvedAssistantContext.activeClientId}` : "",
+            resolvedAssistantContext.lockedClientId ? `Zamčený klient v session: ${resolvedAssistantContext.lockedClientId}` : "",
+            resolvedAssistantContext.pendingImageIntent ? "Čeká nedořešený image-intake kontext." : "",
+            resolvedAssistantContext.lastImagePreviewSummary ? `Poslední odpověď asistenta: ${resolvedAssistantContext.lastImagePreviewSummary.slice(0, 220)}` : "",
+          ].filter(Boolean).join("\n");
 
           logAssistantTelemetry(AssistantTelemetryAction.HYDRATE_DONE, {
             hadHydrationRow: Boolean(hydrated),
@@ -341,6 +374,7 @@ export async function POST(request: Request) {
                     channel,
                     accompanyingText: message || null,
                     assetsTruncated: imageAssetsTruncated,
+                    resolvedContext: resolvedAssistantContext,
                   },
                 );
               } else {
@@ -356,6 +390,7 @@ export async function POST(request: Request) {
                           role: row.role,
                           content: row.content,
                         })),
+                        resolvedContextBlock,
                         imageAssets: rawImageAssets.map((asset) => ({
                           url: asset.url ?? "",
                           mimeType: asset.mimeType,
@@ -409,6 +444,7 @@ export async function POST(request: Request) {
                 channel,
                 accompanyingText: message || null,
                 assetsTruncated: imageAssetsTruncated,
+                resolvedContext: resolvedAssistantContext,
               },
             );
           } else if (orchestration === "canonical" && (confirmExecution || cancelExecution)) {
@@ -447,6 +483,7 @@ export async function POST(request: Request) {
                       role: row.role,
                       content: row.content,
                     })),
+                    resolvedContextBlock,
                     imageAssets: rawImageAssets.map((asset) => ({
                       url: asset.url ?? "",
                       mimeType: asset.mimeType,

@@ -93,6 +93,15 @@ describe("classifyImageInput — deterministic (Layer 1)", () => {
     // text hint → bank, but no filename hint → uses model for confirmation
     expect(result.result.inputType).toBe("screenshot_bank_or_finance_info");
   });
+
+  it("does not force CRM document lane for loose field-only wording", async () => {
+    mockModel("mixed_or_uncertain_image", 0.45);
+    const result = await classifyImageInput(
+      makeAsset({ originalFilename: "neutral_attach.jpg" }),
+      "doplň rodné číslo",
+    );
+    expect(result.result.inputType).not.toBe("photo_or_scan_document");
+  });
 });
 
 describe("classifyImageInput — model layer (Layer 2)", () => {

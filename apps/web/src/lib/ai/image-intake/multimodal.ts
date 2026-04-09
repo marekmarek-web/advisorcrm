@@ -15,7 +15,7 @@
 
 import { createResponseStructuredWithImage, createResponseStructuredWithImages } from "@/lib/openai";
 import { IMAGE_INPUT_TYPES } from "./types";
-import type { ImageInputType, MultimodalCombinedPassResult, MultimodalFactItem } from "./types";
+import type { ImageInputType, MultimodalCombinedPassResult, MultimodalFactItem, IntentContract } from "./types";
 import { getImageIntakeMultimodalConfig } from "./feature-flag";
 
 // ---------------------------------------------------------------------------
@@ -88,13 +88,21 @@ type RawCombinedOutput = {
 // System prompt builder per input type
 // ---------------------------------------------------------------------------
 
-function buildCombinedPassPrompt(inputTypeHint: ImageInputType | null, accompanyingText: string | null): string {
+function buildCombinedPassPrompt(
+  inputTypeHint: ImageInputType | null,
+  accompanyingText: string | null,
+  intentContract?: IntentContract | null,
+): string {
   const hintLine = inputTypeHint ? `Předpokládaný typ vstupu: ${inputTypeHint}.` : "";
   const textLine = accompanyingText?.trim()
     ? `Doprovodná zpráva poradce: "${accompanyingText.trim().slice(0, 300)}"`
     : "";
+  const understandingMode = !intentContract || intentContract.allowedActionLevel === "preview_only";
+  const contractLine = intentContract
+    ? `Cíl uživatele: ${intentContract.userGoal}; povolená úroveň akce: ${intentContract.allowedActionLevel}.`
+    : "";
 
-  const factInstructions = buildFactInstructions(inputTypeHint);
+  const factInstructions = buildFactInstructions(inputTypeHint, understandingMode);
 
   return [
     "Jsi AI systém pro zpracování obrazových vstupů finančního poradce.",
@@ -102,6 +110,7 @@ function buildCombinedPassPrompt(inputTypeHint: ImageInputType | null, accompany
     "",
     hintLine,
     textLine,
+    contractLine,
     "",
     "Klasifikuj obrázek jako jeden z typů:",
     "- screenshot_client_communication: WhatsApp, SMS, email, Messenger",
@@ -122,12 +131,15 @@ function buildCombinedPassPrompt(inputTypeHint: ImageInputType | null, accompany
     "- source=observed: přímo čitelné z textu v obrázku",
     "- source=inferred: odvozené z kontextu/vizuálu, ne přímo čitelné",
     "- při nejistotě preferuj mixed_or_uncertain_image a nízkou confidence",
+    understandingMode
+      ? "- pokud není výslovný CRM pokyn, vrať raději stručné pochopení obrázku a minimální sadu faktů"
+      : "- CRM pole extrahuj jen pokud jsou jasně viditelná a odpovídají výslovnému cíli uživatele",
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-function buildFactInstructions(inputTypeHint: ImageInputType | null): string {
+function buildFactInstructions(inputTypeHint: ImageInputType | null, understandingMode: boolean): string {
   switch (inputTypeHint) {
     case "screenshot_client_communication":
       return [
@@ -176,6 +188,9 @@ function buildFactInstructions(inputTypeHint: ImageInputType | null): string {
         "- id_doc_personal_id: rodné číslo / číslo dokladu jen pokud čitelné (nebo null)",
         "- id_doc_email, id_doc_phone, id_doc_title: jen pokud na dokladu viditelné (nebo null)",
         "- id_doc_extra_notes: platnost dokladu, státní příslušnost, místo narození — text do poznámky (nebo null)",
+        ...(understandingMode
+          ? ["Pokud si nejsi jistý, vrať pouze document_summary a 1-3 klíčová fakta. CRM pole přidávej jen při zjevné formulářové obrazovce."]
+          : []),
         "Pokud obrázek vypadá jako screenshot CRM, portálu nebo administrativního systému s kontaktními / klientskými údaji, extrahuj navíc:",
         "- crm_first_name, crm_last_name: jméno a příjmení (nebo null)",
         "- crm_birth_date: datum narození ve formátu YYYY-MM-DD nebo DD.MM.YYYY (nebo null)",
@@ -197,6 +212,9 @@ function buildFactInstructions(inputTypeHint: ImageInputType | null): string {
       return [
         "Extrahuj libovolná relevantní fakta s klíči popisujícími jejich typ.",
         "Pokud typ vstup je nejasný, extrahuj maximálně 3 klíčová fakta.",
+        ...(understandingMode
+          ? ["V režimu porozumění se soustřeď na shrnutí a vynech CRM pole, pokud nejsou zjevně potřebná."]
+          : []),
         "Pokud obrázek vypadá jako screenshot CRM, portálu nebo administrativního systému s kontaktními údaji, extrahuj:",
         "- crm_first_name, crm_last_name: jméno a příjmení (nebo null)",
         "- crm_birth_date: datum narození (nebo null)",
@@ -331,9 +349,10 @@ export async function runCombinedMultimodalPass(
   imageUrl: string,
   inputTypeHint: ImageInputType | null,
   accompanyingText: string | null,
+  intentContract?: IntentContract | null,
 ): Promise<MultimodalPassDecision> {
   const config = getImageIntakeMultimodalConfig();
-  const prompt = buildCombinedPassPrompt(inputTypeHint, accompanyingText);
+  const prompt = buildCombinedPassPrompt(inputTypeHint, accompanyingText, intentContract);
 
   try {
     const response = await createResponseStructuredWithImage<RawCombinedOutput>(
@@ -367,6 +386,7 @@ export async function runMultiImageCombinedPass(
   imageUrls: string[],
   inputTypeHint: ImageInputType | null,
   accompanyingText: string | null,
+  intentContract?: IntentContract | null,
   maxImages = 3,
 ): Promise<MultimodalPassDecision & { imageCount: number }> {
   const cappedUrls = imageUrls.slice(0, Math.min(maxImages, 5));
@@ -375,12 +395,12 @@ export async function runMultiImageCombinedPass(
   }
 
   if (cappedUrls.length === 1) {
-    const single = await runCombinedMultimodalPass(cappedUrls[0]!, inputTypeHint, accompanyingText);
+    const single = await runCombinedMultimodalPass(cappedUrls[0]!, inputTypeHint, accompanyingText, intentContract);
     return { ...single, imageCount: 1 };
   }
 
   const config = getImageIntakeMultimodalConfig();
-  const prompt = buildCombinedPassPrompt(inputTypeHint, accompanyingText);
+  const prompt = buildCombinedPassPrompt(inputTypeHint, accompanyingText, intentContract);
 
   try {
     const response = await createResponseStructuredWithImages<RawCombinedOutput>(
@@ -400,7 +420,7 @@ export async function runMultiImageCombinedPass(
   } catch {
     // Fallback to primary image single pass
     try {
-      const fallback = await runCombinedMultimodalPass(cappedUrls[0]!, inputTypeHint, accompanyingText);
+      const fallback = await runCombinedMultimodalPass(cappedUrls[0]!, inputTypeHint, accompanyingText, intentContract);
       return { ...fallback, imageCount: 1 };
     } catch {
       return { result: fallbackCombinedResult(), usedModel: true, imageCount: 0 };

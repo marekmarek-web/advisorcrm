@@ -30,7 +30,7 @@ vi.mock("../image-intake/feature-flag", () => ({
 }));
 
 import { shouldRunMultimodalPass, runCombinedMultimodalPass } from "../image-intake/multimodal";
-import type { ImageInputType } from "../image-intake/types";
+import type { ImageInputType, IntentContract } from "../image-intake/types";
 import { createResponseStructuredWithImage } from "@/lib/openai";
 
 const mockCreateResponse = vi.mocked(createResponseStructuredWithImage);
@@ -122,6 +122,42 @@ describe("runCombinedMultimodalPass", () => {
     expect(result.result.possibleClientNameSignal).toBe("Jan Novák");
     expect(result.result.facts).toHaveLength(2);
     expect(result.result.draftReplyIntent).toBe("Potvrzení přijetí žádosti o refinancování");
+  });
+
+  it("passes understanding-first guidance when authority is preview_only", async () => {
+    mockCreateResponse.mockResolvedValueOnce({
+      text: "{}",
+      parsed: {
+        inputType: "photo_or_scan_document",
+        confidence: 0.7,
+        rationale: "doc",
+        actionabilityLevel: "low",
+        possibleClientNameSignal: null,
+        facts: [],
+        missingFields: [],
+        ambiguityReasons: [],
+        draftReplyIntent: null,
+      },
+      model: "gpt-4o-mini",
+    });
+
+    const contract: IntentContract = {
+      userGoal: "summarize",
+      targetEntity: "active_client",
+      allowedActionLevel: "preview_only",
+      requiresExplicitConfirmation: false,
+      explanation: "preview only",
+      evidence: [],
+    };
+
+    await runCombinedMultimodalPass(
+      "https://example.com/doc.jpg",
+      "photo_or_scan_document",
+      "doplň rodné číslo",
+      contract,
+    );
+
+    expect(mockCreateResponse.mock.calls[0]?.[1]).toContain("pokud není výslovný CRM pokyn");
   });
 
   it("returns fallback result on model error", async () => {

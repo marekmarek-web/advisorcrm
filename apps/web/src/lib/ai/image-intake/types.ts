@@ -168,6 +168,10 @@ export type ClientBindingResult = {
    */
   suppressedActiveClientId?: string | null;
   suppressedActiveClientLabel?: string | null;
+  /** Explainable binding reason for telemetry / UI copy decisions. */
+  reason?: string | null;
+  /** Conflicting signals that prevented a stronger binding. */
+  conflicts?: string[];
 };
 
 export type CaseBindingResult = {
@@ -305,6 +309,7 @@ export type ImageIntakeActionPlan = {
   whyNotOtherActions: string | null;
   needsAdvisorInput: boolean;
   safetyFlags: string[];
+  actionAuthority: ImageActionAuthorityLevel;
 };
 
 export function emptyActionPlan(outputMode: ImageOutputMode): ImageIntakeActionPlan {
@@ -316,8 +321,48 @@ export function emptyActionPlan(outputMode: ImageOutputMode): ImageIntakeActionP
     whyNotOtherActions: null,
     needsAdvisorInput: false,
     safetyFlags: [],
+    actionAuthority: "preview_only",
   };
 }
+
+export const IMAGE_ACTION_AUTHORITY_LEVELS = [
+  "preview_only",
+  "note",
+  "attach",
+  "update_contact",
+  "create_task",
+] as const;
+export type ImageActionAuthorityLevel = (typeof IMAGE_ACTION_AUTHORITY_LEVELS)[number];
+
+export type IntentContract = {
+  userGoal:
+    | "understand_image"
+    | "summarize"
+    | "create_note"
+    | "attach_to_client"
+    | "update_contact"
+    | "create_task"
+    | "create_contact"
+    | "portal_payment_update"
+    | "draft_reply"
+    | "unknown";
+  targetEntity: "active_client" | "explicit_client" | "image_client" | "unknown";
+  allowedActionLevel: ImageActionAuthorityLevel;
+  requiresExplicitConfirmation: boolean;
+  explanation: string;
+  evidence: string[];
+};
+
+export type ResolvedAssistantContext = {
+  activeClientId: string | null;
+  lockedClientId: string | null;
+  recentMessages: Array<{ role: "user" | "assistant"; content: string }>;
+  conversationDigest: string | null;
+  pendingImageIntent: boolean;
+  lastUserGoal: string | null;
+  lastClientReference: string | null;
+  lastImagePreviewSummary: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // K) Image intake request / response envelope
@@ -335,6 +380,16 @@ export type ImageIntakeRequest = {
   accompanyingText: string | null;
   /** Channel from which the intake was triggered. */
   channel: string | null;
+  resolvedContext?: ResolvedAssistantContext | null;
+};
+
+export type ImageIntakeRouteOptions = {
+  tenantId: string;
+  userId: string;
+  channel: string | null;
+  accompanyingText: string | null;
+  assetsTruncated?: boolean;
+  resolvedContext?: ResolvedAssistantContext | null;
 };
 
 export type ImageIntakeResponse = {

@@ -251,6 +251,29 @@ describe("Phase 4: assistant chat endpoint parity", () => {
     expect(json.message).toMatch(/více klientů|upřesněte/i);
   });
 
+  it("passes unified context into canonical intent extraction", async () => {
+    const extractSpy = vi.spyOn(await import("../assistant-intent-extract"), "extractCanonicalIntent");
+    vi.spyOn(entityResolution, "resolveEntities").mockResolvedValueOnce(
+      resolutionBase({
+        client: resolvedClient(CONTACT_A, "Jan Novák"),
+      }),
+    );
+
+    await postChat({
+      orchestration: "canonical",
+      message: "Udělej s tím něco",
+      activeContext: { clientId: CONTACT_A },
+    });
+
+    expect(extractSpy).toHaveBeenCalledWith(
+      "Udělej s tím něco",
+      expect.objectContaining({
+        recentMessages: expect.any(Array),
+        resolvedContextBlock: expect.stringContaining("Aktivní klient v UI"),
+      }),
+    );
+  });
+
   it("endpoint rating reply reports EUCS source when using life product rating", async () => {
     const { json } = await postChat({
       orchestration: "canonical",

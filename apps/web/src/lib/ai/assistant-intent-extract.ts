@@ -369,7 +369,20 @@ export async function extractAssistantIntent(message: string): Promise<Assistant
 export type ExtractCanonicalIntentOptions = {
   /** Prepended to the user message for the model only (DB / confirmation heuristics use raw message). */
   historyPrefix?: string;
+  recentMessages?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+  resolvedContextBlock?: string;
 };
+
+function buildStructuredRecentHistory(
+  messages: Array<{ role: "user" | "assistant" | "system"; content: string }> | undefined,
+): string {
+  if (!messages || messages.length === 0) return "";
+  const lines = messages
+    .filter((m) => m.content.trim().length > 0)
+    .slice(-8)
+    .map((m) => `${m.role === "assistant" ? "Asistent" : m.role === "system" ? "Systém" : "Uživatel"}: ${m.content.trim().replace(/\s+/g, " ").slice(0, 240)}`);
+  return lines.length > 0 ? `[Poslední relevantní tahy]\n${lines.join("\n")}` : "";
+}
 
 /** V2 canonical intent extraction with structured output. */
 export async function extractCanonicalIntent(
@@ -377,10 +390,14 @@ export async function extractCanonicalIntent(
   options?: ExtractCanonicalIntentOptions,
 ): Promise<CanonicalIntent> {
   const rawUserMessage = message;
-  const composed =
-    options?.historyPrefix && options.historyPrefix.trim().length > 0
-      ? `${options.historyPrefix.trim()}\n\n---\n${message}`
-      : message;
+  const composed = [
+    options?.resolvedContextBlock?.trim() ? options.resolvedContextBlock.trim() : "",
+    buildStructuredRecentHistory(options?.recentMessages),
+    options?.historyPrefix?.trim() ? options.historyPrefix.trim() : "",
+    message,
+  ]
+    .filter(Boolean)
+    .join("\n\n---\n\n");
   const flags = heuristicIntentFlags(rawUserMessage);
   const variantB = process.env.ASSISTANT_CANONICAL_INTENT_PROMPT_VARIANT === "b";
   const systemBlock = `${CANONICAL_INTENT_SYSTEM}${variantB ? CANONICAL_INTENT_PROMPT_VARIANT_B : ""}`;

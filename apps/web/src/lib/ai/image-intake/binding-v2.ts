@@ -143,6 +143,8 @@ function bindFromSession(session: AssistantSession | null, request: ImageIntakeR
       candidates: [],
       source: "session_context",
       warnings: [],
+      reason: "Použit zamčený klient z aktuální assistant session.",
+      conflicts: [],
     };
   }
   if (session?.activeClientId) {
@@ -154,6 +156,8 @@ function bindFromSession(session: AssistantSession | null, request: ImageIntakeR
       candidates: [],
       source: "session_context",
       warnings: [],
+      reason: "Použit aktivní klient z aktuální assistant session.",
+      conflicts: [],
     };
   }
   if (request.activeClientId) {
@@ -165,6 +169,8 @@ function bindFromSession(session: AssistantSession | null, request: ImageIntakeR
       candidates: [],
       source: "ui_context",
       warnings: [],
+      reason: "Použit aktivní klient z otevřeného UI kontextu.",
+      conflicts: [],
     };
   }
   return null;
@@ -193,6 +199,10 @@ async function bindFromNameSignal(
       candidates: matches.map((m) => ({ id: m.id, label: m.label, score: 0.5 })),
       source: "crm_match",
       warnings: [`Nalezeno ${matches.length} možných klientů pro "${nameSignal}" — je potřeba upřesnění.`],
+      reason: `Jméno "${nameSignal}" odpovídá více klientům v CRM.`,
+      conflicts: ["multiple_candidates"],
+      suppressedActiveClientId: null,
+      suppressedActiveClientLabel: null,
     };
   }
 
@@ -208,6 +218,8 @@ async function bindFromNameSignal(
     warnings: [
       `Klient "${match.label}" nalezen přes jméno z obrázku — vazba není jistá, nelze přikládat bez potvrzení.`,
     ],
+    reason: `Jméno z obrázku naznačuje klienta "${match.label}", ale bez explicitního potvrzení.`,
+    conflicts: [],
   };
 }
 
@@ -245,6 +257,8 @@ export async function resolveClientBindingV2(
           confidence: CRM_MATCH_CONFIDENCE,
           source: "explicit_user_text",
           warnings: [],
+          reason: `Poradce výslovně uvedl klienta "${nameSignalFromText}".`,
+          conflicts: [],
         };
       }
       if (textBinding.state === "multiple_candidates") {
@@ -261,6 +275,8 @@ export async function resolveClientBindingV2(
       candidates: [],
       source: "explicit_user_text",
       warnings: [`Klient "${nameSignalFromText}" nebyl nalezen v CRM — zkontrolujte jméno.`],
+      reason: `Výslovně uvedený klient "${nameSignalFromText}" nebyl nalezen.`,
+      conflicts: ["explicit_client_not_found"],
     };
   }
 
@@ -283,6 +299,8 @@ export async function resolveClientBindingV2(
     candidates: [],
     source: "none",
     warnings: ["Klient nebyl identifikován — write-ready plán nelze vytvořit bez aktivního klientského kontextu."],
+    reason: "Chybí explicitní klient, aktivní klient v UI i spolehlivý signál z obrázku.",
+    conflicts: [],
   };
 }
 

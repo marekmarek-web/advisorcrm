@@ -60,7 +60,7 @@ import {
   checkDraftReplyEligibility,
   tryBuildDraftReply,
 } from "../image-intake/draft-reply";
-import { buildActionPlanV2, buildActionPlanV1 } from "../image-intake/planner";
+import { buildActionPlanV2, buildActionPlanV1, buildIntentContract } from "../image-intake/planner";
 import type {
   MultimodalCombinedPassResult,
   ClientBindingResult,
@@ -275,6 +275,67 @@ describe("parseExplicitClientNameFromText", () => {
 
   it("does not treat requested field as client name", () => {
     expect(parseExplicitClientNameFromText("doplň klientovi rodné číslo")).toBeNull();
+  });
+});
+
+describe("buildIntentContract", () => {
+  it("keeps preview_only when user mentions field but not CRM destination", () => {
+    const binding = makeConfidentBinding();
+    const contract = buildIntentContract(binding, {
+      clientName: null,
+      verb: "fill",
+      destination: "unknown",
+      operation: "update_contact",
+      requestedFields: ["personalId"],
+      hasExplicitTarget: true,
+      mentionsClientPlacement: false,
+      mentionsCrmDestination: false,
+      mentionsTaskIntent: false,
+      mentionsNoteIntent: false,
+      raw: "doplň rodné číslo",
+    });
+
+    expect(contract.allowedActionLevel).toBe("preview_only");
+    expect(contract.userGoal).toBe("update_contact");
+  });
+});
+
+describe("buildActionPlanV1 authority ladder", () => {
+  it("returns preview-only structured intake without attach/update when intent is not explicit enough", () => {
+    const binding = makeConfidentBinding();
+    const factBundle = extractFactsFromMultimodalPass({
+      ...makeCommunicationPassResult(),
+      inputType: "photo_or_scan_document",
+      facts: [
+        { factKey: "crm_personal_id", value: "720212/5821", confidence: 0.95, source: "observed" },
+        { factKey: "crm_first_name", value: "Bohuslav", confidence: 0.91, source: "observed" },
+      ],
+      possibleClientNameSignal: "Bohuslav Plachý",
+      draftReplyIntent: null,
+    }, "asset-7");
+
+    const plan = buildActionPlanV1(
+      makeClassification("photo_or_scan_document", 0.9),
+      binding,
+      factBundle,
+      {
+        clientName: null,
+        verb: "fill",
+        destination: "unknown",
+        operation: "update_contact",
+        requestedFields: ["personalId"],
+        hasExplicitTarget: true,
+        mentionsClientPlacement: false,
+        mentionsCrmDestination: false,
+        mentionsTaskIntent: false,
+        mentionsNoteIntent: false,
+        raw: "doplň rodné číslo",
+      },
+    );
+
+    expect(plan.actionAuthority).toBe("preview_only");
+    expect(plan.recommendedActions).toEqual([]);
+    expect(plan.needsAdvisorInput).toBe(true);
   });
 });
 

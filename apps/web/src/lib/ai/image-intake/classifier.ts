@@ -72,7 +72,7 @@ const COMM_TEXT_HINTS = /zpráv|message|chat|napsal|napsal|poslal|whatsapp|sms|e
 const PAYMENT_TEXT_HINTS = /platb|zaplatit|platební|platební údaje|QR|variabilní symbol|číslo účtu|IBAN/i;
 const BANK_TEXT_HINTS = /stav účtu|zůstatek|transakce|banka|bankovní výpis|výpis/i;
 const DOCUMENT_TEXT_HINTS = /smlouva|potvrzení|dokument|sken|scan|formulář|dopis/i;
-const CRM_EXTRACTION_TEXT_HINTS = /(?:přiřaď|doplň|ulož|vyplň|přiřadit|doplnit|uložit|založ|založit|vytvoř|vytvořit).*(?:údaj|klient|CRM|kontakt|portál|rodné|adres|telefon|email)|(?:založ|vytvoř|vytvořit|nový).*(?:klient|kontakt)/i;
+const CRM_EXTRACTION_TEXT_HINTS = /(?:(?:do\s+CRM|v\s+CRM|na\s+kartu\s+klienta|do\s+karty\s+klienta|ke\s+klientovi|pod\s+klienta).*(?:doplň|vyplň|ulož|aktualizuj|uprav|přiřaď)|(?:doplň|vyplň|ulož|aktualizuj|uprav|přiřaď).*(?:do\s+CRM|v\s+CRM|na\s+kartu\s+klienta|do\s+karty\s+klienta|ke\s+klientovi|pod\s+klienta)|(?:založ|vytvoř|vytvořit|nový).*(?:klient|kontakt))/i;
 const NOTE_TASK_TEXT_HINTS = /(?:udělej|vytvoř|zapiš|založ).*(?:poznámk|úkol|follow|záznam)/i;
 
 function classifyByTextHints(text: string | null): ImageInputType | null {

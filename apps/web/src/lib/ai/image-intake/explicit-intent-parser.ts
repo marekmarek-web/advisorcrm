@@ -55,6 +55,10 @@ export type ParsedExplicitIntent = {
   operation: IntentTargetOperation;
   requestedFields: string[];
   hasExplicitTarget: boolean;
+  mentionsClientPlacement: boolean;
+  mentionsCrmDestination: boolean;
+  mentionsTaskIntent: boolean;
+  mentionsNoteIntent: boolean;
   raw: string;
 };
 
@@ -164,6 +168,11 @@ const DESTINATION_MAP: Array<{ pattern: RegExp; dest: IntentTargetDestination }>
   { pattern: /(?:ke\s+klientovi|pod\s+klient|kartu\s+klient|klientskou\s+kart)/i, dest: "client_card" },
 ];
 
+const CLIENT_PLACEMENT_HINT = /(?:ke\s+klientovi|pod\s+klienta|pod\s+klientem|ke\s+kartě|na\s+kartu\s+klienta|přilož(?:it)?\s+ke\s+klientovi)/i;
+const CRM_DESTINATION_HINT = /(?:do\s+CRM|v\s+CRM|do\s+systému|na\s+kartu\s+klienta|do\s+karty\s+klienta)/i;
+const TASK_INTENT_HINT = /(?:úkol|task|follow[\s-]?up|navazující\s+krok|připomeň|připomenout)/i;
+const NOTE_INTENT_HINT = /(?:poznámk|záznam|interní\s+poznámk)/i;
+
 function extractDestination(text: string): IntentTargetDestination {
   for (const { pattern, dest } of DESTINATION_MAP) {
     if (pattern.test(text)) return dest;
@@ -247,6 +256,10 @@ export function parseExplicitIntent(text: string | null): ParsedExplicitIntent {
     operation: "unknown",
     requestedFields: [],
     hasExplicitTarget: false,
+    mentionsClientPlacement: false,
+    mentionsCrmDestination: false,
+    mentionsTaskIntent: false,
+    mentionsNoteIntent: false,
     raw: text ?? "",
   };
 
@@ -258,6 +271,10 @@ export function parseExplicitIntent(text: string | null): ParsedExplicitIntent {
   const destination = extractDestination(t);
   const requestedFields = extractRequestedFields(t);
   const operation = resolveOperation(verb, destination, requestedFields, t);
+  const mentionsClientPlacement = CLIENT_PLACEMENT_HINT.test(t);
+  const mentionsCrmDestination = CRM_DESTINATION_HINT.test(t);
+  const mentionsTaskIntent = TASK_INTENT_HINT.test(t);
+  const mentionsNoteIntent = NOTE_INTENT_HINT.test(t);
 
   const hasExplicitTarget =
     clientName !== null ||
@@ -272,6 +289,10 @@ export function parseExplicitIntent(text: string | null): ParsedExplicitIntent {
     operation,
     requestedFields,
     hasExplicitTarget,
+    mentionsClientPlacement,
+    mentionsCrmDestination,
+    mentionsTaskIntent,
+    mentionsNoteIntent,
     raw: t,
   };
 }
@@ -281,11 +302,11 @@ export function parseExplicitIntent(text: string | null): ParsedExplicitIntent {
  * even if the classifier alone would be uncertain. Used to boost classification confidence.
  */
 export function textSignalsCrmExtractionIntent(intent: ParsedExplicitIntent): boolean {
-  if (intent.operation === "update_contact") return true;
+  if (intent.operation === "update_contact" && (intent.mentionsCrmDestination || intent.mentionsClientPlacement)) return true;
   if (intent.operation === "create_contact") return true;
   if (intent.operation === "portal_payment_update") return true;
-  if (intent.verb === "assign" || intent.verb === "fill" || intent.verb === "save") return true;
-  if (intent.requestedFields.length >= 2) return true;
+  if ((intent.verb === "assign" || intent.verb === "fill" || intent.verb === "save") && intent.mentionsCrmDestination) return true;
+  if (intent.requestedFields.length >= 2 && (intent.mentionsCrmDestination || intent.mentionsClientPlacement)) return true;
   return false;
 }
 
@@ -310,6 +331,8 @@ export function textSignalsNoteOrTaskIntent(intent: ParsedExplicitIntent): boole
     intent.operation === "create_followup" ||
     intent.destination === "note" ||
     intent.destination === "task" ||
-    intent.destination === "followup"
+    intent.destination === "followup" ||
+    intent.mentionsTaskIntent ||
+    intent.mentionsNoteIntent
   );
 }

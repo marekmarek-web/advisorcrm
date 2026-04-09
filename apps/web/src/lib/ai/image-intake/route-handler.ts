@@ -16,7 +16,7 @@ import type { ActiveContext } from "../assistant-session";
 import type { AssistantResponse } from "../assistant-tool-router";
 import { getAssistantRunStore } from "../assistant-run-context";
 import { logAuditAction } from "@/lib/audit";
-import type { NormalizedImageAsset } from "./types";
+import type { ImageIntakeRouteOptions, NormalizedImageAsset } from "./types";
 import { SUPPORTED_IMAGE_MIMES, MAX_IMAGE_SIZE_BYTES, MAX_IMAGES_PER_INTAKE } from "./types";
 import { processImageIntake } from "./orchestrator";
 import { mapImageIntakeToAssistantResponse } from "./response-mapper";
@@ -142,14 +142,7 @@ export async function handleImageIntakeFromChatRoute(
   rawAssets: ImageAssetInput[],
   session: AssistantSession,
   activeContext: ActiveContext,
-  opts: {
-    tenantId: string;
-    userId: string;
-    channel: string | null;
-    accompanyingText: string | null;
-    /** Více než MAX_IMAGES_PER_INTAKE v těle — zbytek byl oříznut. */
-    assetsTruncated?: boolean;
-  },
+  opts: ImageIntakeRouteOptions,
 ): Promise<AssistantResponse> {
   const runStore = getAssistantRunStore();
 
@@ -208,6 +201,7 @@ export async function handleImageIntakeFromChatRoute(
     activeCaseId: null,
     accompanyingText: opts.accompanyingText,
     channel: opts.channel,
+    resolvedContext: opts.resolvedContext ?? null,
   };
 
   // Clear stale execution plan from prior run — new image intake is a fresh request.
