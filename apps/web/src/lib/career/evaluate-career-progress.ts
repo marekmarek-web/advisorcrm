@@ -1,4 +1,10 @@
-import { getCareerPositionDef, isKnownCareerProgramId, isKnownCareerTrackId } from "./registry";
+import {
+  getCareerPositionDef,
+  inferBeplanTrackFromPositionCode,
+  inferTrackFromLegacyProgram,
+  isKnownCareerTrackId,
+  normalizeCareerProgramFromDb,
+} from "./registry";
 import {
   CAREER_PROGRAM_LABELS,
   CAREER_TRACK_LABELS,
@@ -7,22 +13,15 @@ import {
   type CareerProgramId,
   type CareerTrackId,
   type CareerRequirement,
-  type CompletenessLevel,
-  type ConfidenceLevel,
+  type EvaluationCompleteness,
   type MissingRequirement,
-  type ProgressStatus,
+  type ProgressEvaluation,
 } from "./types";
 
-function parseProgram(raw: string | null): { id: CareerProgramId; unknown: boolean } {
-  if (raw == null || raw.trim() === "" || raw === "not_set") return { id: "not_set", unknown: false };
-  if (isKnownCareerProgramId(raw)) return { id: raw, unknown: false };
-  return { id: "not_set", unknown: true };
-}
-
-function parseTrack(raw: string | null): { id: CareerTrackId; unknown: boolean } {
-  if (raw == null || raw.trim() === "" || raw === "not_set") return { id: "not_set", unknown: false };
-  if (isKnownCareerTrackId(raw)) return { id: raw as CareerTrackId, unknown: false };
-  return { id: "not_set", unknown: true };
+function parseTrackRaw(raw: string | null): { id: CareerTrackId; unknownString: boolean } {
+  if (raw == null || raw.trim() === "" || raw === "not_set") return { id: "not_set", unknownString: false };
+  if (isKnownCareerTrackId(raw)) return { id: raw as CareerTrackId, unknownString: false };
+  return { id: "unknown", unknownString: true };
 }
 
 function reasonForEvaluability(r: CareerRequirement): MissingRequirement["reason"] | null {
@@ -41,86 +40,128 @@ function reasonForEvaluability(r: CareerRequirement): MissingRequirement["reason
   }
 }
 
-function appliesRequirement(r: CareerRequirement, trackId: CareerTrackId): boolean {
-  if (r.managementOnly && trackId !== "management_structure") return false;
-  return true;
-}
-
 function isBlockingMissing(m: MissingRequirement): boolean {
   return (
     m.reason === "program_not_set" ||
     m.reason === "config_incomplete" ||
     m.reason === "invalid_config" ||
-    m.reason === "subordinates_missing_career_data"
+    m.reason === "subordinates_missing_career_data" ||
+    m.reason === "missing_specification"
   );
 }
 
-function deriveProgress(
+function deriveEvaluationOutcome(
   missing: MissingRequirement[],
-  hasPosition: boolean,
+  hasValidPosition: boolean,
   programId: CareerProgramId,
-  trackId: CareerTrackId
-): { status: ProgressStatus; completeness: CompletenessLevel; confidence: ConfidenceLevel } {
-  if (programId === "not_set") {
-    return { status: "not_set", completeness: "none", confidence: "high" };
+  trackId: CareerTrackId,
+  programUnknown: boolean,
+  trackUnknownFromDb: boolean
+): { progressEvaluation: ProgressEvaluation; evaluationCompleteness: EvaluationCompleteness } {
+  if (programUnknown) {
+    return { progressEvaluation: "unknown", evaluationCompleteness: "low_confidence" };
   }
-  if (!hasPosition || trackId === "not_set") {
-    return { status: "data_missing", completeness: "partial", confidence: "high" };
+  if (programId === "not_set") {
+    return { progressEvaluation: "not_configured", evaluationCompleteness: "partial" };
+  }
+  if (trackUnknownFromDb || trackId === "unknown") {
+    return { progressEvaluation: "unknown", evaluationCompleteness: "low_confidence" };
+  }
+  if (!hasValidPosition || trackId === "not_set") {
+    return { progressEvaluation: "data_missing", evaluationCompleteness: "partial" };
   }
 
   const blocking = missing.filter(isBlockingMissing);
-  if (blocking.some((m) => m.reason === "invalid_config" || m.reason === "program_not_set")) {
-    return { status: "data_missing", completeness: "partial", confidence: "medium" };
+  if (blocking.some((m) => m.reason === "invalid_config")) {
+    return { progressEvaluation: "blocked", evaluationCompleteness: "partial" };
+  }
+  if (blocking.some((m) => m.reason === "program_not_set")) {
+    return { progressEvaluation: "data_missing", evaluationCompleteness: "partial" };
   }
   if (blocking.length > 0) {
-    return { status: "data_missing", completeness: "partial", confidence: "medium" };
+    return { progressEvaluation: "data_missing", evaluationCompleteness: "partial" };
   }
 
-  const manualLike = missing.some((m) => m.reason === "manual" || m.reason === "unspecified");
-  if (manualLike) {
-    return { status: "on_track", completeness: "partial", confidence: "low" };
+  const needsManual = missing.some(
+    (m) => m.reason === "manual" || m.reason === "unspecified" || m.reason === "legacy_value"
+  );
+  if (needsManual) {
+    return { progressEvaluation: "on_track", evaluationCompleteness: "manual_required" };
   }
 
-  return { status: "on_track", completeness: "high", confidence: "medium" };
+  return { progressEvaluation: "on_track", evaluationCompleteness: "full" };
 }
 
 /**
- * Jednotný vstup pro vyhodnocení kariéry — bez falešných BJ/BJS z CRM.
+ * Jednotný vstup pro vyhodnocení kariéry — track oddělen od programu a pozice; bez falešných BJ/BJS z CRM.
  */
 export function evaluateCareerProgress(ctx: CareerEvaluationContext): CareerEvaluationResult {
   const sourceNotes: string[] = [
-    "Aplikační role (permissions) a kariérní program/track/pozice jsou oddělené dimenze.",
+    "Čtyři vrstvy: aplikační role (permissions), kariérní program, kariérní větev (track), kód pozice — vzájemně se neslučují.",
     "Metriky týmového přehledu nejsou oficiální BJ/BJS z kariérních PDF.",
   ];
 
-  const { id: programId, unknown: unknownProgram } = parseProgram(ctx.careerProgram);
-  const { id: trackId, unknown: unknownTrack } = parseTrack(ctx.careerTrack);
-  const rawCode = ctx.careerPositionCode?.trim() || null;
+  const { programId: normalizedProgram, legacyRaw } = normalizeCareerProgramFromDb(ctx.careerProgram);
+  let programId = normalizedProgram;
+  const programUnknown = programId === "unknown";
 
-  if (unknownProgram && ctx.careerProgram) {
-    sourceNotes.push(`Neznámá hodnota career_program v DB: "${ctx.careerProgram}".`);
+  if (legacyRaw) {
+    sourceNotes.push(
+      `Legacy career_program „${legacyRaw}“ — použijte kanonické hodnoty beplan / premium_brokers a správný career_track.`
+    );
   }
-  if (unknownTrack && ctx.careerTrack) {
-    sourceNotes.push(`Neznámá hodnota career_track v DB: "${ctx.careerTrack}".`);
-  }
+
+  let { id: trackId } = parseTrackRaw(ctx.careerTrack);
+  const trackParse = parseTrackRaw(ctx.careerTrack);
+  const trackUnknownFromDb = trackParse.unknownString;
 
   const missing: MissingRequirement[] = [];
+
+  const inferredFromLegacyProgram = inferTrackFromLegacyProgram(legacyRaw, trackId);
+  if (inferredFromLegacyProgram.inferred) {
+    trackId = inferredFromLegacyProgram.trackId;
+    sourceNotes.push(`Větev odvozena z legacy programu (${legacyRaw}): ${trackId}.`);
+  }
+
+  if (programId === "beplan" && trackId === "not_set") {
+    const fromCode = inferBeplanTrackFromPositionCode(ctx.careerPositionCode);
+    if (fromCode !== "not_set") {
+      trackId = fromCode;
+      sourceNotes.push(
+        "Kariérní větev u Beplanu odhadnuta z kódu pozice (doplňte explicitně career_track v DB pro jistotu)."
+      );
+      missing.push({
+        id: "track_inferred",
+        labelCs: "Větev byla dočasně odvozena z kódu pozice — uložte explicitní career_track.",
+        reason: "legacy_value",
+      });
+    }
+  }
+
+  const rawCode = ctx.careerPositionCode?.trim() || null;
 
   if (programId === "not_set") {
     missing.push({
       id: "program_not_set",
-      labelCs: "Není vyplněn kariérní program.",
+      labelCs: "Není vyplněn kariérní program (beplan / premium_brokers).",
       reason: "program_not_set",
     });
   }
-  if (programId !== "not_set" && trackId === "not_set") {
+
+  if (trackUnknownFromDb && ctx.careerTrack?.trim()) {
+    sourceNotes.push(`Neznámá hodnota career_track v DB: „${ctx.careerTrack}“.`);
+  }
+
+  if (programId !== "not_set" && programId !== "unknown" && trackId === "not_set") {
     missing.push({
       id: "track_not_set",
-      labelCs: "Není vyplněn kariérní track (individuální vs manažerská dráha).",
+      labelCs:
+        "Není vyplněna kariérní větev (Top poradce / manažerská / realita / call centrum — podle programu).",
       reason: "config_incomplete",
     });
   }
-  if (programId !== "not_set" && !rawCode) {
+
+  if (programId !== "not_set" && programId !== "unknown" && !rawCode) {
     missing.push({
       id: "position_not_set",
       labelCs: "Není vyplněn kód kariérní pozice.",
@@ -128,19 +169,21 @@ export function evaluateCareerProgress(ctx: CareerEvaluationContext): CareerEval
     });
   }
 
-  const positionDef = programId !== "not_set" && rawCode ? getCareerPositionDef(programId, rawCode) : null;
-  if (programId !== "not_set" && rawCode && !positionDef) {
+  const positionDef =
+    programId !== "not_set" && programId !== "unknown" && trackId !== "not_set" && trackId !== "unknown" && rawCode
+      ? getCareerPositionDef(programId, trackId, rawCode)
+      : null;
+
+  if (programId !== "not_set" && programId !== "unknown" && rawCode && trackId !== "not_set" && trackId !== "unknown" && !positionDef) {
     missing.push({
       id: "unknown_position_code",
-      labelCs: `Kód pozice "${rawCode}" nepatří do zvoleného programu v konfiguraci aplikace.`,
+      labelCs: `Kód „${rawCode}“ neodpovídá kombinaci program + větev v konfiguraci aplikace.`,
       reason: "invalid_config",
     });
   }
 
   if (positionDef) {
     for (const req of positionDef.requirements) {
-      if (!appliesRequirement(req, trackId)) continue;
-
       if (req.evaluability === "crm_proxy") {
         sourceNotes.push(req.labelCs);
         continue;
@@ -173,27 +216,41 @@ export function evaluateCareerProgress(ctx: CareerEvaluationContext): CareerEval
     }
   }
 
-  const hasPosition = Boolean(rawCode && positionDef);
-  const { status, completeness, confidence } = deriveProgress(missing, hasPosition, programId, trackId);
+  const hasValidPosition = Boolean(rawCode && positionDef);
+  const { progressEvaluation, evaluationCompleteness } = deriveEvaluationOutcome(
+    missing,
+    hasValidPosition,
+    programId,
+    trackId,
+    programUnknown,
+    trackUnknownFromDb
+  );
 
   const nextCode = positionDef?.nextCareerPositionCode ?? null;
-  const safeNextLabel =
-    programId !== "not_set" && nextCode ? getCareerPositionDef(programId, nextCode)?.label ?? null : null;
+  const nextLabel =
+    programId !== "not_set" &&
+    programId !== "unknown" &&
+    trackId !== "not_set" &&
+    trackId !== "unknown" &&
+    nextCode
+      ? getCareerPositionDef(programId, trackId, nextCode)?.label ?? null
+      : null;
 
   return {
-    progressStatus: status,
-    completeness,
-    confidence,
+    progressEvaluation,
+    evaluationCompleteness,
     careerProgramId: programId,
     careerTrackId: trackId,
     rawCareerProgram: ctx.careerProgram,
     rawCareerTrack: ctx.careerTrack,
     rawCareerPositionCode: rawCode,
-    positionLabel: positionDef?.label ?? null,
-    nextCareerPositionCode: programId !== "not_set" ? nextCode : null,
-    nextPositionLabel: programId !== "not_set" ? safeNextLabel : null,
+    careerPositionLabel: positionDef?.label ?? null,
+    progressionOrder: positionDef?.progressionOrder ?? null,
+    nextCareerPositionCode: nextCode,
+    nextCareerPositionLabel: nextLabel,
     missingRequirements: missing,
     sourceNotes,
+    systemRoleName: ctx.systemRoleName,
   };
 }
 
@@ -205,19 +262,35 @@ export function formatCareerTrackLabel(trackId: CareerTrackId): string {
   return CAREER_TRACK_LABELS[trackId] ?? trackId;
 }
 
-/** Kompaktní řádek pro tabulku (např. „PB · Reprezentant 2“) */
+/** Kompaktní řádek pro tabulku */
 export function formatCareerSummaryLine(
   program: string | null,
-  positionCode: string | null,
-  programLabelFallback?: string
+  track: string | null,
+  positionCode: string | null
 ): string | null {
-  const parsed = parseProgram(program);
+  const { programId, legacyRaw } = normalizeCareerProgramFromDb(program);
+  let { id: trackId } = parseTrackRaw(track);
+  const inf = inferTrackFromLegacyProgram(legacyRaw, trackId);
+  if (inf.inferred) trackId = inf.trackId;
+  if (programId === "beplan" && trackId === "not_set") {
+    const t2 = inferBeplanTrackFromPositionCode(positionCode);
+    if (t2 !== "not_set") trackId = t2;
+  }
+
   const progLabel =
-    parsed.id !== "not_set" ? formatCareerProgramLabel(parsed.id) : programLabelFallback ?? (program ? program : null);
-  if (!progLabel && !positionCode) return null;
-  if (!positionCode) return progLabel;
-  const def = parsed.id !== "not_set" ? getCareerPositionDef(parsed.id, positionCode) : null;
-  const pos = def?.label ?? positionCode;
-  if (!progLabel) return pos;
-  return `${progLabel} · ${pos}`;
+    programId !== "not_set" && programId !== "unknown"
+      ? formatCareerProgramLabel(programId)
+      : program?.trim() || null;
+  const trackLabel =
+    trackId !== "not_set" && trackId !== "unknown" ? formatCareerTrackLabel(trackId) : null;
+
+  let posLabel: string | null = null;
+  if (positionCode && programId !== "not_set" && programId !== "unknown" && trackId !== "not_set" && trackId !== "unknown") {
+    posLabel = getCareerPositionDef(programId, trackId, positionCode)?.label ?? positionCode;
+  } else if (positionCode) {
+    posLabel = positionCode;
+  }
+
+  const parts = [progLabel, trackLabel, posLabel].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }

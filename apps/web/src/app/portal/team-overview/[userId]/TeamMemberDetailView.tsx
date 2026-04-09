@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { TeamMemberDetail } from "@/app/actions/team-overview";
 import { formatCareerProgramLabel, formatCareerTrackLabel } from "@/lib/career/evaluate-career-progress";
-import type { ProgressStatus } from "@/lib/career/types";
+import type { EvaluationCompleteness, ProgressEvaluation } from "@/lib/career/types";
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
@@ -22,21 +22,47 @@ function formatNumber(n: number): string {
   return n.toLocaleString("cs-CZ");
 }
 
-function careerProgressLabel(status: ProgressStatus): string {
-  switch (status) {
-    case "not_set":
-      return "Údaje nejsou vyplněné";
+function progressEvaluationLabel(pe: ProgressEvaluation): string {
+  switch (pe) {
+    case "not_configured":
+      return "Kariéra nenastavena";
     case "data_missing":
       return "Chybí data nebo konfigurace";
+    case "unknown":
+      return "Nejasná specifikace / neznámá hodnota";
     case "on_track":
-      return "Automaticky ověřitelné OK (BJ/BJS jen ručně)";
+      return "Na dobré cestě (ověření BJ/BJS vždy ručně)";
     case "close_to_promotion":
-      return "Blízko postupu (nutné ruční potvrzení)";
+      return "Blízko postupu (nutné potvrzení)";
     case "blocked":
-      return "Blokováno / nesoulad s pravidly";
+      return "Blokováno / nesoulad s konfigurací";
+    case "promoted_ready":
+      return "Připraveno k postupu (nutné potvrzení vedením)";
     default:
-      return status;
+      return pe;
   }
+}
+
+function evaluationCompletenessLabel(ec: EvaluationCompleteness): string {
+  switch (ec) {
+    case "full":
+      return "Evaluace kompletní (automatická část)";
+    case "partial":
+      return "Částečně vyhodnoceno";
+    case "low_confidence":
+      return "Nízká jistota (chybí údaje nebo legacy)";
+    case "manual_required":
+      return "Nutné manuální ověření (PDF / HR)";
+    default:
+      return ec;
+  }
+}
+
+function progressBadgeClass(pe: ProgressEvaluation): string {
+  if (pe === "on_track" || pe === "close_to_promotion" || pe === "promoted_ready") {
+    return "bg-emerald-100 text-emerald-800";
+  }
+  return "bg-amber-100 text-amber-800";
 }
 
 function buildCoachingSummary(detail: TeamMemberDetail): string[] {
@@ -97,44 +123,46 @@ export function TeamMemberDetailView({ detail }: { detail: TeamMemberDetail }) {
           Kariéra
         </h2>
         <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm space-y-3">
+          <p className="text-xs text-[color:var(--wp-text-secondary)]">
+            <span className="text-[color:var(--wp-text-tertiary)]">Aplikační role (CRM):</span>{" "}
+            <strong className="text-[color:var(--wp-text)]">{detail.roleName}</strong>
+            <span className="text-[color:var(--wp-text-tertiary)]"> — odděleně od kariérního programu a větve</span>
+          </p>
           <div className="flex flex-wrap gap-2 items-center">
             <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
-              {formatCareerProgramLabel(detail.careerEvaluation.careerProgramId)}
+              Program: {formatCareerProgramLabel(detail.careerEvaluation.careerProgramId)}
             </span>
             <span className="rounded-full bg-[color:var(--wp-surface-muted)] px-2.5 py-0.5 text-xs font-medium text-[color:var(--wp-text-secondary)]">
-              {formatCareerTrackLabel(detail.careerEvaluation.careerTrackId)}
+              Větev: {formatCareerTrackLabel(detail.careerEvaluation.careerTrackId)}
             </span>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                detail.careerEvaluation.progressStatus === "data_missing" || detail.careerEvaluation.progressStatus === "not_set"
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-emerald-100 text-emerald-800"
-              }`}
-            >
-              {careerProgressLabel(detail.careerEvaluation.progressStatus)}
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${progressBadgeClass(detail.careerEvaluation.progressEvaluation)}`}>
+              Stav: {progressEvaluationLabel(detail.careerEvaluation.progressEvaluation)}
             </span>
-            <span className="text-xs text-[color:var(--wp-text-tertiary)]">
-              Jistota:{" "}
-              {detail.careerEvaluation.confidence === "high"
-                ? "vysoká"
-                : detail.careerEvaluation.confidence === "medium"
-                  ? "střední"
-                  : "nízká"}
+            <span className="rounded-full border border-[color:var(--wp-surface-card-border)] px-2.5 py-0.5 text-xs text-[color:var(--wp-text-secondary)]">
+              {evaluationCompletenessLabel(detail.careerEvaluation.evaluationCompleteness)}
             </span>
           </div>
-          {detail.careerEvaluation.positionLabel ? (
+          {detail.careerEvaluation.progressionOrder !== null ? (
+            <p className="text-xs text-[color:var(--wp-text-tertiary)]">
+              Krok ve větvi: <strong>{detail.careerEvaluation.progressionOrder + 1}</strong>. (pořadí z interní konfigurace)
+            </p>
+          ) : null}
+          {detail.careerEvaluation.careerPositionLabel ? (
             <p className="text-sm text-[color:var(--wp-text)]">
-              <strong>Aktuální pozice:</strong> {detail.careerEvaluation.positionLabel}
+              <strong>Aktuální pozice:</strong> {detail.careerEvaluation.careerPositionLabel}
               {detail.careerEvaluation.rawCareerPositionCode ? (
                 <span className="text-[color:var(--wp-text-tertiary)]"> ({detail.careerEvaluation.rawCareerPositionCode})</span>
               ) : null}
             </p>
           ) : (
-            <p className="text-sm text-[color:var(--wp-text-secondary)]">Kód kariérní pozice není vyplněn nebo neodpovídá známému žebříčku.</p>
+            <p className="text-sm text-[color:var(--wp-text-secondary)]">Kód kariérní pozice není vyplněn nebo neodpovídá kombinaci program + větev v konfiguraci.</p>
           )}
-          {detail.careerEvaluation.nextPositionLabel ? (
+          {detail.careerEvaluation.nextCareerPositionLabel ? (
             <p className="text-sm text-[color:var(--wp-text-secondary)]">
-              <strong>Další krok (žebříček):</strong> {detail.careerEvaluation.nextPositionLabel}
+              <strong>Další krok (ve stejné větvi):</strong> {detail.careerEvaluation.nextCareerPositionLabel}
+              {detail.careerEvaluation.nextCareerPositionCode ? (
+                <span className="text-[color:var(--wp-text-tertiary)]"> ({detail.careerEvaluation.nextCareerPositionCode})</span>
+              ) : null}
             </p>
           ) : null}
           <p className="text-xs text-[color:var(--wp-text-secondary)]">

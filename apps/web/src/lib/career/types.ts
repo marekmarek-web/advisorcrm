@@ -1,16 +1,22 @@
 /**
  * Client-safe career ladder types (no server-only imports).
- * Source of truth for ladder definitions: sibling modules + registry.
+ * Čtyři nezávislé vrstvy: systemRole (v memberships.role) | careerProgram | careerTrack | careerPositionCode.
  */
 
-export type CareerProgramId =
-  | "not_set"
-  | "beplan_finance"
-  | "beplan_realty"
-  | "premium_brokers"
-  | "premium_brokers_call_center";
+/** Uložené v memberships.career_program — zjednocený produktový model */
+export type CareerProgramId = "not_set" | "beplan" | "premium_brokers" | "unknown";
 
-export type CareerTrackId = "not_set" | "individual_performance" | "management_structure";
+/**
+ * Uložené v memberships.career_track — větev uvnitř programu (nelze slučovat s pozicí).
+ * reality / call_center jsou samostatné osy, ne „podprogramy“ v DB.
+ */
+export type CareerTrackId =
+  | "not_set"
+  | "individual_performance"
+  | "management_structure"
+  | "reality"
+  | "call_center"
+  | "unknown";
 
 export type RequirementKind =
   | "personal_performance"
@@ -31,32 +37,37 @@ export type CareerRequirement = {
   labelCs: string;
   kind: RequirementKind;
   evaluability: RequirementEvaluability;
-  /** If true, requirement applies only when track is management_structure */
-  managementOnly?: boolean;
-  /** Note stored in config (e.g. PDF reference) */
+  /** Poznámka ke zdroji (PDF, interní pravidla) */
   sourceNote?: string;
 };
 
+/**
+ * Jedna pozice v konkrétním programu + tracku.
+ * Kód je stabilní v rámci celé aplikace (globálně jednoznačný doporučeně).
+ */
 export type CareerPositionDef = {
   programId: CareerProgramId;
+  trackId: CareerTrackId;
   code: string;
   label: string;
-  /** Zero-based order within program ladder */
   progressionOrder: number;
   nextCareerPositionCode: string | null;
+  /** Strukturované požadavky na další postup (zdroj pravdy pro evaluator) */
   requirements: CareerRequirement[];
 };
 
-export type ProgressStatus =
-  | "not_set"
-  | "data_missing"
+/** Výstup evaluatoru — stav postupu (bez předstírání přesnosti) */
+export type ProgressEvaluation =
   | "on_track"
   | "close_to_promotion"
-  | "blocked";
+  | "blocked"
+  | "promoted_ready"
+  | "data_missing"
+  | "unknown"
+  | "not_configured";
 
-export type CompletenessLevel = "none" | "partial" | "high";
-
-export type ConfidenceLevel = "low" | "medium" | "high";
+/** Jak moc je evaluace kompletní / spolehlivá */
+export type EvaluationCompleteness = "full" | "partial" | "low_confidence" | "manual_required";
 
 export type MissingRequirement = {
   id: string;
@@ -68,24 +79,28 @@ export type MissingRequirement = {
     | "subordinates_missing_career_data"
     | "invalid_config"
     | "program_not_set"
-    | "config_incomplete";
+    | "config_incomplete"
+    | "missing_specification"
+    | "legacy_value";
 };
 
 export type CareerEvaluationResult = {
-  progressStatus: ProgressStatus;
-  completeness: CompletenessLevel;
-  confidence: ConfidenceLevel;
+  /** Stav postupu (UI) */
+  progressEvaluation: ProgressEvaluation;
+  evaluationCompleteness: EvaluationCompleteness;
   careerProgramId: CareerProgramId;
   careerTrackId: CareerTrackId;
-  /** Raw DB strings (may be unknown) */
   rawCareerProgram: string | null;
   rawCareerTrack: string | null;
   rawCareerPositionCode: string | null;
-  positionLabel: string | null;
+  careerPositionLabel: string | null;
+  progressionOrder: number | null;
   nextCareerPositionCode: string | null;
-  nextPositionLabel: string | null;
+  nextCareerPositionLabel: string | null;
   missingRequirements: MissingRequirement[];
   sourceNotes: string[];
+  /** Odvozené z aplikační role — jen pro zobrazení, neslučovat s kariérou */
+  systemRoleName: string;
 };
 
 export type CareerEvaluationMetricsSlice = {
@@ -106,14 +121,16 @@ export type CareerEvaluationContext = {
 
 export const CAREER_PROGRAM_LABELS: Record<CareerProgramId, string> = {
   not_set: "Nevyplněno",
-  beplan_finance: "Beplan — finance",
-  beplan_realty: "Beplan — realty",
+  beplan: "Beplan",
   premium_brokers: "Premium Brokers",
-  premium_brokers_call_center: "Premium Brokers — Call centrum",
+  unknown: "Neznámý program",
 };
 
 export const CAREER_TRACK_LABELS: Record<CareerTrackId, string> = {
-  not_set: "Track nevyplněn",
-  individual_performance: "Individuální výkon",
+  not_set: "Větev nevyplněna",
+  individual_performance: "Top poradce / individuální výkon",
   management_structure: "Manažerská / strukturální",
+  reality: "Realitní větev",
+  call_center: "Call centrum",
+  unknown: "Neznámá větev",
 };

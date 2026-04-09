@@ -936,7 +936,7 @@ export function TeamOverviewView({
                 <tbody className="divide-y divide-[color:var(--wp-surface-card-border)]">
                   {visibleMembers.map((m) => {
                     const met = metricsByUser.get(m.userId);
-                    const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerPositionCode);
+                    const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerTrack, m.careerPositionCode);
                     return (
                       <tr key={m.userId} className="hover:bg-[color:var(--wp-surface-muted)]/50">
                         <td className="px-4 py-3">
@@ -982,7 +982,7 @@ export function TeamOverviewView({
             <div className="md:hidden divide-y divide-[color:var(--wp-surface-card-border)]">
               {visibleMembers.map((m) => {
                 const met = metricsByUser.get(m.userId);
-                const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerPositionCode);
+                const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerTrack, m.careerPositionCode);
                 return (
                   <Link key={m.userId} href={`/portal/team-overview/${m.userId}`} className="relative block p-4 hover:bg-[color:var(--wp-surface-muted)]/50 active:bg-[color:var(--wp-surface-muted)]">
                     <div className="flex items-center justify-between gap-2">
