@@ -460,10 +460,11 @@ export function TeamOverviewView({
 
   const coachingAttention = useMemo(() => {
     if (scope === "me") return [];
+    const metByUser = new Map(metrics.map((m) => [m.userId, m]));
     const newcomerByUser = new Map(newcomers.map((n) => [n.userId, n]));
     const rows = members
       .map((m) => {
-        const met = metricsByUser.get(m.userId);
+        const met = metByUser.get(m.userId);
         if (!met) return null;
         const n = newcomerByUser.get(m.userId);
         return {

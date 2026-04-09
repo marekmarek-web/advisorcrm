@@ -91,6 +91,7 @@ Fáze 7 (QA / stabilizace). Použijte před demem nebo produkčním vydáním mo
 3. **Uložené AI shrnutí** nemusí odpovídat aktuálnímu scope/period v UI — metadata generace to zatím plně nepropisuje.
 4. **Cadence / rytmus** je read model a doporučení, ne workflow engine s tvrdými stavy.
 5. **Výkon:** jedna navíc nákladná vrstva = dvojí výpočet member metrik (KPI + explicitní metrics) při načtení přehledu.
+6. **Typecheck celého `apps/web`:** může selhat na modulech mimo Team Overview (např. assistant chat, image-intake). Před releasem ověřte buď celý `tsc -p apps/web`, nebo aspoň dotčené soubory v IDE.
 
 ---
 

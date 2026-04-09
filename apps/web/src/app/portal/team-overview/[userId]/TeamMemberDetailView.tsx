@@ -1,19 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  TrendingUp,
-  Calendar,
-  CheckSquare,
-  Briefcase,
-  Activity,
-  AlertTriangle,
-  ChevronRight,
-  Check,
-  X,
-  Lightbulb,
-  Target,
-} from "lucide-react";
+import { Briefcase, AlertTriangle, Check, X, Lightbulb, Target } from "lucide-react";
 import type { TeamMemberDetail } from "@/app/actions/team-overview";
 import { MemberCareerQuickActions } from "./MemberCareerQuickActions";
 import { formatCareerProgramLabel, formatCareerTrackLabel } from "@/lib/career/evaluate-career-progress";
