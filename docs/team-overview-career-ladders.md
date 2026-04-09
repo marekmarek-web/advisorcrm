@@ -242,6 +242,14 @@ Výstup evaluace: `progressEvaluation` (`on_track`, `data_missing`, `blocked`, `
 
 ---
 
+## 14. Sjednocení copy s Team Overview (Fáze 6)
+
+- **Detail člena** (`TeamMemberDetailView`): štítky `progressEvaluation` a `evaluationCompleteness` používají **stejné krátké řetězce** jako tabulka v Team Overview (`Na dobré cestě`, `Chybí data`, `Potřebuje pozornost`, `Ruční ověření`, …) — delší vysvětlení zůstává v `hintShort` / coaching textech.
+- **Účel:** jeden mentální model pro managera mezi přehledem a detail osoby; snížení pocitu „jiná aplikace, jiný jazyk“.
+- **IA přehledu:** viz `docs/team-overview-masterplan.md` sekce 14 (pořadí bloků a empty states).
+
+---
+
 ## Odkaz na kód
 
 - `apps/web/src/lib/career/` — `evaluate-career-progress.ts`, `career-evaluation-vm.ts`, `career-insights.ts`, `career-coaching.ts`, `team-career-aggregate.ts`, `career-write-validation.ts`, registry

@@ -68,9 +68,9 @@ export function TeamRhythmPanel({
     >
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
-          <h2 id="team-rhythm-heading" className="text-lg font-semibold text-[color:var(--wp-text)] flex items-center gap-2">
+          <h2 id="team-rhythm-heading" className="text-lg font-bold text-[color:var(--wp-text)] flex items-center gap-2">
             <CalendarClock className="w-5 h-5 text-teal-600 shrink-0" />
-            Týmový rytmus a interní termíny
+            Týmový rytmus
           </h2>
           <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)] max-w-3xl">{disclaimer}</p>
         </div>

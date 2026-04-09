@@ -22,6 +22,8 @@ import {
   Filter,
   BarChart3,
   Briefcase,
+  CheckCircle2,
+  HeartHandshake,
 } from "lucide-react";
 import type {
   TeamOverviewKpis,
@@ -61,6 +63,7 @@ import { buildTeamCoachingAttentionList } from "@/lib/career/career-coaching";
 import { buildTeamCareerSummaryBlock } from "@/lib/career/team-career-aggregate";
 import type { EvaluationCompleteness, ProgressEvaluation } from "@/lib/career/types";
 
+/** Sjednocený slovník Team Overview ↔ detail člena (Fáze 6). */
 function teamOverviewCareerProgressShort(pe: ProgressEvaluation): string {
   switch (pe) {
     case "not_configured":
@@ -70,11 +73,11 @@ function teamOverviewCareerProgressShort(pe: ProgressEvaluation): string {
     case "unknown":
       return "Nejasné";
     case "on_track":
-      return "Na cestě";
+      return "Na dobré cestě";
     case "close_to_promotion":
       return "Blízko postupu";
     case "blocked":
-      return "Ke kontrole";
+      return "Potřebuje pozornost";
     case "promoted_ready":
       return "K potvrzení";
     default:
@@ -583,36 +586,27 @@ export function TeamOverviewView({
 
   const attentionCount = kpis?.riskyMemberCount ?? new Set(alerts.map((a) => a.memberId)).size;
   const topAttentionAlerts = alerts.slice(0, 5);
-  const briefingHeadline = scope === "me" ? "Váš přehled" : "Manažerský přehled";
+  const briefingHeadline = scope === "me" ? "Váš přehled" : "Přehled týmu";
   const briefingLead =
     scope === "me"
-      ? "Osobní pohled na vaše tempo a aktivity — využijte ho jako podklad k rozhovoru s vedením nebo k vlastnímu plánování."
-      : attentionCount === 0 && newcomers.length === 0
-        ? "Tým působí vyrovnaně — udržujte pravidelný kontakt a nechte prostor pro rozvoj i pochvalu."
-        : "Zaměřte se na podporu v adaptaci a na kolegy, kteří z vaší pozornosti teď nejvíc získají — ne na kontrolu, ale na vedení.";
+      ? "Váš kariérní kontext, metriky a doporučení na jednom místě — podklad pro rozhovor s vedením nebo vlastní plán."
+      : attentionCount > 0
+        ? `${attentionCount} ${attentionCount === 1 ? "člověk" : "lidí"} v tomto rozsahu má signály z CRM, na které stojí za to reagovat — podpora, ne kontrola.`
+        : newcomers.length > 0
+          ? `${newcomers.length} ${newcomers.length === 1 ? "nováček potřebuje" : "nováčci potřebují"} hlavně klidný rytmus a krátké check-iny — adaptace je investice do týmu.`
+          : "V tomto rozsahu neevidujeme naléhavé signály. Udržujte pravidelný kontakt, rytmus 1:1 a prostor pro růst.";
 
-  const quickContextLines: string[] = [];
-  if (scope !== "me") {
-    if (attentionCount > 0) {
-      quickContextLines.push(
-        `${attentionCount} ${attentionCount === 1 ? "osoba" : "lidí"} v tomto rozsahu má signály, na které se vyplatí krátce reagovat (kontakt, 1:1).`
-      );
-    } else {
-      quickContextLines.push("V tomto rozsahu zatím nikdo nemá otevřené priority vyžadující okamžitou pozornost.");
-    }
-    if (newcomers.length > 0) {
-      quickContextLines.push(
-        `${newcomers.length} ${newcomers.length === 1 ? "nováček je" : newcomers.length >= 2 && newcomers.length <= 4 ? "nováčci jsou" : "nováčků je"} v adaptaci — krátký check-in pomůže.`
-      );
-    }
-    if (kpis) {
-      quickContextLines.push(`V CRM evidujete ${kpis.meetingsThisWeek} schůzek tento týden (v tomto rozsahu).`);
-    }
-  } else if (kpis) {
-    quickContextLines.push(
-      `Za ${kpis.periodLabel}: ${kpis.unitsThisPeriod} jednotek, produkce ${formatNumber(kpis.productionThisPeriod)}.`
-    );
-  }
+  const valueFramingLine =
+    scope === "me"
+      ? "Jeden přehled místo lovu dat v tabulkách — vhodné pro osobní plánování a přípravu na 1:1."
+      : "Komu pomoct, kdo roste, kde doplnit data a co naplánovat — bez dalšího „reporting wall“. Doporučení vycházejí z kariéry, adaptace a signálů z CRM.";
+
+  const weeklySnapshotLine =
+    scope !== "me" && kpis
+      ? `Tento týden: ${kpis.meetingsThisWeek} schůzek v CRM (tento rozsah) · období ${kpis.periodLabel}.`
+      : scope === "me" && kpis
+        ? `Období ${kpis.periodLabel}: ${kpis.unitsThisPeriod} jednotek · produkce ${formatNumber(kpis.productionThisPeriod)}.`
+        : null;
 
   return (
     <div className="min-h-screen bg-[var(--wp-bg)]">
@@ -620,9 +614,9 @@ export function TeamOverviewView({
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-5 md:mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[color:var(--wp-text)]">Týmový přehled</h1>
-            <p className="mt-1 text-sm text-[color:var(--wp-text-secondary)]">
-              Přehled pro vedení — podpora, adaptace a struktura na jednom místě.
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[color:var(--wp-text)]">Přehled týmu</h1>
+            <p className="mt-1 text-sm text-[color:var(--wp-text-secondary)] max-w-xl">
+              Prémiový nástroj pro vedení: pozornost, růst, adaptace a rytmus — ne jen čísla z CRM.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -666,175 +660,218 @@ export function TeamOverviewView({
           </div>
         </div>
 
-        {/* Manažerský briefing — první fold */}
+        {/* 1. Manažerský briefing — first fold */}
         <section
-          className="mb-6 rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/90 via-[color:var(--wp-surface-card)] to-[color:var(--wp-surface-card)] p-5 sm:p-6 shadow-sm"
+          className="mb-8 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50/95 via-[color:var(--wp-surface-card)] to-indigo-50/30 p-5 sm:p-7 shadow-sm ring-1 ring-slate-900/[0.04]"
           aria-labelledby="team-briefing-heading"
         >
-          <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
-            <div className="lg:col-span-7 space-y-5">
-              <div>
-                <h2 id="team-briefing-heading" className="text-xl sm:text-2xl font-bold text-[color:var(--wp-text)]">
-                  {briefingHeadline}
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-[color:var(--wp-text-secondary)]">{briefingLead}</p>
-              </div>
-              {kpis ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/90 px-4 py-3 shadow-sm">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">
-                      {scope === "me" ? "V rozsahu" : "Členové"}
-                    </p>
-                    <p className="mt-1 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.memberCount}</p>
-                  </div>
-                  <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 px-4 py-3 shadow-sm">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800/80">Potřebují pozornost</p>
-                    <p className="mt-1 text-2xl font-bold text-amber-900">{attentionCount}</p>
-                  </div>
-                  <div className="rounded-xl border border-blue-200/70 bg-blue-50/50 px-4 py-3 shadow-sm">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-blue-800/80">V adaptaci</p>
-                    <p className="mt-1 text-2xl font-bold text-blue-900">{kpis.newcomersInAdaptation}</p>
-                  </div>
-                </div>
-              ) : loading ? (
-                <div className="grid grid-cols-3 gap-3">
-                  {[1, 2, 3].map((i) => (
-                    <SkeletonBlock key={i} className="h-20 rounded-xl" />
-                  ))}
-                </div>
-              ) : null}
-              {quickContextLines.length > 0 && (
-                <ul className="space-y-1.5 text-sm text-[color:var(--wp-text-secondary)] border-t border-[color:var(--wp-surface-card-border)]/60 pt-4">
-                  {quickContextLines.map((line, i) => (
-                    <li key={i} className="flex gap-2">
-                      <span className="text-indigo-500 font-bold shrink-0" aria-hidden>
-                        ·
-                      </span>
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="lg:col-span-5 flex flex-col rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 sm:p-5 shadow-sm min-h-[12rem]">
-              <h3 className="text-sm font-bold text-[color:var(--wp-text)] mb-3 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                Kam směřovat pozornost
-              </h3>
-              {topAttentionAlerts.length === 0 ? (
-                <p className="text-sm text-[color:var(--wp-text-secondary)] flex-1 flex items-center">
-                  {scope === "me"
-                    ? "Žádné otevřené priority z týmového pohledu — pokračujte v práci v CRM a domluvte si check-in, pokud potřebujete podporu."
-                    : "Skvělá zpráva — v tomto rozsahu neevidujeme urgentní signály. Udržujte pravidelný kontakt a sledujte nováčky v adaptaci."}
+          <div className="mb-6 max-w-3xl">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-indigo-700/85">Tento týden v týmu</p>
+            <h2 id="team-briefing-heading" className="text-2xl font-bold tracking-tight text-[color:var(--wp-text)] sm:text-3xl">
+              {briefingHeadline}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[color:var(--wp-text-secondary)]">{briefingLead}</p>
+            <p className="mt-3 border-l-2 border-indigo-200 pl-3 text-xs leading-relaxed text-[color:var(--wp-text-tertiary)]">{valueFramingLine}</p>
+          </div>
+          {kpis ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-4 shadow-sm">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">
+                  {scope === "me" ? "V rozsahu" : "Lidé v rozsahu"}
                 </p>
-              ) : (
-                <ul className="space-y-2 flex-1 overflow-y-auto max-h-56 pr-1">
-                  {topAttentionAlerts.map((a, i) => {
-                    const alertMember = members.find((m) => m.userId === a.memberId);
-                    const name = alertMember ? displayName(alertMember) : "Člen týmu";
-                    const tone =
-                      a.severity === "critical" ? ("Vyžaduje podporu" as const) : ("Potřebuje pozornost" as const);
-                    return (
-                      <li key={`${a.memberId}-${i}`}>
-                        <Link
-                          href={memberDetailHref(a.memberId)}
-                          className="block rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 px-3 py-2.5 hover:border-indigo-200 hover:bg-indigo-50/40 transition"
-                        >
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">
-                            {tone}
-                          </span>
-                          <p className="font-medium text-[color:var(--wp-text)] text-sm mt-0.5">{name}</p>
-                          <p className="text-xs text-[color:var(--wp-text-secondary)] line-clamp-2">{a.title}</p>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              {scope !== "me" && coachingAttention.length > 0 ? (
-                <div className="mt-4 pt-4 border-t border-[color:var(--wp-surface-card-border)]">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-violet-800/90 mb-2 flex items-center gap-2">
-                    <Briefcase className="w-3.5 h-3.5" />
-                    Růst — kdo potřebuje krok
-                  </h3>
-                  <p className="text-[11px] text-[color:var(--wp-text-secondary)] mb-2">
-                    Kombinace kariéry, adaptace a CRM signálů — doporučený typ akce, ne hodnocení člověka.
-                  </p>
-                  <ul className="space-y-2 overflow-y-auto max-h-52 pr-1">
-                    {coachingAttention.map((c) => {
-                      const mem = members.find((m) => m.userId === c.userId);
-                      const name = mem ? displayName(mem) : c.displayName || c.email || "Člen týmu";
+                <p className="mt-1 text-3xl font-bold tabular-nums text-[color:var(--wp-text)]">{kpis.memberCount}</p>
+                <p className="mt-1 text-xs text-[color:var(--wp-text-tertiary)]">
+                  {scope === "full" ? "Celá struktura" : scope === "my_team" ? "Můj tým" : "Osobní"}
+                </p>
+              </div>
+              <div
+                className={clsx(
+                  "rounded-xl border px-4 py-4 shadow-sm",
+                  attentionCount > 0
+                    ? "border-amber-200/80 bg-amber-50/60"
+                    : "border-emerald-200/70 bg-emerald-50/40"
+                )}
+              >
+                <p
+                  className={clsx(
+                    "text-[11px] font-bold uppercase tracking-wider",
+                    attentionCount > 0 ? "text-amber-900/85" : "text-emerald-900/80"
+                  )}
+                >
+                  Vyžaduje pozornost
+                </p>
+                <p
+                  className={clsx(
+                    "mt-1 text-3xl font-bold tabular-nums",
+                    attentionCount > 0 ? "text-amber-950" : "text-emerald-900"
+                  )}
+                >
+                  {attentionCount}
+                </p>
+                <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
+                  {attentionCount > 0 ? "Signály z CRM — krátká reakce pomůže" : "Žádné naléhavé signály v tomto rozsahu"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-blue-200/70 bg-blue-50/50 px-4 py-4 shadow-sm">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-900/80">V adaptaci</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums text-blue-950">{kpis.newcomersInAdaptation}</p>
+                <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">Nováčci v okně adaptace</p>
+              </div>
+            </div>
+          ) : loading ? (
+            <div className="grid grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <SkeletonBlock key={i} className="h-24 rounded-xl" />
+              ))}
+            </div>
+          ) : null}
+          {weeklySnapshotLine ? (
+            <p className="mt-5 text-sm text-[color:var(--wp-text-secondary)] border-t border-[color:var(--wp-surface-card-border)]/70 pt-4">
+              {weeklySnapshotLine}
+            </p>
+          ) : null}
+        </section>
+
+        {/* 2. Co vyžaduje pozornost + doporučené navázání */}
+        {scope !== "me" ? (
+          <section className="mb-8" aria-labelledby="team-priority-heading">
+            <div className="mb-4">
+              <h2 id="team-priority-heading" className="text-lg font-bold text-[color:var(--wp-text)] sm:text-xl">
+                Co vyžaduje pozornost a doporučené navázání
+              </h2>
+              <p className="mt-1 max-w-2xl text-xs text-[color:var(--wp-text-secondary)] sm:text-sm">
+                Signály z CRM a doporučení z kariérní vrstvy — orientační návrh dalšího kroku, ne hodnocení lidí.
+              </p>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="flex flex-col rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm sm:p-5">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-[color:var(--wp-text)]">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                  Signály z CRM
+                </h3>
+                {topAttentionAlerts.length === 0 ? (
+                  <div className="flex flex-1 flex-col justify-center rounded-xl border border-emerald-200/60 bg-emerald-50/35 px-4 py-5">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="h-8 w-8 shrink-0 text-emerald-600" aria-hidden />
+                      <div>
+                        <p className="font-semibold text-emerald-900">V mezích</p>
+                        <p className="mt-1 text-sm leading-relaxed text-emerald-900/85">
+                          Žádné naléhavé signály pro tento rozsah. Udržujte klidný rytmus kontaktu — sekce níže ukáže růst, adaptaci a naplánované termíny.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {topAttentionAlerts.map((a, i) => {
+                      const alertMember = members.find((m) => m.userId === a.memberId);
+                      const name = alertMember ? displayName(alertMember) : "Člen týmu";
+                      const tone =
+                        a.severity === "critical" ? ("Vyžaduje podporu" as const) : ("Potřebuje pozornost" as const);
                       return (
-                        <li key={c.userId}>
+                        <li key={`${a.memberId}-${i}`}>
                           <Link
-                            href={memberDetailHref(c.userId)}
-                            className="block rounded-lg border border-violet-200/60 bg-violet-50/40 px-3 py-2 hover:bg-violet-50/70 transition"
+                            href={memberDetailHref(a.memberId)}
+                            className="block rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/35 px-3 py-2.5 transition hover:border-indigo-200 hover:bg-indigo-50/40"
                           >
-                            <p className="font-medium text-[color:var(--wp-text)] text-sm">{name}</p>
-                            <p className="text-[11px] text-[color:var(--wp-text-secondary)] mt-0.5">{c.reasonCs}</p>
-                            <p className="text-[11px] font-semibold text-violet-900 mt-1">{c.recommendedActionLabelCs}</p>
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">
+                              {tone}
+                            </span>
+                            <p className="mt-0.5 text-sm font-medium text-[color:var(--wp-text)]">{name}</p>
+                            <p className="line-clamp-2 text-xs text-[color:var(--wp-text-secondary)]">{a.title}</p>
                           </Link>
                         </li>
                       );
                     })}
                   </ul>
-                  {canCreateTeamCalendar ? (
-                    <a
-                      href="#team-calendar-actions"
-                      className="inline-block mt-2 text-xs font-medium text-indigo-600 hover:underline"
-                    >
-                      Týmová schůzka / úkol (výběr více lidí) — otevřít akce výše
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
+                )}
+              </div>
+              <div className="flex flex-col rounded-2xl border border-violet-200/60 bg-gradient-to-b from-violet-50/40 to-[color:var(--wp-surface-card)] p-4 shadow-sm sm:p-5">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-[color:var(--wp-text)]">
+                  <HeartHandshake className="h-4 w-4 shrink-0 text-violet-600" />
+                  Doporučené navázání (kariéra &amp; coaching)
+                </h3>
+                {coachingAttention.length === 0 ? (
+                  <div className="flex flex-1 flex-col justify-center rounded-xl border border-slate-200/80 bg-[color:var(--wp-surface-card)]/80 px-4 py-5">
+                    <p className="font-semibold text-[color:var(--wp-text)]">Žádný výrazný návrh navíc</p>
+                    <p className="mt-1 text-sm leading-relaxed text-[color:var(--wp-text-secondary)]">
+                      Podle kariérní vrstvy a adaptace zatím nikdo nevyčnívá v prioritním seznamu — pokračujte v pravidelných 1:1 a sledujte blok „Kariérní přehled“ níže.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                      {coachingAttention.map((c) => {
+                        const mem = members.find((m) => m.userId === c.userId);
+                        const name = mem ? displayName(mem) : c.displayName || c.email || "Člen týmu";
+                        return (
+                          <li key={c.userId}>
+                            <Link
+                              href={memberDetailHref(c.userId)}
+                              className="block rounded-xl border border-violet-200/50 bg-violet-50/50 px-3 py-2.5 transition hover:bg-violet-50/90"
+                            >
+                              <p className="text-sm font-medium text-[color:var(--wp-text)]">{name}</p>
+                              <p className="mt-0.5 text-[11px] text-[color:var(--wp-text-secondary)]">{c.reasonCs}</p>
+                              <p className="mt-1 text-[11px] font-semibold text-violet-900">{c.recommendedActionLabelCs}</p>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {canCreateTeamCalendar ? (
+                      <a
+                        href="#team-calendar-actions"
+                        className="mt-3 inline-flex text-xs font-medium text-indigo-600 hover:underline"
+                      >
+                        Naplánovat týmovou schůzku nebo úkol — akce v záhlaví
+                      </a>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
-
-        <TeamRhythmPanel
-          computed={rhythmComputed}
-          disclaimer={
-            rhythmCalendar?.disclaimerCs ??
-            "Týmové položky pocházejí z team_events / team_tasks a jsou filtrované podle rozsahu přehledu."
-          }
-          scope={scope}
-          canCreate={canCreateTeamCalendar}
-          memberDetailHref={memberDetailHref}
-          resolveMemberLabel={resolveRhythmMemberLabel}
-          onOpenEvent={openTeamEventModal}
-          onOpenTask={openTeamTaskModal}
-        />
-
-        <TeamStructurePanel
-          roots={hierarchy}
-          currentUserId={currentUserId}
-          scope={scope}
-          memberDetailQuery={`?period=${encodeURIComponent(period)}`}
-        />
+          </section>
+        ) : (
+          <section className="mb-8 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm" aria-labelledby="self-priority-heading">
+            <h2 id="self-priority-heading" className="text-lg font-bold text-[color:var(--wp-text)]">
+              Váš kontext
+            </h2>
+            <p className="mt-2 text-sm text-[color:var(--wp-text-secondary)]">
+              V režimu „Já“ jsou priorita a coaching u jednotlivých členů v detailu osoby. Níže najdete kariérní přehled, metriky a trendy.
+            </p>
+          </section>
+        )}
 
         {members.length > 0 && (
           <section
-            className="mb-6 rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50/50 via-[color:var(--wp-surface-card)] to-[color:var(--wp-surface-card)] p-5 shadow-sm"
+            className="mb-8 rounded-2xl border border-violet-200/60 bg-gradient-to-br from-violet-50/45 via-[color:var(--wp-surface-card)] to-[color:var(--wp-surface-card)] p-5 shadow-sm ring-1 ring-violet-900/[0.04] sm:p-6"
             aria-labelledby="team-career-growth-heading"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-              <div>
-                <h2 id="team-career-growth-heading" className="text-lg font-semibold text-[color:var(--wp-text)] flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-violet-600 shrink-0" />
-                  Růst týmu
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div className="max-w-3xl">
+                <h2 id="team-career-growth-heading" className="flex items-center gap-2 text-lg font-bold text-[color:var(--wp-text)] sm:text-xl">
+                  <Briefcase className="h-5 w-5 shrink-0 text-violet-600" />
+                  Růst a adaptace — kariérní přehled
                 </h2>
-                <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)] max-w-2xl">
-                  Orientační kariérní pohled podle evidovaných údajů a CRM signálů — nejedná se o oficiální splnění kariérního řádu (BJ, BJS, licence). Respektuje zvolený rozsah a období.
+                <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)] sm:text-sm">
+                  Kde tým roste, kde chybí data a kdo je v adaptaci. Orientační pohled z údajů v aplikaci a CRM — ne oficiální splnění řádu (BJ, licence). Chybějící údaje bereme jako příležitost doplnit v Nastavení → Tým.
                 </p>
               </div>
+              <Link
+                href="/portal/setup?tab=tym"
+                className="text-xs font-semibold text-violet-700 hover:text-violet-900 hover:underline"
+              >
+                Doplnit kariérní údaje
+              </Link>
             </div>
             <div className="grid gap-4 lg:grid-cols-12">
               <div className="lg:col-span-4 space-y-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Podle větve</p>
                 <ul className="space-y-1.5 text-sm">
                   {careerTeamSummary.byTrack.length === 0 ? (
-                    <li className="text-[color:var(--wp-text-secondary)]">Zatím bez rozlišené větve u většiny členů.</li>
+                    <li className="text-[color:var(--wp-text-secondary)]">
+                      Zatím bez rozlišených větví — doplněním údajů zpřesníte doporučení (Nastavení → Tým).
+                    </li>
                   ) : (
                     careerTeamSummary.byTrack.map((t) => (
                       <li key={t.trackId} className="flex justify-between gap-2 text-[color:var(--wp-text)]">
@@ -846,7 +883,7 @@ export function TeamOverviewView({
                 </ul>
               </div>
               <div className="lg:col-span-4 space-y-3">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Stav (manažerské shrnutí)</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Stav podle přehledu</p>
                 <ul className="space-y-1.5 text-sm">
                   {(
                     [
@@ -886,12 +923,15 @@ export function TeamOverviewView({
               </div>
               <div className="lg:col-span-4">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mb-2">
-                  Kde dává smysl 1:1 (kariérní růst)
+                  Doporučené 1:1 (kariéra)
                 </p>
                 {careerTeamSummary.topAttention.length === 0 ? (
-                  <p className="text-sm text-[color:var(--wp-text-secondary)]">
-                    Žádné výrazné priority — udržujte pravidelný kontakt se všemi.
-                  </p>
+                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-3 text-sm text-[color:var(--wp-text-secondary)]">
+                    <p className="font-medium text-[color:var(--wp-text)]">Vyrovnaný přehled</p>
+                    <p className="mt-1 text-xs leading-relaxed">
+                      Z kariérního pohledu nikdo zásadně nevyčnívá — u malého týmu je to běžné. Udržujte pravidelný kontakt a sledujte signály výše.
+                    </p>
+                  </div>
                 ) : (
                   <ul className="space-y-2">
                     {careerTeamSummary.topAttention.map((x) => {
@@ -914,8 +954,99 @@ export function TeamOverviewView({
                 )}
               </div>
             </div>
+
+            {careerTeamSummary.byTrack.length === 0 && members.length > 0 ? (
+              <div className="mt-5 rounded-xl border border-amber-200/60 bg-amber-50/35 px-4 py-3 text-sm text-amber-950/90">
+                <span className="font-semibold">Příležitost doplnit data:</span> bez vyplněných kariérních větví zůstávají souhrny obecnější. Údaje doplníte v Nastavení → Tým.
+              </div>
+            ) : null}
+
+            <div className="mt-8 border-t border-[color:var(--wp-surface-card-border)]/80 pt-6" aria-labelledby="team-newcomers-inline-heading">
+              <h3 id="team-newcomers-inline-heading" className="text-sm font-bold text-[color:var(--wp-text)]">
+                Adaptace nováčků
+              </h3>
+              <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
+                Rozjezd v roli — stručný stav checklistu a signály z CRM.
+              </p>
+              {newcomers.length === 0 ? (
+                <div className="mt-4 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/30 px-4 py-5 text-center text-sm text-[color:var(--wp-text-secondary)]">
+                  <p className="font-medium text-[color:var(--wp-text)]">Žádní nováčci v adaptačním okně</p>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    Jakmile někdo nový přistoupí do týmu, objeví se tady s checklistem — ideální podklad na krátký check-in.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {newcomers.map((n) => {
+                    const member = members.find((m) => m.userId === n.userId);
+                    const name = member ? displayName(member) : "Člen týmu";
+                    return (
+                      <Link
+                        key={n.userId}
+                        href={memberDetailHref(n.userId)}
+                        className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-[color:var(--wp-text)]">{name}</p>
+                            <p className="text-xs text-[color:var(--wp-text-secondary)]">
+                              {n.daysInTeam} dní v týmu · {n.adaptationStatus}
+                            </p>
+                          </div>
+                          <div className="rounded-full bg-[color:var(--wp-surface-muted)] px-2 py-0.5 text-xs font-bold text-[color:var(--wp-text-secondary)]">
+                            {n.adaptationScore} %
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-1">
+                          {n.checklist.map((s) => (
+                            <span
+                              key={s.key}
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
+                                s.completed ? "bg-emerald-100 text-emerald-600" : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-tertiary)]"
+                              }`}
+                              title={s.label}
+                            >
+                              {s.completed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                            </span>
+                          ))}
+                        </div>
+                        {n.warnings.length > 0 && <p className="mt-2 text-xs text-amber-600">{n.warnings.join(" · ")}</p>}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </section>
         )}
+
+        <TeamRhythmPanel
+          computed={rhythmComputed}
+          disclaimer={
+            rhythmCalendar?.disclaimerCs ??
+            "Týmové položky pocházejí z team_events / team_tasks a jsou filtrované podle rozsahu přehledu."
+          }
+          scope={scope}
+          canCreate={canCreateTeamCalendar}
+          memberDetailHref={memberDetailHref}
+          resolveMemberLabel={resolveRhythmMemberLabel}
+          onOpenEvent={openTeamEventModal}
+          onOpenTask={openTeamTaskModal}
+        />
+
+        <TeamStructurePanel
+          roots={hierarchy}
+          currentUserId={currentUserId}
+          scope={scope}
+          memberDetailQuery={`?period=${encodeURIComponent(period)}`}
+        />
+
+        <div className="mb-6 border-t border-slate-200/70 pt-8">
+          <h2 className="text-lg font-bold text-[color:var(--wp-text)]">Lidé a metriky v detailu</h2>
+          <p className="mt-1 max-w-2xl text-xs text-[color:var(--wp-text-secondary)] sm:text-sm">
+            Tabulka a filtry až po prioritách výše — pro hlubší pohled na jednotlivce otevřete detail.
+          </p>
+        </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
           <CustomDropdown
@@ -946,7 +1077,7 @@ export function TeamOverviewView({
             onClick={() => setRiskOnly((v) => !v)}
             className={`min-h-[44px] rounded-xl border px-3 py-2 text-sm ${riskOnly ? "border-amber-300 bg-amber-50 text-amber-700" : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)]"}`}
           >
-            Potřebují pozornost
+            Vyžaduje pozornost
           </button>
           <button
             type="button"
@@ -971,273 +1102,12 @@ export function TeamOverviewView({
           prefill={calendarPrefill}
         />
 
-        {/* KPI cards — sekundární detail */}
-        <section className="mb-8" aria-labelledby="team-kpi-detail-heading">
-          <h2 id="team-kpi-detail-heading" className="text-lg font-semibold text-[color:var(--wp-text)] mb-3">
-            Detailní ukazatele
-          </h2>
-          <p className="sr-only">Klíčové ukazatele a trendy za zvolené období.</p>
-          {loading && !kpis ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <SkeletonBlock key={i} className="h-28 rounded-2xl" />
-              ))}
-            </div>
-          ) : kpis ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Link href="#clenove" className="group rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm transition hover:shadow-md hover:border-[color:var(--wp-surface-card-border)]">
-                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.blue.bg}`}>
-                  <Users className={`w-5 h-5 ${KPI_THEMES.blue.subtitle}`} />
-                </div>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.memberCount}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Členové týmu</p>
-              </Link>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.green.bg}`}>
-                  <TrendingUp className={`w-5 h-5 ${KPI_THEMES.green.subtitle}`} />
-                </div>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.unitsThisPeriod}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Jednotky ({kpis.periodLabel})</p>
-                <div className="mt-1"><TrendIndicator trend={kpis.unitsTrend} /></div>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.purple.bg}`}>
-                  <TrendingUp className={`w-5 h-5 ${KPI_THEMES.purple.subtitle}`} />
-                </div>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{formatNumber(kpis.productionThisPeriod)}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Produkce ({kpis.periodLabel})</p>
-                <div className="mt-1"><TrendIndicator trend={Math.round(kpis.productionTrend)} /></div>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.green.bg}`}>
-                  <Calendar className={`w-5 h-5 ${KPI_THEMES.green.subtitle}`} />
-                </div>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.meetingsThisWeek}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Schůzky tento týden</p>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.amber.bg}`}>
-                  <UserPlus className={`w-5 h-5 ${KPI_THEMES.amber.subtitle}`} />
-                </div>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.newcomersInAdaptation}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Nováčci v adaptaci</p>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.rose.bg}`}>
-                  <AlertTriangle className={`w-5 h-5 ${KPI_THEMES.rose.subtitle}`} />
-                </div>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.riskyMemberCount}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Potřebují pozornost</p>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Hodnota obchodů</p>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{formatNumber(Math.round(kpis.pipelineValue))}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Konverze: {Math.round(kpis.conversionRate * 100)} %</p>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Top performer</p>
-                <p className="mt-2 text-base font-bold text-[color:var(--wp-text)]">
-                  {topMetric ? (members.find((m) => m.userId === topMetric.userId)?.displayName || "Člen týmu") : "—"}
-                </p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">{topMetric ? formatNumber(topMetric.productionThisPeriod) : "—"}</p>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Potřebuje pozornost</p>
-                <p className="mt-2 text-base font-bold text-[color:var(--wp-text)]">
-                  {bottomMetric ? (members.find((m) => m.userId === bottomMetric.userId)?.displayName || "Člen týmu") : "—"}
-                </p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">{bottomMetric ? formatNumber(bottomMetric.productionThisPeriod) : "—"}</p>
-              </div>
-              {kpis.teamGoalTarget != null && kpis.teamGoalType && (
-                <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-                  <div className="inline-flex rounded-xl p-2 bg-indigo-500/20">
-                    <Target className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">
-                    {kpis.teamGoalProgressPercent != null ? `${kpis.teamGoalProgressPercent} %` : "—"}
-                  </p>
-                  <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Splnění týmového cíle</p>
-                  <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
-                    {kpis.teamGoalActual != null ? formatNumber(kpis.teamGoalActual) : "0"} / {formatNumber(kpis.teamGoalTarget)}
-                    {kpis.teamGoalType === "units" && " jednotek"}
-                    {kpis.teamGoalType === "production" && " produkce"}
-                    {kpis.teamGoalType === "meetings" && " schůzek"}
-                  </p>
-                  {kpis.teamGoalProgressPercent != null && (
-                    <div className="mt-2 h-1.5 w-full rounded-full bg-[color:var(--wp-surface-muted)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-indigo-500 transition-all"
-                        style={{ width: `${Math.min(kpis.teamGoalProgressPercent, 100)}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : null}
-        </section>
-
-        {/* Výkon v čase */}
-        {performanceOverTime.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-[color:var(--wp-text)] mb-3">Výkon v čase</h2>
-            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-              <div className="flex gap-2 items-end justify-between h-32" aria-label="Graf jednotek po obdobích">
-                {performanceOverTime.map((p, i) => {
-                  const maxUnits = Math.max(...performanceOverTime.map((x) => x.units), 1);
-                  const heightPct = maxUnits > 0 ? (p.units / maxUnits) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                      <div className="w-full flex flex-col justify-end h-20 rounded-t bg-[color:var(--wp-surface-muted)] overflow-hidden">
-                        <div
-                          className="w-full bg-indigo-500 rounded-t transition-all"
-                          style={{ height: `${heightPct}%`, minHeight: p.units > 0 ? "4px" : 0 }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-medium text-[color:var(--wp-text-secondary)] truncate w-full text-center" title={p.label}>{p.label}</span>
-                      <span className="text-xs font-semibold text-[color:var(--wp-text-secondary)]">{p.units}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* AI summary */}
-        <section className="mb-8">
-          <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h2 className="text-lg font-semibold text-[color:var(--wp-text)] flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-violet-500" />
-                Interní AI shrnutí týmu
-              </h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={loadLatestTeamSummary}
-                  disabled={aiLoading}
-                  className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-60"
-                >
-                  {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                  Načíst uložené
-                </button>
-                <button
-                  type="button"
-                  onClick={generateTeamSummary}
-                  disabled={aiLoading}
-                  className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
-                >
-                  {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                  {aiSummary ? "Regenerovat" : "Generovat shrnutí"}
-                </button>
-              </div>
-            </div>
-            <AdvisorAiOutputNotice variant="compact" className="mb-3" />
-            {aiError && (
-              <p className="mb-3 text-sm text-rose-600" role="alert">{aiError}</p>
-            )}
-            {aiSummary ? (
-              <>
-                <p className="text-[color:var(--wp-text-secondary)] whitespace-pre-wrap">{aiSummary}</p>
-                {aiGenerationId && !aiFeedbackSubmitted && (
-                  <TeamSummaryFeedback
-                    onSubmit={submitTeamSummaryFeedback}
-                    saving={aiFeedbackSaving}
-                    disabled={aiFeedbackSaving}
-                  />
-                )}
-                {aiFeedbackSubmitted && (
-                  <p className="mt-3 text-sm text-emerald-600">Zpětná vazba byla odeslána.</p>
-                )}
-                {aiGenerationId && (
-                  <TeamSummaryFollowUp
-                    members={members}
-                    onCreate={createTeamFollowUp}
-                    saving={teamActionSaving}
-                    error={teamActionError}
-                  />
-                )}
-              </>
-            ) : !aiLoading ? (
-              <p className="text-[color:var(--wp-text-secondary)] text-sm">Načtěte uložené shrnutí nebo klikněte na „Generovat shrnutí“ — vznikne informativní manažerský podklad z metrik a upozornění, nikoli rada vůči klientům.</p>
-            ) : null}
-          </div>
-        </section>
-
-        {/* Upozornění — plný seznam */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-[color:var(--wp-text)] mb-3">Upozornění a priority</h2>
-          {alerts.length === 0 ? (
-            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 text-center text-[color:var(--wp-text-secondary)]">
-              Žádná další upozornění — tým vypadá stabilně v tomto období.
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {alerts.map((a, i) => (
-                <li key={i}>
-                  <Link
-                    href={memberDetailHref(a.memberId)}
-                    className="flex flex-wrap items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm hover:border-amber-200 hover:bg-amber-50/50 transition"
-                  >
-                    <span className={`rounded-full p-1 ${a.severity === "critical" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}>
-                      <AlertTriangle className="w-4 h-4" />
-                    </span>
-                    <span className="font-medium text-[color:var(--wp-text)]">{a.title}</span>
-                    <span className="text-[color:var(--wp-text-secondary)] text-sm">{a.description}</span>
-                    <ChevronRight className="w-4 h-4 text-[color:var(--wp-text-tertiary)] ml-auto" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* Adaptace nováčků */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-[color:var(--wp-text)] mb-3">Adaptace nováčků</h2>
-          {newcomers.length === 0 ? (
-            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 text-center text-[color:var(--wp-text-secondary)]">
-              Momentálně žádní nováčci v adaptačním období.
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {newcomers.map((n) => {
-                const member = members.find((m) => m.userId === n.userId);
-                const name = member ? displayName(member) : "Člen týmu";
-                return (
-                  <Link
-                    key={n.userId}
-                    href={memberDetailHref(n.userId)}
-                    className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm hover:shadow-md transition"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-[color:var(--wp-text)]">{name}</p>
-                        <p className="text-xs text-[color:var(--wp-text-secondary)]">{n.daysInTeam} dní v týmu · {n.adaptationStatus}</p>
-                      </div>
-                      <div className="rounded-full bg-[color:var(--wp-surface-muted)] px-2 py-0.5 text-xs font-bold text-[color:var(--wp-text-secondary)]">{n.adaptationScore} %</div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {n.checklist.map((s) => (
-                        <span key={s.key} className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${s.completed ? "bg-emerald-100 text-emerald-600" : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-tertiary)]"}`} title={s.label}>
-                          {s.completed ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                        </span>
-                      ))}
-                    </div>
-                    {n.warnings.length > 0 && (
-                      <p className="mt-2 text-xs text-amber-600">{n.warnings.join(" · ")}</p>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
         {/* Seznam členů */}
         <section id="clenove">
-          <h2 className="text-lg font-semibold text-[color:var(--wp-text)] mb-3">Členové týmu</h2>
+          <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Tabulka členů</h2>
+          <p className="mb-3 text-xs text-[color:var(--wp-text-secondary)] sm:text-sm">
+            Metriky a kariérní štítky — otevřete řádek pro detail, 1:1 agendu a coaching.
+          </p>
           <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
             {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
@@ -1387,6 +1257,242 @@ export function TeamOverviewView({
             </div>
           </div>
         </section>
+
+        <section className="mb-10 border-t border-slate-200/60 pt-8" aria-labelledby="team-kpi-detail-heading">
+          <h2 id="team-kpi-detail-heading" className="text-lg font-bold text-[color:var(--wp-text)]">
+            CRM metriky — doplňující přehled
+          </h2>
+          <p className="mt-1 mb-4 max-w-2xl text-xs text-[color:var(--wp-text-secondary)] sm:text-sm">
+            Po prioritách výše: čísla z CRM za zvolené období — pro srovnání a kontext, ne jako jediný úsudek o týmu.
+          </p>
+          {loading && !kpis ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <SkeletonBlock key={i} className="h-28 rounded-2xl" />
+              ))}
+            </div>
+          ) : kpis ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link href="#clenove" className="group rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm transition hover:shadow-md hover:border-[color:var(--wp-surface-card-border)]">
+                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.blue.bg}`}>
+                  <Users className={`w-5 h-5 ${KPI_THEMES.blue.subtitle}`} />
+                </div>
+                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.memberCount}</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Členové týmu</p>
+              </Link>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.green.bg}`}>
+                  <TrendingUp className={`w-5 h-5 ${KPI_THEMES.green.subtitle}`} />
+                </div>
+                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.unitsThisPeriod}</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Jednotky ({kpis.periodLabel})</p>
+                <div className="mt-1"><TrendIndicator trend={kpis.unitsTrend} /></div>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.purple.bg}`}>
+                  <TrendingUp className={`w-5 h-5 ${KPI_THEMES.purple.subtitle}`} />
+                </div>
+                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{formatNumber(kpis.productionThisPeriod)}</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Produkce ({kpis.periodLabel})</p>
+                <div className="mt-1"><TrendIndicator trend={Math.round(kpis.productionTrend)} /></div>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.green.bg}`}>
+                  <Calendar className={`w-5 h-5 ${KPI_THEMES.green.subtitle}`} />
+                </div>
+                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.meetingsThisWeek}</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Schůzky tento týden</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.amber.bg}`}>
+                  <UserPlus className={`w-5 h-5 ${KPI_THEMES.amber.subtitle}`} />
+                </div>
+                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.newcomersInAdaptation}</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Nováčci v adaptaci</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.rose.bg}`}>
+                  <AlertTriangle className={`w-5 h-5 ${KPI_THEMES.rose.subtitle}`} />
+                </div>
+                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.riskyMemberCount}</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Vyžaduje pozornost</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Hodnota obchodů</p>
+                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{formatNumber(Math.round(kpis.pipelineValue))}</p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Konverze: {Math.round(kpis.conversionRate * 100)} %</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Top performer</p>
+                <p className="mt-2 text-base font-bold text-[color:var(--wp-text)]">
+                  {topMetric ? (members.find((m) => m.userId === topMetric.userId)?.displayName || "Člen týmu") : "—"}
+                </p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">{topMetric ? formatNumber(topMetric.productionThisPeriod) : "—"}</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Podpora ve výkonu</p>
+                <p className="mt-2 text-base font-bold text-[color:var(--wp-text)]">
+                  {bottomMetric ? (members.find((m) => m.userId === bottomMetric.userId)?.displayName || "Člen týmu") : "—"}
+                </p>
+                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">{bottomMetric ? formatNumber(bottomMetric.productionThisPeriod) : "—"}</p>
+              </div>
+              {kpis.teamGoalTarget != null && kpis.teamGoalType && (
+                <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+                  <div className="inline-flex rounded-xl p-2 bg-indigo-500/20">
+                    <Target className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">
+                    {kpis.teamGoalProgressPercent != null ? `${kpis.teamGoalProgressPercent} %` : "—"}
+                  </p>
+                  <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Splnění týmového cíle</p>
+                  <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
+                    {kpis.teamGoalActual != null ? formatNumber(kpis.teamGoalActual) : "0"} / {formatNumber(kpis.teamGoalTarget)}
+                    {kpis.teamGoalType === "units" && " jednotek"}
+                    {kpis.teamGoalType === "production" && " produkce"}
+                    {kpis.teamGoalType === "meetings" && " schůzek"}
+                  </p>
+                  {kpis.teamGoalProgressPercent != null && (
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-[color:var(--wp-surface-muted)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-indigo-500 transition-all"
+                        style={{ width: `${Math.min(kpis.teamGoalProgressPercent, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </section>
+
+        {/* Trend výkonu */}
+        {performanceOverTime.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Trend výkonu (CRM)</h2>
+            <p className="mb-3 text-xs text-[color:var(--wp-text-secondary)]">Jednotky po obdobích — orientační, vedle lidského přehledu výše.</p>
+            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+              <div className="flex gap-2 items-end justify-between h-32" aria-label="Graf jednotek po obdobích">
+                {performanceOverTime.map((p, i) => {
+                  const maxUnits = Math.max(...performanceOverTime.map((x) => x.units), 1);
+                  const heightPct = maxUnits > 0 ? (p.units / maxUnits) * 100 : 0;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                      <div className="w-full flex flex-col justify-end h-20 rounded-t bg-[color:var(--wp-surface-muted)] overflow-hidden">
+                        <div
+                          className="w-full bg-indigo-500 rounded-t transition-all"
+                          style={{ height: `${heightPct}%`, minHeight: p.units > 0 ? "4px" : 0 }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-medium text-[color:var(--wp-text-secondary)] truncate w-full text-center" title={p.label}>{p.label}</span>
+                      <span className="text-xs font-semibold text-[color:var(--wp-text-secondary)]">{p.units}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* AI shrnutí — doplňkové */}
+        <section className="mb-8">
+          <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div>
+                <h2 className="text-lg font-bold text-[color:var(--wp-text)] flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-violet-500" />
+                  Shrnutí týmu (AI)
+                </h2>
+                <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
+                  Volitelný textový podklad z metrik — nenahrazuje vlastní úsudek ani komunikaci s týmem.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadLatestTeamSummary}
+                  disabled={aiLoading}
+                  className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-60"
+                >
+                  {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                  Načíst uložené
+                </button>
+                <button
+                  type="button"
+                  onClick={generateTeamSummary}
+                  disabled={aiLoading}
+                  className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+                >
+                  {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                  {aiSummary ? "Regenerovat" : "Generovat shrnutí"}
+                </button>
+              </div>
+            </div>
+            <AdvisorAiOutputNotice variant="compact" className="mb-3" />
+            {aiError && (
+              <p className="mb-3 text-sm text-rose-600" role="alert">{aiError}</p>
+            )}
+            {aiSummary ? (
+              <>
+                <p className="text-[color:var(--wp-text-secondary)] whitespace-pre-wrap">{aiSummary}</p>
+                {aiGenerationId && !aiFeedbackSubmitted && (
+                  <TeamSummaryFeedback
+                    onSubmit={submitTeamSummaryFeedback}
+                    saving={aiFeedbackSaving}
+                    disabled={aiFeedbackSaving}
+                  />
+                )}
+                {aiFeedbackSubmitted && (
+                  <p className="mt-3 text-sm text-emerald-600">Zpětná vazba byla odeslána.</p>
+                )}
+                {aiGenerationId && (
+                  <TeamSummaryFollowUp
+                    members={members}
+                    onCreate={createTeamFollowUp}
+                    saving={teamActionSaving}
+                    error={teamActionError}
+                  />
+                )}
+              </>
+            ) : !aiLoading ? (
+              <p className="text-[color:var(--wp-text-secondary)] text-sm">Načtěte uložené shrnutí nebo klikněte na „Generovat shrnutí“ — vznikne informativní manažerský podklad z metrik a upozornění, nikoli rada vůči klientům.</p>
+            ) : null}
+          </div>
+        </section>
+
+        {/* Kompletní výpis signálů (stejné jako v kartách výše) */}
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Kompletní výpis signálů z CRM</h2>
+          <p className="mb-3 text-xs text-[color:var(--wp-text-secondary)]">
+            Totéž, co v přehledu nahoře — zde celý seznam pro kontrolu nebo tisk.
+          </p>
+          {alerts.length === 0 ? (
+            <div className="rounded-2xl border border-emerald-200/50 bg-emerald-50/30 px-5 py-6 text-center">
+              <p className="font-medium text-emerald-900">Žádné další signály</p>
+              <p className="mt-1 text-sm text-emerald-900/85">
+                V tomto období a rozsahu je výpis prázdný — tým působí z pohledu CRM stabilně.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {alerts.map((a, i) => (
+                <li key={i}>
+                  <Link
+                    href={memberDetailHref(a.memberId)}
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm hover:border-amber-200 hover:bg-amber-50/50 transition"
+                  >
+                    <span className={`rounded-full p-1 ${a.severity === "critical" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}>
+                      <AlertTriangle className="w-4 h-4" />
+                    </span>
+                    <span className="font-medium text-[color:var(--wp-text)]">{a.title}</span>
+                    <span className="text-[color:var(--wp-text-secondary)] text-sm">{a.description}</span>
+                    <ChevronRight className="w-4 h-4 text-[color:var(--wp-text-tertiary)] ml-auto" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
       </div>
     </div>
   );

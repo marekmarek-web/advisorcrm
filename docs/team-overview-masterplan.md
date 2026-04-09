@@ -419,6 +419,52 @@ Další implementační prompt považujte za splněný, pokud:
 
 ---
 
+## 14. Fáze 6 — Premium polish, hierarchie hodnoty, copy
+
+### 1) Finální hierarchy of value (pořadí bloků na stránce)
+
+1. Záhlaví stránky + akce (scope, období, kalendář).
+2. **Manažerský briefing** (first fold): nadpis „Tento týden v týmu“, 3 prioritní KPI (lidé v rozsahu, vyžaduje pozornost, v adaptaci), krátký value framing.
+3. **Co vyžaduje pozornost a doporučené navázání** (jen mimo scope „Já“): dvě karty — signály z CRM + doporučení kariéra/coaching; pozitivní empty states („V mezích“, „Žádný výrazný návrh navíc“).
+4. **Růst a adaptace — kariérní přehled** + vnořená **Adaptace nováčků** (bez duplicitní sekce níže).
+5. **Týmový rytmus** (`TeamRhythmPanel`).
+6. **Struktura týmu** (`TeamStructurePanel`).
+7. **Lidé a metriky v detailu** — filtry + **tabulka členů**.
+8. **CRM metriky — doplňující přehled** (mřížka KPI).
+9. **Trend výkonu (CRM)**.
+10. **Shrnutí týmu (AI)**.
+11. **Kompletní výpis signálů z CRM**.
+
+### 2) Framing a copy principy
+
+- Tón: **premium, klidný, manažerský, podpůrný** — vyhnout se „dohledu“ a sankčnímu jazyku.
+- Jednotné štítky rizika: **Vyžaduje podporu** / **Potřebuje pozornost** / **Stabilní**; KPI karta „Vyžaduje pozornost“ (počet).
+- Kariérní zkratky v tabulce sjednoceny s detailem člena (`Na dobré cestě`, **Chybí data**, **Potřebuje pozornost** u `blocked`, **Ruční ověření** u completeness).
+- Krátké inline vysvětlení „proč je modul užitečný“ v briefing a u sekcí — bez přehuštění.
+
+### 3) Empty / low-data / healthy states
+
+- Žádné naléhavé CRM signály: karta **V mezích** (zelený rámec, vysvětlení).
+- Coaching prázdný: neutrální karta s odkazem na pravidelný kontakt a blok kariéry.
+- Kariérní větve nevyplněné: **příležitost doplnit data** + odkaz Nastavení → Tým.
+- Adaptace: prázdný stav s vysvětlením, až přijde nováček.
+- Kompletní výpis alertů prázdný: zelený empty state.
+
+### 4) Manager-first čitelnost
+
+- Malý tým: stejná struktura, zdůraznění že vyrovnaný přehled je **běžný**; žádné „prázdné díry“.
+- Director / širší scope: priorita zůstává nahoře; tabulka a CRM metriky až jako hloubka.
+
+### 5) MVP / V1
+
+- Team Overview s briefingem, prioritami, kariérou + adaptací v jednom bloku, rytmem, strukturou, tabulkou, doplňkovými metrikami, trendem, AI a plným výpisem signálů — **bez nového backendu** v této fázi.
+
+### 6) Future phase
+
+- Mobilní Team Overview se stejnou IA, entitlement „Team plán“ v UI, notifikace, bohatší šablony empty states podle tenantu.
+
+---
+
 ## Migrace SQL
 
-Pro Fázi 5 **nejsou potřeba žádné nové SQL migrace** — read model čte existující tabulky `team_events` a `team_tasks` (schéma v `packages/db/src/schema/team-events.ts`).
+Pro Fáze 5–6 **nejsou potřeba žádné nové SQL migrace** — Fáze 6 je výhradně UI/copy/pořadí bloků. Read model Fáze 5 čte `team_events` / `team_tasks` (`packages/db/src/schema/team-events.ts`).

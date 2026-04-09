@@ -25,22 +25,23 @@ function formatNumber(n: number): string {
   return n.toLocaleString("cs-CZ");
 }
 
+/** Zarovnáno s přehledem týmu (Team Overview) — stručné štítky, detail v hintech níže. */
 function progressEvaluationLabel(pe: ProgressEvaluation): string {
   switch (pe) {
     case "not_configured":
-      return "Kariéra nenastavena";
+      return "Nenastaveno";
     case "data_missing":
-      return "Chybí data nebo konfigurace";
+      return "Chybí data";
     case "unknown":
-      return "Nejasná specifikace / neznámá hodnota";
+      return "Nejasné";
     case "on_track":
-      return "Na dobré cestě (ověření BJ/BJS vždy ručně)";
+      return "Na dobré cestě";
     case "close_to_promotion":
-      return "Blízko postupu (nutné potvrzení)";
+      return "Blízko postupu";
     case "blocked":
-      return "Blokováno / nesoulad s konfigurací";
+      return "Potřebuje pozornost";
     case "promoted_ready":
-      return "Připraveno k postupu (nutné potvrzení vedením)";
+      return "K potvrzení";
     default:
       return pe;
   }
@@ -49,13 +50,13 @@ function progressEvaluationLabel(pe: ProgressEvaluation): string {
 function evaluationCompletenessLabel(ec: EvaluationCompleteness): string {
   switch (ec) {
     case "full":
-      return "Evaluace kompletní (automatická část)";
+      return "Kompletní";
     case "partial":
-      return "Částečně vyhodnoceno";
+      return "Částečně";
     case "low_confidence":
-      return "Nízká jistota (chybí údaje nebo legacy)";
+      return "Nízká jistota";
     case "manual_required":
-      return "Nutné manuální ověření (PDF / HR)";
+      return "Ruční ověření";
     default:
       return ec;
   }
