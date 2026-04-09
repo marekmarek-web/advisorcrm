@@ -821,3 +821,12 @@ export async function updatePortalPassword(newPassword: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ password: trimmed });
   if (error) throw new Error(mapPortalPasswordUpdateError(error));
 }
+
+/** Synchronizace příznaku 2FA v memberships (reporting / tenant) s reálným stavem v Supabase Auth. */
+export async function syncMembershipMfaEnabled(enabled: boolean): Promise<void> {
+  const auth = await requireAuthInAction();
+  await db
+    .update(memberships)
+    .set({ mfaEnabled: enabled })
+    .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)));
+}

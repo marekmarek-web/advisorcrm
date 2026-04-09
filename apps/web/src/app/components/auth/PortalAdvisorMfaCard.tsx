@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { syncMembershipMfaEnabled } from "@/app/actions/auth";
 import { Shield } from "lucide-react";
 import type { Factor } from "@supabase/supabase-js";
 
@@ -92,6 +93,11 @@ export function PortalAdvisorMfaCard() {
     }
     cancelEnroll();
     await refresh();
+    try {
+      await syncMembershipMfaEnabled(true);
+    } catch {
+      /* přihlášení v pořádku; DB zrcadlo je best-effort */
+    }
   };
 
   const removeFactor = async (factorId: string) => {
@@ -101,7 +107,14 @@ export function PortalAdvisorMfaCard() {
     const { error: uErr } = await supabase.auth.mfa.unenroll({ factorId });
     setBusy(false);
     if (uErr) setError(uErr.message);
-    else await refresh();
+    else {
+      await refresh();
+      try {
+        await syncMembershipMfaEnabled(false);
+      } catch {
+        /* best-effort */
+      }
+    }
   };
 
   return (
@@ -110,8 +123,14 @@ export function PortalAdvisorMfaCard() {
         <Shield size={20} className="text-white" />
       </div>
       <h3 className="font-bold text-lg mb-2">Dvoufázové ověření</h3>
-      <p className="text-sm font-medium text-slate-300 leading-relaxed mb-4">
-        Po zapnutí se při přihlášení heslem zobrazí krok s kódem z aplikace Authenticator (Google Authenticator, 1Password, …). V projektu Supabase musí být zapnuté MFA (TOTP).
+      <p className="text-sm font-medium text-slate-300 leading-relaxed mb-3">
+        V Aidvisoře pracujete s citlivými údaji — <strong className="text-white">doporučujeme</strong> zapnout 2FA
+        (TOTP z aplikace Authenticator, 1Password apod.). Zapnutí je <strong className="text-white">dobrovolné</strong>;
+        bez 2FA nesete vyšší riziko zneužití účtu při úniku hesla nebo kompromitaci zařízení. Po zapnutí zadáte kód z aplikace při každém přihlášení — i po Google nebo Apple.
+      </p>
+      <p className="text-xs text-slate-400 leading-relaxed mb-4 border-t border-white/10 pt-3">
+        Zabezpečení vašeho účtu, hesla a zařízení je především na vás. Aidvisora neručí za následky rozhodnutí nepoužívat
+        2FA ani za škody vzniklé neoprávněným přístupem v takovém případě.
       </p>
 
       {loading ? (

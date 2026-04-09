@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { createClient } from "@/lib/supabase/client";
@@ -46,10 +46,17 @@ function isNativeRuntime() {
   return Boolean(cap?.isNativePlatform?.() || Capacitor.isNativePlatform());
 }
 
+function isClientPortalDestination(path: string): boolean {
+  return path === "/client" || path.startsWith("/client/");
+}
+
 export function useAidvisoraLogin() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const forceNative = searchParams.get("native") === "1";
   const nextParam = searchParams.get("next");
+  const pendingMfaParam = searchParams.get("pending_mfa") === "1";
   const advisorNextPath = normalizeNextParam(nextParam, "/portal/today");
   const clientNextPath = normalizeNextParam(nextParam, "/client");
   const clientInviteToken = parseClientInviteTokenFromUrl(searchParams);
@@ -113,6 +120,82 @@ export function useAidvisoraLogin() {
   useEffect(() => {
     if (role === "client") setAdvisorLegalConsent(false);
   }, [role]);
+
+  /** Po OAuth / dokončení TOTP: klient → ensure přístup; poradce → provision přes register/complete. */
+  const navigateAfterAuthSessionReady = useCallback(async (targetNext: string) => {
+    const dest = normalizeNextParam(targetNext, "/portal/today");
+    if (isClientPortalDestination(dest)) {
+      const access = await ensureClientPortalAccess();
+      if (!access.ok) {
+        window.location.href = `/prihlaseni?error=${encodeURIComponent(access.error)}`;
+        return;
+      }
+      window.location.href = access.redirectTo ?? "/client";
+      return;
+    }
+    window.location.href = `/register/complete?next=${encodeURIComponent(dest)}`;
+  }, []);
+
+  useEffect(() => {
+    if (!pendingMfaParam) return;
+    const ac = new AbortController();
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (ac.signal.aborted) return;
+      if (!session) {
+        window.location.replace("/prihlaseni");
+        return;
+      }
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (ac.signal.aborted) return;
+      const dest = normalizeNextParam(nextParam, "/portal/today");
+      if (aal?.currentLevel === "aal2" || aal?.nextLevel !== "aal2") {
+        await navigateAfterAuthSessionReady(dest);
+        return;
+      }
+      const { data: fac, error: facErr } = await supabase.auth.mfa.listFactors();
+      if (ac.signal.aborted) return;
+      if (facErr) {
+        setMessage(facErr.message);
+        await supabase.auth.signOut();
+        return;
+      }
+      const totp = fac?.totp?.find((f) => f.status === "verified");
+      if (!totp) {
+        await navigateAfterAuthSessionReady(dest);
+        return;
+      }
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+      if (ac.signal.aborted) return;
+      if (chErr || !ch?.id) {
+        setMessage(chErr?.message ?? "Krok 2FA se nepodařilo zahájit.");
+        await supabase.auth.signOut();
+        return;
+      }
+      setMfaFactorId(totp.id);
+      setMfaChallengeId(ch.id);
+      setMfaCode("");
+      setMfaPending(true);
+      const q = new URLSearchParams();
+      if (nextParam) q.set("next", nextParam);
+      if (forceNative) q.set("native", "1");
+      if (registerParam) q.set("register", registerParam);
+      const qs = q.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    })().catch(() => {});
+    return () => ac.abort();
+  }, [
+    pendingMfaParam,
+    nextParam,
+    forceNative,
+    pathname,
+    router,
+    registerParam,
+    navigateAfterAuthSessionReady,
+  ]);
 
   const isClient = role === "client";
   const isInviteFlow = Boolean(clientInviteToken);
@@ -307,9 +390,9 @@ export function useAidvisoraLogin() {
       setMfaFactorId(null);
       setMfaChallengeId(null);
       setMfaCode("");
-      window.location.href = `/register/complete?next=${encodeURIComponent(advisorNextPath)}`;
+      await navigateAfterAuthSessionReady(advisorNextPath);
     },
-    [mfaFactorId, mfaChallengeId, mfaCode, advisorNextPath],
+    [mfaFactorId, mfaChallengeId, mfaCode, advisorNextPath, navigateAfterAuthSessionReady],
   );
 
   const handleOAuthSignIn = useCallback(

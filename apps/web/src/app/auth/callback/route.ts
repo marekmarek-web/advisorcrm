@@ -39,6 +39,11 @@ export async function GET(request: Request) {
           `${origin}/prihlaseni?error=${encodeURIComponent(error.message)}`
         );
       }
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+        const encodedNext = encodeURIComponent(next);
+        return NextResponse.redirect(`${origin}/prihlaseni?pending_mfa=1&next=${encodedNext}`);
+      }
     }
 
     return NextResponse.redirect(`${origin}${next.startsWith("/") ? next : "/" + next}`);

@@ -31,7 +31,9 @@ export function LoginMfaChallenge({ isLoading, message, code, setCode, onSubmit,
         </div>
         <div>
           <h2 className={`font-bold ${isWeb ? "text-lg" : "text-xl"}`}>Dvoufázové ověření</h2>
-          <p className={`text-sm ${isWeb ? "text-slate-400" : "text-slate-400"}`}>Zadejte 6místný kód z aplikace Authenticator.</p>
+          <p className={`text-sm ${isWeb ? "text-slate-400" : "text-slate-400"}`}>
+            Zadejte 6místný kód z aplikace Authenticator. 2FA jste si zapnuli dobrovolně jako dodatečnou ochranu účtu.
+          </p>
         </div>
       </div>
       <input

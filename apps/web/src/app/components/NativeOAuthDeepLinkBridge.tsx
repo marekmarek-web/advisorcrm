@@ -92,6 +92,14 @@ export function NativeOAuthDeepLinkBridge() {
                 window.location.replace(target);
                 return;
               }
+              const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+              if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+                const nextPath = "/portal/today";
+                const mfaUrl = `${origin}/prihlaseni?pending_mfa=1&native=1&next=${encodeURIComponent(nextPath)}`;
+                logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] MFA required, navigating to:", mfaUrl);
+                window.location.replace(mfaUrl);
+                return;
+              }
               const target = `${origin}/register/complete?next=%2Fportal%2Ftoday`;
               logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] session exchanged OK, navigating to:", target);
               window.location.replace(target);
