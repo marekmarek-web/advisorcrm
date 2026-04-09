@@ -3,6 +3,116 @@
  * Each returns { subject, html } ready for sendEmail().
  */
 
+import { escapeHtmlText } from "@/lib/email/birthday/html-utils";
+
+/**
+ * Transakční / marketing layout ve stejném stylu jako ověřovací e-mail (Supabase Auth template):
+ * tmavá hlavička, Plus Jakarta Sans + Inter, karta s velkým zaoblením.
+ *
+ * `preheaderPlain`, `badgePlain`, `headlinePlain`, `metaTitle` se escapují uvnitř.
+ * `bodyHtml` a `secondaryBoxHtml` musí být bezpečné HTML (volající escapuje dynamická data).
+ */
+export function aidvisoraBrandEmailDocument(params: {
+  metaTitle: string;
+  preheaderPlain: string;
+  badgePlain: string;
+  headlinePlain: string;
+  bodyHtml: string;
+  /** Volitelný box dole v bílé sekci (např. upozornění / tip). */
+  secondaryBoxHtml?: string;
+  siteUrl: string;
+}): string {
+  const ph = escapeHtmlText(params.preheaderPlain);
+  const badge = escapeHtmlText(params.badgePlain);
+  const headline = escapeHtmlText(params.headlinePlain);
+  const docTitle = escapeHtmlText(params.metaTitle);
+  const site = params.siteUrl.trim().replace(/\/$/, "");
+  const siteHref = escapeHtmlText(site);
+  const siteLabel = escapeHtmlText(site.replace(/^https?:\/\//, ""));
+
+  const secondary = params.secondaryBoxHtml?.trim()
+    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;background-color:#F8FAFC;border-radius:16px;border:1px solid #E2E8F0;">
+        <tr><td style="padding:24px;">${params.secondaryBoxHtml}</td></tr>
+      </table>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="cs" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>${docTitle}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    table { border-collapse: collapse !important; }
+    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #F4F6FB; }
+    .link-hover:hover { color: #5A4BFF !important; text-decoration: underline !important; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#F4F6FB;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="display:none;font-size:1px;color:#fefefe;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    ${ph}
+  </div>
+
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#F4F6FB;padding:40px 20px;">
+    <tr>
+      <td align="center" style="padding:20px 0;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background-color:#ffffff;border-radius:32px;overflow:hidden;box-shadow:0 10px 40px -10px rgba(0,0,0,0.08);">
+          <tr>
+            <td align="center" style="background-color:#0B1021;padding:50px 40px;border-bottom:4px solid #5A4BFF;">
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom:30px;">
+                <tr>
+                  <td align="center">
+                    <div style="font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;">
+                      <span style="color:#8B5CF6;">A</span> Aidvisora
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td align="center" style="background-color:rgba(90,75,255,0.15);border-radius:16px;padding:12px 16px;">
+                    <span style="font-family:'Plus Jakarta Sans',sans-serif;color:#A5B4FC;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">
+                      ${badge}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+              <h1 style="margin:0;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-0.03em;line-height:1.2;">
+                ${headline}
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td align="left" style="background-color:#ffffff;padding:48px 40px;">
+              ${params.bodyHtml}
+              ${secondary}
+            </td>
+          </tr>
+        </table>
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;margin-top:32px;">
+          <tr>
+            <td align="center" style="font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;color:#94A3B8;">
+              <p style="margin:0 0 16px 0;">Odesláno týmem Aidvisora<br>Inteligentní platforma pro finanční poradce.</p>
+              <p style="margin:0;">
+                <a href="${siteHref}" target="_blank" class="link-hover" style="color:#94A3B8;text-decoration:none;">${siteLabel}</a>
+                &nbsp; • &nbsp;
+                <a href="mailto:podpora@aidvisora.cz" target="_blank" class="link-hover" style="color:#94A3B8;text-decoration:none;">Podpora</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 function layout(bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="cs">

@@ -1,6 +1,8 @@
 import "server-only";
 
 import { sendEmail } from "@/lib/email/send-email";
+import { aidvisoraBrandEmailDocument } from "@/lib/email/templates";
+import { getServerAppBaseUrl } from "@/lib/url/server-app-base-url";
 
 function escapeHtml(s: string): string {
   return s
@@ -22,37 +24,6 @@ function formatBookingWhen(startAt: Date): string {
   });
 }
 
-/** Jednoduchý layout pro transakční e-maily (tabulky = lepší kompatibilita klientů). */
-function transactionalEmailShell(bodyInner: string): string {
-  return `<!DOCTYPE html>
-<html lang="cs">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
-<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;line-height:1.5;color:#0f172a;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:24px 16px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
-          <tr>
-            <td style="height:4px;background:linear-gradient(90deg,#4f46e5,#6366f1);"></td>
-          </tr>
-          <tr>
-            <td style="padding:28px 28px 8px 28px;">
-              ${bodyInner}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:8px 28px 28px 28px;border-top:1px solid #e2e8f0;">
-              <p style="margin:16px 0 0 0;color:#64748b;font-size:13px;line-height:1.45;">Tato zpráva byla odeslána automaticky po rezervaci přes veřejný odkaz.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-}
-
 /**
  * Best-effort e-maily po veřejné rezervaci — nehází výjimku při výpadku Resendu.
  */
@@ -69,25 +40,55 @@ export async function sendPublicBookingNotifications(opts: {
   const safeName = escapeHtml(opts.clientName);
   const safeAdvisor = escapeHtml(opts.advisorName);
   const safeCompany = escapeHtml(opts.companyName || "Aidvisora");
+  const siteUrl = getServerAppBaseUrl();
 
-  const clientInner = `
-              <p style="margin:0 0 8px 0;font-size:13px;font-weight:600;letter-spacing:0.02em;color:#4f46e5;text-transform:uppercase;">Potvrzení rezervace</p>
-              <h1 style="margin:0 0 20px 0;font-size:22px;font-weight:700;line-height:1.25;color:#0f172a;">Dobrý den, ${safeName}</h1>
-              <p style="margin:0 0 16px 0;color:#334155;">Potvrzujeme váš vybraný termín schůzky.</p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;background-color:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+  const clientBodyHtml = `
+              <p style="margin:0 0 20px 0;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#0B1021;">Dobrý den, ${safeName},</p>
+              <p style="margin:0 0 28px 0;font-family:'Inter',sans-serif;font-size:16px;line-height:1.65;color:#475569;">
+                potvrzujeme váš vybraný termín schůzky v <strong style="color:#0B1021;">Aidvisoře</strong>.
+              </p>
+
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:16px;">
                 <tr>
-                  <td style="padding:16px 18px;">
-                    <p style="margin:0 0 4px 0;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;">Termín</p>
-                    <p style="margin:0;font-size:17px;font-weight:600;color:#0f172a;">${escapeHtml(when)}</p>
-                    <p style="margin:8px 0 0 0;font-size:13px;color:#64748b;">Časové pásmo: Europe/Prague</p>
+                  <td align="center">
+                    <div style="display:inline-block;background-color:#0B1021;color:#5A4BFF;border-radius:18px;padding:20px 24px;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:20px;font-weight:800;line-height:1.35;text-align:center;max-width:100%;">
+                      ${escapeHtml(when)}
+                    </div>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 8px 0;color:#334155;"><strong style="color:#0f172a;">Poradce:</strong> ${safeAdvisor}${opts.companyName ? ` <span style="color:#64748b;">(${safeCompany})</span>` : ""}</p>
-              <p style="margin:0;color:#334155;">Pokud potřebujete termín změnit, kontaktujte prosím poradce přímo.</p>
+
+              <p style="margin:0 0 28px 0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#64748B;text-align:center;">
+                Časové pásmo: Europe/Prague
+              </p>
+
+              <p style="margin:0 0 32px 0;font-family:'Inter',sans-serif;font-size:16px;line-height:1.65;color:#475569;">
+                <strong style="color:#0B1021;">Poradce:</strong> ${safeAdvisor}${opts.companyName ? ` <span style="color:#64748B;">(${safeCompany})</span>` : ""}
+              </p>
+
+              <p style="margin:0;font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;color:#94A3B8;">
+                Tato zpráva byla odeslána automaticky po rezervaci přes veřejný odkaz.
+              </p>
   `;
 
-  const clientHtml = transactionalEmailShell(clientInner);
+  const clientSecondaryBox = `
+                    <p style="margin:0 0 8px 0;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:#0B1021;text-transform:uppercase;letter-spacing:0.05em;">
+                      Změna termínu
+                    </p>
+                    <p style="margin:0;font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;color:#64748B;">
+                      Pokud potřebujete termín změnit, kontaktujte prosím poradce přímo.
+                    </p>
+  `;
+
+  const clientHtml = aidvisoraBrandEmailDocument({
+    metaTitle: "Potvrzení schůzky | Aidvisora",
+    preheaderPlain: `Schůzka potvrzena: ${when}. Europe/Prague.`,
+    badgePlain: "Potvrzení rezervace",
+    headlinePlain: "Schůzka potvrzena",
+    bodyHtml: clientBodyHtml,
+    secondaryBoxHtml: clientSecondaryBox,
+    siteUrl,
+  });
 
   try {
     await sendEmail({
@@ -101,23 +102,47 @@ export async function sendPublicBookingNotifications(opts: {
 
   if (!opts.advisorEmail?.trim()) return;
 
-  const advInner = `
-              <p style="margin:0 0 8px 0;font-size:13px;font-weight:600;letter-spacing:0.02em;color:#4f46e5;text-transform:uppercase;">Veřejná rezervace</p>
-              <h1 style="margin:0 0 20px 0;font-size:22px;font-weight:700;line-height:1.25;color:#0f172a;">Nová rezervace</h1>
-              <p style="margin:0 0 16px 0;color:#334155;">Klient si vybral termín přes veřejný odkaz.</p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;background-color:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+  const mailHref = `mailto:${encodeURIComponent(opts.clientEmail)}`;
+  const advBodyHtml = `
+              <p style="margin:0 0 20px 0;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#0B1021;">Dobrý den,</p>
+              <p style="margin:0 0 28px 0;font-family:'Inter',sans-serif;font-size:16px;line-height:1.65;color:#475569;">
+                klient si právě vybral termín přes <strong style="color:#0B1021;">veřejný rezervační odkaz</strong>.
+              </p>
+
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#F8FAFC;border-radius:16px;border:1px solid #E2E8F0;">
                 <tr>
-                  <td style="padding:16px 18px;">
-                    <p style="margin:0 0 10px 0;"><strong style="color:#0f172a;">Klient:</strong> <span style="color:#334155;">${safeName}</span></p>
-                    <p style="margin:0 0 10px 0;"><strong style="color:#0f172a;">E-mail:</strong> <a href="mailto:${escapeHtml(opts.clientEmail)}" style="color:#4f46e5;text-decoration:none;">${escapeHtml(opts.clientEmail)}</a></p>
-                    <p style="margin:0;"><strong style="color:#0f172a;">Termín:</strong> <span style="color:#334155;">${escapeHtml(when)}</span></p>
+                  <td style="padding:24px;">
+                    <p style="margin:0 0 10px 0;font-family:'Inter',sans-serif;font-size:15px;line-height:1.5;color:#475569;">
+                      <strong style="color:#0B1021;">Klient:</strong> ${safeName}
+                    </p>
+                    <p style="margin:0 0 10px 0;font-family:'Inter',sans-serif;font-size:15px;line-height:1.5;color:#475569;">
+                      <strong style="color:#0B1021;">E-mail:</strong>
+                      <a href="${mailHref}" style="color:#5A4BFF;text-decoration:none;font-weight:600;">${escapeHtml(opts.clientEmail)}</a>
+                    </p>
+                    <p style="margin:0;font-family:'Inter',sans-serif;font-size:15px;line-height:1.5;color:#475569;">
+                      <strong style="color:#0B1021;">Termín:</strong> ${escapeHtml(when)}
+                    </p>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0;color:#334155;">Událost je zapsaná ve vašem kalendáři v Aidvisoře.</p>
+
+              <p style="margin:28px 0 0 0;font-family:'Inter',sans-serif;font-size:16px;line-height:1.65;color:#475569;">
+                Událost je zapsaná ve vašem kalendáři v Aidvisoře.
+              </p>
+
+              <p style="margin:24px 0 0 0;font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;color:#94A3B8;">
+                Tato zpráva byla odeslána automaticky po rezervaci přes veřejný odkaz.
+              </p>
   `;
 
-  const advHtml = transactionalEmailShell(advInner);
+  const advHtml = aidvisoraBrandEmailDocument({
+    metaTitle: "Nová rezervace | Aidvisora",
+    preheaderPlain: `Nová webová rezervace: ${opts.clientName}.`,
+    badgePlain: "Veřejná rezervace",
+    headlinePlain: "Nová rezervace",
+    bodyHtml: advBodyHtml,
+    siteUrl,
+  });
 
   try {
     await sendEmail({
