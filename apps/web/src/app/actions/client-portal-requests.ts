@@ -13,7 +13,7 @@ import {
   tenants,
   advisorNotifications,
 } from "db";
-import { eq, and, asc, desc, inArray } from "db";
+import { eq, and, ne, asc, desc, inArray } from "db";
 import {
   stageToClientStatus,
   getClientStatusLabel,
@@ -176,7 +176,8 @@ export async function getAdvisorClientPortalRequestsInbox(): Promise<AdvisorClie
       and(
         eq(advisorNotifications.tenantId, auth.tenantId),
         eq(advisorNotifications.targetUserId, auth.userId),
-        eq(advisorNotifications.type, CLIENT_PORTAL_NOTIFICATION_TYPE)
+        eq(advisorNotifications.type, CLIENT_PORTAL_NOTIFICATION_TYPE),
+        ne(advisorNotifications.status, "dismissed")
       )
     )
     .orderBy(desc(advisorNotifications.createdAt))

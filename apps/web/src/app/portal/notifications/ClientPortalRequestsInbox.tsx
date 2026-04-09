@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -19,6 +19,7 @@ import {
   Shield,
   Sparkles,
   TrendingUp,
+  Trash2,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -120,6 +121,11 @@ export function ClientPortalRequestsInbox({ initialItems }: Props) {
   const [pending, startTransition] = useTransition();
   const [taskPending, setTaskPending] = useState(false);
   const [handlingSaving, setHandlingSaving] = useState(false);
+  const [dismissPending, setDismissPending] = useState(false);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   const selected = useMemo(
     () => items.find((i) => i.notificationId === selectedId) ?? null,
@@ -143,6 +149,47 @@ export function ClientPortalRequestsInbox({ initialItems }: Props) {
       window.dispatchEvent(new CustomEvent("portal-notifications-badge-refresh"));
     }
   }, []);
+
+  const dismissFromInbox = useCallback(
+    async (notificationId: string) => {
+      setDismissPending(true);
+      try {
+        const res = await fetch("/api/notifications/dismiss", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationId }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
+        if (!res.ok || !data.ok) {
+          toast.showToast("Odstranění z přehledu se nepodařilo.", "error");
+          return;
+        }
+        const prev = itemsRef.current;
+        const next = prev.filter((n) => n.notificationId !== notificationId);
+        const sid = selectedIdRef.current;
+        const newSelected =
+          sid === notificationId
+            ? (() => {
+                const idx = prev.findIndex((n) => n.notificationId === notificationId);
+                const neighbor = idx >= 0 ? (prev[idx + 1] ?? prev[idx - 1]) : undefined;
+                if (neighbor && next.some((n) => n.notificationId === neighbor.notificationId)) {
+                  return neighbor.notificationId;
+                }
+                return next[0]?.notificationId ?? null;
+              })()
+            : sid;
+        setItems((p) => p.filter((n) => n.notificationId !== notificationId));
+        setSelectedId(newSelected);
+        window.dispatchEvent(new CustomEvent("portal-notifications-badge-refresh"));
+        toast.showToast("Požadavek byl odstraněn z přehledu.", "success");
+      } catch {
+        toast.showToast("Odstranění z přehledu se nepodařilo.", "error");
+      } finally {
+        setDismissPending(false);
+      }
+    },
+    [toast]
+  );
 
   useEffect(() => {
     const id = searchParams.get("n");
@@ -465,6 +512,15 @@ export function ClientPortalRequestsInbox({ initialItems }: Props) {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={dismissPending}
+                      onClick={() => void dismissFromInbox(selected.notificationId)}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200 dark:hover:bg-rose-950/60"
+                    >
+                      {dismissPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 className="h-4 w-4" aria-hidden />}
+                      Odstranit z přehledu
+                    </button>
                     {selected.contactId ? (
                       <Link
                         href={`/portal/contacts/${selected.contactId}`}
