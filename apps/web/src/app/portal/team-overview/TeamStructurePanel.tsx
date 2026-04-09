@@ -22,10 +22,12 @@ function TreeBranch({
   nodes,
   currentUserId,
   depth,
+  memberDetailQuery,
 }: {
   nodes: TeamTreeNode[];
   currentUserId: string;
   depth: number;
+  memberDetailQuery: string;
 }) {
   return (
     <ul
@@ -50,7 +52,7 @@ function TreeBranch({
                 <UserCircle className="w-4 h-4 shrink-0 text-indigo-600" aria-hidden />
               ) : null}
               <Link
-                href={`/portal/team-overview/${node.userId}`}
+                href={`/portal/team-overview/${node.userId}${memberDetailQuery}`}
                 className="font-semibold text-[color:var(--wp-text)] hover:text-indigo-600 hover:underline"
               >
                 {label}
@@ -64,7 +66,12 @@ function TreeBranch({
               ) : null}
             </div>
             {node.children.length > 0 ? (
-              <TreeBranch nodes={node.children} currentUserId={currentUserId} depth={depth + 1} />
+              <TreeBranch
+                nodes={node.children}
+                currentUserId={currentUserId}
+                depth={depth + 1}
+                memberDetailQuery={memberDetailQuery}
+              />
             ) : null}
           </li>
         );
@@ -77,10 +84,13 @@ export function TeamStructurePanel({
   roots,
   currentUserId,
   scope,
+  memberDetailQuery = "",
 }: {
   roots: TeamTreeNode[];
   currentUserId: string;
   scope: TeamOverviewScope;
+  /** Např. ?period=month — stejné období jako Team Overview */
+  memberDetailQuery?: string;
 }) {
   const selfNode = findNodeInForest(roots, currentUserId);
   const directChildren = selfNode?.children ?? [];
@@ -126,7 +136,7 @@ export function TeamStructurePanel({
             {directChildren.map((c) => (
               <Link
                 key={c.userId}
-                href={`/portal/team-overview/${c.userId}`}
+                href={`/portal/team-overview/${c.userId}${memberDetailQuery}`}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-1.5 text-sm font-medium text-[color:var(--wp-text)] hover:border-indigo-200 hover:bg-indigo-50/50"
               >
                 {c.displayName?.trim() || c.email || "Člen týmu"}
@@ -138,7 +148,7 @@ export function TeamStructurePanel({
       )}
 
       <div className="max-h-[min(24rem,55vh)] overflow-y-auto pr-1 -mr-1">
-        <TreeBranch nodes={roots} currentUserId={currentUserId} depth={0} />
+        <TreeBranch nodes={roots} currentUserId={currentUserId} depth={0} memberDetailQuery={memberDetailQuery} />
       </div>
     </section>
   );

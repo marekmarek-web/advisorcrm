@@ -9,8 +9,10 @@ export const dynamic = "force-dynamic";
 
 export default async function TeamMemberDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ userId: string }>;
+  searchParams?: Promise<{ period?: string }>;
 }) {
   const auth = await requireAuth();
   if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) {
@@ -18,7 +20,10 @@ export default async function TeamMemberDetailPage({
   }
 
   const { userId } = await params;
-  const detail = await getTeamMemberDetail(userId).catch(() => null);
+  const sp = (await searchParams) ?? {};
+  const period =
+    sp.period === "week" || sp.period === "month" || sp.period === "quarter" ? sp.period : "month";
+  const detail = await getTeamMemberDetail(userId, { period }).catch(() => null);
   if (!detail) notFound();
 
   return (

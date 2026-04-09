@@ -116,7 +116,7 @@ Aktuálně (MVP fáze 2):
 
 1. **CRM aktivita** — hrubý kontext z počtu aktivit a dnů bez aktivity (ne BJ/BJS).
 2. **Hierarchie** — kontext z počtu přímých podřízených tam, kde to dává smysl (stále bez předstírání splnění strukturálních kritérií z PDF).
-3. **Adaptace** — na detailu člena doplněný textový kontext ze stavu adaptace nováčka (`newcomerAdaptationStatusLabel`), pokud je k dispozici.
+3. **Adaptace** — stejný popisek adaptace jako v přehledu nováčků se propisuje do evaluace **už v `getTeamMemberMetrics`** (fáze 3), takže list a detail mají shodné `proxySignals`.
 
 V UI je vždy zdůrazněno, že jde o **doprovodné signály**, ne oficiální splnění podmínek kariérního řádu.
 
@@ -130,11 +130,42 @@ V UI je vždy zdůrazněno, že jde o **doprovodné signály**, ne oficiální s
 
 ---
 
-## 8. Propsání do Team Overview a detailu člena
+## 8. Propsání do Team Overview a detailu (fáze 3 — jeden zdroj)
 
-- **Server:** `getTeamMemberMetrics` doplňuje `careerSummary` (`hintShort`, `progressEvaluation`, `evaluationCompleteness`) pomocí `evaluateCareerProgress` + `careerListHintShort` (`apps/web/src/app/actions/team-overview.ts`).
-- **Seznam členů:** `TeamOverviewView` — pod řádkem jména: text `formatCareerSummaryLine` (program · větev · pozice), pod tím kompaktní štítky stavu a úplnosti a krátký hint.
-- **Detail:** `getTeamMemberDetail` vrací `careerEvaluation` (pozice, další krok, `missingRequirements`, úplnost, proxy signály). Sekce Kariéra v `TeamMemberDetailView` zobrazuje čtyři vrstvy (role vs kariéra), stav evaluace a chybějící položky.
+### Kanonický evaluation flow
+
+1. **`evaluateCareerProgress`** (`evaluate-career-progress.ts`) — jádro výpočtu (program, track, pozice, `missingRequirements`, proxy, …).
+2. **`buildCareerEvaluationViewModel`** (`career-evaluation-vm.ts`) — jediné místo, které z jádra skládá **view model** pro UI: přidává `summaryLine` (stejná sémantika jako dříve `formatCareerSummaryLine`), `hintShort`, `managerProgressLabel` (manažerské škatulky bez toxických textů).
+3. **`getTeamMemberMetrics`** — pro každého člena ve **stejném** scope jako přehled zavolá `buildCareerEvaluationViewModel` s kontextem včetně **`newcomerAdaptationStatusLabel`** z `getNewcomerAdaptation` (shoda proxy se seznamem/detail).
+4. **`getTeamMemberDetail(userId, { period?, scope? })`** — **nepočítá** kariéru znovu jiným vstupem: vezme `careerEvaluation` z `getTeamMemberMetrics(period, scope)` kde `scope = resolveScopeForRole(role, options?.scope)`. Volitelný fallback VM jen když by metrika chyběla.
+5. Odkazy z přehledu na detail přidávají **`?period=`**; stejný query parametr používá panel struktury týmu — období v CRM metrikách sedí s řádkem v tabulce.
+
+Na `TeamMemberMetrics` je navíc **`directReportsCount`** (počet přímých podřízených v hierarchii) pro insighty.
+
+### Team Overview — blok „Růst týmu“
+
+- Agregace čistými funkcemi: **`buildTeamCareerSummaryBlock`** (`team-career-aggregate.ts`) — počty podle **větve**, podle **manažerského bucketu** (`managerProgressLabel`), souhrn „chybí data / doplnění“, částečná nebo ruční část evaluace, **startovní pozice + adaptace**, až **5 lidí** s nejvyšším skóre pozornosti (odvozeno od stavu evaluace, ne od „hodnocení osobnosti“).
+
+### Seznam členů
+
+- Zobrazuje **`careerEvaluation.summaryLine`**, **`managerProgressLabel`**, technické štítky (`progressEvaluation`, `evaluationCompleteness`), **`hintShort`**, volitelně **další krok** (`nextCareerPositionLabel`).
+
+### Detail člena
+
+- Stejný `CareerEvaluationViewModel` jako v řádku přehledu (včetně `summaryLine`).
+- Stručná legenda: **Evidované / Odvozené / K ručnímu ověření**.
+- **`careerInsights`** z **`buildCareerInsights`** (`career-insights.ts`) — krátké manažerské signály (start + CRM ticho, manažerská větev bez přímých, nízká jistota, adaptace + slabý rozjezd, pozitivní CRM proxy u individuální větve). Nejsou to oficiální splnění řádu.
+
+### Career alerty (k CRM alertům)
+
+- V `buildAlertsFromMetric` přibyly typy **`career_data_gap`**, **`career_review`**, **`career_low_confidence`** — jemná vrstva nad kariérními daty.
+
+### Scope a role (audit)
+
+- **Manager:** při požadavku na `full` scope ho `resolveScopeForRole` srazí na **`my_team`** — kariérní souhrn ani metriky při detailu **neobsahují** lidi mimo podstrom.
+- **Director / Admin:** `full` = celý tenant (dle hierarchie).
+- **Advisor / Viewer:** jen **`me`**.
+- Viditelnost detailu: `getVisibleUserIds` se stejným scope jako metriky — nelze otevřít detail mimo rozsah.
 
 ---
 
@@ -168,9 +199,9 @@ Výstup evaluace: `progressEvaluation` (`on_track`, `data_missing`, `blocked`, `
 
 ## Odkaz na kód
 
-- `apps/web/src/lib/career/` (registry, evaluace, `career-write-validation.ts`)
+- `apps/web/src/lib/career/` — `evaluate-career-progress.ts`, `career-evaluation-vm.ts`, `career-insights.ts`, `team-career-aggregate.ts`, `career-write-validation.ts`, registry
 - `apps/web/src/app/actions/team.ts` (`updateMemberCareer`, tenant default)
-- `apps/web/src/app/actions/team-overview.ts` (`careerSummary`, detail)
+- `apps/web/src/app/actions/team-overview.ts` (`getTeamMemberMetrics`, `getTeamMemberDetail`, alerty)
 - `apps/web/src/app/portal/setup/SetupView.tsx`, `TeamMemberCareerFields.tsx`
-- `apps/web/src/app/portal/team-overview/TeamOverviewView.tsx`, `[userId]/TeamMemberDetailView.tsx`
+- `apps/web/src/app/portal/team-overview/TeamOverviewView.tsx`, `TeamStructurePanel.tsx`, `[userId]/TeamMemberDetailView.tsx`, `[userId]/page.tsx`
 - `packages/db/drizzle/0024_memberships_career.sql`

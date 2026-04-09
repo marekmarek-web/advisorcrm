@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -21,6 +21,7 @@ import {
   User,
   Filter,
   BarChart3,
+  Briefcase,
 } from "lucide-react";
 import type { TeamOverviewKpis, TeamMemberInfo, TeamMemberMetrics, TeamAlert, NewcomerAdaptation, TeamPerformancePoint, TeamOverviewPeriod } from "@/app/actions/team-overview";
 import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
@@ -36,7 +37,7 @@ import clsx from "clsx";
 import { AdvisorAiOutputNotice } from "@/app/components/ai/AdvisorAiOutputNotice";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
-import { formatCareerSummaryLine } from "@/lib/career/evaluate-career-progress";
+import { buildTeamCareerSummaryBlock } from "@/lib/career/team-career-aggregate";
 import type { EvaluationCompleteness, ProgressEvaluation } from "@/lib/career/types";
 
 function teamOverviewCareerProgressShort(pe: ProgressEvaluation): string {
@@ -438,6 +439,29 @@ export function TeamOverviewView({
   const displayName = (m: TeamMemberInfo) => m.displayName || "Člen týmu";
   const newcomerSet = new Set(newcomers.map((n) => n.userId));
 
+  const memberDetailHref = useCallback(
+    (userId: string) => `/portal/team-overview/${userId}?period=${encodeURIComponent(period)}`,
+    [period]
+  );
+
+  const careerTeamSummary = useMemo(() => {
+    const byUser = new Map(metrics.map((m) => [m.userId, m]));
+    const nu = new Set(newcomers.map((n) => n.userId));
+    const rows = members
+      .map((m) => {
+        const met = byUser.get(m.userId);
+        if (!met) return null;
+        return {
+          userId: m.userId,
+          displayName: m.displayName,
+          email: m.email,
+          careerEvaluation: met.careerEvaluation,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r != null);
+    return buildTeamCareerSummaryBlock(rows, nu);
+  }, [members, metrics, newcomers]);
+
   const scopeOptions: { value: TeamOverviewScope; label: string }[] =
     currentRole === "Advisor" || currentRole === "Viewer"
       ? [{ value: "me", label: "Já" }]
@@ -626,7 +650,7 @@ export function TeamOverviewView({
                     return (
                       <li key={`${a.memberId}-${i}`}>
                         <Link
-                          href={`/portal/team-overview/${a.memberId}`}
+                          href={memberDetailHref(a.memberId)}
                           className="block rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 px-3 py-2.5 hover:border-indigo-200 hover:bg-indigo-50/40 transition"
                         >
                           <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--wp-text-tertiary)]">
@@ -644,7 +668,116 @@ export function TeamOverviewView({
           </div>
         </section>
 
-        <TeamStructurePanel roots={hierarchy} currentUserId={currentUserId} scope={scope} />
+        <TeamStructurePanel
+          roots={hierarchy}
+          currentUserId={currentUserId}
+          scope={scope}
+          memberDetailQuery={`?period=${encodeURIComponent(period)}`}
+        />
+
+        {members.length > 0 && (
+          <section
+            className="mb-6 rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50/50 via-[color:var(--wp-surface-card)] to-[color:var(--wp-surface-card)] p-5 shadow-sm"
+            aria-labelledby="team-career-growth-heading"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 id="team-career-growth-heading" className="text-lg font-semibold text-[color:var(--wp-text)] flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-violet-600 shrink-0" />
+                  Růst týmu
+                </h2>
+                <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)] max-w-2xl">
+                  Orientační kariérní pohled podle evidovaných údajů a CRM signálů — nejedná se o oficiální splnění kariérního řádu (BJ, BJS, licence). Respektuje zvolený rozsah a období.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-12">
+              <div className="lg:col-span-4 space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Podle větve</p>
+                <ul className="space-y-1.5 text-sm">
+                  {careerTeamSummary.byTrack.length === 0 ? (
+                    <li className="text-[color:var(--wp-text-secondary)]">Zatím bez rozlišené větve u většiny členů.</li>
+                  ) : (
+                    careerTeamSummary.byTrack.map((t) => (
+                      <li key={t.trackId} className="flex justify-between gap-2 text-[color:var(--wp-text)]">
+                        <span className="text-[color:var(--wp-text-secondary)] truncate">{t.label}</span>
+                        <span className="font-semibold tabular-nums shrink-0">{t.count}</span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+              <div className="lg:col-span-4 space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Stav (manažerské shrnutí)</p>
+                <ul className="space-y-1.5 text-sm">
+                  {(
+                    [
+                      "Na dobré cestě",
+                      "Vyžaduje doplnění",
+                      "Částečně vyhodnoceno",
+                      "Potřebuje pozornost",
+                      "Bez dostatku dat",
+                    ] as const
+                  ).map((label) => {
+                    const c = careerTeamSummary.byManagerLabel[label] ?? 0;
+                    if (c === 0) return null;
+                    return (
+                      <li key={label} className="flex justify-between gap-2">
+                        <span className="text-[color:var(--wp-text-secondary)]">{label}</span>
+                        <span className="font-semibold tabular-nums">{c}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 px-3 py-2 text-xs text-[color:var(--wp-text-secondary)] space-y-1">
+                  <p>
+                    <span className="font-semibold text-[color:var(--wp-text)]">Chybí data / doplnění:</span>{" "}
+                    {careerTeamSummary.needsAttentionDataCount}{" "}
+                    {careerTeamSummary.needsAttentionDataCount === 1 ? "osoba" : "lidí"}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-[color:var(--wp-text)]">Částečná nebo ruční část evaluace:</span>{" "}
+                    {careerTeamSummary.manualOrPartialCount}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-[color:var(--wp-text)]">Start + adaptace:</span>{" "}
+                    {careerTeamSummary.startersInAdaptationCount}{" "}
+                    {careerTeamSummary.startersInAdaptationCount === 1 ? "osoba" : "lidí"} na prvním kroku větve a v adaptačním okně
+                  </p>
+                </div>
+              </div>
+              <div className="lg:col-span-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] mb-2">
+                  Kde dává smysl 1:1 (kariérní růst)
+                </p>
+                {careerTeamSummary.topAttention.length === 0 ? (
+                  <p className="text-sm text-[color:var(--wp-text-secondary)]">
+                    Žádné výrazné priority — udržujte pravidelný kontakt se všemi.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {careerTeamSummary.topAttention.map((x) => {
+                      const mem = members.find((m) => m.userId === x.userId);
+                      const name = mem ? displayName(mem) : x.displayName || x.email || "Člen týmu";
+                      return (
+                        <li key={x.userId}>
+                          <Link
+                            href={memberDetailHref(x.userId)}
+                            className="block rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 hover:border-violet-200 hover:bg-violet-50/30 transition"
+                          >
+                            <p className="font-medium text-sm text-[color:var(--wp-text)]">{name}</p>
+                            <p className="text-[11px] text-violet-800/90 font-medium">{x.managerProgressLabel}</p>
+                            <p className="text-xs text-[color:var(--wp-text-secondary)] mt-0.5 line-clamp-2">{x.reason}</p>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="mb-4 flex flex-wrap gap-2">
           <CustomDropdown
@@ -902,7 +1035,7 @@ export function TeamOverviewView({
               {alerts.map((a, i) => (
                 <li key={i}>
                   <Link
-                    href={`/portal/team-overview/${a.memberId}`}
+                    href={memberDetailHref(a.memberId)}
                     className="flex flex-wrap items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm hover:border-amber-200 hover:bg-amber-50/50 transition"
                   >
                     <span className={`rounded-full p-1 ${a.severity === "critical" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}>
@@ -933,7 +1066,7 @@ export function TeamOverviewView({
                 return (
                   <Link
                     key={n.userId}
-                    href={`/portal/team-overview/${n.userId}`}
+                    href={memberDetailHref(n.userId)}
                     className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 shadow-sm hover:shadow-md transition"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -985,36 +1118,40 @@ export function TeamOverviewView({
                 <tbody className="divide-y divide-[color:var(--wp-surface-card-border)]">
                   {visibleMembers.map((m) => {
                     const met = metricsByUser.get(m.userId);
-                    const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerTrack, m.careerPositionCode);
+                    const ce = met?.careerEvaluation;
                     return (
                       <tr key={m.userId} className="hover:bg-[color:var(--wp-surface-muted)]/50">
                         <td className="px-4 py-3">
-                          <Link href={`/portal/team-overview/${m.userId}`} className="font-medium text-[color:var(--wp-text)] hover:underline">
+                          <Link href={memberDetailHref(m.userId)} className="font-medium text-[color:var(--wp-text)] hover:underline">
                             {displayName(m)}
                           </Link>
                           <p className="text-xs text-[color:var(--wp-text-secondary)]">{m.roleName}{m.email ? ` · ${m.email}` : ""}</p>
-                          {careerLine ? (
-                            <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-0.5">{careerLine}</p>
+                          {ce?.summaryLine ? (
+                            <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-0.5">{ce.summaryLine}</p>
                           ) : null}
-                          {met?.careerSummary ? (
-                            <div className="mt-1 space-y-0.5 max-w-[14rem]">
+                          {ce ? (
+                            <div className="mt-1 space-y-0.5 max-w-[16rem]">
+                              <p className="text-[10px] font-medium text-violet-900/85">{ce.managerProgressLabel}</p>
                               <div className="flex flex-wrap gap-1">
                                 <span
-                                  className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${overviewCareerProgressBadgeClass(met.careerSummary.progressEvaluation)}`}
-                                  title="Stav evaluace kariéry (orientační, ne oficiální řád)"
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${overviewCareerProgressBadgeClass(ce.progressEvaluation)}`}
+                                  title="Technický stav evaluace (orientační)"
                                 >
-                                  {teamOverviewCareerProgressShort(met.careerSummary.progressEvaluation)}
+                                  {teamOverviewCareerProgressShort(ce.progressEvaluation)}
                                 </span>
                                 <span
-                                  className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${overviewCareerCompletenessBadgeClass(met.careerSummary.evaluationCompleteness)}`}
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${overviewCareerCompletenessBadgeClass(ce.evaluationCompleteness)}`}
                                   title="Úplnost automatické části evaluace"
                                 >
-                                  {teamOverviewCareerCompletenessShort(met.careerSummary.evaluationCompleteness)}
+                                  {teamOverviewCareerCompletenessShort(ce.evaluationCompleteness)}
                                 </span>
                               </div>
-                              <p className="text-[10px] leading-snug text-[color:var(--wp-text-secondary)]">
-                                {met.careerSummary.hintShort}
-                              </p>
+                              <p className="text-[10px] leading-snug text-[color:var(--wp-text-secondary)]">{ce.hintShort}</p>
+                              {ce.nextCareerPositionLabel ? (
+                                <p className="text-[10px] text-[color:var(--wp-text-tertiary)]">
+                                  Další krok: {ce.nextCareerPositionLabel}
+                                </p>
+                              ) : null}
                             </div>
                           ) : null}
                         </td>
@@ -1038,7 +1175,7 @@ export function TeamOverviewView({
                           )}
                         </td>
                         <td>
-                          <Link href={`/portal/team-overview/${m.userId}`} className="inline-flex p-2 text-[color:var(--wp-text-tertiary)] hover:text-indigo-600" aria-label="Detail">
+                          <Link href={memberDetailHref(m.userId)} className="inline-flex p-2 text-[color:var(--wp-text-tertiary)] hover:text-indigo-600" aria-label="Detail">
                             <ChevronRight className="w-4 h-4" />
                           </Link>
                         </td>
@@ -1052,31 +1189,35 @@ export function TeamOverviewView({
             <div className="md:hidden divide-y divide-[color:var(--wp-surface-card-border)]">
               {visibleMembers.map((m) => {
                 const met = metricsByUser.get(m.userId);
-                const careerLine = formatCareerSummaryLine(m.careerProgram, m.careerTrack, m.careerPositionCode);
+                const ce = met?.careerEvaluation;
                 return (
-                  <Link key={m.userId} href={`/portal/team-overview/${m.userId}`} className="relative block p-4 hover:bg-[color:var(--wp-surface-muted)]/50 active:bg-[color:var(--wp-surface-muted)]">
+                  <Link key={m.userId} href={memberDetailHref(m.userId)} className="relative block p-4 hover:bg-[color:var(--wp-surface-muted)]/50 active:bg-[color:var(--wp-surface-muted)]">
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="font-medium text-[color:var(--wp-text)]">{displayName(m)}</p>
                         <p className="text-xs text-[color:var(--wp-text-secondary)]">{m.roleName}{m.email ? ` · ${m.email}` : ""}</p>
-                        {careerLine ? (
-                          <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-0.5">{careerLine}</p>
+                        {ce?.summaryLine ? (
+                          <p className="text-[11px] text-[color:var(--wp-text-tertiary)] mt-0.5">{ce.summaryLine}</p>
                         ) : null}
-                        {met?.careerSummary ? (
+                        {ce ? (
                           <div className="mt-1 space-y-0.5">
+                            <p className="text-[10px] font-medium text-violet-900/85">{ce.managerProgressLabel}</p>
                             <div className="flex flex-wrap gap-1">
                               <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${overviewCareerProgressBadgeClass(met.careerSummary.progressEvaluation)}`}
+                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${overviewCareerProgressBadgeClass(ce.progressEvaluation)}`}
                               >
-                                {teamOverviewCareerProgressShort(met.careerSummary.progressEvaluation)}
+                                {teamOverviewCareerProgressShort(ce.progressEvaluation)}
                               </span>
                               <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${overviewCareerCompletenessBadgeClass(met.careerSummary.evaluationCompleteness)}`}
+                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${overviewCareerCompletenessBadgeClass(ce.evaluationCompleteness)}`}
                               >
-                                {teamOverviewCareerCompletenessShort(met.careerSummary.evaluationCompleteness)}
+                                {teamOverviewCareerCompletenessShort(ce.evaluationCompleteness)}
                               </span>
                             </div>
-                            <p className="text-[10px] text-[color:var(--wp-text-secondary)]">{met.careerSummary.hintShort}</p>
+                            <p className="text-[10px] text-[color:var(--wp-text-secondary)]">{ce.hintShort}</p>
+                            {ce.nextCareerPositionLabel ? (
+                              <p className="text-[10px] text-[color:var(--wp-text-tertiary)]">Další krok: {ce.nextCareerPositionLabel}</p>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>

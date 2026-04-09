@@ -23,8 +23,10 @@ import {
   memberships,
   roles,
 } from "db";
-import { evaluateCareerProgress, careerListHintShort } from "@/lib/career/evaluate-career-progress";
-import type { CareerEvaluationResult, EvaluationCompleteness, ProgressEvaluation } from "@/lib/career/types";
+import { buildCareerEvaluationViewModel } from "@/lib/career/career-evaluation-vm";
+import { buildCareerInsights } from "@/lib/career/career-insights";
+import type { CareerEvaluationViewModel } from "@/lib/career/career-evaluation-vm";
+import type { CareerInsight } from "@/lib/career/career-insights";
 import { eq, and, gte, lt, isNull, isNotNull, sql, desc, asc, inArray } from "db";
 
 export type TeamOverviewPeriod = "week" | "month" | "quarter";
@@ -103,12 +105,6 @@ export type TeamMemberInfo = {
   careerPositionCode: string | null;
 };
 
-export type TeamCareerListSummary = {
-  hintShort: string;
-  progressEvaluation: ProgressEvaluation;
-  evaluationCompleteness: EvaluationCompleteness;
-};
-
 export type TeamMemberMetrics = {
   userId: string;
   roleName: string;
@@ -137,8 +133,10 @@ export type TeamMemberMetrics = {
   productionTrend: number;
   meetingsTrend: number;
   riskLevel: "ok" | "warning" | "critical";
-  /** Kompaktní kariérní nápověda pro Team Overview (evaluace + krátký text) */
-  careerSummary?: TeamCareerListSummary;
+  /** Počet přímých podřízených v hierarchii CRM (kariérní / insight kontext) */
+  directReportsCount: number;
+  /** Kanonická kariérní evaluace — stejný zdroj jako detail člena */
+  careerEvaluation: CareerEvaluationViewModel;
 };
 
 async function getScopeContext(scope?: TeamOverviewScope) {
@@ -384,6 +382,40 @@ function buildAlertsFromMetric(metric: TeamMemberMetrics): TeamAlert[] {
       createdAt: now,
     });
   }
+
+  const ce = metric.careerEvaluation;
+  if (ce.progressEvaluation === "data_missing" || ce.progressEvaluation === "not_configured") {
+    alerts.push({
+      memberId: metric.userId,
+      type: "career_data_gap",
+      severity: "warning",
+      title: "Kariéra: chybí nastavení nebo údaje",
+      description:
+        ce.progressEvaluation === "not_configured"
+          ? "Není doplněn kariérní program / větev / pozice — doporučujeme nastavit v Nastavení → Tým."
+          : "Kariérní údaje jsou neúplné nebo v rozporu — zkontrolujte kombinaci program, větev a pozice.",
+      createdAt: now,
+    });
+  } else if (ce.progressEvaluation === "blocked" || ce.progressEvaluation === "unknown") {
+    alerts.push({
+      memberId: metric.userId,
+      type: "career_review",
+      severity: "warning",
+      title: "Kariéra: ověřte konfiguraci",
+      description: "Evaluace narazila na nejasnou nebo neplatnou kombinaci údajů. Ověřte záznam u člena.",
+      createdAt: now,
+    });
+  } else if (ce.evaluationCompleteness === "low_confidence") {
+    alerts.push({
+      memberId: metric.userId,
+      type: "career_low_confidence",
+      severity: "warning",
+      title: "Kariéra: nízká jistota evaluace",
+      description: "Jsou přítomny legacy hodnoty nebo chybí explicitní větev — doporučujeme upřesnit údaje v Nastavení → Tým.",
+      createdAt: now,
+    });
+  }
+
   return alerts;
 }
 
@@ -545,6 +577,9 @@ export async function getTeamMemberMetrics(
   scope?: TeamOverviewScope
 ): Promise<TeamMemberMetrics[]> {
   const ctx = await getScopeContext(scope);
+  const newcomers = await getNewcomerAdaptation(ctx.scope);
+  const adaptationLabelByUser = new Map(newcomers.map((n) => [n.userId, n.adaptationStatus]));
+
   const managerByUser = new Map(
     ctx.tenantMembers.map((m) => [
       m.userId,
@@ -558,6 +593,33 @@ export async function getTeamMemberMetrics(
 
   const result: TeamMemberMetrics[] = ctx.visibleMembers.map((mem, i) => {
     const stats = allStats[i]!;
+    const directsForCareer = ctx.tenantMembers.filter((tm) => tm.parentId === mem.userId);
+    const directReportsCount = directsForCareer.length;
+
+    const careerEvaluation = buildCareerEvaluationViewModel(
+      {
+        systemRoleName: mem.roleName,
+        careerProgram: mem.careerProgram,
+        careerTrack: mem.careerTrack,
+        careerPositionCode: mem.careerPositionCode,
+        metrics: {
+          unitsThisPeriod: stats.unitsThisPeriod,
+          productionThisPeriod: stats.productionThisPeriod,
+          meetingsThisPeriod: stats.meetingsThisPeriod,
+        },
+        directReportsCount,
+        directReportCareerPositionCodes: directsForCareer.map((d) => d.careerPositionCode),
+        activityCount: stats.activityCount,
+        daysWithoutActivity: stats.daysWithoutActivity,
+        newcomerAdaptationStatusLabel: adaptationLabelByUser.get(mem.userId) ?? null,
+      },
+      {
+        careerProgram: mem.careerProgram,
+        careerTrack: mem.careerTrack,
+        careerPositionCode: mem.careerPositionCode,
+      }
+    );
+
     const metricBase: TeamMemberMetrics = {
       userId: mem.userId,
       roleName: mem.roleName,
@@ -586,32 +648,13 @@ export async function getTeamMemberMetrics(
       productionTrend: stats.productionTrend,
       meetingsTrend: stats.meetingsTrend,
       riskLevel: "ok",
+      directReportsCount,
+      careerEvaluation,
     };
+
     const memberAlerts = buildAlertsFromMetric(metricBase);
     const hasCritical = memberAlerts.some((a) => a.severity === "critical");
     metricBase.riskLevel = hasCritical ? "critical" : memberAlerts.length > 0 ? "warning" : "ok";
-
-    const directsForCareer = ctx.tenantMembers.filter((tm) => tm.parentId === mem.userId);
-    const careerEval = evaluateCareerProgress({
-      systemRoleName: mem.roleName,
-      careerProgram: mem.careerProgram,
-      careerTrack: mem.careerTrack,
-      careerPositionCode: mem.careerPositionCode,
-      metrics: {
-        unitsThisPeriod: stats.unitsThisPeriod,
-        productionThisPeriod: stats.productionThisPeriod,
-        meetingsThisPeriod: stats.meetingsThisPeriod,
-      },
-      directReportsCount: directsForCareer.length,
-      directReportCareerPositionCodes: directsForCareer.map((d) => d.careerPositionCode),
-      activityCount: stats.activityCount,
-      daysWithoutActivity: stats.daysWithoutActivity,
-    });
-    metricBase.careerSummary = {
-      hintShort: careerListHintShort(careerEval),
-      progressEvaluation: careerEval.progressEvaluation,
-      evaluationCompleteness: careerEval.evaluationCompleteness,
-    };
 
     return metricBase;
   });
@@ -836,14 +879,23 @@ export type TeamMemberDetail = {
   careerProgram: string | null;
   careerTrack: string | null;
   careerPositionCode: string | null;
-  careerEvaluation: CareerEvaluationResult;
+  /** Stejný kanonický výstup jako u řádku v Team Overview (včetně summaryLine, proxy) */
+  careerEvaluation: CareerEvaluationViewModel;
+  /** Krátké manažerské insighty odvozené z CRM + kariéry (ne řád) */
+  careerInsights: CareerInsight[];
 };
 
-export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDetail | null> {
+export async function getTeamMemberDetail(
+  userId: string,
+  options?: { period?: TeamOverviewPeriod; scope?: TeamOverviewScope }
+): Promise<TeamMemberDetail | null> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
 
-  const visibleIds = await getVisibleUserIds(auth.tenantId, auth.userId, auth.roleName as RoleName, "full");
+  const period: TeamOverviewPeriod = options?.period ?? "month";
+  const scope = resolveScopeForRole(auth.roleName as RoleName, options?.scope);
+
+  const visibleIds = await getVisibleUserIds(auth.tenantId, auth.userId, auth.roleName as RoleName, scope);
   if (!visibleIds.includes(userId)) throw new Error("Forbidden");
 
   const tenantMembersForDetail = await listTenantHierarchyMembers(auth.tenantId);
@@ -851,34 +903,52 @@ export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDet
   if (!member) return null;
 
   const [metricsList, alerts, newcomers] = await Promise.all([
-    getTeamMemberMetrics("month", "full"),
-    getTeamAlerts("month", "full"),
-    getNewcomerAdaptation("full"),
+    getTeamMemberMetrics(period, scope),
+    getTeamAlerts(period, scope),
+    getNewcomerAdaptation(scope),
   ]);
 
   const metrics = metricsList.find((m) => m.userId === userId) ?? null;
   const memberAlerts = alerts.filter((a) => a.memberId === userId);
   const adaptation = newcomers.find((n) => n.userId === userId) ?? null;
 
-  const directs = tenantMembersForDetail.filter((m) => m.parentId === userId);
-  const careerEvaluation = evaluateCareerProgress({
-    systemRoleName: member.roleName,
-    careerProgram: member.careerProgram,
-    careerTrack: member.careerTrack,
-    careerPositionCode: member.careerPositionCode,
-    metrics: metrics
+  const careerEvaluation =
+    metrics?.careerEvaluation ??
+    buildCareerEvaluationViewModel(
+      {
+        systemRoleName: member.roleName,
+        careerProgram: member.careerProgram,
+        careerTrack: member.careerTrack,
+        careerPositionCode: member.careerPositionCode,
+        metrics: null,
+        directReportsCount: tenantMembersForDetail.filter((m) => m.parentId === userId).length,
+        directReportCareerPositionCodes: tenantMembersForDetail
+          .filter((m) => m.parentId === userId)
+          .map((d) => d.careerPositionCode),
+        newcomerAdaptationStatusLabel: adaptation?.adaptationStatus ?? null,
+      },
+      {
+        careerProgram: member.careerProgram,
+        careerTrack: member.careerTrack,
+        careerPositionCode: member.careerPositionCode,
+      }
+    );
+
+  const careerInsights = buildCareerInsights(
+    careerEvaluation,
+    metrics
       ? {
-          unitsThisPeriod: metrics.unitsThisPeriod,
-          productionThisPeriod: metrics.productionThisPeriod,
           meetingsThisPeriod: metrics.meetingsThisPeriod,
+          unitsThisPeriod: metrics.unitsThisPeriod,
+          activityCount: metrics.activityCount,
+          daysWithoutActivity: metrics.daysWithoutActivity,
+          directReportsCount: metrics.directReportsCount,
         }
       : null,
-    directReportsCount: directs.length,
-    directReportCareerPositionCodes: directs.map((d) => d.careerPositionCode),
-    activityCount: metrics?.activityCount,
-    daysWithoutActivity: metrics?.daysWithoutActivity,
-    newcomerAdaptationStatusLabel: adaptation?.adaptationStatus ?? null,
-  });
+    adaptation
+      ? { adaptationStatus: adaptation.adaptationStatus, daysInTeam: adaptation.daysInTeam }
+      : null
+  );
 
   const advisorPoints: TeamPerformancePoint[] = [];
   const now = new Date();
@@ -922,6 +992,7 @@ export async function getTeamMemberDetail(userId: string): Promise<TeamMemberDet
     careerTrack: member.careerTrack,
     careerPositionCode: member.careerPositionCode,
     careerEvaluation,
+    careerInsights,
   };
 }
 

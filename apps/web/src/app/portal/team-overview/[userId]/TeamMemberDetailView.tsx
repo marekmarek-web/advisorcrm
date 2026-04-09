@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Check,
   X,
+  Lightbulb,
 } from "lucide-react";
 import type { TeamMemberDetail } from "@/app/actions/team-overview";
 import { formatCareerProgramLabel, formatCareerTrackLabel } from "@/lib/career/evaluate-career-progress";
@@ -128,6 +129,28 @@ export function TeamMemberDetailView({ detail }: { detail: TeamMemberDetail }) {
             <strong className="text-[color:var(--wp-text)]">{detail.roleName}</strong>
             <span className="text-[color:var(--wp-text-tertiary)]"> — odděleně od kariérního programu a větve</span>
           </p>
+          {detail.careerEvaluation.summaryLine ? (
+            <p className="text-sm text-[color:var(--wp-text)]">
+              <span className="text-[color:var(--wp-text-tertiary)] text-xs font-medium uppercase tracking-wide">
+                Stejný řádek jako v týmovém přehledu:
+              </span>{" "}
+              {detail.careerEvaluation.summaryLine}
+            </p>
+          ) : null}
+          <p className="text-sm font-medium text-violet-900/90">
+            Manažerské shrnutí: {detail.careerEvaluation.managerProgressLabel}
+          </p>
+          <ul className="text-[11px] leading-snug text-[color:var(--wp-text-secondary)] space-y-1.5 border-t border-[color:var(--wp-surface-card-border)] pt-3">
+            <li>
+              <span className="font-semibold text-[color:var(--wp-text)]">Evidované</span> — kariérní program, větev a kód pozice z údajů člena (memberships).
+            </li>
+            <li>
+              <span className="font-semibold text-[color:var(--wp-text)]">Odvozené</span> — název pozice, pořadí kroku, další krok z interní konfigurace; případná normalizace legacy hodnot (viz poznámky u evaluace).
+            </li>
+            <li>
+              <span className="font-semibold text-[color:var(--wp-text)]">K ručnímu ověření</span> — položky v seznamu „Položky k doplnění“ a vše, co v CRM nemáme jako BJ/BJS/licence z PDF.
+            </li>
+          </ul>
           <div className="flex flex-wrap gap-2 items-center">
             <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
               Program: {formatCareerProgramLabel(detail.careerEvaluation.careerProgramId)}
@@ -199,6 +222,25 @@ export function TeamMemberDetailView({ detail }: { detail: TeamMemberDetail }) {
               </ul>
             </div>
           )}
+          {detail.careerInsights.length > 0 ? (
+            <div className="rounded-xl border border-sky-200/70 bg-sky-50/35 p-4 space-y-3">
+              <p className="text-xs font-semibold text-sky-950 flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 shrink-0" />
+                Insighty pro vedení
+              </p>
+              <p className="text-[11px] text-[color:var(--wp-text-secondary)]">
+                Krátké signály z kombinace kariérních údajů a CRM — nehodnocení osobnosti ani „ready for promotion“ bez tvrdých dat.
+              </p>
+              <ul className="space-y-2.5">
+                {detail.careerInsights.map((ins) => (
+                  <li key={ins.id} className="text-sm text-[color:var(--wp-text)]">
+                    <p className="font-medium">{ins.title}</p>
+                    <p className="text-xs text-[color:var(--wp-text-secondary)] mt-0.5 leading-relaxed">{ins.body}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       </section>
 
