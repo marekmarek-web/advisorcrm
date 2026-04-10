@@ -805,21 +805,22 @@ export function internalSummaryTemplate(params: {
   });
 }
 
-/** Pozvánka člena týmu do workspace (cron / team action). */
+/** Pozvánka člena týmu do Aidvisory (odkaz z týmové akce). */
 export function staffTeamInviteTemplate(params: {
   loginUrl: string;
-  tenantName?: string;
+  /** Jméno uživatele, který pozvánku odeslal — v textu e-mailu, ne název workspace. */
+  inviterDisplayName: string;
   inviteeEmail: string;
   roleLabel: string;
   expiresInDays: number;
 }) {
-  const orgLabel = params.tenantName?.trim() ? params.tenantName.trim() : "váš tým";
-  const subject = `Pozvánka do týmu — ${orgLabel} — Aidvisora`;
+  const inviter = params.inviterDisplayName.trim() || "člen týmu";
+  const subject = `Pozvánka do Aidvisory — ${inviter}`;
 
   const bodyHtml = [
     greeting(),
     paragraph(
-      `byli jste pozváni do workspace <strong style="color:#0B1021;">${e(orgLabel)}</strong> v roli <strong style="color:#0B1021;">${e(params.roleLabel)}</strong>.`,
+      `byli jste pozváni do <strong style="color:#0B1021;">Aidvisory</strong> v roli <strong style="color:#0B1021;">${e(params.roleLabel)}</strong>. Pozvánku vám zaslal(a) <strong style="color:#0B1021;">${e(inviter)}</strong>.`,
     ),
     paragraph(
       `Odkaz je platný <strong style="color:#0B1021;">${e(params.expiresInDays)} dní</strong>. Použijte prosím stejný e-mail jako v této zprávě: <strong style="color:#0B1021;">${e(params.inviteeEmail)}</strong>.`,
@@ -840,7 +841,7 @@ export function staffTeamInviteTemplate(params: {
 
   return buildTemplate({
     subject,
-    preheader: `Pozvánka do workspace ${orgLabel} v Aidvisoře.`,
+    preheader: `${inviter} vás zve do Aidvisory.`,
     badge: "Tým",
     headline: "Pozvánka do Aidvisory",
     bodyHtml,

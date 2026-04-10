@@ -434,9 +434,21 @@ export async function sendTeamMemberInvitation(
   const tenantRow = await getTenantEmailContext(auth.tenantId);
   const roleLabel = ROLE_LABEL_CS[targetRole] ?? roleName;
 
+  const [inviterProfile] = await db
+    .select({ fullName: userProfiles.fullName })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, auth.userId))
+    .limit(1);
+  const metaFullName =
+    typeof inviterUser?.user_metadata?.full_name === "string"
+      ? inviterUser.user_metadata.full_name.trim()
+      : "";
+  const inviterDisplayName =
+    inviterProfile?.fullName?.trim() || metaFullName || inviterUser?.email?.trim() || "člen týmu";
+
   const { subject, html } = staffTeamInviteTemplate({
     loginUrl: inviteLink,
-    tenantName: tenantRow?.name,
+    inviterDisplayName,
     inviteeEmail: email,
     roleLabel,
     expiresInDays: STAFF_INVITE_EXPIRY_DAYS,
