@@ -385,9 +385,8 @@ export function AIReviewExtractionShell({
       doc.processingStatus === "blocked");
   const isApproved = doc.reviewStatus === "approved";
   const hasResolvedClient = !!doc.matchedClientId || doc.createNewClientConfirmed === "true";
-  const canApply = isApproved && hasResolvedClient && !doc.isApplied;
-  const canApproveAndApply =
-    !!onApproveAndApply && canApproveReject && hasResolvedClient;
+  const canApply = isApproved && !doc.isApplied;
+  const canApproveAndApply = !!onApproveAndApply && canApproveReject;
   const proposalBarrierReasons = doc.applyGate?.applyBarrierReasons ?? [];
   const hasProposalBarrier = proposalBarrierReasons.length > 0;
   const effectiveApplyBarrierReasons = applyOverrideEnabled ? [] : proposalBarrierReasons;
@@ -582,13 +581,25 @@ export function AIReviewExtractionShell({
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
       `}</style>
 
-      {isApproved && !doc.isApplied && hasResolvedClient && (
+      {isApproved && !doc.isApplied && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-6 py-3">
           <div className="max-w-5xl mx-auto flex items-start gap-3">
             <AlertCircle size={18} className="text-amber-700 shrink-0 mt-0.5" />
             <p className="text-sm font-medium text-amber-950 leading-snug">
-              Kontrola je schválená, ale klient a smlouva v CRM ještě nevznikly, dokud neklepnete na{" "}
-              <strong>Zapsat do CRM</strong>. Schválení jen potvrzuje správnost extrakce.
+              {hasResolvedClient
+                ? (
+                  <>
+                    Kontrola je schválená, ale klient a smlouva v CRM ještě nevznikly, dokud neklepnete na{" "}
+                    <strong>Zapsat do CRM</strong>. Schválení jen potvrzuje správnost extrakce.
+                  </>
+                )
+                : (
+                  <>
+                    Kontrola je schválená, ale ještě není zapsaná do CRM. Při kliknutí na{" "}
+                    <strong>Zapsat do CRM</strong> se použije vybraný klient, nebo se automaticky připraví nový klient
+                    ze smlouvy.
+                  </>
+                )}
             </p>
           </div>
         </div>
@@ -964,7 +975,7 @@ export function AIReviewExtractionShell({
                     ) : (
                       <Check size={14} />
                     )}
-                    <span>Schválit</span>
+                    <span>Jen schválit</span>
                   </button>
                 ) : null}
                 {canApply ? (
@@ -1205,6 +1216,9 @@ export function AIReviewExtractionShell({
             <h3 className="text-lg font-bold text-[color:var(--wp-text)] mb-2">Zapsat do CRM?</h3>
             <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4">
               Návrhové akce (klient, smlouva, úkol…) budou zapsány do databáze. Tuto akci lze provést jen jednou.
+              {!hasResolvedClient
+                ? " Pokud ještě není vybraný klient, systém nejdřív připraví nového klienta ze smlouvy."
+                : ""}
             </p>
             <div className="flex gap-2">
               <button

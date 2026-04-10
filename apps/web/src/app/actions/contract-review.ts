@@ -44,6 +44,10 @@ function canApply(processingStatus: string, reviewStatus: string | null): boolea
   );
 }
 
+function canResolveClientBeforeApply(reviewStatus: string | null): boolean {
+  return reviewStatus === null || reviewStatus === "pending" || reviewStatus === "approved";
+}
+
 export async function approveContractReview(
   id: string,
   options?: {
@@ -127,8 +131,8 @@ export async function selectMatchedClient(
   }
   const row = await getContractReviewById(reviewId, auth.tenantId);
   if (!row) return { ok: false, error: "Položka nenalezena." };
-  if (row.reviewStatus !== "pending" && row.reviewStatus !== null) {
-    return { ok: false, error: "Položka již byla zpracována." };
+  if (!canResolveClientBeforeApply(row.reviewStatus ?? null)) {
+    return { ok: false, error: "Klienta lze změnit jen do okamžiku zápisu do CRM." };
   }
   const [contact] = await db
     .select({ id: contacts.id })
@@ -152,8 +156,8 @@ export async function confirmCreateNewClient(reviewId: string): Promise<Contract
   }
   const row = await getContractReviewById(reviewId, auth.tenantId);
   if (!row) return { ok: false, error: "Položka nenalezena." };
-  if (row.reviewStatus !== "pending" && row.reviewStatus !== null) {
-    return { ok: false, error: "Položka již byla zpracována." };
+  if (!canResolveClientBeforeApply(row.reviewStatus ?? null)) {
+    return { ok: false, error: "Nového klienta lze potvrdit jen do okamžiku zápisu do CRM." };
   }
   await updateContractReview(reviewId, auth.tenantId, {
     matchedClientId: null,

@@ -652,10 +652,21 @@ function ReviewDetailPanel({
         </MobileCard>
       ) : null}
 
-      {isApprovedOnly && !isApplied && hasResolvedClient ? (
+      {isApprovedOnly && !isApplied ? (
         <MobileCard className="p-3.5 bg-amber-50 border-amber-200">
           <p className="text-xs font-medium text-amber-950 leading-snug">
-            Schváleno, ale v CRM ještě není zapsáno. Klepněte na <strong>Zapsat do CRM</strong> níže.
+            {hasResolvedClient
+              ? (
+                <>
+                  Schváleno, ale v CRM ještě není zapsáno. Klepněte na <strong>Zapsat do CRM</strong> níže.
+                </>
+              )
+              : (
+                <>
+                  Schváleno, ale v CRM ještě není zapsáno. Klepněte na <strong>Zapsat do CRM</strong> níže a systém
+                  nejdřív připraví nového klienta ze smlouvy.
+                </>
+              )}
           </p>
         </MobileCard>
       ) : null}
@@ -696,7 +707,7 @@ function ReviewDetailPanel({
               Jen schválit
             </button>
           </div>
-          {canReviewDecision && hasResolvedClient ? (
+          {canReviewDecision ? (
             <button
               type="button"
               onClick={onApproveAndApply}
@@ -706,7 +717,7 @@ function ReviewDetailPanel({
               Schválit a zapsat do CRM
             </button>
           ) : null}
-          {isApprovedOnly && !isApplied && hasResolvedClient ? (
+          {isApprovedOnly && !isApplied ? (
             <CreateActionButton
               type="button"
               onClick={onApply}
@@ -865,12 +876,28 @@ export function ContractsReviewScreen({
     });
   }
 
+  async function ensureClientResolvedForApply(current: ReviewDetail): Promise<boolean> {
+    const alreadyResolved =
+      !!current.matchedClientId?.trim() || current.createNewClientConfirmed === "true";
+    if (alreadyResolved) return true;
+
+    const result = await confirmCreateNewClient(current.id);
+    if (!result.ok) {
+      setError(result.error);
+      showToast(result.error, "error");
+      return false;
+    }
+    return true;
+  }
+
   async function handleApply(options?: {
     overrideGateReasons?: string[];
     overrideReason?: string;
   }) {
     if (!detail) return;
     startTransition(async () => {
+      const ready = await ensureClientResolvedForApply(detail);
+      if (!ready) return;
       const result = await applyContractReviewDrafts(detail.id, options);
       if (!result.ok) setError(result.error);
       await fetchList();
@@ -887,6 +914,8 @@ export function ContractsReviewScreen({
   ) {
     if (!detail) return;
     startTransition(async () => {
+      const ready = await ensureClientResolvedForApply(detail);
+      if (!ready) return;
       const result = await approveAndApplyContractReview(detail.id, options);
       if (!result.ok) setError(result.error);
       await fetchList();

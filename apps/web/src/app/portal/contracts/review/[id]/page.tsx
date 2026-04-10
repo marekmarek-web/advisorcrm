@@ -349,12 +349,27 @@ export default function ContractReviewDetailPage() {
     [id, toast, load]
   );
 
+  const ensureClientResolvedForApply = useCallback(async (): Promise<boolean> => {
+    const alreadyResolved =
+      !!matchedClientId || !!doc?.matchedClientId || doc?.createNewClientConfirmed === "true";
+    if (alreadyResolved) return true;
+
+    const result = await confirmCreateNewClient(id);
+    if (!result.ok) {
+      toast.showToast(result.error ?? "Nepodařilo se připravit klienta pro zápis.", "error");
+      return false;
+    }
+    return true;
+  }, [doc?.createNewClientConfirmed, doc?.matchedClientId, id, matchedClientId, toast]);
+
   const handleApply = useCallback(async (options?: {
     overrideGateReasons?: string[];
     overrideReason?: string;
   }) => {
     setActionLoading("apply");
     try {
+      const ready = await ensureClientResolvedForApply();
+      if (!ready) return;
       const result = await applyContractReviewDrafts(id, options);
       if (result.ok) {
         toast.showToast("Údaje zapsány do CRM.", "success");
@@ -365,7 +380,7 @@ export default function ContractReviewDetailPage() {
     } finally {
       setActionLoading(null);
     }
-  }, [id, toast, load]);
+  }, [ensureClientResolvedForApply, id, toast, load]);
 
   const handleApproveAndApply = useCallback(
     async (
@@ -377,6 +392,8 @@ export default function ContractReviewDetailPage() {
     ) => {
       setActionLoading("approveApply");
       try {
+        const ready = await ensureClientResolvedForApply();
+        if (!ready) return;
         const result = await approveAndApplyContractReview(id, {
           fieldEdits: editedFields,
           rawExtractedPayload: rawExtractedPayload ?? undefined,
@@ -393,7 +410,7 @@ export default function ContractReviewDetailPage() {
         setActionLoading(null);
       }
     },
-    [id, rawExtractedPayload, toast, load]
+    [ensureClientResolvedForApply, id, rawExtractedPayload, toast, load]
   );
 
   const handleSelectClient = useCallback(
