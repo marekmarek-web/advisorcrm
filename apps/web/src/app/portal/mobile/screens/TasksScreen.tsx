@@ -26,6 +26,7 @@ import {
 import { VirtualizedColumn } from "@/app/shared/mobile-ui/VirtualizedColumn";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
+import { isDueDateBeforeLocalToday, localCalendarTodayYmd, normalizeIsoDateOnly } from "@/lib/date/date-only";
 
 const TASK_LIST_VIRTUAL_THRESHOLD = 25;
 
@@ -37,14 +38,16 @@ type TaskFilter = "all" | "today" | "week" | "overdue" | "completed";
 
 function getDateLabel(due: string | null, todayStr: string): { label: string; isOverdue: boolean; isToday: boolean } {
   if (!due) return { label: "Bez termínu", isOverdue: false, isToday: false };
-  const tomorrow = new Date(todayStr);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
-  if (due < todayStr) return { label: "Po termínu", isOverdue: true, isToday: false };
-  if (due === todayStr) return { label: "Dnes", isOverdue: false, isToday: true };
-  if (due === tomorrowStr) return { label: "Zítra", isOverdue: false, isToday: false };
+  const dueNorm = normalizeIsoDateOnly(due);
+  if (!dueNorm) return { label: "Bez termínu", isOverdue: false, isToday: false };
+  const [yy, mm, dd] = todayStr.split("-").map(Number);
+  const next = new Date(yy, mm - 1, dd + 1);
+  const tomorrowStr = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`;
+  if (dueNorm < todayStr) return { label: "Po termínu", isOverdue: true, isToday: false };
+  if (dueNorm === todayStr) return { label: "Dnes", isOverdue: false, isToday: true };
+  if (dueNorm === tomorrowStr) return { label: "Zítra", isOverdue: false, isToday: false };
   return {
-    label: formatDisplayDateCs(due) || due,
+    label: formatDisplayDateCs(dueNorm) || dueNorm,
     isOverdue: false,
     isToday: false,
   };
@@ -268,7 +271,7 @@ export function TasksScreen({
   onDeleteTask,
   onQuickOverdueFix,
 }: TasksScreenProps) {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localCalendarTodayYmd();
   const [search, setSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null);
 
@@ -294,7 +297,7 @@ export function TasksScreen({
     );
   }, [tasks, search]);
 
-  const overdueCount = tasks.filter((t) => !t.completedAt && !!t.dueDate && t.dueDate < todayStr).length;
+  const overdueCount = tasks.filter((t) => !t.completedAt && !!t.dueDate && isDueDateBeforeLocalToday(t.dueDate)).length;
 
   return (
     <div className={cx("space-y-3", deviceClass === "tablet" && "max-w-2xl mx-auto")}>

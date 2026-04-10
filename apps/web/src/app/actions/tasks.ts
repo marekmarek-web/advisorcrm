@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { db, tasks, contacts, opportunities, meetingNotes, eq, and, asc, desc, isNull, isNotNull, gte, lt, lte, sql } from "db";
 import { logActivity } from "./activity";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
+import { normalizeIsoDateOnly } from "@/lib/date/date-only";
 
 export type TaskRow = {
   id: string;
@@ -102,7 +103,7 @@ export async function getTasksList(
     contactEmail: r.contactEmail ?? null,
     opportunityId: r.opportunityId ?? null,
     opportunityTitle: r.opportunityTitle ?? null,
-    dueDate: r.dueDate,
+    dueDate: normalizeIsoDateOnly(r.dueDate),
     completedAt: r.completedAt,
     createdAt: r.createdAt,
   }));
@@ -187,7 +188,7 @@ export async function getTasksForDate(dateStr: string): Promise<TaskRow[]> {
     contactEmail: r.contactEmail ?? null,
     opportunityId: r.opportunityId ?? null,
     opportunityTitle: r.opportunityTitle ?? null,
-    dueDate: r.dueDate,
+    dueDate: normalizeIsoDateOnly(r.dueDate),
     completedAt: r.completedAt,
     createdAt: r.createdAt,
   }));
@@ -227,7 +228,7 @@ export async function getTasksByContactId(contactId: string): Promise<TaskRow[]>
     contactEmail: r.contactEmail ?? null,
     opportunityId: r.opportunityId ?? null,
     opportunityTitle: r.opportunityTitle ?? null,
-    dueDate: r.dueDate,
+    dueDate: normalizeIsoDateOnly(r.dueDate),
     completedAt: r.completedAt,
     createdAt: r.createdAt,
   }));
@@ -267,7 +268,7 @@ export async function getTasksByOpportunityId(oppId: string): Promise<TaskRow[]>
     contactEmail: r.contactEmail ?? null,
     opportunityId: r.opportunityId ?? null,
     opportunityTitle: r.opportunityTitle ?? null,
-    dueDate: r.dueDate,
+    dueDate: normalizeIsoDateOnly(r.dueDate),
     completedAt: r.completedAt,
     createdAt: r.createdAt,
   }));

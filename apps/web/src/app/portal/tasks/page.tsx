@@ -56,6 +56,7 @@ import {
   FileText,
 } from "lucide-react";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
+import { isDueDateBeforeLocalToday } from "@/lib/date/date-only";
 
 type Filter = "all" | "today" | "week" | "overdue" | "completed";
 
@@ -109,7 +110,7 @@ function formatDate(d: string | null) {
 
 function isOverdue(dueDate: string | null, completedAt: Date | null) {
   if (!dueDate || completedAt) return false;
-  return dueDate < new Date().toISOString().slice(0, 10);
+  return isDueDateBeforeLocalToday(dueDate);
 }
 
 /* ==========================================
@@ -902,6 +903,7 @@ function TasksPageContent() {
     setEditId(null);
     setMobileEditId(null);
     await invalidateTasks();
+    await queryClient.refetchQueries({ queryKey: queryKeys.tasks.all });
   }
 
   async function handleDelete(id: string) {
@@ -960,7 +962,7 @@ function TasksPageContent() {
   const totalInView = filteredBySearch.length;
   const progressPercent = totalInView > 0 ? Math.round((completedTasksCount / totalInView) * 100) : 0;
 
-  const overdueTask = tasks.find((t) => !t.completedAt && t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10));
+  const overdueTask = tasks.find((t) => !t.completedAt && t.dueDate && isDueDateBeforeLocalToday(t.dueDate));
 
   const visibleTasks = useMemo(() => {
     if (settings.hideCompleted && filter !== "completed") {
