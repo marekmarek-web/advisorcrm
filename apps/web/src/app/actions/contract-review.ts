@@ -162,6 +162,31 @@ export async function confirmCreateNewClient(reviewId: string): Promise<Contract
   return { ok: true };
 }
 
+/**
+ * Persist advisor's "final contract" override to DB (stored in ignoredWarnings).
+ * This ensures the override survives page reload and can be read back in mappers.
+ */
+export async function persistFinalContractOverride(
+  reviewId: string,
+  gateReasons: string[]
+): Promise<ContractReviewActionResult> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "documents:write")) {
+    return { ok: false, error: "Nemáte oprávnění." };
+  }
+  const row = await getContractReviewById(reviewId, auth.tenantId);
+  if (!row) return { ok: false, error: "Položka nenalezena." };
+  if (row.reviewStatus === "applied") return { ok: true };
+
+  // Mark these gate reasons as advisor-ignored so quality-gates skips them on next apply
+  const existing = Array.isArray(row.ignoredWarnings) ? (row.ignoredWarnings as string[]) : [];
+  const merged = Array.from(new Set([...existing, ...gateReasons]));
+  await updateContractReview(reviewId, auth.tenantId, {
+    ignoredWarnings: merged,
+  });
+  return { ok: true };
+}
+
 /** Schválí kontrolu a hned zapisuje draft akce do CRM (dva kroky v jednom volání). */
 export async function approveAndApplyContractReview(
   id: string,
@@ -256,7 +281,9 @@ export async function applyContractReviewDrafts(
   const gate = evaluateApplyReadiness(row);
   const pendingApply = applyReasonsPendingOverride(gate);
   if (pendingApply.length > 0) {
-    const overrides = options?.overrideGateReasons ?? [];
+    // Merge explicit overrides from call site + persisted ignoredWarnings from DB
+    const dbIgnored = Array.isArray(rawRow.ignoredWarnings) ? (rawRow.ignoredWarnings as string[]) : [];
+    const overrides = Array.from(new Set([...(options?.overrideGateReasons ?? []), ...dbIgnored]));
     const remaining = pendingApply.filter((r) => !overrides.includes(r));
     if (remaining.length > 0) {
       breadcrumbContractReviewPaymentGate({
@@ -315,15 +342,35 @@ export async function applyContractReviewDrafts(
   });
 
   // 5D: Auto-link the reviewed document into the client's document vault (visible)
-  if (row.matchedClientId) {
+  // effectiveClientId: prefer matchedClientId, fallback to createdClientId / linkedClientId from apply result
+  const effectiveClientId =
+    row.matchedClientId ??
+    result.payload.createdClientId ??
+    result.payload.linkedClientId ??
+    null;
+  if (effectiveClientId) {
     try {
       await linkContractReviewFileToContactDocuments(id, {
         visibleToClient: true,
         contractId: result.payload.createdContractId ?? undefined,
+        // When client was just created, matchedClientId is still null — pass explicitly
+        overrideContactId: row.matchedClientId ? undefined : effectiveClientId,
       });
     } catch {
       /* best-effort — review already applied, doc linking is secondary */
     }
+  }
+
+  // 5E: Auto-set coverage for life insurance contracts (ZP segment)
+  if (effectiveClientId && result.payload.createdContractId) {
+    const { upsertCoverageFromAppliedReview } = await import("@/lib/ai/apply-coverage-from-review");
+    await upsertCoverageFromAppliedReview({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      contactId: effectiveClientId,
+      contractId: result.payload.createdContractId,
+      row,
+    }).catch(() => {/* best-effort */});
   }
 
   return { ok: true, payload: bridgedPayload };
@@ -335,7 +382,7 @@ export async function applyContractReviewDrafts(
  */
 export async function linkContractReviewFileToContactDocuments(
   reviewId: string,
-  options?: { visibleToClient?: boolean; contractId?: string }
+  options?: { visibleToClient?: boolean; contractId?: string; overrideContactId?: string }
 ): Promise<ContractReviewActionResult & { documentId?: string }> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:write")) {
@@ -345,10 +392,11 @@ export async function linkContractReviewFileToContactDocuments(
   if (!row) {
     return { ok: false, error: "Položka nenalezena." };
   }
-  if (!row.matchedClientId) {
+  // overrideContactId allows linking when a client was just created (matchedClientId is still null)
+  const contactId = options?.overrideContactId ?? row.matchedClientId;
+  if (!contactId) {
     return { ok: false, error: "Nejdřív přiřaďte klienta k této položce." };
   }
-  const contactId = row.matchedClientId;
   const visible = options?.visibleToClient ?? false;
   if (visible && row.reviewStatus !== "approved" && row.reviewStatus !== "applied") {
     capturePublishGuardFailure({

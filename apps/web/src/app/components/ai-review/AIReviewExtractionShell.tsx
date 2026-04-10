@@ -320,6 +320,8 @@ type Props = {
   onApply?: (options?: { overrideGateReasons?: string[]; overrideReason?: string }) => void;
   onSelectClient?: (clientId: string) => void;
   onConfirmCreateNew?: () => void;
+  /** Persist "final contract" override to server so it survives reload. */
+  onConfirmFinalContract?: (gateReasons: string[]) => void | Promise<void>;
   /** Fáze 11: Per-field pending confirmation */
   onConfirmPendingField?: (fieldKey: string, scope: "contact" | "contract" | "payment") => Promise<void>;
   isApproving?: boolean;
@@ -337,6 +339,7 @@ export function AIReviewExtractionShell({
   onApply,
   onSelectClient,
   onConfirmCreateNew,
+  onConfirmFinalContract,
   onConfirmPendingField,
   isApproving,
   actionLoading,
@@ -347,6 +350,7 @@ export function AIReviewExtractionShell({
   const [rejectReason, setRejectReason] = useState("");
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
   const [applyOverrideEnabled, setApplyOverrideEnabled] = useState(false);
+  const [finalContractBusy, setFinalContractBusy] = useState(false);
   const [pdfExportBusy, setPdfExportBusy] = useState(false);
   const toast = useToast();
 
@@ -388,8 +392,12 @@ export function AIReviewExtractionShell({
   }, [state.isFullscreen]);
 
   useEffect(() => {
-    setApplyOverrideEnabled(false);
-  }, [doc.id]);
+    // Restore override state from server when doc loads/changes
+    const serverOverride =
+      Array.isArray(doc.applyGate?.overriddenReasons) &&
+      (doc.applyGate!.overriddenReasons as string[]).length > 0;
+    setApplyOverrideEnabled(serverOverride);
+  }, [doc.id, doc.applyGate]);
 
   const handleFieldClick = useCallback((fieldId: string, page?: number) => {
     dispatch({ type: "SET_ACTIVE_FIELD", fieldId, page });
@@ -741,13 +749,26 @@ export function AIReviewExtractionShell({
               {showFinalContractCta ? (
                 <button
                   type="button"
-                  onClick={() => {
+                  disabled={finalContractBusy}
+                  onClick={async () => {
                     setApplyOverrideEnabled(true);
-                    toast.showToast("Dokument je ručně potvrzený jako finální smlouva.", "success");
+                    if (onConfirmFinalContract && proposalBarrierReasons.length > 0) {
+                      setFinalContractBusy(true);
+                      try {
+                        await onConfirmFinalContract(proposalBarrierReasons);
+                        toast.showToast("Dokument je potvrzený jako finální smlouva a nastavení bylo uloženo.", "success");
+                      } catch {
+                        toast.showToast("Potvrzení se uložilo jen lokálně — při reloadu může zmizet.", "info");
+                      } finally {
+                        setFinalContractBusy(false);
+                      }
+                    } else {
+                      toast.showToast("Dokument je ručně potvrzený jako finální smlouva.", "success");
+                    }
                   }}
-                  className="shrink-0 inline-flex min-h-[44px] w-full md:w-auto items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-md transition-colors hover:bg-emerald-700"
+                  className="shrink-0 inline-flex min-h-[44px] w-full md:w-auto items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-md transition-colors hover:bg-emerald-700 disabled:opacity-60"
                 >
-                  Potvrdit jako finální smlouvu
+                  {finalContractBusy ? "Ukládám…" : "Potvrdit jako finální smlouvu"}
                 </button>
               ) : null}
             </div>
@@ -904,6 +925,9 @@ export function AIReviewExtractionShell({
               onRestoreRec={handleRestoreRec}
               onCreateTask={handleCreateTask}
               onConfirmPendingField={onConfirmPendingField}
+              onConfirmCreateNew={onConfirmCreateNew}
+              onApproveAndApply={onApproveAndApply}
+              editedFields={state.editedFields}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center p-8">

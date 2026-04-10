@@ -1613,9 +1613,12 @@ export function mapApiToExtractionDocument(
     applyGate: (() => {
       const g = detail.applyGate as ExtractionDocument["applyGate"] | undefined;
       if (!g) return undefined;
+      // ignoredWarnings are stored as advisor-persisted overrides in DB
+      const ignored = Array.isArray(detail.ignoredWarnings) ? (detail.ignoredWarnings as string[]) : [];
       return {
         ...g,
         applyBarrierReasons: g.applyBarrierReasons ?? [],
+        overriddenReasons: ignored.length > 0 ? ignored : undefined,
       };
     })(),
     reviewUiMeta: usedSyntheticGroups ? { usedSyntheticGroups: true } : undefined,

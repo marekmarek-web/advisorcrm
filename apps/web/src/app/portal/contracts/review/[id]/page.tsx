@@ -11,6 +11,7 @@ import {
   confirmCreateNewClient,
   linkContractReviewFileToContactDocuments,
   confirmPendingField,
+  persistFinalContractOverride,
 } from "@/app/actions/contract-review";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
@@ -450,6 +451,15 @@ export default function ContractReviewDetailPage() {
     }
   }, [id, toast, load]);
 
+  const handleConfirmFinalContract = useCallback(
+    async (gateReasons: string[]) => {
+      const result = await persistFinalContractOverride(id, gateReasons);
+      if (!result.ok) throw new Error(result.error);
+      load();
+    },
+    [id, load]
+  );
+
   /** Fáze 11: Per-field pending confirmation handler */
   const handleConfirmPendingField = useCallback(
     async (fieldKey: string, scope: "contact" | "contract" | "payment") => {
@@ -599,6 +609,7 @@ export default function ContractReviewDetailPage() {
         onApply={handleApply}
         onSelectClient={handleSelectClient}
         onConfirmCreateNew={handleConfirmCreateNew}
+        onConfirmFinalContract={handleConfirmFinalContract}
         onConfirmPendingField={handleConfirmPendingField}
         isApproving={actionLoading === "approve"}
         actionLoading={actionLoading}

@@ -112,11 +112,18 @@ export function buildCreatePaymentDraft(extracted: ExtractedContractSchema): Dra
 }
 
 export function buildCreateTaskDraft(extracted: ExtractedContractSchema): DraftActionBase {
+  const contractRef = extracted.contractNumber
+    ? `č. ${extracted.contractNumber}`
+    : null;
+  const productPart = extracted.productName ?? extracted.documentType ?? "Dokument";
+  const institutionPart = extracted.institutionName ? ` (${extracted.institutionName})` : "";
+  const refPart = contractRef ? ` — ${contractRef}` : "";
+  const title = `Dokončit zpracování smlouvy: ${productPart}${institutionPart}${refPart}`;
   return {
     type: "create_task",
-    label: "Úkol ze smlouvy",
+    label: "Vytvořit úkol: dokončit zpracování smlouvy",
     payload: {
-      title: `Smlouva: ${extracted.productName ?? extracted.documentType ?? "Dokument"}`,
+      title,
       notes: extracted.notes?.join("\n"),
       contractNumber: extracted.contractNumber,
     },

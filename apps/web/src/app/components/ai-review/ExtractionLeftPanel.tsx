@@ -996,10 +996,15 @@ function EnforcementResultCard({
   );
 }
 
+/** Action types that execute directly via apply flow — not just navigation. */
+const INLINE_APPLY_ACTIONS = new Set([
+  "create_client",
+  "create_new_client",
+  "create_or_link_client",
+]);
+
+/** Action types where we can navigate to the relevant section (link_existing requires client list). */
 const ACTION_ROUTE_MAP: Record<string, string> = {
-  create_client: "/portal/contacts/new",
-  create_new_client: "/portal/contacts/new",
-  create_or_link_client: "/portal/contacts/new",
   link_existing_client: "/portal/contacts",
   attach_to_existing_client: "/portal/contacts",
   link_client: "/portal/contacts",
@@ -1022,7 +1027,18 @@ function resolveActionHref(action: DraftAction): string | null {
   return ACTION_ROUTE_MAP[action.type] ?? null;
 }
 
-function WorkActionsCard({ doc }: { doc: ExtractionDocument }) {
+function WorkActionsCard({
+  doc,
+  onConfirmCreateNew,
+  onApproveAndApply,
+  editedFields,
+}: {
+  doc: ExtractionDocument;
+  onConfirmCreateNew?: () => void;
+  onApproveAndApply?: (editedFields: Record<string, string>, options?: { overrideGateReasons?: string[]; overrideReason?: string }) => void | Promise<void>;
+  editedFields?: Record<string, string>;
+}) {
+  const [busyAction, setBusyAction] = React.useState<string | null>(null);
   const actions = doc.draftActions ?? [];
   return (
     <div
@@ -1042,12 +1058,52 @@ function WorkActionsCard({ doc }: { doc: ExtractionDocument }) {
       ) : (
         <ul className="space-y-2">
           {actions.map((a, i) => {
-            const href = resolveActionHref(a);
+            const actionKey = `${a.type}-${i}`;
             const baseClass =
               "flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-3 border transition-colors w-full text-left";
+            const isBusy = busyAction === actionKey;
+
+            // Inline apply action: create client → confirm + trigger apply flow
+            if (INLINE_APPLY_ACTIONS.has(a.type) && onApproveAndApply) {
+              const alreadyLinked = !!doc.matchedClientId || doc.createNewClientConfirmed === "true";
+              return (
+                <li key={actionKey}>
+                  <button
+                    type="button"
+                    disabled={isBusy || alreadyLinked}
+                    onClick={async () => {
+                      setBusyAction(actionKey);
+                      try {
+                        if (!alreadyLinked && onConfirmCreateNew) {
+                          onConfirmCreateNew();
+                          // Brief pause to let the state propagate before triggering apply
+                          await new Promise((r) => setTimeout(r, 300));
+                        }
+                        await onApproveAndApply(editedFields ?? {});
+                      } finally {
+                        setBusyAction(null);
+                      }
+                    }}
+                    className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50`}
+                  >
+                    {isBusy ? (
+                      <span className="w-4 h-4 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin shrink-0" />
+                    ) : (
+                      <CheckCircle2 size={15} className="text-indigo-500 shrink-0" />
+                    )}
+                    <span className="flex-1">
+                      {alreadyLinked ? "Klient nastaven — spustit zápis do CRM" : a.label}
+                    </span>
+                    <ArrowRight size={14} className="text-indigo-400 shrink-0" />
+                  </button>
+                </li>
+              );
+            }
+
+            const href = resolveActionHref(a);
             if (href) {
               return (
-                <li key={`${a.type}-${i}`}>
+                <li key={actionKey}>
                   <Link
                     href={href}
                     className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40`}
@@ -1061,7 +1117,7 @@ function WorkActionsCard({ doc }: { doc: ExtractionDocument }) {
             }
             return (
               <li
-                key={`${a.type}-${i}`}
+                key={actionKey}
                 className={`${baseClass} text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)]/50 border-[color:var(--wp-surface-card-border)] cursor-default`}
                 title="Tato akce se provede automaticky při schválení"
               >
@@ -1656,6 +1712,10 @@ type LeftPanelProps = {
   onCreateTask: (rec: AIRecommendation) => void | Promise<void>;
   /** Fáze 11: Per-field pending confirmation */
   onConfirmPendingField?: (fieldKey: string, scope: "contact" | "contract" | "payment") => Promise<void>;
+  /** Fáze 1 fix: propagate create/apply callbacks for WorkActionsCard */
+  onConfirmCreateNew?: () => void;
+  onApproveAndApply?: (editedFields: Record<string, string>, options?: { overrideGateReasons?: string[]; overrideReason?: string }) => void | Promise<void>;
+  editedFields?: Record<string, string>;
 };
 
 export function ExtractionLeftPanel({
@@ -1671,6 +1731,9 @@ export function ExtractionLeftPanel({
   onRestoreRec,
   onCreateTask,
   onConfirmPendingField,
+  onConfirmCreateNew,
+  onApproveAndApply,
+  editedFields,
 }: LeftPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -1755,7 +1818,12 @@ export function ExtractionLeftPanel({
             <CrmMappingProposalCard doc={doc} />
             {/* Fáze 10+11: Enforcement result card – shown after apply */}
             <EnforcementResultCard doc={doc} onConfirmPendingField={onConfirmPendingField} />
-            <WorkActionsCard doc={doc} />
+            <WorkActionsCard
+              doc={doc}
+              onConfirmCreateNew={onConfirmCreateNew}
+              onApproveAndApply={onApproveAndApply}
+              editedFields={editedFields}
+            />
             <AIRecommendationsCard
               recommendations={doc.recommendations}
               dismissedMap={state.dismissedRecommendations}

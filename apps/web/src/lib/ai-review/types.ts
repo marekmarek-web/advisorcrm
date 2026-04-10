@@ -261,6 +261,8 @@ export type ExtractionDocument = {
     blockedReasons: string[];
     applyBarrierReasons: string[];
     warnings: string[];
+    /** Gate reasons that the advisor explicitly overrode (persisted to DB via ignoredWarnings). */
+    overriddenReasons?: string[];
   };
   /** Human-readable pipeline sub-step while status is processing (from API `processingStage`). */
   processingStageLabel?: string;
