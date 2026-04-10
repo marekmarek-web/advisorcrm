@@ -23,6 +23,8 @@ import {
   Lock,
 } from "lucide-react";
 import type { ExtractionDocument } from "@/lib/ai-review/types";
+import { normalizeDateForAdvisorDisplay, normalizePaymentFrequency } from "@/lib/ai/canonical-date-normalize";
+import { humanizeReviewReasonLine, labelDocumentType } from "@/lib/ai-review/czech-labels";
 
 type CanonicalFields = NonNullable<ExtractionDocument["canonicalFields"]>;
 
@@ -108,17 +110,20 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 function PacketMetaSection({ pm }: { pm: NonNullable<CanonicalFields["packetMeta"]> }) {
   const candidates = pm.subdocumentCandidates ?? [];
+  const primaryType = pm.primarySubdocumentType?.trim()
+    ? labelDocumentType(pm.primarySubdocumentType)
+    : "—";
   return (
     <Section
       icon={Layers}
-      title="Packet / bundle"
-      badge={pm.isBundle ? "Bundle" : "Jednoduchý dokument"}
-      badgeVariant={pm.isBundle ? "warning" : "ok"}
+      title="Více dokumentů v jednom souboru"
+      badge="Více sekcí"
+      badgeVariant="warning"
     >
-      <Row label="Typ dokumentu" value={pm.primarySubdocumentType?.replace(/_/g, " ") ?? "—"} />
+      <Row label="Hlavní typ dokumentu" value={primaryType} />
       {pm.isBundle && (
         <Row
-          label="Sekce bundlu"
+          label="Rozpoznané sekce"
           value={candidates.length > 0 ? candidates.map((c) => c.label).join(", ") : "—"}
         />
       )}
@@ -131,7 +136,7 @@ function PacketMetaSection({ pm }: { pm: NonNullable<CanonicalFields["packetMeta
       {(pm.packetWarnings ?? []).map((w, i) => (
         <div key={i} className="flex items-start gap-2 text-xs rounded-lg bg-amber-50 border border-amber-200 px-2 py-1.5 text-amber-800 mt-1">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-          <span>{w}</span>
+          <span>{humanizeReviewReasonLine(w)}</span>
         </div>
       ))}
     </Section>
@@ -152,7 +157,7 @@ function PublishHintsSection({ ph }: { ph: NonNullable<CanonicalFields["publishH
       {ph.contractPublishable ? (
         <div className="flex items-center gap-2 text-xs text-emerald-700">
           <CheckCircle2 size={12} />
-          <span>Smlouva je připravena k apply do CRM.</span>
+          <span>Smlouva je připravena k zápisu do CRM.</span>
         </div>
       ) : (
         <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5">
@@ -161,8 +166,8 @@ function PublishHintsSection({ ph }: { ph: NonNullable<CanonicalFields["publishH
             {ph.sensitiveAttachmentOnly
               ? "Dokument je citlivá příloha — nelze publikovat jako finální smlouvu."
               : ph.needsSplit
-                ? "Dokument vyžaduje rozdělení před apply (bundle s více sekcemi)."
-                : `Dokument není publikovatelný${ph.reasons?.length ? `: ${ph.reasons.join(", ")}` : "."}`}
+                ? "Dokument vyžaduje rozdělení před zápisem (více sekcí v jednom souboru)."
+                : `Dokument není publikovatelný${ph.reasons?.length ? `: ${ph.reasons.map((x) => humanizeReviewReasonLine(x)).join(", ")}` : "."}`}
           </span>
         </div>
       )}
@@ -191,7 +196,9 @@ function ParticipantsSection({ participants }: { participants: NonNullable<Canon
             </span>
           </div>
           {p.birthDate && (
-            <span className="text-xs text-[color:var(--wp-text-secondary)]">nar. {p.birthDate}</span>
+            <span className="text-xs text-[color:var(--wp-text-secondary)]">
+              nar. {normalizeDateForAdvisorDisplay(p.birthDate)}
+            </span>
           )}
           {p.occupation && (
             <span className="text-xs text-[color:var(--wp-text-secondary)] ml-2">· {p.occupation}</span>
@@ -221,6 +228,11 @@ function InsuredRisksSection({ risks }: { risks: NonNullable<CanonicalFields["in
           {r.linkedParticipant && (
             <span className="text-xs text-[color:var(--wp-text-secondary)]">
               Pojištěný: {r.linkedParticipant}
+            </span>
+          )}
+          {r.termEnd && (
+            <span className="text-xs text-[color:var(--wp-text-secondary)] ml-1">
+              do {normalizeDateForAdvisorDisplay(r.termEnd)}
             </span>
           )}
           {r.premium != null && (
@@ -286,15 +298,30 @@ function InvestmentSection({ inv }: { inv: NonNullable<CanonicalFields["investme
 // ─── PaymentData section ──────────────────────────────────────────────────────
 
 function PaymentDataSection({ pay }: { pay: NonNullable<CanonicalFields["paymentData"]> }) {
-  const hasAny = pay.variableSymbol || pay.paymentFrequency || pay.accountNumber || pay.bankAccount || pay.paymentMethod;
+  const freq = pay.paymentFrequency ? normalizePaymentFrequency(pay.paymentFrequency) : "";
+  const acc = pay.accountNumber || pay.bankAccount;
+  const hasAny =
+    pay.variableSymbol ||
+    freq ||
+    pay.iban ||
+    acc ||
+    pay.bankCode ||
+    pay.paymentMethod;
   if (!hasAny) return null;
+  const accountDisplay =
+    pay.iban != null && pay.iban !== ""
+      ? null
+      : acc || pay.bankCode
+        ? acc && pay.bankCode
+          ? `${acc}/${pay.bankCode}`
+          : acc || pay.bankCode
+        : null;
   return (
     <Section icon={CreditCard} title="Platební údaje">
       {pay.variableSymbol && <Row label="Variabilní symbol" value={pay.variableSymbol} />}
-      {pay.paymentFrequency && <Row label="Frekvence" value={pay.paymentFrequency} />}
-      {(pay.accountNumber || pay.bankAccount) && (
-        <Row label="Účet příjemce" value={pay.accountNumber ?? pay.bankAccount} />
-      )}
+      {freq && <Row label="Frekvence" value={freq} />}
+      {pay.iban != null && pay.iban !== "" && <Row label="IBAN" value={pay.iban} />}
+      {accountDisplay && <Row label="Účet příjemce" value={accountDisplay} />}
       {pay.paymentMethod && <Row label="Způsob platby" value={pay.paymentMethod} />}
     </Section>
   );
@@ -318,11 +345,17 @@ export function CanonicalFieldsPanel({ canonicalFields }: { canonicalFields: Can
 
   return (
     <div className="mt-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Layers size={13} className="text-[color:var(--wp-text-secondary)]" />
-        <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
-          Kanonická extrakce
-        </span>
+      <div className="mb-3">
+        <div className="flex items-center gap-2">
+          <Layers size={13} className="text-[color:var(--wp-text-secondary)]" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--wp-text-secondary)]">
+            Kanonická extrakce
+          </span>
+        </div>
+        <p className="mt-1.5 text-[11px] leading-snug text-[color:var(--wp-text-secondary)] pl-5">
+          Strukturovaný výpis z modelu (osoby, rizika, platby). Pole ve sloupcích vpravo u jednotlivých bloků jsou
+          hodnoty připravené pro zápis do CRM — doplňují tento přehled, nejsou duplicitní výplň.
+        </p>
       </div>
 
       {packetMeta?.isBundle && <PacketMetaSection pm={packetMeta} />}

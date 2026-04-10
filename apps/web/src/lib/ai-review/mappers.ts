@@ -1702,6 +1702,8 @@ export function mapApiToExtractionDocument(
           paymentFrequency: typeof pay.paymentFrequency === "string" ? pay.paymentFrequency : undefined,
           accountNumber: typeof pay.accountNumber === "string" ? pay.accountNumber : undefined,
           bankAccount: typeof pay.bankAccount === "string" ? pay.bankAccount : undefined,
+          iban: typeof pay.iban === "string" ? pay.iban : undefined,
+          bankCode: typeof pay.bankCode === "string" ? pay.bankCode : undefined,
           paymentMethod: typeof pay.paymentMethod === "string" ? pay.paymentMethod : undefined,
         } : null,
       };

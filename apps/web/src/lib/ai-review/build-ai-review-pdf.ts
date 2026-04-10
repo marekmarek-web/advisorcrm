@@ -1,6 +1,6 @@
 import type { PDFDocument, PDFPage, PDFFont } from "pdf-lib";
 import type { ExtractionDocument, AIRecommendation, DraftAction } from "./types";
-import { formatAiClassifierForAdvisor } from "./czech-labels";
+import { formatAiClassifierForAdvisor, humanizeReviewReasonLine } from "./czech-labels";
 import { getDocumentTypeLabel } from "../ai/document-messages";
 import type { PrimaryDocumentType } from "../ai/document-review-types";
 
@@ -264,12 +264,28 @@ export async function buildAiReviewPdfBlob(
       state = drawLines(state, wrapLineToWidth(ar.llmExecutiveBrief.trim(), font, 10, contentWidth), 10, TEXT, rgb);
     }
     if (ar.manualChecklist?.length) {
-      state = drawLines(state, wrapLineToWidth("Kontrolní seznam:", fontBold, 9, contentWidth), 9, MUTED, rgb, true);
+      state = drawLines(state, wrapLineToWidth("Ruční kontrola:", fontBold, 9, contentWidth), 9, MUTED, rgb, true);
       for (const item of ar.manualChecklist) {
         if (item?.trim()) {
-          state = drawLines(state, wrapLineToWidth(`• ${item.trim()}`, font, 10, contentWidth), 10, TEXT, rgb);
+          const line = humanizeReviewReasonLine(item.trim());
+          state = drawLines(state, wrapLineToWidth(`• ${line}`, font, 10, contentWidth), 10, TEXT, rgb);
         }
       }
+    }
+    state = { ...state, y: state.y - SECTION_GAP };
+  }
+
+  const rawReasons = doc.reasonsForReview?.filter((r) => r?.trim()) ?? [];
+  if (rawReasons.length > 0) {
+    state = drawBoldTitle(state, "Důvody kontroly (pipeline)", 11, rgb);
+    for (const r of rawReasons) {
+      state = drawLines(
+        state,
+        wrapLineToWidth(`• ${humanizeReviewReasonLine(r.trim())}`, font, 10, contentWidth),
+        10,
+        TEXT,
+        rgb
+      );
     }
     state = { ...state, y: state.y - SECTION_GAP };
   }
@@ -323,7 +339,7 @@ export async function buildAiReviewPdfBlob(
   if (doc.draftActions?.length) {
     state = drawBoldTitle(state, "Navrhované akce", 12, rgb);
     doc.draftActions.forEach((a: DraftAction, i: number) => {
-      const line = `${i + 1}. ${a.label}${a.type ? ` (${a.type})` : ""}`;
+      const line = `${i + 1}. ${a.label?.trim() || "Akce"}`;
       state = drawLines(state, wrapLineToWidth(line, font, 10, contentWidth), 10, TEXT, rgb);
     });
     state = { ...state, y: state.y - SECTION_GAP };

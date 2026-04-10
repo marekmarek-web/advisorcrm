@@ -83,7 +83,8 @@ const APPLY_GATE_REASON_LABELS: Record<string, string> = {
   PUBLISH_HINTS_SENSITIVE_ATTACHMENT_ONLY: "Dokument obsahuje citlivou přílohu (zdravotní dotazník, AML) — hlavní data byla vytěžena, citlivé sekce ke kontrole.",
   PUBLISH_HINTS_NEEDS_SPLIT: "Dokument obsahuje více logických sekcí — ověřte, zda jsou všechny údaje správně přiřazeny.",
   PUBLISH_HINTS_NEEDS_MANUAL_VALIDATION: "Dokument vyžaduje ruční ověření před uložením.",
-  PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT: "Upload obsahuje bundle s citlivou přílohou — ověřte správnou sekci.",
+  PACKET_BUNDLE_WITH_SENSITIVE_ATTACHMENT:
+    "Nahrávka obsahuje více dokumentů v jednom souboru včetně citlivé přílohy — ověřte správnou sekci před zápisem.",
   PAYMENT_INSTRUCTION_MISCLASSIFIED_AS_CONTRACT: "Platební instrukce byly rozpoznány jako smlouva — ověřte typ dokumentu.",
 };
 

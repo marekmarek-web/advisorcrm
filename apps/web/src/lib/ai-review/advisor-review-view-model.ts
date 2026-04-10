@@ -3,7 +3,7 @@ import { buildAllDraftActions, pruneRedundantDraftActions } from "../ai/draft-ac
 import type { DraftActionBase } from "../ai/review-queue";
 import { getDocumentTypeLabel } from "../ai/document-messages";
 import { getReasonMessage } from "../ai/reason-codes";
-import { formatAiClassifierForAdvisor } from "./czech-labels";
+import { formatAiClassifierForAdvisor, humanizeReviewReasonLine } from "./czech-labels";
 import type { AdvisorReviewViewModel, DraftAction, PaymentSyncPreview } from "./types";
 import {
   buildCanonicalPaymentPayload,
@@ -42,9 +42,10 @@ function formatMoneyLine(env: DocumentReviewEnvelope): string {
   const vs = str(fv(env, "variableSymbol"));
   if (vs) parts.push(`VS ${vs}`);
   const iban = str(fv(env, "iban"));
-  const acc = str(fv(env, "bankAccount"));
+  const acc = str(fv(env, "bankAccount")) || str(fv(env, "accountNumber"));
+  const bankCode = str(fv(env, "bankCode"));
   if (iban) parts.push(`IBAN: ${iban}`);
-  else if (acc) parts.push(`Účet: ${acc}`);
+  else if (acc) parts.push(bankCode ? `Účet: ${acc}/${bankCode}` : `Účet: ${acc}`);
   const pt = str(fv(env, "paymentType"));
   if (/trval|standing|direct/i.test(pt) || /trvalý/i.test(pt)) {
     parts.push("trvalý příkaz");
@@ -90,14 +91,6 @@ function sensitivityLine(env: DocumentReviewEnvelope): string {
     return "Ve struktuře dokumentu je označena zdravotní nebo jiná citlivá část.";
   }
   return "Standardní osobní údaje — bez zvláštní citlivé kategorie v metadatech.";
-}
-
-function humanizeReason(code: string): string {
-  if (/^[a-z][a-z0-9_]+$/.test(code)) {
-    const m = getReasonMessage(code);
-    if (m && m !== code) return m;
-  }
-  return code;
 }
 
 const MAX_ADVISOR_BRIEF_LENGTH = 2000;
@@ -163,7 +156,8 @@ function buildDeterministicBrief(env: DocumentReviewEnvelope, recognition: strin
 
 const PAYMENT_GATE_MESSAGES: Record<string, string> = {
   PAYMENT_MISSING_AMOUNT: "Chybí částka — platbu nelze zpracovat bez výše.",
-  PAYMENT_MISSING_TARGET: "Chybí IBAN nebo číslo účtu — platbu nelze spárovat s příjemcem.",
+  PAYMENT_MISSING_TARGET:
+    "Chybí cíl platby — vyplňte IBAN nebo číslo účtu včetně kódu banky (nebo obojí dle dokumentu).",
   PAYMENT_MISSING_FREQUENCY: "Frekvence platby není uvedena — ověřte v dokumentu.",
   PAYMENT_MISSING_IDENTIFIER: "Chybí variabilní nebo konstantní symbol.",
   PAYMENT_MISSING_INSTITUTION: "Není uveden poskytovatel ani produkt.",
@@ -338,7 +332,7 @@ export function buildAdvisorReviewViewModel(args: BuildArgs): AdvisorReviewViewM
     }
   }
   for (const r of reasonsForReview ?? []) {
-    manualChecklist.push(humanizeReason(r));
+    manualChecklist.push(humanizeReviewReasonLine(r));
   }
   for (const v of validationWarnings ?? []) {
     if (v.message) manualChecklist.push(v.message);

@@ -332,6 +332,8 @@ export type ExtractionDocument = {
       paymentFrequency?: string;
       accountNumber?: string;
       bankAccount?: string;
+      iban?: string;
+      bankCode?: string;
       paymentMethod?: string;
     } | null;
   };
