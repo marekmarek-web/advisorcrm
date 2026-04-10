@@ -446,6 +446,15 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
     if (!contact) return { ok: false, error: "Kontakt nenalezen" };
     if (!contact.email) return { ok: false, error: "U kontaktu chybí e-mail" };
 
+    const [inviterProfile] = await db
+      .select({ fullName: userProfiles.fullName })
+      .from(userProfiles as any)
+      .where(eq(userProfiles.userId, user.id))
+      .limit(1);
+    const metaFullName =
+      typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
+    const advisorDisplayName = inviterProfile?.fullName?.trim() || metaFullName || undefined;
+
     const preparedAccount = await provisionClientInviteAccount({
       email: contact.email.trim(),
       fullName: `${contact.firstName?.trim() ?? ""} ${contact.lastName?.trim() ?? ""}`.trim() || null,
@@ -465,6 +474,7 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
       const { subject, html } = clientPortalReminderTemplate({
         loginUrl,
         contactFirstName: contact.firstName?.trim() ?? "",
+        advisorDisplayName,
         tenantName: tenantRow?.name ?? undefined,
         loginEmail: contact.email.trim(),
         gdprUrl,
@@ -509,6 +519,7 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
     const { subject, html } = clientPortalInviteTemplate({
       registerUrl: inviteLink,
       contactFirstName: contact.firstName?.trim() ?? "",
+      advisorDisplayName,
       tenantName: tenantRow?.name ?? undefined,
       loginEmail: contact.email.trim(),
       temporaryPassword: preparedAccount.temporaryPassword,

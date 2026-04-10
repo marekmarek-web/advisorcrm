@@ -17,4 +17,18 @@ describe("clientPortalReminderTemplate", () => {
     expect(html).not.toContain("Dočasné heslo");
     expect(html).toMatch(/heslem, které jste si nastavili/i);
   });
+
+  it("prefers advisor name over default workspace title", () => {
+    const { html } = clientPortalReminderTemplate({
+      loginUrl: "https://app.example/prihlaseni",
+      contactFirstName: "Jan",
+      advisorDisplayName: "Eva Dvořáková",
+      tenantName: "Můj workspace",
+      loginEmail: "jan@example.com",
+      gdprUrl: "https://app.example/gdpr",
+      termsUrl: "https://app.example/terms",
+    });
+    expect(html).toContain("Eva Dvořáková");
+    expect(html).not.toContain("Můj workspace");
+  });
 });

@@ -21,6 +21,20 @@ function e(value: unknown): string {
   return escapeHtmlText(String(value ?? ""));
 }
 
+/** Výchozí název workspace — v pozvánce klienta nesmí nahrazovat jméno pozývajícího poradce. */
+const DEFAULT_TENANT_DISPLAY_NAME = "Můj workspace";
+
+function resolveClientPortalInviteWho(params: {
+  advisorDisplayName?: string;
+  tenantName?: string;
+}): string {
+  const advisor = params.advisorDisplayName?.trim();
+  if (advisor) return advisor;
+  const tenant = params.tenantName?.trim();
+  if (tenant && tenant !== DEFAULT_TENANT_DISPLAY_NAME) return tenant;
+  return "váš poradce";
+}
+
 function normalizedSiteUrl(): string {
   return DEFAULT_SITE_URL.replace(/\/$/, "");
 }
@@ -631,6 +645,8 @@ export function reminderBeforeDeadlineTemplate(params: {
 export function clientPortalInviteTemplate(params: {
   registerUrl: string;
   contactFirstName: string;
+  /** Jméno poradce, který pozvánku odeslal — má přednost před názvem workspace. */
+  advisorDisplayName?: string;
   tenantName?: string;
   loginEmail: string;
   temporaryPassword: string;
@@ -640,7 +656,10 @@ export function clientPortalInviteTemplate(params: {
   termsUrl: string;
 }) {
   const subject = "Přístup do klientské zóny je připravený — Aidvisora";
-  const who = params.tenantName?.trim() ? params.tenantName.trim() : "váš poradce";
+  const who = resolveClientPortalInviteWho({
+    advisorDisplayName: params.advisorDisplayName,
+    tenantName: params.tenantName,
+  });
 
   const bodyHtml = [
     greeting(params.contactFirstName),
@@ -700,13 +719,17 @@ export function clientPortalInviteTemplate(params: {
 export function clientPortalReminderTemplate(params: {
   loginUrl: string;
   contactFirstName: string;
+  advisorDisplayName?: string;
   tenantName?: string;
   loginEmail: string;
   gdprUrl: string;
   termsUrl: string;
 }) {
   const subject = "Připomínka: klientská zóna Aidvisora";
-  const who = params.tenantName?.trim() ? params.tenantName.trim() : "váš poradce";
+  const who = resolveClientPortalInviteWho({
+    advisorDisplayName: params.advisorDisplayName,
+    tenantName: params.tenantName,
+  });
 
   const bodyHtml = [
     greeting(params.contactFirstName),
