@@ -23,11 +23,15 @@ function TreeBranch({
   currentUserId,
   depth,
   memberDetailQuery,
+  selectedUserId,
+  onSelectMember,
 }: {
   nodes: TeamTreeNode[];
   currentUserId: string;
   depth: number;
   memberDetailQuery: string;
+  selectedUserId?: string | null;
+  onSelectMember?: (userId: string) => void;
 }) {
   return (
     <ul
@@ -39,23 +43,45 @@ function TreeBranch({
       {nodes.map((node) => {
         const below = countDescendants(node);
         const isSelf = node.userId === currentUserId;
+        const isSelected = selectedUserId != null && selectedUserId === node.userId;
         const label = node.displayName?.trim() || node.email || "Člen týmu";
         return (
           <li key={node.userId}>
             <div
               className={clsx(
                 "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl py-2 px-2 -mx-2 text-sm",
-                isSelf && "bg-indigo-50 ring-1 ring-indigo-200/80"
+                isSelf && "bg-indigo-50 ring-1 ring-indigo-200/80",
+                isSelected && "bg-violet-50/90 ring-1 ring-violet-200/80"
               )}
             >
               {isSelf ? (
                 <UserCircle className="w-4 h-4 shrink-0 text-indigo-600" aria-hidden />
               ) : null}
+              {onSelectMember ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectMember(node.userId)}
+                  className={clsx(
+                    "font-semibold text-left text-[color:var(--wp-text)] hover:text-indigo-600 hover:underline",
+                    isSelected && "text-violet-900"
+                  )}
+                >
+                  {label}
+                </button>
+              ) : (
+                <Link
+                  href={`/portal/team-overview/${node.userId}${memberDetailQuery}`}
+                  className="font-semibold text-[color:var(--wp-text)] hover:text-indigo-600 hover:underline"
+                >
+                  {label}
+                </Link>
+              )}
               <Link
                 href={`/portal/team-overview/${node.userId}${memberDetailQuery}`}
-                className="font-semibold text-[color:var(--wp-text)] hover:text-indigo-600 hover:underline"
+                className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--wp-text-tertiary)] hover:text-indigo-600"
+                title="Plný detail"
               >
-                {label}
+                Detail
               </Link>
               <span className="text-xs text-[color:var(--wp-text-tertiary)]">{node.roleName}</span>
               {below > 0 ? (
@@ -71,6 +97,8 @@ function TreeBranch({
                 currentUserId={currentUserId}
                 depth={depth + 1}
                 memberDetailQuery={memberDetailQuery}
+                selectedUserId={selectedUserId}
+                onSelectMember={onSelectMember}
               />
             ) : null}
           </li>
@@ -86,6 +114,8 @@ export function TeamStructurePanel({
   scope,
   memberDetailQuery = "",
   hierarchyParentLinksConfigured = true,
+  selectedUserId = null,
+  onSelectMember,
 }: {
   roots: TeamTreeNode[];
   currentUserId: string;
@@ -94,6 +124,9 @@ export function TeamStructurePanel({
   memberDetailQuery?: string;
   /** False = v tenantu není žádný parent_id — „Můj tým“ je omezený (viz banner na přehledu). */
   hierarchyParentLinksConfigured?: boolean;
+  /** Výběr člena pro boční panel na přehledu (volitelné). */
+  selectedUserId?: string | null;
+  onSelectMember?: (userId: string) => void;
 }) {
   const selfNode = findNodeInForest(roots, currentUserId);
   const directChildren = selfNode?.children ?? [];
@@ -126,7 +159,7 @@ export function TeamStructurePanel({
         </p>
       ) : (
         <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4">
-          Přehled větví podle nastavených nadřízených. Kliknutím otevřete detail člena.
+          Přehled větví podle nastavených nadřízených. Klik na jméno vybere člena pro souhrn vpravo; odkaz „Detail“ vede na plnou stránku.
         </p>
       )}
 
@@ -144,21 +177,49 @@ export function TeamStructurePanel({
           </p>
           <div className="flex flex-wrap gap-2">
             {directChildren.map((c) => (
-              <Link
-                key={c.userId}
-                href={`/portal/team-overview/${c.userId}${memberDetailQuery}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-1.5 text-sm font-medium text-[color:var(--wp-text)] hover:border-indigo-200 hover:bg-indigo-50/50"
-              >
-                {c.displayName?.trim() || c.email || "Člen týmu"}
-                <span className="text-xs text-[color:var(--wp-text-tertiary)]">({c.roleName})</span>
-              </Link>
+              <span key={c.userId} className="inline-flex items-center gap-1.5">
+                {onSelectMember ? (
+                  <button
+                    type="button"
+                    onClick={() => onSelectMember(c.userId)}
+                    className={clsx(
+                      "inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-1.5 text-sm font-medium text-[color:var(--wp-text)] hover:border-indigo-200 hover:bg-indigo-50/50",
+                      selectedUserId === c.userId && "border-violet-300 bg-violet-50/80"
+                    )}
+                  >
+                    {c.displayName?.trim() || c.email || "Člen týmu"}
+                    <span className="text-xs text-[color:var(--wp-text-tertiary)]">({c.roleName})</span>
+                  </button>
+                ) : (
+                  <Link
+                    href={`/portal/team-overview/${c.userId}${memberDetailQuery}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-1.5 text-sm font-medium text-[color:var(--wp-text)] hover:border-indigo-200 hover:bg-indigo-50/50"
+                  >
+                    {c.displayName?.trim() || c.email || "Člen týmu"}
+                    <span className="text-xs text-[color:var(--wp-text-tertiary)]">({c.roleName})</span>
+                  </Link>
+                )}
+                <Link
+                  href={`/portal/team-overview/${c.userId}${memberDetailQuery}`}
+                  className="text-[10px] font-semibold text-indigo-600 hover:underline"
+                >
+                  Detail
+                </Link>
+              </span>
             ))}
           </div>
         </div>
       )}
 
       <div className="max-h-[min(24rem,55vh)] overflow-y-auto pr-1 -mr-1">
-        <TreeBranch nodes={roots} currentUserId={currentUserId} depth={0} memberDetailQuery={memberDetailQuery} />
+        <TreeBranch
+          nodes={roots}
+          currentUserId={currentUserId}
+          depth={0}
+          memberDetailQuery={memberDetailQuery}
+          selectedUserId={selectedUserId}
+          onSelectMember={onSelectMember}
+        />
       </div>
     </section>
   );

@@ -3,23 +3,14 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { TeamOverviewView } from "./TeamOverviewView";
 import type { TeamOverviewScope } from "@/lib/team-hierarchy-types";
-import {
-  getTeamOverviewKpis,
-  getTeamMemberMetrics,
-  getNewcomerAdaptation,
-  listTeamMembersWithNames,
-  getTeamPerformanceOverTime,
-  getTeamHierarchy,
-  getTeamRhythmCalendarData,
-} from "@/app/actions/team-overview";
-import { buildTeamAlertsFromMemberMetrics } from "@/lib/team-overview-alerts";
+import { getTeamOverviewPageSnapshot } from "@/app/actions/team-overview";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamOverviewPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ period?: string }>;
+  searchParams?: Promise<{ period?: string; member?: string }>;
 }) {
   const auth = await requireAuth();
   if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) {
@@ -30,6 +21,7 @@ export default async function TeamOverviewPage({
   const canCreateAiTeamFollowUp =
     hasPermission(auth.roleName as RoleName, "contacts:write") ||
     hasPermission(auth.roleName as RoleName, "tasks:*");
+  const canEditTeamCareer = hasPermission(auth.roleName as RoleName, "team_members:write");
   const sp = (await searchParams) ?? {};
   const period: "week" | "month" | "quarter" =
     sp.period === "week" || sp.period === "month" || sp.period === "quarter" ? sp.period : "month";
@@ -40,16 +32,7 @@ export default async function TeamOverviewPage({
         ? "full"
         : "my_team";
 
-  const [kpis, members, metrics, newcomers, performanceOverTime, rhythmCalendar] = await Promise.all([
-    getTeamOverviewKpis(period, defaultScope).catch(() => null),
-    listTeamMembersWithNames(defaultScope).catch(() => []),
-    getTeamMemberMetrics(period, defaultScope).catch(() => []),
-    getNewcomerAdaptation(defaultScope).catch(() => []),
-    getTeamPerformanceOverTime(period, defaultScope).catch(() => []),
-    getTeamRhythmCalendarData(defaultScope).catch(() => null),
-  ]);
-  const alerts = buildTeamAlertsFromMemberMetrics(metrics);
-  const hierarchy = await getTeamHierarchy(defaultScope).catch(() => []);
+  const snap = await getTeamOverviewPageSnapshot(period, defaultScope);
 
   return (
     <TeamOverviewView
@@ -57,17 +40,19 @@ export default async function TeamOverviewPage({
       currentUserId={auth.userId}
       currentRole={auth.roleName}
       initialScope={defaultScope}
-      initialHierarchy={hierarchy}
-      initialKpis={kpis}
-      initialMembers={members}
-      initialMetrics={metrics}
-      initialAlerts={alerts}
-      initialNewcomers={newcomers}
-      initialPerformanceOverTime={performanceOverTime}
-      initialRhythmCalendar={rhythmCalendar}
+      initialHierarchy={snap.hierarchy}
+      initialKpis={snap.kpis}
+      initialMembers={snap.members}
+      initialMetrics={snap.metrics}
+      initialAlerts={snap.alerts}
+      initialNewcomers={snap.newcomers}
+      initialPerformanceOverTime={snap.performanceOverTime}
+      initialRhythmCalendar={snap.rhythmCalendar}
       defaultPeriod={period}
       canCreateTeamCalendar={canCreateTeamCalendar}
       canCreateAiTeamFollowUp={canCreateAiTeamFollowUp}
+      initialSelectedMemberId={typeof sp.member === "string" && sp.member.length > 0 ? sp.member : null}
+      canEditTeamCareer={canEditTeamCareer}
     />
   );
 }

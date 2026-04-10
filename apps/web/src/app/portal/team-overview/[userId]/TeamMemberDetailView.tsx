@@ -7,6 +7,8 @@ import { MemberCareerQuickActions } from "./MemberCareerQuickActions";
 import { formatCareerProgramLabel, formatCareerTrackLabel } from "@/lib/career/evaluate-career-progress";
 import { careerCompletenessShortLabel, careerProgressShortLabel } from "@/lib/career/career-ui-labels";
 import type { ProgressEvaluation } from "@/lib/career/types";
+import { crmUnitsFootnoteForProgram } from "@/lib/career/crm-units-copy";
+import { buildTeamMemberCoachingSummaryBullets } from "@/lib/team-member-coaching-bullets";
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
@@ -19,41 +21,6 @@ function progressBadgeClass(pe: ProgressEvaluation): string {
     return "bg-emerald-100 text-emerald-800";
   }
   return "bg-amber-100 text-amber-800";
-}
-
-function buildCoachingSummary(detail: TeamMemberDetail): string[] {
-  const bullets: string[] = [];
-  const m = detail.metrics;
-  const critical = detail.alerts.filter((a) => a.severity === "critical");
-  const warning = detail.alerts.filter((a) => a.severity === "warning");
-  if (critical.length > 0) {
-    bullets.push(`Rizika: ${critical.map((a) => a.title).join("; ")}.`);
-  }
-  if (warning.length > 0 && critical.length === 0) {
-    bullets.push(`Pozor: ${warning.map((a) => a.title).join("; ")}.`);
-  }
-  if (m) {
-    if (m.daysWithoutActivity >= 7 && !detail.alerts.some((a) => a.type === "no_activity")) {
-      bullets.push(`${m.daysWithoutActivity} dní bez aktivity – interní tip: zvažte pravidelný záznam v CRM.`);
-    }
-    if (m.meetingsThisPeriod === 0 && m.unitsThisPeriod === 0) {
-      bullets.push("Zatím žádné schůzky ani jednotky v tomto období – oblast k ověření vedením: naplánovat schůzky a follow-up.");
-    }
-    if (m.tasksOpen > 10) {
-      bullets.push("Vysoký počet otevřených úkolů – interní upozornění: zvažte priorizaci a uzavření starých položek.");
-    }
-  }
-  if (detail.adaptation) {
-    if (detail.adaptation.adaptationStatus === "Rizikový") {
-      bullets.push(`Nováček v riziku (${detail.adaptation.adaptationScore} % adaptace) – interní tip: zvažte intenzivnější podporu a check-in.`);
-    } else if (detail.adaptation.adaptationStatus === "V adaptaci" && detail.adaptation.warnings.length > 0) {
-      bullets.push(`Adaptace: ${detail.adaptation.warnings.join("; ")}.`);
-    }
-  }
-  if (bullets.length === 0 && m) {
-    bullets.push("Žádná zásadní rizika. Pokračovat v pravidelném vedení a zpětné vazbě.");
-  }
-  return bullets;
 }
 
 function agendaCategoryLabel(c: "evidenced" | "crm_signal" | "manual"): string {
@@ -80,7 +47,7 @@ export function TeamMemberDetailView({
 }) {
   const name = detail.displayName || "Člen týmu";
   const m = detail.metrics;
-  const coachingBullets = buildCoachingSummary(detail);
+  const coachingBullets = buildTeamMemberCoachingSummaryBullets(detail);
 
   return (
     <div className="space-y-8">
@@ -350,11 +317,7 @@ export function TeamMemberDetailView({
             </div>
           </div>
           <p className="mt-3 text-[11px] text-[color:var(--wp-text-tertiary)] leading-relaxed">
-            {detail.careerEvaluation.careerProgramId === "beplan"
-              ? "Jednotky v CRM nejsou BJ z kariérního řádu Beplan — jen orientační výkon v systému."
-              : detail.careerEvaluation.careerProgramId === "premium_brokers"
-                ? "Jednotky v CRM nejsou BJS z řádu Premium Brokers — jen orientační výkon v systému."
-                : "Jednotky v CRM jsou obecné metriky — neinterpretujte je jako BJ ani BJS bez ručního ověření řádu."}
+            {crmUnitsFootnoteForProgram(detail.careerEvaluation.careerProgramId)}
           </p>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
             <p className="text-[color:var(--wp-text-secondary)]">Otevřené úkoly: <strong>{m.tasksOpen}</strong></p>

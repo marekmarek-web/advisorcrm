@@ -1055,3 +1055,41 @@ export async function deleteTeamGoal(goalId: string): Promise<{ ok: boolean; err
   await db.delete(teamGoals).where(eq(teamGoals.id, goalId));
   return { ok: true };
 }
+
+/** Jeden paralelní read pro Team Overview — stejné zdroje jako stránka; bez duplicitního shaping v klientovi. */
+export type TeamOverviewPageSnapshot = {
+  kpis: TeamOverviewKpis | null;
+  members: Awaited<ReturnType<typeof listTeamMembersWithNames>>;
+  metrics: TeamMemberMetrics[];
+  newcomers: NewcomerAdaptation[];
+  performanceOverTime: TeamPerformancePoint[];
+  rhythmCalendar: Awaited<ReturnType<typeof getTeamRhythmCalendarData>> | null;
+  hierarchy: TeamTreeNode[];
+  alerts: TeamAlert[];
+};
+
+export async function getTeamOverviewPageSnapshot(
+  period: TeamOverviewPeriod = "month",
+  scope?: TeamOverviewScope
+): Promise<TeamOverviewPageSnapshot> {
+  const [kpis, members, metrics, newcomers, performanceOverTime, rhythmCalendar, hierarchy] = await Promise.all([
+    getTeamOverviewKpis(period, scope).catch(() => null),
+    listTeamMembersWithNames(scope).catch(() => []),
+    getTeamMemberMetrics(period, scope).catch(() => []),
+    getNewcomerAdaptation(scope).catch(() => []),
+    getTeamPerformanceOverTime(period, scope).catch(() => []),
+    getTeamRhythmCalendarData(scope).catch(() => null),
+    getTeamHierarchy(scope).catch(() => []),
+  ]);
+  const alerts = buildTeamAlertsFromMemberMetrics(metrics);
+  return {
+    kpis,
+    members,
+    metrics,
+    newcomers,
+    performanceOverTime,
+    rhythmCalendar,
+    hierarchy,
+    alerts,
+  };
+}
