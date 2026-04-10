@@ -31,6 +31,25 @@ import { buildCareerInsights } from "@/lib/career/career-insights";
 import type { CareerEvaluationViewModel } from "@/lib/career/career-evaluation-vm";
 import type { CareerInsight } from "@/lib/career/career-insights";
 import { eq, and, gte, lt, lte, isNull, isNotNull, sql, desc, asc, inArray, or } from "db";
+
+/**
+ * Effective production date for a contract:
+ * - AI review contracts use `advisorConfirmedAt` (moment of review apply), falling back to startDate.
+ * - All other contracts use `startDate` (user entered effective date).
+ * This ensures AI review contracts show up in production the period they were confirmed,
+ * not based on the historical startDate extracted from the document.
+ */
+function contractProdDateGte(startStr: string) {
+  return sql`(CASE WHEN ${contracts.sourceKind} = 'ai_review'
+    THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+    ELSE ${contracts.startDate}::date END) >= ${startStr}`;
+}
+
+function contractProdDateLt(endStr: string) {
+  return sql`(CASE WHEN ${contracts.sourceKind} = 'ai_review'
+    THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+    ELSE ${contracts.startDate}::date END) < ${endStr}`;
+}
 import { classifyInternalTeamTitle } from "@/lib/team-rhythm/internal-classification";
 import {
   buildAlertsFromMetric,
@@ -190,7 +209,7 @@ async function collectUserStats(
         totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
       })
       .from(contracts)
-      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), gte(contracts.startDate, startStr), lt(contracts.startDate, endStr))),
+      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), contractProdDateGte(startStr), contractProdDateLt(endStr))),
     db
       .select({
         count: sql<number>`count(*)::int`,
@@ -198,7 +217,7 @@ async function collectUserStats(
         totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
       })
       .from(contracts)
-      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), gte(contracts.startDate, prevStartStr), lt(contracts.startDate, prevEndStr))),
+      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), contractProdDateGte(prevStartStr), contractProdDateLt(prevEndStr))),
     db
       .select({ eventType: events.eventType })
       .from(events)
@@ -721,8 +740,8 @@ export async function getTeamPerformanceOverTime(
         and(
           eq(contracts.tenantId, ctx.auth.tenantId),
           inArray(contracts.advisorId, ctx.visibleUserIds),
-          gte(contracts.startDate, startStr),
-          lt(contracts.startDate, endStr)
+          contractProdDateGte(startStr),
+          contractProdDateLt(endStr)
         )
       );
     const units = Number(rows[0]?.count ?? 0);
@@ -867,8 +886,8 @@ export async function getTeamMemberDetail(
         and(
           eq(contracts.tenantId, auth.tenantId),
           eq(contracts.advisorId, userId),
-          gte(contracts.startDate, startStr),
-          lt(contracts.startDate, endStr)
+          contractProdDateGte(startStr),
+          contractProdDateLt(endStr)
         )
       );
     const units = Number(rows[0]?.count ?? 0);
