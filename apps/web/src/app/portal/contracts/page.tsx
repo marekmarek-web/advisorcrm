@@ -76,7 +76,7 @@ export default async function PortalContractsPage({
                     Číslo smlouvy
                   </th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--wp-text-muted)" }}>
-                    Začátek
+                    Datum produkce
                   </th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-right" style={{ color: "var(--wp-text-muted)" }}>
                     Pojistné
@@ -116,7 +116,7 @@ export default async function PortalContractsPage({
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm" style={{ color: "var(--wp-text-muted)" }}>
-                        {r.startDate ?? "—"}
+                        {r.productionDate ?? r.startDate ?? "—"}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span className="text-sm font-medium" style={{ color: "var(--wp-text)" }}>

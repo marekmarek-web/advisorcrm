@@ -21,6 +21,22 @@ export type MetricsActuals = Partial<Record<BusinessPlanMetricType, number>>;
  */
 export const BUSINESS_PLAN_MEETING_EVENT_TYPES = ["schuzka", "followup", "kafe"] as const;
 
+function contractProductionDateGte(dateStr: string) {
+  return sql`(CASE
+    WHEN ${contracts.sourceKind} = 'ai_review'
+      THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+    ELSE ${contracts.startDate}::date
+  END) >= ${dateStr}`;
+}
+
+function contractProductionDateLt(dateStr: string) {
+  return sql`(CASE
+    WHEN ${contracts.sourceKind} = 'ai_review'
+      THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+    ELSE ${contracts.startDate}::date
+  END) < ${dateStr}`;
+}
+
 /**
  * Compute all metric actuals for the given period. periodStart/periodEnd are Date objects (start of day and exclusive end).
  */
@@ -259,8 +275,8 @@ async function getVolumeHypo(
         eq(contracts.tenantId, tenantId),
         eq(contracts.advisorId, userId),
         eq(contracts.segment, "HYPO"),
-        gte(contracts.startDate, startStr),
-        lt(contracts.startDate, endStr)
+        contractProductionDateGte(startStr),
+        contractProductionDateLt(endStr)
       )
     );
   return Number(rows[0]?.total ?? 0);
@@ -282,8 +298,8 @@ async function getVolumeInvestments(
         eq(contracts.tenantId, tenantId),
         eq(contracts.advisorId, userId),
         sql`${contracts.segment} IN ('INV', 'DIP', 'DPS')`,
-        gte(contracts.startDate, startStr),
-        lt(contracts.startDate, endStr)
+        contractProductionDateGte(startStr),
+        contractProductionDateLt(endStr)
       )
     );
   return Number(rows[0]?.total ?? 0);
@@ -324,8 +340,8 @@ async function getProduction(
       and(
         eq(contracts.tenantId, tenantId),
         eq(contracts.advisorId, userId),
-        gte(contracts.startDate, startStr),
-        lt(contracts.startDate, endStr)
+        contractProductionDateGte(startStr),
+        contractProductionDateLt(endStr)
       )
     );
   return Number(rows[0]?.total ?? 0);
@@ -346,8 +362,8 @@ export async function getProductionMix(
   const base = and(
     eq(contracts.tenantId, tenantId),
     eq(contracts.advisorId, userId),
-    gte(contracts.startDate, startStr),
-    lt(contracts.startDate, endStr)
+    contractProductionDateGte(startStr),
+    contractProductionDateLt(endStr)
   );
   const [inv, penze, zp, hypo] = await Promise.all([
     db

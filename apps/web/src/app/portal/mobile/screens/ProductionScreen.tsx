@@ -189,8 +189,8 @@ function ContractList({
                   {fmtCzk(contract.premiumAnnual)}
                 </p>
                 <p className="text-[11px] text-[color:var(--wp-text-tertiary)]">
-                  {contract.startDate
-                    ? new Date(contract.startDate).toLocaleDateString("cs-CZ", {
+                  {contract.productionDate
+                    ? new Date(contract.productionDate).toLocaleDateString("cs-CZ", {
                         day: "numeric",
                         month: "short",
                       })

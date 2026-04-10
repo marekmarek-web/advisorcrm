@@ -25,6 +25,22 @@ export type ProductionSummary = {
   periodLabel: string;
 };
 
+function contractProductionDateGte(dateStr: string) {
+  return sql`(CASE
+    WHEN ${contracts.sourceKind} = 'ai_review'
+      THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+    ELSE ${contracts.startDate}::date
+  END) >= ${dateStr}`;
+}
+
+function contractProductionDateLt(dateStr: string) {
+  return sql`(CASE
+    WHEN ${contracts.sourceKind} = 'ai_review'
+      THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+    ELSE ${contracts.startDate}::date
+  END) < ${dateStr}`;
+}
+
 function getPeriodRange(period: PeriodType, refDate?: string): { start: Date; end: Date; label: string } {
   const ref = refDate ? new Date(refDate) : new Date();
   const y = ref.getFullYear();
@@ -69,8 +85,8 @@ export async function getProductionSummary(
       and(
         eq(contracts.tenantId, auth.tenantId),
         eq(contracts.advisorId, auth.userId),
-        gte(contracts.startDate, start.toISOString().slice(0, 10)),
-        lt(contracts.startDate, end.toISOString().slice(0, 10))
+        contractProductionDateGte(start.toISOString().slice(0, 10)),
+        contractProductionDateLt(end.toISOString().slice(0, 10))
       )
     )
     .groupBy(contracts.segment, contracts.partnerName)
@@ -102,6 +118,7 @@ export type ContractInPeriodRow = {
   partnerName: string | null;
   contractNumber: string | null;
   startDate: string | null;
+  productionDate: string | null;
   premiumAmount: number;
   premiumAnnual: number;
 };
@@ -124,6 +141,11 @@ export async function getContractsForPeriod(
       partnerName: contracts.partnerName,
       contractNumber: contracts.contractNumber,
       startDate: contracts.startDate,
+      productionDate: sql<string>`CASE
+        WHEN ${contracts.sourceKind} = 'ai_review'
+          THEN COALESCE(${contracts.advisorConfirmedAt}::date::text, ${contracts.startDate})
+        ELSE ${contracts.startDate}
+      END`,
       premiumAmount: contracts.premiumAmount,
       premiumAnnual: contracts.premiumAnnual,
     })
@@ -132,11 +154,15 @@ export async function getContractsForPeriod(
       and(
         eq(contracts.tenantId, auth.tenantId),
         eq(contracts.advisorId, auth.userId),
-        gte(contracts.startDate, start.toISOString().slice(0, 10)),
-        lt(contracts.startDate, end.toISOString().slice(0, 10))
+        contractProductionDateGte(start.toISOString().slice(0, 10)),
+        contractProductionDateLt(end.toISOString().slice(0, 10))
       )
     )
-    .orderBy(contracts.startDate, contracts.segment);
+    .orderBy(sql`CASE
+      WHEN ${contracts.sourceKind} = 'ai_review'
+        THEN COALESCE(${contracts.advisorConfirmedAt}::date, ${contracts.startDate}::date)
+      ELSE ${contracts.startDate}::date
+    END`, contracts.segment);
 
   const mapped: ContractInPeriodRow[] = rows.map((r) => ({
     id: r.id,
@@ -146,6 +172,7 @@ export async function getContractsForPeriod(
     partnerName: r.partnerName,
     contractNumber: r.contractNumber,
     startDate: r.startDate,
+    productionDate: r.productionDate,
     premiumAmount: Number(r.premiumAmount ?? 0),
     premiumAnnual: Number(r.premiumAnnual ?? 0),
   }));
