@@ -4,7 +4,7 @@ import { cache } from "react";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
-import { contracts, partners, products, documents, contacts, contractUploadReviews } from "db";
+import { contracts, partners, products, documents, contacts, contractUploadReviews, tenants } from "db";
 import { eq, and, asc, or, isNull, inArray, desc, sql } from "db";
 import { contractSegments } from "db";
 import { logActivity } from "./activity";
@@ -235,18 +235,28 @@ function pgErrorMeta(e: unknown): { code?: string; detail?: string; constraint?:
   };
 }
 
-/** Čitelná hláška z Postgres FK detailu (klient / partner / produkt). */
+/** Když Postgres FK detail nerozpoznáme — neutrální text (ne jen „kontakt/partner“). */
+const FK_VIOLATION_FALLBACK_MESSAGE =
+  "Neplatná vazba v databázi. Zkontrolujte klienta, workspace a výběr partnera či produktu z katalogu.";
+
+/** Čitelná hláška z Postgres FK detailu (klient / tenant / partner / produkt). */
 function fkViolationUserMessage(detail: string | undefined): string | null {
   if (!detail) return null;
   const d = detail.toLowerCase();
   if (d.includes("client_id") || d.includes("contact_id")) {
     return "Klient není v databázi nebo neodpovídá workspace. Obnovte stránku a zkuste znovu.";
   }
+  if (d.includes("tenant_id")) {
+    return "Workspace není v databázi nebo neodpovídá vašemu účtu. Obnovte stránku nebo se znovu přihlaste.";
+  }
   if (d.includes("partner_id")) {
     return "Partner není v databázi. Vyberte partnera z katalogu znovu.";
   }
   if (d.includes("product_id")) {
     return "Produkt není v databázi. Vyberte produkt z katalogu znovu.";
+  }
+  if (d.includes("advisor_id")) {
+    return "Účet poradce neodpovídá databázi. Obnovte stránku nebo kontaktujte správce.";
   }
   return null;
 }
@@ -398,6 +408,19 @@ export async function createContract(
       };
     }
 
+    const [tenantRow] = await db
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.id, auth.tenantId))
+      .limit(1);
+    if (!tenantRow) {
+      return {
+        ok: false,
+        message:
+          "Workspace v databázi neexistuje nebo neodpovídá vašemu účtu. Obnovte stránku nebo se znovu přihlaste.",
+      };
+    }
+
     const refCheck = await assertContractPartnerProductRefs({
       tenantId: auth.tenantId,
       contactId,
@@ -451,7 +474,7 @@ export async function createContract(
       const fkMsg = fkViolationUserMessage(meta.detail);
       return {
         ok: false,
-        message: fkMsg ?? "Kontakt nebo vybraný partner/produkt neexistuje. Zkontrolujte údaje.",
+        message: fkMsg ?? FK_VIOLATION_FALLBACK_MESSAGE,
       };
     }
     const code = pgErrorCode(e);
@@ -467,9 +490,7 @@ export async function createContract(
       const fkMsg = fkViolationUserMessage(meta.detail);
       return {
         ok: false,
-        message:
-          fkMsg ??
-          "Neplatná vazba v databázi (klient nebo partner/produkt). Zkontrolujte výběr v CRM.",
+        message: fkMsg ?? FK_VIOLATION_FALLBACK_MESSAGE,
       };
     }
     if (code === "23502") {

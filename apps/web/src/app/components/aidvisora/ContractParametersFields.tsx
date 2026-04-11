@@ -9,8 +9,12 @@ import {
   getMonthlyAmountFieldLabel,
   getMonthlyAmountHelperText,
   segmentShowsPremiumOrContributionFields,
+  segmentUsesAnnualPremiumPrimaryInput,
 } from "@/lib/contracts/contract-segment-wizard-config";
-import { annualPremiumFromMonthlyInput } from "@/lib/contracts/annual-premium-from-monthly";
+import {
+  annualPremiumFromMonthlyInput,
+  monthlyPremiumFromAnnualInput,
+} from "@/lib/contracts/annual-premium-from-monthly";
 
 type FieldClasses = { label: string; input: string };
 
@@ -22,6 +26,7 @@ type Props = {
 
 export function ContractParametersFields({ form, setForm, classes }: Props) {
   const showPremium = segmentShowsPremiumOrContributionFields(form.segment);
+  const annualPrimary = segmentUsesAnnualPremiumPrimaryInput(form.segment);
   const annualPill = contractFormAnnualPillLabel(form);
 
   return (
@@ -35,14 +40,22 @@ export function ContractParametersFields({ form, setForm, classes }: Props) {
               step="0.01"
               min={0}
               inputMode="decimal"
-              value={form.premiumAmount}
+              value={annualPrimary ? form.premiumAnnual : form.premiumAmount}
               onChange={(e) => {
                 const v = e.target.value;
-                setForm((f) => ({
-                  ...f,
-                  premiumAmount: v,
-                  premiumAnnual: annualPremiumFromMonthlyInput(v),
-                }));
+                if (annualPrimary) {
+                  setForm((f) => ({
+                    ...f,
+                    premiumAnnual: v,
+                    premiumAmount: monthlyPremiumFromAnnualInput(v),
+                  }));
+                } else {
+                  setForm((f) => ({
+                    ...f,
+                    premiumAmount: v,
+                    premiumAnnual: annualPremiumFromMonthlyInput(v),
+                  }));
+                }
               }}
               placeholder="Kč"
               className={`${classes.input} sm:max-w-[200px]`}

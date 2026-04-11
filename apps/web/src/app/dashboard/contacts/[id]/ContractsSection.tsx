@@ -36,7 +36,8 @@ import {
   validateContractFormForSubmit,
 } from "@/lib/contracts/contract-form-payload";
 import type { ContractFormState } from "@/lib/contracts/contract-form-payload";
-import { getSegmentUiGroup } from "@/lib/contracts/contract-segment-wizard-config";
+import { getSegmentUiGroup, segmentUsesAnnualPremiumPrimaryInput } from "@/lib/contracts/contract-segment-wizard-config";
+import { annualPremiumFromMonthlyInput } from "@/lib/contracts/annual-premium-from-monthly";
 import { AiReviewProvenanceBadge } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
 import { contractSourceKindLabel, resolveAiProvenanceKind } from "@/lib/portal/ai-review-provenance";
 
@@ -228,14 +229,19 @@ export function ContractsSection({ contactId }: { contactId: string }) {
     setEditingId(c.id);
     setVisibleToClientEdit(c.visibleToClient !== false);
     setPortfolioStatusEdit(c.portfolioStatus ?? "active");
+    let premiumAmount = c.premiumAmount ?? "";
+    let premiumAnnual = c.premiumAnnual ?? "";
+    if (segmentUsesAnnualPremiumPrimaryInput(c.segment) && !premiumAnnual.trim() && premiumAmount.trim()) {
+      premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount);
+    }
     setForm({
       segment: c.segment,
       partnerId: c.partnerId ?? "",
       productId: c.productId ?? "",
       partnerName: c.partnerName ?? "",
       productName: c.productName ?? "",
-      premiumAmount: c.premiumAmount ?? "",
-      premiumAnnual: c.premiumAnnual ?? "",
+      premiumAmount,
+      premiumAnnual,
       contractNumber: c.contractNumber ?? "",
       startDate: c.startDate ?? "",
       anniversaryDate: c.anniversaryDate ?? "",

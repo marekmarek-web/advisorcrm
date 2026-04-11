@@ -7,8 +7,14 @@ import {
   CONTRACT_SEGMENT_CODES,
   getSegmentUiGroup,
   segmentShowsPremiumOrContributionFields,
+  segmentUsesAnnualPremiumPrimaryInput,
 } from "@/lib/contracts/contract-segment-wizard-config";
-import { annualPremiumFromMonthlyInput, annualPremiumPillLabel } from "@/lib/contracts/annual-premium-from-monthly";
+import {
+  annualPremiumFromMonthlyInput,
+  annualPremiumPillLabel,
+  monthlyPremiumFromAnnualInput,
+  monthlyPremiumPillLabel,
+} from "@/lib/contracts/annual-premium-from-monthly";
 
 const segmentSchema = z.enum(
   [...CONTRACT_SEGMENT_CODES] as [ContractSegmentCode, ...ContractSegmentCode[]]
@@ -55,8 +61,17 @@ export function normalizeContractFormForSave(form: ContractFormState): ContractP
   const showPremium = segmentShowsPremiumOrContributionFields(segment);
   let premiumAmount = form.premiumAmount?.trim() || undefined;
   let premiumAnnual = form.premiumAnnual?.trim() || undefined;
-  if (showPremium && premiumAmount) {
-    premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount) || premiumAnnual;
+  if (showPremium) {
+    if (segmentUsesAnnualPremiumPrimaryInput(segment)) {
+      if (premiumAnnual) {
+        const m = monthlyPremiumFromAnnualInput(premiumAnnual);
+        if (m) premiumAmount = m;
+      } else if (premiumAmount) {
+        premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount) || premiumAnnual;
+      }
+    } else if (premiumAmount) {
+      premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount) || premiumAnnual;
+    }
   }
   if (!showPremium) {
     premiumAmount = undefined;
@@ -156,17 +171,27 @@ export function buildContractReviewRows(
 
   const group = getSegmentUiGroup(segment);
   if (group !== "lending") {
-    if (normalized.premiumAmount) {
-      rows.push({
-        label: group === "investment" ? "Pravidelná platba (měs.)" : "Pojistné (měs.)",
-        value: `${normalized.premiumAmount} Kč`,
-      });
-    }
-    if (normalized.premiumAnnual) {
-      rows.push({
-        label: group === "investment" ? "Příspěvek (roční)" : "Pojistné (roční)",
-        value: `${normalized.premiumAnnual} Kč`,
-      });
+    const annualPrimary = segmentUsesAnnualPremiumPrimaryInput(segment);
+    if (annualPrimary) {
+      if (normalized.premiumAnnual) {
+        rows.push({ label: "Pojistné (roční)", value: `${normalized.premiumAnnual} Kč` });
+      }
+      if (normalized.premiumAmount) {
+        rows.push({ label: "Pojistné (měs.)", value: `${normalized.premiumAmount} Kč` });
+      }
+    } else {
+      if (normalized.premiumAmount) {
+        rows.push({
+          label: group === "investment" ? "Pravidelná platba (měs.)" : "Pojistné (měs.)",
+          value: `${normalized.premiumAmount} Kč`,
+        });
+      }
+      if (normalized.premiumAnnual) {
+        rows.push({
+          label: group === "investment" ? "Příspěvek (roční)" : "Pojistné (roční)",
+          value: `${normalized.premiumAnnual} Kč`,
+        });
+      }
     }
   }
 
@@ -196,9 +221,12 @@ export function buildContractReviewRows(
   return rows;
 }
 
-/** Pill vedle měsíční částky — stejný zdroj jako uložené roční. */
+/** Pill vedle vstupu pojistného — u MAJ odhad měsíční z ročního, jinde roční z měsíčního. */
 export function contractFormAnnualPillLabel(form: ContractFormState): string | null {
   if (!segmentShowsPremiumOrContributionFields(form.segment)) return null;
+  if (segmentUsesAnnualPremiumPrimaryInput(form.segment)) {
+    return monthlyPremiumPillLabel(form.premiumAnnual);
+  }
   return annualPremiumPillLabel(form.premiumAmount);
 }
 
