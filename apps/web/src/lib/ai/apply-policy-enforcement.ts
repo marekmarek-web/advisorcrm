@@ -163,6 +163,9 @@ const CONTACT_PAYLOAD_FIELD_MAP: Record<string, string> = {
   personalId: "personalId",
   companyId: "companyId",
   address: "address",
+  street: "address",
+  city: "address",
+  zip: "address",
 };
 
 const PAYMENT_PAYLOAD_FIELD_MAP: Record<string, string> = {
@@ -230,15 +233,19 @@ function resolveOutputMode(extractedPayload: Record<string, unknown>): string | 
   const primary = dc?.primaryType as string | undefined;
   if (
     primary === "payslip" ||
+    primary === "payslip_document" ||
+    primary === "income_proof_document" ||
+    primary === "income_confirmation" ||
     primary === "tax_return" ||
+    primary === "corporate_tax_return" ||
+    primary === "self_employed_tax_or_income_document" ||
     primary === "bank_statement" ||
-    primary === "income_confirmation"
+    primary === "identity_document" ||
+    primary === "medical_questionnaire" ||
+    primary === "consent_or_declaration"
   ) {
     return "reference_or_supporting_document";
   }
-  // publishHints override
-  const ph = extractedPayload?.publishHints as Record<string, unknown> | undefined;
-  if (ph?.contractPublishable === false) return "reference_or_supporting_document";
   return undefined;
 }
 
@@ -452,12 +459,18 @@ export function isSupportingDocumentOnly(extractedPayload: Record<string, unknow
 
   const SUPPORTING_TYPES = new Set([
     "payslip",
-    "tax_return",
-    "bank_statement",
+    "payslip_document",
+    "income_proof_document",
     "income_confirmation",
+    "tax_return",
+    "corporate_tax_return",
+    "self_employed_tax_or_income_document",
+    "bank_statement",
     "supporting_document",
     "reference_document",
-    "health_questionnaire",
+    "medical_questionnaire",
+    "identity_document",
+    "consent_or_declaration",
     "aml_fatca_form",
     "attachment_only",
     "other_non_publishable",
@@ -465,7 +478,6 @@ export function isSupportingDocumentOnly(extractedPayload: Record<string, unknow
 
   if (primary && SUPPORTING_TYPES.has(primary)) return true;
   if (lifecycle === "modelation" || lifecycle === "illustration") return false; // neblokovat, ale omezit
-  if (ph?.contractPublishable === false) return true;
   if (ph?.sensitiveAttachmentOnly === true) return true;
   if (pm?.primarySubdocumentType) {
     const sub = String(pm.primarySubdocumentType);

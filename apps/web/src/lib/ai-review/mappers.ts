@@ -567,8 +567,20 @@ function humanizeReasonForAdvisor(reason: string): string | null {
   if (reason === "ambiguous_client_match") {
     return "V CRM je více možných klientů — vyberte správného.";
   }
+  if (reason === "llm_client_match_ambiguous") {
+    return "AI si není jistá výběrem klienta v CRM. Vyberte správného kandidáta ručně.";
+  }
   if (reason === "incomplete_payment_details") {
     return "Platební údaje nejsou kompletní — doplňte nebo ověřte.";
+  }
+  if (reason === "policyholder_missing") {
+    return "Zkontrolujte pojistníka nebo klienta. Extrakce ho zatím nepotvrdila dost jistě.";
+  }
+  if (reason === "payment_data_missing") {
+    return "Platební údaje se nepodařilo spolehlivě vytěžit. Ověřte je v dokumentu.";
+  }
+  if (reason === "missing_existing_contract_match") {
+    return "Jde o změnový dokument, ale v CRM se nepodařilo najít navázanou existující smlouvu.";
   }
   return null;
 }
@@ -604,9 +616,12 @@ function humanizeValidationMessage(
     };
   }
   if (warning.code === "extraction_schema_validation") {
+    if (INTERNAL_PATH_KEYWORDS.some((kw) => warning.message.includes(kw))) {
+      return null;
+    }
     return {
       title: "Struktura extrakce potřebuje kontrolu",
-      description: warning.message,
+      description: "Výstup měl neúplnou nebo technicky nekonzistentní strukturu. Hodnoty si ověřte podle PDF.",
     };
   }
   if (warning.code === "partial_extraction_coerced") {
@@ -617,7 +632,9 @@ function humanizeValidationMessage(
   }
   return {
     title: label ? `Ověřit ${label}` : "Validační upozornění",
-    description: warning.message,
+    description: INTERNAL_PATH_KEYWORDS.some((kw) => warning.message.includes(kw))
+      ? "AI narazila na technickou nekonzistenci výstupu. Ověřte dotčené údaje podle PDF."
+      : warning.message,
   };
 }
 

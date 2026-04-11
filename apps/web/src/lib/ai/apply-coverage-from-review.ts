@@ -2,6 +2,7 @@ import { db } from "db";
 import { contactCoverage } from "db";
 import { eq, and } from "db";
 import type { ContractReviewRow } from "./review-queue-repository";
+import { resolveSegmentFromType } from "./draft-actions";
 
 /** Segment codes that auto-set coverage when an AI review contract is applied. */
 const SEGMENT_TO_COVERAGE_ITEM: Record<string, string> = {
@@ -37,9 +38,23 @@ export async function upsertCoverageFromAppliedReview(
   const { tenantId, userId, contactId, contractId, row } = input;
 
   const extractedPayload = row.extractedPayload as Record<string, unknown> | null;
+  const documentClassification = extractedPayload?.documentClassification as Record<string, unknown> | undefined;
+  const extractedFields = extractedPayload?.extractedFields as Record<string, { value?: unknown } | undefined> | undefined;
+  const inferredSegment = extractedPayload
+    ? resolveSegmentFromType(String(documentClassification?.primaryType ?? ""), {
+        subtype: String(documentClassification?.subtype ?? ""),
+        productName: String(extractedFields?.productName?.value ?? ""),
+        insurer: String(
+          extractedFields?.insurer?.value ??
+            extractedFields?.institutionName?.value ??
+            extractedFields?.provider?.value ??
+            ""
+        ),
+      })
+    : "ZP";
   const rawSegment = (extractedPayload?.segment as string) ??
     (extractedPayload?.productArea as string) ??
-    "ZP";
+    inferredSegment;
 
   // Determine segment from contract type / product area if available
   let segment = "ZP";

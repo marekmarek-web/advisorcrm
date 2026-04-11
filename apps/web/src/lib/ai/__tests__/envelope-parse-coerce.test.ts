@@ -41,6 +41,24 @@ describe("coerceReviewEnvelopeParsedJson", () => {
     };
     expect(out.documentClassification.lifecycleStatus).toBe("modelation");
   });
+
+  it("resolves generic insurance_contract to nonlife when subtype signals povinné ručení", () => {
+    const input = JSON.parse(minimalEnvelopeJson({
+      documentClassification: {
+        primaryType: "insurance_contract",
+        lifecycleStatus: "final_contract",
+        confidence: 0.91,
+        reasons: ["motor_insurance"],
+      },
+      productFamily: "non_life_insurance",
+      productSubtype: "povinne_ruceni",
+      fileName: "Povinne_ruceni.pdf",
+    }));
+    const out = coerceReviewEnvelopeParsedJson(input, { mode: "light" }) as {
+      documentClassification: { primaryType: string };
+    };
+    expect(out.documentClassification.primaryType).toBe("nonlife_insurance_contract");
+  });
 });
 
 describe("safeParseReviewEnvelope with expectedPrimaryType", () => {

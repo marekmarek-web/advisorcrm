@@ -9,8 +9,68 @@ import {
 } from "./contract-draft-premiums";
 import { buildCanonicalPaymentPayload, buildCanonicalPaymentPayloadFromRaw } from "./payment-field-contract";
 
+function hasText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function toText(value: unknown): string {
+  return hasText(value) ? value.trim() : "";
+}
+
+function splitFullName(fullName: string): { firstName?: string; lastName?: string } {
+  const cleaned = fullName.trim().replace(/\s+/g, " ");
+  if (!cleaned) return {};
+  const parts = cleaned.split(" ");
+  if (parts.length === 1) return { firstName: parts[0] };
+  return {
+    firstName: parts.slice(1).join(" "),
+    lastName: parts[0],
+  };
+}
+
+function normalizeSegmentHintText(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function inferNonLifeSegment(hints?: { subtype?: string | null; productName?: string | null; insurer?: string | null }): string {
+  const blob = [
+    normalizeSegmentHintText(hints?.subtype),
+    normalizeSegmentHintText(hints?.productName),
+    normalizeSegmentHintText(hints?.insurer),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (!blob) return "MAJ";
+  if (
+    /\b(povinne ruceni|povko|odpovednost z provozu vozidla|odpovednost vozidla|vozidla)\b/.test(blob)
+  ) {
+    return "AUTO_PR";
+  }
+  if (/\b(havarijni|havarijni pojisteni|kasko|casco)\b/.test(blob)) {
+    return "AUTO_HAV";
+  }
+  if (/\b(odpovednost|odpovednostni)\b/.test(blob)) {
+    return "ODP";
+  }
+  if (/\b(podnikat|firma|business|podnikatelske pojisteni)\b/.test(blob)) {
+    return "FIRMA_POJ";
+  }
+  if (/\b(majet|domacnost|domov|nemovitost|property|household|home)\b/.test(blob)) {
+    return "MAJ";
+  }
+  return "MAJ";
+}
+
 /** Maps document primary type to CRM contract segment code. */
-export function resolveSegmentFromType(primaryType: string): string {
+export function resolveSegmentFromType(
+  primaryType: string,
+  hints?: { subtype?: string | null; productName?: string | null; insurer?: string | null }
+): string {
   const map: Record<string, string> = {
     life_insurance_final_contract: "ZP",
     life_insurance_contract: "ZP",
@@ -33,7 +93,10 @@ export function resolveSegmentFromType(primaryType: string): string {
     travel_insurance: "CEST",
     business_insurance_contract: "FIRMA_POJ",
   };
-  return map[primaryType] ?? "ZP";
+  if (primaryType === "nonlife_insurance_contract") {
+    return inferNonLifeSegment(hints);
+  }
+  return map[primaryType] ?? inferNonLifeSegment(hints);
 }
 
 /** Structured payment setup object for the client portal. */
@@ -74,7 +137,11 @@ export function buildCreateClientDraft(extracted: ExtractedContractSchema): Draf
 
 export function buildCreateContractDraft(extracted: ExtractedContractSchema): DraftActionBase {
   const primary = String(extracted.documentType ?? "");
-  const segment = resolveSegmentFromType(primary || "life_insurance_contract");
+  const segment = resolveSegmentFromType(primary || "life_insurance_contract", {
+    subtype: primary,
+    productName: extracted.productName ?? null,
+    insurer: extracted.institutionName ?? null,
+  });
   const { premiumAmount, premiumAnnual } = computeDraftPremiums(segment, extracted);
   return {
     type: "create_contract",
@@ -166,9 +233,63 @@ function fieldValue(envelope: DocumentReviewEnvelope, key: string): unknown {
   return envelope.extractedFields[stripped]?.value;
 }
 
+function extractPrimaryClientFromEnvelope(envelope: DocumentReviewEnvelope): NonNullable<ExtractedContractSchema["client"]> {
+  const fields = envelope.extractedFields ?? {};
+  const parties = envelope.parties ?? {};
+  const partyList = Array.isArray(parties)
+    ? parties.filter((p): p is Record<string, unknown> => typeof p === "object" && p !== null)
+    : Object.values(parties).filter((p): p is Record<string, unknown> => typeof p === "object" && p !== null);
+
+  const policyholderParty =
+    partyList.find((party) => String(party.role ?? "").toLowerCase().includes("policyholder")) ??
+    partyList.find((party) => String(party.role ?? "").toLowerCase().includes("insured")) ??
+    null;
+
+  const fullName =
+    toText(policyholderParty?.fullName) ||
+    toText(policyholderParty?.name) ||
+    toText(fields.fullName?.value) ||
+    toText(fields.clientFullName?.value) ||
+    toText(fields.policyholderName?.value) ||
+    toText(fields.proposerName?.value);
+
+  const splitName = splitFullName(fullName);
+
+  return {
+    fullName: fullName || undefined,
+    firstName:
+      toText(policyholderParty?.firstName) ||
+      toText(fields.firstName?.value) ||
+      splitName.firstName,
+    lastName:
+      toText(policyholderParty?.lastName) ||
+      toText(fields.lastName?.value) ||
+      splitName.lastName,
+    birthDate:
+      toText(policyholderParty?.birthDate) ||
+      toText(fields.birthDate?.value),
+    personalId:
+      toText(policyholderParty?.personalId) ||
+      toText(fields.maskedPersonalId?.value) ||
+      toText(fields.personalId?.value),
+    companyId:
+      toText(policyholderParty?.companyId) ||
+      toText(fields.companyId?.value),
+    email:
+      toText(policyholderParty?.email) ||
+      toText(fields.email?.value),
+    phone:
+      toText(policyholderParty?.phone) ||
+      toText(fields.phone?.value),
+    address:
+      toText(policyholderParty?.address) ||
+      toText(fields.address?.value) ||
+      toText(fields.permanentAddress?.value),
+  };
+}
+
 function toLegacyProjection(envelope: DocumentReviewEnvelope): ExtractedContractSchema {
-  const fullName = String(fieldValue(envelope, "fullName") ?? fieldValue(envelope, "clientFullName") ?? "");
-  const names = fullName.split(" ");
+  const primaryClient = extractPrimaryClientFromEnvelope(envelope);
   const lifecycle = envelope.documentClassification.lifecycleStatus;
   const isNonFinal =
     lifecycle === "proposal" || lifecycle === "modelation" || lifecycle === "illustration" || lifecycle === "offer";
@@ -186,15 +307,15 @@ function toLegacyProjection(envelope: DocumentReviewEnvelope): ExtractedContract
     ),
     productName: String(fieldValue(envelope, "productName") ?? ""),
     client: {
-      fullName,
-      firstName: String(fieldValue(envelope, "firstName") ?? names[0] ?? ""),
-      lastName: String(fieldValue(envelope, "lastName") ?? names.slice(1).join(" ") ?? ""),
-      birthDate: String(fieldValue(envelope, "birthDate") ?? ""),
-      personalId: String(fieldValue(envelope, "maskedPersonalId") ?? ""),
-      companyId: String(fieldValue(envelope, "companyId") ?? ""),
-      email: String(fieldValue(envelope, "email") ?? ""),
-      phone: String(fieldValue(envelope, "phone") ?? ""),
-      address: String(fieldValue(envelope, "address") ?? ""),
+      fullName: primaryClient.fullName ?? "",
+      firstName: primaryClient.firstName ?? "",
+      lastName: primaryClient.lastName ?? "",
+      birthDate: primaryClient.birthDate ?? "",
+      personalId: primaryClient.personalId ?? "",
+      companyId: primaryClient.companyId ?? "",
+      email: primaryClient.email ?? "",
+      phone: primaryClient.phone ?? "",
+      address: primaryClient.address ?? "",
     },
     paymentDetails: {
       amount:
@@ -348,7 +469,16 @@ export function buildAllDraftActions(
   }
   if (requested.includes("create_or_update_contract_record")) {
     const pt = maybeEnvelope.documentClassification.primaryType;
-    const segment = resolveSegmentFromType(pt);
+    const segment = resolveSegmentFromType(pt, {
+      subtype: maybeEnvelope.documentClassification.subtype ?? null,
+      productName: String(fieldValue(maybeEnvelope, "productName") ?? ""),
+      insurer: String(
+        fieldValue(maybeEnvelope, "insurer") ??
+          fieldValue(maybeEnvelope, "institutionName") ??
+          fieldValue(maybeEnvelope, "lender") ??
+          ""
+      ),
+    });
     const premiums = computeDraftPremiumsFromEnvelope(maybeEnvelope, segment);
     const inst = String(
       fieldValue(maybeEnvelope, "insurer") ??

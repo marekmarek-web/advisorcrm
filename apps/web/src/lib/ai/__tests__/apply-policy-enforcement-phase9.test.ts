@@ -90,12 +90,12 @@ describe("enforceField", () => {
 
 describe("isSupportingDocumentOnly", () => {
   it("C022 výplatní lístek → supporting document", () => {
-    const envelope = makeEnvelope("payslip", "income_document");
+    const envelope = makeEnvelope("payslip_document", "income_document");
     expect(isSupportingDocumentOnly(envelope)).toBe(true);
   });
 
   it("C040 daňové přiznání → supporting document", () => {
-    const envelope = makeEnvelope("tax_return", "supporting");
+    const envelope = makeEnvelope("corporate_tax_return", "supporting");
     expect(isSupportingDocumentOnly(envelope)).toBe(true);
   });
 
@@ -104,13 +104,13 @@ describe("isSupportingDocumentOnly", () => {
     expect(isSupportingDocumentOnly(envelope)).toBe(true);
   });
 
-  it("publishHints.contractPublishable=false → supporting", () => {
+  it("publishHints.contractPublishable=false samo o sobě neshodí finální smlouvu do supporting", () => {
     const envelope = {
-      documentClassification: { primaryType: "generic", lifecycleStatus: "unknown" },
+      documentClassification: { primaryType: "life_insurance_investment_contract", lifecycleStatus: "final_contract" },
       extractedFields: {},
       publishHints: { contractPublishable: false },
     };
-    expect(isSupportingDocumentOnly(envelope)).toBe(true);
+    expect(isSupportingDocumentOnly(envelope)).toBe(false);
   });
 
   it("publishHints.sensitiveAttachmentOnly=true → supporting", () => {
@@ -162,7 +162,7 @@ describe("enforceContactPayload", () => {
   });
 
   it("supporting document — kontaktní pole jsou do_not_apply", () => {
-    const envelope = makeEnvelope("payslip", "income_document", {
+    const envelope = makeEnvelope("payslip_document", "income_document", {
       firstName: makeField("extracted", "Jan"),
       lastName: makeField("extracted", "Novák"),
     });
@@ -224,7 +224,7 @@ describe("enforceContractPayload", () => {
   });
 
   it("C022 výplatní lístek — contract payload je prázdný (supporting doc guard)", () => {
-    const envelope = makeEnvelope("payslip", "income_document", {
+    const envelope = makeEnvelope("payslip_document", "income_document", {
       contractNumber: makeField("extracted", "N/A"),
     });
 
@@ -287,7 +287,7 @@ describe("enforcePaymentPayload", () => {
   });
 
   it("C022 výplatní lístek — platební payload je prázdný (supporting doc guard)", () => {
-    const envelope = makeEnvelope("payslip", "income_document", {
+    const envelope = makeEnvelope("payslip_document", "income_document", {
       bankAccount: makeField("extracted", "123456789/0800"),
     });
 
@@ -329,13 +329,27 @@ describe("Supporting document anchor scénáře", () => {
   it("C040 daňové přiznání s.r.o. → supporting only", () => {
     const envelope = {
       documentClassification: {
-        primaryType: "tax_return",
+        primaryType: "corporate_tax_return",
         lifecycleStatus: "supporting",
       },
       extractedFields: {},
       publishHints: { contractPublishable: false, reasons: ["tax_document_not_publishable"] },
     };
     expect(isSupportingDocumentOnly(envelope)).toBe(true);
+  });
+
+  it("IŽP s nepublikovatelnou přílohou zůstává finální smlouvou pro CRM apply", () => {
+    const envelope = {
+      documentClassification: {
+        primaryType: "life_insurance_investment_contract",
+        lifecycleStatus: "final_contract",
+      },
+      extractedFields: {
+        contractNumber: makeField("extracted", "3282140369"),
+      },
+      publishHints: { contractPublishable: false, needsManualValidation: true },
+    };
+    expect(isSupportingDocumentOnly(envelope)).toBe(false);
   });
 
   it("C030 IŽP Generali → NENÍ supporting", () => {

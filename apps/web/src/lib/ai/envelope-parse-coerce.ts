@@ -12,9 +12,7 @@ const SCANNED_VS_DIGITAL_VALUES = new Set(["scanned", "digital", "unknown"]);
 
 /** Lowercase/normalized keys; map to canonical primaryType enum values. */
 const PRIMARY_TYPE_ALIASES: Record<string, string> = {
-  // general insurance → best guess
-  insurance_contract: "life_insurance_contract",
-  insurance: "life_insurance_contract",
+  // generic insurance labels are resolved contextually in normalizePrimaryType()
   // life insurance variants
   life_insurance: "life_insurance_contract",
   life_insurance_final: "life_insurance_final_contract",
@@ -310,7 +308,88 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
     const trimmed = raw.trim();
     if (PRIMARY_SET.has(trimmed)) return trimmed;
     const normalized = trimmed.toLowerCase().replace(/[\s\-\/,;:]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+    const normalizeHintText = (value: unknown): string => {
+      if (value == null) return "";
+      if (typeof value === "string") {
+        return value
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "_")
+          .trim();
+      }
+      if (Array.isArray(value)) {
+        return value.map((item) => normalizeHintText(item)).filter(Boolean).join("_");
+      }
+      if (typeof value === "object") {
+        return Object.values(value as Record<string, unknown>)
+          .map((item) => normalizeHintText(item))
+          .filter(Boolean)
+          .join("_");
+      }
+      return String(value)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "_")
+        .trim();
+    };
+    const inferGenericInsurancePrimaryType = (): string | null => {
+      if (exp === "life_insurance_contract" || exp === "life_insurance_investment_contract") {
+        return exp;
+      }
+      if (exp === "nonlife_insurance_contract") {
+        return exp;
+      }
+      const hintBlob = [
+        normalized,
+        normalizeHintText(dc.productFamily),
+        normalizeHintText(dc.productSubtype),
+        normalizeHintText(dc.category),
+        normalizeHintText(dc.reasons),
+        normalizeHintText(root.productFamily),
+        normalizeHintText(root.productSubtype),
+        normalizeHintText(root.category),
+        normalizeHintText(root.reasons),
+        normalizeHintText(root.fileName),
+        normalizeHintText(root.sourceFileName),
+      ]
+        .filter(Boolean)
+        .join("_");
+      const has = (...parts: string[]) => parts.some((part) => hintBlob.includes(part));
+      if (
+        has(
+          "non_life",
+          "nonlife",
+          "nezivot",
+          "majet",
+          "property",
+          "household",
+          "domacnost",
+          "domov",
+          "vozid",
+          "vehicle",
+          "motor",
+          "car_insurance",
+          "ruceni",
+          "odpovednost",
+          "liability",
+          "travel",
+          "business_insurance",
+          "podnikat"
+        )
+      ) {
+        return "nonlife_insurance_contract";
+      }
+      if (has("zivotni", "life_insurance", "investicni_zivotni", "rizikove_zivotni")) {
+        return has("investicni", "investment") ? "life_insurance_investment_contract" : "life_insurance_contract";
+      }
+      return null;
+    };
     if (PRIMARY_SET.has(normalized)) return normalized;
+    if (normalized === "insurance_contract" || normalized === "insurance") {
+      return inferGenericInsurancePrimaryType();
+    }
     const aliased = PRIMARY_TYPE_ALIASES[normalized] ?? PRIMARY_TYPE_ALIASES[normalized.replace(/_/g, "")] ?? PRIMARY_TYPE_ALIASES[trimmed.toLowerCase()];
     if (aliased && PRIMARY_SET.has(aliased)) return aliased;
     // Substring match: find a canonical type that is contained in the raw value or vice versa
@@ -326,7 +405,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9_]/g, "_");
     const hasKw = (...kws: string[]) => kws.some((kw) => lower.includes(kw) || ascii.includes(kw));
-    if (hasKw("zivotni", "zivotního", "pojistna_smlouva", "pojistne_smlouvy", "pojisteni") || lower.includes("životní") || lower.includes("pojistná")) {
+    if (hasKw("zivotni", "zivotního", "zivotni_pojisteni", "zivotni_pojistka") || lower.includes("životní")) {
       if (hasKw("dodatek", "zmena", "zmen", "servis", "change")) return "insurance_policy_change_or_service_doc";
       if (hasKw("investicni", "investicnich", "dip", "dps", "investicn")) return "life_insurance_investment_contract";
       if (hasKw("navrh", "nabidka", "offer", "nabidku", "uzavreni", "uzavreni_pojistne")) return "life_insurance_proposal";

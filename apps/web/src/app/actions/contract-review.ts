@@ -606,6 +606,8 @@ export async function confirmPendingField(
     | Record<string, { value?: unknown } | undefined>
     | undefined;
   const fromValue = extractedFields?.[fieldKey]?.value ?? null;
+  const normalizedValue =
+    fromValue == null ? null : typeof fromValue === "string" ? fromValue.trim() : String(fromValue);
 
   // Zjisti target ID pro scope
   let targetId: string | null = null;
@@ -642,6 +644,63 @@ export async function confirmPendingField(
     }
   }
 
+  if ((scope === "contact" || scope === "contract") && targetId && normalizedValue) {
+    if (scope === "contact") {
+      const contactPatch: Record<string, unknown> = { updatedAt: new Date() };
+      if (fieldKey === "fullName") {
+        const parts = normalizedValue.split(/\s+/).filter(Boolean);
+        if (parts.length === 1) {
+          contactPatch.firstName = parts[0];
+        } else {
+          contactPatch.firstName = parts.slice(0, -1).join(" ");
+          contactPatch.lastName = parts.slice(-1).join(" ");
+        }
+      } else if (fieldKey === "address") {
+        contactPatch.street = normalizedValue;
+      } else if (["firstName", "lastName", "email", "phone", "personalId", "birthDate"].includes(fieldKey)) {
+        contactPatch[fieldKey] = normalizedValue;
+      }
+      if (Object.keys(contactPatch).length > 1) {
+        await db
+          .update(contacts)
+          .set(contactPatch)
+          .where(
+            and(
+              eq(contacts.id, targetId),
+              eq(contacts.tenantId, auth.tenantId),
+            )
+          );
+      }
+    }
+    if (scope === "contract") {
+      const contractPatch: Record<string, unknown> = { updatedAt: new Date() };
+      if (fieldKey === "institutionName" || fieldKey === "insurer" || fieldKey === "provider") {
+        contractPatch.partnerName = normalizedValue;
+      } else if (fieldKey === "productName") {
+        contractPatch.productName = normalizedValue;
+      } else if (fieldKey === "contractNumber") {
+        contractPatch.contractNumber = normalizedValue;
+      } else if (fieldKey === "policyStartDate" || fieldKey === "effectiveDate" || fieldKey === "startDate") {
+        contractPatch.startDate = normalizedValue;
+      } else if (fieldKey === "premiumAmount" || fieldKey === "totalMonthlyPremium") {
+        contractPatch.premiumAmount = normalizedValue;
+      } else if (fieldKey === "premiumAnnual" || fieldKey === "annualPremium") {
+        contractPatch.premiumAnnual = normalizedValue;
+      }
+      if (Object.keys(contractPatch).length > 1) {
+        await db
+          .update(contracts)
+          .set(contractPatch)
+          .where(
+            and(
+              eq(contracts.id, targetId),
+              eq(contracts.tenantId, auth.tenantId),
+            )
+          );
+      }
+    }
+  }
+
   // Zapíše audit log
   await db.insert(auditLog).values({
     tenantId: auth.tenantId,
@@ -654,7 +713,7 @@ export async function confirmPendingField(
       fieldKey,
       scope,
       targetId,
-      fromValue,
+      fromValue: normalizedValue,
     },
   });
 
@@ -666,7 +725,7 @@ export async function confirmPendingField(
       confirmedBy: auth.userId,
       scope,
       targetId,
-      fromValue,
+      fromValue: normalizedValue,
     },
   };
 

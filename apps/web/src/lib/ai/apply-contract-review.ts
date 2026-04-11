@@ -100,39 +100,58 @@ function preferExistingValue(
   return null;
 }
 
+function splitContactName(fullName: string | null | undefined): {
+  firstName: string | null;
+  lastName: string | null;
+} {
+  if (!hasNonEmptyText(fullName)) {
+    return { firstName: null, lastName: null };
+  }
+  const parts = fullName.trim().replace(/\s+/g, " ").split(" ");
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: null };
+  }
+  return {
+    firstName: parts.slice(1).join(" "),
+    lastName: parts[0],
+  };
+}
+
 export function buildContactUpdatePatch(
   existing: ExistingContactSnapshot,
   payload: Record<string, unknown>
 ): Record<string, string> {
   const patch: Record<string, string> = {};
 
-  const assignIfMissing = (
+  const assignIfChanged = (
     key: keyof Pick<
       ExistingContactSnapshot,
       "firstName" | "lastName" | "email" | "phone" | "personalId" | "street" | "city" | "zip"
     >,
     incoming: unknown
   ) => {
-    if (!hasNonEmptyText(incoming) || hasNonEmptyText(existing[key])) return;
-    patch[key] = incoming.trim();
+    if (!hasNonEmptyText(incoming)) return;
+    const next = incoming.trim();
+    if (normalizeComparableText(existing[key]) === normalizeComparableText(next)) return;
+    patch[key] = next;
   };
 
-  assignIfMissing("firstName", payload.firstName);
-  assignIfMissing("lastName", payload.lastName);
-  assignIfMissing("email", payload.email);
-  assignIfMissing("phone", payload.phone);
-  assignIfMissing("personalId", payload.personalId);
-  assignIfMissing("city", payload.city);
-  assignIfMissing("zip", payload.zip);
+  assignIfChanged("firstName", payload.firstName);
+  assignIfChanged("lastName", payload.lastName);
+  assignIfChanged("email", payload.email);
+  assignIfChanged("phone", payload.phone);
+  assignIfChanged("personalId", payload.personalId);
+  assignIfChanged("city", payload.city);
+  assignIfChanged("zip", payload.zip);
 
   const streetCandidate =
     hasNonEmptyText(payload.street) ? payload.street : hasNonEmptyText(payload.address) ? payload.address : null;
-  assignIfMissing("street", streetCandidate);
+  assignIfChanged("street", streetCandidate);
 
   const birthDate = normalizeDateToISO(
     hasNonEmptyText(payload.birthDate) ? payload.birthDate : null
   );
-  if (birthDate && !hasNonEmptyText(existing.birthDate)) {
+  if (birthDate && normalizeDateToISO(existing.birthDate) !== birthDate) {
     patch.birthDate = birthDate;
   }
 
@@ -382,12 +401,15 @@ export async function applyContractReview(
             resultPayload.linkedClientId = existing;
           } else {
             const ep = contactEnforce?.enforcedPayload ?? createClientAction.payload;
+            const fallbackFullName =
+              hasNonEmptyText(ep.fullName) ? ep.fullName : hasNonEmptyText(createClientAction.payload.fullName) ? createClientAction.payload.fullName : null;
+            const splitName = splitContactName(fallbackFullName);
 
             // firstName/lastName jsou povinné pro vytvoření kontaktu — fallback i při manual_required
             const firstName =
-              String(ep.firstName ?? createClientAction.payload.firstName ?? "").trim() || "Klient";
+              String(ep.firstName ?? createClientAction.payload.firstName ?? splitName.firstName ?? "").trim() || "Klient";
             const lastName =
-              String(ep.lastName ?? createClientAction.payload.lastName ?? "").trim() || "ze smlouvy";
+              String(ep.lastName ?? createClientAction.payload.lastName ?? splitName.lastName ?? "").trim() || "ze smlouvy";
             const [inserted] = await tx
               .insert(contacts)
               .values({

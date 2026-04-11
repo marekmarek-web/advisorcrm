@@ -97,8 +97,18 @@ export function detectPaymentFrequencyConflict(
   const freq = ef["paymentFrequency"]?.value;
   const monthly = ef["totalMonthlyPremium"]?.value ?? ef["monthlyInstallment"]?.value ?? ef["installmentAmount"]?.value;
   const annual = ef["annualPremium"]?.value;
+  const documentType = String(ef["documentType"]?.value ?? "");
+  const productName = String(ef["productName"]?.value ?? "");
+  const primaryType = String(ef["primaryType"]?.value ?? "");
 
   if (!freq || !monthly || !annual) return { hasConflict: false };
+
+  const contextBlob = `${documentType} ${productName} ${primaryType}`.toLowerCase();
+  const nonLifePaymentContext =
+    /povinne|ruceni|vozidl|vehicle|car|motor|majet|property|domacnost|odpovednost/.test(contextBlob);
+  if (nonLifePaymentContext) {
+    return { hasConflict: false };
+  }
 
   const freqStr = String(freq).toLowerCase();
   const monthlyVal = parseFloat(String(monthly).replace(/[^0-9.,]/g, "").replace(",", "."));

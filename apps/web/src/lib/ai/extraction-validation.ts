@@ -480,6 +480,17 @@ export function validateDocumentEnvelope(payload: {
   // These checks catch syntactically valid but semantically wrong extractions.
 
   const ef = fields;
+  const supportingPrimaryTypes = new Set([
+    "payslip_document",
+    "income_proof_document",
+    "income_confirmation",
+    "corporate_tax_return",
+    "self_employed_tax_or_income_document",
+    "bank_statement",
+    "identity_document",
+    "medical_questionnaire",
+    "consent_or_declaration",
+  ]);
 
   // 1. birthDate contains personal ID pattern
   const birthVal = ef.birthDate?.value != null ? String(ef.birthDate.value).trim() : "";
@@ -514,7 +525,15 @@ export function validateDocumentEnvelope(payload: {
     "life_insurance_change_request", "insurance_policy_change_or_service_doc",
   ]);
   if (insuranceDocTypes.has(primaryType)) {
-    const hasClient = fieldExtracted(ef.fullName) || fieldExtracted(ef.policyholder) || fieldExtracted(ef.clientFullName);
+    const hasClient =
+      fieldExtracted(ef.fullName) ||
+      fieldExtracted(ef.policyholder) ||
+      fieldExtracted(ef.clientFullName) ||
+      fieldExtracted(ef.firstName) ||
+      fieldExtracted(ef.lastName) ||
+      fieldExtracted(ef.policyholderName) ||
+      fieldExtracted(ef.investorFullName) ||
+      fieldExtracted(ef.participantFullName);
     if (!hasClient) {
       addWarning(warnings, reasonsForReview, "POLICYHOLDER_MISSING",
         "Pojistník / klient nebyl extrahován — dokument má pojistníka dle typu.",
@@ -534,7 +553,7 @@ export function validateDocumentEnvelope(payload: {
   const hasPaymentData = fieldExtracted(ef.totalMonthlyPremium) || fieldExtracted(ef.annualPremium) ||
     fieldExtracted(ef.installmentAmount) || fieldExtracted(ef.premiumAmount) || fieldExtracted(ef.bankAccount);
   const productDocTypes = new Set([...insuranceDocTypes, "consumer_loan_contract", "consumer_loan_with_payment_protection", "mortgage_document"]);
-  if (productDocTypes.has(primaryType) && !hasPaymentData) {
+  if (productDocTypes.has(primaryType) && !supportingPrimaryTypes.has(primaryType) && !hasPaymentData) {
     addWarning(warnings, reasonsForReview, "PAYMENT_DATA_MISSING",
       "Dokument je smluvního typu, ale platební údaje nebyly extrahovány.",
       undefined, "payment_data_missing");

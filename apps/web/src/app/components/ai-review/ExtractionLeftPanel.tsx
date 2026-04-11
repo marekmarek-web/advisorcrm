@@ -447,6 +447,42 @@ const PAYMENT_PAYLOAD_LABELS: Record<string, string> = {
   clientNote: "Poznámka",
 };
 
+const ENFORCEMENT_FIELD_LABELS: Record<string, string> = {
+  fullName: "Jméno a příjmení",
+  firstName: "Jméno",
+  lastName: "Příjmení",
+  email: "E-mail",
+  phone: "Telefon",
+  address: "Adresa",
+  birthDate: "Datum narození",
+  personalId: "Rodné číslo",
+  contractNumber: "Číslo smlouvy",
+  institutionName: "Pojišťovna / instituce",
+  insurer: "Pojišťovna",
+  provider: "Poskytovatel",
+  productName: "Produkt",
+  policyStartDate: "Počátek pojištění",
+  effectiveDate: "Datum účinnosti",
+  startDate: "Začátek smlouvy",
+  premiumAmount: "Pojistné / pravidelná platba",
+  totalMonthlyPremium: "Celkové měsíční pojistné",
+  premiumAnnual: "Roční pojistné",
+  annualPremium: "Roční pojistné",
+  frequency: "Frekvence plateb",
+  paymentFrequency: "Frekvence plateb",
+  iban: "IBAN",
+  accountNumber: "Číslo účtu",
+  recipientAccount: "Účet příjemce",
+  bankCode: "Kód banky",
+  variableSymbol: "Variabilní symbol",
+  specificSymbol: "Specifický symbol",
+  constantSymbol: "Konstantní symbol",
+};
+
+function humanizeEnforcementFieldKey(fieldKey: string): string {
+  return ENFORCEMENT_FIELD_LABELS[fieldKey] ?? fieldKey;
+}
+
 /** Build a fieldKey → {applyPolicyLabel, requiresConfirmation} lookup from extracted groups */
 function buildApplyPolicyLookup(
   groups: ExtractionDocument["groups"]
@@ -763,14 +799,14 @@ function PendingFieldRow({
     return (
       <div className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 rounded px-1.5 py-0.5">
         <CheckCircle2 size={10} className="shrink-0" />
-        {fieldKey} — Potvrzeno a zapsáno
+        {humanizeEnforcementFieldKey(fieldKey)} — Potvrzeno a zapsáno
       </div>
     );
   }
 
   return (
     <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 pl-2 pr-1 py-0.5">
-      <span className="text-[10px] font-semibold text-amber-900">{fieldKey}</span>
+      <span className="text-[10px] font-semibold text-amber-900">{humanizeEnforcementFieldKey(fieldKey)}</span>
       {onConfirmPendingField ? (
         <button
           type="button"
@@ -918,7 +954,7 @@ function EnforcementResultCard({
                           <span className="text-[10px] text-[color:var(--wp-text-tertiary)]">—</span>
                           {e.autoAppliedFields.map((f) => (
                             <span key={f} className="text-[10px] font-semibold text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)] rounded px-1.5 py-0.5">
-                              {f}
+                              {humanizeEnforcementFieldKey(f)}
                             </span>
                           ))}
                         </div>
@@ -947,7 +983,7 @@ function EnforcementResultCard({
                           <span className="text-[10px] text-[color:var(--wp-text-tertiary)]">—</span>
                           {e.manualRequiredFields.map((f) => (
                             <span key={f} className="text-[10px] font-semibold text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)] rounded px-1.5 py-0.5">
-                              {f}
+                              {humanizeEnforcementFieldKey(f)}
                             </span>
                           ))}
                         </div>
@@ -959,7 +995,7 @@ function EnforcementResultCard({
                           <span className="text-[10px] text-[color:var(--wp-text-tertiary)]">—</span>
                           {e.excludedFields.map((f) => (
                             <span key={f} className="text-[10px] font-semibold text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)] rounded px-1.5 py-0.5">
-                              {f}
+                              {humanizeEnforcementFieldKey(f)}
                             </span>
                           ))}
                         </div>
