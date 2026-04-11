@@ -24,6 +24,8 @@ import {
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
 import { newMessageAdvisorTemplate } from "@/lib/email/templates";
+import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guard";
+import { PlanAccessError } from "@/lib/billing/plan-access-errors";
 
 /** Kratší první řádka + samostatná cesta kvůli zalamování v úzkém panelu (overflow-hidden). */
 const PORTAL_MESSAGES_SCHEMA_HINT =
@@ -44,6 +46,9 @@ function sqlExecuteRows(result: unknown): Record<string, unknown>[] {
 }
 
 function formatClientVisibleDbError(e: unknown): string {
+  if (PlanAccessError.is(e)) {
+    return e.message;
+  }
   if (e instanceof Error && e.message === "Forbidden") {
     return "K této konverzaci nemáte přístup.";
   }
@@ -275,6 +280,7 @@ export async function getConversationsList(search?: string): Promise<Conversatio
 
 export async function sendMessage(contactId: string, body: string): Promise<string | null> {
   const auth = await requireAuthInAction();
+  await assertCapabilityForAction(auth, "client_portal_messaging");
   const trimmed = body.trim();
   if (!trimmed) throw new Error("Prázdná zpráva");
 

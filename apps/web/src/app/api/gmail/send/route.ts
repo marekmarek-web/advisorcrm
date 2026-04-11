@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getIntegrationApiAuth } from "../../integrations/auth";
+import { assertPlanCapabilityForIntegration } from "@/lib/billing/plan-access-guards";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 import { getValidGmailAccessToken } from "@/lib/integrations/google-gmail-integration-service";
 import { sendGmailMessage, type GmailAttachment } from "@/lib/integrations/google-gmail";
 
@@ -50,6 +52,14 @@ export async function POST(request: Request) {
   const authResult = await getIntegrationApiAuth(request);
   if (!authResult.ok) return authResult.response;
   const { userId, tenantId } = authResult.auth;
+
+  try {
+    await assertPlanCapabilityForIntegration({ tenantId, userId, capability: "google_gmail" });
+  } catch (e) {
+    const r = nextResponseFromPlanOrQuotaError(e);
+    if (r) return r;
+    throw e;
+  }
 
   const limiter = checkRateLimit(request, "gmail-send", `${tenantId}:${userId}`, { windowMs: 60_000, maxRequests: 20 });
   if (!limiter.ok) {

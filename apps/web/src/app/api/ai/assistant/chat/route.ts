@@ -47,6 +47,9 @@ import {
 } from "@/lib/ai/image-intake/pending-resolution-metadata";
 import { buildImageAssetsForUserMessageMeta } from "@/lib/ai/assistant-user-message-images-meta";
 import type { ResolvedAssistantContext } from "@/lib/ai/image-intake/types";
+import { assertCapability, getSessionEmailForUserId } from "@/lib/billing/plan-access-guards";
+import { assertQuotaAvailable } from "@/lib/billing/subscription-usage";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 
 export const dynamic = "force-dynamic";
 
@@ -168,6 +171,26 @@ export async function POST(request: Request) {
     const tenantId = membership.tenantId;
     tenantIdForSentry = tenantId;
 
+    const sessionEmail = await getSessionEmailForUserId(userId);
+    try {
+      await assertCapability({
+        tenantId,
+        userId,
+        email: sessionEmail,
+        capability: "ai_assistant_basic",
+      });
+      await assertQuotaAvailable({
+        tenantId,
+        userId,
+        email: sessionEmail,
+        dimension: "assistant_actions",
+      });
+    } catch (e) {
+      const r = nextResponseFromPlanOrQuotaError(e);
+      if (r) return r;
+      throw e;
+    }
+
     return await runWithAssistantRunStore(
       { traceId, assistantRunId, tenantId, userId },
       async () => {
@@ -230,6 +253,18 @@ export async function POST(request: Request) {
                 },
                 { status: 400, headers: correlationHeaders(traceId, assistantRunId) },
               );
+            }
+            try {
+              await assertCapability({
+                tenantId,
+                userId,
+                email: sessionEmail,
+                capability: "ai_review",
+              });
+            } catch (e) {
+              const r = nextResponseFromPlanOrQuotaError(e);
+              if (r) return r;
+              throw e;
             }
           }
 
@@ -303,6 +338,18 @@ export async function POST(request: Request) {
 
           if (orchestration === "canonical") {
             logAssistantTelemetry(AssistantTelemetryAction.ROUTE_CANONICAL);
+            try {
+              await assertCapability({
+                tenantId,
+                userId,
+                email: sessionEmail,
+                capability: "ai_assistant_multi_step",
+              });
+            } catch (e) {
+              const r = nextResponseFromPlanOrQuotaError(e);
+              if (r) return r;
+              throw e;
+            }
           } else {
             logAssistantTelemetry(AssistantTelemetryAction.ROUTE_LEGACY);
           }
@@ -313,6 +360,27 @@ export async function POST(request: Request) {
           const { assets: rawImageAssets, truncated: imageAssetsTruncated } = parseImageAssetsFromBodyResult(body);
           const imageIntakeEnvOn = isImageIntakeEnabled();
           const isImageRequest = rawImageAssets.length > 0 && imageIntakeEnvOn;
+
+          if (isImageRequest) {
+            try {
+              await assertCapability({
+                tenantId,
+                userId,
+                email: sessionEmail,
+                capability: "ai_assistant_image_intake",
+              });
+              await assertQuotaAvailable({
+                tenantId,
+                userId,
+                email: sessionEmail,
+                dimension: "image_intake",
+              });
+            } catch (e) {
+              const r = nextResponseFromPlanOrQuotaError(e);
+              if (r) return r;
+              throw e;
+            }
+          }
 
           const debugImageIntakeResume = process.env.DEBUG_IMAGE_INTAKE_RESUME === "true";
           const pendingAfterHydrate = Boolean(session.pendingImageIntakeResolution);

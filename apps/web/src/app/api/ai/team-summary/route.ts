@@ -14,6 +14,9 @@ import {
 } from "@/app/actions/team-overview";
 import { buildTeamAlertsFromMemberMetrics } from "@/lib/team-overview-alerts";
 import type { TeamOverviewPeriod } from "@/app/actions/team-overview";
+import { assertCapability, getSessionEmailForUserId } from "@/lib/billing/plan-access-guards";
+import { assertQuotaAvailable } from "@/lib/billing/subscription-usage";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +40,26 @@ export async function GET(request: Request) {
     const membership = await getMembership(userId);
     if (!membership || !hasPermission(membership.roleName as RoleName, "team_overview:read")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const sessionEmail = await getSessionEmailForUserId(userId);
+    try {
+      await assertCapability({
+        tenantId: membership.tenantId,
+        userId,
+        email: sessionEmail,
+        capability: "team_overview",
+      });
+      await assertQuotaAvailable({
+        tenantId: membership.tenantId,
+        userId,
+        email: sessionEmail,
+        dimension: "assistant_actions",
+      });
+    } catch (e) {
+      const r = nextResponseFromPlanOrQuotaError(e);
+      if (r) return r;
+      throw e;
     }
 
     const limiter = checkRateLimit(request, "ai-team-summary", `${membership.tenantId}:${userId}`, { windowMs: 60_000, maxRequests: 10 });

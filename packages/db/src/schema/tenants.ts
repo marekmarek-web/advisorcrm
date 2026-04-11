@@ -6,6 +6,13 @@ export const tenants = pgTable("tenants", {
   slug: text("slug").notNull().unique(),
   /** Stripe Customer id (cus_…), jeden na workspace */
   stripeCustomerId: text("stripe_customer_id").unique(),
+  /** Workspace trial (14d product access); distinct from Stripe checkout trial period. */
+  trialStartedAt: timestamp("trial_started_at", { withTimezone: true }),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  /** Internal plan key for trial entitlements (e.g. pro). */
+  trialPlanKey: text("trial_plan_key"),
+  /** Set when the tenant completes Stripe subscription; trial slot consumed. */
+  trialConvertedAt: timestamp("trial_converted_at", { withTimezone: true }),
   notificationEmail: text("notification_email"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

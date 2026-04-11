@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { getIntegrationAuth } from "../../google-calendar/auth";
 import { getGoogleClientConfig, buildGoogleOAuthUrl } from "@/lib/integrations/google-oauth";
+import { assertPlanCapabilityForIntegration } from "@/lib/billing/plan-access-guards";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,14 @@ export async function GET(request: Request) {
   const authResult = await getIntegrationAuth(request);
   if (!authResult.ok) return authResult.response;
   const { userId, tenantId } = authResult.auth;
+
+  try {
+    await assertPlanCapabilityForIntegration({ tenantId, userId, capability: "google_drive" });
+  } catch (e) {
+    const r = nextResponseFromPlanOrQuotaError(e);
+    if (r) return r;
+    throw e;
+  }
 
   const { clientId } = getGoogleClientConfig();
   const origin = new URL(request.url).origin;

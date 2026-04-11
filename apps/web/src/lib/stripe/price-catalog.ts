@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getPublicPlanLabelFromTier } from "@/lib/billing/plan-catalog";
 import type { CheckoutCatalogSnapshot, PlanInterval, PlanTier } from "./billing-types";
 
 const TIERS: PlanTier[] = ["starter", "pro", "team"];
@@ -84,14 +85,9 @@ export function parsePlanInterval(raw: unknown): PlanInterval | null {
 }
 
 export function planLabelCs(tier: PlanTier, interval: PlanInterval): string {
-  const names: Record<PlanTier, string> = {
-    starter: "Starter",
-    pro: "Pro",
-    team: "Team",
-  };
   const intl: Record<PlanInterval, string> = {
     month: "měsíčně",
     year: "ročně",
   };
-  return `${names[tier]} (${intl[interval]})`;
+  return `${getPublicPlanLabelFromTier(tier)} (${intl[interval]})`;
 }

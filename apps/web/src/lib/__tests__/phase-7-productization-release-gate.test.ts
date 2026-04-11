@@ -467,6 +467,7 @@ describe("Sentry — productization-sentry instrumentation", () => {
 describe("Entitlement key coverage — all keys mapped to settings", () => {
   const ALL_ENTITLEMENT_KEYS = [
     "ai_assistant", "ai_review", "client_portal",
+    "client_portal_messaging", "client_portal_service_requests",
     "google_calendar", "google_drive", "google_gmail",
     "team_overview", "document_upload",
   ] as const;
@@ -488,11 +489,15 @@ describe("Entitlement key coverage — all keys mapped to settings", () => {
   it("all entitlement keys map to known settings registry keys", () => {
     const knownSettings = [
       "ai.assistant_enabled",
+      "ai.review_enabled",
       "client_portal.enabled",
+      "client_portal.allow_messaging",
+      "client_portal.allow_service_requests",
       "integrations.google_calendar_enabled",
       "integrations.google_drive_enabled",
       "integrations.google_gmail_enabled",
       "client_portal.allow_document_upload",
+      "team.overview_enabled",
     ];
     // These are the expected mapping targets — all should be registerable
     for (const settingKey of knownSettings) {

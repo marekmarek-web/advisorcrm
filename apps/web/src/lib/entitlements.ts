@@ -1,109 +1,196 @@
 import "server-only";
 
-import { db, subscriptions, tenants, eq, desc } from "db";
 import { getEffectiveSettingValue } from "@/lib/admin/effective-settings-resolver";
+import {
+  getDefaultPlanCapabilities,
+  tryParseInternalTierFromStoredPlan,
+  type PlanCapabilities,
+  type PlanSyncedTenantSettingKey,
+} from "@/lib/billing/plan-catalog";
+import { getSubscriptionState } from "@/lib/billing/subscription-state";
+import { resolveEffectiveAccessContext } from "@/lib/billing/resolve-effective-access";
+import { getEffectiveTenantSettingsForWorkspace } from "@/lib/billing/effective-workspace";
+import type { EffectiveAccessContext } from "@/lib/billing/access-resolution";
+
+export { getSubscriptionState } from "@/lib/billing/subscription-state";
+export { resolveEffectiveAccessContext };
+export { computeEffectiveAccessContext } from "@/lib/billing/access-resolution";
+export {
+  getEffectiveCapabilitiesForWorkspace,
+  getEffectiveLimitsForWorkspace,
+  getEffectiveTenantSettingsForWorkspace,
+  getEffectiveTenantSettingsForWorkspaceResolved,
+} from "@/lib/billing/effective-workspace";
+export { syncPlanDefaultsToTenantSettings } from "@/lib/billing/sync-plan-defaults";
+export {
+  recordAssistantUsage,
+  recordImageIntakeUsage,
+  recordAiReviewUsage,
+  getCurrentUsageForWorkspace,
+  getRemainingQuotaForWorkspace,
+  assertQuotaAvailable,
+} from "@/lib/billing/subscription-usage";
+export type {
+  QuotaDimension,
+  SubscriptionUsageMonthlySnapshot,
+  UsageIncrementDelta,
+} from "@/lib/billing/subscription-usage";
+export { QuotaExceededError, type QuotaExceededDetail, type QuotaExceededCapabilityKind } from "@/lib/billing/quota-errors";
+export { computeRemainingQuota } from "@/lib/billing/quota-math";
+export {
+  assertCapability,
+  assertCapabilityEffective,
+  getSessionEmailForUserId,
+  isPlanCapabilityAllowed,
+  getUpgradePublicPlanForCapability,
+  CAPABILITY_PRIMARY_SETTING,
+} from "@/lib/billing/plan-access-guards";
+export { PlanAccessError, type PlanAccessErrorDetail } from "@/lib/billing/plan-access-errors";
+export { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
+import type { PlanTier } from "@/lib/stripe/billing-types";
 
 /**
  * Canonical entitlement check for a workspace.
- * Single source of truth for "what can this tenant use".
- *
- * Resolution order:
- *  1. Subscription status (billing requirement)
- *  2. Tenant settings overrides (admin toggles)
- *  3. Registry defaults
+ * Granular plan matrix × tenant overrides (narrow-only) via {@link getEffectiveTenantSettingsForWorkspace}.
  */
 
 export type EntitlementKey =
   | "ai_assistant"
   | "ai_review"
   | "client_portal"
+  | "client_portal_messaging"
+  | "client_portal_service_requests"
   | "google_calendar"
   | "google_drive"
   | "google_gmail"
   | "team_overview"
   | "document_upload";
 
-export type SubscriptionState = {
-  status: string | null;
-  plan: string | null;
-  currentPeriodEnd: Date | null;
-  isActive: boolean;
-  inGracePeriod: boolean;
-};
+export type { SubscriptionState } from "@/lib/stripe/billing-types";
 
 export type WorkspaceEntitlements = Record<EntitlementKey, boolean>;
 
-const SETTING_KEY_MAP: Record<EntitlementKey, string> = {
+const ENTITLEMENT_SETTING_KEY: Record<EntitlementKey, PlanSyncedTenantSettingKey> = {
   ai_assistant: "ai.assistant_enabled",
-  ai_review: "ai.assistant_enabled",
+  ai_review: "ai.review_enabled",
   client_portal: "client_portal.enabled",
+  client_portal_messaging: "client_portal.allow_messaging",
+  client_portal_service_requests: "client_portal.allow_service_requests",
   google_calendar: "integrations.google_calendar_enabled",
   google_drive: "integrations.google_drive_enabled",
   google_gmail: "integrations.google_gmail_enabled",
-  team_overview: "ai.assistant_enabled",
+  team_overview: "team.overview_enabled",
   document_upload: "client_portal.allow_document_upload",
 };
 
-const ACTIVE_STATUSES = new Set(["active", "trialing"]);
-const PAST_DUE_STATUSES = new Set(["past_due"]);
+export type EntitlementAuthContext = {
+  userId: string;
+  email: string | null | undefined;
+};
 
-export async function getSubscriptionState(tenantId: string): Promise<SubscriptionState> {
-  const [latestSub] = await db
-    .select({
-      status: subscriptions.status,
-      plan: subscriptions.plan,
-      currentPeriodEnd: subscriptions.currentPeriodEnd,
-    })
-    .from(subscriptions)
-    .where(eq(subscriptions.tenantId, tenantId))
-    .orderBy(desc(subscriptions.updatedAt))
-    .limit(1);
+async function resolveBillingAndSettings(params: {
+  tenantId: string;
+  auth?: EntitlementAuthContext;
+}): Promise<{ billingOk: boolean; settings: Record<PlanSyncedTenantSettingKey, boolean> }> {
+  const requireSub = await getEffectiveSettingValue<boolean>(params.tenantId, "billing.require_active_subscription");
+  const subState = await getSubscriptionState(params.tenantId);
 
-  if (!latestSub) {
-    return { status: null, plan: null, currentPeriodEnd: null, isActive: false, inGracePeriod: false };
-  }
+  const accessContext = await resolveEffectiveAccessContext({
+    tenantId: params.tenantId,
+    userId: params.auth?.userId ?? "",
+    email: params.auth?.email,
+  });
 
-  const isActive = ACTIVE_STATUSES.has(latestSub.status);
-  const isPastDue = PAST_DUE_STATUSES.has(latestSub.status);
+  const billingOk =
+    accessContext.isBypassed ||
+    (!requireSub || subState.isActive || subState.inGracePeriod);
 
-  let inGracePeriod = false;
-  if (isPastDue && latestSub.currentPeriodEnd) {
-    const graceDays = await getEffectiveSettingValue<number>(tenantId, "billing.grace_period_days");
-    const graceEnd = new Date(latestSub.currentPeriodEnd.getTime() + (graceDays ?? 7) * 86_400_000);
-    inGracePeriod = new Date() < graceEnd;
-  }
+  const settings = await getEffectiveTenantSettingsForWorkspace({
+    tenantId: params.tenantId,
+    accessContext,
+  });
 
-  return {
-    status: latestSub.status,
-    plan: latestSub.plan,
-    currentPeriodEnd: latestSub.currentPeriodEnd,
-    isActive,
-    inGracePeriod,
-  };
+  return { billingOk, settings };
 }
 
-export async function resolveEntitlements(tenantId: string): Promise<WorkspaceEntitlements> {
-  const requireSub = await getEffectiveSettingValue<boolean>(tenantId, "billing.require_active_subscription");
-  const subState = await getSubscriptionState(tenantId);
-
-  const billingOk = !requireSub || subState.isActive || subState.inGracePeriod;
+export async function resolveEntitlements(
+  tenantId: string,
+  auth?: EntitlementAuthContext,
+): Promise<WorkspaceEntitlements> {
+  const { billingOk, settings } = await resolveBillingAndSettings({ tenantId, auth });
 
   const results: Partial<WorkspaceEntitlements> = {};
-  for (const key of Object.keys(SETTING_KEY_MAP) as EntitlementKey[]) {
-    const settingEnabled = await getEffectiveSettingValue<boolean>(tenantId, SETTING_KEY_MAP[key]);
-    results[key] = billingOk && (settingEnabled ?? true);
+  for (const key of Object.keys(ENTITLEMENT_SETTING_KEY) as EntitlementKey[]) {
+    const sk = ENTITLEMENT_SETTING_KEY[key];
+    results[key] = billingOk && (settings[sk] ?? false);
   }
 
   return results as WorkspaceEntitlements;
 }
 
-export async function checkEntitlement(tenantId: string, key: EntitlementKey): Promise<boolean> {
-  const requireSub = await getEffectiveSettingValue<boolean>(tenantId, "billing.require_active_subscription");
-  const subState = await getSubscriptionState(tenantId);
-
-  const billingOk = !requireSub || subState.isActive || subState.inGracePeriod;
+export async function checkEntitlement(
+  tenantId: string,
+  key: EntitlementKey,
+  auth?: EntitlementAuthContext,
+): Promise<boolean> {
+  const { billingOk, settings } = await resolveBillingAndSettings({ tenantId, auth });
   if (!billingOk) return false;
 
-  const settingEnabled = await getEffectiveSettingValue<boolean>(tenantId, SETTING_KEY_MAP[key]);
-  return settingEnabled ?? true;
+  const sk = ENTITLEMENT_SETTING_KEY[key];
+  return settings[sk] ?? false;
 }
+
+/** Re-export for callers that should align with billing plan-catalog types. */
+export type { PlanCapabilities as PlanCatalogCapabilities } from "@/lib/billing/plan-catalog";
+
+/**
+ * Best-effort tier from persisted `subscriptions.plan` (free-form string). Not used for enforcement yet.
+ */
+export function getPlanCatalogTierForSubscriptionPlan(plan: string | null): PlanTier | null {
+  return tryParseInternalTierFromStoredPlan(plan);
+}
+
+/**
+ * Default granular capabilities for the tenant's current plan row — for Phase 2+ enforcement and UI hints.
+ * Returns null if the plan string cannot be mapped to a known internal tier.
+ */
+export function getPlanCatalogCapabilitiesForSubscriptionPlan(plan: string | null): PlanCapabilities | null {
+  const tier = tryParseInternalTierFromStoredPlan(plan);
+  if (!tier) return null;
+  return getDefaultPlanCapabilities(tier);
+}
+
+/**
+ * Full effective access (admin bypass, subscription tier, workspace trial, restricted).
+ * Phase 2: use {@link EffectiveAccessContext.capabilities} for granular enforcement.
+ */
+export async function getEffectiveAccessContextForTenant(params: {
+  tenantId: string;
+  userId: string;
+  email: string | null | undefined;
+}): Promise<EffectiveAccessContext> {
+  return resolveEffectiveAccessContext(params);
+}
+
+/** Alias (Fáze 4 docs): same as {@link getEffectiveAccessContextForTenant}. */
+export async function getEffectiveAccessContext(params: {
+  tenantId: string;
+  userId: string;
+  email: string | null | undefined;
+}): Promise<EffectiveAccessContext> {
+  return resolveEffectiveAccessContext(params);
+}
+
+export type { EffectiveAccessContext } from "@/lib/billing/access-resolution";
+
+/** True when plan limits should not apply (internal admin). Phase 2 quota layer. */
+export async function shouldBypassPlanLimits(params: {
+  tenantId: string;
+  userId: string;
+  email: string | null | undefined;
+}): Promise<boolean> {
+  const ctx = await resolveEffectiveAccessContext(params);
+  return ctx.isBypassed;
+}
+
+export { isInternalAdminUser } from "@/lib/billing/internal-admin";

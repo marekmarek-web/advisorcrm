@@ -3,6 +3,7 @@ import { getMembership } from "@/lib/auth/get-membership";
 import { perfLog } from "@/lib/perf-log";
 import { db } from "db";
 import { tenants, roles, memberships, opportunityStages } from "db";
+import { DEFAULT_TRIAL_PLAN, getTrialDurationDays } from "@/lib/billing/plan-catalog";
 
 export type EnsureMembershipResult =
   | { ok: true; redirectTo: string }
@@ -73,12 +74,20 @@ export async function provisionWorkspaceIfNeeded(): Promise<EnsureMembershipResu
     const slug =
       email.replace(/@.*/, "").replace(/[^a-z0-9]/gi, "-").toLowerCase().slice(0, 20) || "workspace";
 
+    const trialStartedAt = new Date();
+    const trialEndsAt = new Date(
+      trialStartedAt.getTime() + getTrialDurationDays() * 86_400_000
+    );
+
     await db.transaction(async (tx) => {
       const [tenant] = await tx
         .insert(tenants as any)
         .values({
           name: "Můj workspace",
           slug: slug + "-" + Math.random().toString(36).slice(2, 8),
+          trialStartedAt,
+          trialEndsAt,
+          trialPlanKey: DEFAULT_TRIAL_PLAN,
         })
         .returning({ id: tenants.id, slug: tenants.slug } as any);
       if (!tenant) throw new Error("Nepodařilo se vytvořit workspace.");

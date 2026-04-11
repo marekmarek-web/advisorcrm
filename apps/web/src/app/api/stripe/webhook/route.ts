@@ -8,6 +8,7 @@ import {
   setTenantStripeCustomer,
   upsertSubscriptionFromStripe,
   upsertInvoiceFromStripe,
+  markTenantTrialConverted,
 } from "@/lib/stripe/subscription-sync";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       const stripe = getStripe();
       const sub = await stripe.subscriptions.retrieve(subId);
       await upsertSubscriptionFromStripe(tenantId, sub);
+      await markTenantTrialConverted(tenantId);
       return;
     }
     case "customer.subscription.updated":
@@ -48,6 +50,7 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
         await setTenantStripeCustomer(tenantId, cust);
       }
       await upsertSubscriptionFromStripe(tenantId, sub);
+      await markTenantTrialConverted(tenantId);
       return;
     }
     case "invoice.payment_succeeded":

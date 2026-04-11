@@ -19,11 +19,13 @@ const SCOPE_EDIT_DOMAINS: Record<AdminScope, SettingDomain[]> = {
     "tenant_profile", "ai_behavior", "review_policies", "apply_policies",
     "payment_policies", "communication_policies", "notification_policies",
     "automation_policies", "mobile_capture_policies", "feature_flags", "branding",
+    "billing", "client_portal", "integrations", "team", "reports", "manager",
   ],
   tenant_admin: [
     "tenant_profile", "ai_behavior", "review_policies", "apply_policies",
     "payment_policies", "communication_policies", "notification_policies",
     "automation_policies", "mobile_capture_policies", "branding",
+    "billing", "client_portal", "integrations", "team", "reports", "manager",
   ],
   manager_admin: [
     "review_policies", "apply_policies", "communication_policies", "notification_policies",
@@ -40,11 +42,13 @@ const SCOPE_VIEW_DOMAINS: Record<AdminScope, SettingDomain[]> = {
     "tenant_profile", "ai_behavior", "review_policies", "apply_policies",
     "payment_policies", "communication_policies", "notification_policies",
     "automation_policies", "mobile_capture_policies", "feature_flags", "branding",
+    "billing", "client_portal", "integrations", "team", "reports", "manager",
   ],
   tenant_admin: [
     "tenant_profile", "ai_behavior", "review_policies", "apply_policies",
     "payment_policies", "communication_policies", "notification_policies",
     "automation_policies", "mobile_capture_policies", "branding",
+    "billing", "client_portal", "integrations", "team", "reports", "manager",
   ],
   manager_admin: [
     "review_policies", "apply_policies", "communication_policies",

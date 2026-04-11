@@ -123,3 +123,11 @@ export async function setTenantStripeCustomer(
     .set({ stripeCustomerId: customerId, updatedAt: new Date() })
     .where(eq(tenants.id, tenantId));
 }
+
+/** Marks workspace trial as consumed when a Stripe subscription exists (Phase 2: idempotent job). */
+export async function markTenantTrialConverted(tenantId: string): Promise<void> {
+  await db
+    .update(tenants)
+    .set({ trialConvertedAt: new Date(), updatedAt: new Date() })
+    .where(eq(tenants.id, tenantId));
+}

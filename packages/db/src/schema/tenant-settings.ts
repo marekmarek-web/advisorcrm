@@ -8,6 +8,8 @@ export const tenantSettings = pgTable(
     tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
     key: text("key").notNull(),
     value: jsonb("value").notNull(),
+    /** plan | manual | null (legacy — sync will not overwrite). */
+    settingOrigin: text("setting_origin"),
     domain: text("domain").notNull(),
     updatedBy: text("updated_by").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

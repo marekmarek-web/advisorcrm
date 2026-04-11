@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth/require-auth";
 import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
+import { getEffectiveAccessContextForTenant } from "@/lib/entitlements";
 import { getWorkspaceBillingSnapshot } from "@/lib/stripe/workspace-billing";
 import { db, tenants, advisorPreferences, memberships } from "db";
 import { eq, and } from "db";
-import { AdvisorProfileView } from "./AdvisorProfileView";
+import { AdvisorProfileView, type AdvisorProfileInitial } from "./AdvisorProfileView";
 import { listSupervisorOptions, type SupervisorOption } from "@/app/actions/auth";
 import { getPublicBookingSettings } from "@/app/actions/public-booking-settings";
 import type { PublicBookingSettingsDTO } from "@/app/actions/public-booking-settings";
@@ -21,7 +22,7 @@ function isRedirectError(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { digest?: string }).digest === "NEXT_REDIRECT";
 }
 
-const FALLBACK_INITIAL = {
+const FALLBACK_INITIAL: AdvisorProfileInitial = {
   email: "",
   fullName: null as string | null,
   roleName: "—",
@@ -33,6 +34,7 @@ const FALLBACK_INITIAL = {
   currentSupervisorId: null as string | null,
   supervisorOptions: [] as SupervisorOption[],
   billing: undefined as WorkspaceBillingSnapshot | undefined,
+  internalAdminAccessBadge: false,
   publicBooking: EMPTY_PUBLIC_BOOKING,
   canonicalBaseUrl: "",
 };
@@ -91,12 +93,17 @@ export default async function ProfilePage() {
       .limit(1);
     const supervisorOptions = await listSupervisorOptions().catch(() => []);
 
-    const [billing, publicBooking] = await Promise.all([
+    const [billing, publicBooking, accessCtx] = await Promise.all([
       getWorkspaceBillingSnapshot({
         tenantId: auth.tenantId,
         roleName: auth.roleName,
       }),
       getPublicBookingSettings(),
+      getEffectiveAccessContextForTenant({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        email,
+      }),
     ]);
     const canonicalBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
 
@@ -112,6 +119,7 @@ export default async function ProfilePage() {
       currentSupervisorId: membershipRow?.parentId ?? null,
       supervisorOptions,
       billing,
+      internalAdminAccessBadge: accessCtx.source === "internal_admin",
       publicBooking,
       canonicalBaseUrl,
     };

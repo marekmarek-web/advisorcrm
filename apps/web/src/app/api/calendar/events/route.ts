@@ -9,6 +9,8 @@ import {
   allDayGoogleRangeToDbInstants,
   hasExplicitIsoOffset,
 } from "@/app/portal/calendar/date-utils";
+import { assertPlanCapabilityForIntegration } from "@/lib/billing/plan-access-guards";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +73,14 @@ export async function GET(request: Request) {
   const authResult = await getCalendarAuth(request);
   if (!authResult.ok) return authResult.response;
   const { userId, tenantId } = authResult.auth;
+
+  try {
+    await assertPlanCapabilityForIntegration({ tenantId, userId, capability: "google_calendar" });
+  } catch (e) {
+    const r = nextResponseFromPlanOrQuotaError(e);
+    if (r) return r;
+    throw e;
+  }
 
   const url = new URL(request.url);
   const timeMinParam = url.searchParams.get("timeMin");
@@ -263,6 +273,14 @@ export async function POST(request: Request) {
   const authResult = await getCalendarAuth(request);
   if (!authResult.ok) return authResult.response;
   const { userId, tenantId } = authResult.auth;
+
+  try {
+    await assertPlanCapabilityForIntegration({ tenantId, userId, capability: "google_calendar" });
+  } catch (e) {
+    const r = nextResponseFromPlanOrQuotaError(e);
+    if (r) return r;
+    throw e;
+  }
 
   let body: unknown;
   try {

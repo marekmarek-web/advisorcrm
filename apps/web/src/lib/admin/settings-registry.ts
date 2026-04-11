@@ -17,7 +17,10 @@ export type SettingDomain =
   | "branding"
   | "billing"
   | "client_portal"
-  | "integrations";
+  | "integrations"
+  | "team"
+  | "reports"
+  | "manager";
 
 export type SettingType = "string" | "number" | "boolean" | "enum" | "json";
 
@@ -42,6 +45,12 @@ export const SETTINGS_REGISTRY: SettingDefinition[] = [
 
   // AI behavior
   { key: "ai.assistant_enabled", domain: "ai_behavior", type: "boolean", defaultValue: true, description: "Enable AI assistant globally" },
+  { key: "ai.assistant_basic_enabled", domain: "ai_behavior", type: "boolean", defaultValue: true, description: "Enable basic AI assistant features" },
+  { key: "ai.assistant_image_intake_enabled", domain: "ai_behavior", type: "boolean", defaultValue: true, description: "Allow AI image intake / vision" },
+  { key: "ai.assistant_pdf_read_enabled", domain: "ai_behavior", type: "boolean", defaultValue: false, description: "Allow AI to read PDF content" },
+  { key: "ai.assistant_multi_step_enabled", domain: "ai_behavior", type: "boolean", defaultValue: false, description: "Allow multi-step AI workflows" },
+  { key: "ai.review_enabled", domain: "ai_behavior", type: "boolean", defaultValue: false, description: "Enable AI contract/document review" },
+  { key: "ai.review_export_pdf_enabled", domain: "ai_behavior", type: "boolean", defaultValue: false, description: "Allow exporting AI review as PDF" },
   { key: "ai.max_automation_level", domain: "ai_behavior", type: "enum", defaultValue: "draft_only", allowedValues: ["manual_only", "draft_only", "approval_required", "auto_disabled"], description: "Maximum allowed automation level" },
   { key: "ai.assistant_profile", domain: "ai_behavior", type: "enum", defaultValue: "balanced", allowedValues: ["conservative", "balanced", "proactive"], description: "AI assistant behavior profile" },
   { key: "ai.allow_low_confidence_suggestions", domain: "ai_behavior", type: "boolean", defaultValue: false, description: "Show suggestions below confidence threshold" },
@@ -94,11 +103,19 @@ export const SETTINGS_REGISTRY: SettingDefinition[] = [
   { key: "client_portal.enabled", domain: "client_portal", type: "boolean", defaultValue: true, description: "Enable client portal for this workspace" },
   { key: "client_portal.allow_document_upload", domain: "client_portal", type: "boolean", defaultValue: true, description: "Allow clients to upload documents" },
   { key: "client_portal.allow_messaging", domain: "client_portal", type: "boolean", defaultValue: true, description: "Allow clients to send messages" },
+  { key: "client_portal.allow_service_requests", domain: "client_portal", type: "boolean", defaultValue: false, description: "Allow clients to submit service requests" },
 
   // Integrations
   { key: "integrations.google_calendar_enabled", domain: "integrations", type: "boolean", defaultValue: true, description: "Enable Google Calendar integration" },
   { key: "integrations.google_drive_enabled", domain: "integrations", type: "boolean", defaultValue: true, description: "Enable Google Drive integration" },
   { key: "integrations.google_gmail_enabled", domain: "integrations", type: "boolean", defaultValue: true, description: "Enable Gmail integration" },
+
+  // Team / management (plan-gated; defaults conservative)
+  { key: "team.overview_enabled", domain: "team", type: "boolean", defaultValue: false, description: "Enable team overview dashboards" },
+  { key: "team.production_enabled", domain: "team", type: "boolean", defaultValue: false, description: "Enable team production insights" },
+  { key: "team.goals_events_enabled", domain: "team", type: "boolean", defaultValue: false, description: "Enable team goals and events" },
+  { key: "manager.summary_enabled", domain: "manager", type: "boolean", defaultValue: false, description: "Enable manager summary views" },
+  { key: "reports.advanced_enabled", domain: "reports", type: "boolean", defaultValue: false, description: "Enable advanced reporting" },
 ];
 
 export function getSettingDefinition(key: string): SettingDefinition | undefined {

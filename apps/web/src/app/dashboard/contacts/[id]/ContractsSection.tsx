@@ -229,7 +229,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
     setEditingId(c.id);
     setVisibleToClientEdit(c.visibleToClient !== false);
     setPortfolioStatusEdit(c.portfolioStatus ?? "active");
-    let premiumAmount = c.premiumAmount ?? "";
+    const premiumAmount = c.premiumAmount ?? "";
     let premiumAnnual = c.premiumAnnual ?? "";
     if (segmentUsesAnnualPremiumPrimaryInput(c.segment) && !premiumAnnual.trim() && premiumAmount.trim()) {
       premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount);

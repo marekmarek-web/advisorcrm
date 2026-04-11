@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
+import { assertCapability } from "@/lib/billing/plan-access-guards";
+import { assertQuotaAvailable } from "@/lib/billing/subscription-usage";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 import { createAdminClient } from "@/lib/supabase/server";
 import { createContractReview } from "@/lib/ai/review-queue-repository";
 import { logAudit } from "@/lib/audit";
@@ -35,6 +39,32 @@ export async function POST(request: Request) {
     if (!membership) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const email = user?.id === userId ? user.email ?? null : null;
+    try {
+      await assertCapability({
+        tenantId: membership.tenantId,
+        userId,
+        email,
+        capability: "ai_review",
+      });
+      await assertQuotaAvailable({
+        tenantId: membership.tenantId,
+        userId,
+        email,
+        dimension: "ai_review_pages",
+        amount: 1,
+      });
+    } catch (e) {
+      const r = nextResponseFromPlanOrQuotaError(e);
+      if (r) return r;
+      throw e;
+    }
+
     const limiter = checkRateLimit(request, "contracts-upload", `${membership.tenantId}:${userId}`, {
       windowMs: 60_000,
       maxRequests: 10,

@@ -2,6 +2,7 @@
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
+import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guard";
 import { db } from "db";
 import { contracts, SEGMENT_LABELS } from "db";
 import { eq, and, gte, lt, sql } from "db";
@@ -69,6 +70,7 @@ export async function getProductionSummary(
 ): Promise<ProductionSummary> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  await assertCapabilityForAction(auth, "team_production");
 
   const { start, end, label } = getPeriodRange(period, refDate);
 
@@ -130,6 +132,7 @@ export async function getContractsForPeriod(
 ): Promise<{ rows: ContractInPeriodRow[]; periodLabel: string }> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  await assertCapabilityForAction(auth, "team_production");
 
   const { start, end, label } = getPeriodRange(period, refDate);
 

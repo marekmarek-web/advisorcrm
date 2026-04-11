@@ -13,12 +13,12 @@ export const LANDING_FAQS = [
   {
     id: 3,
     q: "Jak funguje klientská zóna?",
-    a: "Klient v portálu zadá požadavek, nahraje podklad nebo napíše zprávu. Vy dostanete upozornění a řešíte to v jednom toku uvnitř aplikace.",
+    a: "Klient má v portálu přehledný přístup k dokumentům a stavu věcí. U vyšších tarifů může chatovat a zadávat nové požadavky; u vstupního tarifu Start jsou tyto části v produktu vypnuté — klient pracuje hlavně s dokumenty. Vy dostanete upozornění a řešíte věci v jednom toku v aplikaci.",
   },
   {
     id: 4,
     q: "Co přesně AI umí a neumí?",
-    a: "AI pomáhá s prioritami, připomínkami a čtením vybraných údajů z dokumentů. Rozhodnutí a změny dat jsou vždy na vás — bez vašeho potvrzení se klientská data nemění.",
+    a: "Asistent navrhuje shrnutí, priority a dokáže pracovat s vybranými údaji z dokumentů v rámci vašeho plánu a oprávnění. Rozhodnutí a zápis do CRM zůstává na vás — bez vašeho potvrzení se klientská data nemění. Konkrétní rozsah (např. AI review PDF) závisí na tarifu.",
   },
   {
     id: 5,
@@ -34,5 +34,10 @@ export const LANDING_FAQS = [
     id: 7,
     q: "Jaké jsou integrace?",
     a: "Google Kalendář je hlavní napojení pro schůzky a termíny. Systém posílá e-mailová upozornění podle událostí v aplikaci. Další integrace doplňujeme podle zpětné vazby — Outlook nebo SMS zatím jako samostatná produkční funkce neinzerujeme.",
+  },
+  {
+    id: 8,
+    q: "Jak funguje zkušební verze?",
+    a: "Po založení účtu máte 14 kalendářních dní přístup k funkcím v úrovni tarifu Pro (stejné limity a možnosti jako u placeného Pro v dané době). Předplatné si pak zvolíte v nastavení — Start, Pro nebo Management. Pokud na placený tarif nepřejdete, přístup se může omezit podle pravidel workspace; data se standardně nemažou bez vašeho kroku.",
   },
 ] as const;

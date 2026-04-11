@@ -3,6 +3,8 @@ import { randomBytes } from "crypto";
 import { getIntegrationAuth } from "../auth";
 import { logIntegration, logIntegrationError } from "@/lib/integrations/google-calendar-integration-service";
 import { buildGoogleOAuthUrl, getGoogleClientConfig } from "@/lib/integrations/google-oauth";
+import { assertPlanCapabilityForIntegration } from "@/lib/billing/plan-access-guards";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,14 @@ export async function GET(request: Request) {
     return authResult.response;
   }
   const { userId, tenantId } = authResult.auth;
+
+  try {
+    await assertPlanCapabilityForIntegration({ tenantId, userId, capability: "google_calendar" });
+  } catch (e) {
+    const r = nextResponseFromPlanOrQuotaError(e);
+    if (r) return r;
+    throw e;
+  }
 
   let clientId: string;
   try {

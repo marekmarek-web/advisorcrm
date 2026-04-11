@@ -7,6 +7,10 @@ import { getUnreadAdvisorMessagesForClientCount } from "@/app/actions/messages";
 import { getDocumentsForClient } from "@/app/actions/documents";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { CLIENT_PORTAL_AI_SYSTEM_PROMPT_CS } from "@/lib/ai/compliance-prompt-suffix";
+import { createClient } from "@/lib/supabase/server";
+import { assertCapability } from "@/lib/billing/plan-access-guards";
+import { assertQuotaAvailable } from "@/lib/billing/subscription-usage";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +37,36 @@ export async function POST(request: Request) {
     const auth = await requireAuthInAction();
     if (auth.roleName !== "Client" || !auth.contactId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const email = user?.id === auth.userId ? user.email ?? null : null;
+    try {
+      await assertCapability({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        email,
+        capability: "ai_assistant_basic",
+      });
+      await assertCapability({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        email,
+        capability: "client_portal_documents",
+      });
+      await assertQuotaAvailable({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        email,
+        dimension: "assistant_actions",
+      });
+    } catch (e) {
+      const r = nextResponseFromPlanOrQuotaError(e);
+      if (r) return r;
+      throw e;
     }
 
     const rate = checkRateLimit(request, "ai-client-assistant-chat", auth.userId, {

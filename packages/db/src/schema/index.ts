@@ -13,6 +13,7 @@ export * from "./documents";
 export * from "./timeline";
 export * from "./audit-compliance";
 export * from "./subscriptions";
+export * from "./subscription-usage-monthly";
 export * from "./stripe-webhook-events";
 export * from "./portfolio-attributes";
 export * from "./contracts";

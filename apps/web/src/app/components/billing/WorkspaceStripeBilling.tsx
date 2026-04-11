@@ -4,6 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CreditCard } from "lucide-react";
 import { AdvisorLegalConsentLabel } from "@/app/components/auth/AdvisorLegalConsentLabel";
+import {
+  ACCESS_MODE_UI_LABEL,
+  formatStoredSubscriptionPlanLabel,
+  getInternalAdminBadgeLabel,
+  getTrialBadgeLabel,
+  PUBLIC_DISPLAY_TITLE_BY_TIER,
+} from "@/lib/billing/plan-catalog";
+import {
+  annualSavingsVersusTwelveMonthly,
+  formatPublicPriceKc,
+  PUBLIC_MONTHLY_PRICE_KC,
+  PUBLIC_TRIAL_DURATION_DAYS,
+  yearlyTotalKcFromMonthlyList,
+} from "@/lib/billing/public-pricing";
 import type {
   CheckoutCatalogSnapshot,
   PlanInterval,
@@ -18,29 +32,30 @@ type Props = {
   /** Výchozí true – v Nastavení často false (vlastní nadpis karty). */
   showTitle?: boolean;
   className?: string;
+  /** Interní účet z allowlistu — není veřejný plán. */
+  showInternalAdminBadge?: boolean;
 };
 
-const TIER_COPY: Record<
-  PlanTier,
-  { title: string; blurb: string; monthKc: number; yearKc: number }
-> = {
+const TIER_COPY: Record<PlanTier, { title: string; blurb: string; monthKc: number; yearKc: number }> = {
   starter: {
-    title: "Starter",
-    blurb: "1 uživatel · AI review smluv · kalkulačky",
-    monthKc: 1490,
-    yearKc: 14304,
+    title: PUBLIC_DISPLAY_TITLE_BY_TIER.starter,
+    blurb:
+      "CRM, pipeline, kalendář, dokumenty v portálu, základní AI. Bez klientského chatu, požadavků z portálu a AI review.",
+    monthKc: PUBLIC_MONTHLY_PRICE_KC.starter,
+    yearKc: yearlyTotalKcFromMonthlyList(PUBLIC_MONTHLY_PRICE_KC.starter),
   },
   pro: {
-    title: "Pro",
-    blurb: "Klientská zóna · finanční analýzy · pokročilé AI",
-    monthKc: 1990,
-    yearKc: 19104,
+    title: PUBLIC_DISPLAY_TITLE_BY_TIER.pro,
+    blurb:
+      "Vše ze Startu + Gmail, Drive, chat, požadavky z portálu, AI review PDF, pokročilý asistent a analýzy dle modulů.",
+    monthKc: PUBLIC_MONTHLY_PRICE_KC.pro,
+    yearKc: yearlyTotalKcFromMonthlyList(PUBLIC_MONTHLY_PRICE_KC.pro),
   },
   team: {
-    title: "Team",
-    blurb: "Vše z Pro · tým · sdílení · manažerské přehledy",
-    monthKc: 2490,
-    yearKc: 23904,
+    title: PUBLIC_DISPLAY_TITLE_BY_TIER.team,
+    blurb: "Vše z Pro + týmové přehledy, produkce, KPI, manažerské a pokročilé reporty, sdílené pohledy.",
+    monthKc: PUBLIC_MONTHLY_PRICE_KC.team,
+    yearKc: yearlyTotalKcFromMonthlyList(PUBLIC_MONTHLY_PRICE_KC.team),
   },
 };
 
@@ -95,6 +110,7 @@ export function WorkspaceStripeBilling({
   billingContext,
   showTitle = true,
   className = "",
+  showInternalAdminBadge = false,
 }: Props) {
   const searchParams = useSearchParams();
   const billingQuery = searchParams.get("billing");
@@ -187,7 +203,7 @@ export function WorkspaceStripeBilling({
     }
   }
 
-  const trialDays = cat?.trialPeriodDays ?? 14;
+  const trialDays = cat?.trialPeriodDays ?? PUBLIC_TRIAL_DURATION_DAYS;
 
   return (
     <div className={`space-y-4 ${className}`.trim()}>
@@ -210,10 +226,32 @@ export function WorkspaceStripeBilling({
       {billingError ? (
         <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-200">{billingError}</p>
       ) : null}
+      {showInternalAdminBadge ? (
+        <p className="max-w-xl rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">
+          <span className="font-bold">{getInternalAdminBadgeLabel()}</span>
+          <span className="ml-2 text-amber-900/90 dark:text-amber-100/90">
+            Plný přístup mimo veřejné tarify.
+          </span>
+        </p>
+      ) : null}
+      {billing.workspaceTrial?.isActive ? (
+        <p className="max-w-xl rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-100">
+          <span className="font-bold">{getTrialBadgeLabel()}</span>
+          <span className="ml-1.5 font-medium">({ACCESS_MODE_UI_LABEL.trialPlanNote})</span>
+          {billing.workspaceTrial.daysRemaining != null ? (
+            <span className="ml-2">
+              · zbývá {billing.workspaceTrial.daysRemaining}{" "}
+              {billing.workspaceTrial.daysRemaining === 1 ? "den" : "dní"}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
       {trialDays > 0 && billing.checkoutAvailable ? (
         <p className="max-w-xl text-sm text-[color:var(--wp-text-secondary)]">
-          <span className="font-semibold text-[color:var(--wp-text)]">{trialDays} dní zdarma</span>, poté pravidelné účtování
-          podle zvoleného tarifu ve Stripe.
+          <span className="font-semibold text-[color:var(--wp-text)]">
+            {trialDays} dní zdarma ({ACCESS_MODE_UI_LABEL.trialPlanNote})
+          </span>
+          , poté pravidelné účtování podle zvoleného tarifu ve Stripe.
         </p>
       ) : null}
       <dl className="grid max-w-xl gap-2 text-sm text-[color:var(--wp-text-secondary)]">
@@ -224,7 +262,7 @@ export function WorkspaceStripeBilling({
         {billing.plan ? (
           <div className="flex flex-wrap gap-x-2">
             <dt className="font-semibold text-[color:var(--wp-text)]">Plán</dt>
-            <dd>{billing.plan}</dd>
+            <dd>{formatStoredSubscriptionPlanLabel(billing.plan) ?? billing.plan}</dd>
           </div>
         ) : null}
         {billing.currentPeriodEnd ? (
@@ -269,6 +307,16 @@ export function WorkspaceStripeBilling({
               Ročně <span className="font-black text-emerald-600 dark:text-emerald-400">−20 %</span>
             </button>
           </div>
+          {interval === "year" ? (
+            <p className="text-xs text-[color:var(--wp-text-secondary)]">
+              Roční částka u vybraného tarifu ({TIER_COPY[tier].title}):{" "}
+              <span className="font-semibold text-[color:var(--wp-text)]">
+                {formatPublicPriceKc(TIER_COPY[tier].yearKc)} Kč / rok
+              </span>
+              . Úspora oproti 12× měsíční ceně:{" "}
+              {formatPublicPriceKc(annualSavingsVersusTwelveMonthly(PUBLIC_MONTHLY_PRICE_KC[tier]))} Kč.
+            </p>
+          ) : null}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {cat.tiers.map((row) => {
               const ok = interval === "month" ? row.month : row.year;

@@ -166,7 +166,7 @@ export function evaluateCareerProgress(ctx: CareerEvaluationContext): CareerEval
   ];
 
   const { programId: normalizedProgram, legacyRaw } = normalizeCareerProgramFromDb(ctx.careerProgram);
-  let programId = normalizedProgram;
+  const programId = normalizedProgram;
   const programUnknown = programId === "unknown";
 
   if (legacyRaw) {

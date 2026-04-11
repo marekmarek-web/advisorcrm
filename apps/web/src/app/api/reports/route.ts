@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedApiUserId } from "@/lib/auth/api-auth-user";
 import { getMembership } from "@/lib/auth/get-membership";
+import { assertCapability } from "@/lib/billing/plan-access-guards";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 import { resolveAnalyticsScope } from "@/lib/analytics/analytics-scope";
 import { canExport } from "@/lib/analytics/export-governance";
 import { generateReport, type ReportType } from "@/lib/analytics/reporting-service";
@@ -16,6 +19,23 @@ export async function GET(request: Request) {
 
   const membership = await getMembership(userId);
   if (!membership) return NextResponse.json({ error: "No membership" }, { status: 403 });
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  try {
+    await assertCapability({
+      tenantId: membership.tenantId,
+      userId,
+      email: user?.id === userId ? user.email ?? null : null,
+      capability: "reports_advanced",
+    });
+  } catch (e) {
+    const r = nextResponseFromPlanOrQuotaError(e);
+    if (r) return r;
+    throw e;
+  }
 
   const url = new URL(request.url);
   const type = url.searchParams.get("type") as ReportType | null;

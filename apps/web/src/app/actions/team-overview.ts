@@ -31,6 +31,7 @@ import { buildCareerInsights } from "@/lib/career/career-insights";
 import type { CareerEvaluationViewModel } from "@/lib/career/career-evaluation-vm";
 import type { CareerInsight } from "@/lib/career/career-insights";
 import { eq, and, gte, lt, lte, isNull, isNotNull, sql, desc, asc, inArray, or } from "db";
+import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guard";
 
 /**
  * Effective production date for a contract:
@@ -139,6 +140,7 @@ export type TeamMemberInfo = {
 async function getScopeContext(scope?: TeamOverviewScope) {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
+  await assertCapabilityForAction(auth, "team_overview");
   const resolvedScope = resolveScopeForRole(auth.roleName as RoleName, scope);
   const tenantMembers = await listTenantHierarchyMembers(auth.tenantId);
   const visibleUserIds = await getVisibleUserIds(auth.tenantId, auth.userId, auth.roleName as RoleName, resolvedScope);
@@ -428,6 +430,7 @@ export async function getTeamOverviewKpis(
 export async function getTeamHierarchy(scope?: TeamOverviewScope): Promise<TeamTreeNode[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
+  await assertCapabilityForAction(auth, "team_overview");
   const resolvedScope = resolveScopeForRole(auth.roleName as RoleName, scope);
   return getTeamTree(auth.tenantId, auth.userId, auth.roleName as RoleName, resolvedScope);
 }
@@ -1014,6 +1017,7 @@ export type TeamGoalRow = {
 export async function listTeamGoals(year?: number, period?: string): Promise<TeamGoalRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName as RoleName, "team_goals:read")) return [];
+  await assertCapabilityForAction(auth, "team_goals_events");
   const conditions = [eq(teamGoals.tenantId, auth.tenantId)];
   if (year) conditions.push(eq(teamGoals.year, year));
   if (period) conditions.push(eq(teamGoals.period, period));
@@ -1043,6 +1047,7 @@ export async function upsertTeamGoal(input: {
   if (!hasPermission(auth.roleName as RoleName, "team_goals:write")) {
     return { ok: false, error: "Nedostatečná oprávnění." };
   }
+  await assertCapabilityForAction(auth, "team_goals_events");
   const [existing] = await db
     .select({ id: teamGoals.id })
     .from(teamGoals)
@@ -1069,6 +1074,7 @@ export async function deleteTeamGoal(goalId: string): Promise<{ ok: boolean; err
   if (!hasPermission(auth.roleName as RoleName, "team_goals:write")) {
     return { ok: false, error: "Nedostatečná oprávnění." };
   }
+  await assertCapabilityForAction(auth, "team_goals_events");
   const [row] = await db.select({ tenantId: teamGoals.tenantId }).from(teamGoals).where(eq(teamGoals.id, goalId)).limit(1);
   if (!row || row.tenantId !== auth.tenantId) return { ok: false, error: "Cíl nenalezen." };
   await db.delete(teamGoals).where(eq(teamGoals.id, goalId));

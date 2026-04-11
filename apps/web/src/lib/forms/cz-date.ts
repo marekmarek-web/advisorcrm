@@ -58,7 +58,7 @@ export function formatCzDateFromDigits(digits: string): string {
   const dayRaw = d.slice(0, dayLen);
   if (d.length <= dayLen) return displayPart(dayRaw);
 
-  let rest = d.slice(dayLen);
+  const rest = d.slice(dayLen);
   if (rest.length === 0) return `${displayPart(dayRaw)}. `;
 
   let monthRaw: string;
@@ -89,7 +89,7 @@ export function formatCzDateFromDigits(digits: string): string {
     }
   }
 
-  let out = `${displayPart(dayRaw)}. ${displayPart(monthRaw)}`;
+  const out = `${displayPart(dayRaw)}. ${displayPart(monthRaw)}`;
   if (!yearDigits) return out;
   return `${out}. ${yearDigits}`;
 }

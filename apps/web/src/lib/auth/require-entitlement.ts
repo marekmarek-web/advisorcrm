@@ -1,7 +1,7 @@
 import "server-only";
 
 import { checkEntitlement, type EntitlementKey } from "@/lib/entitlements";
-import { requireAuth, type AuthContext } from "./require-auth";
+import { requireAuth, getCachedSupabaseUser, type AuthContext } from "./require-auth";
 
 /**
  * Guard: resolves auth + checks that the tenant has a specific entitlement.
@@ -12,7 +12,11 @@ export async function requireEntitlement(
   auth?: AuthContext,
 ): Promise<AuthContext> {
   const ctx = auth ?? await requireAuth();
-  const allowed = await checkEntitlement(ctx.tenantId, key);
+  const user = await getCachedSupabaseUser();
+  const allowed = await checkEntitlement(ctx.tenantId, key, {
+    userId: ctx.userId,
+    email: user?.email ?? null,
+  });
   if (!allowed) {
     throw new Error(`Entitlement "${key}" is not available for this workspace.`);
   }

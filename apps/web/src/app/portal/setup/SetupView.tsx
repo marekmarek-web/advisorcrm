@@ -34,10 +34,12 @@ import { GoogleCalendarAvailability } from "@/app/portal/setup/GoogleCalendarAva
 import { QUICK_ACTIONS_CATALOG, getDefaultQuickActionsConfig } from "@/lib/quick-actions";
 import type { QuickActionId } from "@/lib/quick-actions";
 import { WorkspaceStripeBilling } from "@/app/components/billing/WorkspaceStripeBilling";
+import { PUBLIC_PRICING_SUMMARY_CS } from "@/lib/billing/plan-public-marketing";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { PortalAdvisorMfaCard } from "@/app/components/auth/PortalAdvisorMfaCard";
+import { formatStoredSubscriptionPlanLabel } from "@/lib/billing/plan-catalog";
 import type { WorkspaceBillingSnapshot } from "@/lib/stripe/billing-types";
 import type { PublicBookingSettingsDTO } from "@/app/actions/public-booking-settings";
 import { PublicBookingSetupBlock } from "@/app/portal/setup/PublicBookingSetupBlock";
@@ -1365,7 +1367,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--wp-text-tertiary)] mb-2">Aktuální tarif</h3>
                 <div className="flex flex-col gap-1 mb-6">
                   <span className="text-3xl sm:text-4xl font-black tracking-tight leading-tight break-words">
-                    {initial.billing?.plan ?? "Zatím bez aktivního plánu"}
+                    {initial.billing?.plan
+                      ? formatStoredSubscriptionPlanLabel(initial.billing.plan) ?? initial.billing.plan
+                      : "Zatím bez aktivního plánu"}
                   </span>
                   {initial.billing?.subscriptionStatus ? (
                     <span className="text-sm font-bold text-[color:var(--wp-text-tertiary)]">
@@ -1390,7 +1394,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   <div className="flex items-center gap-2 text-sm font-medium text-[color:var(--wp-text-tertiary)]"><CheckCircle size={16} className="text-emerald-400 shrink-0" /> Finanční analýzy</div>
                 </div>
                 <div className="text-xs text-[color:var(--wp-text-secondary)] mb-4 space-y-1">
-                  <p>Přehled cen a tarifů na webu: Starter / Pro / Team.</p>
+                  <p>{PUBLIC_PRICING_SUMMARY_CS}</p>
                   <p>
                     Více na{" "}
                     <a href="https://www.aidvisora.cz" target="_blank" rel="noopener noreferrer" className="underline text-indigo-300 hover:text-white">

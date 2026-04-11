@@ -17,6 +17,20 @@ import {
 } from 'lucide-react';
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { LANDING_FAQS } from "@/data/landing-faq";
+import {
+  annualSavingsVersusTwelveMonthly,
+  ANNUAL_BILLING_DISCOUNT_PERCENT,
+  effectiveMonthlyKcWhenBilledAnnually,
+  formatPublicPriceKc,
+  PUBLIC_MONTHLY_PRICE_KC,
+  PUBLIC_TRIAL_DURATION_DAYS,
+  yearlyTotalKcFromMonthlyList,
+} from "@/lib/billing/public-pricing";
+import {
+  PUBLIC_PLAN_INCLUDES,
+  PUBLIC_PLAN_START_EXCLUDES,
+  PUBLIC_PLAN_TAGLINE,
+} from "@/lib/billing/plan-public-marketing";
 
 // --- CUSTOM HOOK & KOMPONENTA PRO SCROLL ANIMACE (REVEAL) ---
 interface ScrollRevealProps {
@@ -434,6 +448,11 @@ export default function PremiumLandingPage() {
   const [isAnnualPricing, setIsAnnualPricing] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  const priceStart = PUBLIC_MONTHLY_PRICE_KC.starter;
+  const pricePro = PUBLIC_MONTHLY_PRICE_KC.pro;
+  const priceMgmt = PUBLIC_MONTHLY_PRICE_KC.team;
+  const trialDaysLabel = `${PUBLIC_TRIAL_DURATION_DAYS} dní`;
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -637,7 +656,7 @@ export default function PremiumLandingPage() {
               href="/prihlaseni?register=1"
               className="hidden sm:inline-flex px-5 py-2.5 bg-indigo-600 text-white rounded-full text-sm font-bold hover:bg-indigo-500 transition-all items-center min-h-[44px]"
             >
-              Vyzkoušet zdarma na 14 dní
+              Založit účet — {trialDaysLabel} zdarma
             </Link>
             <Link
               href="/prihlaseni"
@@ -687,11 +706,11 @@ export default function PremiumLandingPage() {
                   href="/prihlaseni?register=1"
                   className="w-full sm:w-auto px-8 py-4 bg-white text-[#0a0f29] rounded-full text-base font-bold tracking-wide hover:bg-slate-200 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.2)] text-center min-h-[44px] flex items-center justify-center"
                 >
-                  Vyzkoušet zdarma na 14 dní
+                  Založit účet — {trialDaysLabel} zdarma
                 </Link>
               </div>
               <p className="hero-anim delay-300 text-xs text-slate-500 mb-5 lg:text-left text-center">
-                Bez závazku — 14 dní na vyzkoušení.
+                Bez závazku — {trialDaysLabel} v úrovni Pro (pak zvolíte tarif).
               </p>
               <div className="hero-anim delay-300 flex flex-wrap gap-x-4 gap-y-2 justify-center lg:justify-start text-[11px] sm:text-xs text-slate-500 mb-8">
                 <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-500/80 shrink-0" /> Data v EU</span>
@@ -1316,7 +1335,7 @@ export default function PremiumLandingPage() {
             <ScrollReveal delay={200}>
               <SpotlightCard className="p-8 h-full flex flex-col">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400 mb-6"><Users size={24}/></div>
-                <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Tým / Manažer</h3>
+                <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Management</h3>
                 <p className="text-slate-400 mb-6 leading-relaxed">Ztrácíte přehled o tom, na čem vaši lidé pracují, a excelové reporty produkce jsou věčně neaktuální.</p>
                 <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10">
                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1 block">Klíčový modul</span>
@@ -1622,8 +1641,10 @@ export default function PremiumLandingPage() {
         <div className="max-w-[1200px] mx-auto px-6">
           <ScrollReveal>
              <div className="text-center mb-16">
-               <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-6">Férové a transparentní ceny.</h2>
-               <p className="text-xl text-slate-400 max-w-2xl mx-auto">Vyberte si tarif podle toho, jak velký je váš byznys. Můžete kdykoliv přejít na vyšší nebo nižší plán.</p>
+               <h2 className="font-jakarta text-4xl md:text-5xl font-bold text-white mb-6">Tarify Start, Pro a Management</h2>
+               <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                 Rozdíl je hlavně v rozsahu portálu, integrací Google a v týmových přehledech. Tarif můžete měnit podle vývoje praxe.
+               </p>
                
                <div className="inline-flex bg-white/5 border border-white/10 rounded-full p-1 mt-10">
                  <button type="button" className={`min-h-[44px] px-6 py-2.5 rounded-full text-sm font-bold ${!isAnnualPricing ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`} onClick={() => setIsAnnualPricing(false)}>Měsíčně</button>
@@ -1632,11 +1653,22 @@ export default function PremiumLandingPage() {
                  </button>
                </div>
                <p className="text-sm text-slate-500 mt-4 max-w-lg mx-auto">
-                 Při roční fakturaci platíte o 20 % méně než při měsíčním tarifu (stejné funkce, jiné fakturační období).
+                 Při roční fakturaci platíte o {ANNUAL_BILLING_DISCOUNT_PERCENT} % méně než při součtu 12 měsíčních plateb (stejné funkce, jiné fakturační období).
                </p>
+               {isAnnualPricing ? (
+                 <p className="text-xs text-emerald-400/90 mt-3 max-w-lg mx-auto font-medium">
+                   Ekvivalent měsíčně při roční platbě: úspora{" "}
+                   {formatPublicPriceKc(annualSavingsVersusTwelveMonthly(priceStart))} až{" "}
+                   {formatPublicPriceKc(annualSavingsVersusTwelveMonthly(priceMgmt))} Kč ročně oproti 12× měsíční ceně.
+                 </p>
+               ) : null}
                <p className="text-xs text-slate-500 mt-3 max-w-xl mx-auto leading-relaxed">
-                 <strong className="text-slate-400">Starter</strong> — CRM, kalendář, pipeline a základní AI.{" "}
-                 <strong className="text-slate-400">Pro</strong> navíc klientská zóna, pokročilejší AI s PDF, finanční analýzy a kalkulačky.
+                 <strong className="text-slate-400">Start</strong> — CRM, pipeline, kalendář, úkoly, Google Calendar, dokumenty v portálu, základní AI.{" "}
+                 <strong className="text-slate-400">Pro</strong> — navíc chat, požadavky z portálu, Gmail, Drive, AI review PDF a pokročilý asistent.{" "}
+                 <strong className="text-slate-400">Management</strong> — navíc týmové přehledy, produkce, KPI a reporty.
+               </p>
+               <p className="text-xs text-slate-500 mt-2 max-w-xl mx-auto">
+                 Zkušební verze {trialDaysLabel} v úrovni <strong className="text-slate-400">Pro</strong>.
                </p>
              </div>
           </ScrollReveal>
@@ -1644,18 +1676,41 @@ export default function PremiumLandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
              <ScrollReveal delay={100} direction="up">
                <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 hover:bg-white/10 transition-colors">
-                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Starter</h3>
-                 <p className="text-slate-400 text-sm mb-6">Pro začínající a samostatné poradce.</p>
-                 <div className="text-4xl font-black text-white mb-1">{isAnnualPricing ? '1 190' : '1 490'} <span className="text-lg text-slate-500 font-medium">Kč / měs.</span></div>
-                 <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
+                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Start</h3>
+                 <p className="text-slate-400 text-sm mb-6">{PUBLIC_PLAN_TAGLINE.start}</p>
+                 <div className="text-4xl font-black text-white mb-1">
+                   {formatPublicPriceKc(
+                     isAnnualPricing ? effectiveMonthlyKcWhenBilledAnnually(priceStart) : priceStart
+                   )}{" "}
+                   <span className="text-lg text-slate-500 font-medium">Kč / měs.</span>
+                 </div>
+                 <p className={`text-xs text-slate-500 font-bold uppercase tracking-widest ${isAnnualPricing ? "mb-1" : "mb-8"}`}>
+                   {isAnnualPricing ? "Ekvivalent při roční fakturaci" : "Fakturováno měsíčně"}
+                 </p>
+                 {isAnnualPricing ? (
+                   <p className="text-xs text-slate-500 mb-6">
+                     Celkem {formatPublicPriceKc(yearlyTotalKcFromMonthlyList(priceStart))} Kč / rok · úspora{" "}
+                     {formatPublicPriceKc(annualSavingsVersusTwelveMonthly(priceStart))} Kč
+                   </p>
+                 ) : null}
                  
-                 <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-2 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                 <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-2 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Založit účet — {trialDaysLabel} zdarma</Link>
                  <Link href="/prihlaseni" className="block w-full py-3 text-slate-400 text-sm font-medium hover:text-white transition-colors text-center mb-8">Už mám účet — přihlásit se</Link>
                  
-                 <ul className="space-y-4">
-                   <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> 1 uživatel</li>
-                   <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> Neomezená Pipeline a Kalendář</li>
-                   <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> Základní AI Asistent</li>
+                 <ul className="space-y-3">
+                   {PUBLIC_PLAN_INCLUDES.start.map((line) => (
+                     <li key={line} className="flex items-start gap-3 text-slate-300 text-sm">
+                       <Check size={18} className="text-indigo-400 shrink-0 mt-0.5" /> {line}
+                     </li>
+                   ))}
+                 </ul>
+                 <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-4 mb-2">V ceně Start nejsou</p>
+                 <ul className="space-y-2">
+                   {PUBLIC_PLAN_START_EXCLUDES.map((line) => (
+                     <li key={line} className="flex items-start gap-3 text-slate-500 text-xs">
+                       <XCircle size={16} className="text-slate-600 shrink-0 mt-0.5" /> {line}
+                     </li>
+                   ))}
                  </ul>
                </div>
              </ScrollReveal>
@@ -1666,18 +1721,32 @@ export default function PremiumLandingPage() {
                  <div className="pro-pricing-inner p-8">
                    <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-b-xl z-20">Nejvyužívanější</div>
                    <h3 className="font-jakarta text-2xl font-bold text-white mb-2 mt-4 relative z-20">Pro</h3>
-                   <p className="text-slate-400 text-sm mb-6 relative z-20">Kompletní balíček pro profesionály.</p>
-                   <div className="text-5xl font-black text-white mb-1 relative z-20">{isAnnualPricing ? '1 590' : '1 990'} <span className="text-lg text-slate-500 font-medium">Kč / měs.</span></div>
-                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8 relative z-20">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
+                   <p className="text-slate-400 text-sm mb-6 relative z-20">{PUBLIC_PLAN_TAGLINE.pro}</p>
+                   <div className="text-5xl font-black text-white mb-1 relative z-20">
+                     {formatPublicPriceKc(
+                       isAnnualPricing ? effectiveMonthlyKcWhenBilledAnnually(pricePro) : pricePro
+                     )}{" "}
+                     <span className="text-lg text-slate-500 font-medium">Kč / měs.</span>
+                   </div>
+                   <p className={`text-xs text-slate-500 font-bold uppercase tracking-widest relative z-20 ${isAnnualPricing ? "mb-1" : "mb-8"}`}>
+                     {isAnnualPricing ? "Ekvivalent při roční fakturaci" : "Fakturováno měsíčně"}
+                   </p>
+                   {isAnnualPricing ? (
+                     <p className="text-xs text-slate-500 mb-6 relative z-20">
+                       Celkem {formatPublicPriceKc(yearlyTotalKcFromMonthlyList(pricePro))} Kč / rok · úspora{" "}
+                       {formatPublicPriceKc(annualSavingsVersusTwelveMonthly(pricePro))} Kč
+                     </p>
+                   ) : null}
                    
-                   <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 transition-colors mb-2 shadow-lg shadow-indigo-500/30 relative z-20 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                   <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 transition-colors mb-2 shadow-lg shadow-indigo-500/30 relative z-20 text-center min-h-[44px] flex items-center justify-center">Založit účet — {trialDaysLabel} zdarma</Link>
                    <Link href="/prihlaseni" className="block w-full py-3 text-indigo-200/90 text-sm font-medium hover:text-white transition-colors mb-8 relative z-20 text-center">Už mám účet — přihlásit se</Link>
                    
-                   <ul className="space-y-4 relative z-20">
-                     <li className="flex items-center gap-3 text-white text-sm font-medium"><Check size={18} className="text-indigo-400"/> Vše ze Starteru</li>
-                     <li className="flex items-center gap-3 text-white text-sm font-medium"><Check size={18} className="text-emerald-400"/> Klientská zóna (Pro klienty)</li>
-                     <li className="flex items-center gap-3 text-white text-sm font-medium"><Check size={18} className="text-emerald-400"/> Finanční analýzy a Kalkulačky</li>
-                     <li className="flex items-center gap-3 text-white text-sm font-medium"><Check size={18} className="text-emerald-400"/> Pokročilé AI a extrakce PDF</li>
+                   <ul className="space-y-3 relative z-20">
+                     {PUBLIC_PLAN_INCLUDES.pro.map((line) => (
+                       <li key={line} className="flex items-start gap-3 text-white text-sm font-medium">
+                         <Check size={18} className="text-emerald-400 shrink-0 mt-0.5" /> {line}
+                       </li>
+                     ))}
                    </ul>
                  </div>
                </div>
@@ -1685,18 +1754,33 @@ export default function PremiumLandingPage() {
 
              <ScrollReveal delay={300} direction="up">
                <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 hover:bg-white/10 transition-colors">
-                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Team</h3>
-                 <p className="text-slate-400 text-sm mb-6">Pro agentury a manažerské týmy.</p>
-                 <div className="text-4xl font-black text-white mb-1">{isAnnualPricing ? '1 990' : '2 490'} <span className="text-lg text-slate-500 font-medium">Kč / uživ.</span></div>
-                 <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8">Fakturováno {isAnnualPricing ? 'ročně' : 'měsíčně'}</p>
+                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Management</h3>
+                 <p className="text-slate-400 text-sm mb-6">{PUBLIC_PLAN_TAGLINE.management}</p>
+                 <div className="text-4xl font-black text-white mb-1">
+                   {formatPublicPriceKc(
+                     isAnnualPricing ? effectiveMonthlyKcWhenBilledAnnually(priceMgmt) : priceMgmt
+                   )}{" "}
+                   <span className="text-lg text-slate-500 font-medium">Kč / měs.</span>
+                 </div>
+                 <p className={`text-xs text-slate-500 font-bold uppercase tracking-widest ${isAnnualPricing ? "mb-1" : "mb-8"}`}>
+                   {isAnnualPricing ? "Ekvivalent při roční fakturaci" : "Fakturováno měsíčně"}
+                 </p>
+                 {isAnnualPricing ? (
+                   <p className="text-xs text-slate-500 mb-6">
+                     Celkem {formatPublicPriceKc(yearlyTotalKcFromMonthlyList(priceMgmt))} Kč / rok · úspora{" "}
+                     {formatPublicPriceKc(annualSavingsVersusTwelveMonthly(priceMgmt))} Kč
+                   </p>
+                 ) : null}
                  
-                 <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-2 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Vyzkoušet zdarma na 14 dní</Link>
+                 <Link href="/prihlaseni?register=1" className="block w-full py-4 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors mb-2 border border-white/10 text-center min-h-[44px] flex items-center justify-center">Založit účet — {trialDaysLabel} zdarma</Link>
                  <Link href="/prihlaseni" className="block w-full py-3 text-slate-400 text-sm font-medium hover:text-white transition-colors text-center mb-8">Už mám účet — přihlásit se</Link>
                  
-                 <ul className="space-y-4">
-                   <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> Vše z Pro</li>
-                   <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> Sdílení dat a asistentky</li>
-                   <li className="flex items-center gap-3 text-slate-300 text-sm"><Check size={18} className="text-indigo-400"/> Manažerské KPI reporty</li>
+                 <ul className="space-y-3">
+                   {PUBLIC_PLAN_INCLUDES.management.map((line) => (
+                     <li key={line} className="flex items-start gap-3 text-slate-300 text-sm">
+                       <Check size={18} className="text-indigo-400 shrink-0 mt-0.5" /> {line}
+                     </li>
+                   ))}
                  </ul>
                </div>
              </ScrollReveal>
@@ -1803,7 +1887,7 @@ export default function PremiumLandingPage() {
                 href="/prihlaseni?register=1"
                 className="w-full sm:w-auto px-10 py-5 bg-white text-[#0a0f29] rounded-full text-lg font-bold tracking-wide shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:scale-[1.02] transition-transform text-center min-h-[44px] flex items-center justify-center gap-2"
               >
-                Vyzkoušet zdarma na 14 dní <ArrowRight size={18} />
+                Založit účet — {trialDaysLabel} zdarma <ArrowRight size={18} />
               </Link>
               <Link
                 href="/prihlaseni"

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { listContractReviews } from "@/lib/ai/review-queue-repository";
+import { assertCapability } from "@/lib/billing/plan-access-guards";
+import { nextResponseFromPlanOrQuotaError } from "@/lib/billing/plan-access-http";
 import type { ContractReviewStatus } from "db";
 import type { ContractProcessingStatus } from "db";
 
@@ -45,6 +48,23 @@ export async function GET(request: Request) {
     const membership = await getMembership(userId);
     if (!membership) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    try {
+      await assertCapability({
+        tenantId: membership.tenantId,
+        userId,
+        email: user?.id === userId ? user.email ?? null : null,
+        capability: "ai_review",
+      });
+    } catch (e) {
+      const r = nextResponseFromPlanOrQuotaError(e);
+      if (r) return r;
+      throw e;
     }
 
     const { searchParams } = new URL(request.url);

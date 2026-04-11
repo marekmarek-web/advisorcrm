@@ -57,6 +57,8 @@ export type AdvisorProfileInitial = {
   currentSupervisorId?: string | null;
   supervisorOptions?: SupervisorOption[];
   billing?: WorkspaceBillingSnapshot;
+  /** Interní badge — není veřejný pricing tier. */
+  internalAdminAccessBadge?: boolean;
   publicBooking: PublicBookingSettingsDTO;
   canonicalBaseUrl: string;
 };
@@ -917,7 +919,11 @@ export function AdvisorProfileView({
 
             {initial.billing ? (
               <div className="mt-8 pt-8 border-t border-[color:var(--wp-surface-card-border)]">
-                <WorkspaceStripeBilling billing={initial.billing} billingContext="profile" />
+                <WorkspaceStripeBilling
+                  billing={initial.billing}
+                  billingContext="profile"
+                  showInternalAdminBadge={Boolean(initial.internalAdminAccessBadge)}
+                />
               </div>
             ) : null}
           </div>

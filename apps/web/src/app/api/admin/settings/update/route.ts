@@ -46,7 +46,13 @@ export async function POST(request: Request) {
   if (existing.length > 0) {
     await db
       .update(tenantSettings)
-      .set({ value: value as any, updatedBy: userId, updatedAt: new Date(), version: (existing[0]!.version ?? 0) + 1 })
+      .set({
+        value: value as any,
+        updatedBy: userId,
+        updatedAt: new Date(),
+        version: (existing[0]!.version ?? 0) + 1,
+        settingOrigin: "manual",
+      })
       .where(and(eq(tenantSettings.tenantId, membership.tenantId), eq(tenantSettings.key, key)));
   } else {
     await db.insert(tenantSettings).values({
@@ -56,6 +62,7 @@ export async function POST(request: Request) {
       domain: def.domain,
       updatedBy: userId,
       version: 1,
+      settingOrigin: "manual",
     });
   }
 

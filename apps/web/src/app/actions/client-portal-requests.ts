@@ -30,6 +30,8 @@ import {
   parseAdvisorPortalHandling,
   type AdvisorPortalRequestHandling,
 } from "@/lib/client-portal/advisor-portal-handling";
+import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guard";
+import { PlanAccessError } from "@/lib/billing/plan-access-errors";
 
 async function notifyAdvisorNewPortalRequest(params: {
   tenantId: string;
@@ -349,6 +351,13 @@ export async function createClientPortalRequest(params: {
   if (!canCreate) return { success: false, error: "Forbidden" };
   const contactId = auth.contactId;
   if (!contactId) return { success: false, error: "Forbidden" };
+
+  try {
+    await assertCapabilityForAction(auth, "client_portal_service_requests");
+  } catch (e) {
+    if (PlanAccessError.is(e)) return { success: false, error: e.message };
+    throw e;
+  }
 
   const [firstStage] = await db
     .select({ id: opportunityStages.id })

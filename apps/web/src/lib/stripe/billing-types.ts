@@ -1,3 +1,12 @@
+/** Stripe / DB subscription row snapshot for billing + access resolution. */
+export type SubscriptionState = {
+  status: string | null;
+  plan: string | null;
+  currentPeriodEnd: Date | null;
+  isActive: boolean;
+  inGracePeriod: boolean;
+};
+
 export type PlanTier = "starter" | "pro" | "team";
 export type PlanInterval = "month" | "year";
 
@@ -19,6 +28,14 @@ export type WorkspaceBillingSnapshot = {
   plan: string | null;
   canManage: boolean;
   checkoutCatalog: CheckoutCatalogSnapshot;
+  /** Workspace 14d trial (not a public tier); badge-only in UI. */
+  workspaceTrial: {
+    isActive: boolean;
+    trialStartedAt: string | null;
+    trialEndsAt: string | null;
+    trialPlanKey: string | null;
+    daysRemaining: number | null;
+  } | null;
 };
 
 export type StripeBillingContext = "profile" | "setup";
