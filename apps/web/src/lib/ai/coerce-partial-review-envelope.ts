@@ -105,7 +105,19 @@ function normalizeConfidence01(raw: unknown, fallback: number): number {
   return raw > 1 ? Math.min(1, raw / 100) : Math.max(0, Math.min(1, raw));
 }
 
+/** Set during partial-coercion entry points so wrapped cells inherit discounted document confidence. */
+let docClassificationConfidenceForPartialCoerce: number | undefined;
+
+function discountedFieldConfidenceFromDoc(raw: unknown): number {
+  const d = normalizeConfidence01(raw, 0.5);
+  return Math.min(1, Math.max(0.45, d * 0.8));
+}
+
 function normalizeExtractedFieldCell(key: string, v: unknown): Record<string, unknown> {
+  const defaultConf =
+    docClassificationConfidenceForPartialCoerce !== undefined
+      ? discountedFieldConfidenceFromDoc(docClassificationConfidenceForPartialCoerce)
+      : 0.45;
   if (v != null && typeof v === "object" && !Array.isArray(v)) {
     const o = { ...(v as Record<string, unknown>) };
     const st = o.status;
@@ -114,13 +126,15 @@ function normalizeExtractedFieldCell(key: string, v: unknown): Record<string, un
     }
     if (o.confidence != null) {
       o.confidence = normalizeConfidence01(o.confidence, 0.5);
+    } else {
+      o.confidence = defaultConf;
     }
     return o;
   }
   return {
     value: v,
     status: "inferred_low_confidence",
-    confidence: 0.45,
+    confidence: defaultConf,
   };
 }
 
@@ -826,80 +840,90 @@ export function tryCoerceReviewEnvelopeAfterValidationFailure(
     forcedPrimaryType,
     classification
   );
-  draft.documentMeta = coerceDocumentMeta(draft.documentMeta);
-  const topLevelCandidates = collectTopLevelFieldCandidates(draft);
-  const baseEf = coerceExtractedFields(draft.extractedFields);
-  const mergedEf: Record<string, Record<string, unknown>> = { ...topLevelCandidates, ...baseEf };
 
-  // For loan/mortgage docs: flatten nested legacy format (client, loanDetails, paymentDetails)
-  if (LOAN_MORTGAGE_PRIMARY_TYPES.has(forcedPrimaryType)) {
-    flattenLegacyLoanNestedFields(draft, mergedEf);
-  }
+  const prevDocConf = docClassificationConfidenceForPartialCoerce;
+  const dcRaw = draft.documentClassification as Record<string, unknown>;
+  const dcConf = dcRaw?.confidence;
+  docClassificationConfidenceForPartialCoerce =
+    typeof dcConf === "number" && Number.isFinite(dcConf) ? dcConf : undefined;
+  try {
+    draft.documentMeta = coerceDocumentMeta(draft.documentMeta);
+    const topLevelCandidates = collectTopLevelFieldCandidates(draft);
+    const baseEf = coerceExtractedFields(draft.extractedFields);
+    const mergedEf: Record<string, Record<string, unknown>> = { ...topLevelCandidates, ...baseEf };
 
-  // For investment/subscription docs: flatten nested legacy format (investor, fund, payment)
-  if (
-    forcedPrimaryType === "investment_subscription_document" ||
-    forcedPrimaryType === "investment_service_agreement" ||
-    forcedPrimaryType === "investment_modelation" ||
-    forcedPrimaryType === "pension_contract"
-  ) {
-    flattenLegacyInvestmentNestedFields(draft, mergedEf);
-  }
+    // For loan/mortgage docs: flatten nested legacy format (client, loanDetails, paymentDetails)
+    if (LOAN_MORTGAGE_PRIMARY_TYPES.has(forcedPrimaryType)) {
+      flattenLegacyLoanNestedFields(draft, mergedEf);
+    }
 
-  // For leasing/financing docs: flatten nested legacy format (customer, vehicleDetails, financingTerms)
-  if (forcedPrimaryType === "generic_financial_document") {
-    flattenLegacyLeasingNestedFields(draft, mergedEf);
-  }
+    // For investment/subscription docs: flatten nested legacy format (investor, fund, payment)
+    if (
+      forcedPrimaryType === "investment_subscription_document" ||
+      forcedPrimaryType === "investment_service_agreement" ||
+      forcedPrimaryType === "investment_modelation" ||
+      forcedPrimaryType === "pension_contract"
+    ) {
+      flattenLegacyInvestmentNestedFields(draft, mergedEf);
+    }
 
-  // For amendment/change/proposal/service docs: flatten insurer, client, contract ref, payments
-  // This covers cases where LLM used different key names than canonical extractedFields.
-  if (
-    AMENDMENT_PROPOSAL_PRIMARY_TYPES.has(forcedPrimaryType) ||
-    forcedPrimaryType === "insurance_policy_change_or_service_doc"
-  ) {
-    flattenAmendmentProposalFields(draft, mergedEf);
-  }
+    // For leasing/financing docs: flatten nested legacy format (customer, vehicleDetails, financingTerms)
+    if (forcedPrimaryType === "generic_financial_document") {
+      flattenLegacyLeasingNestedFields(draft, mergedEf);
+    }
 
-  // For supporting docs (payslip, tax return, bank statement): flatten to ensure non-empty export
-  if (SUPPORTING_DOC_PRIMARY_TYPES.has(forcedPrimaryType)) {
-    flattenSupportingDocFields(draft, mergedEf);
-  }
+    // For amendment/change/proposal/service docs: flatten insurer, client, contract ref, payments
+    // This covers cases where LLM used different key names than canonical extractedFields.
+    if (
+      AMENDMENT_PROPOSAL_PRIMARY_TYPES.has(forcedPrimaryType) ||
+      forcedPrimaryType === "insurance_policy_change_or_service_doc"
+    ) {
+      flattenAmendmentProposalFields(draft, mergedEf);
+    }
 
-  // For non-life insurance: infer insuredObject when missing (GČP odpovědnost case)
-  if (NONLIFE_PRIMARY_TYPES.has(forcedPrimaryType)) {
-    flattenAmendmentProposalFields(draft, mergedEf); // also run amendment flatten for GČP
-    inferInsuredObjectForNonlife(mergedEf);
-  }
+    // For supporting docs (payslip, tax return, bank statement): flatten to ensure non-empty export
+    if (SUPPORTING_DOC_PRIMARY_TYPES.has(forcedPrimaryType)) {
+      flattenSupportingDocFields(draft, mergedEf);
+    }
 
-  draft.extractedFields = mergedEf;
-  if (draft.parties == null || typeof draft.parties !== "object" || Array.isArray(draft.parties)) {
-    draft.parties = {};
-  }
-  if (!Array.isArray(draft.productsOrObligations)) {
-    draft.productsOrObligations = [];
-  }
-  if (draft.financialTerms == null || typeof draft.financialTerms !== "object" || Array.isArray(draft.financialTerms)) {
-    draft.financialTerms = {};
-  }
-  if (draft.serviceTerms == null || typeof draft.serviceTerms !== "object" || Array.isArray(draft.serviceTerms)) {
-    draft.serviceTerms = {};
-  }
-  draft.evidence = coerceEvidence(draft.evidence);
-  draft.reviewWarnings = coerceReviewWarnings(draft.reviewWarnings);
-  draft.suggestedActions = coerceSuggestedActions(draft.suggestedActions);
+    // For non-life insurance: infer insuredObject when missing (GČP odpovědnost case)
+    if (NONLIFE_PRIMARY_TYPES.has(forcedPrimaryType)) {
+      flattenAmendmentProposalFields(draft, mergedEf); // also run amendment flatten for GČP
+      inferInsuredObjectForNonlife(mergedEf);
+    }
 
-  if (draft.candidateMatches != null && (typeof draft.candidateMatches !== "object" || Array.isArray(draft.candidateMatches))) {
-    delete draft.candidateMatches;
-  }
-  if (draft.dataCompleteness != null && (typeof draft.dataCompleteness !== "object" || Array.isArray(draft.dataCompleteness))) {
-    delete draft.dataCompleteness;
-  }
-  if (draft.sectionSensitivity != null && (typeof draft.sectionSensitivity !== "object" || Array.isArray(draft.sectionSensitivity))) {
-    draft.sectionSensitivity = {};
-  }
+    draft.extractedFields = mergedEf;
+    if (draft.parties == null || typeof draft.parties !== "object" || Array.isArray(draft.parties)) {
+      draft.parties = {};
+    }
+    if (!Array.isArray(draft.productsOrObligations)) {
+      draft.productsOrObligations = [];
+    }
+    if (draft.financialTerms == null || typeof draft.financialTerms !== "object" || Array.isArray(draft.financialTerms)) {
+      draft.financialTerms = {};
+    }
+    if (draft.serviceTerms == null || typeof draft.serviceTerms !== "object" || Array.isArray(draft.serviceTerms)) {
+      draft.serviceTerms = {};
+    }
+    draft.evidence = coerceEvidence(draft.evidence);
+    draft.reviewWarnings = coerceReviewWarnings(draft.reviewWarnings);
+    draft.suggestedActions = coerceSuggestedActions(draft.suggestedActions);
 
-  const result = documentReviewEnvelopeSchema.safeParse(draft);
-  return result.success ? result.data : null;
+    if (draft.candidateMatches != null && (typeof draft.candidateMatches !== "object" || Array.isArray(draft.candidateMatches))) {
+      delete draft.candidateMatches;
+    }
+    if (draft.dataCompleteness != null && (typeof draft.dataCompleteness !== "object" || Array.isArray(draft.dataCompleteness))) {
+      delete draft.dataCompleteness;
+    }
+    if (draft.sectionSensitivity != null && (typeof draft.sectionSensitivity !== "object" || Array.isArray(draft.sectionSensitivity))) {
+      draft.sectionSensitivity = {};
+    }
+
+    const result = documentReviewEnvelopeSchema.safeParse(draft);
+    return result.success ? result.data : null;
+  } finally {
+    docClassificationConfidenceForPartialCoerce = prevDocConf;
+  }
 }
 
 /**
@@ -921,85 +945,93 @@ export function mergePartialParsedIntoManualStub(
     return { mergedFieldKeys, mergedPartyKeys };
   }
 
-  const rootCandidates = collectTopLevelFieldCandidates(parsed);
-  const mergedEf: Record<string, Record<string, unknown>> = {};
+  const prevDocConf = docClassificationConfidenceForPartialCoerce;
+  const stubDcConf = stub.documentClassification?.confidence;
+  docClassificationConfidenceForPartialCoerce =
+    typeof stubDcConf === "number" && Number.isFinite(stubDcConf) ? stubDcConf : undefined;
+  try {
+    const rootCandidates = collectTopLevelFieldCandidates(parsed);
+    const mergedEf: Record<string, Record<string, unknown>> = {};
 
-  for (const [k, v] of Object.entries(rootCandidates)) {
-    mergedEf[k] = v;
-  }
-
-  const ef = parsed.extractedFields;
-  if (ef && typeof ef === "object" && !Array.isArray(ef)) {
-    for (const [k, v] of Object.entries(ef as Record<string, unknown>)) {
-      if (k.startsWith("_")) continue;
-      if (mergedEf[k]) continue;
-      mergedEf[k] = normalizeExtractedFieldCell(k, v);
+    for (const [k, v] of Object.entries(rootCandidates)) {
+      mergedEf[k] = v;
     }
-  }
 
-  // Apply domain-specific flatten based on stub's detected document type
-  const stubPrimary = stub.documentClassification?.primaryType ?? "";
-  if (AMENDMENT_PROPOSAL_PRIMARY_TYPES.has(stubPrimary) || stubPrimary === "insurance_policy_change_or_service_doc") {
-    flattenAmendmentProposalFields(parsed, mergedEf);
-  }
-  if (SUPPORTING_DOC_PRIMARY_TYPES.has(stubPrimary)) {
-    flattenSupportingDocFields(parsed, mergedEf);
-  }
-  if (LOAN_MORTGAGE_PRIMARY_TYPES.has(stubPrimary)) {
-    flattenLegacyLoanNestedFields(parsed, mergedEf);
-  }
-  if (
-    stubPrimary === "investment_subscription_document" ||
-    stubPrimary === "investment_service_agreement" ||
-    stubPrimary === "investment_modelation" ||
-    stubPrimary === "pension_contract"
-  ) {
-    flattenLegacyInvestmentNestedFields(parsed, mergedEf);
-  }
-  if (NONLIFE_PRIMARY_TYPES.has(stubPrimary)) {
-    flattenAmendmentProposalFields(parsed, mergedEf);
-    inferInsuredObjectForNonlife(mergedEf);
-  }
-
-  // Write merged fields into stub
-  for (const [k, v] of Object.entries(mergedEf)) {
-    stub.extractedFields[k] = v as DocumentReviewEnvelope["extractedFields"][string];
-    mergedFieldKeys.push(k);
-  }
-
-  const parties = parsed.parties;
-  if (Array.isArray(parties)) {
-    for (let i = 0; i < parties.length; i++) {
-      const p = parties[i];
-      if (!p || typeof p !== "object" || Array.isArray(p)) continue;
-      const rec = p as Record<string, unknown>;
-      const roleRaw = typeof rec.role === "string" ? rec.role.trim() : "";
-      const key = roleRaw
-        ? roleRaw.toLowerCase().replace(/\s+/g, "_")
-        : `party_${i}`;
-      if (key.startsWith("_")) continue;
-      stub.parties[key] = rec;
-      mergedPartyKeys.push(key);
+    const ef = parsed.extractedFields;
+    if (ef && typeof ef === "object" && !Array.isArray(ef)) {
+      for (const [k, v] of Object.entries(ef as Record<string, unknown>)) {
+        if (k.startsWith("_")) continue;
+        if (mergedEf[k]) continue;
+        mergedEf[k] = normalizeExtractedFieldCell(k, v);
+      }
     }
-  } else if (parties && typeof parties === "object") {
-    for (const [k, v] of Object.entries(parties as Record<string, unknown>)) {
-      if (k.startsWith("_")) continue;
-      stub.parties[k] = v;
-      mergedPartyKeys.push(k);
+
+    // Apply domain-specific flatten based on stub's detected document type
+    const stubPrimary = stub.documentClassification?.primaryType ?? "";
+    if (AMENDMENT_PROPOSAL_PRIMARY_TYPES.has(stubPrimary) || stubPrimary === "insurance_policy_change_or_service_doc") {
+      flattenAmendmentProposalFields(parsed, mergedEf);
     }
+    if (SUPPORTING_DOC_PRIMARY_TYPES.has(stubPrimary)) {
+      flattenSupportingDocFields(parsed, mergedEf);
+    }
+    if (LOAN_MORTGAGE_PRIMARY_TYPES.has(stubPrimary)) {
+      flattenLegacyLoanNestedFields(parsed, mergedEf);
+    }
+    if (
+      stubPrimary === "investment_subscription_document" ||
+      stubPrimary === "investment_service_agreement" ||
+      stubPrimary === "investment_modelation" ||
+      stubPrimary === "pension_contract"
+    ) {
+      flattenLegacyInvestmentNestedFields(parsed, mergedEf);
+    }
+    if (NONLIFE_PRIMARY_TYPES.has(stubPrimary)) {
+      flattenAmendmentProposalFields(parsed, mergedEf);
+      inferInsuredObjectForNonlife(mergedEf);
+    }
+
+    // Write merged fields into stub
+    for (const [k, v] of Object.entries(mergedEf)) {
+      stub.extractedFields[k] = v as DocumentReviewEnvelope["extractedFields"][string];
+      mergedFieldKeys.push(k);
+    }
+
+    const parties = parsed.parties;
+    if (Array.isArray(parties)) {
+      for (let i = 0; i < parties.length; i++) {
+        const p = parties[i];
+        if (!p || typeof p !== "object" || Array.isArray(p)) continue;
+        const rec = p as Record<string, unknown>;
+        const roleRaw = typeof rec.role === "string" ? rec.role.trim() : "";
+        const key = roleRaw
+          ? roleRaw.toLowerCase().replace(/\s+/g, "_")
+          : `party_${i}`;
+        if (key.startsWith("_")) continue;
+        stub.parties[key] = rec;
+        mergedPartyKeys.push(key);
+      }
+    } else if (parties && typeof parties === "object") {
+      for (const [k, v] of Object.entries(parties as Record<string, unknown>)) {
+        if (k.startsWith("_")) continue;
+        stub.parties[k] = v;
+        mergedPartyKeys.push(k);
+      }
+    }
+
+    const topKeys = Object.keys(parsed).filter((k) => !k.startsWith("_")).slice(0, 32);
+    stub.debug = {
+      ...(stub.debug ?? {}),
+      partialMerge: {
+        attempted: true,
+        rawCharLength,
+        topLevelKeys: topKeys,
+        mergedExtractedFieldCount: mergedFieldKeys.length,
+        mergedPartyCount: mergedPartyKeys.length,
+      },
+    };
+
+    return { mergedFieldKeys, mergedPartyKeys };
+  } finally {
+    docClassificationConfidenceForPartialCoerce = prevDocConf;
   }
-
-  const topKeys = Object.keys(parsed).filter((k) => !k.startsWith("_")).slice(0, 32);
-  stub.debug = {
-    ...(stub.debug ?? {}),
-    partialMerge: {
-      attempted: true,
-      rawCharLength,
-      topLevelKeys: topKeys,
-      mergedExtractedFieldCount: mergedFieldKeys.length,
-      mergedPartyCount: mergedPartyKeys.length,
-    },
-  };
-
-  return { mergedFieldKeys, mergedPartyKeys };
 }

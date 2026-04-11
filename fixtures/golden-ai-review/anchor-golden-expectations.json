@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "description": "F0 — Minimum acceptance hints per anchor (not full LLM truth; used for structure + future regression). Aligns with MAX_INCLUSION master plan §35–§37.",
+  "notes": [
+    "expectedPrimaryTypes: pipeline may return any listed value as valid routing for that document.",
+    "mustHaveAnyOf: at least one field in each group should be non-empty after extraction (contract products).",
+    "supportingDocs: payslip/tax use supporting-document rules — non-empty stub + correct lane."
+  ],
+  "expectations": [
+    {
+      "id": "GCP",
+      "segment": "amendment_life",
+      "expectedPrimaryTypes": ["life_insurance_amendment", "life_insurance_contract", "life_insurance_proposal", "generic_financial_document"],
+      "mustHaveAnyOf": [["insurer", "institutionName", "provider"], ["fullName", "clientFullName"], ["contractNumber", "proposalNumber", "proposalNumber_or_contractNumber"]]
+    },
+    {
+      "id": "AMUNDI",
+      "segment": "dip_investment",
+      "expectedPrimaryTypes": ["investment_subscription_document", "dip_contract", "investment_service_agreement", "generic_financial_document"],
+      "mustHaveAnyOf": [["institutionName", "provider", "investmentCompany"], ["fullName", "clientFullName", "investorFullName"], ["contractNumber", "proposalNumber", "proposalNumber_or_contractNumber"]]
+    },
+    {
+      "id": "MAXIMA",
+      "segment": "life_proposal",
+      "expectedPrimaryTypes": ["life_insurance_proposal", "life_insurance_final_contract", "life_insurance_investment_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"], ["contractNumber", "proposalNumber", "proposalNumber_or_contractNumber"]]
+    },
+    {
+      "id": "CSOB",
+      "segment": "consumer_loan",
+      "expectedPrimaryTypes": ["consumer_loan_contract", "mortgage_document", "generic_financial_document"],
+      "forbiddenPrimaryTypes": ["life_insurance_final_contract",
+        "life_insurance_proposal"],
+      "mustHaveAnyOf": [["lender", "institutionName"], ["fullName", "clientFullName", "borrowerName"], ["loanAmount", "installmentAmount"]]
+    },
+    {
+      "id": "PAYSLIP",
+      "segment": "supporting_income",
+      "expectedPrimaryTypes": ["payslip_document", "generic_supporting_document"],
+      "mustHaveAnyOf": [["fullName", "clientFullName"], ["employerName", "institutionName"]]
+    },
+    {
+      "id": "TAX",
+      "segment": "supporting_tax",
+      "expectedPrimaryTypes": ["corporate_tax_return", "tax_return_document", "generic_supporting_document"],
+      "mustHaveAnyOf": [["fullName", "clientFullName"], ["institutionName"]]
+    },
+    {
+      "id": "PILLOW",
+      "segment": "life_proposal",
+      "expectedPrimaryTypes": ["life_insurance_proposal", "life_insurance_final_contract", "life_insurance_investment_contract", "non_life_insurance_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"], ["totalMonthlyPremium", "annualPremium", "premiumAmount"], ["bankAccount", "iban"], ["variableSymbol"]]
+    },
+    {
+      "id": "UNIQA_MAJETEK",
+      "segment": "property",
+      "expectedPrimaryTypes": ["non_life_insurance_contract", "liability_insurance_proposal", "life_insurance_proposal"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"], ["annualPremium", "totalMonthlyPremium", "premiumAmount"]]
+    },
+    {
+      "id": "UNIQA_ROMAN",
+      "segment": "life_family",
+      "expectedPrimaryTypes": ["life_insurance_proposal", "life_insurance_final_contract", "life_insurance_investment_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"], ["contractNumber", "proposalNumber"]]
+    },
+    {
+      "id": "UNIQA_ZIVOT",
+      "segment": "life",
+      "expectedPrimaryTypes": ["life_insurance_proposal", "life_insurance_final_contract", "life_insurance_investment_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "DIRECT_POR",
+      "segment": "auto_mtpl",
+      "expectedPrimaryTypes": ["non_life_insurance_contract", "liability_insurance_proposal", "life_insurance_proposal"],
+      "forbiddenPrimaryTypes": ["life_insurance_final_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"], ["annualPremium", "totalMonthlyPremium", "premiumAmount"]]
+    },
+    {
+      "id": "IZP_GENERALI",
+      "segment": "life_family",
+      "expectedPrimaryTypes": ["life_insurance_proposal", "life_insurance_investment_contract", "life_insurance_final_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "HANNA_GCP",
+      "segment": "life_modelation_family",
+      "expectedPrimaryTypes": ["life_insurance_modelation", "life_insurance_proposal", "life_insurance_investment_contract", "life_insurance_final_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "CPP_ZMENA",
+      "segment": "amendment",
+      "expectedPrimaryTypes": ["insurance_amendment", "life_insurance_contract", "life_insurance_proposal", "generic_financial_document"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "ODP_ZAM",
+      "segment": "liability",
+      "expectedPrimaryTypes": ["liability_insurance_proposal", "non_life_insurance_contract", "life_insurance_proposal"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "PODNIK",
+      "segment": "business",
+      "expectedPrimaryTypes": ["business_insurance_contract", "non_life_insurance_contract", "life_insurance_proposal"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "DPS",
+      "segment": "pension",
+      "expectedPrimaryTypes": ["pension_contract", "investment_subscription_document", "generic_financial_document"],
+      "mustHaveAnyOf": [["institutionName", "provider", "insurer"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "PATROCH_AMUNDI",
+      "segment": "investment",
+      "expectedPrimaryTypes": ["investment_subscription_document", "dip_contract", "investment_service_agreement"],
+      "mustHaveAnyOf": [["institutionName", "provider"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "CODYA_INV",
+      "segment": "investment_subscription",
+      "expectedPrimaryTypes": ["investment_subscription_document", "investment_service_agreement", "service_agreement"],
+      "mustHaveAnyOf": [["fullName", "clientFullName", "investorFullName"], ["institutionName", "provider"]]
+    },
+    {
+      "id": "CODYA_SERV",
+      "segment": "service_agreement",
+      "expectedPrimaryTypes": ["service_agreement", "investment_service_agreement", "generic_supporting_document"],
+      "mustHaveAnyOf": [["fullName", "clientFullName"], ["institutionName"]]
+    },
+    {
+      "id": "SMLOUVA_UVER",
+      "segment": "loan",
+      "expectedPrimaryTypes": ["consumer_loan_contract", "mortgage_document", "leasing", "generic_financial_document"],
+      "mustHaveAnyOf": [["lender", "institutionName"], ["fullName", "clientFullName", "borrowerName"]]
+    },
+    {
+      "id": "KONSOLIDACE",
+      "segment": "consolidation",
+      "expectedPrimaryTypes": ["consumer_loan_contract", "mortgage_document", "generic_financial_document"],
+      "forbiddenPrimaryTypes": ["life_insurance_final_contract"],
+      "mustHaveAnyOf": [["lender", "institutionName"], ["fullName", "clientFullName", "borrowerName"], ["loanAmount", "installmentAmount"]]
+    },
+    {
+      "id": "HYPOTEKA",
+      "segment": "mortgage",
+      "expectedPrimaryTypes": ["mortgage_document", "consumer_loan_contract", "generic_financial_document"],
+      "mustHaveAnyOf": [["lender", "institutionName"], ["fullName", "clientFullName", "borrowerName"]]
+    },
+    {
+      "id": "LEASING",
+      "segment": "leasing",
+      "expectedPrimaryTypes": ["leasing", "generic_financial_document", "consumer_loan_contract"],
+      "mustHaveAnyOf": [["institutionName", "lender"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "CODYA_PREP",
+      "segment": "investment_subscription",
+      "expectedPrimaryTypes": ["investment_subscription_document", "investment_service_agreement"],
+      "mustHaveAnyOf": [["fullName", "clientFullName"], ["institutionName", "provider"]]
+    },
+    {
+      "id": "METLIFE",
+      "segment": "life_multi_person",
+      "expectedPrimaryTypes": ["life_insurance_proposal", "life_insurance_final_contract", "life_insurance_investment_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    },
+    {
+      "id": "MODELACE_KOOP",
+      "segment": "life_modelation",
+      "expectedPrimaryTypes": ["life_insurance_modelation", "life_insurance_proposal", "life_insurance_investment_contract"],
+      "mustHaveAnyOf": [["insurer", "institutionName"], ["fullName", "clientFullName"]]
+    }
+  ]
+}

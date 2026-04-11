@@ -893,11 +893,18 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
     case "corporate_tax_return":
     case "payslip_document":
     case "bank_statement":
+      // Institution / employer side (payslip employer, tax company, bank) — before person-name aliases
+      mergeFromAliases(ef, "institutionName", [
+        "employer",
+        "employerName",
+        "companyName",
+        "taxpayerName",
+      ]);
       mergeFromAliases(ef, "fullName", [
         "employee",
+        "employeeName",
+        "employee_name",
         "clientName",
-        "taxpayerName",
-        "companyName",
         "accountHolder",
         "ownerName",
       ]);
@@ -925,6 +932,13 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
       ]);
       mergeFromAliases(ef, "payoutAccount", [
         "bankAccount",
+        "accountForPayment",
+        "vyplatniUcet",
+        "ucetProVyplatu",
+      ]);
+      mergeFromAliases(ef, "bankAccount", [
+        "payoutAccount",
+        "payout_account",
         "accountForPayment",
         "vyplatniUcet",
         "ucetProVyplatu",
@@ -1147,6 +1161,8 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
   mergeFromAliases(ef, "bankAccount", [
     "recipientAccount",
     "paymentAccount",
+    "payoutAccount",
+    "payout_account",
     "domesticAccount",
     "cisloUctu",
     "accountNumberFormatted",

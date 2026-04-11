@@ -374,14 +374,14 @@ export function WebLoginView({ login }: { login: AidvisoraLoginState }) {
                     onClick={() => handleOAuthSignIn("google")}
                     className="w-full flex flex-1 items-center justify-center gap-3 py-3.5 min-h-[48px] bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-white font-bold text-sm transition-colors shadow-sm"
                   >
-                    <GoogleIcon /> Pokračovat s Google
+                    <GoogleIcon /> Google
                   </button>
                   <button
                     type="button"
                     onClick={() => handleOAuthSignIn("apple")}
                     className="w-full flex flex-1 items-center justify-center gap-3 py-3.5 min-h-[48px] bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-white font-bold text-sm transition-colors shadow-sm"
                   >
-                    <AppleIcon /> Pokračovat s Apple
+                    <AppleIcon /> Apple
                   </button>
                 </div>
               </>

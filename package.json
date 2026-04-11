@@ -31,7 +31,9 @@
     "compliance:copy-check": "node scripts/compliance-copy-check.mjs",
     "db:verify-documents-schema": "node scripts/verify-documents-schema.mjs",
     "benchmark:claude": "node --env-file=apps/web/.env.local scripts/benchmark-claude-review.mjs",
-    "eval:golden-live": "pnpm --filter web eval:golden-live"
+    "eval:golden-live": "pnpm --filter web eval:golden-live",
+    "debug:anchors": "pnpm --filter web debug:anchors",
+    "debug:anchors:core": "pnpm --filter web debug:anchors:core"
   },
   "dependencies": {
     "postgres": "^3.4.4"

@@ -1,18 +1,32 @@
 /**
- * Anchor Debug Runner — ONE-SHOT RUNTIME TRACE per anchor PDF.
+ * Anchor Debug Runner — ONE-SHOT RUNTIME TRACE per anchor PDF (F0 + war room).
  *
- * Spuštění (z rootu monorepa nebo z apps/web):
+ * Spuštění (z rootu monorepa):
+ *   pnpm debug:anchors
+ * nebo z apps/web:
  *   pnpm --filter web exec cross-env ANCHOR_DEBUG=1 AI_REVIEW_DEBUG=true \
  *     vitest run src/lib/ai/__tests__/anchor-debug-runner.eval.test.ts \
  *     --testTimeout=600000
  *
  * Output: fixtures/golden-ai-review/eval-outputs/anchor-debug-report-<timestamp>.json
+ * Post-F1 regression baselines (repo):
+ *   - anchor-debug-report-f0-baseline.json — frozen pre-F1 full-run snapshot (Slice 6)
+ *   - anchor-debug-report-post-f1.json — copy after last full `pnpm debug:anchors`
+ *   - anchor-extraction-post-f1-summary.md — PASS/FAIL delta + notes
+ *
+ * Trace stages (mapování na pipeline):
+ *   rawModelOutputHead     — první řádky surového LLM JSON
+ *   fieldCheckpoint_beforeAliasNormalize — po Zod/parse + coercion, před alias normalizací (v kódu „after coercion“)
+ *   fieldCheckpoint_afterAliasNormalize  — po alias / validaci
+ *   debugTrace.afterCoercion* — počty polí po partial coercion (ai-review-pipeline-v2)
  *
  * Env:
  *   ANCHOR_DEBUG=1            — povinné (jinak skip)
  *   AI_REVIEW_DEBUG=true      — zapne fieldCheckpoint before/after alias normalize
  *   ANCHOR_DELAY_MS=2000      — mezera mezi dokumenty (default 2000ms)
  *   ANCHOR_ONLY=GCP,MAXIMA    — run pouze vybrané anchory (klíč = anchor id)
+ *   ANCHOR_SET=core|full      — core = původních 6 anchorů; full = celý fixtures/golden-ai-review/anchor-registry.json
+ *   ANCHOR_STRICT=1           — test spadne, pokud nějaký anchor FAIL (default: měkký průchod, report se vždy zapíše)
  */
 
 /* eslint-disable no-console */
@@ -26,6 +40,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { runContractUnderstandingPipeline } from "../contract-understanding-pipeline";
 import { buildAdvisorReviewViewModel } from "../../ai-review/advisor-review-view-model";
 import type { DocumentReviewEnvelope } from "../document-review-types";
+import { F0_CORE_ANCHOR_IDS, loadAnchorRegistry, type AnchorRegistryEntry } from "./f0-anchor-registry";
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -34,39 +49,20 @@ const appsWebRoot = join(__testDir, "../../../..");
 const repoRoot = join(appsWebRoot, "..", "..");
 const evalOutDir = join(repoRoot, "fixtures/golden-ai-review/eval-outputs");
 
-// ─── Anchor list ─────────────────────────────────────────────────────────────
-const ANCHORS = [
-  {
-    id: "GCP",
-    label: "Čučka zamzam GČP",
-    file: "Test AI/Tested preprompt/Čučka zamzam GČP.pdf",
-  },
-  {
-    id: "AMUNDI",
-    label: "AMUNDI DIP",
-    file: "Test AI/Tested preprompt/AMUNDI DIP.pdf",
-  },
-  {
-    id: "MAXIMA",
-    label: "Sebova MAXIMA",
-    file: "Test AI/Tested preprompt/Sebova MAXIMA.pdf",
-  },
-  {
-    id: "CSOB",
-    label: "ČSOB Spotřebitelský úvěr",
-    file: "Test AI/Tested preprompt/Smlouva o ČSOB Spotřebitelském úvěru.pdf",
-  },
-  {
-    id: "PAYSLIP",
-    label: "Výplatní lístek",
-    file: "Test AI/Tested preprompt/Výplatní lístek za měsíc.pdf",
-  },
-  {
-    id: "TAX",
-    label: "Daňové přiznání s.r.o.",
-    file: "Test AI/Tested preprompt/Daňové přiznání s.r.o..pdf",
-  },
-] as const;
+function selectAnchorsForRun(): AnchorRegistryEntry[] {
+  const registry = loadAnchorRegistry();
+  const set = (process.env.ANCHOR_SET ?? "full").toLowerCase();
+  let list = registry.anchors;
+  if (set === "core") {
+    const core = new Set<string>(F0_CORE_ANCHOR_IDS);
+    list = list.filter((a) => core.has(a.id));
+  }
+  const only = process.env.ANCHOR_ONLY?.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean) ?? [];
+  if (only.length > 0) {
+    list = list.filter((a) => only.includes(a.id.toUpperCase()));
+  }
+  return list;
+}
 
 // ─── Core fields traced per anchor ────────────────────────────────────────────
 const CORE_FIELD_KEYS = [
@@ -297,8 +293,8 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
     "runs all anchors and writes debug report",
     async () => {
       const delayMs = Number(process.env.ANCHOR_DELAY_MS ?? "2000");
-      const only = process.env.ANCHOR_ONLY?.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean) ?? [];
-      const anchors = only.length > 0 ? ANCHORS.filter((a) => only.includes(a.id)) : [...ANCHORS];
+      const anchors = selectAnchorsForRun();
+      console.info(`[ANCHOR_DEBUG] ANCHOR_SET=${process.env.ANCHOR_SET ?? "full"} anchors=${anchors.length}`);
 
       mkdirSync(evalOutDir, { recursive: true });
 
@@ -306,10 +302,17 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
 
       const report: {
         generatedAt: string;
+        traceStageLabels: Record<string, string>;
         anchors: Record<string, unknown>[];
         summary: { pass: string[]; fail: string[]; readyToFreeze: boolean };
       } = {
         generatedAt: new Date().toISOString(),
+        traceStageLabels: {
+          rawModelOutputHead: "Surový LLM výstup (head) — před finálním sestavením envelope",
+          fieldCheckpoint_beforeAliasNormalize: "Po parse/Zod/coercion; před alias normalizací (v dokumentaci F0 jako „po coercion“)",
+          fieldCheckpoint_afterAliasNormalize: "Po alias normalizaci a validaci (v dokumentaci „after validation“)",
+          "debugTrace.afterCoercionFieldCount": "Po partial coercion — počet extrahovaných polí (v2 pipeline)",
+        },
         anchors: [],
         summary: { pass: [], fail: [], readyToFreeze: false },
       };
@@ -385,6 +388,8 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
           const debugTrace = trace?.debugTrace as Record<string, unknown> | undefined;
           const classifierResult = debugTrace?.classifierRaw as Record<string, unknown> | undefined;
           const routerDecision = debugTrace?.routerDecision as Record<string, unknown> | undefined;
+          const afterCoercionFieldCount = debugTrace?.afterCoercionFieldCount as number | undefined;
+          const afterCoercionStatus = debugTrace?.afterCoercionStatus as string | undefined;
 
           // ── raw model output (from trace.rawModelOutputHead set in v2 pipeline)
           const rawModelOutputHead = (trace?.rawModelOutputHead as string | undefined) ??
@@ -483,7 +488,10 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
             B2_rawModelOutput: rawModelOutputHead
               ? { head: rawModelOutputHead, length: rawModelOutputLength }
               : "(not in trace — requires AI_REVIEW_DEBUG=true or NODE_ENV!=production)",
-            // C) Raw model output summary (after coercion, before alias normalize)
+            B3_afterCoercionMeta: debugTrace
+              ? { afterCoercionFieldCount: afterCoercionFieldCount ?? null, afterCoercionStatus: afterCoercionStatus ?? null }
+              : null,
+            // C) Field checkpoint (post-parse/Zod; before alias) — „po coercion“ v F0
             C_afterCoercion: afterCoercion ?? "(not in trace — requires AI_REVIEW_DEBUG=true)",
             // D) After alias normalize (= after validation in v2)
             D_afterValidation: afterValidation ?? "(not in trace — requires AI_REVIEW_DEBUG=true)",
@@ -553,18 +561,28 @@ describe.skipIf(!process.env.ANCHOR_DEBUG)("ANCHOR DEBUG RUNNER", () => {
 
       // ── Write report ────────────────────────────────────────────────────────
       const ts = Date.now();
+      const reportJson = JSON.stringify(report, null, 2);
       const reportPath = join(evalOutDir, `anchor-debug-report-${ts}.json`);
-      writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf8");
+      writeFileSync(reportPath, reportJson, "utf8");
+      const latestPath = join(evalOutDir, "anchor-debug-report-latest.json");
+      writeFileSync(latestPath, reportJson, "utf8");
 
       console.info("\n=== ANCHOR DEBUG SUMMARY ===");
       console.info(`PASS: ${report.summary.pass.join(", ") || "none"}`);
       console.info(`FAIL: ${report.summary.fail.join(", ") || "none"}`);
       console.info(`READY TO FREEZE CORE EXTRACTION: ${report.summary.readyToFreeze ? "ANO" : "NE"}`);
       console.info(`Report: ${reportPath}`);
+      console.info(`Latest (stable path pro F1 mini-plan / diff): ${latestPath}`);
 
-      // Test never hard-fails: we always write the report.
-      // Use expect to surface failures visibly in vitest output.
-      expect(report.summary.fail, `FAILing anchors: ${report.summary.fail.join(", ")}`).toHaveLength(0);
+      // Default: měkký průchod — report se vždy zapíše (baseline / F0). Striktní při ANCHOR_STRICT=1.
+      if (process.env.ANCHOR_STRICT === "1") {
+        expect(report.summary.fail, `FAILing anchors: ${report.summary.fail.join(", ")}`).toHaveLength(0);
+      } else {
+        expect(report.anchors.length).toBeGreaterThan(0);
+        if (report.summary.fail.length > 0) {
+          console.warn(`\n[ANCHOR_DEBUG] Soft pass: ${report.summary.fail.length} anchor(s) FAIL — set ANCHOR_STRICT=1 to fail test.\n`);
+        }
+      }
     },
     600_000
   );

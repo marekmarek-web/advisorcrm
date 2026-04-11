@@ -151,6 +151,60 @@ const PRIMARY_TYPE_ALIASES: Record<string, string> = {
   životní_pojistka: "life_insurance_contract",
   zivotni_pojistka: "life_insurance_contract",
   life_insurance_policy: "life_insurance_final_contract",
+
+  // documentFamily values emitted by combined_single_call path — model uses family-level labels
+  // Note: "insurance_contract" is NOT listed here — it's handled by inferGenericInsurancePrimaryType() below
+  insurance_amendment: "insurance_policy_change_or_service_doc",
+  insurance_proposal_modelation: "life_insurance_proposal",
+  loan_or_mortgage: "consumer_loan_contract",
+  bank_or_statement: "bank_statement",
+  income_or_payslip: "payslip_document",
+  tax_or_income: "corporate_tax_return",
+  investment_or_pension: "investment_subscription_document",
+  generic_financial: "generic_financial_document",
+
+  // policy_amendment — common LLM output for GČP-type amendment documents
+  policy_amendment: "insurance_policy_change_or_service_doc",
+  pojistny_dodatek: "insurance_policy_change_or_service_doc",
+  pojistný_dodatek: "insurance_policy_change_or_service_doc",
+  dodatek_k_pojistne_smlouve: "insurance_policy_change_or_service_doc",
+  dodatek_k_pojistné_smlouvě: "insurance_policy_change_or_service_doc",
+
+  // supporting_doc — generic supporting document label
+  supporting_doc: "generic_financial_document",
+  supportingdoc: "generic_financial_document",
+  priloha_k_zadosti: "generic_financial_document",
+  příloha_k_žádosti: "generic_financial_document",
+
+  // tax — extended tax return aliases
+  tax_return_corporate_income_tax: "corporate_tax_return",
+  tax_return_personal_income: "corporate_tax_return",
+  danove_priznani_fyz: "corporate_tax_return",
+  daňové_přiznání_fyzická_osoba: "self_employed_tax_or_income_document",
+  dpfo: "self_employed_tax_or_income_document",
+  dan_z_prijmu_fo: "self_employed_tax_or_income_document",
+  dan_z_příjmů_fo: "self_employed_tax_or_income_document",
+
+  // dip — DIP contract explicit alias
+  dip_contract: "investment_subscription_document",
+  dip_agreement: "investment_subscription_document",
+  dlouhodoby_investicni_produkt: "investment_subscription_document",
+  dlouhodobý_investiční_produkt: "investment_subscription_document",
+
+  // Czech labels without diacritics (LLM may omit diacritics)
+  // Note: investicni_smlouva_dip already defined in the investment section above
+  pojistna_smlouva_zivot: "life_insurance_contract",
+  smlouva_o_uveru_spotrebitelskem: "consumer_loan_contract",
+  spotrebitelsky_uver_smlouva: "consumer_loan_contract",
+
+  // Czech labels with spaces — normalized to underscores
+  "pojistná smlouva": "life_insurance_contract",
+  "investicni smlouva": "investment_subscription_document",
+  "investiční smlouva": "investment_subscription_document",
+  "smlouva o uveru": "consumer_loan_contract",
+  "smlouva o úvěru": "consumer_loan_contract",
+  "spotrebitelsky uver": "consumer_loan_contract",
+  "spotřebitelský úvěr": "consumer_loan_contract",
 };
 
 /** Lowercase keys; map to canonical lifecycle enum values. */
@@ -242,6 +296,18 @@ function deepCloneJson<T>(v: T): T {
 }
 
 /**
+ * Scalar-wrapped extractedFields inherit a discounted document classification confidence
+ * (combined path): floor 0.45, cap 1.0, never absurd percentages from mis-scaled inputs.
+ */
+function fieldConfidenceFromDocumentClassification(docConfidence: unknown): number {
+  let d = 0.5;
+  if (typeof docConfidence === "number" && Number.isFinite(docConfidence)) {
+    d = docConfidence > 1 ? Math.min(1, docConfidence / 100) : Math.max(0, Math.min(1, docConfidence));
+  }
+  return Math.min(1, Math.max(0.45, d * 0.8));
+}
+
+/**
  * Returns a cloned object with documentClassification coerced. Non-objects are returned as-is.
  */
 export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEnvelopeOptions): unknown {
@@ -283,11 +349,15 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       dc.docType ??
       dc.document_type ??
       dc.classification ??
+      dc.documentFamily ??      // combined path: model emits documentFamily instead of primaryType
+      dc.family ??
       root.primaryType ??
       root.documentType ??
       root.type ??
       root.docType ??
       root.document_type ??
+      root.documentFamily ??    // combined path: top-level documentFamily fallback
+      root.family ??
       root.category;
   }
   if (dc.lifecycleStatus == null) {
@@ -388,7 +458,8 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
     };
     if (PRIMARY_SET.has(normalized)) return normalized;
     if (normalized === "insurance_contract" || normalized === "insurance") {
-      return inferGenericInsurancePrimaryType();
+      // inferGenericInsurancePrimaryType uses context hints; falls back to nonlife when no life hints found
+      return inferGenericInsurancePrimaryType() ?? "nonlife_insurance_contract";
     }
     const aliased = PRIMARY_TYPE_ALIASES[normalized] ?? PRIMARY_TYPE_ALIASES[normalized.replace(/_/g, "")] ?? PRIMARY_TYPE_ALIASES[trimmed.toLowerCase()];
     if (aliased && PRIMARY_SET.has(aliased)) return aliased;
@@ -507,6 +578,8 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
 
   root.documentClassification = dc;
 
+  const fieldConfFromDoc = fieldConfidenceFromDocumentClassification(dc.confidence);
+
   const FIELD_STATUS_VALID = new Set(EXTRACTION_FIELD_STATUSES);
 
   // Normalize extractedFields: clamp confidence, fix status enum, add missing required fields
@@ -518,7 +591,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       if (fieldVal == null) continue;
       if (typeof fieldVal !== "object" || Array.isArray(fieldVal)) {
         // Scalar value — wrap it
-        efOut[key] = { value: fieldVal, status: "inferred_low_confidence", confidence: 0.45 };
+        efOut[key] = { value: fieldVal, status: "inferred_low_confidence", confidence: fieldConfFromDoc };
         continue;
       }
       const rawObj = fieldVal as Record<string, unknown>;
@@ -553,7 +626,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
         fObj = {
           value: typeof primaryScalar === "string" || typeof primaryScalar === "number" ? primaryScalar : rawObj,
           status: "inferred_low_confidence",
-          confidence: 0.5,
+          confidence: fieldConfFromDoc,
           evidenceSnippet: JSON.stringify(rawObj).slice(0, 400),
         };
       } else {
@@ -567,7 +640,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
           fObj.confidence = 0;
         }
       } else if (fObj.confidence == null) {
-        fObj.confidence = 0.5;
+        fObj.confidence = fieldConfFromDoc;
       }
       // Fix status enum — try alias map first, then fallback
       const st = fObj.status;
@@ -604,7 +677,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
           efOut[hoistKey] = {
             value: hoistVal,
             status: "inferred_low_confidence",
-            confidence: 0.5,
+            confidence: fieldConfFromDoc,
           };
         }
       }
@@ -701,6 +774,8 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
   }
 
   // Fix parties — model sometimes returns an array instead of record
+  // Also lift key fields from parties into extractedFields if not already present.
+  const partiesSource: Record<string, unknown>[] = [];
   if (Array.isArray(root.parties)) {
     // Convert array of party objects to a record keyed by role or index
     const partiesArr = root.parties as Record<string, unknown>[];
@@ -710,11 +785,118 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       if (p && typeof p === "object") {
         const role = typeof p.role === "string" ? p.role : `party_${i}`;
         partiesRecord[role] = p;
+        partiesSource.push(p as Record<string, unknown>);
       }
     }
     root.parties = partiesRecord;
-  } else if (root.parties != null && typeof root.parties !== "object") {
+  } else if (root.parties != null && typeof root.parties === "object") {
+    // object-form parties — collect entries for field lifting below
+    for (const v of Object.values(root.parties as Record<string, unknown>)) {
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        partiesSource.push(v as Record<string, unknown>);
+      }
+    }
+  } else if (root.parties != null) {
     root.parties = {};
+  }
+
+  // Lift canonical fields from parties into extractedFields (fail-open, first-write-wins)
+  if (partiesSource.length > 0) {
+    const efLift = (root.extractedFields && typeof root.extractedFields === "object" && !Array.isArray(root.extractedFields))
+      ? (root.extractedFields as Record<string, unknown>)
+      : {};
+
+    const hasQualityValue = (key: string): boolean => {
+      const existing = efLift[key];
+      if (existing == null) return false;
+      if (typeof existing === "object" && !Array.isArray(existing)) {
+        const val = (existing as Record<string, unknown>).value;
+        return val != null && val !== "";
+      }
+      return existing !== "";
+    };
+
+    const liftField = (targetKey: string, value: unknown) => {
+      if (value == null || value === "") return;
+      if (!hasQualityValue(targetKey)) {
+        efLift[targetKey] = { value, status: "inferred_low_confidence", confidence: fieldConfFromDoc };
+      }
+    };
+
+    const getStr = (obj: Record<string, unknown>, ...keys: string[]): string | null => {
+      for (const k of keys) {
+        const v = obj[k];
+        if (typeof v === "string" && v.trim()) return v.trim();
+      }
+      return null;
+    };
+
+    // Roles that identify the primary person (borrower, employee, insured, policyholder, etc.)
+    const BORROWER_ROLES = new Set(["borrower", "dluznik", "žadatel", "applicant", "insured", "pojistnik", "policyholder", "employee", "zamestnanec", "zaměstnanec", "client", "klient"]);
+    // Roles that identify the institution / creditor side
+    const LENDER_ROLES = new Set(["lender", "veritel", "věřitel", "bank", "banka", "insurer", "pojistovna", "employer", "zamestnavatel", "zaměstnavatel", "institution", "company"]);
+
+    let borrowerName: string | null = null;
+    let lenderName: string | null = null;
+    let employerName: string | null = null;
+    let institutionName: string | null = null;
+
+    for (const party of partiesSource) {
+      const role = typeof party.role === "string" ? party.role.toLowerCase().trim() : "";
+      const name = getStr(party, "fullName", "name", "legalName", "companyName", "employerName", "institutionName");
+
+      if (!name) continue;
+
+      if (BORROWER_ROLES.has(role)) {
+        if (!borrowerName) borrowerName = name;
+      } else if (LENDER_ROLES.has(role)) {
+        if (!lenderName) lenderName = name;
+        if (role === "employer" || role === "zamestnavatel" || role === "zaměstnavatel") {
+          if (!employerName) employerName = name;
+          if (!institutionName) institutionName = name;
+        } else if (role === "insurer" || role === "pojistovna") {
+          if (!institutionName) institutionName = name;
+        } else if (role === "institution" || role === "company") {
+          if (!institutionName) institutionName = name;
+        }
+      }
+
+      // Also pick up explicit named fields regardless of role
+      const explicit = getStr(party, "employerName");
+      if (explicit && !employerName) employerName = explicit;
+      const explicitInstitution = getStr(party, "institutionName", "companyName", "ico");
+      // ico is not a name but skip it; use companyName/institutionName only
+      const explicitInstitutionName = getStr(party, "institutionName", "companyName");
+      if (explicitInstitutionName && !institutionName) institutionName = explicitInstitutionName;
+    }
+
+    // fullName: prefer borrower's name for person-centric docs
+    liftField("fullName", borrowerName ?? (partiesSource.length === 1 ? getStr(partiesSource[0], "fullName", "name") : null));
+    // borrowerName: borrower party's full name
+    liftField("borrowerName", borrowerName);
+    // lender: the lender/bank/insurer party name
+    liftField("lender", lenderName);
+    // employer / employerName: for payslip docs
+    liftField("employer", employerName);
+    liftField("employerName", employerName);
+    // institutionName: generic institution (insurer, employer, tax authority)
+    liftField("institutionName", institutionName ?? lenderName);
+
+    // Also lift any directly named fields from parties that aren't covered by role matching
+    for (const party of partiesSource) {
+      const directFields: Array<[string, string[]]> = [
+        ["contractNumber", ["contractNumber", "contract_number"]],
+        ["policyNumber", ["policyNumber", "policy_number"]],
+        ["birthDate", ["birthDate", "birth_date", "dateOfBirth"]],
+        ["ico", ["ico", "registrationNumber", "rc"]],
+      ];
+      for (const [targetKey, srcKeys] of directFields) {
+        const val = getStr(party, ...srcKeys);
+        if (val) liftField(targetKey, val);
+      }
+    }
+
+    root.extractedFields = efLift;
   }
 
   // Fix productsOrObligations — must be array

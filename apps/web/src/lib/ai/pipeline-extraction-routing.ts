@@ -65,6 +65,15 @@ export function mapPrimaryToPipelineClassification(
     case "investment_subscription_document":
     case "pension_contract":
       return "investment_contract";
+    // Supporting / identity / medical / consent — should not fall to unknown
+    case "generic_financial_document":
+    case "financial_analysis_document":
+    case "service_agreement":
+    case "insurance_comparison":
+    case "identity_document":
+    case "medical_questionnaire":
+    case "consent_or_declaration":
+      return "income_document"; // treated as supporting for routing; resolveExtractionRoute sends to supporting_document
     default:
       return "unknown";
   }
@@ -75,13 +84,14 @@ export function resolveExtractionRoute(
   classificationConfidence: number
 ): ExtractionRoute {
   if (normalized === "payment_instructions") return "payment_instructions";
-  if (
-    normalized === "unknown" &&
-    classificationConfidence < 0.35
-  ) {
+  // Only route to manual_review_only for true unknowns with very low confidence.
+  // Any recognizable classification (including income_document used as supporting fallback)
+  // gets a real extraction route — fail-open principle.
+  if (normalized === "unknown" && classificationConfidence < 0.35) {
     return "manual_review_only";
   }
-  if (normalized === "unknown") return "manual_review_only";
+  // unknown with higher confidence: still try supporting_document extraction (fail-open)
+  if (normalized === "unknown") return "supporting_document";
   if (normalized === "bank_statement" || normalized === "income_document") {
     return "supporting_document";
   }

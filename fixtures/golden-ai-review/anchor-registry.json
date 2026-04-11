@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "description": "F0 — Anchor PDF registry (paths relative to monorepo root). Source: Aidvisora_AI_Review_Master_Plan_MAX_INCLUSION §35 + repo fixtures.",
+  "anchors": [
+    { "id": "GCP", "label": "Čučka zamzam GČP (amendment)", "file": "Test AI/Tested preprompt/Čučka zamzam GČP.pdf" },
+    { "id": "AMUNDI", "label": "AMUNDI DIP", "file": "Test AI/Tested preprompt/AMUNDI DIP.pdf" },
+    { "id": "MAXIMA", "label": "Sebova MAXIMA", "file": "Test AI/Tested preprompt/Sebova MAXIMA.pdf" },
+    { "id": "CSOB", "label": "ČSOB spotřebitelský úvěr", "file": "Test AI/Tested preprompt/Smlouva o ČSOB Spotřebitelském úvěru.pdf" },
+    { "id": "PAYSLIP", "label": "Výplatní lístek", "file": "Test AI/Tested preprompt/Výplatní lístek za měsíc.pdf" },
+    { "id": "TAX", "label": "Daňové přiznání s.r.o.", "file": "Test AI/Tested preprompt/Daňové přiznání s.r.o..pdf" },
+    { "id": "PILLOW", "label": "Životní pojištění Pillow (návrh)", "file": "Test AI/Tested preprompt/Životní pojištění Pillow.pdf" },
+    { "id": "UNIQA_MAJETEK", "label": "UNIQA Majetek (návrh)", "file": "Test AI/Tested preprompt/Uniqa Majetek.pdf" },
+    { "id": "UNIQA_ROMAN", "label": "Roman Koloburda UNIQA (životní)", "file": "Test AI/Tested preprompt/Roman Koloburda UNIQA.pdf" },
+    { "id": "UNIQA_ZIVOT", "label": "Životní pojištění Uniqa", "file": "Test AI/Životní pojištění Uniqa.pdf" },
+    { "id": "DIRECT_POR", "label": "Povinné ručení (Direct)", "file": "Test AI/Povinné ručení.pdf" },
+    { "id": "IZP_GENERALI", "label": "IŽP Generali", "file": "Test AI/Tested preprompt/IŽP - Generali.pdf" },
+    { "id": "HANNA_GCP", "label": "Hanna Havdan GČP (modelace / rodina)", "file": "Test AI/Tested preprompt/Hanna Havdan GČP.pdf" },
+    { "id": "CPP_ZMENA", "label": "ČPP změna pojištění", "file": "Test AI/Tested preprompt/Honzajk čpp změna.pdf" },
+    { "id": "ODP_ZAM", "label": "Pojištění odpovědnosti v zaměstnání", "file": "Test AI/Tested preprompt/Pojištění odpovědnosti v zaměstnání.pdf" },
+    { "id": "PODNIK", "label": "Pojištění podnikatelů", "file": "Test AI/Pojištění podnikatelů.pdf" },
+    { "id": "DPS", "label": "Smlouva DPS", "file": "Test AI/Smlouva DPS.pdf" },
+    { "id": "PATROCH_AMUNDI", "label": "Patroch Amundi", "file": "Test AI/Nové k testu/Patroch Amundi.pdf" },
+    { "id": "CODYA_INV", "label": "Investiční smlouva Codya", "file": "Test AI/Investiční smlouva Codya.pdf" },
+    { "id": "CODYA_SERV", "label": "Smlouva o poskytování služeb (Codya)", "file": "Test AI/SMLOUVA O POSKYTOVÁNÍ SLUŽEB.pdf" },
+    { "id": "SMLOUVA_UVER", "label": "SMLOUVA O ÚVĚRU", "file": "Test AI/Tested preprompt/SMLOUVA O ÚVĚRU.pdf" },
+    { "id": "KONSOLIDACE", "label": "Čučka konsolidace (Raiffeisen)", "file": "Test AI/Nové k testu/Čučka konsolidace.pdf" },
+    { "id": "HYPOTEKA", "label": "Hypotéka", "file": "Test AI/Tested preprompt/Hypotéka.pdf" },
+    { "id": "LEASING", "label": "ČSOB Leasing PBI", "file": "Test AI/Tested preprompt/ČSOB Leasing PBI.pdf" },
+    { "id": "CODYA_PREP", "label": "Investiční smlouva Codya (preprompt copy)", "file": "Test AI/Tested preprompt/Investiční smlouva Codya.pdf" },
+    { "id": "METLIFE", "label": "Lehnert Metlife (více osob)", "file": "Test AI/Tested preprompt/Lehnert Metlife.pdf" },
+    { "id": "MODELACE_KOOP", "label": "Modelace životního pojištění Kooperativa", "file": "Test AI/Tested preprompt/Modelace životního pojištění Kooperativa.pdf" }
+  ]
+}

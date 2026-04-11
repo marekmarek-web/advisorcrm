@@ -1,6 +1,9 @@
 /**
  * Golden dataset harness — Phase 2+3 + publish/apply safety acceptance checks.
  *
+ * F0 (anchor registry + PDF paths + golden expectation JSON): see `f0-anchor-registry.test.ts`
+ * and fixtures `anchor-registry.json` / `anchor-golden-expectations.json`.
+ *
  * Tests run against logic functions (no LLM, no DB, no network).
  * Scenarios sourced from fixtures/golden-ai-review/scenarios.manifest.json acceptance criteria.
  *
