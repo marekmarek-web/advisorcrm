@@ -792,6 +792,9 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "isinCenneho",
         "isinPodfondu",
         "cennyPapir",
+        "fundIsin",
+        "productIsin",
+        "instrumentIsin",
       ]);
       mergeFromAliases(ef, "intendedInvestment", [
         "investmentAmount",

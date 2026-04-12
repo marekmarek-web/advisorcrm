@@ -16,7 +16,11 @@ import {
   nonlifeRiskPremiumHasExplicitSemantics,
 } from "./payment-semantics";
 import { isLifecycleFinalInput, isLifecycleNonFinalProjection } from "./lifecycle-semantics";
-import { applySavingsInvestmentSemantics, promoteLooseFundAllocationToInvestmentFunds } from "./savings-investment-semantics";
+import {
+  applySavingsInvestmentSemantics,
+  promoteLooseFundAllocationToInvestmentFunds,
+  promoteLooseIsinToCanonical,
+} from "./savings-investment-semantics";
 
 function isPresent(cell: ExtractedField | undefined): cell is ExtractedField {
   if (!cell) return false;
@@ -367,6 +371,7 @@ export function applySemanticContractUnderstanding(envelope: DocumentReviewEnvel
   let primary = envelope.documentClassification?.primaryType ?? "unsupported_or_unknown";
 
   promoteLooseFundAllocationToInvestmentFunds(primary, ef);
+  promoteLooseIsinToCanonical(primary, ef);
   alignDocumentClassificationWithExtractedEvidence(envelope);
   primary = envelope.documentClassification?.primaryType ?? "unsupported_or_unknown";
   normalizeFinalityContentFlags(envelope);

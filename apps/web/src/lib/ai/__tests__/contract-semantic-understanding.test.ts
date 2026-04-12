@@ -263,4 +263,25 @@ describe("contract-semantic-understanding", () => {
     applySemanticContractUnderstanding(env);
     expect(env.extractedFields.intermediaryName?.status).toBe("not_applicable");
   });
+
+  it("applySemanticContractUnderstanding promotes fundIsin to canonical isin", () => {
+    const env = bareEnvelope("investment_subscription_document", "final_contract");
+    env.extractedFields = {
+      investorFullName: { value: "Jan Test", status: "extracted", confidence: 0.9 },
+      fundIsin: { value: "CZ0008040318", status: "extracted", confidence: 0.82 },
+    };
+    applySemanticContractUnderstanding(env);
+    expect(env.extractedFields.isin?.value).toBe("CZ0008040318");
+  });
+
+  it("applySemanticContractUnderstanding clears intermediaryCompany when it duplicates provider", () => {
+    const env = bareEnvelope("investment_subscription_document", "final_contract");
+    env.extractedFields = {
+      investorFullName: { value: "Jan Test", status: "extracted", confidence: 0.9 },
+      provider: { value: "Správce Alpha", status: "extracted", confidence: 0.88 },
+      intermediaryCompany: { value: "Správce Alpha", status: "extracted", confidence: 0.6 },
+    };
+    applySemanticContractUnderstanding(env);
+    expect(env.extractedFields.intermediaryCompany?.status).toBe("not_applicable");
+  });
 });

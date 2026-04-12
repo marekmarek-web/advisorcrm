@@ -5,6 +5,14 @@
 
 import type { ExtractedField, PrimaryDocumentType } from "./document-review-types";
 
+/** Same shape as contract-semantic-understanding (avoid circular import). */
+function plausibleIsin(value: unknown): boolean {
+  const t = String(value ?? "")
+    .replace(/\s/g, "")
+    .toUpperCase();
+  return /^[A-Z]{2}[A-Z0-9]{10}$/.test(t);
+}
+
 function isPresent(cell: ExtractedField | undefined): cell is ExtractedField {
   if (!cell) return false;
   if (cell.status === "missing" || cell.status === "not_found" || cell.status === "not_applicable") return false;
@@ -48,7 +56,18 @@ const LOOSE_FUND_KEYS = [
   "investmentAllocation",
   "fundSelection",
   "selectedFunds",
+  "fundNames",
+  "targetFund",
+  "subFund",
 ] as const;
+
+const LOOSE_ISIN_KEYS = ["fundIsin", "productIsin", "instrumentIsin", "bondIsin"] as const;
+
+const INVESTMENT_PRIMARIES_FOR_INSURER_SUPPRESS: PrimaryDocumentType[] = [
+  "investment_subscription_document",
+  "investment_service_agreement",
+  "investment_modelation",
+];
 
 /**
  * If the model split allocation across loose fields, copy into canonical `investmentFunds` (JSON array string).
@@ -93,11 +112,51 @@ export function promoteLooseFundAllocationToInvestmentFunds(
   }
 }
 
-const INVESTMENT_PRIMARIES_FOR_INSURER_SUPPRESS: PrimaryDocumentType[] = [
-  "investment_subscription_document",
-  "investment_service_agreement",
-  "investment_modelation",
-];
+/**
+ * If LLM put the asset manager name into `intermediaryCompany`, dedupe against provider/institution.
+ */
+export function suppressIntermediaryCompanyWhenDuplicatesAssetManager(
+  primary: PrimaryDocumentType,
+  ef: Record<string, ExtractedField | undefined>
+): void {
+  if (!INVESTMENT_PRIMARIES_FOR_INSURER_SUPPRESS.includes(primary)) return;
+  const ic = ef.intermediaryCompany;
+  if (!isPresent(ic)) return;
+  const dupProv = isPresent(ef.provider) && strEq(ic.value, ef.provider?.value);
+  const dupInst = isPresent(ef.institutionName) && strEq(ic.value, ef.institutionName?.value);
+  if (dupProv || dupInst) {
+    ef.intermediaryCompany = {
+      value: null,
+      status: "not_applicable",
+      confidence: 1,
+      evidenceSnippet:
+        "[semantic] Stejná entita jako správce/instituce — pole zprostředkovatelské firmy vypnuto.",
+    };
+  }
+}
+
+/** Copy first plausible ISIN from loose keys into canonical `isin`. */
+export function promoteLooseIsinToCanonical(
+  primary: PrimaryDocumentType,
+  ef: Record<string, ExtractedField | undefined>
+): void {
+  if (!PROMOTE_FUND_PRIMARIES.has(primary)) return;
+  if (isPresent(ef.isin) && plausibleIsin(ef.isin.value)) return;
+
+  for (const key of LOOSE_ISIN_KEYS) {
+    const cell = ef[key];
+    if (!cell || !isPresent(cell)) continue;
+    const raw = String(cell.value ?? "").trim();
+    if (!raw || !plausibleIsin(raw)) continue;
+    ef.isin = {
+      value: raw.replace(/\s/g, "").toUpperCase(),
+      status: cell.status === "inferred_low_confidence" ? "inferred_low_confidence" : "extracted",
+      confidence: cell.confidence ?? 0.76,
+      evidenceSnippet: cell.evidenceSnippet,
+    };
+    return;
+  }
+}
 
 /**
  * Penze: pojistná role `insurer` nesmí nést penzijní společnost (alias pass ji často vyčistí — pojistka zůstane jen při chybě pipeline).
@@ -166,5 +225,6 @@ export function applySavingsInvestmentSemantics(
   ef: Record<string, ExtractedField | undefined>
 ): void {
   suppressInsuranceInsurerFieldForPensionAndInvestment(primary, ef);
+  suppressIntermediaryCompanyWhenDuplicatesAssetManager(primary, ef);
   resolveParticipantIntermediaryDuplicateForPension(primary, ef);
 }
