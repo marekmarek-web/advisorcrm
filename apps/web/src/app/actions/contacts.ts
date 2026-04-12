@@ -8,6 +8,8 @@ import { db } from "db";
 import { contacts, contractUploadReviews } from "db";
 import { eq, and, asc, inArray, isNull, sql, desc, or } from "db";
 import { createAdminClient } from "@/lib/supabase/server";
+import { parseContractWizardPrefillFromReviewData } from "@/lib/contracts/contact-wizard-prefill-from-ai-review";
+import type { ContractFormState } from "@/lib/contracts/contract-form-payload";
 
 export type ContactRow = {
   id: string;
@@ -899,6 +901,54 @@ async function loadContactAiProvenance(contactId: string): Promise<ContactAiProv
 }
 
 export const getContactAiProvenance = cache(loadContactAiProvenance);
+
+/**
+ * F5: Poslední aplikovaná AI kontrola dokumentu pro kontakt → částečný stav wizardu „Nová smlouva“.
+ * Katalogová partnerId/productId záměrně nenastavujeme (viz parseContractWizardPrefillFromReviewData).
+ */
+export type ContactContractWizardPrefillResult = {
+  form: Partial<ContractFormState>;
+  sourceReviewId: string;
+} | null;
+
+async function loadContactContractWizardPrefill(contactId: string): Promise<ContactContractWizardPrefillResult> {
+  try {
+    const auth = await requireAuthInAction();
+    if (!hasPermission(auth.roleName, "contacts:read")) return null;
+
+    const rows = await db
+      .select({
+        id: contractUploadReviews.id,
+        extractedPayload: contractUploadReviews.extractedPayload,
+        draftActions: contractUploadReviews.draftActions,
+      })
+      .from(contractUploadReviews)
+      .where(
+        and(
+          eq(contractUploadReviews.tenantId, auth.tenantId),
+          eq(contractUploadReviews.reviewStatus, "applied"),
+          or(
+            eq(contractUploadReviews.matchedClientId, contactId),
+            sql`${contractUploadReviews.applyResultPayload}->>'createdClientId' = ${contactId}`,
+            sql`${contractUploadReviews.applyResultPayload}->>'linkedClientId' = ${contactId}`,
+          ),
+        ),
+      )
+      .orderBy(desc(contractUploadReviews.appliedAt))
+      .limit(1);
+
+    const row = rows[0];
+    if (!row) return null;
+
+    const parsed = parseContractWizardPrefillFromReviewData(row.extractedPayload, row.draftActions);
+    if (Object.keys(parsed).length === 0) return null;
+    return { form: parsed, sourceReviewId: row.id };
+  } catch {
+    return null;
+  }
+}
+
+export const getContactContractWizardPrefill = cache(loadContactContractWizardPrefill);
 
 // ─── Fáze 15: Inline Pending Confirm z contact detailu ────────────────────────
 

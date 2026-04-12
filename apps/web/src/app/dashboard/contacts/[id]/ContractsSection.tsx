@@ -102,7 +102,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   }, [list]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const wizardOpen = searchParams.get("add") === "1";
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -125,28 +125,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
     const p = new URLSearchParams(searchParams.toString());
     p.set("add", "1");
     router.replace(`${pathname}?${p.toString()}`, { scroll: false });
-    setAdding(true);
   }, [pathname, router, searchParams]);
-
-  useEffect(() => {
-    if (searchParams.get("add") === "1") setAdding(true);
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hash = window.location.hash;
-    if (hash.includes("add=1")) setAdding(true);
-    const onHashChange = () => {
-      if (window.location.hash.includes("add=1")) setAdding(true);
-    };
-    const onOpenAdd = () => setAdding(true);
-    window.addEventListener("hashchange", onHashChange);
-    window.addEventListener("contact-open-add-contract", onOpenAdd);
-    return () => {
-      window.removeEventListener("hashchange", onHashChange);
-      window.removeEventListener("contact-open-add-contract", onOpenAdd);
-    };
-  }, []);
 
 
   async function handleSubmitEdit(e: React.FormEvent) {
@@ -493,10 +472,9 @@ export function ContractsSection({ contactId }: { contactId: string }) {
         })}
       </ul>
       <NewContractWizard
-        open={adding}
+        open={wizardOpen}
         contactId={contactId}
         onClose={() => {
-          setAdding(false);
           clearAddQueryParam();
           invalidateContractsData();
         }}

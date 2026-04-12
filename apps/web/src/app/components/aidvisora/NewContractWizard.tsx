@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { FileText } from "lucide-react";
 import { getContractSegments, createContract } from "@/app/actions/contracts";
+import { getContactContractWizardPrefill } from "@/app/actions/contacts";
 import { updateDocument } from "@/app/actions/documents";
 import { ProductPicker } from "@/app/components/aidvisora/ProductPicker";
 import type { ProductPickerValue } from "@/app/components/aidvisora/ProductPicker";
@@ -60,12 +61,41 @@ export function NewContractWizard({
   });
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
   const [uploadedDocumentName, setUploadedDocumentName] = useState<string | null>(null);
+  const [prefillHint, setPrefillHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       getContractSegments().then(setSegments).catch(() => []);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setStep(0);
+    setError("");
+    setIsSuccess(false);
+    setForm(initialContractFormState());
+    setPickerValue({ partnerId: "", productId: "" });
+    setUploadedDocumentId(null);
+    setUploadedDocumentName(null);
+    setPrefillHint(null);
+
+    void (async () => {
+      const prefill = await getContactContractWizardPrefill(contactId);
+      if (cancelled) return;
+      if (prefill?.form && Object.keys(prefill.form).length > 0) {
+        setForm((f) => ({ ...f, ...prefill.form }));
+        setPrefillHint(
+          "Údaje předvyplněny z poslední aplikované AI kontroly dokumentu. Partner a produkt z katalogu případně doplňte ručně."
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, contactId]);
 
   function reset() {
     setStep(0);
@@ -75,6 +105,7 @@ export function NewContractWizard({
     setPickerValue({ partnerId: "", productId: "" });
     setUploadedDocumentId(null);
     setUploadedDocumentName(null);
+    setPrefillHint(null);
   }
 
   function handleClose() {
@@ -142,6 +173,14 @@ export function NewContractWizard({
           <>
             {step === 0 && (
               <div className="space-y-6">
+                {prefillHint ? (
+                  <p
+                    className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2 text-sm text-indigo-950"
+                    role="status"
+                  >
+                    {prefillHint}
+                  </p>
+                ) : null}
                 <div>
                   <label className={wizardLabelClass}>Segment</label>
                   <CustomDropdown
