@@ -67,6 +67,19 @@ function fieldExtracted(f: { value?: unknown; status?: string } | undefined): bo
   return Boolean(f && f.status === "extracted" && f.value != null && String(f.value).trim() !== "");
 }
 
+/**
+ * Looser presence check used for POLICYHOLDER_MISSING and PAYMENT_DATA_MISSING guards.
+ * Accepts both "extracted" and "inferred_low_confidence" statuses — the combined extraction
+ * path wraps scalar values as inferred_low_confidence even when the value is clearly present.
+ * We still require a non-empty value to avoid false positives on null/empty cells.
+ */
+function fieldPresent(f: { value?: unknown; status?: string } | undefined): boolean {
+  if (!f) return false;
+  const status = f.status ?? "";
+  if (status === "missing" || status === "not_found" || status === "not_applicable" || status === "explicitly_not_selected") return false;
+  return f.value != null && String(f.value).trim() !== "" && String(f.value).trim() !== "—";
+}
+
 export function validateExtractedContract(payload: {
   contractNumber?: string | null;
   institutionName?: string | null;
@@ -519,6 +532,8 @@ export function validateDocumentEnvelope(payload: {
   }
 
   // 4. Text explicitly mentions Pojistník but policyholder/fullName is empty
+  // Uses fieldPresent (not fieldExtracted) to avoid false positives when the combined
+  // extraction path wraps scalar values as inferred_low_confidence.
   const insuranceDocTypes = new Set([
     "life_insurance_contract", "life_insurance_final_contract", "life_insurance_investment_contract",
     "life_insurance_proposal", "nonlife_insurance_contract", "liability_insurance_offer",
@@ -526,14 +541,14 @@ export function validateDocumentEnvelope(payload: {
   ]);
   if (insuranceDocTypes.has(primaryType)) {
     const hasClient =
-      fieldExtracted(ef.fullName) ||
-      fieldExtracted(ef.policyholder) ||
-      fieldExtracted(ef.clientFullName) ||
-      fieldExtracted(ef.firstName) ||
-      fieldExtracted(ef.lastName) ||
-      fieldExtracted(ef.policyholderName) ||
-      fieldExtracted(ef.investorFullName) ||
-      fieldExtracted(ef.participantFullName);
+      fieldPresent(ef.fullName) ||
+      fieldPresent(ef.policyholder) ||
+      fieldPresent(ef.clientFullName) ||
+      fieldPresent(ef.firstName) ||
+      fieldPresent(ef.lastName) ||
+      fieldPresent(ef.policyholderName) ||
+      fieldPresent(ef.investorFullName) ||
+      fieldPresent(ef.participantFullName);
     if (!hasClient) {
       addWarning(warnings, reasonsForReview, "POLICYHOLDER_MISSING",
         "Pojistník / klient nebyl extrahován — dokument má pojistníka dle typu.",
@@ -550,8 +565,11 @@ export function validateDocumentEnvelope(payload: {
   }
 
   // 6. Insurance/loan doc has explicit payment section but payments are empty
-  const hasPaymentData = fieldExtracted(ef.totalMonthlyPremium) || fieldExtracted(ef.annualPremium) ||
-    fieldExtracted(ef.installmentAmount) || fieldExtracted(ef.premiumAmount) || fieldExtracted(ef.bankAccount);
+  // Uses fieldPresent (not fieldExtracted) — combined path wraps scalars as inferred_low_confidence,
+  // which is still a valid present value for determining whether extraction succeeded.
+  const hasPaymentData = fieldPresent(ef.totalMonthlyPremium) || fieldPresent(ef.annualPremium) ||
+    fieldPresent(ef.installmentAmount) || fieldPresent(ef.premiumAmount) || fieldPresent(ef.bankAccount) ||
+    fieldPresent(ef.variableSymbol);
   const productDocTypes = new Set([...insuranceDocTypes, "consumer_loan_contract", "consumer_loan_with_payment_protection", "mortgage_document"]);
   if (productDocTypes.has(primaryType) && !supportingPrimaryTypes.has(primaryType) && !hasPaymentData) {
     addWarning(warnings, reasonsForReview, "PAYMENT_DATA_MISSING",

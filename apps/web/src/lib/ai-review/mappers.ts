@@ -741,8 +741,8 @@ type ReadabilityCtx = {
 
 /**
  * Insurance-specific field labels that should be replaced for non-insurance document families.
- * Key = original field key, value = [investmentLabel, genericLabel].
- * investmentLabel is used for investment/dip/dps families; genericLabel for others.
+ * Key = original field key, value = label string.
+ * Used for investment/dip/dps families and investment primary types.
  */
 const INSURANCE_FIELD_LABEL_OVERRIDES_FOR_INVESTMENT: Record<string, string> = {
   insurer: "Správce / instituce",
@@ -759,10 +759,45 @@ const INSURANCE_FIELD_LABEL_OVERRIDES_FOR_INVESTMENT: Record<string, string> = {
   investmentPremium: "Investiční příspěvek",
 };
 
-const INVESTMENT_FAMILIES = new Set(["investment", "dip", "dps", "pp"]);
+/**
+ * Pension-specific field label overrides (DPS / PP).
+ * These replace insurance vocabulary with pension-appropriate terminology.
+ */
+const PENSION_FIELD_LABEL_OVERRIDES: Record<string, string> = {
+  insurer: "Penzijní společnost",
+  institutionName: "Penzijní společnost / instituce",
+  provider: "Penzijní společnost",
+  totalMonthlyPremium: "Měsíční příspěvek",
+  annualPremium: "Roční příspěvek",
+  investmentPremium: "Měsíční příspěvek",
+  premiumAmount: "Výše příspěvku",
+  policyStartDate: "Datum zahájení spoření",
+  policyEndDate: "Datum ukončení spoření",
+  investmentStrategy: "Strategie / fond",
+  participantFullName: "Účastník",
+};
 
-function fieldLabelForKeyAndFamily(rawKey: string, productFamily?: string): string {
-  if (productFamily && INVESTMENT_FAMILIES.has(productFamily)) {
+const INVESTMENT_FAMILIES = new Set(["investment", "dip", "dps", "pp"]);
+const PENSION_PRIMARY_TYPES = new Set(["pension_contract"]);
+const INVESTMENT_PRIMARY_TYPES = new Set([
+  "investment_subscription_document",
+  "investment_service_agreement",
+  "investment_modelation",
+  "life_insurance_investment_contract",
+]);
+
+function fieldLabelForKeyAndFamily(rawKey: string, productFamily?: string, primaryType?: string): string {
+  // Pension types get pension-specific vocabulary regardless of productFamily
+  if (primaryType && PENSION_PRIMARY_TYPES.has(primaryType)) {
+    const override = PENSION_FIELD_LABEL_OVERRIDES[rawKey]
+      ?? PENSION_FIELD_LABEL_OVERRIDES[toCamelCase(rawKey)];
+    if (override) return override;
+  }
+  // Investment/DIP/DPS families or investment primary types get investment vocabulary
+  const isInvestmentContext =
+    (productFamily && INVESTMENT_FAMILIES.has(productFamily)) ||
+    (primaryType && INVESTMENT_PRIMARY_TYPES.has(primaryType));
+  if (isInvestmentContext) {
     const override = INSURANCE_FIELD_LABEL_OVERRIDES_FOR_INVESTMENT[rawKey]
       ?? INSURANCE_FIELD_LABEL_OVERRIDES_FOR_INVESTMENT[toCamelCase(rawKey)];
     if (override) return override;
@@ -868,7 +903,7 @@ function flattenEnvelopeToGroups(
       pushGroupedField({
         id: `extractedFields.${fKey}`,
         groupId: "extractedFields",
-        label: fieldLabelForKeyAndFamily(fKey, productFamily),
+        label: fieldLabelForKeyAndFamily(fKey, productFamily, primaryType),
         value: strVal,
         confidence: confPct,
         status: gateResult.level === "displayable_with_review" ? "warning" : pres.status,

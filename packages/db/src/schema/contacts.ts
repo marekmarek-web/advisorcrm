@@ -13,6 +13,8 @@ export const contacts = pgTable("contacts", {
   referralContactId: uuid("referral_contact_id"),
   birthDate: date("birth_date", { mode: "string" }),
   personalId: text("personal_id"),
+  /** Číslo občanského průkazu (volitelné). */
+  idCardNumber: text("id_card_number"),
   street: text("street"),
   city: text("city"),
   zip: text("zip"),

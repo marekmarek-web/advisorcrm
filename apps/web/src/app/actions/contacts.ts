@@ -21,6 +21,8 @@ export type ContactRow = {
   referralContactName?: string | null;
   birthDate?: string | null;
   personalId?: string | null;
+  /** Číslo občanského průkazu */
+  idCardNumber?: string | null;
   street?: string | null;
   city?: string | null;
   zip?: string | null;
@@ -175,6 +177,7 @@ const contactDetailCoreSelect = {
 const contactDetailExtendedSelect = {
   ...contactDetailCoreSelect,
   personalId: contacts.personalId,
+  idCardNumber: contacts.idCardNumber,
   leadSource: contacts.leadSource,
   leadSourceUrl: contacts.leadSourceUrl,
   priority: contacts.priority,
@@ -244,6 +247,7 @@ async function loadContactWithAuth(auth: AuthContext, id: string): Promise<Conta
       referralContactName,
       birthDate: dateLikeToOptionalYmd(row.birthDate),
       personalId: (row.personalId as string | null | undefined) ?? null,
+      idCardNumber: (row.idCardNumber as string | null | undefined) ?? null,
       street: row.street as string | null,
       city: row.city as string | null,
       zip: row.zip as string | null,
@@ -386,6 +390,7 @@ export async function createContact(form: {
   referralContactId?: string;
   birthDate?: string;
   personalId?: string;
+  idCardNumber?: string;
   street?: string;
   city?: string;
   zip?: string;
@@ -418,6 +423,7 @@ export async function createContact(form: {
         referralContactId: sanitizeOptionalUuid(form.referralContactId),
         birthDate: form.birthDate?.trim() || null,
         personalId: form.personalId?.trim() || null,
+        idCardNumber: form.idCardNumber?.trim() || null,
         street: form.street?.trim() || null,
         city: form.city?.trim() || null,
         zip: form.zip?.trim() || null,
@@ -511,6 +517,7 @@ export async function updateContact(
     referralContactId?: string;
     birthDate?: string;
     personalId?: string;
+    idCardNumber?: string;
     street?: string;
     city?: string;
     zip?: string;
@@ -552,6 +559,7 @@ export async function updateContact(
     if (hasOwn("referralContactId")) patch.referralContactId = form.referralContactId || null;
     if (hasOwn("birthDate")) patch.birthDate = form.birthDate || null;
     if (hasOwn("personalId")) patch.personalId = form.personalId?.trim() || null;
+    if (hasOwn("idCardNumber")) patch.idCardNumber = form.idCardNumber?.trim() || null;
     if (hasOwn("street")) patch.street = form.street?.trim() || null;
     if (hasOwn("city")) patch.city = form.city?.trim() || null;
     if (hasOwn("zip")) patch.zip = form.zip?.trim() || null;
@@ -874,7 +882,7 @@ async function loadContactAiProvenance(contactId: string): Promise<ContactAiProv
       autoAppliedFields.length > 0
         ? autoAppliedFields
         : createdClientId === contactId
-        ? ["firstName", "lastName", "email", "phone", "birthDate", "personalId", "address"]
+        ? ["firstName", "lastName", "email", "phone", "birthDate", "personalId", "idCardNumber", "address"]
         : autoAppliedFields;
 
     return {

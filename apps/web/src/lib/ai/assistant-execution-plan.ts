@@ -36,6 +36,7 @@ const COVERAGE_STATUS_WHITELIST = [
   "waiting_signature",
 ] as const;
 import { hasExplicitIsoOffset } from "@/app/portal/calendar/date-utils";
+import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 
 /**
  * Canonical intent → write action mapping.
@@ -763,12 +764,18 @@ export function buildStepDescription(action: WriteActionType, params: Record<str
     if (t) return t;
   }
 
-  // For calendar event: show date + optional title
+  // For calendar event: show date + optional title (datum vždy DD.MM.YYYY pro poradce)
   if (action === "scheduleCalendarEvent") {
-    const date = typeof params.resolvedDate === "string"
-      ? params.resolvedDate.split("T")[0]
-      : typeof params.startAt === "string"
-        ? params.startAt.split("T")[0]
+    const raw =
+      typeof params.resolvedDate === "string"
+        ? params.resolvedDate
+        : typeof params.startAt === "string"
+          ? params.startAt
+          : null;
+    const datePart = raw ? raw.split("T")[0] ?? null : null;
+    const date =
+      datePart != null && datePart.length > 0
+        ? formatDisplayDateCs(datePart) || datePart
         : null;
     const title =
       typeof params.title === "string"

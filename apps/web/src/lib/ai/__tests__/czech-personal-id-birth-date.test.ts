@@ -120,6 +120,12 @@ describe("enrichBirthDateFromPersonalIdInParams", () => {
     expect(p.birthDate).toBe("1990-01-01");
   });
 
+  it("derives female calendar date from RC month 51–62 (+50)", () => {
+    const p: Record<string, unknown> = { personalId: "905315/0007" };
+    enrichBirthDateFromPersonalIdInParams(p);
+    expect(p.birthDate).toBe("1990-03-15");
+  });
+
   it("does not overwrite explicit birthDate", () => {
     const p: Record<string, unknown> = { personalId: "900101/1239", birthDate: "1985-06-06" };
     enrichBirthDateFromPersonalIdInParams(p);

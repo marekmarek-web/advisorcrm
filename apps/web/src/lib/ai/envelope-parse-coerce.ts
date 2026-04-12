@@ -523,6 +523,105 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
     delete dc.subtype;
   }
 
+  // ─── Semantic classification override ────────────────────────────────────────
+  // Correct clear misclassifications based on extracted field signals and document context.
+  // These overrides fire AFTER normalizePrimaryType so they only affect already-resolved types.
+  // All overrides are content-driven (not file-name specific, not vendor-specific).
+  if (!exp || !PRIMARY_SET.has(exp)) {
+    // Build a searchable text blob from hints available at coercion time
+    const efRaw = root.extractedFields && typeof root.extractedFields === "object" && !Array.isArray(root.extractedFields)
+      ? (root.extractedFields as Record<string, unknown>)
+      : {};
+    const efKeys = Object.keys(efRaw);
+    const efVals = Object.values(efRaw)
+      .map((v) => {
+        if (v == null) return "";
+        if (typeof v === "object" && !Array.isArray(v)) {
+          const cell = v as Record<string, unknown>;
+          return String(cell.value ?? "");
+        }
+        return String(v);
+      })
+      .join(" ")
+      .toLowerCase();
+    const subtypeHint = String(dc.subtype ?? dc.productSubtype ?? dc.productFamily ?? root.productFamily ?? "").toLowerCase();
+    const reasonsText = Array.isArray(dc.reasons) ? dc.reasons.join(" ").toLowerCase() : "";
+    const contextBlob = [subtypeHint, reasonsText, efVals].join(" ");
+
+    const resolvedType = String(dc.primaryType ?? "");
+
+    // Override 1: document classified as insurance proposal/contract but has clear investment subscription signals.
+    // Investment subscriptions have ISIN, amountToPay, investorFullName, upis/subscription keywords, no coverage/risk data.
+    const hasInvestmentSubscriptionSignals =
+      efKeys.some((k) => ["isin", "amountToPay", "intendedInvestment", "entryFeePercent", "investorFullName"].includes(k)) ||
+      contextBlob.includes("upis") ||
+      contextBlob.includes("subscription") ||
+      contextBlob.includes("cenné papíry") ||
+      contextBlob.includes("cenne papiry") ||
+      contextBlob.includes("investicni spolecnost") ||
+      contextBlob.includes("investiční společnost") ||
+      contextBlob.includes("isin");
+    const hasInsuranceCoverageSignals =
+      efKeys.some((k) => ["coverages", "riders", "deathBenefit", "accidentBenefit", "disabilityBenefit", "hospitalizationBenefit", "seriousIllnessBenefit"].includes(k)) &&
+      efVals.includes("pojišt");
+    if (
+      (resolvedType === "life_insurance_proposal" || resolvedType === "life_insurance_contract") &&
+      hasInvestmentSubscriptionSignals &&
+      !hasInsuranceCoverageSignals
+    ) {
+      dc.primaryType = "investment_subscription_document";
+    }
+
+    // Override 2: document classified as life insurance but has clear vehicle/auto/nonlife signals.
+    // Nonlife signals: vehicle info, SPZ/VIN, povinné ručení, pojištění vozidla keywords.
+    const hasAutoSignals =
+      efKeys.some((k) => ["insuredObject", "vin", "registrationPlate", "vehicleInfo"].includes(k)) ||
+      contextBlob.includes("vozidl") ||
+      contextBlob.includes("spz") ||
+      contextBlob.includes("rucen") ||
+      contextBlob.includes("havarijni") ||
+      contextBlob.includes("havarijn") ||
+      contextBlob.includes("vehicle") ||
+      contextBlob.includes("auto ");
+    if (
+      (resolvedType === "life_insurance_contract" || resolvedType === "life_insurance_final_contract") &&
+      hasAutoSignals &&
+      !contextBlob.includes("zivotni") &&
+      !contextBlob.includes("životní") &&
+      !contextBlob.includes("life insurance")
+    ) {
+      dc.primaryType = "nonlife_insurance_contract";
+    }
+
+    // Override 3: document classified as unknown/unsupported but has clear DPS/pension signals.
+    const hasPensionSignals =
+      contextBlob.includes("penzijn") ||
+      contextBlob.includes("penzijni") ||
+      contextBlob.includes("doplňkové penzijní") ||
+      contextBlob.includes("doplnkove penzijni") ||
+      contextBlob.includes("dps") ||
+      efVals.includes("penzijní") ||
+      efVals.includes("spoření");
+    if (
+      (resolvedType === "unsupported_or_unknown" || resolvedType === "") &&
+      hasPensionSignals
+    ) {
+      dc.primaryType = "pension_contract";
+    }
+
+    // Override 4: document classified as insurance proposal but has clear DPS/pension signals.
+    // DPS contracts sometimes get misclassified as insurance proposals.
+    if (
+      (resolvedType === "life_insurance_proposal" || resolvedType === "investment_subscription_document") &&
+      hasPensionSignals &&
+      (contextBlob.includes("penzijní společnost") || contextBlob.includes("penzijni spolecnost") ||
+       efVals.includes("příspěvek") || efVals.includes("prispevek") || efVals.includes("spoření"))
+    ) {
+      dc.primaryType = "pension_contract";
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const lcRaw = dc.lifecycleStatus;
   if (typeof lcRaw === "string") {
     const trimmed = lcRaw.trim();

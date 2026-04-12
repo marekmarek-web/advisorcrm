@@ -481,7 +481,7 @@ PRAVIDLA EXTRAKCE — POLE
 - documentClassification.reasons piš stručně česky.
 - documentMeta.scannedVsDigital nastav na "digital", pokud text působí jako strojově čitelný PDF převod.
 - suggestedActions mají být krátké a akční; payload nech jako objekt.
-- DATUMY: Všechny extrahované datumy zapisuj v ISO formátu YYYY-MM-DD do value. Systém je automaticky přeformátuje na DD.MM.YYYY pro poradce.
+- DATUMY: Do strukturovaného pole value používej interně ISO YYYY-MM-DD (jednoznačné pro CRM). V textech pro poradce v UI se datumy vždy zobrazují česky (DD.MM.YYYY); nepis ISO formát do volných textů určených čtenáři.
 ${sectionRules}
 Soubor: ${fileName}
 

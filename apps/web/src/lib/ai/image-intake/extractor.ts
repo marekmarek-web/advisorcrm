@@ -17,6 +17,7 @@ import type {
   FactType,
   EvidenceReference,
 } from "./types";
+import { formatFactValueForAdvisorDisplay } from "./fact-value-display";
 
 // ---------------------------------------------------------------------------
 // factKey → FactType mapping
@@ -213,7 +214,8 @@ export function buildFactsSummaryLines(bundle: ExtractedFactBundle, limit = 6): 
       const label = factKeyLabel(f.factKey);
       const conf = f.confidence < 0.7 ? " (nejisté)" : "";
       const inferred = f.observedVsInferred === "inferred" ? " [odvozeno]" : "";
-      return `${label}: ${String(f.value).slice(0, 120)}${conf}${inferred}`;
+      const val = formatFactValueForAdvisorDisplay(f.factKey, f.value, 120);
+      return `${label}: ${val}${conf}${inferred}`;
     });
 }
 

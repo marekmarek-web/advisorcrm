@@ -527,6 +527,7 @@ CREATE TABLE IF NOT EXISTS messages (
 -- 14. contact schema expansion (Phase 1.3)
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS birth_date date;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS personal_id text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS id_card_number text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS street text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS city text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS zip text;

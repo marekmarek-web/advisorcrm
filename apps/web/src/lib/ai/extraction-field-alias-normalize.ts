@@ -561,16 +561,45 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
       ]);
       break;
     case "pension_contract":
+      // Pension company: promote to `provider` so it shows with the correct label ("Poskytovatel").
+      // Also populate `institutionName` as generic fallback for display.
       mergeFromAliases(ef, "provider", [
         "institutionName",
         "insurer",
         "pensionProvider",
+        "pensionCompany",
+        "penzijniSpolecnost",
         "fundManager",
         "administrator",
         "employerName",
       ]);
+      mergeFromAliases(ef, "institutionName", [
+        "provider",
+        "insurer",
+        "pensionProvider",
+        "pensionCompany",
+      ]);
+      // For pension contracts, `insurer` holds the pension company name which was extracted under
+      // the insurance vocabulary. Promote its value to `provider`, then suppress `insurer` so
+      // the UI does not show "Pojišťovna" for a pension company.
+      if (valuePresent(ef.insurer) && !valuePresent(ef.provider)) {
+        ef.provider = { ...ef.insurer! };
+      }
+      if (valuePresent(ef.insurer)) {
+        // Suppress insurer display for pension contracts — not an insurance company
+        ef.insurer = { value: null, status: "not_applicable" as const, confidence: 1 };
+      }
       mergeFromAliases(ef, "participantFullName", [
         "fullName",
+        "clientFullName",
+        "accountHolderName",
+        "memberName",
+        "ucastnik",
+        "klient",
+      ]);
+      // Ensure fullName is also populated for display/validation when participantFullName is set
+      mergeFromAliases(ef, "fullName", [
+        "participantFullName",
         "clientFullName",
         "accountHolderName",
         "memberName",
@@ -580,6 +609,29 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "effectiveDate",
         "contractStartDate",
         "participationStartDate",
+        "datumVznikuSmlouvy",
+      ]);
+      // Pension-specific payment fields: monthly contribution → totalMonthlyPremium for display
+      mergeFromAliases(ef, "totalMonthlyPremium", [
+        "contributionParticipant",
+        "mesicniPrispevek",
+        "monthlyContribution",
+        "regularContribution",
+        "prispevekUcastnika",
+      ]);
+      // Suppress investmentPremium display for pensions — use totalMonthlyPremium instead
+      if (valuePresent(ef.investmentPremium) && !valuePresent(ef.totalMonthlyPremium)) {
+        ef.totalMonthlyPremium = { ...ef.investmentPremium! };
+      }
+      if (valuePresent(ef.investmentPremium)) {
+        ef.investmentPremium = { value: null, status: "not_applicable" as const, confidence: 1 };
+      }
+      mergeFromAliases(ef, "bankAccount", [
+        "paymentAccount",
+        "ucetProPlatbu",
+        "cisloUctuDPS",
+        "cisloUctu",
+        "accountNumber",
       ]);
       deriveInvestmentStrategyFromNested(ef);
       break;

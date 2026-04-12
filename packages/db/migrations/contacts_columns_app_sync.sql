@@ -6,6 +6,7 @@ ALTER TABLE contacts ADD COLUMN IF NOT EXISTS referral_source text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS referral_contact_id uuid;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS birth_date date;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS personal_id text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS id_card_number text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS street text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS city text;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS zip text;

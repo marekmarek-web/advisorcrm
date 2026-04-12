@@ -18,6 +18,8 @@ import {
   Sparkles,
   Clock,
   Pencil,
+  CreditCard,
+  Hash,
 } from "lucide-react";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import { getContact, getContactAiProvenance, confirmContactPendingFieldAction, type ContactRow } from "@/app/actions/contacts";
@@ -48,6 +50,7 @@ const CONTACT_FIELD_LABELS: Record<string, string> = {
   phone: "Telefon",
   birthDate: "Datum narození",
   personalId: "Rodné číslo",
+  idCardNumber: "Číslo občanského průkazu",
   address: "Adresa",
   permanentAddress: "Trvalé bydliště",
   city: "Město",
@@ -237,6 +240,12 @@ function OverviewTab({
 
   const metaRows: Array<{ icon: React.ElementType; label: string; value: string }> = [
     ...(contact.birthDate ? [{ icon: Calendar, label: "Datum narození", value: formatDate(contact.birthDate)! }] : []),
+    ...(contact.personalId?.trim()
+      ? [{ icon: Hash, label: "Rodné číslo", value: contact.personalId.trim() }]
+      : []),
+    ...(contact.idCardNumber?.trim()
+      ? [{ icon: CreditCard, label: "Občanský průkaz", value: contact.idCardNumber.trim() }]
+      : []),
     ...(contact.city ? [{ icon: MapPin, label: "Město", value: `${contact.city}${contact.zip ? ` ${contact.zip}` : ""}` }] : []),
     ...(contact.leadSource ? [{ icon: Tag, label: "Zdroj", value: contact.leadSource }] : []),
     ...(contact.referralContactName ? [{ icon: User, label: "Doporučil/a", value: contact.referralContactName }] : []),

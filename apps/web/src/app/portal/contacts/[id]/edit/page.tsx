@@ -36,6 +36,7 @@ export default function EditContactPage() {
     referralContactId: "",
     birthDate: "",
     personalId: "",
+    idCardNumber: "",
     street: "",
     city: "",
     zip: "",
@@ -84,6 +85,7 @@ export default function EditContactPage() {
             referralContactId: c.referralContactId ?? "",
             birthDate: c.birthDate ?? "",
             personalId: c.personalId ?? "",
+            idCardNumber: c.idCardNumber ?? "",
             street: c.street ?? "",
             city: c.city ?? "",
             zip: c.zip ?? "",
@@ -163,6 +165,7 @@ export default function EditContactPage() {
         referralContactId: form.referralContactId || undefined,
         birthDate: form.birthDate || undefined,
         personalId: form.personalId.trim() || undefined,
+        idCardNumber: form.idCardNumber.trim() || undefined,
         street: form.street.trim() || undefined,
         city: form.city.trim() || undefined,
         zip: form.zip.trim() || undefined,
@@ -346,6 +349,16 @@ export default function EditContactPage() {
                   <label className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">Rodné číslo / osobní ID</label>
                   <input value={form.personalId} onChange={(e) => setForm((f) => ({ ...f, personalId: e.target.value }))} className={inputCls} />
                 </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">Číslo občanského průkazu</label>
+                <input
+                  value={form.idCardNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, idCardNumber: e.target.value }))}
+                  className={inputCls}
+                  placeholder="např. číslo karty"
+                  autoComplete="off"
+                />
               </div>
               <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 p-4 space-y-4">
                 <h3 className="text-sm font-black text-[color:var(--wp-text)]">Oslovení a narozeninová přání</h3>

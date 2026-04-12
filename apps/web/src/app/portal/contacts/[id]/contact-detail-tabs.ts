@@ -2,6 +2,7 @@
 
 export type ContactTabId =
   | "prehled"
+  | "detail"
   | "timeline"
   | "smlouvy"
   | "dokumenty"
@@ -13,6 +14,7 @@ export type ContactTabId =
 
 export const CONTACT_TAB_IDS: ContactTabId[] = [
   "prehled",
+  "detail",
   "timeline",
   "smlouvy",
   "dokumenty",
@@ -25,6 +27,7 @@ export const CONTACT_TAB_IDS: ContactTabId[] = [
 
 export const CONTACT_TAB_LABELS: Record<ContactTabId, string> = {
   prehled: "Přehled",
+  detail: "Detail",
   timeline: "Timeline",
   smlouvy: "Produkty",
   dokumenty: "Dokumenty",

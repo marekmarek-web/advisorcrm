@@ -20,6 +20,7 @@ import { buildHandoffPreviewNote } from "./handoff-payload";
 import { buildIntentChangeSummary } from "./intent-change-detection";
 import { buildContactNewPrefillQuery, mapFactBundleToCreateContactDraft } from "./identity-contact-intake";
 import { looksLikeStructuredFormScreenshot } from "./review-handoff";
+import { formatBirthDateLineForAdvisor, formatFactValueForAdvisorDisplay } from "./fact-value-display";
 
 // ---------------------------------------------------------------------------
 // Message templates by output mode
@@ -46,7 +47,7 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       };
       push("Jméno", p.firstName);
       push("Příjmení", p.lastName);
-      push("Datum narození", p.birthDate);
+      push("Datum narození", formatBirthDateLineForAdvisor(p.birthDate));
       const addrParts = [p.street, p.city, p.zip].filter((x) => x?.trim());
       if (addrParts.length) pre.push(`Adresa: ${addrParts.join(", ")}`);
       push("E-mail", p.email);
@@ -218,10 +219,14 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       const lines: string[] = [];
       for (const f of diffFacts.slice(0, 12)) {
         const label = factKeyLabelForDiff(f.factKey);
-        const val = String(f.value).slice(0, 80);
+        const val = formatFactValueForAdvisorDisplay(f.factKey, f.value, 80);
+        const crmShow =
+          f.diffStatus === "conflict" && f.existingCrmValue != null && String(f.existingCrmValue).trim()
+            ? formatFactValueForAdvisorDisplay(f.factKey, f.existingCrmValue, 40)
+            : f.existingCrmValue ?? "–";
         const tag =
           f.diffStatus === "new" ? " 🆕"
-          : f.diffStatus === "conflict" ? ` ⚠ (CRM: ${f.existingCrmValue ?? "–"})`
+          : f.diffStatus === "conflict" ? ` ⚠ (CRM: ${crmShow})`
           : f.diffStatus === "same" ? " ✓"
           : "";
         lines.push(`• ${label}: ${val}${tag}`);
@@ -267,7 +272,8 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
             : f.factKey === "recipient" ? "Příjemce"
             : f.factKey === "iban" ? "IBAN"
             : f.factKey;
-          return `• ${label}: ${String(f.value).slice(0, 80)}`;
+          const val = formatFactValueForAdvisorDisplay(f.factKey, f.value, 80);
+          return `• ${label}: ${val}`;
         });
       const factText = factLines.length > 0 ? `\n\nRozpoznané platební údaje:\n${factLines.join("\n")}` : "";
       const status = paymentFacts.length > 0

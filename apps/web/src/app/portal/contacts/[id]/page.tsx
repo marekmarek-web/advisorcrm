@@ -34,6 +34,7 @@ import { ClientFinancialSummaryBlock } from "./ClientFinancialSummaryBlock";
 import { ClientServiceBlock } from "./ClientServiceBlock";
 import { ContactDetailEditButton } from "./ContactDetailEditButton";
 import { ContactIdentityCompletenessGuard } from "./ContactIdentityCompletenessGuard";
+import { ContactDetailIdentityTab } from "./ContactDetailIdentityTab";
 import { ContactPaymentSetupsSection } from "./ContactPaymentSetupsSection";
 import { ClientReferralSection } from "./ClientReferralSection";
 import { Suspense, type ReactNode } from "react";
@@ -131,6 +132,7 @@ function ContactTabBody({
   household,
   latestGenerations,
   baseQueryNoTab,
+  contactProvenance,
 }: {
   tab: ContactTabId;
   contactId: string;
@@ -138,6 +140,7 @@ function ContactTabBody({
   household: HouseholdForContact;
   latestGenerations: LatestGenerations;
   baseQueryNoTab: string;
+  contactProvenance: ContactAiProvenanceResult | null;
 }): ReactNode {
   switch (tab) {
     case "prehled":
@@ -164,6 +167,10 @@ function ContactTabBody({
             <ContactAiGenerationsBlock contactId={contactId} initialGenerations={latestGenerations} />
           </div>
         </div>
+      );
+    case "detail":
+      return (
+        <ContactDetailIdentityTab contactId={contactId} contact={contact} provenance={contactProvenance} />
       );
     case "timeline":
       return (
@@ -523,6 +530,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
             household={household}
             latestGenerations={latestGenerations}
             baseQueryNoTab={baseQueryNoTab}
+            contactProvenance={contactProvenance}
           />
         </div>
       </main>
