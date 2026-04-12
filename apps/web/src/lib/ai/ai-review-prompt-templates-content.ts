@@ -515,11 +515,13 @@ AUTOPOJIŠTĚNÍ — povinná extrakce:
 - insurer (pojišťovna)
 - productName, productType (povinné ručení / havarijní / kombinované)
 - policyStartDate, policyEndDate
-- totalAnnualPremium, totalMonthlyPremium, paymentFrequency
+- annualPremium (celkové roční pojistné — výše splatné roční platby, po slevě pokud uvedena), paymentFrequency
 - bankAccount, variableSymbol
 - Pojistník: extrahuj do extractedFields.fullName a extractedFields.policyholder (obě pole stejná hodnota: jméno a příjmení pojistníka)
 - vehicle: registrationPlate, VIN, brandModel, yearOfManufacture
-- insuredRisks[]: povinné ručení (limit škody na zdraví, majetku), havarijní (spoluúčast), doplňkové
+- insuredObject: POVINNÉ — sestav z vozidla: "[značka model] ([rok výroby]), SPZ: [SPZ], VIN: [VIN]" — z bloku "Vozidlo" nebo "Předmět pojištění"
+- insuredRisks[]: povinné ručení (limit škody na zdraví, majetku), havarijní (spoluúčast), doplňkové. Limity jako "150 mil. Kč" = "150 000 000 Kč".
+- NESMÍŠ dávat pojistné za konkrétní krytí do riskPremium — patří do insuredRisks[].premium nebo coverages[].premium
 - contentFlags.isFinalContract
 
 TEXT DOKUMENTU:

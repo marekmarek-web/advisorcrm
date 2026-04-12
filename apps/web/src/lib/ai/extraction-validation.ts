@@ -356,13 +356,15 @@ export function validateDocumentEnvelope(payload: {
   const lifecycle = payload.documentClassification?.lifecycleStatus ?? "";
   const fields = payload.extractedFields ?? {};
 
-  const proposalTypes = new Set([
-    "life_insurance_proposal", "life_insurance_modelation", "investment_modelation",
-    "precontract_information", "liability_insurance_offer", "insurance_comparison",
+  // PROPOSAL_MARKED_AS_CONTRACT warning only fires for true non-final documents (modelation/kalkulace).
+  // Proposal/offer documents are finální vstup by business rule — isFinalContract = true is correct for them.
+  const modelationOnlyTypes = new Set([
+    "life_insurance_modelation", "investment_modelation",
+    "precontract_information", "insurance_comparison",
   ]);
-  if (proposalTypes.has(primaryType) && payload.contentFlags?.isFinalContract) {
+  if (modelationOnlyTypes.has(primaryType) && payload.contentFlags?.isFinalContract) {
     addWarning(warnings, reasonsForReview, "PROPOSAL_MARKED_AS_CONTRACT",
-      "Návrh/modelace je označen jako finální smlouva. Zkontrolujte klasifikaci.",
+      "Modelace/kalkulace je označena jako finální smlouva. Zkontrolujte klasifikaci.",
       "documentClassification.lifecycleStatus", "proposal_marked_as_contract");
   }
 

@@ -45,7 +45,12 @@ function formatMoneyLine(env: DocumentReviewEnvelope): string {
   const acc = str(fv(env, "bankAccount")) || str(fv(env, "accountNumber"));
   const bankCode = str(fv(env, "bankCode"));
   if (iban) parts.push(`IBAN: ${iban}`);
-  else if (acc) parts.push(bankCode ? `Účet: ${acc}/${bankCode}` : `Účet: ${acc}`);
+  else if (acc) {
+    // Guard: do not append bankCode if it is already present at the end of acc (e.g. "2727/2700").
+    // Pattern: account format is "prefix/bankCode" or "prefix-number/bankCode".
+    const bankCodeAlreadyInAcc = bankCode && acc.endsWith(`/${bankCode}`);
+    parts.push(bankCode && !bankCodeAlreadyInAcc ? `Účet: ${acc}/${bankCode}` : `Účet: ${acc}`);
+  }
   const pt = str(fv(env, "paymentType"));
   if (/trval|standing|direct/i.test(pt) || /trvalý/i.test(pt)) {
     parts.push("trvalý příkaz");
@@ -238,7 +243,13 @@ function buildPaymentSyncPreview(envelope: DocumentReviewEnvelope): PaymentSyncP
     };
   }
 
-  const targetPart = cp.iban ? `IBAN: ${cp.iban}` : `${cp.accountNumber}/${cp.bankCode}`;
+  // Guard: avoid double bank code (e.g. "2727/2700/2700") if bankCode already in accountNumber
+  const accAlreadyHasCode = cp.bankCode && cp.accountNumber && cp.accountNumber.endsWith(`/${cp.bankCode}`);
+  const targetPart = cp.iban
+    ? `IBAN: ${cp.iban}`
+    : accAlreadyHasCode
+    ? cp.accountNumber
+    : `${cp.accountNumber}/${cp.bankCode}`;
   const amtPart = cp.currency ? `${cp.amount} ${cp.currency}` : cp.amount;
   return {
     status: "will_sync",

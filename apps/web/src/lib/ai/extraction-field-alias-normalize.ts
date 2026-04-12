@@ -1263,7 +1263,13 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     ]);
   }
 
-  mergeFromAliases(ef, "premiumAmount", ["totalMonthlyPremium", "monthlyPremium", "riskPremium"]);
+  // premiumAmount is a generic fallback — only merge from riskPremium if it's NOT an annual-frequency doc.
+  // For annual-frequency docs, riskPremium is a per-coverage breakdown (not the canonical payment amount).
+  if (!isAnnualFrequency) {
+    mergeFromAliases(ef, "premiumAmount", ["totalMonthlyPremium", "monthlyPremium", "riskPremium"]);
+  } else {
+    mergeFromAliases(ef, "premiumAmount", ["totalMonthlyPremium", "monthlyPremium"]);
+  }
 
   mergeFromAliases(ef, "paymentFrequency", [
     "premiumFrequency",
@@ -1338,6 +1344,29 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     "coverageObject",
     "pojistenyPredmet",
   ]);
+
+  // ─── insuredObject synthesis from vehicle / property fields ──────────────────
+  // If insuredObject is still empty but vehicle-specific fields are present,
+  // synthesize a canonical insuredObject string from registrationPlate / VIN / brandModel.
+  // This covers auto/nonlife docs where LLM populates vehicle fields separately.
+  if (!valuePresent(ef.insuredObject)) {
+    const plate = String(ef.registrationPlate?.value ?? "").trim();
+    const vin = String(ef.vin?.value ?? "").trim();
+    const brand = String(ef.brandModel?.value ?? ef.vehicleModel?.value ?? "").trim();
+    const yearOfMfr = String(ef.yearOfManufacture?.value ?? "").trim();
+    const vehicleParts = [brand, yearOfMfr ? `(${yearOfMfr})` : "", plate ? `SPZ: ${plate}` : "", vin ? `VIN: ${vin}` : ""]
+      .filter(Boolean).join(", ");
+    if (vehicleParts) {
+      ef.insuredObject = { value: vehicleParts, status: "extracted" as const, confidence: 0.82 };
+    }
+  }
+  // For property/home docs: if insuredObject still empty and insuredAddress / insuredProperty is present
+  if (!valuePresent(ef.insuredObject)) {
+    const addr = String(ef.insuredAddress?.value ?? ef.propertyAddress?.value ?? ef.insuredPropertyAddress?.value ?? "").trim();
+    if (addr) {
+      ef.insuredObject = { value: addr, status: "extracted" as const, confidence: 0.78 };
+    }
+  }
 
   deriveInvestmentStrategyFromNested(ef);
   mergeCompositeReferenceFields(ef);

@@ -456,6 +456,8 @@ PRAVIDLA EXTRAKCE — POLE
 - PLATBY — FREKVENCE: paymentFrequency extrahuj přesně. Rozlišuj: "měsíčně" / "ročně" / "čtvrtletně" / "pololetně" / "jednorázově". Nesmíš zaměnit roční pojistné za měsíční.
 - PLATBY — ROČNÍ vs MĚSÍČNÍ: Pokud je paymentFrequency = "ročně" nebo "annually", pak platba patří do annualPremium, NIKOLI do totalMonthlyPremium. Nepoužívej pole totalMonthlyPremium pro roční platbu.
 - PLATBY — PRIORITA: výše splatné platby má prioritu. pořadí: konečná dlužná částka > roční po slevě > roční před slevami. Tato pravidla platí pro pojistné i příspěvky.
+- PLATBY — riskPremium: Pole riskPremium používej POUZE pro rizikovou složku pojistného v životním pojištění (čistě riziková část bez investiční složky). Pro neživotní pojištění (majetek, auto, odpovědnost): pojistné za konkrétní sjednané krytí patří do coverages[].premium, NIKOLI do riskPremium. riskPremium u neživotního pojištění VYNECHEJ.
+- PŘEDMĚT POJIŠTĚNÍ: Pro auto dokument vždy extrahuj insuredObject z části "Vozidlo" — ve formátu "[značka model] ([rok]), SPZ: [SPZ], VIN: [VIN]". Pro majetek extrahuj insuredObject z části "Místo pojištění" nebo "Předmět pojištění".
 - MULTI-PERSON: Více osob (pojistník ≠ pojištěný, děti, spoludlužník) extrahuj každou zvlášť do parties viz RULE 3 výše.
 - POJISTNÍK = POJIŠTĚNÝ: Pokud dokument VÝSLOVNĚ uvádí "Pojištěný je shodný s pojistníkem", "Pojistník i pojištěný jsou tatáž osoba", nebo podobnou formulaci, nastav extractedFields.insuredPersonName = hodnota extractedFields.fullName / extractedFields.policyholder. Toto pravidlo platí i pro insuredPersons[0].fullName.
 - MULTI-RISK: Pro každé sjednané riziko/připojištění vyplň coverages jako JSON string array [{ riskType, riskLabel, insuredAmount, termEnd?, premium? }].

@@ -117,15 +117,15 @@ export function normalizeDateToISO(raw: string | null | undefined): string {
   return `${p.year}-${pad2(p.month)}-${pad2(p.day)}`;
 }
 
-/** Returns DD.MM.YYYY for advisor display (Czech business format) or empty string. */
+/** Returns D. M. YYYY for advisor display (Czech business standard — no leading zeros, spaces after dots). */
 export function normalizeDateForAdvisorDisplay(raw: string | null | undefined): string {
   if (raw == null) return "";
   const p = tryParse(String(raw));
   if (!p || !isValidDate(p)) return String(raw).trim();
   if (p.hour != null && p.minute != null) {
-    return `${pad2(p.hour)}:${pad2(p.minute)} ${pad2(p.day)}.${pad2(p.month)}.${p.year}`;
+    return `${pad2(p.hour)}:${pad2(p.minute)} ${p.day}. ${p.month}. ${p.year}`;
   }
-  return `${pad2(p.day)}.${pad2(p.month)}.${p.year}`;
+  return `${p.day}. ${p.month}. ${p.year}`;
 }
 
 /**
