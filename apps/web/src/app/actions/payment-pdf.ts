@@ -4,7 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { contracts, contacts, clientPaymentSetups, unsubscribeTokens } from "db";
-import { eq, and } from "db";
+import { eq, and, sql } from "db";
 import { getPaymentAccountForContract } from "./payment-accounts";
 import { loadAdvisorMailHeadersForCurrentUser } from "@/lib/email/advisor-mail-headers";
 import { paymentPdfAttachmentClientTemplate } from "@/lib/email/templates";
@@ -35,6 +35,8 @@ type AiPaymentSetupInstructionRow = {
   amount: string | null;
   frequency: string | null;
   paymentInstructionsText: string | null;
+  /** Canonical segment z navázané smlouvy (preferováno před paymentType mapováním). */
+  contractSegment?: string | null;
 };
 
 function normalizeInstructionKeyPart(value: string | null | undefined): string {
@@ -51,13 +53,28 @@ function paymentInstructionDedupKey(instruction: PaymentInstruction): string {
   ].join("|");
 }
 
-function resolvePortalSegmentFromPaymentType(paymentType: string | null | undefined): string {
+/**
+ * Resolve canonical segment for portal display.
+ * Priority: contractSegment (canonical, from joined contract row) > paymentType fallback mapping.
+ * This ensures AI Review payment setups are grouped correctly with the rest of the portfolio.
+ */
+function resolvePortalSegmentFromPaymentType(
+  paymentType: string | null | undefined,
+  contractSegment?: string | null,
+): string {
+  if (contractSegment?.trim()) return contractSegment.trim();
   switch ((paymentType ?? "").trim().toLowerCase()) {
     case "insurance":
       return "ZP";
     case "investment":
       return "INV";
+    case "pension":
+    case "dps":
+      return "DPS";
+    case "dip":
+      return "DIP";
     case "loan":
+    case "mortgage":
       return "UVER";
     default:
       return "ZP";
@@ -82,7 +99,7 @@ function mapAiPaymentSetupToInstruction(
   if (!accountNumber) return null;
 
   return {
-    segment: resolvePortalSegmentFromPaymentType(row.paymentType),
+    segment: resolvePortalSegmentFromPaymentType(row.paymentType, row.contractSegment),
     partnerName: row.providerName?.trim() || "—",
     productName: row.productName?.trim() || null,
     contractNumber: row.contractNumber?.trim() || null,
@@ -118,6 +135,14 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
       amount: clientPaymentSetups.amount,
       frequency: clientPaymentSetups.frequency,
       paymentInstructionsText: clientPaymentSetups.paymentInstructionsText,
+      contractSegment: sql<string | null>`(
+        SELECT c.segment FROM contracts c
+        WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
+          AND c.contact_id = ${clientPaymentSetups.contactId}
+          AND c.contract_number = ${clientPaymentSetups.contractNumber}
+          AND c.archived_at IS NULL
+        LIMIT 1
+      )`,
     })
     .from(clientPaymentSetups)
     .where(

@@ -89,26 +89,18 @@ export function aggregatePortfolioMetrics(
     totalLoanPrincipal += principalFromAttributes(row);
 
     if (INVESTMENT_SEGMENTS.has(row.segment)) {
-      monthlyInvestments += monthly;
+      // Annual investment contributions normalised to monthly equivalent
+      if (monthly > 0) monthlyInvestments += monthly;
+      else if (annual > 0) monthlyInvestments += annual / 12;
       continue;
     }
     if (LOAN_SEGMENTS.has(row.segment)) {
       /** Monthly loan payment if stored in premium_amount (CRM convention). */
       continue;
     }
-    /** Insurance-style segments: monthly premium sum */
-    if (
-      row.segment === "ZP" ||
-      row.segment === "MAJ" ||
-      row.segment === "ODP" ||
-      row.segment === "AUTO_PR" ||
-      row.segment === "AUTO_HAV" ||
-      row.segment === "CEST" ||
-      row.segment === "FIRMA_POJ"
-    ) {
-      if (monthly > 0) monthlyInsurancePremiums += monthly;
-      else if (annual > 0) monthlyInsurancePremiums += annual / 12;
-    }
+    /** Insurance-style segments: monthly premium sum (all non-investment, non-loan segments) */
+    if (monthly > 0) monthlyInsurancePremiums += monthly;
+    else if (annual > 0) monthlyInsurancePremiums += annual / 12;
   }
 
   return {

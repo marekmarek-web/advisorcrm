@@ -4,7 +4,7 @@ import { cache } from "react";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
-import { contracts, partners, products, documents, contacts, contractUploadReviews, tenants } from "db";
+import { contracts, partners, products, documents, contacts, contractUploadReviews, tenants, clientPaymentSetups } from "db";
 import { eq, and, asc, or, isNull, inArray, desc, sql } from "db";
 import { contractSegments } from "db";
 import { logActivity } from "./activity";
@@ -155,7 +155,7 @@ export async function getClientPortfolioForContact(contactId: string): Promise<C
     )
     .orderBy(asc(contracts.startDate));
 
-  return rows.map((r) => ({
+  const mapped: ContractRow[] = rows.map((r) => ({
     ...r,
     type: r.type ?? r.segment,
     portfolioAttributes: (r.portfolioAttributes ?? {}) as Record<string, unknown>,
@@ -167,6 +167,55 @@ export async function getClientPortfolioForContact(contactId: string): Promise<C
     confirmedByUserId: isClient ? null : r.confirmedByUserId,
     sourceContractReviewId: isClient ? null : r.sourceContractReviewId,
   }));
+
+  // Enrich premiumAmount from canonical payment setup where contract has no stored amount.
+  // This ensures AI Review applied contracts show correct amounts even when the contract
+  // row was written without premiumAmount (e.g. when payment was only in payment setup).
+  const missingAmountIds = mapped
+    .filter((c) => !c.premiumAmount && !c.premiumAnnual && c.contractNumber)
+    .map((c) => c.id);
+
+  if (missingAmountIds.length > 0) {
+    const paymentRows = await db
+      .select({
+        contractNumber: clientPaymentSetups.contractNumber,
+        amount: clientPaymentSetups.amount,
+        frequency: clientPaymentSetups.frequency,
+        paymentType: clientPaymentSetups.paymentType,
+      })
+      .from(clientPaymentSetups)
+      .where(
+        and(
+          eq(clientPaymentSetups.tenantId, auth.tenantId),
+          eq(clientPaymentSetups.contactId, contactId),
+          eq(clientPaymentSetups.status, "active"),
+          eq(clientPaymentSetups.needsHumanReview, false)
+        )
+      );
+
+    if (paymentRows.length > 0) {
+      const paymentByContractNumber = new Map(
+        paymentRows
+          .filter((p) => p.contractNumber && p.amount)
+          .map((p) => [p.contractNumber!.trim(), p])
+      );
+      for (const contract of mapped) {
+        if (contract.contractNumber && !contract.premiumAmount && !contract.premiumAnnual) {
+          const ps = paymentByContractNumber.get(contract.contractNumber.trim());
+          if (ps?.amount) {
+            const freq = (ps.frequency ?? "").toLowerCase();
+            if (freq === "annually" || freq === "yearly" || freq === "ročně") {
+              contract.premiumAnnual = String(ps.amount);
+            } else {
+              contract.premiumAmount = String(ps.amount);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return mapped;
 }
 
 export async function getPartnersForTenant(): Promise<{ id: string; name: string; segment: string }[]> {
