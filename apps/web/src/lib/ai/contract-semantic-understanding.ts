@@ -16,7 +16,7 @@ import {
   nonlifeRiskPremiumHasExplicitSemantics,
 } from "./payment-semantics";
 
-function isPresent(cell: ExtractedField | undefined): boolean {
+function isPresent(cell: ExtractedField | undefined): cell is ExtractedField {
   if (!cell) return false;
   if (cell.status === "missing" || cell.status === "not_found" || cell.status === "not_applicable") return false;
   const v = cell.value;
@@ -338,8 +338,10 @@ export function suppressNonlifeRiskPremiumWithoutStrongEvidence(
   ef: Record<string, ExtractedField | undefined>
 ): void {
   if (!NONLIFE_PRIMARIES_FOR_RISK.includes(primary)) return;
-  const rp = ef.riskPremium;
-  if (!isPresent(rp)) return;
+  const rpMaybe = ef.riskPremium;
+  if (!isPresent(rpMaybe)) return;
+  /** Zúžení pro TS: `Record<>` + indexovaný přístup ne vždy projde type guardem. */
+  const rp: ExtractedField = rpMaybe;
 
   if (isPresent(ef.annualPremium) && approxEqualMoney(rp.value, ef.annualPremium.value)) {
     ef.riskPremium = {
