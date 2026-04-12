@@ -227,4 +227,40 @@ describe("contract-semantic-understanding", () => {
     };
     expect(buildCanonicalPaymentPayload(env).amount).toBe("12000 Kč");
   });
+
+  it("applySemanticContractUnderstanding promotes fundAllocation to investmentFunds for subscription docs", () => {
+    const env = bareEnvelope("investment_subscription_document", "final_contract");
+    env.extractedFields = {
+      investorFullName: { value: "Jan Test", status: "extracted", confidence: 0.9 },
+      fundAllocation: {
+        value: '[{"name":"Global Fund","allocation":60}]',
+        status: "extracted",
+        confidence: 0.85,
+      },
+    };
+    applySemanticContractUnderstanding(env);
+    expect(String(env.extractedFields.investmentFunds?.value)).toContain("Global Fund");
+  });
+
+  it("applySemanticContractUnderstanding clears insurer when it duplicates provider on investment docs", () => {
+    const env = bareEnvelope("investment_subscription_document", "final_contract");
+    env.extractedFields = {
+      investorFullName: { value: "Jan Test", status: "extracted", confidence: 0.9 },
+      provider: { value: "Správce X", status: "extracted", confidence: 0.9 },
+      insurer: { value: "Správce X", status: "extracted", confidence: 0.75 },
+    };
+    applySemanticContractUnderstanding(env);
+    expect(env.extractedFields.insurer?.status).toBe("not_applicable");
+  });
+
+  it("applySemanticContractUnderstanding clears intermediary when same as pension participant", () => {
+    const env = bareEnvelope("pension_contract", "final_contract");
+    env.extractedFields = {
+      participantFullName: { value: "Jan Novák", status: "extracted", confidence: 0.9 },
+      intermediaryName: { value: "Jan Novák", status: "extracted", confidence: 0.7 },
+      provider: { value: "Penze Co", status: "extracted", confidence: 0.9 },
+    };
+    applySemanticContractUnderstanding(env);
+    expect(env.extractedFields.intermediaryName?.status).toBe("not_applicable");
+  });
 });

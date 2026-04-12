@@ -216,12 +216,7 @@ function formatUnknownValue(v: unknown): string {
 function ensureProductTypeForSubscriptionDocument(ef: Record<string, ExtractedField>): void {
   if (valuePresent(ef.productType)) return;
   const pn = String(ef.productName?.value ?? "").toLowerCase();
-  if (
-    pn.includes("dip") ||
-    pn.includes("dlouhodobý investiční") ||
-    pn.includes("dlouhodoby investicni") ||
-    pn.includes("amundi platforma")
-  ) {
+  if (pn.includes("dip") || pn.includes("dlouhodobý investiční") || pn.includes("dlouhodoby investicni")) {
     ef.productType = {
       value: "DIP",
       status: "inferred_low_confidence",
@@ -692,7 +687,6 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "penzijniSpolecnost",
         "fundManager",
         "administrator",
-        "employerName",
       ]);
       mergeFromAliases(ef, "institutionName", [
         "provider",

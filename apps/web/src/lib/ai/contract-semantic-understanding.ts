@@ -16,6 +16,7 @@ import {
   nonlifeRiskPremiumHasExplicitSemantics,
 } from "./payment-semantics";
 import { isLifecycleFinalInput, isLifecycleNonFinalProjection } from "./lifecycle-semantics";
+import { applySavingsInvestmentSemantics, promoteLooseFundAllocationToInvestmentFunds } from "./savings-investment-semantics";
 
 function isPresent(cell: ExtractedField | undefined): cell is ExtractedField {
   if (!cell) return false;
@@ -362,11 +363,14 @@ export function suppressNonlifeRiskPremiumWithoutStrongEvidence(
  * Single entry: mutates envelope.extractedFields and contentFlags in place.
  */
 export function applySemanticContractUnderstanding(envelope: DocumentReviewEnvelope): void {
-  alignDocumentClassificationWithExtractedEvidence(envelope);
-  normalizeFinalityContentFlags(envelope);
-  const primary = envelope.documentClassification?.primaryType ?? "unsupported_or_unknown";
   const ef = envelope.extractedFields as Record<string, ExtractedField | undefined>;
+  let primary = envelope.documentClassification?.primaryType ?? "unsupported_or_unknown";
 
+  promoteLooseFundAllocationToInvestmentFunds(primary, ef);
+  alignDocumentClassificationWithExtractedEvidence(envelope);
+  primary = envelope.documentClassification?.primaryType ?? "unsupported_or_unknown";
+  normalizeFinalityContentFlags(envelope);
+  applySavingsInvestmentSemantics(primary, ef);
   dedupeInstitutionIdentityFields(ef);
   resolveInvestorIntermediaryDuplicateForInvestment(primary, ef);
   clearNonLifeEmptyInvestmentNoise(primary, ef);

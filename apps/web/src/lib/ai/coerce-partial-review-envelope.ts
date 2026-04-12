@@ -440,7 +440,7 @@ function inferProductTypeForInvestmentSubscription(
   }
   const productName = String(ef.productName?.value ?? "").toLowerCase();
   const strategy = String(ef.investmentStrategy?.value ?? "").trim();
-  if (productName.includes("dip") || productName.includes("dlouhodobý investiční") || productName.includes("amundi platforma")) {
+  if (productName.includes("dip") || productName.includes("dlouhodobý investiční")) {
     ef.productType = normalizeExtractedFieldCell("productType", "DIP");
     return;
   }
