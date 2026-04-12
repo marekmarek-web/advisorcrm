@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Phone,
   Mail,
@@ -22,7 +23,20 @@ import {
   Hash,
 } from "lucide-react";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
-import { getContact, getContactAiProvenance, confirmContactPendingFieldAction, type ContactRow } from "@/app/actions/contacts";
+import {
+  getContact,
+  getContactAiProvenance,
+  confirmContactPendingFieldAction,
+  type ContactRow,
+  type ContactAiProvenanceResult,
+} from "@/app/actions/contacts";
+import { AiReviewProvenanceBadge } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
+import { ContactMergeConflictGuard } from "@/app/portal/contacts/[id]/ContactMergeConflictGuard";
+import {
+  resolveContactIdentityFieldProvenance,
+  shouldShowContactIdentityRow,
+} from "@/lib/portal/contact-identity-field-provenance";
+import { MobileContactContractsStrip } from "./MobileContactContractsStrip";
 import { getHouseholdForContact, type HouseholdForContact } from "@/app/actions/households";
 import { getTasksByContactId, completeTask, reopenTask, type TaskRow } from "@/app/actions/tasks";
 import { getPipelineByContact, type StageWithOpportunities } from "@/app/actions/pipeline";
@@ -65,15 +79,6 @@ function contactFieldLabel(key: string): string {
 
 type ContactDetail = ContactRow & { referralContactName?: string | null };
 type ProfileTab = "overview" | "tasks" | "pipeline" | "documents";
-
-type ContactAiProvenance = {
-  reviewId: string;
-  appliedAt: string | null;
-  confirmedFields: string[];
-  autoAppliedFields: string[];
-  pendingFields: string[];
-  manualRequiredFields: string[];
-} | null;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -133,7 +138,7 @@ function AiProvenanceMobileSection({
   provenance,
   onConfirm,
 }: {
-  provenance: ContactAiProvenance;
+  provenance: ContactAiProvenanceResult;
   onConfirm: (fieldKey: string) => void;
 }) {
   if (!provenance) return null;
@@ -176,14 +181,19 @@ function AiProvenanceMobileSection({
             <p className="text-[10px] font-black text-amber-800 mb-1.5 flex items-center gap-1">
               <Clock size={10} /> Předvyplněno k potvrzení
             </p>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {provenance.pendingFields.map((fieldKey) => (
-                <div key={fieldKey} className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold text-amber-800 truncate">{contactFieldLabel(fieldKey)}</span>
+                <div
+                  key={fieldKey}
+                  className="flex flex-col gap-2 min-w-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                >
+                  <span className="text-[11px] font-bold text-amber-800 break-words min-w-0">
+                    {contactFieldLabel(fieldKey)}
+                  </span>
                   <button
                     type="button"
                     onClick={() => onConfirm(fieldKey)}
-                    className="shrink-0 min-h-[32px] px-2.5 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-wide"
+                    className="w-full min-h-[44px] sm:min-h-[36px] sm:w-auto shrink-0 px-2.5 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-wide"
                   >
                     Potvrdit z AI Review
                   </button>
@@ -213,11 +223,82 @@ function AiProvenanceMobileSection({
   );
 }
 
+/** F8: Parita s ContactDetailIdentityTab — chybějící hodnota + pending_review / manual badge. */
+function ContactIdentityMobileSection({
+  contact,
+  provenance,
+  contactId,
+}: {
+  contact: ContactDetail;
+  provenance: ContactAiProvenanceResult | null;
+  contactId: string;
+}) {
+  const addressLine = [contact.street, [contact.city, contact.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const rows: { key: string; label: string; icon: typeof User; value: string | null }[] = [
+    { key: "title", label: "Titul", icon: User, value: contact.title?.trim() || null },
+    {
+      key: "birthDate",
+      label: "Datum narození",
+      icon: Calendar,
+      value: contact.birthDate ? formatDisplayDateCs(contact.birthDate) || contact.birthDate : null,
+    },
+    { key: "personalId", label: "Rodné číslo", icon: Hash, value: contact.personalId?.trim() || null },
+    { key: "idCardNumber", label: "Číslo občanského průkazu", icon: CreditCard, value: contact.idCardNumber?.trim() || null },
+    { key: "address", label: "Adresa", icon: MapPin, value: addressLine || null },
+  ];
+  const visible = rows.filter(({ key, value }) => shouldShowContactIdentityRow(key, Boolean(value), provenance));
+  if (visible.length === 0) return null;
+
+  return (
+    <MobileSection title="Identita a doklady">
+      <MobileCard className="p-0 overflow-hidden">
+        <div className="divide-y divide-[color:var(--wp-surface-card-border)]">
+          {visible.map(({ key, label, icon: Icon, value }) => {
+            const p = resolveContactIdentityFieldProvenance(key, provenance);
+            return (
+              <div key={key} className="px-3.5 py-3 min-w-0">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+                  <Icon size={14} className="shrink-0 opacity-70" aria-hidden />
+                  {label}
+                </div>
+                <div className="mt-1.5 pl-0 min-w-0 flex flex-col gap-1.5">
+                  {value ? (
+                    <span className="text-sm font-bold text-[color:var(--wp-text)] break-words">{value}</span>
+                  ) : (
+                    <span className="text-sm text-[color:var(--wp-text-tertiary)] italic">—</span>
+                  )}
+                  {p ? (
+                    <span className="inline-flex min-w-0 max-w-full">
+                      <AiReviewProvenanceBadge
+                        kind={p.kind}
+                        reviewId={p.reviewId}
+                        confirmedAt={p.confirmedAt}
+                        className="flex-wrap max-w-full text-[11px] leading-snug [&_a]:break-words"
+                      />
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </MobileCard>
+      <Link
+        href={`/portal/contacts/${contactId}/edit`}
+        className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-800"
+      >
+        Upravit údaje
+      </Link>
+    </MobileSection>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Tab: Přehled                                                       */
 /* ------------------------------------------------------------------ */
 
 function OverviewTab({
+  contactId,
   contact,
   tasks,
   pipeline,
@@ -227,26 +308,20 @@ function OverviewTab({
   onOpenHousehold,
   onConfirmProvenance,
 }: {
+  contactId: string;
   contact: ContactDetail;
   tasks: TaskRow[];
   pipeline: StageWithOpportunities[];
   documents: DocumentRow[];
   household: HouseholdForContact | null;
-  provenance: ContactAiProvenance;
+  provenance: ContactAiProvenanceResult | null;
   onOpenHousehold: (id: string) => void;
   onConfirmProvenance: (fieldKey: string) => void;
 }) {
   const totalOpportunities = pipeline.reduce((sum, s) => sum + s.opportunities.length, 0);
 
+  /** CRM doplněk — identitu včetně provenance bere sekce „Identita a doklady“ (F8). */
   const metaRows: Array<{ icon: React.ElementType; label: string; value: string }> = [
-    ...(contact.birthDate ? [{ icon: Calendar, label: "Datum narození", value: formatDate(contact.birthDate)! }] : []),
-    ...(contact.personalId?.trim()
-      ? [{ icon: Hash, label: "Rodné číslo", value: contact.personalId.trim() }]
-      : []),
-    ...(contact.idCardNumber?.trim()
-      ? [{ icon: CreditCard, label: "Občanský průkaz", value: contact.idCardNumber.trim() }]
-      : []),
-    ...(contact.city ? [{ icon: MapPin, label: "Město", value: `${contact.city}${contact.zip ? ` ${contact.zip}` : ""}` }] : []),
     ...(contact.leadSource ? [{ icon: Tag, label: "Zdroj", value: contact.leadSource }] : []),
     ...(contact.referralContactName ? [{ icon: User, label: "Doporučil/a", value: contact.referralContactName }] : []),
     ...(contact.gdprConsentAt
@@ -301,6 +376,10 @@ function OverviewTab({
           </div>
         </MobileSection>
       ) : null}
+
+      <ContactIdentityMobileSection contact={contact} provenance={provenance} contactId={contactId} />
+
+      <MobileContactContractsStrip contactId={contactId} />
 
       {/* AI Provenance — pending fields and confirmed provenance */}
       {provenance ? (
@@ -572,7 +651,7 @@ export function ClientProfileScreen({
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [pipeline, setPipeline] = useState<StageWithOpportunities[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
-  const [provenance, setProvenance] = useState<ContactAiProvenance>(null);
+  const [provenance, setProvenance] = useState<ContactAiProvenanceResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<ProfileTab>("overview");
@@ -615,7 +694,7 @@ export function ClientProfileScreen({
       if (results[4].status === "fulfilled") setDocuments(results[4].value);
       else setDocuments([]);
 
-      if (results[5].status === "fulfilled") setProvenance(results[5].value as ContactAiProvenance);
+      if (results[5].status === "fulfilled") setProvenance(results[5].value as ContactAiProvenanceResult | null);
       else setProvenance(null);
     });
   }, [contactId]);
@@ -629,8 +708,12 @@ export function ClientProfileScreen({
       } else {
         showToast(`Pole "${contactFieldLabel(fieldKey)}" potvrzeno z AI Review.`, "success");
         // Refresh provenance
-        const updated = await getContactAiProvenance(contactId);
-        setProvenance(updated as ContactAiProvenance);
+        const [updated, refreshedContact] = await Promise.all([
+          getContactAiProvenance(contactId),
+          getContact(contactId),
+        ]);
+        setProvenance(updated);
+        if (refreshedContact) setContact(refreshedContact as ContactDetail);
       }
     });
   }
@@ -688,6 +771,22 @@ export function ClientProfileScreen({
 
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-black text-white truncate">{fullName}</h2>
+            {provenance ? (() => {
+              const pFirst = resolveContactIdentityFieldProvenance("firstName", provenance);
+              const pLast = resolveContactIdentityFieldProvenance("lastName", provenance);
+              const p = pFirst ?? pLast;
+              if (!p) return null;
+              return (
+                <div className="mt-2 min-w-0 max-w-full">
+                  <AiReviewProvenanceBadge
+                    kind={p.kind}
+                    reviewId={p.reviewId}
+                    confirmedAt={p.confirmedAt}
+                    className="text-[11px] text-indigo-200/95 [&_a]:text-indigo-100 [&_a]:underline-offset-2 flex-wrap max-w-full [&_a]:break-words"
+                  />
+                </div>
+              );
+            })() : null}
             {contact.title ? (
               <p className="text-xs text-indigo-200 mt-0.5">{contact.title}</p>
             ) : null}
@@ -748,6 +847,16 @@ export function ClientProfileScreen({
         </div>
       </div>
 
+      {provenance?.mergeConflictFields && provenance.mergeConflictFields.length > 0 ? (
+        <div className="px-4 pt-2 pb-1">
+          <ContactMergeConflictGuard
+            mergeConflicts={provenance.mergeConflictFields}
+            contactId={contactId}
+            reviewId={provenance.reviewId}
+          />
+        </div>
+      ) : null}
+
       {/* Tab bar */}
       <div className="px-4 py-2 bg-[color:var(--wp-surface-card)] border-b border-[color:var(--wp-surface-card-border)] sticky top-0 z-10">
         <FilterChips
@@ -766,6 +875,7 @@ export function ClientProfileScreen({
       <div className="mt-1">
         {tab === "overview" ? (
           <OverviewTab
+            contactId={contactId}
             contact={contact}
             tasks={tasks}
             pipeline={pipeline}

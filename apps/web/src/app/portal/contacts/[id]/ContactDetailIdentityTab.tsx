@@ -1,29 +1,12 @@
 import Link from "next/link";
 import { Calendar, CreditCard, Hash, MapPin, User } from "lucide-react";
-import type { AiProvenanceKind } from "@/lib/portal/ai-review-provenance";
 import type { ContactAiProvenanceResult, ContactRow } from "@/app/actions/contacts";
 import { AiReviewProvenanceBadge } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
-
-function resolveContactFieldProvenance(
-  fieldKey: string,
-  provenance: ContactAiProvenanceResult | null,
-): { kind: AiProvenanceKind; reviewId: string; confirmedAt?: string | null } | null {
-  if (!provenance) return null;
-  if (provenance.confirmedFields.includes(fieldKey)) {
-    return { kind: "confirmed", reviewId: provenance.reviewId, confirmedAt: provenance.appliedAt };
-  }
-  if (provenance.autoAppliedFields.includes(fieldKey)) {
-    return { kind: "auto_applied", reviewId: provenance.reviewId };
-  }
-  if (provenance.pendingFields.includes(fieldKey)) {
-    return { kind: "pending_review", reviewId: provenance.reviewId };
-  }
-  if (provenance.manualRequiredFields.includes(fieldKey)) {
-    return { kind: "manual", reviewId: provenance.reviewId };
-  }
-  return null;
-}
+import {
+  resolveContactIdentityFieldProvenance,
+  shouldShowContactIdentityRow,
+} from "@/lib/portal/contact-identity-field-provenance";
 
 type Props = {
   contactId: string;
@@ -52,12 +35,9 @@ export function ContactDetailIdentityTab({ contactId, contact, provenance }: Pro
     { key: "address", label: "Adresa", icon: MapPin, value: addressLine || null },
   ];
 
-  // Pole se zobrazí pokud má hodnotu NEBO pokud provenance říká pending/manual (poradce musí vědět co chybí)
-  const visibleRows = rows.filter(({ key, value }) => {
-    if (value) return true;
-    const p = resolveContactFieldProvenance(key, provenance);
-    return p?.kind === "pending_review" || p?.kind === "manual";
-  });
+  const visibleRows = rows.filter(({ key, value }) =>
+    shouldShowContactIdentityRow(key, Boolean(value), provenance),
+  );
 
   return (
     <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden">
@@ -87,24 +67,29 @@ export function ContactDetailIdentityTab({ contactId, contact, provenance }: Pro
         ) : (
           <dl className="space-y-5">
             {visibleRows.map(({ key, label, icon: Icon, value }) => {
-              const p = resolveContactFieldProvenance(key, provenance);
+              const p = resolveContactIdentityFieldProvenance(key, provenance);
               return (
                 <div key={key} className="flex flex-col gap-1">
                   <dt className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
                     <Icon size={14} className="shrink-0 opacity-70" aria-hidden />
                     {label}
                   </dt>
-                  <dd className="pl-6 break-words">
+                  <dd className="pl-6 break-words flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline gap-1.5 sm:gap-2 min-w-0">
                     {value ? (
                       <span className="text-base font-bold text-[color:var(--wp-text)]">{value}</span>
                     ) : (
                       <span className="text-sm text-[color:var(--wp-text-tertiary)] italic">—</span>
                     )}
-                    {p && (
-                      <span className="ml-2 inline-block align-middle">
-                        <AiReviewProvenanceBadge kind={p.kind} reviewId={p.reviewId} confirmedAt={p.confirmedAt} />
+                    {p ? (
+                      <span className="inline-flex min-w-0 max-w-full sm:ml-0">
+                        <AiReviewProvenanceBadge
+                          kind={p.kind}
+                          reviewId={p.reviewId}
+                          confirmedAt={p.confirmedAt}
+                          className="flex-wrap max-w-full [&_a]:break-words"
+                        />
                       </span>
-                    )}
+                    ) : null}
                   </dd>
                 </div>
               );

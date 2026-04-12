@@ -41,6 +41,7 @@ import { ClientReferralSection } from "./ClientReferralSection";
 import { Suspense, type ReactNode } from "react";
 import { InviteToClientZoneButton } from "@/app/dashboard/contacts/[id]/InviteToClientZoneButton";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
+import { resolveContactIdentityFieldProvenance } from "@/lib/portal/contact-identity-field-provenance";
 import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
 
 const DynamicContactOpportunityBoard = dynamic(
@@ -263,24 +264,6 @@ function ContactTabBody({
   }
 }
 
-/**
- * Fáze 13: resoluje per-field AI provenance pro contact identity pole.
- * Vrací null pokud pro dané pole neexistuje AI provenance evidence.
- */
-function resolveContactFieldProvenance(
-  fieldKey: string,
-  provenance: ContactAiProvenanceResult,
-): { kind: "confirmed" | "auto_applied"; reviewId: string; confirmedAt?: string | null } | null {
-  if (!provenance) return null;
-  if (provenance.confirmedFields.includes(fieldKey)) {
-    return { kind: "confirmed", reviewId: provenance.reviewId, confirmedAt: provenance.appliedAt };
-  }
-  if (provenance.autoAppliedFields.includes(fieldKey)) {
-    return { kind: "auto_applied", reviewId: provenance.reviewId };
-  }
-  return null;
-}
-
 export default async function ContactDetailPage({ params, searchParams }: PageProps) {
   const { id: rawId } = await params;
   const contactId = rawId?.trim() ?? "";
@@ -407,8 +390,8 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
                   <ContactTagsEditor contactId={contactId} initialTags={contact.tags ?? []} />
                 </div>
                 {(() => {
-                  const pFirst = resolveContactFieldProvenance("firstName", contactProvenance);
-                  const pLast = resolveContactFieldProvenance("lastName", contactProvenance);
+                  const pFirst = resolveContactIdentityFieldProvenance("firstName", contactProvenance);
+                  const pLast = resolveContactIdentityFieldProvenance("lastName", contactProvenance);
                   const p = pFirst ?? pLast;
                   if (!p) return null;
                   return (
@@ -419,7 +402,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
                 })()}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 mt-4 text-sm font-bold text-[color:var(--wp-text-secondary)]">
                   {contact.email && (() => {
-                    const p = resolveContactFieldProvenance("email", contactProvenance);
+                    const p = resolveContactIdentityFieldProvenance("email", contactProvenance);
                     return (
                       <div className="flex flex-col gap-0.5 min-h-[44px] md:min-h-0 justify-center">
                         <a href={`mailto:${contact.email}`} className="flex items-center gap-2 hover:text-indigo-600 transition-colors">
@@ -435,7 +418,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
                     );
                   })()}
                   {contact.phone && (() => {
-                    const p = resolveContactFieldProvenance("phone", contactProvenance);
+                    const p = resolveContactIdentityFieldProvenance("phone", contactProvenance);
                     return (
                       <div className="flex flex-col gap-0.5 min-h-[44px] md:min-h-0 justify-center">
                         <a href={`tel:${contact.phone!.replace(/\s/g, "")}`} className="flex items-center gap-2 hover:text-indigo-600 transition-colors">
@@ -451,7 +434,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
                     );
                   })()}
                   {addressLine && (() => {
-                    const p = resolveContactFieldProvenance("address", contactProvenance);
+                    const p = resolveContactIdentityFieldProvenance("address", contactProvenance);
                     return (
                       <div className="flex flex-col gap-0.5 min-h-[44px] md:min-h-0 justify-center">
                         <span className="flex items-center gap-2">
@@ -467,7 +450,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
                     );
                   })()}
                   {contact.birthDate && (() => {
-                    const p = resolveContactFieldProvenance("birthDate", contactProvenance);
+                    const p = resolveContactIdentityFieldProvenance("birthDate", contactProvenance);
                     return (
                       <div className="flex flex-col gap-0.5 min-h-[44px] md:min-h-0 justify-center">
                         <span className="flex items-center gap-2">
