@@ -104,12 +104,17 @@ const LOW_SENSITIVITY_FIELDS = new Set([
   "pageCount",
 ]);
 
-/** Output modes where we treat all fields as at most prefill_confirm. Never auto-apply for non-final docs. */
+/**
+ * Output modes where all fields are at most prefill_confirm — never auto-apply.
+ * Business rule: proposal / offer are FINAL INPUT by default and therefore NOT in this set.
+ * Only explicit modelation / illustration / non_binding_projection are non-final.
+ */
 const NON_FINAL_OUTPUT_MODES = new Set([
   "reference_or_supporting_document",
   "supporting_document",
   "modelation",
   "illustration",
+  "non_binding_projection",
   "precontract",
   "amendment",
 ]);

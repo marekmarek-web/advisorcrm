@@ -564,30 +564,9 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
 
     const resolvedType = String(dc.primaryType ?? "");
 
-    // Override 1: document classified as insurance proposal/contract but has clear investment subscription signals.
-    // Investment subscriptions have ISIN, amountToPay, investorFullName, upis/subscription keywords, no coverage/risk data.
-    const hasInvestmentSubscriptionSignals =
-      efKeys.some((k) => ["isin", "amountToPay", "intendedInvestment", "entryFeePercent", "investorFullName"].includes(k)) ||
-      contextBlob.includes("upis") ||
-      contextBlob.includes("subscription") ||
-      contextBlob.includes("cenné papíry") ||
-      contextBlob.includes("cenne papiry") ||
-      contextBlob.includes("investicni spolecnost") ||
-      contextBlob.includes("investiční společnost") ||
-      contextBlob.includes("isin");
-    const hasInsuranceCoverageSignals =
-      efKeys.some((k) => ["coverages", "riders", "deathBenefit", "accidentBenefit", "disabilityBenefit", "hospitalizationBenefit", "seriousIllnessBenefit"].includes(k)) &&
-      efVals.includes("pojišt");
-    if (
-      (resolvedType === "life_insurance_proposal" || resolvedType === "life_insurance_contract") &&
-      hasInvestmentSubscriptionSignals &&
-      !hasInsuranceCoverageSignals
-    ) {
-      dc.primaryType = "investment_subscription_document";
-    }
+    // ── Signal detection ──────────────────────────────────────────────────────
 
-    // Override 2: document classified as life insurance but has clear vehicle/auto/nonlife signals.
-    // Nonlife signals: vehicle info, SPZ/VIN, povinné ručení, pojištění vozidla keywords.
+    // Auto/nonlife signals: explicit vehicle data, POV/HAV vocabulary
     const hasAutoSignals =
       efKeys.some((k) => ["insuredObject", "vin", "registrationPlate", "vehicleInfo"].includes(k)) ||
       contextBlob.includes("vozidl") ||
@@ -596,18 +575,11 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       contextBlob.includes("havarijni") ||
       contextBlob.includes("havarijn") ||
       contextBlob.includes("vehicle") ||
+      contextBlob.includes("povinné ručení") ||
+      contextBlob.includes("povinne ruceni") ||
       contextBlob.includes("auto ");
-    if (
-      (resolvedType === "life_insurance_contract" || resolvedType === "life_insurance_final_contract") &&
-      hasAutoSignals &&
-      !contextBlob.includes("zivotni") &&
-      !contextBlob.includes("životní") &&
-      !contextBlob.includes("life insurance")
-    ) {
-      dc.primaryType = "nonlife_insurance_contract";
-    }
 
-    // Override 3: document classified as unknown/unsupported but has clear DPS/pension signals.
+    // Pension/DPS signals: explicit pension vocabulary
     const hasPensionSignals =
       contextBlob.includes("penzijn") ||
       contextBlob.includes("penzijni") ||
@@ -616,6 +588,46 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       contextBlob.includes("dps") ||
       efVals.includes("penzijní") ||
       efVals.includes("spoření");
+
+    // Investment subscription signals: ISIN, upis, fund allocation vocabulary
+    // Guard: exclude if auto/non-life signals also present (auto proposals have insuredObject, SPZ etc.)
+    const hasInvestmentSubscriptionSignals =
+      !hasAutoSignals &&
+      (efKeys.some((k) => ["isin", "amountToPay", "intendedInvestment", "entryFeePercent", "investorFullName"].includes(k)) ||
+       contextBlob.includes("upis") ||
+       contextBlob.includes("subscription") ||
+       contextBlob.includes("cenné papíry") ||
+       contextBlob.includes("cenne papiry") ||
+       contextBlob.includes("investicni spolecnost") ||
+       contextBlob.includes("investiční společnost") ||
+       contextBlob.includes("isin"));
+
+    const hasInsuranceCoverageSignals =
+      efKeys.some((k) => ["coverages", "riders", "deathBenefit", "accidentBenefit", "disabilityBenefit", "hospitalizationBenefit", "seriousIllnessBenefit"].includes(k)) &&
+      efVals.includes("pojišt");
+
+    // Override 1: life insurance → investment subscription (only when no auto/nonlife signals present).
+    if (
+      (resolvedType === "life_insurance_proposal" || resolvedType === "life_insurance_contract") &&
+      hasInvestmentSubscriptionSignals &&
+      !hasInsuranceCoverageSignals
+    ) {
+      dc.primaryType = "investment_subscription_document";
+    }
+
+    // Override 2: life insurance (any lifecycle) → nonlife when auto signals dominate.
+    if (
+      (resolvedType === "life_insurance_contract" || resolvedType === "life_insurance_final_contract" ||
+       resolvedType === "life_insurance_proposal") &&
+      hasAutoSignals &&
+      !contextBlob.includes("zivotni") &&
+      !contextBlob.includes("životní") &&
+      !contextBlob.includes("life insurance")
+    ) {
+      dc.primaryType = "nonlife_insurance_contract";
+    }
+
+    // Override 3: unknown → pension_contract when pension signals present.
     if (
       (resolvedType === "unsupported_or_unknown" || resolvedType === "") &&
       hasPensionSignals
@@ -623,8 +635,7 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       dc.primaryType = "pension_contract";
     }
 
-    // Override 4: document classified as insurance proposal but has clear DPS/pension signals.
-    // DPS contracts sometimes get misclassified as insurance proposals.
+    // Override 4: insurance proposal / investment → pension_contract when pension vocabulary dominates.
     if (
       (resolvedType === "life_insurance_proposal" || resolvedType === "investment_subscription_document") &&
       hasPensionSignals &&
@@ -634,6 +645,49 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
       dc.primaryType = "pension_contract";
     }
   }
+
+  // ─── Finality coercion ────────────────────────────────────────────────────────
+  // Business rule: documents marked as proposal / offer are treated as FINAL INPUT
+  // for extraction and CRM purposes UNLESS they are explicitly a modelation / kalkulace /
+  // illustration / non_binding_projection.
+  // Rationale: advisors submit final offer documents as proposals; the system must
+  // not suppress extraction or CRM apply logic on lifecycle alone.
+  //
+  // This does NOT affect documentStatus shown in UI — that still reflects the raw lifecycle.
+  // It ONLY prevents lifecycle from driving isProposalOnly = true in contentFlags.
+  //
+  // Exception signals (keep as non-final):
+  //   - lifecycleStatus is modelation / illustration / non_binding_projection
+  //   - text contains "kalkulace", "orientační", "modelace", "výpočet", "may differ"
+  //   - explicitly set by extractedFields.documentStatus containing those keywords
+  const efForFinality = root.extractedFields && typeof root.extractedFields === "object" && !Array.isArray(root.extractedFields)
+    ? (root.extractedFields as Record<string, { value?: unknown }>)
+    : {};
+  const docStatusVal = String(efForFinality.documentStatus?.value ?? "").toLowerCase();
+  const subtypeHintFinality = String(dc.subtype ?? dc.productSubtype ?? root.productFamily ?? "").toLowerCase();
+  const isExplicitModelation =
+    docStatusVal.includes("modelac") ||
+    docStatusVal.includes("kalkulac") ||
+    docStatusVal.includes("orientačn") ||
+    docStatusVal.includes("may differ") ||
+    docStatusVal.includes("nezávazn") ||
+    subtypeHintFinality.includes("modelac") ||
+    subtypeHintFinality.includes("kalkulac");
+  const lc = String(dc.lifecycleStatus ?? "").toLowerCase();
+  if (
+    (lc === "proposal" || lc === "offer") &&
+    !isExplicitModelation
+  ) {
+    // Promote to final_contract so that isProposalOnly is NOT set in contentFlags.
+    // Keep originalLifecycle in dc for UI display if needed.
+    dc.lifecycleStatus = "final_contract";
+    // Preserve original lifecycle for audit/display in reasons if not already recorded
+    if (!dc.reasons) dc.reasons = [];
+    if (Array.isArray(dc.reasons) && !dc.reasons.includes("lifecycle_promoted_from_proposal")) {
+      (dc.reasons as string[]).push("lifecycle_promoted_from_proposal");
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────────────────────────
 
   const lcRaw = dc.lifecycleStatus;

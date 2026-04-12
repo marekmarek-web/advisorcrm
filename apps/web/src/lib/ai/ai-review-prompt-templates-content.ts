@@ -180,6 +180,13 @@ INVESTOR vs INSTITUCE — KRITICKÉ:
 - fullName / investorFullName je KLIENT/INVESTOR — z bloku "Klient", "Investor", "Žadatel".
 - NIKDY nepoužívej jméno/adresu správce fondu nebo investiční společnosti jako jméno klienta.
 - institutionName je správce / investiční společnost (např. CODYA investiční společnost, a.s.).
+- DEDUP: Pokud provider, institutionName i insurer obsahují tutéž hodnotu (stejný název instituce), nastav POUZE institutionName. Ostatní nechej prázdné / not_applicable. Neopakuj stejnou hodnotu ve více polích.
+
+FOND / ISIN — POVINNÉ pokud dostupné:
+- Pokud dokument uvádí konkrétní fond, podfond nebo ISIN, MUSÍŠ je extrahovat do investmentFunds[].
+- investmentFunds: [{ name: "<název fondu>", isin: "<ISIN>", allocation: <číslo nebo null> }]
+- isin: extrahuj jako samostatné pole pokud je jednoznačný primární ISIN.
+- Cílový fond / kam peníze putují je KLÍČOVÝ údaj — nenech ho v textu bez extrakce.
 
 INVESTIČNÍ SEKCE (primární zdroj):
 {{investment_section_text}}
@@ -298,17 +305,18 @@ export const INSURANCE_PROPOSAL_MODELATION_TEMPLATE: PromptTemplateContent = {
     "extracted_text", "classification_reasons", "adobe_signals", "filename",
     "contractual_section_text", "investment_section_text", "bundle_section_context",
   ],
-  systemPrompt: `Jsi extrakční engine pro návrhy a modelace pojistných smluv.
-Tyto dokumenty NEJSOU finální smlouvy — jsou to návrhy, ilustrace nebo nezávazné kalkulace.
+  systemPrompt: `Jsi extrakční engine pro návrhy, nabídky a modelace pojistných smluv.
 
 Soubor: {{filename}}
 Klasifikační signály: {{classification_reasons}}
 Adobe signály: {{adobe_signals}}
 
-KRITICKÉ: lifecycleStatus MUSÍ být "modelation", "proposal" nebo "non_binding_projection".
-NIKDY "active" nebo "signed" — toto není podepsaná smlouva.
-contentFlags.isProposalOnly = true
-contentFlags.isFinalContract = false
+FINÁLNOST DOKUMENTU — KRITICKÉ:
+- Pokud dokument je "Návrh pojistné smlouvy" nebo "Nabídka" s konkrétními parametry a platebními instrukcemi → lifecycleStatus = "proposal", contentFlags.isFinalContract = true, contentFlags.isProposalOnly = false.
+  Příznaky finální nabídky: číslo návrhu, konkrétní pojistná částka, platební instrukce (číslo účtu, VS), datum zahájení.
+- Pokud dokument je "Modelace", "Kalkulace", "orientační výpočet" nebo obsahuje "může se lišit od konečné výše" → lifecycleStatus = "modelation", contentFlags.isProposalOnly = true, contentFlags.isFinalContract = false.
+  Příznaky modelace: chybí číslo návrhu, hodnoty jsou "ilustrativní" nebo "orientační".
+- NIKDY nenastavuj lifecycleStatus = "active" nebo "signed" pro tento typ dokumentu pokud nemáš jistotu podpisu.
 
 ${SECTION_AWARE_RULES}
 

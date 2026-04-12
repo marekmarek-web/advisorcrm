@@ -692,8 +692,15 @@ export async function runContractUnderstandingPipeline(
     };
   }
   if (lifecycle === "final_contract") data.contentFlags.isFinalContract = true;
-  if (lifecycle === "proposal" || lifecycle === "offer" || lifecycle === "illustration" || lifecycle === "modelation" || lifecycle === "non_binding_projection") {
+  // isProposalOnly = true ONLY for explicit non-final calculations/illustrations (finality rule).
+  if (
+    lifecycle === "illustration" ||
+    lifecycle === "modelation" ||
+    lifecycle === "non_binding_projection"
+  ) {
     data.contentFlags.isProposalOnly = true;
+  } else if (lifecycle === "final_contract" || lifecycle === "proposal" || lifecycle === "offer") {
+    data.contentFlags.isFinalContract = true;
   }
   const paymentFields = ["bankAccount", "iban", "variableSymbol", "regularAmount", "oneOffAmount"];
   const hasPaymentData = paymentFields.some((k) => {

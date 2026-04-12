@@ -1401,12 +1401,14 @@ U chybějících platebních údajů přidej reviewWarning s kódem "incomplete_
 `;
 
 const PROPOSAL_VS_CONTRACT_PROMPT_ADDENDUM = `
-KRITICKÉ: Rozliš návrh/modelaci od finální smlouvy.
-- "Pojistná smlouva" + číslo smlouvy + podpis/datum uzavření = finální smlouva.
-- "Návrh pojistné smlouvy", "Detailní nabídka", "Modelace", "informační sdělení" = NÁVRH, ne smlouva.
-- "může se lišit od konečné výše" = modelace.
-- Pokud chybí finální doložka nebo podpis, raději označ jako proposal.
-Nastav contentFlags.isFinalContract resp. contentFlags.isProposalOnly.
+KRITICKÉ: Rozliš finální nabídku / návrh od modelace / kalkulace.
+- "Pojistná smlouva" + číslo + podpis = finální smlouva → lifecycleStatus = "final_contract".
+- "Návrh pojistné smlouvy" / "Nabídka" / "Pojistná nabídka" = FINÁLNÍ VSTUP pokud je předložen jako hotová nabídka k uzavření → lifecycleStatus = "proposal" (ne modelation).
+- "Detailní nabídka / nabídka je v této podobě finální" nebo "smlouva vzniká úhradou pojistného" = silný signál finálního dokumentu.
+- "Modelace", "Kalkulace", "orientační výpočet", "může se lišit od konečné výše" = MODELACE → lifecycleStatus = "modelation", contentFlags.isProposalOnly = true.
+- Pokud dokument obsahuje konkrétní ČÍSLO NÁVRHU a platební instrukce (účet, VS), jde o finální nabídku k uzavření.
+- Nastav contentFlags.isFinalContract = true pokud je to finální smlouva nebo finální nabídka připravená k uzavření.
+- Nastav contentFlags.isProposalOnly = true POUZE u modelace / kalkulace / nezávazné projekce.
 `;
 
 const CHANGE_REQUEST_PROMPT_ADDENDUM = `

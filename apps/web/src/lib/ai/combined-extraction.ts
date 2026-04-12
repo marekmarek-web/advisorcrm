@@ -454,13 +454,19 @@ PRAVIDLA EXTRAKCE — POLE
 - VĚŘITEL / BANKA: Pro úvěrové dokumenty lender je institucionální strana (Raiffeisenbank, ČSOB, Moneta atd.). NIKDY ji nevkládej do pole insurer. Použij pole lender.
 - ZPROSTŘEDKOVATEL vs INSTITUCE: intermediaryName je poradce/makléř klienta. Osoba podepsaná za pojišťovnu/banku NENÍ zprostředkovatel. Zprostředkovatel pochází z bloku "Zprostředkovatel" nebo "Zprostředkovatel úvěru".
 - PLATBY — FREKVENCE: paymentFrequency extrahuj přesně. Rozlišuj: "měsíčně" / "ročně" / "čtvrtletně" / "pololetně" / "jednorázově". Nesmíš zaměnit roční pojistné za měsíční.
+- PLATBY — ROČNÍ vs MĚSÍČNÍ: Pokud je paymentFrequency = "ročně" nebo "annually", pak platba patří do annualPremium, NIKOLI do totalMonthlyPremium. Nepoužívej pole totalMonthlyPremium pro roční platbu.
+- PLATBY — PRIORITA: výše splatné platby má prioritu. pořadí: konečná dlužná částka > roční po slevě > roční před slevami. Tato pravidla platí pro pojistné i příspěvky.
 - MULTI-PERSON: Více osob (pojistník ≠ pojištěný, děti, spoludlužník) extrahuj každou zvlášť do parties viz RULE 3 výše.
 - POJISTNÍK = POJIŠTĚNÝ: Pokud dokument VÝSLOVNĚ uvádí "Pojištěný je shodný s pojistníkem", "Pojistník i pojištěný jsou tatáž osoba", nebo podobnou formulaci, nastav extractedFields.insuredPersonName = hodnota extractedFields.fullName / extractedFields.policyholder. Toto pravidlo platí i pro insuredPersons[0].fullName.
 - MULTI-RISK: Pro každé sjednané riziko/připojištění vyplň coverages jako JSON string array [{ riskType, riskLabel, insuredAmount, termEnd?, premium? }].
-- INVESTICE: Extrahuj investmentStrategy (string), investmentFunds jako JSON string [{ name, allocation }], investmentPremium. U modelace napiš lifecycleStatus = "modelation" nebo "non_binding_projection".
+- LIMITY A VELKÁ ČÍSLA: Limity pojistného plnění jako "150 mil. Kč", "50 000 000 Kč", "150/150 mil. Kč" MUSÍŠ extrahovat celé. "150 mil. Kč" = "150 000 000 Kč". "150/150 mil. Kč" = limity 150 000 000 / 150 000 000 Kč. NIKDY neextrahuj jen první číslo bez kontextu. Celou hodnotu dej jako string s plnou hodnotou.
+- DEDUP INSTITUCE: Pokud provider, institutionName a insurer jsou stejná firma, nastav jen institutionName. Ostatní nechej prázdné. Neopakuj stejnou hodnotu ve více polích.
+- INVESTICE: Extrahuj investmentStrategy (string), investmentFunds jako JSON string [{ name, isin?, allocation }], investmentPremium. Fond / ISIN / cílový fond jsou POVINNÉ pokud jsou v dokumentu. U modelace napiš lifecycleStatus = "modelation" nebo "non_binding_projection".
 - PLATBY: bankAccount, variableSymbol, iban, bankCode, paymentFrequency extrahuj vždy, pokud jsou v dokumentu. Neodhaduj — pouze hodnoty z textu. NEMASKOVAT (viz RULE 2).
+- BUNDLE — DOMINANT SEGMENT: Pokud dokument obsahuje více sekcí, DOMINANTNÍ HLAVNÍ SEKCE určuje primaryType a segment. Vedlejší sekce (zprostředkovatel, platební instrukce, zdravotní dotazník, AML) jen obohacují výstup. NESMÍŠ přepsat segment jen kvůli vedlejší sekci.
 - BUNDLE: Pokud dokument obsahuje více logických sekcí (smlouva + zdravotní dotazník / AML / platební instrukce), nastav contentFlags.containsMultipleDocumentSections = true a přidej reviewWarning s kódem "multi_section_bundle_detected".
 - ZDRAVOTNÍ SEKCE: Pokud je přítomný zdravotní dotazník nebo zdravotní prohlášení, nastav sectionSensitivity.health_section = "health_data". Zdravotní dotazník NESMÍ potlačit extrakci z hlavní smluvní části.
+- FINÁLNOST: Pokud dokument je "Návrh" nebo "Nabídka" (proposal/offer) — jde o FINÁLNÍ VSTUP pro extrakci a CRM, NE o modelaci. Nastav lifecycleStatus = "proposal". VÝJIMKA: "Modelace", "Kalkulace", "orientační výpočet" → lifecycleStatus = "modelation", isProposalOnly = true.
 - U modelací nebo návrhů extrahuj maximum čitelných údajů (viz RULE 5).
 - COVERAGES FALLBACK: Pokud dokument obsahuje tabulku rizik / krytí / připojištění, ale neumíš přesně namapovat každý řádek do strukturovaného formátu, dej celý čitelný text tabulky do extractedFields.manualCoverageNotes s hodnotou jako kompaktní opis řádků tabulky.
 - MANUAL FILL FALLBACK: Pokud si u sekce nejsi jistý přesným namapováním, dej přesný výtah z dokumentu do:

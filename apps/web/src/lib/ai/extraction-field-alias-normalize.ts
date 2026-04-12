@@ -1233,14 +1233,35 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     "portfolioStrategy",
   ]);
 
-  mergeFromAliases(ef, "totalMonthlyPremium", [
-    "monthlyPremium",
-    "premiumMonthly",
-    "celkoveMesicniPojistne",
-    "totalPremium",
-    "regularPremium",
-    "combinedPremium",
-  ]);
+  // Payment frequency guard: do NOT merge into totalMonthlyPremium when frequency is explicitly annual.
+  // When paymentFrequency is "ročně"/"annually"/equivalent, the amount belongs to annualPremium, not totalMonthlyPremium.
+  // This prevents ČPP DOMEX+ / Allianz annual premiums from being labeled as "monthly payment".
+  const payFreqVal = String(ef.paymentFrequency?.value ?? "").toLowerCase().trim();
+  const isAnnualFrequency =
+    payFreqVal.includes("ročn") ||
+    payFreqVal === "annually" ||
+    payFreqVal === "annual" ||
+    payFreqVal === "yearly" ||
+    payFreqVal === "ročně";
+
+  if (!isAnnualFrequency) {
+    mergeFromAliases(ef, "totalMonthlyPremium", [
+      "monthlyPremium",
+      "premiumMonthly",
+      "celkoveMesicniPojistne",
+      "totalPremium",
+      "regularPremium",
+      "combinedPremium",
+    ]);
+  } else {
+    // Annual frequency: route any totalPremium / regularPremium aliases to annualPremium instead
+    mergeFromAliases(ef, "annualPremium", [
+      "totalPremium",
+      "regularPremium",
+      "combinedPremium",
+      "premiumAnnual",
+    ]);
+  }
 
   mergeFromAliases(ef, "premiumAmount", ["totalMonthlyPremium", "monthlyPremium", "riskPremium"]);
 

@@ -786,11 +786,28 @@ const INVESTMENT_PRIMARY_TYPES = new Set([
   "life_insurance_investment_contract",
 ]);
 
+// Non-life / auto: payment labels should reflect annual premium semantics
+const NONLIFE_PAYMENT_LABEL_OVERRIDES: Record<string, string> = {
+  totalMonthlyPremium: "Celkové roční pojistné",
+  annualPremium: "Roční pojistné",
+  premiumAmount: "Výše platby",
+};
+const NONLIFE_PRIMARY_TYPES = new Set([
+  "nonlife_insurance_contract",
+  "liability_insurance_offer",
+]);
+
 function fieldLabelForKeyAndFamily(rawKey: string, productFamily?: string, primaryType?: string): string {
   // Pension types get pension-specific vocabulary regardless of productFamily
   if (primaryType && PENSION_PRIMARY_TYPES.has(primaryType)) {
     const override = PENSION_FIELD_LABEL_OVERRIDES[rawKey]
       ?? PENSION_FIELD_LABEL_OVERRIDES[toCamelCase(rawKey)];
+    if (override) return override;
+  }
+  // Non-life / auto insurance: use annual-oriented payment labels
+  if (primaryType && NONLIFE_PRIMARY_TYPES.has(primaryType)) {
+    const override = NONLIFE_PAYMENT_LABEL_OVERRIDES[rawKey]
+      ?? NONLIFE_PAYMENT_LABEL_OVERRIDES[toCamelCase(rawKey)];
     if (override) return override;
   }
   // Investment/DIP/DPS families or investment primary types get investment vocabulary
@@ -803,6 +820,38 @@ function fieldLabelForKeyAndFamily(rawKey: string, productFamily?: string, prima
     if (override) return override;
   }
   return fieldLabelForKey(rawKey);
+}
+
+/**
+ * Detect duplicate institution fields showing the same canonical value.
+ * Returns the set of field keys that should be suppressed as redundant.
+ * Rule: if provider / institutionName / insurer all resolve to the same string,
+ * only show the most canonical one (provider > institutionName > insurer).
+ */
+function getInstitutionDuplicateKeysToSuppress(
+  ef: Record<string, { value?: unknown; status?: string } | undefined>
+): Set<string> {
+  const suppress = new Set<string>();
+  const INSTITUTION_KEYS = ["provider", "institutionName", "insurer"] as const;
+  const vals = INSTITUTION_KEYS.map((k) => {
+    const v = ef[k]?.value;
+    return v != null ? String(v).trim().toLowerCase() : null;
+  });
+  // Find the first non-empty canonical value
+  const canonical = vals.find((v) => v && v !== "—");
+  if (!canonical) return suppress;
+  // Suppress duplicate keys that have the same value as the canonical (keep first occurrence)
+  let kept = false;
+  for (let i = 0; i < INSTITUTION_KEYS.length; i++) {
+    if (vals[i] === canonical) {
+      if (!kept) {
+        kept = true; // keep the first match
+      } else {
+        suppress.add(INSTITUTION_KEYS[i]);
+      }
+    }
+  }
+  return suppress;
 }
 
 function flattenEnvelopeToGroups(
@@ -829,6 +878,8 @@ function flattenEnvelopeToGroups(
   const efRaw = envelope.extractedFields as Record<string, { value?: unknown; status?: string } | undefined> | undefined;
   const paymentConflict = efRaw ? detectPaymentFrequencyConflict(efRaw) : { hasConflict: false };
   const contractConflict = efRaw ? detectContractVsVariableSymbolConflict(efRaw) : { hasConflict: false };
+  // Pre-compute institution dedup: suppress redundant provider/institutionName/insurer fields
+  const institutionDupKeys = efRaw ? getInstitutionDuplicateKeysToSuppress(efRaw) : new Set<string>();
 
   const ef = envelope.extractedFields as
     | Record<string, { value?: unknown; status?: string; confidence?: number }>
@@ -837,6 +888,9 @@ function flattenEnvelopeToGroups(
     for (const [fKey, fObj] of Object.entries(ef)) {
       if (!fObj || typeof fObj !== "object" || fKey.startsWith("_")) continue;
       const rawVal = fObj.value;
+
+      // Institution dedup: suppress redundant institution labels with identical values
+      if (institutionDupKeys.has(fKey)) continue;
 
       // Name redundancy: skip inferred firstName/lastName if fullName already covers them
       if (isNameFieldRedundant(fKey, ef as Record<string, { value?: unknown; status?: string; evidenceTier?: EvidenceTier } | undefined>)) continue;
