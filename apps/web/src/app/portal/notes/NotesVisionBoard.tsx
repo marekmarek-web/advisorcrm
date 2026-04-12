@@ -37,6 +37,7 @@ import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { NotesBoardStoredPosition } from "@/app/actions/notes-board-positions";
 import type { ContactNamePickerRow } from "@/app/actions/contacts";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 
 /** Legacy cache (jen migrace → server); nové pozice jdou výhradně do DB. */
