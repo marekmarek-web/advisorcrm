@@ -850,6 +850,49 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "intermediary",
       ]);
       break;
+    // ─── Main insurance document types ─────────────────────────────────────────
+    // The legacy insuranceProposalModelation prompt only sets fullName from client.fullName;
+    // it never sets the separate `policyholder` field. The combined/nonLife paths may
+    // return `policyholder` explicitly or as a nested parties object that resolves to null.
+    // Rule: explicit policyholder in the document MUST survive regardless of lifecycleStatus.
+    // Proposal / non_final affects DOCUMENT STATUS only — never nullifies an explicit role.
+    case "life_insurance_proposal":
+    case "life_insurance_contract":
+    case "life_insurance_final_contract":
+    case "life_insurance_investment_contract":
+    case "nonlife_insurance_contract":
+    case "liability_insurance_offer":
+      // Bidirectional policyholder ↔ fullName sync.
+      mergeFromAliases(ef, "policyholder", [
+        "fullName",
+        "clientFullName",
+        "policyholderName",
+        "pojistnik",
+        "klient",
+      ]);
+      mergeFromAliases(ef, "fullName", [
+        "policyholder",
+        "policyholderName",
+        "pojistnik",
+        "clientFullName",
+      ]);
+      // Insured person fallback: if insuredPersonName is not separately extracted,
+      // use policyholder / fullName (common for single-person proposals and non-life docs).
+      // "Pojištěný je shodný s pojistníkem" semantic — also handled in combined-extraction prompt.
+      mergeFromAliases(ef, "insuredPersonName", [
+        "insured",
+        "pojisteny",
+        "policyholder",
+        "fullName",
+      ]);
+      mergeFromAliases(ef, "insurer", [
+        "pojistitel",
+        "pojistovna",
+        "insuranceCompany",
+        "issuer",
+      ]);
+      break;
+
     case "payment_instruction":
     case "investment_payment_instruction":
       mergeFromAliases(ef, "provider", ["institutionName", "insurer", "payerBank", "recipientName"]);

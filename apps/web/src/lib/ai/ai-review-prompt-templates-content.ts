@@ -478,8 +478,8 @@ NEŽIVOTNÍ POJIŠTĚNÍ — povinná extrakce:
 - policyStartDate, policyEndDate
 - totalAnnualPremium, totalMonthlyPremium, paymentFrequency
 - bankAccount, variableSymbol
-- policyholder: fullName, birthDate / companyId, address
-- insured: fullName, birthDate / companyId
+- Pojistník: extrahuj do extractedFields.fullName a extractedFields.policyholder (obě pole stejná hodnota: jméno a příjmení pojistníka)
+- Pojištěný: extrahuj do extractedFields.insuredPersonName; pokud dokument uvádí "Pojištěný je shodný s pojistníkem" nebo ekvivalent, nastav insuredPersonName = hodnota policyholder/fullName
 - insuredRisks[] / coverages[]: riskType (požár, krádež, odpovědnost, úraz…), insuredAmount, premium
 - contentFlags.isFinalContract
 
@@ -509,7 +509,7 @@ AUTOPOJIŠTĚNÍ — povinná extrakce:
 - policyStartDate, policyEndDate
 - totalAnnualPremium, totalMonthlyPremium, paymentFrequency
 - bankAccount, variableSymbol
-- policyholder: fullName, birthDate / companyId, address
+- Pojistník: extrahuj do extractedFields.fullName a extractedFields.policyholder (obě pole stejná hodnota: jméno a příjmení pojistníka)
 - vehicle: registrationPlate, VIN, brandModel, yearOfManufacture
 - insuredRisks[]: povinné ručení (limit škody na zdraví, majetku), havarijní (spoluúčast), doplňkové
 - contentFlags.isFinalContract

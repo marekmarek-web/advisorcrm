@@ -455,6 +455,7 @@ PRAVIDLA EXTRAKCE — POLE
 - ZPROSTŘEDKOVATEL vs INSTITUCE: intermediaryName je poradce/makléř klienta. Osoba podepsaná za pojišťovnu/banku NENÍ zprostředkovatel. Zprostředkovatel pochází z bloku "Zprostředkovatel" nebo "Zprostředkovatel úvěru".
 - PLATBY — FREKVENCE: paymentFrequency extrahuj přesně. Rozlišuj: "měsíčně" / "ročně" / "čtvrtletně" / "pololetně" / "jednorázově". Nesmíš zaměnit roční pojistné za měsíční.
 - MULTI-PERSON: Více osob (pojistník ≠ pojištěný, děti, spoludlužník) extrahuj každou zvlášť do parties viz RULE 3 výše.
+- POJISTNÍK = POJIŠTĚNÝ: Pokud dokument VÝSLOVNĚ uvádí "Pojištěný je shodný s pojistníkem", "Pojistník i pojištěný jsou tatáž osoba", nebo podobnou formulaci, nastav extractedFields.insuredPersonName = hodnota extractedFields.fullName / extractedFields.policyholder. Toto pravidlo platí i pro insuredPersons[0].fullName.
 - MULTI-RISK: Pro každé sjednané riziko/připojištění vyplň coverages jako JSON string array [{ riskType, riskLabel, insuredAmount, termEnd?, premium? }].
 - INVESTICE: Extrahuj investmentStrategy (string), investmentFunds jako JSON string [{ name, allocation }], investmentPremium. U modelace napiš lifecycleStatus = "modelation" nebo "non_binding_projection".
 - PLATBY: bankAccount, variableSymbol, iban, bankCode, paymentFrequency extrahuj vždy, pokud jsou v dokumentu. Neodhaduj — pouze hodnoty z textu. NEMASKOVAT (viz RULE 2).

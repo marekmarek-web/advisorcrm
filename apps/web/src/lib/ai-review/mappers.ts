@@ -928,6 +928,10 @@ function flattenEnvelopeToGroups(
     for (const [pk, pv] of Object.entries(parties)) {
       if (pk.startsWith("_")) continue;
       const strVal = formatExtractedValue(pv);
+      // Skip empty/null party entries — same behaviour as the extractedFields loop above.
+      // Null parties (e.g. parties.insured = null) must NOT generate false "Chybí: Insured"
+      // warnings. The policyholder/insured data is canonical in extractedFields instead.
+      if (strVal === "—") continue;
       const confPct = fieldConfidence(pk, fieldConfidenceMap, globalConfidence01);
       const pres = advisorFieldPresentation(pv, "extracted", globalConfidence01, {
         inputMode: ctx.inputMode as InputMode | undefined,
@@ -940,8 +944,8 @@ function flattenEnvelopeToGroups(
         label: fieldLabelForKey(pk),
         value: strVal,
         confidence: confPct,
-        status: strVal === "—" ? "error" : pres.status,
-        message: strVal === "—" ? "Údaj nebyl nalezen nebo chybí v dokumentu." : pres.message,
+        status: pres.status,
+        message: pres.message,
         sourceType: "ai",
         isConfirmed: false,
         isEdited: false,

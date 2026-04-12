@@ -75,6 +75,10 @@ function flattenClientIntoFields(
     str(client.name) ||
     [str(client.firstName), str(client.lastName)].filter(Boolean).join(" ").trim();
   put(ef, "fullName", fullName || undefined);
+  // Also populate `policyholder` — the display field labeled "Pojistník".
+  // Proposal/non_final lifecycleStatus only affects document status, not whether the
+  // explicit policyholder role from the document should be surfaced.
+  put(ef, "policyholder", str(client.policyholder) || str(client.pojistnik) || fullName || undefined);
   put(ef, "firstName", str(client.firstName) || undefined);
   put(ef, "lastName", str(client.lastName) || undefined);
   put(ef, "birthDate", str(client.birthDate) || str(client.dateOfBirth) || undefined);
