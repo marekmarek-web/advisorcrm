@@ -14,7 +14,7 @@ export const STATUS_OPTIONS = [
   { id: "zatím-ne", label: "Zatím ne", color: "#579bfc" },
   { id: "domluvit", label: "DOMLUVIT", color: "#037f4c" },
   { id: "x", label: "x", color: "#333333" },
-  { id: "done", label: "✓", color: "#00c875" },
+  { id: "done", label: "Hotovo", color: "#00c875" },
 ] as const;
 
 export type StatusId = string;

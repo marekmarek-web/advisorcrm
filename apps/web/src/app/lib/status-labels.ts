@@ -18,7 +18,8 @@ export const DEFAULT_STATUS_OPTIONS: StatusLabel[] = [
   { id: "zatím-ne", label: "Zatím ne", color: "#579bfc" },
   { id: "domluvit", label: "DOMLUVIT", color: "#037f4c" },
   { id: "x", label: "x", color: "#333333" },
-  { id: "done", label: "✓", color: "#00c875" },
+  /** Legacy id z anglických šablon – zobrazovat jako Hotovo (stejné jako hotovo) */
+  { id: "done", label: "Hotovo", color: "#00c875" },
 ];
 
 export function getStatusLabels(): StatusLabel[] {
@@ -76,5 +77,8 @@ export function getStatusById(labels: StatusLabel[], id: string): StatusLabel {
   if (!id?.trim()) return empty;
   const found = labels.find((s) => s.id === id);
   if (found) return found;
+  if (id === "done") {
+    return { id: "done", label: "Hotovo", color: "#00c875" };
+  }
   return { id, label: id, color: "#c4c4c4" };
 }

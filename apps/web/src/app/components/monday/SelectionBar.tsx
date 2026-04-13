@@ -10,6 +10,12 @@ interface SelectionBarProps {
   groupOptions: { id: string; name: string }[];
 }
 
+function vybranoKontaktuText(n: number): string {
+  if (n === 1) return "Vybrán 1 kontakt";
+  if (n >= 2 && n <= 4) return `Vybrány ${n} kontakty`;
+  return `Vybráno ${n} kontaktů`;
+}
+
 export function SelectionBar({
   count,
   onClear,
@@ -23,13 +29,13 @@ export function SelectionBar({
 
   return (
     <div className="flex items-center gap-4 h-10 px-4 bg-monday-blue text-white text-[13px] shrink-0">
-      <span className="font-medium">{count} items selected</span>
+      <span className="font-medium">{vybranoKontaktuText(count)}</span>
       <button type="button" onClick={onClear} className="hover:underline">
-        Clear
+        Zrušit výběr
       </button>
       <div className="relative">
         <button type="button" onClick={() => setMoveOpen((o) => !o)} className="hover:underline">
-          Move to group
+          Přesunout do skupiny
         </button>
         {moveOpen && (
           <>
@@ -50,7 +56,7 @@ export function SelectionBar({
         )}
       </div>
       <button type="button" onClick={onDelete} className="hover:underline text-red-200">
-        Delete
+        Smazat
       </button>
     </div>
   );
