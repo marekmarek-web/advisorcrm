@@ -1,4 +1,4 @@
-import type { ApplyResultPayload, ContractReviewRow } from "@/lib/ai/review-queue-repository";
+import type { ApplyResultPayload, ApplyPublishOutcome, ContractReviewRow } from "@/lib/ai/review-queue-repository";
 
 export type ContractAnalysisBridgeSuggestion = {
   id: string;
@@ -14,6 +14,76 @@ type PayloadWithBridge = ApplyResultPayload & {
 function hasAnyContractArtifacts(payload: ApplyResultPayload | null | undefined) {
   if (!payload) return false;
   return Boolean(payload.createdContractId || payload.createdPaymentId || payload.createdTaskId);
+}
+
+/**
+ * Phase 5A: Deterministicky spočítá publish outcome z výsledku apply.
+ * Jeden zdroj pravdy — volán z applyContractReviewDrafts a čten v UI.
+ * Neobsahuje žádnou vendor/PDF logiku.
+ */
+export function computePublishOutcome(
+  payload: ApplyResultPayload | null | undefined,
+  isSupportingDocument: boolean,
+): ApplyPublishOutcome {
+  const hasContract = Boolean(payload?.createdContractId);
+  const hasPaymentSetup = Boolean(payload?.createdPaymentSetupId);
+  const hasLinkedDoc = Boolean(payload?.linkedDocumentId);
+  const hasDocWarning = Boolean(payload?.documentLinkWarning);
+  const supportingGuard = isSupportingDocument ||
+    (payload?.policyEnforcementTrace?.supportingDocumentGuard === true);
+
+  // Payment outcome — orthogonal to product outcome
+  const paymentOutcome: ApplyPublishOutcome["paymentOutcome"] = hasPaymentSetup
+    ? "payment_setup_published"
+    : "payment_setup_skipped";
+
+  // Partial failure: apply ran but some post-commit downstream step failed
+  if (hasContract && hasDocWarning) {
+    return {
+      mode: "publish_partial_failure",
+      paymentOutcome,
+      visibleToClient: true,
+      label: "Smlouva/produkt zapsán, propojení dokumentu selhalo (parciální výsledek).",
+    };
+  }
+
+  // Supporting document — only attached, never a published contract
+  if (supportingGuard && !hasContract) {
+    return {
+      mode: "supporting_doc_only",
+      paymentOutcome: "payment_setup_skipped",
+      visibleToClient: false,
+      label: "Podkladový dokument pouze přiložen — smlouva/produkt nevznikl.",
+    };
+  }
+
+  // Contract created + visible to client (normal apply path)
+  if (hasContract) {
+    return {
+      mode: "product_published_visible_to_client",
+      paymentOutcome,
+      visibleToClient: true,
+      label: "Smlouva/produkt zapsán do CRM a zobrazen v klientském portálu.",
+    };
+  }
+
+  // Document linked but no contract (internal document attach, e.g. advisor-only upload)
+  if (hasLinkedDoc && !hasContract) {
+    return {
+      mode: "internal_document_only",
+      paymentOutcome,
+      visibleToClient: false,
+      label: "Dokument přiložen ke kontaktu — smlouva/produkt nevznikl.",
+    };
+  }
+
+  // Fallback: payment only or task only — no contract artifact
+  return {
+    mode: "supporting_doc_only",
+    paymentOutcome,
+    visibleToClient: false,
+    label: "Zapsáno bez vytvoření smlouvy/produktu.",
+  };
 }
 
 export function mapContractReviewToBridgePayload(params: {

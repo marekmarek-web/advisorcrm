@@ -90,6 +90,35 @@ export type ApplyResultPayload = {
    * Přítomnost tohoto klíče signalizuje partiální stav (apply OK, doc link ne).
    */
   documentLinkWarning?: string;
+  /**
+   * Phase 5A: Deterministický publish outcome — co skutečně vzniklo po apply.
+   * Nahrazuje generický zelený "Zapsáno do CRM" ve všech případech.
+   *
+   * - supporting_doc_only: dokument pouze přiložen, žádná smlouva/produkt nevznikl
+   * - internal_document_only: dokument zapsán, ale bez publishnuté smlouvy (interní)
+   * - product_published: smlouva/produkt vytvořen v CRM (bez portálové viditelnosti)
+   * - product_published_visible_to_client: smlouva v CRM + visibleToClient=true, portál vidí
+   * - payment_setup_published: platební instrukce zapsány (může být součástí jiného outcome)
+   * - payment_setup_skipped: platební instrukce přeskočeny (supporting guard nebo chybí data)
+   * - publish_partial_failure: apply proběhl ale část downstream kroků selhala
+   */
+  publishOutcome?: ApplyPublishOutcome;
+};
+
+export type ApplyPublishOutcome = {
+  /** Primární výsledek publish operace. */
+  mode:
+    | "supporting_doc_only"
+    | "internal_document_only"
+    | "product_published"
+    | "product_published_visible_to_client"
+    | "publish_partial_failure";
+  /** Platební instrukce — odděleně od mode (může koexistovat s product_published). */
+  paymentOutcome: "payment_setup_published" | "payment_setup_skipped";
+  /** Zkrácené lidsky čitelné shrnutí pro UI. */
+  label: string;
+  /** True pokud klientský portál uvidí smlouvu po apply. */
+  visibleToClient: boolean;
 };
 
 /** Extraction trace stored in DB (no document content). */

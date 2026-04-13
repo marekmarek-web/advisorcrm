@@ -648,16 +648,58 @@ export function AIReviewExtractionShell({
         </div>
       )}
 
-      {/* Fáze 10: Apply result summary – enforcement trace + co se propsalo */}
+      {/* Fáze 10 + 5A: Apply result summary – publish outcome + enforcement trace */}
       {doc.isApplied && doc.applyResultPayload && (
-        <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-4 md:px-6">
+        <div className={`border-b px-4 py-4 md:px-6 ${
+          doc.applyResultPayload.publishOutcome?.mode === "publish_partial_failure"
+            ? "bg-amber-50 border-amber-200"
+            : doc.applyResultPayload.publishOutcome?.mode === "supporting_doc_only" ||
+              doc.applyResultPayload.publishOutcome?.mode === "internal_document_only"
+            ? "bg-blue-50 border-blue-200"
+            : "bg-emerald-50 border-emerald-200"
+        }`}>
           <div className="max-w-6xl mx-auto space-y-3">
-            <h4 className="text-sm font-black text-emerald-900 flex items-center gap-1.5">
-              <Check size={15} className="text-emerald-600 shrink-0" />
-              Zapsáno do CRM
-            </h4>
+            {/* Phase 5A: Truthful publish outcome heading */}
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className={`text-sm font-black flex items-center gap-1.5 ${
+                doc.applyResultPayload.publishOutcome?.mode === "publish_partial_failure"
+                  ? "text-amber-900"
+                  : doc.applyResultPayload.publishOutcome?.mode === "supporting_doc_only" ||
+                    doc.applyResultPayload.publishOutcome?.mode === "internal_document_only"
+                  ? "text-blue-900"
+                  : "text-emerald-900"
+              }`}>
+                <Check size={15} className={
+                  doc.applyResultPayload.publishOutcome?.mode === "publish_partial_failure"
+                    ? "text-amber-600 shrink-0"
+                    : doc.applyResultPayload.publishOutcome?.mode === "supporting_doc_only" ||
+                      doc.applyResultPayload.publishOutcome?.mode === "internal_document_only"
+                    ? "text-blue-600 shrink-0"
+                    : "text-emerald-600 shrink-0"
+                } />
+                {doc.applyResultPayload.publishOutcome
+                  ? doc.applyResultPayload.publishOutcome.label
+                  : "Zapsáno do CRM"}
+              </h4>
+              {doc.applyResultPayload.publishOutcome?.visibleToClient && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 border border-emerald-200 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                  Portál vidí
+                </span>
+              )}
+              {doc.applyResultPayload.publishOutcome?.paymentOutcome === "payment_setup_published" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 border border-blue-200 text-[10px] font-black uppercase tracking-widest text-blue-700">
+                  Platby zapsány
+                </span>
+              )}
+              {doc.applyResultPayload.publishOutcome?.paymentOutcome === "payment_setup_skipped" &&
+                doc.applyResultPayload.publishOutcome?.mode !== "supporting_doc_only" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Platby přeskočeny
+                </span>
+              )}
+            </div>
 
-            {/* What was actually written */}
+            {/* What was actually written — artifact chips */}
             <div className="flex flex-wrap gap-2 text-xs">
               {doc.applyResultPayload.createdClientId && (
                 <Link
@@ -677,7 +719,13 @@ export function AIReviewExtractionShell({
               )}
               {doc.applyResultPayload.createdContractId && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold">
-                  <Shield size={11} /> Smlouva vytvořena
+                  <Shield size={11} /> Smlouva/produkt vytvořen
+                </span>
+              )}
+              {/* Phase 5A: distinguish document-only from product publish */}
+              {!doc.applyResultPayload.createdContractId && doc.applyResultPayload.linkedDocumentId && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 border border-blue-200 text-blue-800 font-bold">
+                  <FileText size={11} /> Dokument přiložen (bez smlouvy)
                 </span>
               )}
               {doc.applyResultPayload.createdPaymentSetupId && (
@@ -698,6 +746,12 @@ export function AIReviewExtractionShell({
               {doc.applyResultPayload.createdNoteId && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold">
                   <FileText size={11} /> Poznámka uložena
+                </span>
+              )}
+              {/* Phase 5A: partial failure warning */}
+              {doc.applyResultPayload.documentLinkWarning && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-200 text-amber-800 font-bold">
+                  ⚠ Propojení dokumentu selhalo (parciální výsledek)
                 </span>
               )}
             </div>

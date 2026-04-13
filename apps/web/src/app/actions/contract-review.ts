@@ -10,7 +10,8 @@ import {
 import type { ContractReviewRow } from "@/lib/ai/review-queue-repository";
 import { mergeFieldEditsIntoExtractedPayload } from "@/lib/ai-review/mappers";
 import { applyContractReview } from "@/lib/ai/apply-contract-review";
-import { mapContractReviewToBridgePayload } from "@/lib/ai/contracts-analyses-bridge";
+import { isSupportingDocumentOnly } from "@/lib/ai/apply-policy-enforcement";
+import { mapContractReviewToBridgePayload, computePublishOutcome } from "@/lib/ai/contracts-analyses-bridge";
 import { tryBuildPaymentSetupDraftFromRawPayload } from "@/lib/ai/draft-actions";
 import {
   breadcrumbContractReviewPaymentGate,
@@ -520,6 +521,21 @@ export async function applyContractReviewDrafts(
         });
       } catch { /* noop */ }
     }
+  }
+
+  // Phase 5A: Compute and attach publishOutcome — truthful post-apply status.
+  // Single computation, single read path — no ghost success.
+  const extractedPayloadForOutcome = (row.extractedPayload as Record<string, unknown> | null) ?? {};
+  const isDocumentSupporting = isSupportingDocumentOnly(extractedPayloadForOutcome);
+  bridgedPayload.publishOutcome = computePublishOutcome(bridgedPayload, isDocumentSupporting);
+
+  // Persist publishOutcome into the stored applyResultPayload
+  try {
+    await updateContractReview(id, auth.tenantId, {
+      applyResultPayload: bridgedPayload,
+    });
+  } catch {
+    // Soft fail — publishOutcome is returned in payload even if persist fails
   }
 
   return { ok: true, payload: bridgedPayload };
