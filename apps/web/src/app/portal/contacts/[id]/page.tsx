@@ -45,10 +45,12 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import { resolveContactIdentityFieldProvenance } from "@/lib/portal/contact-identity-field-provenance";
 import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
+import { hasPermission, type RoleName } from "@/lib/auth/permissions";
+import { resolveIdentityCompleteness, buildIncompleteMessage } from "./contact-identity-completeness-logic";
 
 const DynamicContactOpportunityBoard = dynamic(
   () =>
-    import("./ContactOpportunityBoard").then((m) => m.ContactOpportunityBoard),
+    import("@/app/components/pipeline/ContactOpportunityBoard").then((m) => m.ContactOpportunityBoard),
   {
     loading: () => (
       <div className="min-h-[320px] animate-pulse rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50" />
@@ -137,6 +139,9 @@ function ContactTabBody({
   latestGenerations,
   baseQueryNoTab,
   contactProvenance,
+  canReadOpportunities,
+  canWriteOpportunities,
+  identityAdvisoryNoteDeals,
 }: {
   tab: ContactTabId;
   contactId: string;
@@ -145,6 +150,9 @@ function ContactTabBody({
   latestGenerations: LatestGenerations;
   baseQueryNoTab: string;
   contactProvenance: ContactAiProvenanceResult | null;
+  canReadOpportunities: boolean;
+  canWriteOpportunities: boolean;
+  identityAdvisoryNoteDeals: string | null;
 }): ReactNode {
   switch (tab) {
     case "prehled":
@@ -250,12 +258,24 @@ function ContactTabBody({
         </div>
       );
     case "obchody":
+      if (!canReadOpportunities) {
+        return (
+          <div className="rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 p-8 text-sm text-[color:var(--wp-text-secondary)]">
+            <p>
+              Nemáte oprávnění zobrazit obchody tohoto klienta. Požádejte správce o oprávnění „Obchody — čtení“.
+            </p>
+          </div>
+        );
+      }
       return (
         <div className="flex flex-col flex-1 min-h-0 w-full">
           <DynamicContactOpportunityBoard
             contactId={contactId}
             contactFirstName={contact.firstName ?? undefined}
             contactLastName={contact.lastName ?? undefined}
+            pipelineSettingsHref="/portal/pipeline"
+            identityAdvisoryNote={identityAdvisoryNoteDeals}
+            canWriteOpportunities={canWriteOpportunities}
           />
         </div>
       );
@@ -303,10 +323,13 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
     );
   }
 
+  const auth = await requireAuthInAction();
+  const canReadOpportunities = hasPermission(auth.roleName as RoleName, "opportunities:read");
+  const canWriteOpportunities = hasPermission(auth.roleName as RoleName, "opportunities:write");
+
   let accessVerdict: AccessVerdict = "NEVER_INVITED";
   if (contact.email) {
     try {
-      const auth = await requireAuthInAction();
       accessVerdict = (await computeAccessVerdict(auth.tenantId, contactId)).verdict;
     } catch {
       /* badge falls back to NEVER_INVITED */
@@ -337,6 +360,31 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
       /* provenance je neblokující */
     }
   }
+
+  const provForDeals = contactProvenance
+    ? {
+        reviewId: contactProvenance.reviewId,
+        confirmedFields: contactProvenance.confirmedFields,
+        autoAppliedFields: contactProvenance.autoAppliedFields,
+        pendingFields: contactProvenance.pendingFields,
+      }
+    : null;
+  const identityRowsDeals = resolveIdentityCompleteness(
+    {
+      birthDate: contact.birthDate,
+      personalId: contact.personalId,
+      idCardNumber: contact.idCardNumber,
+      street: contact.street,
+      city: contact.city,
+      zip: contact.zip,
+      email: contact.email,
+      phone: contact.phone,
+    },
+    provForDeals,
+  );
+  const identityAdvisoryNoteDeals = identityRowsDeals.some((r) => r.status !== "ok")
+    ? buildIncompleteMessage(identityRowsDeals)
+    : null;
 
   const initials =
     [contact.firstName, contact.lastName]
@@ -534,6 +582,9 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
             latestGenerations={latestGenerations}
             baseQueryNoTab={baseQueryNoTab}
             contactProvenance={contactProvenance}
+            canReadOpportunities={canReadOpportunities}
+            canWriteOpportunities={canWriteOpportunities}
+            identityAdvisoryNoteDeals={identityAdvisoryNoteDeals}
           />
         </div>
       </main>

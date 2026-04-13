@@ -179,6 +179,7 @@ const PipelineOpportunityCard = memo(function PipelineOpportunityCard({
   themeAccent,
   isDragging,
   isMenuOpen,
+  readOnly,
   onDragStart,
   onDragEnd,
   onNavigateDetail,
@@ -193,6 +194,7 @@ const PipelineOpportunityCard = memo(function PipelineOpportunityCard({
   themeAccent: string;
   isDragging: boolean;
   isMenuOpen: boolean;
+  readOnly: boolean;
   onDragStart: (e: DragEvent, opportunityId: string, stageId: string) => void;
   onDragEnd: () => void;
   onNavigateDetail: (opportunityId: string) => void;
@@ -258,15 +260,17 @@ const PipelineOpportunityCard = memo(function PipelineOpportunityCard({
   const isTodayOrYesterday = dateShort === "Dnes" || dateShort === "Včera";
   return (
     <div
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={onDragEnd}
+      draggable={!readOnly}
+      onDragStart={readOnly ? undefined : handleDragStart}
+      onDragEnd={readOnly ? undefined : onDragEnd}
       onClick={handleShellClick}
-      className={`group relative flex shrink-0 cursor-grab flex-col rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-lg active:cursor-grabbing dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.45)] ${themeAccent} border-b-[3px] ${isDragging ? "scale-95 opacity-40" : ""}`}
+      className={`group relative flex shrink-0 flex-col rounded-[20px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-lg dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.45)] ${themeAccent} border-b-[3px] ${isDragging ? "scale-95 opacity-40" : ""} ${readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
     >
-      <div className="pointer-events-none absolute left-1 top-1/2 -translate-y-1/2 text-[color:var(--wp-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100">
-        <GripVertical size={14} />
-      </div>
+      {!readOnly ? (
+        <div className="pointer-events-none absolute left-1 top-1/2 -translate-y-1/2 text-[color:var(--wp-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100">
+          <GripVertical size={14} />
+        </div>
+      ) : null}
 
       <div className="flex justify-between items-start mb-3 pl-2">
         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-black tracking-wide uppercase border ${product.color}`}>
@@ -332,22 +336,26 @@ const PipelineOpportunityCard = memo(function PipelineOpportunityCard({
                 </Link>
               </>
             )}
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
-              title="Upravit"
-            >
-              <Edit2 size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={handleMenuToggle}
-              className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
-              title="Možnosti"
-            >
-              <MoreHorizontal size={12} />
-            </button>
+            {!readOnly ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
+                  title="Upravit"
+                >
+                  <Edit2 size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMenuToggle}
+                  className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
+                  title="Možnosti"
+                >
+                  <MoreHorizontal size={12} />
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
@@ -629,6 +637,7 @@ export function PipelineBoard({
   initialOpenCreateStageId,
   onOpenCreateConsumed,
   totalPotential: totalPotentialProp,
+  readOnly = false,
 }: {
   stages: StageWithOpportunities[];
   contacts?: ContactOption[];
@@ -642,6 +651,8 @@ export function PipelineBoard({
   onOpenCreateConsumed?: () => void;
   /** Total pipeline potential (from server); when set, shows v2 local header. */
   totalPotential?: number;
+  /** Jen prohlížení — bez mutací (např. chybí opportunities:write). */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -667,10 +678,12 @@ export function PipelineBoard({
 
   useEffect(() => {
     if (initialOpenCreateStageId) {
-      setCreateStageId(initialOpenCreateStageId);
+      if (!readOnly) {
+        setCreateStageId(initialOpenCreateStageId);
+      }
       onOpenCreateConsumed?.();
     }
-  }, [initialOpenCreateStageId, onOpenCreateConsumed]);
+  }, [initialOpenCreateStageId, onOpenCreateConsumed, readOnly]);
   const [pipelineSearch, setPipelineSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
@@ -684,6 +697,10 @@ export function PipelineBoard({
 
   const moveTo = useCallback(
     (opportunityId: string, stageId: string) => {
+      if (readOnly) {
+        toast.showToast("Nemáte oprávnění měnit obchody.", "error");
+        return;
+      }
       setLocalStages((prev) => {
         let moved: OpportunityCard | null = null;
         const stripped = prev.map((stage) => {
@@ -716,10 +733,14 @@ export function PipelineBoard({
         }
       });
     },
-    [startTransition, afterMutation, toast]
+    [startTransition, afterMutation, toast, readOnly]
   );
 
   async function doDelete(id: string) {
+    if (readOnly) {
+      toast.showToast("Nemáte oprávnění mazat obchody.", "error");
+      return;
+    }
     setDeletePending(true);
     try {
       await deleteOpportunity(id);
@@ -788,6 +809,7 @@ export function PipelineBoard({
     (e: DragEvent, targetStageId: string) => {
       e.preventDefault();
       setDropTargetStageId(null);
+      if (readOnly) return;
       const raw = e.dataTransfer.getData(DRAG_TYPE);
       if (!raw) return;
       try {
@@ -799,7 +821,7 @@ export function PipelineBoard({
       setDraggedOppId(null);
       setDragSourceStageId(null);
     },
-    [moveTo]
+    [moveTo, readOnly]
   );
 
   const filteredStages = localStages.map((stage) => {
@@ -912,9 +934,11 @@ export function PipelineBoard({
               </span>
               <span className="hidden sm:inline">AI asistent</span>
             </button>
-            <CreateActionButton type="button" onClick={() => setCreateStageId(localStages[0]?.id ?? null)} icon={Plus}>
-              Nový obchod
-            </CreateActionButton>
+            {!readOnly ? (
+              <CreateActionButton type="button" onClick={() => setCreateStageId(localStages[0]?.id ?? null)} icon={Plus}>
+                Nový obchod
+              </CreateActionButton>
+            ) : null}
           </div>
         </div>
 
@@ -973,6 +997,7 @@ export function PipelineBoard({
                               themeAccent={theme.accent}
                               isDragging={isDragging}
                               isMenuOpen={isMenuOpen}
+                              readOnly={readOnly}
                               onDragStart={handleCardDragStart}
                               onDragEnd={handleCardDragEnd}
                               onNavigateDetail={navigateToPipelineDetail}
@@ -986,13 +1011,15 @@ export function PipelineBoard({
                         })
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => setCreateStageId(stage.id)}
-                        className="mt-1 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[16px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] py-3 text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] shadow-sm transition-all hover:border-indigo-400/50 hover:text-indigo-600 hover:shadow-md active:scale-[0.98] dark:hover:text-indigo-400"
-                      >
-                        <Plus size={16} strokeWidth={2.5} /> Přidat
-                      </button>
+                      {!readOnly ? (
+                        <button
+                          type="button"
+                          onClick={() => setCreateStageId(stage.id)}
+                          className="mt-1 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[16px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] py-3 text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] shadow-sm transition-all hover:border-indigo-400/50 hover:text-indigo-600 hover:shadow-md active:scale-[0.98] dark:hover:text-indigo-400"
+                        >
+                          <Plus size={16} strokeWidth={2.5} /> Přidat
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );

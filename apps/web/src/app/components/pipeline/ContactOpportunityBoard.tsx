@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, startTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, LayoutList, Briefcase } from "lucide-react";
+import { CheckCircle2, LayoutList, Briefcase, AlertCircle, Info } from "lucide-react";
 import { getPipelineByContact } from "@/app/actions/pipeline";
 import type { StageWithOpportunities } from "@/app/actions/pipeline";
 import { PipelineBoardDynamic } from "@/app/dashboard/pipeline/PipelineBoardDynamic";
@@ -18,15 +18,36 @@ const retryButtonClass =
 const secondaryLinkClass =
   "inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] px-6 py-2.5 text-sm font-bold text-[color:var(--wp-text)] shadow-sm transition-all hover:bg-[color:var(--wp-surface-muted)] no-underline active:scale-[0.98]";
 
+function humanizePipelineLoadError(message: string): string {
+  const m = message.trim();
+  if (m === "Forbidden" || /^forbidden$/i.test(m)) {
+    return "Nemáte oprávnění zobrazit obchody tohoto klienta. Požádejte správce o oprávnění „Obchody — čtení“.";
+  }
+  return m;
+}
+
+export type ContactOpportunityBoardProps = {
+  contactId: string;
+  contactFirstName?: string;
+  contactLastName?: string;
+  /** Odkaz na nastavení fází (portal vs dashboard). */
+  pipelineSettingsHref?: string;
+  /**
+   * Nepovinné upozornění nad boardem (např. neúplná identita) — neblokuje zobrazení ani práci s boardem.
+   */
+  identityAdvisoryNote?: string | null;
+  /** Může uživatel zakládat a měnit obchody (opportunities:write). */
+  canWriteOpportunities?: boolean;
+};
+
 export function ContactOpportunityBoard({
   contactId,
   contactFirstName,
   contactLastName,
-}: {
-  contactId: string;
-  contactFirstName?: string;
-  contactLastName?: string;
-}) {
+  pipelineSettingsHref = "/portal/pipeline",
+  identityAdvisoryNote,
+  canWriteOpportunities = true,
+}: ContactOpportunityBoardProps) {
   const [stages, setStages] = useState<StageWithOpportunities[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -36,6 +57,8 @@ export function ContactOpportunityBoard({
   const pathname = usePathname();
   const router = useRouter();
   const newOpportunityConsumed = useRef(false);
+
+  const readOnly = !canWriteOpportunities;
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +72,8 @@ export function ContactOpportunityBoard({
       .catch((err) => {
         if (!cancelled) {
           setStages([]);
-          setLoadError(err instanceof Error ? err.message : "Nepodařilo se načíst obchody.");
+          const raw = err instanceof Error ? err.message : "Nepodařilo se načíst obchody.";
+          setLoadError(humanizePipelineLoadError(raw));
         }
       })
       .finally(() => {
@@ -69,6 +93,7 @@ export function ContactOpportunityBoard({
   const firstStageId = stages[0]?.id ?? null;
 
   useEffect(() => {
+    if (readOnly) return;
     if (newOpportunityConsumed.current) return;
     if (searchParams.get("newOpportunity") !== "1") return;
     if (loading || !firstStageId) return;
@@ -78,7 +103,7 @@ export function ContactOpportunityBoard({
     q.delete("newOpportunity");
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [searchParams, pathname, router, loading, firstStageId]);
+  }, [readOnly, searchParams, pathname, router, loading, firstStageId]);
 
   const contactsForCreate: ContactOption[] = [
     { id: contactId, firstName: contactFirstName ?? "", lastName: contactLastName ?? "" },
@@ -98,7 +123,7 @@ export function ContactOpportunityBoard({
           Případy a obchody navázané na tohoto klienta.
         </p>
       </div>
-      {!noStages && (
+      {!noStages && !readOnly && (
         <CreateActionButton
           type="button"
           onClick={() => firstStageId && setOpenCreateStageId(firstStageId)}
@@ -113,6 +138,26 @@ export function ContactOpportunityBoard({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full">
+      {identityAdvisoryNote ? (
+        <div className="mx-4 mt-2 mb-1 flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100">
+          <Info className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+          <div>
+            <p className="font-semibold">Doplnění údajů klienta (doporučení)</p>
+            <p className="mt-1 text-amber-900/90 dark:text-amber-100/90">{identityAdvisoryNote}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {readOnly && !loading && !loadError && (
+        <div className="mx-4 mt-2 mb-1 flex gap-3 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 text-sm">
+          <AlertCircle className="h-5 w-5 shrink-0 text-[color:var(--wp-text-secondary)]" aria-hidden />
+          <p className="text-[color:var(--wp-text-secondary)]">
+            Můžete obchody prohlížet, ale nemáte oprávnění je zakládat, přesouvat ani upravovat. Požádejte správce o
+            oprávnění „Obchody — zápis“.
+          </p>
+        </div>
+      )}
+
       {header}
       <div className="flex-1 min-h-0 px-4 pb-4 w-full">
         {loading && <PipelineBoardSkeleton />}
@@ -131,9 +176,9 @@ export function ContactOpportunityBoard({
             <LayoutList size={40} className="text-[color:var(--wp-text-tertiary)] mb-3" />
             <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Obchodní nástěnka není nastavená</h2>
             <p className="text-sm text-[color:var(--wp-text-secondary)] text-center mb-4">
-              Nastavte fáze obchodu v modulu Obchody.
+              Bez fází nelze založit nový obchod. Nastavte je v modulu Obchody.
             </p>
-            <Link href="/portal/pipeline" className={secondaryLinkClass}>
+            <Link href={pipelineSettingsHref} className={secondaryLinkClass}>
               Přejít do Obchodů
             </Link>
           </div>
@@ -146,14 +191,16 @@ export function ContactOpportunityBoard({
             <p className="text-sm text-[color:var(--wp-text-secondary)] text-center mb-4">
               Vytvořte první obchod a přiřaďte ho do příslušného stupně.
             </p>
-            <CreateActionButton
-              type="button"
-              onClick={() => firstStageId && setOpenCreateStageId(firstStageId)}
-              disabled={!firstStageId}
-              icon={Briefcase}
-            >
-              Vytvořit první obchod
-            </CreateActionButton>
+            {!readOnly && (
+              <CreateActionButton
+                type="button"
+                onClick={() => firstStageId && setOpenCreateStageId(firstStageId)}
+                disabled={!firstStageId}
+                icon={Briefcase}
+              >
+                Vytvořit první obchod
+              </CreateActionButton>
+            )}
             <p className="text-xs text-[color:var(--wp-text-tertiary)] mt-4 text-center">
               Později zde budete moci založit obchod z AI příležitosti.
             </p>
@@ -168,6 +215,7 @@ export function ContactOpportunityBoard({
             onMutationComplete={() => getPipelineByContact(contactId).then(setStages)}
             initialOpenCreateStageId={openCreateStageId}
             onOpenCreateConsumed={() => setOpenCreateStageId(null)}
+            readOnly={readOnly}
           />
         )}
       </div>

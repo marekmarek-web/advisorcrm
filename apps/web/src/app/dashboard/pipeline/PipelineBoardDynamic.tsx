@@ -14,6 +14,8 @@ export type PipelineBoardDynamicProps = {
   initialOpenCreateStageId?: string | null;
   onOpenCreateConsumed?: () => void;
   totalPotential?: number;
+  /** Jen prohlížení — bez zakládání, přesunů a úprav (např. chybí opportunities:write). */
+  readOnly?: boolean;
 };
 
 const PipelineBoard = dynamic(
