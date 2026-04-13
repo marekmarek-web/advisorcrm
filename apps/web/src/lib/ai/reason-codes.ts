@@ -41,6 +41,7 @@ const REGISTRY: ReasonCode[] = [
 
   // Client matching
   { code: "ambiguous_client_match", severity: "blocking", humanMessage: "Více možných shod klientů — potvrďte ručně.", retryRecommended: false },
+  { code: "near_match_advisory", severity: "warning", humanMessage: "Pravděpodobná shoda klienta — ověřte výběr před zápisem.", retryRecommended: false },
   { code: "no_client_match", severity: "warning", humanMessage: "Nenalezena shoda klienta v CRM.", retryRecommended: false },
 
   // Apply gates

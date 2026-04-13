@@ -576,7 +576,9 @@ function CrmMappingProposalCard({ doc }: { doc: ExtractionDocument }) {
     (a) =>
       a.type === "create_client" ||
       a.type === "create_new_client" ||
-      a.type === "create_or_link_client"
+      a.type === "create_or_link_client" ||
+      a.type === "link_existing_client" ||
+      a.type === "resolve_client_match"
   );
 
   const hasAnyDetail = paymentAction?.payload || contractAction?.payload || clientAction?.payload;
@@ -646,28 +648,36 @@ function CrmMappingProposalCard({ doc }: { doc: ExtractionDocument }) {
             </p>
           )}
 
-          {clientAction && (
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-1.5 flex items-center gap-1.5">
-                <User size={11} /> Klient
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                {Object.entries(clientAction.payload ?? {})
-                  .filter(([, v]) => v && String(v).trim())
-                  .slice(0, 8)
-                  .map(([k, v]) => (
-                    <CrmFieldRow
-                      key={k}
-                      fieldKey={k}
-                      label={k}
-                      value={String(v)}
-                      applyLookup={applyLookup}
-                      enforcementTrace={enforcementTrace}
-                    />
-                  ))}
+          {clientAction &&
+            (clientAction.type === "link_existing_client" || clientAction.type === "resolve_client_match" ? (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-1.5 flex items-center gap-1.5">
+                  <User size={11} /> Klient
+                </p>
+                <p className="text-xs text-[color:var(--wp-text-secondary)] leading-relaxed">{clientAction.label}</p>
               </div>
-            </div>
-          )}
+            ) : (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-1.5 flex items-center gap-1.5">
+                  <User size={11} /> Klient
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {Object.entries(clientAction.payload ?? {})
+                    .filter(([, v]) => v && String(v).trim())
+                    .slice(0, 8)
+                    .map(([k, v]) => (
+                      <CrmFieldRow
+                        key={k}
+                        fieldKey={k}
+                        label={k}
+                        value={String(v)}
+                        applyLookup={applyLookup}
+                        enforcementTrace={enforcementTrace}
+                      />
+                    ))}
+                </div>
+              </div>
+            ))}
 
           {contractAction && (
             <div>
@@ -1041,7 +1051,7 @@ const INLINE_APPLY_ACTIONS = new Set([
 
 /** Action types where we can navigate to the relevant section (link_existing requires client list). */
 const ACTION_ROUTE_MAP: Record<string, string> = {
-  link_existing_client: "/portal/contacts",
+  resolve_client_match: "/portal/contacts",
   attach_to_existing_client: "/portal/contacts",
   link_client: "/portal/contacts",
   create_task: "/portal/tasks",
@@ -1101,8 +1111,52 @@ function WorkActionsCard({
               "flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-3 border transition-colors w-full text-left";
             const isBusy = busyAction === actionKey;
 
+            if (a.type === "link_existing_client") {
+              const cid = typeof a.payload?.clientId === "string" ? a.payload.clientId : null;
+              const href = cid ? `/portal/contacts/${cid}` : "/portal/contacts";
+              return (
+                <li key={actionKey}>
+                  <Link
+                    href={href}
+                    className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40`}
+                  >
+                    <ExternalLink size={15} className="text-indigo-500 shrink-0" />
+                    <span className="flex-1">{a.label}</span>
+                    <ArrowRight size={14} className="text-indigo-400 shrink-0" />
+                  </Link>
+                </li>
+              );
+            }
+
+            if (a.type === "resolve_client_match") {
+              return (
+                <li key={actionKey}>
+                  <div
+                    className={`${baseClass} flex-col items-stretch text-[color:var(--wp-text)] bg-amber-50/50 border-amber-200`}
+                  >
+                    <div className="flex w-full items-center gap-2">
+                      <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+                      <span className="flex-1 font-semibold">{a.label}</span>
+                      <Link href="/portal/contacts" className="text-xs font-bold text-indigo-600 shrink-0">
+                        Otevřít kontakty
+                      </Link>
+                    </div>
+                    <p className="text-[11px] text-[color:var(--wp-text-secondary)] mt-2 leading-snug pl-0.5">
+                      Zápis do CRM počká na výběr klienta. Použijte sekci „Klient a další akce“ u dokumentu.
+                    </p>
+                  </div>
+                </li>
+              );
+            }
+
             // Inline apply action: create client → confirm + trigger apply flow
             if (INLINE_APPLY_ACTIONS.has(a.type) && onApproveAndApply) {
+              if (
+                (a.type === "create_new_client" || a.type === "create_client") &&
+                doc.matchVerdict === "existing_match"
+              ) {
+                return null;
+              }
               const alreadyLinked = !!doc.matchedClientId || doc.createNewClientConfirmed === "true";
               return (
                 <li key={actionKey}>

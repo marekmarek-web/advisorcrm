@@ -111,6 +111,9 @@ export type DraftAction = {
   payload: Record<string, unknown>;
 };
 
+/** Rozhodnutí párování klienta (stejné hodnoty jako v DB / extraction trace). */
+export type MatchVerdict = "existing_match" | "near_match" | "ambiguous_match" | "no_match";
+
 /**
  * Payment sync preview for advisor — built from canonical payment payload
  * before any apply action, so advisor sees exactly what will be written.
@@ -212,6 +215,12 @@ export type ApplyResultPayload = {
       excludedFields: string[];
     };
   };
+  /** Stav klientského portálu u propojeného kontaktu po aplikaci (žádné vendor heuristiky). */
+  portalClientAccess?: {
+    hasActiveClientPortal: boolean;
+    hasLinkedUserAccount: boolean;
+    hasAcceptedInvitation: boolean;
+  };
 };
 
 export type ExtractionDocument = {
@@ -237,6 +246,8 @@ export type ExtractionDocument = {
   reasonsForReview?: string[];
   clientMatchCandidates: ClientMatchCandidate[];
   draftActions: DraftAction[];
+  /** Verdikt párování z pipeline; null = starší záznamy před zavedením modelu. */
+  matchVerdict?: MatchVerdict | null;
   matchedClientId?: string;
   createNewClientConfirmed?: string;
   isApplied: boolean;
@@ -251,6 +262,9 @@ export type ExtractionDocument = {
     warnings?: string[];
     /** AI Review v2 classifier raw JSON (for advisor-facing labels). */
     aiClassifierJson?: Record<string, unknown>;
+    matchVerdict?: MatchVerdict;
+    matchVerdictReason?: string;
+    autoResolvedClientId?: string;
   };
   validationWarnings?: Array<{ code?: string; message: string; field?: string }>;
   classificationReasons?: string[];

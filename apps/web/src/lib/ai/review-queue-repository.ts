@@ -72,6 +72,12 @@ export type ApplyResultPayload = {
     targetId: string | null;
     fromValue: unknown;
   }>;
+  /** Stav klientského portálu u propojeného kontaktu po aplikaci. */
+  portalClientAccess?: {
+    hasActiveClientPortal: boolean;
+    hasLinkedUserAccount: boolean;
+    hasAcceptedInvitation: boolean;
+  };
 };
 
 /** Extraction trace stored in DB (no document content). */

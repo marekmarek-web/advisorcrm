@@ -182,12 +182,88 @@ function humanizeReviewReasonForAdvisorSummary(code: string): string | null {
     hybrid_contract_signals_detected: "V dokumentu jsou prvky smlouvy i modelace — ověřte typ dokumentu.",
     scan_or_ocr_unusable: "OCR nemělo dost spolehlivý text — důkladně zkontrolujte pole.",
     ambiguous_client_match: "V CRM je více možných klientů — vyberte správného.",
+    near_match_advisory:
+      "Existuje pravděpodobná shoda s klientem v CRM — ověřte ji, nebo zvolte jiného klienta.",
     incomplete_payment_details: "Platební údaje nejsou kompletní — doplňte nebo ověřte.",
   };
   if (map[t]) return map[t];
   if (/^[a-z][a-z0-9_]*$/i.test(t) && t.includes("_")) return null;
   if (t.length > 0) return t;
   return null;
+}
+
+/** Rozhodnutí párování klienta z backendu — jediný zdroj pravdy pro UI (bez paralelní heuristiky). */
+export type MatchVerdictUi =
+  | "existing_match"
+  | "near_match"
+  | "ambiguous_match"
+  | "no_match";
+
+export type MatchVerdictBanner = {
+  tone: "success" | "warning" | "danger" | "neutral";
+  title: string;
+  body: string;
+};
+
+/**
+ * Texty pro banner „stav párování klienta“ (poradenské UI).
+ */
+export function buildMatchVerdictBanner(
+  verdict: MatchVerdictUi | null | undefined,
+  opts?: { topCandidateName?: string; topScorePct?: number }
+): MatchVerdictBanner | null {
+  if (!verdict) return null;
+  const name = opts?.topCandidateName?.trim();
+  const pct =
+    typeof opts?.topScorePct === "number" && Number.isFinite(opts.topScorePct)
+      ? Math.round(opts.topScorePct)
+      : undefined;
+
+  switch (verdict) {
+    case "existing_match":
+      return {
+        tone: "success",
+        title: name ? `Klient nalezen: ${name}` : "Klient nalezen v CRM",
+        body:
+          "Shoda je dostatečně jistá — dokument je připraven ke kontrole a schválení. Pokud jde o jinou osobu, použijte „Změnit klienta“.",
+      };
+    case "near_match":
+      return {
+        tone: "warning",
+        title: name ? `Pravděpodobná shoda: ${name}${pct != null ? ` (${pct} %)` : ""}` : "Pravděpodobná shoda v CRM",
+        body:
+          "Nejvyšší kandidát je předvybrán jako výchozí. Před zápisem ho ověřte, nebo vyberte jiného klienta / zvolte nového klienta.",
+      };
+    case "ambiguous_match":
+      return {
+        tone: "danger",
+        title: "Nejednoznačná shoda",
+        body:
+          "V CRM je více rozumných kandidátů nebo jsou si příliš podobní. Vyberte správného klienta níže — zápis do CRM je do výběru blokovaný.",
+      };
+    case "no_match":
+      return {
+        tone: "neutral",
+        title: "Žádný odpovídající klient v CRM",
+        body:
+          "Nepodařilo se najít spolehlivou shodu. Pokládáte-li nového klienta, potvrďte vytvoření níže.",
+      };
+    default:
+      return null;
+  }
+}
+
+export function approvedPendingApplyHint(
+  verdict: MatchVerdictUi | null | undefined,
+  hasResolvedClient: boolean
+): string {
+  if (!hasResolvedClient) {
+    return "Kontrola je schválená, ale ještě není zapsaná do CRM. Při kliknutí na Zapsat do CRM se použije vybraný klient, nebo se podle potvrzení založí nový záznam.";
+  }
+  if (verdict === "existing_match") {
+    return "Kontrola je schválená, ale změny do CRM ještě neproběhly — dokončíte je kliknutím na Zapsat do CRM. Připojení je k existujícímu klientovi v CRM.";
+  }
+  return "Kontrola je schválená, ale změny do CRM ještě neproběhly — dokončíte je kliknutím na Zapsat do CRM. Schválení potvrzuje správnost extrakce.";
 }
 
 /**

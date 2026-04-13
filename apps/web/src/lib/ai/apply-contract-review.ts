@@ -1,5 +1,13 @@
 import { db } from "db";
-import { contacts, contracts, tasks, auditLog, clientPaymentSetups, contractSegments, type ClientPaymentSetupPaymentType } from "db";
+import {
+  contacts,
+  contracts,
+  tasks,
+  auditLog,
+  clientPaymentSetups,
+  contractSegments,
+  type ClientPaymentSetupPaymentType,
+} from "db";
 import { eq, and, isNotNull } from "db";
 import * as Sentry from "@sentry/nextjs";
 import type { ContractReviewRow } from "./review-queue-repository";
@@ -29,6 +37,7 @@ import {
   resolveFieldMerge,
   type ContactSourceKind,
 } from "./field-merge-policy";
+import { loadContactPortalAccessSnapshot } from "./client-portal-access";
 
 const VALID_SEGMENTS = new Set<string>(contractSegments);
 
@@ -917,6 +926,15 @@ export async function applyContractReview(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Aplikace do CRM selhala.";
     return { ok: false, error: message };
+  }
+
+  const contactIdForPortal = resultPayload.linkedClientId ?? resultPayload.createdClientId ?? null;
+  if (contactIdForPortal) {
+    try {
+      resultPayload.portalClientAccess = await loadContactPortalAccessSnapshot(tenantId, contactIdForPortal);
+    } catch (portalErr) {
+      Sentry.captureException(portalErr);
+    }
   }
 
   return { ok: true, payload: resultPayload };

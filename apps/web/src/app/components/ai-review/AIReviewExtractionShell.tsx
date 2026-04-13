@@ -36,7 +36,12 @@ import type {
   DraftAction,
   FieldFilter,
   ApplyResultPayload,
+  MatchVerdict,
 } from "@/lib/ai-review/types";
+import {
+  approvedPendingApplyHint,
+  buildMatchVerdictBanner,
+} from "@/lib/ai/document-messages";
 import { hasMeaningfulReviewContent } from "@/lib/ai-review/mappers";
 import { aiReviewPdfFileName, buildAiReviewPdfBlob } from "@/lib/ai-review/build-ai-review-pdf";
 import { ExtractionLeftPanel } from "./ExtractionLeftPanel";
@@ -387,6 +392,17 @@ export function AIReviewExtractionShell({
       doc.processingStatus === "blocked");
   const isApproved = doc.reviewStatus === "approved";
   const hasResolvedClient = !!doc.matchedClientId || doc.createNewClientConfirmed === "true";
+  const matchVerdict: MatchVerdict | null =
+    doc.matchVerdict ??
+    (doc.extractionTrace as { matchVerdict?: MatchVerdict } | undefined)?.matchVerdict ??
+    null;
+  const verdictBanner = buildMatchVerdictBanner(matchVerdict, {
+    topCandidateName: doc.clientMatchCandidates[0]?.displayName,
+    topScorePct: doc.clientMatchCandidates[0] ? doc.clientMatchCandidates[0].score * 100 : undefined,
+  });
+  const canOfferCreateClientDraft = doc.draftActions.some(
+    (a) => a.type === "create_new_client" || a.type === "create_client"
+  );
   const canApply = isApproved && !doc.isApplied;
   const canApproveAndApply = !!onApproveAndApply && canApproveReject;
   const proposalBarrierReasons = doc.applyGate?.applyBarrierReasons ?? [];
@@ -588,20 +604,7 @@ export function AIReviewExtractionShell({
           <div className="max-w-5xl mx-auto flex items-start gap-3">
             <AlertCircle size={18} className="text-amber-700 shrink-0 mt-0.5" />
             <p className="text-sm font-medium text-amber-950 leading-snug">
-              {hasResolvedClient
-                ? (
-                  <>
-                    Kontrola je schválená, ale klient a smlouva v CRM ještě nevznikly, dokud neklepnete na{" "}
-                    <strong>Zapsat do CRM</strong>. Schválení jen potvrzuje správnost extrakce.
-                  </>
-                )
-                : (
-                  <>
-                    Kontrola je schválená, ale ještě není zapsaná do CRM. Při kliknutí na{" "}
-                    <strong>Zapsat do CRM</strong> se použije vybraný klient, nebo se automaticky připraví nový klient
-                    ze smlouvy.
-                  </>
-                )}
+              {approvedPendingApplyHint(matchVerdict, hasResolvedClient)}
             </p>
           </div>
         </div>
@@ -698,6 +701,12 @@ export function AIReviewExtractionShell({
                 </span>
               )}
             </div>
+
+            {doc.applyResultPayload.portalClientAccess?.hasActiveClientPortal ? (
+              <p className="text-xs text-emerald-900 font-medium leading-snug">
+                Klient už má aktivní přístup do klientské zóny — není třeba znovu spouštět pozvánku k přístupu.
+              </p>
+            ) : null}
 
             {/* Fáze 10: Policy enforcement result summary */}
             {doc.applyResultPayload.policyEnforcementTrace && (
@@ -1060,66 +1069,132 @@ export function AIReviewExtractionShell({
                   Klient a další akce
                 </summary>
                 <div className="mt-4 space-y-4">
+                  {verdictBanner ? (
+                    <div
+                      className={`rounded-xl px-3 py-2.5 text-sm border ${
+                        verdictBanner.tone === "success"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                          : verdictBanner.tone === "warning"
+                            ? "bg-amber-50 border-amber-200 text-amber-950"
+                            : verdictBanner.tone === "danger"
+                              ? "bg-rose-50 border-rose-200 text-rose-950"
+                              : "bg-slate-50 border-slate-200 text-slate-900"
+                      }`}
+                    >
+                      <p className="font-bold leading-snug">{verdictBanner.title}</p>
+                      <p className="text-xs mt-1.5 leading-relaxed opacity-95">{verdictBanner.body}</p>
+                    </div>
+                  ) : null}
+
+                  {matchVerdict === "near_match" &&
+                  doc.clientMatchCandidates[0] &&
+                  !doc.matchedClientId &&
+                  onSelectClient ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectClient(doc.clientMatchCandidates[0]!.clientId)}
+                      disabled={!!actionLoading}
+                      className="w-full min-h-[44px] rounded-xl bg-indigo-600 px-4 text-xs font-black uppercase tracking-widest text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      Potvrdit navrženého klienta
+                    </button>
+                  ) : null}
+
                   {doc.clientMatchCandidates.length > 0 ? (
                     <div>
                       <h4 className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2">
-                        Kandidáti klientů
+                        {matchVerdict === "ambiguous_match"
+                          ? "Vyberte správného klienta (řazeno podle shody)"
+                          : "Kandidáti v CRM"}
                       </h4>
                       <div className="space-y-2">
-                        {doc.clientMatchCandidates.map((c) => (
-                          <div
-                            key={c.clientId}
-                            className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">
-                                {c.displayName ?? c.clientId}
-                              </p>
-                              <p className="text-[10px] text-[color:var(--wp-text-secondary)]">
-                                {Math.round(c.score * 100)}% ·{" "}
-                                {c.reasons.map((r) => humanizeReviewReasonLine(r)).join(" · ")}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => onSelectClient?.(c.clientId)}
-                              disabled={!!actionLoading || doc.matchedClientId === c.clientId}
-                              className={`shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition-colors min-h-[44px] ${
-                                doc.matchedClientId === c.clientId
-                                  ? "bg-indigo-100 text-indigo-700"
-                                  : "bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
-                              }`}
+                        {doc.clientMatchCandidates.map((c, idx) => {
+                          const isTopSuggested =
+                            idx === 0 && (matchVerdict === "near_match" || matchVerdict === "existing_match");
+                          const topHighlightClass =
+                            matchVerdict === "existing_match" && idx === 0
+                              ? "border-emerald-300 ring-1 ring-emerald-200/80"
+                              : matchVerdict === "near_match" && idx === 0
+                                ? "border-amber-300 ring-1 ring-amber-200/80"
+                                : "border-[color:var(--wp-surface-card-border)]";
+                          return (
+                            <div
+                              key={c.clientId}
+                              className={`flex items-center justify-between gap-2 p-3 rounded-xl border bg-[color:var(--wp-surface-card)] ${topHighlightClass}`}
                             >
-                              {doc.matchedClientId === c.clientId ? (
-                                <span className="flex items-center gap-1">
-                                  <Check size={14} /> Vybrán
-                                </span>
-                              ) : (
-                                "Vybrat"
-                              )}
-                            </button>
-                          </div>
-                        ))}
+                              <div className="min-w-0">
+                                {isTopSuggested ? (
+                                  <p
+                                    className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${
+                                      matchVerdict === "existing_match" ? "text-emerald-800" : "text-amber-800"
+                                    }`}
+                                  >
+                                    {matchVerdict === "existing_match"
+                                      ? "Potvrzená shoda s klientem"
+                                      : "Nejvýše hodnocená shoda"}
+                                  </p>
+                                ) : null}
+                                <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">
+                                  {c.displayName ?? c.clientId}
+                                </p>
+                                <p className="text-[10px] text-[color:var(--wp-text-secondary)]">
+                                  {Math.round(c.score * 100)} % ·{" "}
+                                  {c.reasons.map((r) => humanizeReviewReasonLine(r)).join(" · ")}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => onSelectClient?.(c.clientId)}
+                                disabled={!!actionLoading || doc.matchedClientId === c.clientId}
+                                className={`shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition-colors min-h-[44px] ${
+                                  doc.matchedClientId === c.clientId
+                                    ? "bg-indigo-100 text-indigo-700"
+                                    : "bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
+                                }`}
+                              >
+                                {doc.matchedClientId === c.clientId ? (
+                                  <span className="flex items-center gap-1">
+                                    <Check size={14} /> Vybrán
+                                  </span>
+                                ) : matchVerdict === "near_match" && idx === 0 ? (
+                                  "Potvrdit"
+                                ) : (
+                                  "Vybrat"
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : null}
 
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={onConfirmCreateNew}
-                      disabled={!!actionLoading || doc.createNewClientConfirmed === "true"}
-                      className="flex items-center gap-2 text-xs font-bold text-[color:var(--wp-text-secondary)] hover:text-indigo-600 transition-colors min-h-[44px]"
-                    >
-                      <UserPlus size={14} />
-                      {doc.createNewClientConfirmed === "true"
-                        ? "Nový klient potvrzen"
-                        : "Vytvořit nového klienta"}
-                    </button>
-                    {doc.clientMatchCandidates.length === 0 ? (
-                      <p className="text-xs text-[color:var(--wp-text-tertiary)]">
-                        Nepodařilo se navrhnout vhodného klienta. Vytvoření nového klienta je dostupné ručně.
-                      </p>
-                    ) : null}
-                  </div>
+                  {canOfferCreateClientDraft && matchVerdict !== "existing_match" ? (
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={onConfirmCreateNew}
+                        disabled={!!actionLoading || doc.createNewClientConfirmed === "true"}
+                        className="flex items-center gap-2 text-xs font-bold text-[color:var(--wp-text-secondary)] hover:text-indigo-600 transition-colors min-h-[44px]"
+                      >
+                        <UserPlus size={14} />
+                        {doc.createNewClientConfirmed === "true"
+                          ? "Nový klient potvrzen"
+                          : matchVerdict === "near_match" || matchVerdict === "ambiguous_match"
+                            ? "Vytvořit nového klienta (místo shody)"
+                            : "Vytvořit nového klienta"}
+                      </button>
+                      {doc.clientMatchCandidates.length === 0 && matchVerdict === "no_match" ? (
+                        <p className="text-xs text-[color:var(--wp-text-tertiary)]">
+                          Shoda v CRM nebyla nalezena — založte nový záznam, pokud jde o nového klienta.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : matchVerdict === "existing_match" ? (
+                    <p className="text-xs text-[color:var(--wp-text-secondary)] leading-relaxed">
+                      Klient je spojen s existujícím záznamem — nového klienta z tohoto kroku zakládat nemusíte.
+                    </p>
+                  ) : null}
 
                   <div className="pt-3 border-t border-[color:var(--wp-surface-card-border)]">
                     <button

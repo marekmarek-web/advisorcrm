@@ -10,6 +10,7 @@ import type {
   ClientMatchCandidate,
   DraftAction,
   AdvisorReviewViewModel,
+  MatchVerdict,
 } from "./types";
 import { buildHumanSummary, buildHumanErrorMessage, getDocumentTypeLabel } from "../ai/document-messages";
 import type { PrimaryDocumentType } from "../ai/document-review-types";
@@ -32,6 +33,18 @@ import { deriveFieldApplyPolicy } from "./field-apply-policy";
 import { isAiReviewPipelineDebug } from "../ai/ai-review-debug";
 
 type ApiReviewDetail = Record<string, unknown>;
+
+function coerceMatchVerdict(raw: unknown): MatchVerdict | null {
+  if (
+    raw === "existing_match" ||
+    raw === "near_match" ||
+    raw === "ambiguous_match" ||
+    raw === "no_match"
+  ) {
+    return raw;
+  }
+  return null;
+}
 
 function humanPrimaryTypeHeading(raw: string): string {
   if (!raw || raw === "Neznámý typ") return raw;
@@ -572,6 +585,9 @@ function humanizeReasonForAdvisor(reason: string): string | null {
   }
   if (reason === "ambiguous_client_match") {
     return "V CRM je více možných klientů — vyberte správného.";
+  }
+  if (reason === "near_match_advisory") {
+    return "Pravděpodobná shoda s klientem — ověřte výběr před zápisem, nebo zvolte jiného klienta.";
   }
   if (reason === "llm_client_match_ambiguous") {
     return "AI si není jistá výběrem klienta v CRM. Vyberte správného kandidáta ručně.";
@@ -1614,6 +1630,9 @@ export function mapApiToExtractionDocument(
   const norm = insights?.normalizedPipelineClassification;
   const baseType = (detail.detectedDocumentType as string) ?? "Neznámý typ";
   const trace = detail.extractionTrace as Record<string, unknown> | undefined;
+  const matchVerdict = coerceMatchVerdict(
+    (detail as Record<string, unknown>).matchVerdict ?? trace?.matchVerdict
+  );
   const advisorSummary = trace?.advisorDocumentSummary as { text?: unknown } | undefined;
   const llmExecutiveBrief =
     typeof advisorSummary?.text === "string" ? advisorSummary.text : undefined;
@@ -1724,6 +1743,7 @@ export function mapApiToExtractionDocument(
     clientMatchCandidates:
       (detail.clientMatchCandidates as ClientMatchCandidate[] | undefined) ?? [],
     draftActions: mergedDrafts,
+    matchVerdict,
     inputMode: detail.inputMode as string | undefined,
     advisorReview,
     matchedClientId: detail.matchedClientId as string | undefined,

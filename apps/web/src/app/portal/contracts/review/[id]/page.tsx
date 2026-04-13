@@ -17,7 +17,18 @@ import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import { AIReviewExtractionShell } from "@/app/components/ai-review/AIReviewExtractionShell";
 import { mapApiToExtractionDocument } from "@/lib/ai-review/mappers";
-import type { ExtractionDocument } from "@/lib/ai-review/types";
+import type { ExtractionDocument, MatchVerdict } from "@/lib/ai-review/types";
+import { isSupportingDocumentOnly } from "@/lib/ai/apply-policy-enforcement";
+
+function resolveMatchVerdictFromDoc(d: ExtractionDocument | null): MatchVerdict | null {
+  if (!d) return null;
+  const v =
+    d.matchVerdict ?? (d.extractionTrace as { matchVerdict?: MatchVerdict } | undefined)?.matchVerdict;
+  if (v === "existing_match" || v === "near_match" || v === "ambiguous_match" || v === "no_match") {
+    return v;
+  }
+  return null;
+}
 
 /** Polling revize na skrytém tabu – méně zátěže než plný backoff. */
 const HIDDEN_POLL_MS = 60_000;
@@ -354,13 +365,43 @@ export default function ContractReviewDetailPage() {
       !!matchedClientId || !!doc?.matchedClientId || doc?.createNewClientConfirmed === "true";
     if (alreadyResolved) return true;
 
+    const verdict = resolveMatchVerdictFromDoc(doc);
+    if (verdict === "ambiguous_match") {
+      toast.showToast(
+        "Nejdřív vyberte klienta v sekci níže — zápis do CRM je do výběru pozastavený.",
+        "error"
+      );
+      return false;
+    }
+    if (verdict === "near_match" || verdict === "existing_match") {
+      return true;
+    }
+
+    const payload = rawExtractedPayload;
+    if (payload && isSupportingDocumentOnly(payload)) {
+      toast.showToast(
+        "U podpůrného dokumentu vyberte klienta pro připojení — automatické založení nového klienta zde není k dispozici.",
+        "error"
+      );
+      return false;
+    }
+
+    if (
+      verdict == null &&
+      Array.isArray(doc?.clientMatchCandidates) &&
+      doc.clientMatchCandidates.length > 1
+    ) {
+      toast.showToast("Vyberte klienta z kandidátů.", "error");
+      return false;
+    }
+
     const result = await confirmCreateNewClient(id);
     if (!result.ok) {
       toast.showToast(result.error ?? "Nepodařilo se připravit klienta pro zápis.", "error");
       return false;
     }
     return true;
-  }, [doc?.createNewClientConfirmed, doc?.matchedClientId, id, matchedClientId, toast]);
+  }, [doc, id, matchedClientId, rawExtractedPayload, toast]);
 
   const handleApply = useCallback(async (options?: {
     overrideGateReasons?: string[];
