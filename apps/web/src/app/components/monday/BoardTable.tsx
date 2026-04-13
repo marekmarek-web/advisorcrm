@@ -150,28 +150,48 @@ export function BoardTable({
 
             return (
               <div key={group.id} className="group-section">
-                <div
-                  className="group-title-row group/header"
-                  onClick={() => onGroupToggleCollapse(group.id)}
-                >
-                  <button type="button" className="group-toggle" aria-label={group.collapsed ? "Rozbalit" : "Sbalit"} onClick={(e) => e.stopPropagation()}>
+                <div className="group-title-row group/header">
+                  <button
+                    type="button"
+                    className="group-toggle"
+                    aria-expanded={!group.collapsed}
+                    aria-label={group.collapsed ? "Rozbalit" : "Sbalit"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onGroupToggleCollapse(group.id);
+                    }}
+                  >
                     {group.collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                   </button>
-                  <div className="group-color" style={{ background: group.color }} />
+                  <button
+                    type="button"
+                    className="group-color border-0 p-0 cursor-pointer"
+                    style={{ background: group.color }}
+                    aria-label={group.collapsed ? "Rozbalit" : "Sbalit"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onGroupToggleCollapse(group.id);
+                    }}
+                  />
                   {editingGroupId === group.id ? (
                     <input
                       value={editingGroupName}
                       onChange={(e) => setEditingGroupName(e.target.value)}
                       onBlur={() => {
-                        onGroupRename(group.id, editingGroupName.trim());
+                        const t = editingGroupName.trim();
+                        onGroupRename(group.id, t.length > 0 ? t : group.name);
                         setEditingGroupId(null);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          onGroupRename(group.id, editingGroupName.trim());
+                          const t = editingGroupName.trim();
+                          onGroupRename(group.id, t.length > 0 ? t : group.name);
                           setEditingGroupId(null);
                         }
-                        if (e.key === "Escape") setEditingGroupId(null);
+                        if (e.key === "Escape") {
+                          setEditingGroupName(group.name);
+                          setEditingGroupId(null);
+                        }
                       }}
                       onClick={(e) => e.stopPropagation()}
                       className="group-title border border-[var(--border-strong)] rounded-md px-2 py-1 min-w-[120px] outline-none focus:ring-2 focus:ring-[#4f7cff]/30"
@@ -180,8 +200,14 @@ export function BoardTable({
                     />
                   ) : (
                     <h2
-                      className={`group-title ${!group.name.trim() ? "opacity-75" : ""}`}
+                      className={`group-title cursor-text select-text rounded px-0.5 hover:bg-[color:var(--wp-surface-muted)] ${!group.name.trim() ? "opacity-75" : ""}`}
                       style={{ color: group.color }}
+                      title="Upravit název skupiny"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingGroupName(group.name.trim() ? group.name : "");
+                        setEditingGroupId(group.id);
+                      }}
                     >
                       {group.name.trim() ? group.name : GROUP_NAME_PLACEHOLDER}
                     </h2>

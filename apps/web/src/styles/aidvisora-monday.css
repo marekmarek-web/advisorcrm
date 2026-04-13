@@ -103,7 +103,7 @@ body.is-resizing {
   height: 44px;
   padding: 0 8px;
   background: transparent;
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 }
 .group-title-row:hover {
@@ -128,6 +128,10 @@ body.is-resizing {
   height: 20px;
   border-radius: 999px;
   flex-shrink: 0;
+}
+button.group-color {
+  display: block;
+  cursor: pointer;
 }
 .group-title {
   font-size: 16px;

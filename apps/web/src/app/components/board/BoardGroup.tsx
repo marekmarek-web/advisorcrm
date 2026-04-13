@@ -68,31 +68,61 @@ export function BoardGroup({
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const [menuAnchor, setMenuAnchor] = useState({ top: 0, left: 0 });
 
+  useEffect(() => {
+    if (!editingName) {
+      setNameVal(group.name);
+    }
+  }, [group.name, editingName]);
+
+  const commitGroupName = () => {
+    const trimmed = nameVal.trim();
+    const next = trimmed.length > 0 ? trimmed : group.name;
+    onGroupRename(group.id, next);
+    setEditingName(false);
+  };
+
   return (
     <div className="b-group">
       <div
         className="b-group-title group"
-        onClick={() => onGroupToggleCollapse(group.id)}
         draggable={!!onGroupReorder}
         onDragStart={onGroupReorder ? (e) => { e.dataTransfer.setData("application/group-id", group.id); e.dataTransfer.effectAllowed = "move"; } : undefined}
         onDragOver={onGroupReorder ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } : undefined}
         onDrop={onGroupReorder ? (e) => { e.preventDefault(); const fromId = e.dataTransfer.getData("application/group-id"); if (fromId && fromId !== group.id) onGroupReorder(fromId, group.id); } : undefined}
       >
-        {group.collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-        <div className="b-group-bar" style={{ background: group.color }} />
+        <button
+          type="button"
+          className="b-group-toggle flex shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-[color:var(--board-text)] hover:bg-[rgba(0,0,0,0.04)]"
+          aria-expanded={!group.collapsed}
+          aria-label={group.collapsed ? "Rozbalit skupinu" : "Sbalit skupinu"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onGroupToggleCollapse(group.id);
+          }}
+        >
+          {group.collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+        </button>
+        <button
+          type="button"
+          className="b-group-bar"
+          style={{ background: group.color }}
+          aria-label={group.collapsed ? "Rozbalit skupinu" : "Sbalit skupinu"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onGroupToggleCollapse(group.id);
+          }}
+        />
         {editingName ? (
           <input
             type="text"
             value={nameVal}
             onChange={(e) => setNameVal(e.target.value)}
             onBlur={() => {
-              onGroupRename(group.id, nameVal);
-              setEditingName(false);
+              commitGroupName();
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                onGroupRename(group.id, nameVal);
-                setEditingName(false);
+                commitGroupName();
               } else if (e.key === "Escape") {
                 setNameVal(group.name);
                 setEditingName(false);
@@ -104,7 +134,16 @@ export function BoardGroup({
             className="b-group-name-input"
           />
         ) : (
-          <h2 className="b-group-name" style={{ color: group.color }}>
+          <h2
+            className="b-group-name cursor-text select-text rounded px-0.5 hover:bg-[rgba(0,0,0,0.04)]"
+            style={{ color: group.color }}
+            title="Upravit název skupiny"
+            onClick={(e) => {
+              e.stopPropagation();
+              setNameVal(group.name);
+              setEditingName(true);
+            }}
+          >
             {group.name}
           </h2>
         )}

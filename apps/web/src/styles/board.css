@@ -86,18 +86,27 @@
   height: 44px;
   padding: 0 var(--wp-space-2);
   user-select: none;
-  cursor: pointer;
+  cursor: default;
   border-radius: var(--board-radius);
   transition: background 0.15s ease;
 }
 .b-group-title:hover {
   background: var(--wp-bg);
 }
+.b-group-toggle {
+  cursor: pointer;
+}
 .b-group-bar {
   width: 3px;
   height: 20px;
   border-radius: 999px;
   flex-shrink: 0;
+}
+button.b-group-bar {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: block;
 }
 .b-group-name {
   font-size: var(--wp-fs-md);
