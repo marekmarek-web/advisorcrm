@@ -40,6 +40,8 @@ import { ContactPaymentSetupsSection } from "./ContactPaymentSetupsSection";
 import { ClientReferralSection } from "./ClientReferralSection";
 import { Suspense, type ReactNode } from "react";
 import { InviteToClientZoneButton } from "@/app/dashboard/contacts/[id]/InviteToClientZoneButton";
+import { computeAccessVerdict, type AccessVerdict } from "@/lib/auth/access-verdict";
+import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import { resolveContactIdentityFieldProvenance } from "@/lib/portal/contact-identity-field-provenance";
 import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
@@ -301,6 +303,16 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
     );
   }
 
+  let accessVerdict: AccessVerdict = "NEVER_INVITED";
+  if (contact.email) {
+    try {
+      const auth = await requireAuthInAction();
+      accessVerdict = (await computeAccessVerdict(auth.tenantId, contactId)).verdict;
+    } catch {
+      /* badge falls back to NEVER_INVITED */
+    }
+  }
+
   let household: HouseholdForContact = null;
   let latestGenerations: LatestGenerations = {
     clientSummary: null,
@@ -486,7 +498,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
               </Link>
               {contact.email && (
                 <div className="w-full sm:w-auto min-h-[44px] flex items-center">
-                  <InviteToClientZoneButton contactId={contactId} />
+                  <InviteToClientZoneButton contactId={contactId} verdict={accessVerdict} />
                 </div>
               )}
             </div>
