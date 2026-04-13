@@ -225,8 +225,33 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
       applyBarrier.push(...payGate.applyBarrierReasons);
       warnings.push(...payGate.warnings);
     } else {
+      // Non-payment route: payment fields present but not from dedicated payment_instructions
+      // extraction path → apply payment gate as applyBarrier (not just warnings) to prevent
+      // uninstructed payment writes. Generic rule: payment write requires explicit payment source.
       const payGate = evaluatePaymentApplyReadiness(payPayload);
       warnings.push(...payGate.warnings);
+
+      // Check if envelope signals explicit payment section (containsPaymentInstructions).
+      // If NOT present and the document is an informative type, block payment write path.
+      const envelopePayload = payload as Record<string, unknown> | null | undefined;
+      const contentFlags = envelopePayload?.contentFlags as Record<string, unknown> | undefined;
+      const hasExplicitPaymentSection = contentFlags?.containsPaymentInstructions === true;
+
+      const informativeTypes = new Set([
+        "investment_modelation", "investment_service_agreement", "investment_subscription_document",
+        "pension_contract", "precontract_information", "insurance_comparison",
+        "financial_analysis_document", "life_insurance_modelation",
+        "aml_fatca_form", "medical_questionnaire", "consent_or_declaration",
+      ]);
+      const isInformativeType = informativeTypes.has(normalizedType) || informativeTypes.has(docType);
+
+      if (!hasExplicitPaymentSection && isInformativeType) {
+        applyBarrier.push("PAYMENT_SOURCE_NOT_ELIGIBLE_INFORMATIVE_DOC");
+      } else if (!hasExplicitPaymentSection && (hasVal(payPayload.iban) || hasVal(payPayload.accountNumber))) {
+        // Contract-type doc with payment fields but no explicit section signal → warn but allow
+        // with advisor review (applyBarrier, not blocked).
+        applyBarrier.push("PAYMENT_SOURCE_REQUIRES_ADVISOR_CONFIRMATION");
+      }
     }
   }
 
@@ -263,8 +288,12 @@ export function evaluatePaymentApplyReadiness(p: PaymentApplyPayload): ApplyGate
     warnings.push("PAYMENT_MISSING_INSTITUTION");
   }
 
+  const applyBarrierPayment: string[] = [];
+
   if (p.needsHumanReview) {
-    warnings.push("PAYMENT_NEEDS_HUMAN_REVIEW");
+    // needsHumanReview=true means the extraction layer flagged this payment as uncertain.
+    // Escalate from warning to apply barrier — payment must not be written without confirmation.
+    applyBarrierPayment.push("PAYMENT_NEEDS_HUMAN_REVIEW");
   }
 
   if (typeof p.confidence === "number" && p.confidence < 0.5) {
@@ -272,11 +301,13 @@ export function evaluatePaymentApplyReadiness(p: PaymentApplyPayload): ApplyGate
   }
 
   const readiness: ApplyReadiness =
-    warnings.length > 0
+    applyBarrierPayment.length > 0
       ? "review_required"
-      : "ready_for_apply";
+      : warnings.length > 0
+        ? "review_required"
+        : "ready_for_apply";
 
-  return { readiness, blockedReasons: [], applyBarrierReasons: [], warnings };
+  return { readiness, blockedReasons: [], applyBarrierReasons: applyBarrierPayment, warnings };
 }
 
 function extractPaymentFromRow(row: ContractReviewRow): PaymentApplyPayload | null {

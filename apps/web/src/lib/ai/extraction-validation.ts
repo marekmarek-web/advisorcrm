@@ -609,6 +609,59 @@ export function validateDocumentEnvelope(payload: {
       undefined, "payment_data_missing");
   }
 
+  // 7. PAYMENT ANTI-HALLUCINATION: non-payment documents must not carry write-eligible payment
+  //    fields unless explicit payment instructions or explicit payment section is present.
+  //
+  //    Generic rule: if document is not a payment_instruction type AND the envelope has no
+  //    explicit payment section signal (contentFlags.containsPaymentInstructions), then
+  //    payment fields with extracted/inferred status are suspicious and must be warned.
+  //
+  //    This is a content-agnostic rule — not tied to any specific vendor, filename, or PDF.
+  const paymentDocTypes = new Set([
+    "payment_instruction",
+    "investment_payment_instruction",
+    "payment_schedule",
+  ]);
+  const nonPaymentInformativeTypes = new Set([
+    "investment_modelation",
+    "investment_service_agreement",
+    "investment_subscription_document",
+    "pension_contract",
+    "precontract_information",
+    "insurance_comparison",
+    "financial_analysis_document",
+    "life_insurance_modelation",
+  ]);
+  const hasExplicitPaymentSection = payload.contentFlags?.containsPaymentInstructions === true;
+  const isPaymentDocType = paymentDocTypes.has(primaryType);
+
+  if (!isPaymentDocType) {
+    const paymentIdentifierFields = ["bankAccount", "iban", "accountForRepayment"] as const;
+    const paymentAmountFields = ["totalMonthlyPremium", "annualPremium"] as const;
+    const paymentRefFields = ["variableSymbol"] as const;
+
+    const hasPaymentIdentifier = paymentIdentifierFields.some((k) => fieldPresent(fields[k]));
+    const hasPaymentAmount = paymentAmountFields.some((k) => fieldPresent(fields[k]));
+    const hasPaymentRef = paymentRefFields.some((k) => fieldPresent(fields[k]));
+    const hasAnyPaymentField = hasPaymentIdentifier || (hasPaymentAmount && hasPaymentRef);
+
+    if (hasAnyPaymentField && !hasExplicitPaymentSection) {
+      if (nonPaymentInformativeTypes.has(primaryType)) {
+        // Informative investment/modelation type with payment-like fields — clear warning that
+        // these must NOT create payment setup in CRM without manual advisor confirmation.
+        addWarning(warnings, reasonsForReview, "NON_PAYMENT_DOC_HAS_PAYMENT_FIELDS",
+          "Informativní/investiční dokument obsahuje platební pole. Tato pole NESMÍ být automaticky zapsána jako platební instrukce do CRM. Poradce musí potvrdit záměr.",
+          undefined, "non_payment_doc_has_payment_fields");
+      } else {
+        // Contract-type or unknown type: warn but don't block — could be legitimate inline payment
+        // section. The gate enforcer (quality-gates.ts) will decide apply eligibility.
+        addWarning(warnings, reasonsForReview, "PAYMENT_FIELDS_WITHOUT_EXPLICIT_SECTION",
+          "Platební pole jsou přítomna, ale dokument neobsahuje explicitní platební sekci (contentFlags.containsPaymentInstructions není true). Zkontrolujte, zda jde o skutečné platební instrukce.",
+          undefined, "payment_fields_without_explicit_section");
+      }
+    }
+  }
+
   // 8. Intermediary/insurer swap detection
   const insurerVal = ef.insurer?.value != null ? String(ef.insurer.value).toLowerCase() : "";
   const intermediaryVal = ef.intermediaryName?.value != null ? String(ef.intermediaryName.value).toLowerCase() : "";

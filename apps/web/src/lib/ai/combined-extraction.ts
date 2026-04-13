@@ -295,6 +295,14 @@ function buildSectionSpecificRules(sectionTexts?: BundleSectionTexts | null): st
     rules.push("- PŘÍLOHA / AML / DOPROVODNÝ DOKUMENT: tato část nesmí přepsat smluvní fakta. Nastav sensitiveAttachmentOnly=true pokud je to jediná přítomná sekce.");
   }
 
+  // Section address separation (RULE 8 enforcement for section-aware bundles)
+  rules.push(
+    "- ADRESA INSTITUCE vs. ADRESA KLIENTA: Adresa z hlavičky dokumentu nebo ze záhlaví instituce PATŘÍ do institutionAddress, NIKOLI do extractedFields.address. Adresa z bloku pojistník/klient/investor/účastník PATŘÍ do extractedFields.address. Tyto dvě hodnoty NESMÍŠ zaměnit ani sloučit."
+  );
+  if (sectionTexts.contractualText?.trim()) {
+    rules.push("- Pokud je adresa klienta nalezena ve SMLUVNÍ ČÁSTI v sekci pojistník/klient, je to autoritativní zdroj pro extractedFields.address — nemůže ji přepsat žádná jiná sekce.");
+  }
+
   return rules.length > 0
     ? `\nPRAVIDLA PRO SEKCE:\n${rules.join("\n")}\n`
     : "";
@@ -396,6 +404,50 @@ Pravidla:
 - proposal / offer dokumenty mají payments stejně jako final_contract — NEIGNORUJ platby jen kvůli lifecycleStatus.
 - Pokud obsahuje "Rozsah pojistného krytí", "Přehled pojistného krytí" nebo tabulku rizik → extrahuj coverages jako JSON string array [{ riskType, riskLabel, insuredAmount, premium }].
 - Risk/coverage tables extrahuj i u proposal docs a offer docs.
+
+══════════════════════════════════════════════════════════
+RULE 7 — PAYMENT ANTI-HALLUCINATION (HARD FENCE)
+══════════════════════════════════════════════════════════
+Payment setup fields (bankAccount, variableSymbol, iban, bankCode, totalMonthlyPremium,
+annualPremium, paymentFrequency, accountForRepayment) SMÍŠ vyplnit POUZE za těchto podmínek:
+
+PODMÍNKA A — Dokument je explicitně payment_instruction nebo investment_payment_instruction.
+PODMÍNKA B — Dokument obsahuje explicitně označenou platební sekci:
+  "Platební údaje", "Platební instrukce", "Způsob placení", "Bankovní spojení",
+  "Údaje o platbě", "Platba", "Jak platit", "Pokyny k platbě"
+  a v této sekci je bankAccount / IBAN / variableSymbol EXPLICITNĚ uveden jako pokyn k platbě.
+PODMÍNKA C — Jde o smluvní dokument (life_insurance_contract, nonlife_insurance_contract, ...)
+  a pojistné je výslovně sjednáno v tabulce s platebními parametry.
+
+ZAKÁZÁNO:
+- NIKDY nevyplňuj bankAccount / iban / variableSymbol z informativního bloku, orientační
+  kalkulace, modelace, indexace, nabídky bez smluvního závazku, AML/FATCA přílohy, nebo
+  zdravotního dotazníku.
+- NIKDY nevyplňuj payment fields jen proto, že dokument OBSAHUJE čísla nebo účty v
+  informativní tabulce (přehled fondů, výpis, sazebník, porovnání, leták).
+- Pokud si nejsi jistý, že bankovní údaj je přímý platební pokyn (ne informativní ukázka),
+  NECH pole prázdné a přidej reviewWarning: code="payment_source_uncertain", severity="warning".
+- Investment/DPS/DIP/penzijní dokumenty s informativním blokem bank. účtu NESMÍ nastavit
+  payment fields jako write-eligible — přidej reviewWarning: code="investment_payment_informative_only".
+
+══════════════════════════════════════════════════════════
+RULE 8 — ADDRESS SOURCE SEPARATION (person vs. institution header)
+══════════════════════════════════════════════════════════
+Adresa v dokumentu má DVA různé zdroje — NESMÍŠ je míchat:
+
+INSTITUCE (pojišťovna, banka, správce fondu, leasingová společnost):
+  → Adresa z hlavičky dokumentu / záhlaví dopisu / signatáře instituce patří do institutionAddress.
+  → NIKDY ji nedávej do extractedFields.address, extractedFields.permanentAddress ani do parties[*].address.
+
+KLIENT / POJISTNÍK / INVESTOR / ÚČASTNÍK:
+  → Adresa z bloku "Pojistník", "Klient", "Žadatel", "Investor", "Účastník",
+    "Adresa pojistníka", "Trvalá adresa", "Kontaktní adresa" patří do extractedFields.address.
+  → Tuto adresu NESMÍŠ vynulovat, přepsat ani ignorovat jen kvůli tomu, že hlavička dokumentu
+    obsahuje adresu instituce.
+
+Pokud dokument obsahuje obě adresy → extrahuj obě do správných polí.
+Pokud je POUZE adresa instituce → extractedFields.address nech null.
+Pokud je POUZE adresa klienta v person bloku → extrahuj do extractedFields.address.
 
 ══════════════════════════════════════════════════════════
 RULE 5 — PROPOSAL/MODELATION/SUPPORTING: ŽÁDNÉ POTLAČENÍ CORE PAYLOADU

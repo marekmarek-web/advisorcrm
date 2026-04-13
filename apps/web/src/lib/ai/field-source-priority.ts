@@ -132,25 +132,29 @@ const CONTRACT_NUMBER_FIELDS = new Set([
 // Vedlejší sekce NESMÍ přepsat hodnotu z hlavní sekce.
 
 const SECTION_SOURCE_PRIORITY: Record<string, number> = {
-  // Tier 1 — main contract header, primary parties
+  // Tier 1 — main contract header, primary parties (highest priority for person/identity fields)
   policyholder_block: 10,
   client_block: 10,
   borrower_block: 10,
   investor_block: 10,
   owner_block: 10,
+  insured_block: 10,      // explicitly labeled "Pojištěný" section
+  participant_block: 10,  // explicitly labeled "Účastník" section (DPS, pension)
   // Tier 2 — payment data (authoritative for payment fields, not client identity)
   payment_block: 6,
   contract_block: 8,
   // Tier 3 — inferred / normalized
   parties_record: 7,
   pipeline_normalized: 4,
-  // Tier 4 — secondary sections (must not override client identity)
+  // Tier 4 — secondary sections (must not override client identity fields)
+  // Rule: secondary sections may enrich missing fields but NEVER override explicit person-block data
   intermediary_block: 3,
   signature_block: 2,
-  aml_block: 1,
+  aml_block: 1,      // AML/FATCA annexes — lowest priority for identity fields
+  fatca_block: 1,    // FATCA annexes
   attachment_block: 1,
-  health_block: 1,
-  // Institution / provider headers (must not set client fields)
+  health_block: 1,   // health questionnaires — lowest priority for identity fields
+  // Institution / provider headers (must not set client identity fields — priority 0)
   insurer_header: 0,
   bank_header: 0,
   provider_header: 0,
@@ -177,9 +181,26 @@ const INSTITUTION_PATTERNS = [
   /maxima pojišťovna/i, /pillow pojišťovna/i,
 ];
 
+/**
+ * Detects whether a string value looks like an institution name rather than a client name.
+ *
+ * IMPORTANT: This check is applied only to CLIENT_IDENTITY_FIELDS (fullName, address, etc.)
+ * to detect when the LLM accidentally filled a client field with an institution name.
+ * It must NOT be applied to address fields that happen to mention an institution address —
+ * a client can legitimately live near or include institution context in their address.
+ *
+ * The check is conservative: only matches when the full value IS the institution name,
+ * not when the institution name appears as a substring of a longer value.
+ */
 function looksLikeInstitution(value: unknown): boolean {
   if (typeof value !== "string") return false;
   const v = value.trim();
+  if (v.length === 0) return false;
+  // Only match if the value is predominantly an institution name (not a personal address
+  // that happens to contain a street like "Generali náměstí 1").
+  // Heuristic: if the value contains digits/address patterns it's likely an address, not a name.
+  const looksLikeAddress = /\d{1,6}\s*[,/]|\bul\.|č\.p\.|p\.s\.|ulice|náměstí\s+\d|nám\.\s+\d/i.test(v);
+  if (looksLikeAddress) return false;
   return INSTITUTION_PATTERNS.some((p) => p.test(v));
 }
 
@@ -506,28 +527,86 @@ function applyMixedSectionGuard(env: DocumentReviewEnvelope, ef: Record<string, 
     const label = (field.sourceLabel ?? "").toLowerCase();
     const snippet = (field.evidenceSnippet ?? "").toLowerCase();
     const kind = field.sourceKind ?? "";
-    if (kind === "intermediary_block" || kind === "aml_block" || kind === "attachment_block" || kind === "signature_block") return true;
+    if (
+      kind === "intermediary_block" ||
+      kind === "aml_block" ||
+      kind === "fatca_block" ||
+      kind === "attachment_block" ||
+      kind === "health_block" ||
+      kind === "signature_block"
+    ) return true;
     return SECONDARY_SOURCE_PATTERNS.some((p) => p.test(label) || p.test(snippet));
+  }
+
+  function hasPrimarySourceClientParty(): boolean {
+    const parties = env.parties;
+    if (!parties || typeof parties !== "object") return false;
+    const partyList: Array<Record<string, unknown>> = Array.isArray(parties)
+      ? (parties as Array<Record<string, unknown>>)
+      : Object.values(parties).filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null);
+    return partyList.some((p) => {
+      const role = typeof p.role === "string" ? p.role.toLowerCase() : "";
+      const name = typeof p.fullName === "string" ? p.fullName.trim() : typeof p.name === "string" ? p.name.trim() : "";
+      return (
+        role === "policyholder" || role === "client" || role === "investor" || role === "participant" || role === "insured"
+      ) && name && !looksLikeInstitution(name);
+    });
   }
 
   // If fullName came from a secondary source but parties has a stronger client role, clear it
   // so tagFromParties can fill it in. (tagFromParties runs AFTER this guard.)
   const fullNameField = ef["fullName"];
   if (isPresent(fullNameField) && looksLikeSecondarySource(fullNameField)) {
-    // Check if parties has a better candidate
-    const parties = env.parties;
-    if (parties && typeof parties === "object") {
-      const partyList: Array<Record<string, unknown>> = Array.isArray(parties)
-        ? (parties as Array<Record<string, unknown>>)
-        : Object.values(parties).filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null);
-      const hasClientParty = partyList.some((p) => {
-        const role = typeof p.role === "string" ? p.role.toLowerCase() : "";
-        const name = typeof p.fullName === "string" ? p.fullName.trim() : typeof p.name === "string" ? p.name.trim() : "";
-        return (role === "policyholder" || role === "client" || role === "investor" || role === "participant") && name && !looksLikeInstitution(name);
-      });
-      if (hasClientParty) {
-        // Clear the secondary-sourced fullName so the parties enrichment can set the correct one
-        ef["fullName"] = { value: null, status: "missing", evidenceTier: "missing" };
+    if (hasPrimarySourceClientParty()) {
+      ef["fullName"] = { value: null, status: "missing", evidenceTier: "missing" };
+    }
+  }
+
+  // Extended guard for address / birthDate / personalId:
+  // If these fields are sourced from a secondary section (AML, FATCA, health, attachment,
+  // intermediary, signature), AND the same field has a higher-priority source available in
+  // parties, clear the secondary-sourced value so tagFromParties can restore it.
+  //
+  // This is the generic rule that prevents institution-header or AML annex addresses from
+  // overwriting the person-block address. It operates on source metadata, not on document
+  // content — no vendor-specific or filename-specific logic.
+  const secondaryGuardedFields = ["address", "permanentAddress", "birthDate", "personalId"] as const;
+
+  for (const fieldKey of secondaryGuardedFields) {
+    const field = ef[fieldKey];
+    if (!isPresent(field)) continue;
+    if (looksLikeSecondarySource(field)) {
+      // Secondary source override detected for a key identity field.
+      // Only clear if we have a parties candidate with this field — otherwise preserve.
+      const parties = env.parties;
+      if (parties && typeof parties === "object") {
+        const partyList: Array<Record<string, unknown>> = Array.isArray(parties)
+          ? (parties as Array<Record<string, unknown>>)
+          : Object.values(parties).filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null);
+        const hasPartyWithField = partyList.some((p) => {
+          const role = typeof p.role === "string" ? p.role.toLowerCase() : "";
+          const val = typeof p[fieldKey] === "string" ? (p[fieldKey] as string).trim() : "";
+          return (
+            role === "policyholder" || role === "client" || role === "investor" || role === "participant" || role === "insured"
+          ) && val;
+        });
+        if (hasPartyWithField) {
+          ef[fieldKey] = { value: null, status: "missing", evidenceTier: "missing" };
+        }
+      }
+      // Add a review warning regardless — advisor should be aware secondary section tried to set this
+      env.reviewWarnings = env.reviewWarnings ?? [];
+      const alreadyWarned = env.reviewWarnings.some(
+        (w) => w.code === "secondary_section_override_blocked" && w.field === `extractedFields.${fieldKey}`
+      );
+      if (!alreadyWarned) {
+        const sourceLabel = field?.sourceLabel ?? field?.sourceKind ?? "sekundární sekce";
+        env.reviewWarnings.push({
+          code: "secondary_section_override_blocked",
+          message: `Pole "${fieldKey}" bylo zdroj ze sekundární sekce (${sourceLabel}). Hodnota z hlavní person sekce má přednost.`,
+          field: `extractedFields.${fieldKey}`,
+          severity: "warning",
+        });
       }
     }
   }
@@ -593,5 +672,6 @@ function getDisplaySource(kind: SourceKind | undefined): string {
     pipeline_normalized: "odvozeno z kontextu",
     unknown: "",
   };
-  return MAP[kind] ?? "";
+  // Graceful fallback for source kinds added via SECTION_SOURCE_PRIORITY but not in SourceKind type
+  return MAP[kind as SourceKind] ?? kind;
 }

@@ -35,6 +35,33 @@ const commonOptional = [
   "documentMeta.pageCount",
 ];
 
+/**
+ * Payment anti-hallucination review rules — injected into every non-payment document type.
+ *
+ * Generic rule: payment fields (bankAccount, iban, variableSymbol, paymentFrequency, premiums)
+ * are writable ONLY when the document contains an explicit payment instruction section or
+ * is itself a payment_instruction document type.
+ *
+ * Investment/DPS/DIP/info bundles that happen to contain account numbers in an informative
+ * block MUST NOT propagate payment setup to CRM — add reviewWarning instead.
+ */
+const PAYMENT_ANTI_HALLUCINATION_REVIEW_RULES: string[] = [
+  "payment fields (bankAccount, iban, variableSymbol, paymentFrequency, totalMonthlyPremium, annualPremium) are write-eligible ONLY when: (A) document is payment_instruction type, OR (B) document contains an explicitly labeled payment section with direct payment instructions (not informative overview), OR (C) document is a contractual document with a payment parameter table",
+  "investment/DPS/DIP/pension informative bundles that mention account numbers in fund overview or index tables MUST NOT set payment fields as extracted — add reviewWarning code=investment_payment_informative_only instead",
+  "if payment fields appear only in an informative/comparison block without explicit payment instruction context, leave them empty and add reviewWarning code=payment_source_uncertain severity=warning",
+  "AML/FATCA annexes and health questionnaires MUST NOT set any payment fields",
+];
+
+/**
+ * Person section ownership rules — injected into all types to prevent institution header
+ * address from overriding client address found in an explicitly labeled person/client block.
+ */
+const PERSON_SECTION_OWNERSHIP_REVIEW_RULES: string[] = [
+  "address found in a labeled person/client/policyholder/investor/participant section is authoritative for extractedFields.address — it MUST NOT be nulled or overridden by the institution header address",
+  "institution header address belongs to institutionAddress, NEVER to extractedFields.address or parties[*].address for the client",
+  "AML/FATCA/health questionnaire sections MUST NOT override client identity fields (fullName, address, birthDate, personalId) that were already extracted from the main contractual person section",
+];
+
 export const DOCUMENT_SCHEMA_REGISTRY: Record<
   (typeof PRIMARY_DOCUMENT_TYPES)[number],
   DocumentSchemaDefinition
@@ -1303,6 +1330,34 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
     },
   },
 };
+
+/**
+ * Post-process: inject payment anti-hallucination rules and person section ownership rules
+ * into every non-payment-instruction document type.
+ *
+ * Payment types (payment_instruction, investment_payment_instruction, payment_schedule) have
+ * their own payment rules and are excluded from the anti-hallucination injection.
+ * The constants are defined once and spread into each type's reviewRules array — this ensures
+ * the rules are generic and not tied to any specific document, vendor, or filename.
+ */
+const PAYMENT_EXEMPT_TYPES = new Set<string>([
+  "payment_instruction",
+  "investment_payment_instruction",
+  "payment_schedule",
+]);
+
+for (const [typeName, def] of Object.entries(DOCUMENT_SCHEMA_REGISTRY)) {
+  if (!PAYMENT_EXEMPT_TYPES.has(typeName)) {
+    def.extractionRules.reviewRules = [
+      ...def.extractionRules.reviewRules,
+      ...PAYMENT_ANTI_HALLUCINATION_REVIEW_RULES,
+    ];
+  }
+  def.extractionRules.reviewRules = [
+    ...def.extractionRules.reviewRules,
+    ...PERSON_SECTION_OWNERSHIP_REVIEW_RULES,
+  ];
+}
 
 function toLifecycle(
   raw: unknown,
