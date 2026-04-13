@@ -19,7 +19,6 @@ import {
 import { emitNotification } from "@/lib/execution/notification-center";
 import { getTargetAdvisorUserIdForContact } from "./client-dashboard";
 import { notifyClientAdvisorSharedDocument } from "@/lib/documents/notify-client-visible-document";
-import { clientUploadDocument } from "./documents";
 import {
   materialRequestCategoryLabel,
   type MaterialRequestDetail,
@@ -509,6 +508,7 @@ export async function respondClientMaterialRequest(
     });
   }
 
+  const { clientUploadDocument } = await import("./documents");
   for (const file of files) {
     const fd = new FormData();
     fd.set("file", file);

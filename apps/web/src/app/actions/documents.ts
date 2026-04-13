@@ -450,5 +450,3 @@ export async function clientUploadDocument(formData: FormData) {
 
   return { success: true as const, id: documentId };
 }
-
-export { sendDocumentByEmail } from "./document-send";
