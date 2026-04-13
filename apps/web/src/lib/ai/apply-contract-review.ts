@@ -40,6 +40,7 @@ import {
   type ContactSourceKind,
 } from "./field-merge-policy";
 import { loadContactPortalAccessSnapshot } from "./client-portal-access";
+import { computeAccessVerdict } from "@/lib/auth/access-verdict";
 
 const VALID_SEGMENTS = new Set<string>(contractSegments);
 

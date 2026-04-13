@@ -9,6 +9,8 @@ import { DocumentsSection } from "./DocumentsSection";
 import { SendPaymentPdfButton } from "./SendPaymentPdfButton";
 import { ContactActivityTimeline } from "./ContactActivityTimeline";
 import { ContactEventsSection } from "./ContactEventsSection";
+import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { computeAccessVerdict } from "@/lib/auth/access-verdict";
 
 export default async function ContactDetailPage({
   params,
@@ -16,12 +18,18 @@ export default async function ContactDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const auth = await requireAuthInAction();
   const [contact, docList, referralSummary] = await Promise.all([
     getContact(id),
     getDocumentsForContact(id),
     getReferralSummaryForContact(id),
   ]);
   if (!contact) notFound();
+
+  const accessVerdictResult = contact.email
+    ? await computeAccessVerdict(auth.tenantId, id).catch(() => null)
+    : null;
+  const accessVerdict = accessVerdictResult?.verdict ?? "NEVER_INVITED";
 
   return (
     <div className="space-y-6">
@@ -79,7 +87,7 @@ export default async function ContactDetailPage({
         )}
         {contact.email && (
           <div className="pt-2">
-            <InviteToClientZoneButton contactId={id} />
+            <InviteToClientZoneButton contactId={id} verdict={accessVerdict} />
           </div>
         )}
       </div>

@@ -50,6 +50,7 @@ async function findPendingClientPasswordChangeRedirect(email: string | null | un
           sql`lower(${clientInvitations.email}) = ${normalizedEmail}`,
           gt(clientInvitations.expiresAt, new Date()),
           isNull(clientInvitations.revokedAt),
+          isNull(clientInvitations.acceptedAt),
           isNull(clientInvitations.passwordChangedAt),
         ),
       )

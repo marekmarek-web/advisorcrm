@@ -2,21 +2,61 @@
 
 import { useState } from "react";
 import { sendClientZoneInvitation } from "@/app/actions/auth";
+import type { AccessVerdict } from "@/lib/auth/access-verdict";
 
-export function InviteToClientZoneButton({ contactId }: { contactId: string }) {
+type InviteResult = {
+  link?: string;
+  loginEmail?: string;
+  temporaryPassword?: string;
+  emailSent?: boolean;
+  emailError?: string;
+  reminderOnly?: boolean;
+  error?: string;
+  devHint?: string;
+};
+
+function VerdictBadge({ verdict }: { verdict: AccessVerdict }) {
+  const configs: Record<AccessVerdict, { label: string; className: string }> = {
+    ACTIVE: {
+      label: "Aktivní přístup",
+      className: "bg-green-50 text-green-700 border-green-200",
+    },
+    PENDING: {
+      label: "Čeká na přihlášení",
+      className: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    },
+    PASSWORD_PENDING: {
+      label: "Čeká na nastavení hesla",
+      className: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    },
+    NEVER_INVITED: {
+      label: "Nepozván",
+      className: "bg-gray-50 text-gray-500 border-gray-200",
+    },
+    INCONSISTENT: {
+      label: "Nekonzistentní stav",
+      className: "bg-red-50 text-red-700 border-red-200",
+    },
+  };
+  const { label, className } = configs[verdict];
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+export function InviteToClientZoneButton({
+  contactId,
+  verdict,
+}: {
+  contactId: string;
+  verdict: AccessVerdict;
+}) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{
-    link?: string;
-    loginEmail?: string;
-    temporaryPassword?: string;
-    emailSent?: boolean;
-    emailError?: string;
-    reminderOnly?: boolean;
-    error?: string;
-    devHint?: string;
-  } | null>(null);
+  const [result, setResult] = useState<InviteResult | null>(null);
 
-  async function handleClick() {
+  async function handleAction() {
     setLoading(true);
     setResult(null);
     try {
@@ -60,16 +100,67 @@ export function InviteToClientZoneButton({ contactId }: { contactId: string }) {
     }
   }
 
+  const buttonConfig = (() => {
+    switch (verdict) {
+      case "NEVER_INVITED":
+        return {
+          label: "Pozvat do klientské zóny",
+          disabled: false,
+          show: true,
+        };
+      case "PENDING":
+        return {
+          label: "Poslat připomínku",
+          disabled: false,
+          show: true,
+        };
+      case "PASSWORD_PENDING":
+        return {
+          label: "Připomenout nastavení hesla",
+          disabled: false,
+          show: true,
+        };
+      case "ACTIVE":
+        return {
+          label: "Má aktivní přístup",
+          disabled: true,
+          show: true,
+        };
+      case "INCONSISTENT":
+        return {
+          label: "Opravit přístup (nekonzistentní stav)",
+          disabled: false,
+          show: true,
+        };
+    }
+  })();
+
   return (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={loading}
-        className="min-h-[44px] rounded-xl px-4 py-2.5 text-sm font-semibold border border-monday-border text-monday-text hover:bg-monday-row-hover disabled:opacity-50"
-      >
-        {loading ? "Odesílám…" : "Pozvat do klientské zóny (e-mail + odkaz)"}
-      </button>
+      <div className="flex items-center gap-3">
+        <VerdictBadge verdict={verdict} />
+        {buttonConfig.show && verdict !== "ACTIVE" && (
+          <button
+            type="button"
+            onClick={handleAction}
+            disabled={loading || buttonConfig.disabled}
+            className="min-h-[36px] rounded-xl px-4 py-2 text-sm font-semibold border border-monday-border text-monday-text hover:bg-monday-row-hover disabled:opacity-50"
+          >
+            {loading ? "Odesílám…" : buttonConfig.label}
+          </button>
+        )}
+        {verdict === "ACTIVE" && (
+          <span className="text-sm text-monday-text-muted">
+            Klient má přístup do klientské zóny.
+          </span>
+        )}
+        {verdict === "INCONSISTENT" && !result && (
+          <p className="text-xs text-red-600">
+            Pozvánka byla přijata, ale přístup není kompletní. Klikněte pro opravu.
+          </p>
+        )}
+      </div>
+
       {result?.link && (
         <div className="rounded-lg bg-monday-row-hover border border-monday-border p-3 text-sm space-y-2">
           <p className="font-medium text-monday-text">

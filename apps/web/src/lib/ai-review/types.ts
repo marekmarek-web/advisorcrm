@@ -220,6 +220,8 @@ export type ApplyResultPayload = {
     hasActiveClientPortal: boolean;
     hasLinkedUserAccount: boolean;
     hasAcceptedInvitation: boolean;
+    /** Deterministický verdict — source of truth pro invite/re-invite rozhodování. */
+    accessVerdict?: string;
   };
 };
 
