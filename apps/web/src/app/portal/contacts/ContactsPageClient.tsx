@@ -253,6 +253,14 @@ export function ContactsPageClient({
     setTagFilter("");
   };
 
+  const hasActiveFilters = Boolean(lifecycleFilter || tagFilter || searchQuery.trim());
+
+  useEffect(() => {
+    if (filteredList.length === 0) {
+      setSelectedIds(new Set());
+    }
+  }, [filteredList.length]);
+
   return (
     <>
       <ListPageShell>
@@ -294,8 +302,6 @@ export function ContactsPageClient({
             actionLabel="Přidat první kontakt"
             onAction={() => setWizardOpen(true)}
           />
-        ) : filteredList.length === 0 ? (
-          <ListPageNoResults onReset={handleResetSearchAndFilters} resetLabel="Zrušit vyhledávání a filtry" />
         ) : (
           <>
             <ListPageToolbar
@@ -305,7 +311,10 @@ export function ContactsPageClient({
                     <button
                       key={tab.value || "all"}
                       type="button"
-                      onClick={() => { setLifecycleFilter(tab.value); triggerTableLoading(); }}
+                      onClick={() => {
+                        setLifecycleFilter(tab.value);
+                        triggerTableLoading();
+                      }}
                       className={`px-3 py-1.5 md:px-4 md:py-2 rounded-[var(--wp-radius-xs)] text-xs md:text-sm font-bold transition-all whitespace-nowrap shrink-0 min-h-[44px] md:min-h-0 flex items-center ${
                         lifecycleFilter === tab.value ? "bg-indigo-50 text-indigo-700" : "text-[color:var(--wp-text-secondary)] hover:text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)]"
                       }`}
@@ -319,17 +328,70 @@ export function ContactsPageClient({
               <ListPageSearchInput
                 placeholder="Hledat jméno, e-mail, telefon…"
                 value={searchQuery}
-                onChange={(v) => { setSearchQuery(v); triggerTableLoading(); }}
+                onChange={(v) => {
+                  setSearchQuery(v);
+                  triggerTableLoading();
+                }}
               />
               <CustomDropdown
                 value={tagFilter}
-                onChange={(id) => { setTagFilter(id); triggerTableLoading(); }}
+                onChange={(id) => {
+                  setTagFilter(id);
+                  triggerTableLoading();
+                }}
                 options={[{ id: "", label: "Všechny štítky" }, ...uniqueTags.map((t) => ({ id: t, label: t }))]}
                 placeholder="Všechny štítky"
                 icon={Tags}
               />
             </ListPageToolbar>
 
+            {filteredList.length === 0 ? (
+              <>
+                <div className="md:hidden">
+                  <ListPageNoResults onReset={handleResetSearchAndFilters} resetLabel="Zrušit vyhledávání a filtry" />
+                </div>
+                <div className="hidden md:block bg-[color:var(--wp-surface-card)] rounded-[var(--wp-radius-sm)] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-[color:var(--wp-surface-muted)]/80 border-b border-[color:var(--wp-surface-card-border)]">
+                          <th className="px-4 md:px-6 py-4 w-12" aria-hidden />
+                          <th className="px-4 py-4 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Kontakt</th>
+                          <th className="px-4 py-4 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Spojení</th>
+                          <th className="px-4 py-4 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] hidden lg:table-cell">Stav</th>
+                          <th className="px-4 py-4 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] hidden xl:table-cell">Štítky</th>
+                          <th className="px-4 md:px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)] text-right">Akce</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colSpan={6} className="px-4 md:px-6 py-10 text-center align-middle">
+                            <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">
+                              Žádné výsledky nevyhovují hledání nebo filtrům.
+                            </p>
+                            {hasActiveFilters ? (
+                              <button
+                                type="button"
+                                onClick={handleResetSearchAndFilters}
+                                className="mt-4 rounded-[var(--wp-radius-sm)] border border-indigo-300/60 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/15 dark:border-indigo-500/40 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                              >
+                                Zrušit vyhledávání a filtry
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 px-4 md:px-6 py-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 items-center justify-between">
+                    <span className="text-xs font-medium text-[color:var(--wp-text-secondary)]">
+                      Zobrazeno 0 kontaktů (z {list.length} celkem)
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
             {/* --- Bulk action bar --- */}
             {selectedIds.size > 0 && (
               <div className="bg-indigo-50 px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-3 border border-indigo-100 rounded-[var(--wp-radius-sm)]">
@@ -720,6 +782,8 @@ export function ContactsPageClient({
                 )}
               </div>
             </div>
+              </>
+            )}
           </>
         )}
       </ListPageShell>
