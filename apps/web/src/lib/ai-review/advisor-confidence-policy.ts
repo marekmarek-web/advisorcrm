@@ -134,6 +134,11 @@ export function sourceKindToAdvisorLabel(kind: SourceKind | undefined, sourceLab
     product_block: "z produktového bloku",
     contract_block: "ze smluvní tabulky",
     parties_record: "ze seznamu účastníků",
+    aml_block: "z AML přílohy",
+    fatca_block: "z FATCA přílohy",
+    attachment_block: "z přílohy",
+    health_block: "ze zdravotního dotazníku",
+    signature_block: "z podpisového bloku",
   };
   return MAP[kind] ?? "";
 }

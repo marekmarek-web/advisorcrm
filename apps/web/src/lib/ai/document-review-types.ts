@@ -160,7 +160,8 @@ export const SOURCE_KINDS = [
   "product_block",         // produktový blok / tarif / parametry produktu
   "contract_block",        // hlavní smluvní tabulka / blok čísla smlouvy
   "health_block",          // zdravotní dotazník (must NOT override contractual facts)
-  "aml_block",             // AML / FATCA příloha
+  "aml_block",             // AML příloha
+  "fatca_block",           // FATCA příloha / self-certification
   "attachment_block",      // obecná příloha
   "parties_record",        // extracted from envelope.parties by role
   "pipeline_normalized",   // set by alias normalization / pipeline post-processing
@@ -204,6 +205,7 @@ export function sourceKindDisplayLabel(kind: SourceKind | undefined): string {
     contract_block: "ze smluvní tabulky",
     health_block: "ze zdravotního dotazníku",
     aml_block: "z AML přílohy",
+    fatca_block: "z FATCA přílohy",
     attachment_block: "z přílohy",
     parties_record: "ze seznamu účastníků",
     pipeline_normalized: "odvozeno z kontextu",

@@ -667,6 +667,7 @@ function getDisplaySource(kind: SourceKind | undefined): string {
     contract_block: "ze smluvní tabulky",
     health_block: "ze zdravotního dotazníku",
     aml_block: "z AML přílohy",
+    fatca_block: "z FATCA přílohy",
     attachment_block: "z přílohy",
     parties_record: "ze seznamu účastníků",
     pipeline_normalized: "odvozeno z kontextu",
