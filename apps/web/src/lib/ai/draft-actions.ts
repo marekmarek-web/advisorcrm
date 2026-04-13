@@ -452,8 +452,75 @@ export function pruneRedundantDraftActions(actions: DraftActionBase[]): DraftAct
   return out;
 }
 
+export type DraftActionMatchContext = {
+  matchVerdict?: "existing_match" | "near_match" | "ambiguous_match" | "no_match" | null;
+  candidates?: Array<{ clientId: string; displayName?: string; score: number; reasons?: string[] }>;
+};
+
+function buildClientMatchDraftAction(
+  verdict: "existing_match" | "near_match" | "ambiguous_match" | "no_match" | null | undefined,
+  candidates: DraftActionMatchContext["candidates"],
+  legacy: ReturnType<typeof toLegacyProjection>,
+  isSupportingDoc: boolean,
+): DraftActionBase | null {
+  // Supporting/info documents must never emit create-client flow.
+  if (isSupportingDoc) return null;
+
+  const top = candidates?.[0];
+
+  if (!verdict || verdict === "no_match") {
+    return {
+      type: "create_new_client",
+      label: "Vytvořit nového klienta",
+      payload: {
+        firstName: legacy.client?.firstName ?? "",
+        lastName: legacy.client?.lastName ?? "",
+        fullName: legacy.client?.fullName,
+        email: legacy.client?.email,
+        phone: legacy.client?.phone,
+        birthDate: legacy.client?.birthDate,
+        personalId: legacy.client?.personalId,
+        companyId: legacy.client?.companyId,
+        address: legacy.client?.address,
+      },
+    };
+  }
+
+  if (verdict === "existing_match" || verdict === "near_match") {
+    return {
+      type: "link_existing_client",
+      label: verdict === "existing_match" ? "Propojit s klientem" : "Potvrdit klienta",
+      payload: {
+        clientId: top?.clientId ?? null,
+        displayName: top?.displayName ?? null,
+        score: top?.score ?? null,
+        reasons: top?.reasons ?? [],
+        verdict,
+      },
+    };
+  }
+
+  if (verdict === "ambiguous_match") {
+    return {
+      type: "resolve_client_match",
+      label: "Vybrat klienta (nejednoznačná shoda)",
+      payload: {
+        candidates: (candidates ?? []).slice(0, 8).map((c) => ({
+          clientId: c.clientId,
+          displayName: c.displayName,
+          score: c.score,
+        })),
+        verdict,
+      },
+    };
+  }
+
+  return null;
+}
+
 export function buildAllDraftActions(
-  extracted: ExtractedContractSchema | DocumentReviewEnvelope
+  extracted: ExtractedContractSchema | DocumentReviewEnvelope,
+  matchContext?: DraftActionMatchContext,
 ): DraftActionBase[] {
   const maybeEnvelope = extracted as DocumentReviewEnvelope;
   if (!maybeEnvelope?.documentClassification || !maybeEnvelope?.extractedFields) {
@@ -464,8 +531,20 @@ export function buildAllDraftActions(
   const legacy = toLegacyProjection(maybeEnvelope);
   const actions: DraftActionBase[] = [];
   const requested = schema.extractionRules.suggestedActionRules;
+
+  const isSupportingDoc =
+    requested.includes("attach_to_existing_client") ||
+    requested.includes("attach_to_client_documents") ||
+    requested.includes("mark_as_supporting_document");
+
   if (requested.includes("create_or_link_client")) {
-    actions.push(buildCreateClientDraft(legacy));
+    const clientAction = buildClientMatchDraftAction(
+      matchContext?.matchVerdict,
+      matchContext?.candidates,
+      legacy,
+      isSupportingDoc,
+    );
+    if (clientAction) actions.push(clientAction);
   }
   if (requested.includes("create_or_update_contract_record")) {
     const pt = maybeEnvelope.documentClassification.primaryType;

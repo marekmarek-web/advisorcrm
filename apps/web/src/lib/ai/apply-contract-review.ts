@@ -484,6 +484,20 @@ export async function applyContractReview(
   const createNewConfirmed = row.createNewClientConfirmed === "true";
   let effectiveContactId: string | null = resolvedClientId;
 
+  // near_match default: if advisor didn't explicitly pick a client and didn't confirm create_new,
+  // use the top candidate as default (advisory, not blocking).
+  const trace = row.extractionTrace as Record<string, unknown> | null | undefined;
+  const matchVerdict = trace?.matchVerdict as string | null | undefined;
+  if (!effectiveContactId && !createNewConfirmed && matchVerdict === "near_match") {
+    const rawCandidates = row.clientMatchCandidates as Array<{ clientId?: string }> | null | undefined;
+    const topCandidateId = Array.isArray(rawCandidates) && rawCandidates.length > 0
+      ? (rawCandidates[0]?.clientId ?? null)
+      : null;
+    if (topCandidateId) {
+      effectiveContactId = topCandidateId;
+    }
+  }
+
   if (!effectiveContactId && !createNewConfirmed) {
     return {
       ok: false,

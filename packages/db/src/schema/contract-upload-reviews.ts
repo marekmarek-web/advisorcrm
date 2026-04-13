@@ -104,6 +104,11 @@ export const contractUploadReviews = pgTable("contract_upload_reviews", {
   correctedBy: text("corrected_by"),
   /** Human correction: timestamp. */
   correctedAt: timestamp("corrected_at", { withTimezone: true }),
+  /**
+   * Deterministic client match verdict computed during processing.
+   * Values: existing_match | near_match | ambiguous_match | no_match | null (legacy rows).
+   */
+  matchVerdict: text("match_verdict"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

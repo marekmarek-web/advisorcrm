@@ -86,12 +86,27 @@ function checkClientSelection(action: ActionPayload, ctx: ActionGuardContext): G
 
   if (!ctx.reviewRow.matchedClientId) {
     const candidates = ctx.reviewRow.matchedClientCandidates;
-    const hasMultiple = Array.isArray(candidates) && candidates.length > 1;
-    if (hasMultiple) {
+    const trace = ctx.reviewRow.extractionTrace as Record<string, unknown> | undefined;
+    const matchVerdict = trace?.matchVerdict as string | undefined;
+
+    if (matchVerdict === "ambiguous_match") {
       return { allowed: false, blockedReasons: ["AMBIGUOUS_CLIENT_MATCH"], requiredOverrides: ["select_client_candidate"] };
     }
-    if (!candidates || (Array.isArray(candidates) && candidates.length === 0)) {
-      return { allowed: false, blockedReasons: ["NO_CLIENT_MATCH"], requiredOverrides: ["confirm_create_new_client"] };
+    if (matchVerdict === "near_match" || matchVerdict === "existing_match" || matchVerdict === "no_match") {
+      // near_match: advisory, not blocking — allow with top candidate default
+      // existing_match: should have matchedClientId already set; if missing, allow through
+      // no_match: create-client flow, no block
+      return null;
+    }
+    // Legacy fallback: no verdict present → use raw candidate count
+    if (matchVerdict == null) {
+      const hasMultiple = Array.isArray(candidates) && candidates.length > 1;
+      if (hasMultiple) {
+        return { allowed: false, blockedReasons: ["AMBIGUOUS_CLIENT_MATCH"], requiredOverrides: ["select_client_candidate"] };
+      }
+      if (!candidates || (Array.isArray(candidates) && candidates.length === 0)) {
+        return { allowed: false, blockedReasons: ["NO_CLIENT_MATCH"], requiredOverrides: ["confirm_create_new_client"] };
+      }
     }
   }
   return null;

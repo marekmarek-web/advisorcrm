@@ -40,9 +40,68 @@ const SCORE = {
 } as const;
 
 function confidenceFromScore(score: number): MatchConfidence {
-  if (score >= 0.85) return "high";
-  if (score >= 0.5) return "medium";
+  if (score >= 0.34) return "high";
+  if (score >= 0.25) return "medium";
   return "low";
+}
+
+/**
+ * Deterministic verdict enum for client resolution.
+ * - existing_match: single high-confidence candidate with clear gap to second → auto-resolve
+ * - near_match: high-confidence top but close second, or single medium → advisory
+ * - ambiguous_match: multiple high-confidence or indistinguishable top → blocking
+ * - no_match: nothing above threshold
+ */
+export type MatchVerdict =
+  | "existing_match"
+  | "near_match"
+  | "ambiguous_match"
+  | "no_match";
+
+export type MatchVerdictResult = {
+  verdict: MatchVerdict;
+  autoResolvedClientId: string | null;
+  reason: string;
+};
+
+/**
+ * Deterministic match verdict from scored candidates.
+ * Candidates must be pre-filtered (score >= 0.25) and sorted desc by score.
+ * Rules per mini-plan section 4.
+ */
+export function computeMatchVerdict(candidates: ClientMatchCandidate[]): MatchVerdictResult {
+  const filtered = candidates.filter((c) => c.score >= 0.25).sort((a, b) => b.score - a.score);
+
+  if (filtered.length === 0) {
+    return { verdict: "no_match", autoResolvedClientId: null, reason: "no_candidates_above_threshold" };
+  }
+
+  const top = filtered[0];
+  const second = filtered[1];
+
+  if (top.confidence === "high") {
+    const gap = second ? top.score - second.score : Infinity;
+    if (!second || gap >= 0.10) {
+      return {
+        verdict: "existing_match",
+        autoResolvedClientId: top.clientId,
+        reason: `single_high_confidence_gap_${gap.toFixed(2)}`,
+      };
+    }
+    if (gap >= 0.05) {
+      return { verdict: "near_match", autoResolvedClientId: null, reason: `high_confidence_close_gap_${gap.toFixed(2)}` };
+    }
+    return { verdict: "ambiguous_match", autoResolvedClientId: null, reason: "multiple_high_confidence_indistinguishable" };
+  }
+
+  if (top.confidence === "medium") {
+    if (!second) {
+      return { verdict: "near_match", autoResolvedClientId: null, reason: "single_medium_confidence" };
+    }
+    return { verdict: "ambiguous_match", autoResolvedClientId: null, reason: "multiple_medium_confidence_candidates" };
+  }
+
+  return { verdict: "no_match", autoResolvedClientId: null, reason: "top_candidate_low_confidence" };
 }
 
 function fullNameFromParts(firstRaw?: string | null, lastRaw?: string | null, fullRaw?: string | null): string {

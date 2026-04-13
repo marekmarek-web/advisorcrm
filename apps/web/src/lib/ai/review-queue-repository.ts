@@ -243,6 +243,8 @@ export type ContractReviewRow = {
   correctionReason: string | null;
   correctedBy: string | null;
   correctedAt: Date | null;
+  /** Deterministic client match verdict. Null for legacy rows. */
+  matchVerdict: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -511,6 +513,7 @@ export async function updateContractReview(
     correctionReason?: string | null;
     correctedBy?: string | null;
     correctedAt?: Date | null;
+    matchVerdict?: string | null;
   }
 ): Promise<void> {
   const createNewClientConfirmed =

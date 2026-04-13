@@ -164,18 +164,33 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
     }
   }
 
-  const candidates = row.clientMatchCandidates;
-  if (
-    !row.matchedClientId &&
-    !row.createNewClientConfirmed &&
-    Array.isArray(candidates) &&
-    candidates.length > 1
-  ) {
-    blocked.push("AMBIGUOUS_CLIENT_MATCH");
+  // Verdict-based client match gating.
+  // If matchVerdict is present (top-level column OR in extractionTrace), use it deterministically.
+  // For legacy rows (null verdict), fall back to raw candidate count.
+  const rowAny = row as Record<string, unknown>;
+  const matchVerdict = (rowAny.matchVerdict as string | null | undefined)
+    ?? (trace?.matchVerdict as string | null | undefined);
+  if (!row.matchedClientId && !row.createNewClientConfirmed) {
+    const hasLegacyFallback = matchVerdict == null;
+    const candidates = row.clientMatchCandidates;
+    if (matchVerdict === "ambiguous_match") {
+      blocked.push("AMBIGUOUS_CLIENT_MATCH");
+    } else if (matchVerdict === "near_match") {
+      // Advisory only — not blocking.
+      warnings.push("NEAR_MATCH_ADVISORY");
+    } else if (hasLegacyFallback && Array.isArray(candidates) && candidates.length > 1) {
+      // Legacy fallback: raw candidate count triggers ambiguous block.
+      blocked.push("AMBIGUOUS_CLIENT_MATCH");
+    }
+    // existing_match is auto-resolved — no block needed.
+    // no_match proceeds to create-client — no block needed.
   }
 
-  if (trace?.llmClientMatchKind === "ambiguous") {
-    blocked.push("LLM_CLIENT_MATCH_AMBIGUOUS");
+  if (trace?.llmClientMatchKind === "ambiguous" && matchVerdict !== "existing_match") {
+    // LLM can only downgrade, never override existing_match.
+    if (!blocked.includes("AMBIGUOUS_CLIENT_MATCH")) {
+      warnings.push("LLM_CLIENT_MATCH_AMBIGUOUS");
+    }
   }
 
   const extractionRoute = trace?.extractionRoute;

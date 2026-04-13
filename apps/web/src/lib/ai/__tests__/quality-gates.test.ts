@@ -140,16 +140,87 @@ describe("evaluateApplyReadiness", () => {
     expect(result.warnings).toContain("PREPROCESS_FAILED");
   });
 
-  it("blocks on ambiguous client match", () => {
+  it("blocks on ambiguous client match (legacy: raw candidate count fallback)", () => {
     const result = evaluateApplyReadiness(
       baseRow({
         matchedClientId: null,
         createNewClientConfirmed: null,
         clientMatchCandidates: [{ id: "a" }, { id: "b" }],
+        // No matchVerdict → legacy fallback
       }),
     );
     expect(result.readiness).toBe("blocked_for_apply");
     expect(result.blockedReasons).toContain("AMBIGUOUS_CLIENT_MATCH");
+  });
+
+  it("blocks on ambiguous_match verdict", () => {
+    const result = evaluateApplyReadiness(
+      baseRow({
+        matchedClientId: null,
+        createNewClientConfirmed: null,
+        clientMatchCandidates: [{ id: "a" }, { id: "b" }],
+        extractionTrace: {
+          classificationConfidence: 0.9,
+          extractionRoute: "contract_intake",
+          normalizedPipelineClassification: "insurance_contract",
+          matchVerdict: "ambiguous_match",
+        },
+      } as Parameters<typeof baseRow>[0]),
+    );
+    expect(result.readiness).toBe("blocked_for_apply");
+    expect(result.blockedReasons).toContain("AMBIGUOUS_CLIENT_MATCH");
+  });
+
+  it("does NOT block for near_match verdict — only advisory warning", () => {
+    const result = evaluateApplyReadiness(
+      baseRow({
+        matchedClientId: null,
+        createNewClientConfirmed: null,
+        clientMatchCandidates: [{ id: "a" }],
+        extractionTrace: {
+          classificationConfidence: 0.9,
+          extractionRoute: "contract_intake",
+          normalizedPipelineClassification: "insurance_contract",
+          matchVerdict: "near_match",
+        },
+      } as Parameters<typeof baseRow>[0]),
+    );
+    expect(result.blockedReasons).not.toContain("AMBIGUOUS_CLIENT_MATCH");
+    expect(result.warnings).toContain("NEAR_MATCH_ADVISORY");
+  });
+
+  it("does NOT block for existing_match verdict — auto-resolved", () => {
+    const result = evaluateApplyReadiness(
+      baseRow({
+        matchedClientId: "resolved-client-id",
+        createNewClientConfirmed: null,
+        extractionTrace: {
+          classificationConfidence: 0.9,
+          extractionRoute: "contract_intake",
+          normalizedPipelineClassification: "insurance_contract",
+          matchVerdict: "existing_match",
+        },
+      } as Parameters<typeof baseRow>[0]),
+    );
+    expect(result.blockedReasons).not.toContain("AMBIGUOUS_CLIENT_MATCH");
+    expect(result.readiness).toBe("ready_for_apply");
+  });
+
+  it("does NOT block for no_match verdict — proceeds to create-client", () => {
+    const result = evaluateApplyReadiness(
+      baseRow({
+        matchedClientId: null,
+        createNewClientConfirmed: "true",
+        clientMatchCandidates: [],
+        extractionTrace: {
+          classificationConfidence: 0.9,
+          extractionRoute: "contract_intake",
+          normalizedPipelineClassification: "insurance_contract",
+          matchVerdict: "no_match",
+        },
+      } as Parameters<typeof baseRow>[0]),
+    );
+    expect(result.blockedReasons).not.toContain("AMBIGUOUS_CLIENT_MATCH");
   });
 
   it("blocks on pipeline failedStep", () => {

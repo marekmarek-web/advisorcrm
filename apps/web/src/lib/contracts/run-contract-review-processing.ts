@@ -16,6 +16,7 @@ import {
   findMatchedExistingContracts,
   findMatchedHouseholds,
   isMatchingAmbiguous,
+  computeMatchVerdict,
 } from "@/lib/ai/client-matching";
 import { logOpenAICall } from "@/lib/openai";
 import { getAiReviewProviderMeta } from "@/lib/ai/review-llm-provider";
@@ -464,9 +465,6 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   }
 
   const contractNumber = String(data.extractedFields.contractNumber?.value ?? "");
-  const draftActions = applyAidvisorDraftCanonicalTypes(buildAllDraftActions(data), {
-    blockPortalPayment: pipelineResult.processingStatus === "blocked",
-  });
 
   await updateContractReview(id, tenantId, {
     processingStage: "matching_client",
@@ -501,6 +499,21 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     ? parseAiReviewClientMatchKind(clientMatchLlm.text)
     : null;
 
+  // Compute deterministic match verdict.
+  let verdictResult = computeMatchVerdict(clientMatchCandidates);
+  // LLM can only downgrade near_match → ambiguous_match, never override existing_match.
+  if (llmClientMatchKind === "ambiguous" && verdictResult.verdict === "near_match") {
+    verdictResult = { verdict: "ambiguous_match", autoResolvedClientId: null, reason: "llm_downgrade_near_to_ambiguous" };
+  }
+  const matchVerdict = verdictResult.verdict;
+  const autoResolvedClientId = verdictResult.autoResolvedClientId;
+
+  // Build draft actions with verdict context.
+  const draftActions = applyAidvisorDraftCanonicalTypes(
+    buildAllDraftActions(data, { matchVerdict, candidates: clientMatchCandidates }),
+    { blockPortalPayment: pipelineResult.processingStatus === "blocked" }
+  );
+
   const [matchedHouseholds, matchedDeals, matchedContracts] = await Promise.all([
     findMatchedHouseholds(tenantId, clientMatchCandidates),
     findMatchedDeals(tenantId, clientMatchCandidates, contractNumber),
@@ -525,7 +538,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     matchedContracts,
     score: clientMatchCandidates[0]?.score ?? 0,
     reason: clientMatchCandidates[0]?.reasons.join("; ") ?? "no_match",
-    ambiguityFlags: isMatchingAmbiguous(clientMatchCandidates) ? ["multiple_close_candidates"] : [],
+    ambiguityFlags: matchVerdict === "ambiguous_match" ? ["multiple_close_candidates"] : [],
   };
   data.suggestedActions = draftActions.map((a) => ({
     type: a.type,
@@ -534,10 +547,13 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
   }));
 
   const reasonsForReview = [...pipelineResult.reasonsForReview];
-  if (isMatchingAmbiguous(clientMatchCandidates)) {
+  if (matchVerdict === "ambiguous_match") {
     reasonsForReview.push("ambiguous_client_match");
   }
-  if (llmClientMatchKind === "ambiguous") {
+  if (matchVerdict === "near_match") {
+    reasonsForReview.push("near_match_advisory");
+  }
+  if (llmClientMatchKind === "ambiguous" && matchVerdict !== "ambiguous_match") {
     reasonsForReview.push("llm_client_match_ambiguous");
   }
   if (
@@ -640,6 +656,13 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
       : {}),
   };
 
+  const mergedTraceWithVerdict = {
+    ...mergedTrace,
+    matchVerdict,
+    matchVerdictReason: verdictResult.reason,
+    ...(autoResolvedClientId ? { autoResolvedClientId } : {}),
+  };
+
   await updateContractReview(id, tenantId, {
     processingStatus: pipelineResult.processingStatus,
     processingStage: null,
@@ -654,7 +677,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     detectedDocumentSubtype: data.documentClassification.subtype ?? null,
     lifecycleStatus: data.documentClassification.lifecycleStatus ?? null,
     documentIntent: data.documentClassification.documentIntent ?? null,
-    extractionTrace: mergedTrace,
+    extractionTrace: mergedTraceWithVerdict,
     validationWarnings: pipelineResult.validationWarnings.length ? pipelineResult.validationWarnings : null,
     fieldConfidenceMap: pipelineResult.fieldConfidenceMap ?? undefined,
     classificationReasons: pipelineResult.classificationReasons.length ? pipelineResult.classificationReasons : null,
@@ -662,6 +685,8 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     sensitivityProfile: data.sensitivityProfile ?? null,
     sectionSensitivity: data.sectionSensitivity ?? null,
     relationshipInference: data.relationshipInference ?? null,
+    matchVerdict,
+    ...(autoResolvedClientId ? { matchedClientId: autoResolvedClientId } : {}),
   });
 
   await logAudit({

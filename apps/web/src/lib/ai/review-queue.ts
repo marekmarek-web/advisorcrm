@@ -81,7 +81,8 @@ export type DraftActionType =
   | "create_or_link_company_entity"
   | "attach_to_business_client"
   | "attach_to_loan_or_financing_deal"
-  | "create_manual_review_task";
+  | "create_manual_review_task"
+  | "resolve_client_match";
 
 export interface DraftActionBase {
   type: DraftActionType;
