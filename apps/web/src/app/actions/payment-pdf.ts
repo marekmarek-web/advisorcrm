@@ -170,24 +170,29 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
       : contractRows;
 
   for (const c of visibleContractRows) {
-    const acc = await getPaymentAccountForContract(auth.tenantId, c.partnerId, c.partnerName, c.segment);
-    if (acc) {
-      const legacyInstruction: PaymentInstruction = {
-        segment: c.segment,
-        partnerName: acc.partnerName || c.partnerName || "—",
-        productName: c.productName,
-        contractNumber: c.contractNumber,
-        accountNumber: acc.accountNumber,
-        bank: acc.bank,
-        note: acc.note,
-        amount: c.premiumAmount,
-        frequency: c.premiumAmount ? "měsíčně" : null,
-        variableSymbol: c.contractNumber,
-      };
-      const dedupKey = paymentInstructionDedupKey(legacyInstruction);
-      if (seen.has(dedupKey)) continue;
-      seen.add(dedupKey);
-      out.push(legacyInstruction);
+    try {
+      const acc = await getPaymentAccountForContract(auth.tenantId, c.partnerId, c.partnerName, c.segment);
+      if (acc) {
+        const legacyInstruction: PaymentInstruction = {
+          segment: c.segment ?? "ZP",
+          partnerName: acc.partnerName || c.partnerName || "—",
+          productName: c.productName ?? null,
+          contractNumber: c.contractNumber ?? null,
+          accountNumber: acc.accountNumber,
+          bank: acc.bank,
+          note: acc.note,
+          amount: c.premiumAmount ?? null,
+          frequency: c.premiumAmount ? "měsíčně" : null,
+          variableSymbol: c.contractNumber ?? null,
+        };
+        const dedupKey = paymentInstructionDedupKey(legacyInstruction);
+        if (seen.has(dedupKey)) continue;
+        seen.add(dedupKey);
+        out.push(legacyInstruction);
+      }
+    } catch {
+      // Per-contract payment resolution must not crash the whole page
+      continue;
     }
   }
   return out;

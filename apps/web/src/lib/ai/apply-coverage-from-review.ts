@@ -25,6 +25,10 @@ const SEGMENT_TO_COVERAGE_ITEM: Record<string, string> = {
   DPS: "DPS",
   DIP: "Investice",
   INV: "Investice",
+  HYPO: "Hypotéky",
+  UVER: "Úvěry",
+  CEST: "Cestovní pojištění",
+  FIRMA_POJ: "Pojištění firem",
 };
 
 type UpsertCoverageInput = {
@@ -112,7 +116,7 @@ export async function upsertCoverageFromAppliedReview(
 
   for (const { itemKey, segmentCode } of coverageItems) {
     const existing = await db
-      .select({ id: contactCoverage.id, status: contactCoverage.status })
+      .select({ id: contactCoverage.id, status: contactCoverage.status, linkedContractId: contactCoverage.linkedContractId })
       .from(contactCoverage)
       .where(
         and(
@@ -123,7 +127,7 @@ export async function upsertCoverageFromAppliedReview(
       )
       .limit(1);
 
-    if (existing[0]?.status === "done") continue;
+    if (existing[0]?.status === "done" && existing[0].linkedContractId === contractId) continue;
 
     if (existing[0]) {
       await db

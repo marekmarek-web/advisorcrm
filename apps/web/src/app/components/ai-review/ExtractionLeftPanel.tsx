@@ -1097,6 +1097,51 @@ function WorkActionsCard({
 }) {
   const [busyAction, setBusyAction] = React.useState<string | null>(null);
   const actions = doc.draftActions ?? [];
+  const publishOutcome = doc.applyResultPayload?.publishOutcome;
+
+  if (doc.isApplied && publishOutcome) {
+    const modeColorMap: Record<string, string> = {
+      product_published_visible_to_client: "bg-emerald-50 border-emerald-200 text-emerald-800",
+      publish_partial_failure: "bg-amber-50 border-amber-200 text-amber-800",
+      supporting_doc_only: "bg-slate-50 border-slate-200 text-slate-700",
+      internal_document_only: "bg-slate-50 border-slate-200 text-slate-700",
+    };
+    const colorClass = modeColorMap[publishOutcome.mode] ?? "bg-slate-50 border-slate-200 text-slate-700";
+    const paymentLabel = publishOutcome.paymentOutcome === "payment_setup_published"
+      ? "Platební údaje zapsány."
+      : null;
+    return (
+      <div
+        data-section="workflow"
+        className={`rounded-[20px] border shadow-sm p-4 md:p-5 ${colorClass}`}
+      >
+        <h3 className="text-[11px] font-black uppercase tracking-widest mb-3 flex items-center gap-2">
+          <Check size={14} /> Výsledek zápisu do CRM
+        </h3>
+        <p className="text-sm font-semibold leading-relaxed">{publishOutcome.label}</p>
+        {paymentLabel && (
+          <p className="text-xs font-medium mt-1 opacity-80">{paymentLabel}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (doc.isApplied) {
+    return (
+      <div
+        data-section="workflow"
+        className="bg-emerald-50 rounded-[20px] border border-emerald-200 shadow-sm p-4 md:p-5"
+      >
+        <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-800 mb-3 flex items-center gap-2">
+          <Check size={14} /> Zapsáno do CRM
+        </h3>
+        <p className="text-sm text-emerald-700 font-medium">
+          Dokument byl zpracován a zapsán do CRM.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       data-section="workflow"
@@ -1122,17 +1167,52 @@ function WorkActionsCard({
 
             if (a.type === "link_existing_client") {
               const cid = typeof a.payload?.clientId === "string" ? a.payload.clientId : null;
-              const href = cid ? `/portal/contacts/${cid}` : "/portal/contacts";
+              const displayName = typeof a.payload?.displayName === "string" ? a.payload.displayName : null;
+              const alreadyLinked = !!doc.matchedClientId;
+              if (!cid) {
+                return (
+                  <li key={actionKey}>
+                    <Link
+                      href="/portal/contacts"
+                      className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40`}
+                    >
+                      <ExternalLink size={15} className="text-indigo-500 shrink-0" />
+                      <span className="flex-1">{a.label}</span>
+                      <ArrowRight size={14} className="text-indigo-400 shrink-0" />
+                    </Link>
+                  </li>
+                );
+              }
               return (
                 <li key={actionKey}>
-                  <Link
-                    href={href}
-                    className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40`}
+                  <button
+                    type="button"
+                    disabled={isBusy || alreadyLinked}
+                    onClick={async () => {
+                      if (!onExecuteDraftAction) return;
+                      setBusyAction(actionKey);
+                      try {
+                        await onExecuteDraftAction(a);
+                      } finally {
+                        setBusyAction(null);
+                      }
+                    }}
+                    className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50`}
                   >
-                    <ExternalLink size={15} className="text-indigo-500 shrink-0" />
-                    <span className="flex-1">{a.label}</span>
-                    <ArrowRight size={14} className="text-indigo-400 shrink-0" />
-                  </Link>
+                    {isBusy ? (
+                      <span className="w-4 h-4 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin shrink-0" />
+                    ) : alreadyLinked ? (
+                      <Check size={15} className="text-emerald-500 shrink-0" />
+                    ) : (
+                      <CheckCircle2 size={15} className="text-indigo-500 shrink-0" />
+                    )}
+                    <span className="flex-1">
+                      {alreadyLinked
+                        ? `Klient propojen${displayName ? `: ${displayName}` : ""}`
+                        : a.label}
+                    </span>
+                    {!alreadyLinked && <ArrowRight size={14} className="text-indigo-400 shrink-0" />}
+                  </button>
                 </li>
               );
             }

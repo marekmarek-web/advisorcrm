@@ -4,7 +4,6 @@ import {
   contracts,
   partners,
   products,
-  tasks,
   auditLog,
   clientPaymentSetups,
   contractSegments,
@@ -597,11 +596,11 @@ export async function applyContractReview(
   const createNewConfirmed = row.createNewClientConfirmed === "true";
   let effectiveContactId: string | null = resolvedClientId;
 
-  // near_match default: if advisor didn't explicitly pick a client and didn't confirm create_new,
-  // use the top candidate as default (advisory, not blocking).
+  // Auto-resolve client from top candidate when matchedClientId was not explicitly set.
+  // Applies to both existing_match (high-confidence single match) and near_match (fallback).
   const trace = row.extractionTrace as Record<string, unknown> | null | undefined;
   const matchVerdict = trace?.matchVerdict as string | null | undefined;
-  if (!effectiveContactId && !createNewConfirmed && matchVerdict === "near_match") {
+  if (!effectiveContactId && !createNewConfirmed && (matchVerdict === "existing_match" || matchVerdict === "near_match")) {
     const rawCandidates = row.clientMatchCandidates as Array<{ clientId?: string }> | null | undefined;
     const topCandidateId = Array.isArray(rawCandidates) && rawCandidates.length > 0
       ? (rawCandidates[0]?.clientId ?? null)
@@ -922,20 +921,10 @@ export async function applyContractReview(
             }
           }
           if (insertedContractId) resultPayload.createdContractId = insertedContractId;
-        } else if (action.type === "create_task" && effectiveContactId) {
-          const title = (action.payload.title as string)?.trim() || action.label;
-          const [inserted] = await tx
-            .insert(tasks)
-            .values({
-              tenantId,
-              contactId: effectiveContactId,
-              title,
-              description: (action.payload.notes as string) || null,
-              assignedTo: userId,
-              createdBy: userId,
-            })
-            .returning({ id: tasks.id });
-          if (inserted?.id) resultPayload.createdTaskId = inserted.id;
+        } else if (action.type === "create_task") {
+          // Auto-task off: tasks are NOT created automatically during CRM write / publish flow.
+          // Advisor can still create tasks manually from the draft actions UI.
+          continue;
         } else if (
           action.type === "create_payment_setup" ||
           action.type === "create_payment" ||
