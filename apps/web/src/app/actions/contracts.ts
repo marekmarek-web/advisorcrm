@@ -299,24 +299,29 @@ const FK_VIOLATION_FALLBACK_MESSAGE =
   "Neplatná vazba v databázi. Zkontrolujte klienta, workspace a výběr partnera či produktu z katalogu.";
 
 /**
- * Databáze může mít FK `contracts.advisor_id` → `user_profiles.user_id`.
- * Bez řádku v `user_profiles` INSERT selže s „advisor_id“ v detailu — i když je session platná.
+ * Databáze může mít FK `contracts.advisor_id` (a případně `confirmed_by_user_id`) → `user_profiles.user_id`.
+ * `onConflictDoNothing` neřeší částečně „prázdný“ stav; UPSERT vždy zajistí kompatibilní řádek.
  */
 async function ensureUserProfileRowForAdvisor(userId: string): Promise<void> {
-  if (!userId.trim()) return;
+  const uid = userId.trim();
+  if (!uid) return;
   await db
     .insert(userProfiles)
     .values({
-      userId: userId.trim(),
+      userId: uid,
       updatedAt: new Date(),
     })
-    .onConflictDoNothing({ target: userProfiles.userId });
+    .onConflictDoUpdate({
+      target: userProfiles.userId,
+      set: { updatedAt: new Date() },
+    });
 }
 
 /** Čitelná hláška z Postgres FK detailu (klient / tenant / partner / produkt). */
-function fkViolationUserMessage(detail: string | undefined): string | null {
-  if (!detail) return null;
-  const d = detail.toLowerCase();
+function fkViolationUserMessage(detail: string | undefined, constraint?: string): string | null {
+  const combined = `${detail ?? ""} ${constraint ?? ""}`.toLowerCase();
+  if (!combined.trim()) return null;
+  const d = combined;
   if (d.includes("client_id") || d.includes("contact_id")) {
     return "Klient není v databázi nebo neodpovídá workspace. Obnovte stránku a zkuste znovu.";
   }
@@ -329,7 +334,7 @@ function fkViolationUserMessage(detail: string | undefined): string | null {
   if (d.includes("product_id")) {
     return "Produkt není v databázi. Vyberte produkt z katalogu znovu.";
   }
-  if (d.includes("advisor_id")) {
+  if (d.includes("advisor_id") || d.includes("confirmed_by_user_id")) {
     return "Účet poradce neodpovídá databázi. Obnovte stránku nebo kontaktujte správce.";
   }
   return null;
@@ -505,14 +510,15 @@ export async function createContract(
       return { ok: false, message: refCheck.message };
     }
 
-    await ensureUserProfileRowForAdvisor(auth.userId);
+    const advisorUid = auth.userId.trim();
+    await ensureUserProfileRowForAdvisor(advisorUid);
 
     const [row] = await db
       .insert(contracts)
       .values({
         tenantId: auth.tenantId,
         contactId,
-        advisorId: auth.userId,
+        advisorId: advisorUid,
         segment,
         type: segment,
         partnerId: normalized.partnerId || null,
@@ -529,7 +535,7 @@ export async function createContract(
         portfolioStatus: "active",
         sourceKind: "manual",
         advisorConfirmedAt: new Date(),
-        confirmedByUserId: auth.userId,
+        confirmedByUserId: advisorUid,
         portfolioAttributes: {},
       })
       .returning({ id: contracts.id });
@@ -547,7 +553,7 @@ export async function createContract(
     const meta = pgErrorMeta(e);
     console.error("[createContract]", { ...meta, message: msg, err: e });
     if (msg.includes("foreign key") || msg.includes("violates foreign key")) {
-      const fkMsg = fkViolationUserMessage(meta.detail);
+      const fkMsg = fkViolationUserMessage(meta.detail, meta.constraint);
       return {
         ok: false,
         message: fkMsg ?? FK_VIOLATION_FALLBACK_MESSAGE,
@@ -563,7 +569,7 @@ export async function createContract(
       return { ok: false, message: hint };
     }
     if (code === "23503") {
-      const fkMsg = fkViolationUserMessage(meta.detail);
+      const fkMsg = fkViolationUserMessage(meta.detail, meta.constraint);
       return {
         ok: false,
         message: fkMsg ?? FK_VIOLATION_FALLBACK_MESSAGE,
