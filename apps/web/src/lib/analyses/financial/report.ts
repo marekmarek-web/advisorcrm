@@ -608,6 +608,7 @@ function renderInvestmentsRows(data: FinancialAnalysisData): string {
 
 function renderInvestmentsTotal(data: FinancialAnalysisData): string {
   const invs = data.investments || [];
+  const conservative = data.strategy?.conservativeMode ?? false;
   let totalMonthly = 0,
     totalLump = 0,
     totalFV = 0;
