@@ -484,13 +484,46 @@ Pokud najdeš osobu ve vedlejší sekci (např. jméno poradce v sekci Zprostře
 - Vedlejší sekce MŮŽE doplnit chybějící hodnoty (pokud sekce 1–4 nebyly dostupné)
 
 ══════════════════════════════════════════════════════════
+RULE 9 — IDENTITY DOCUMENT FIELDS (občanský průkaz / cestovní pas)
+══════════════════════════════════════════════════════════
+Pokud dokument obsahuje údaje o dokladu totožnosti klienta (občanský průkaz, cestovní pas,
+řidičský průkaz), extrahuj do extractedFields:
+- idCardNumber: číslo dokladu (např. "123456789", "AB 123456")
+- idCardIssuedBy: kdo doklad vydal (úřad, "MěÚ Praha 4", "Policie ČR")
+- idCardValidUntil: platnost dokladu do (datum ve formátu YYYY-MM-DD)
+- idCardIssuedAt: datum vydání dokladu (YYYY-MM-DD), pokud je v textu uvedeno
+
+Tyto údaje hledej v sekcích:
+  "Doklad totožnosti", "Osobní doklady", "Identifikace klienta", "Údaje klienta",
+  "Občanský průkaz", "Číslo OP", "Identifikační doklad", "AML identifikace"
+
+PRAVIDLA:
+- POUZE explicitně uvedené hodnoty v dokumentu. NEODHADUJ číslo dokladu z rodného čísla.
+- Pokud dokument doklady neobsahuje, tato pole NEUVÁDĚJ (nech je chybět, nedávej null).
+- Pokud je uvedeno "OP č." nebo "č. OP" nebo "č. dokladu" → idCardNumber.
+- Pokud je uvedeno "Platnost do" nebo "Platí do" → idCardValidUntil.
+- Pokud je uvedeno "Vydal" nebo "Vydáno" → idCardIssuedBy.
+
+══════════════════════════════════════════════════════════
+RULE 10 — PRAKTICKÝ LÉKAŘ (životní pojištění)
+══════════════════════════════════════════════════════════
+U životního pojištění (life_insurance_contract, life_insurance_proposal):
+Pokud je v dokumentu uveden praktický lékař klienta, extrahuj:
+- generalPractitioner: jméno lékaře (případně i adresa ordinace)
+
+Hledej v sekcích:
+  "Praktický lékař", "Ošetřující lékař", "Lékař", "Zdravotní údaje", "Údaje o lékaři"
+
+POUZE pokud je hodnota EXPLICITNĚ uvedena v dokumentu. Neodhaduj. Pokud chybí, pole neuváděj.
+
+══════════════════════════════════════════════════════════
 PRAVIDLA EXTRAKCE — POLE
 ══════════════════════════════════════════════════════════
 - Vycházej pouze z textu dokumentu níže.
 - Nevymýšlej hodnoty. Pokud si nejsi jistý, dej field status "missing" nebo pole vůbec neuváděj.
 - Extrahuj co nejvíce praktických údajů pro finančního poradce a CRM.
 - Preferované kategorie v extractedFields:
-  - Klient / dlužník: fullName, birthDate, personalId, address, permanentAddress, phone, email, occupation, sports.
+  - Klient / dlužník: fullName, birthDate, personalId, address, permanentAddress, phone, email, occupation, sports, idCardNumber, idCardIssuedBy, idCardValidUntil, idCardIssuedAt, generalPractitioner.
   - Smlouva / úvěr: contractNumber, proposalNumber, insurer, lender, productName, productType, documentStatus, policyStartDate, policyEndDate, policyDuration, dateSigned, businessCaseNumber.
   - Rizika a připojištění: coverages (JSON array [{ riskType, riskLabel, insuredAmount, termEnd?, premium? }]), riders, insuredRisks, insuredPersons, deathBenefit, accidentBenefit, disabilityBenefit, hospitalizationBenefit, seriousIllnessBenefit.
   - Platby pojistné: totalMonthlyPremium, annualPremium, riskPremium, investmentPremium, paymentFrequency, paymentAccountNumber, bankAccount, iban, variableSymbol, bankCode, firstPaymentDate, paymentPurpose.
@@ -541,7 +574,7 @@ PRAVIDLA EXTRAKCE — POLE
     Pro daňové přiznání: companyName, ico, taxPeriodFrom, taxPeriodTo, taxType, taxAmountDue.
     Nikdy netvoř contractNumber nebo insurer pro supporting docs.
   - Zprostředkovatel: intermediaryName, intermediaryCode, intermediaryCompany, advisorName, brokerName.
-  - Investice: investmentStrategy, investmentFunds (JSON array [{ name, allocation }]), fundAllocation, investmentAllocation, investmentScenario.
+  - Investice: investmentStrategy, investmentFunds (JSON array [{ name, allocation, isin }]), fundAllocation, investmentAllocation, investmentScenario, investmentHorizon, intendedInvestment. VŽDY extrahuj fond a ISIN pokud jsou v textu přítomné — i pokud je fond jen jeden s alokací 100 %. Investiční profil (dynamický/vyvážený/konzervativní/růstový) patří do investmentStrategy.
   - Oprávněné osoby: beneficiaries.
 - VĚŘITEL / BANKA: Pro úvěrové dokumenty lender je institucionální strana (Raiffeisenbank, ČSOB, Moneta atd.). NIKDY ji nevkládej do pole insurer. Použij pole lender.
 - ZPROSTŘEDKOVATEL vs INSTITUCE: intermediaryName je poradce/makléř klienta. Osoba podepsaná za pojišťovnu/banku NENÍ zprostředkovatel. Zprostředkovatel pochází z bloku "Zprostředkovatel" nebo "Zprostředkovatel úvěru".

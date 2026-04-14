@@ -262,6 +262,20 @@ Nepokus se odvodit investiční strategii z jiné sekce dokumentu.
 Neodhaduj výši prémie z pojistné smlouvy — zadej pouze, pokud je v investiční sekci explicitně zmíněna.
 Pokud hodnota v textu chybí, nech pole null nebo prázdné.
 
+PRAVIDLO ROBUSTNÍ EXTRAKCE INVESTIC:
+- FOND / ISIN: Hledej názvy fondů, ISIN kódy, cílové fondy, třídy podílových listů.
+  Běžné formáty: "Realita nemovitostní OPF", "CZ0008474673", "AMUNDI CR Dluhopisový PLUS",
+  "Conseq Invest akciový", "NN Růstový", investiční program + fond.
+  Stačí i JEDEN fond s alokací 100 % — vrať ho do funds[].
+- INVESTIČNÍ ČÁSTKA: Hledej "investovaná částka", "jednorázová investice", "cílová částka",
+  "suma k úpisu", "zamýšlená výše investice", "vstupní investice".
+  Pokud číslo existuje v textu, MUSÍ být vyplněno (investmentAmount).
+- INVESTIČNÍ PROFIL / STRATEGIE: Hledej "investiční profil", "strategie", "dynamický",
+  "vyvážený", "konzervativní", "růstový" i jako samostatný popis bez nadpisu "strategie".
+- investmentSectionPresent = true pokud text obsahuje JAKÝKOLIV z výše uvedených elementů
+  (fond, investiční částku, strategii, ISIN, investiční profil).
+  NESMÍŠ vrátit false pokud je fond nebo částka explicitně přítomna v textu.
+
 ${hintLines ? `Detekované investiční sekce:\n${hintLines}\n` : ""}
 
 Rozlišuj přesně:

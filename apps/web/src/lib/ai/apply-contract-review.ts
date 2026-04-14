@@ -41,6 +41,7 @@ import {
 } from "./field-merge-policy";
 import { loadContactPortalAccessSnapshot } from "./client-portal-access";
 import { computeAccessVerdict } from "@/lib/auth/access-verdict";
+import { resolveFundFromPortfolioAttributes } from "@/lib/fund-library/fund-resolution";
 
 const VALID_SEGMENTS = new Set<string>(contractSegments);
 
@@ -557,6 +558,18 @@ export async function applyContractReview(
   // Warnings are non-blocking — they are logged to resultPayload below
 
   const attrsFromReview = buildPortfolioAttributesFromExtracted(row.extractedPayload);
+
+  // Fund-library resolution: match extracted fund names/ISINs against catalog.
+  // Runs for every contract (idempotent), only populates when investment data present.
+  const fundResolution = resolveFundFromPortfolioAttributes(attrsFromReview);
+  if (fundResolution.resolvedFundId) {
+    attrsFromReview.resolvedFundId = fundResolution.resolvedFundId;
+    attrsFromReview.fvSourceType = fundResolution.fvSourceType;
+  } else if (fundResolution.resolvedFundCategory) {
+    attrsFromReview.resolvedFundCategory = fundResolution.resolvedFundCategory;
+    attrsFromReview.fvSourceType = fundResolution.fvSourceType;
+  }
+
   const extractionConfidence = normalizeExtractionConfidence(row.confidence ?? undefined);
 
   // Sensitivity / publishability signals are logged for audit but NEVER block apply.
@@ -673,6 +686,11 @@ export async function applyContractReview(
                 phone: (ep.phone as string)?.trim() || null,
                 birthDate: normalizeDateToISO(ep.birthDate as string) || null,
                 personalId: (ep.personalId as string)?.trim() || null,
+                idCardNumber: (ep.idCardNumber as string)?.trim() || null,
+                idCardIssuedBy: (ep.idCardIssuedBy as string)?.trim() || null,
+                idCardValidUntil: normalizeDateToISO(ep.idCardValidUntil as string) || null,
+                idCardIssuedAt: normalizeDateToISO(ep.idCardIssuedAt as string) || null,
+                generalPractitioner: (ep.generalPractitioner as string)?.trim() || null,
                 street:
                   (ep.street as string)?.trim() ||
                   (ep.address as string)?.trim() ||

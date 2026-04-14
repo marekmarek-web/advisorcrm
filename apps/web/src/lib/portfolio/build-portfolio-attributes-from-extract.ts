@@ -276,6 +276,41 @@ export function buildPortfolioAttributesFromExtracted(extracted: unknown): Recor
   ]);
   if (risksMerged.length > 0) out.risks = risksMerged;
 
+  // Investment fields
+  const strategy = p.investmentStrategy ?? p.strategy;
+  if (typeof strategy === "string" && strategy.trim()) out.investmentStrategy = strategy.trim();
+
+  const horizon = p.investmentHorizon ?? p.horizon;
+  if (typeof horizon === "string" && horizon.trim()) out.investmentHorizon = horizon.trim();
+
+  const targetAmt = p.targetAmount ?? p.intendedInvestment ?? p.investmentAmount;
+  if (targetAmt != null && targetAmt !== "") out.targetAmount = typeof targetAmt === "string" ? targetAmt : String(targetAmt);
+
+  const expectedFv = p.expectedFutureValue;
+  if (typeof expectedFv === "string" && expectedFv.trim()) out.expectedFutureValue = expectedFv.trim();
+
+  const rawFunds = p.investmentFunds ?? p.funds;
+  if (Array.isArray(rawFunds) && rawFunds.length > 0) {
+    const funds: Array<{ name: string; allocation?: string; isin?: string }> = [];
+    for (const f of rawFunds.slice(0, 20)) {
+      if (f && typeof f === "object") {
+        const r = f as Record<string, unknown>;
+        const name = typeof r.name === "string" ? r.name.trim() : undefined;
+        if (!name) continue;
+        const allocation = r.allocation != null ? String(r.allocation).trim() : undefined;
+        const isin = typeof r.isin === "string" ? r.isin.trim() : undefined;
+        funds.push({ name, ...(allocation ? { allocation } : {}), ...(isin ? { isin } : {}) });
+      }
+    }
+    if (funds.length > 0) out.investmentFunds = funds;
+  }
+
+  // DPS/DIP contributions
+  const partContrib = p.participantContribution;
+  if (typeof partContrib === "string" && partContrib.trim()) out.participantContribution = partContrib.trim();
+  const empContrib = p.employerContribution;
+  if (typeof empContrib === "string" && empContrib.trim()) out.employerContribution = empContrib.trim();
+
   // Fund-library resolution backbone fields (Fáze 1)
   if (typeof p.resolvedFundId === "string" && p.resolvedFundId.trim()) {
     out.resolvedFundId = p.resolvedFundId.trim();
