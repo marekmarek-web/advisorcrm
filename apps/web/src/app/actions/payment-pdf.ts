@@ -21,11 +21,17 @@ export type PaymentInstruction = {
   amount: string | null;
   frequency: string | null;
   variableSymbol: string | null;
+  specificSymbol: string | null;
+  constantSymbol: string | null;
+  currency: string | null;
+  /** Řádek z aktivního platebního nastavení (AI Review) — jinak null u katalogové šablony. */
+  paymentSetupId: string | null;
   /** Linked contract ID from canonical artifact (nullable for legacy catalog-only entries). */
   contractId?: string | null;
 };
 
 type AiPaymentSetupInstructionRow = {
+  id: string;
   paymentType: string;
   providerName: string | null;
   productName: string | null;
@@ -34,6 +40,9 @@ type AiPaymentSetupInstructionRow = {
   bankCode: string | null;
   iban: string | null;
   variableSymbol: string | null;
+  specificSymbol: string | null;
+  constantSymbol: string | null;
+  currency: string | null;
   amount: string | null;
   frequency: string | null;
   paymentInstructionsText: string | null;
@@ -111,6 +120,10 @@ function mapAiPaymentSetupToInstruction(
     amount: row.amount?.trim() || null,
     frequency: row.frequency?.trim() || null,
     variableSymbol: row.variableSymbol?.trim() || null,
+    specificSymbol: row.specificSymbol?.trim() || null,
+    constantSymbol: row.constantSymbol?.trim() || null,
+    currency: row.currency?.trim() || null,
+    paymentSetupId: row.id,
   };
 }
 
@@ -126,6 +139,7 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
 
   const aiReviewPaymentRows = await db
     .select({
+      id: clientPaymentSetups.id,
       paymentType: clientPaymentSetups.paymentType,
       providerName: clientPaymentSetups.providerName,
       productName: clientPaymentSetups.productName,
@@ -134,6 +148,9 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
       bankCode: clientPaymentSetups.bankCode,
       iban: clientPaymentSetups.iban,
       variableSymbol: clientPaymentSetups.variableSymbol,
+      specificSymbol: clientPaymentSetups.specificSymbol,
+      constantSymbol: clientPaymentSetups.constantSymbol,
+      currency: clientPaymentSetups.currency,
       amount: clientPaymentSetups.amount,
       frequency: clientPaymentSetups.frequency,
       paymentInstructionsText: clientPaymentSetups.paymentInstructionsText,
@@ -195,6 +212,10 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
           amount: c.premiumAmount ?? null,
           frequency: c.premiumAmount ? "měsíčně" : null,
           variableSymbol: c.contractNumber ?? null,
+          specificSymbol: null,
+          constantSymbol: null,
+          currency: null,
+          paymentSetupId: null,
           contractId: c.id,
         };
         const dedupKey = paymentInstructionDedupKey(legacyInstruction);

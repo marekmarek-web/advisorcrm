@@ -13,6 +13,8 @@ type QrPaymentModalProps = {
     accountNumber: string;
     amountLabel: string;
     variableSymbol: string | null;
+    specificSymbol?: string | null;
+    constantSymbol?: string | null;
     note: string | null;
   } | null;
 };
@@ -31,12 +33,16 @@ function createSpaydPayload(
   accountNumber: string,
   amountLabel: string,
   variableSymbol: string | null,
-  note: string | null
+  specificSymbol: string | null | undefined,
+  constantSymbol: string | null | undefined,
+  note: string | null,
 ) {
   const amount = sanitizeAmount(amountLabel);
   const parts = [`SPD*1.0*ACC:${sanitizeAccount(accountNumber)}`];
   if (amount) parts.push(`AM:${amount.toFixed(2)}`);
   if (variableSymbol?.trim()) parts.push(`X-VS:${variableSymbol.trim()}`);
+  if (specificSymbol?.trim()) parts.push(`X-SS:${specificSymbol.trim()}`);
+  if (constantSymbol?.trim()) parts.push(`X-KS:${constantSymbol.trim()}`);
   if (note?.trim()) parts.push(`MSG:${note.trim().slice(0, 60)}`);
   return parts.join("*");
 }
@@ -50,7 +56,9 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
       payment.accountNumber,
       payment.amountLabel,
       payment.variableSymbol,
-      payment.note
+      payment.specificSymbol,
+      payment.constantSymbol,
+      payment.note,
     );
   }, [payment]);
 
@@ -122,6 +130,16 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
             {payment.variableSymbol && (
               <p className="text-xs text-slate-500 font-bold">
                 VS: <span className="text-slate-800 font-black">{payment.variableSymbol}</span>
+              </p>
+            )}
+            {payment.specificSymbol && (
+              <p className="text-xs text-slate-500 font-bold">
+                SS: <span className="text-slate-800 font-black">{payment.specificSymbol}</span>
+              </p>
+            )}
+            {payment.constantSymbol && (
+              <p className="text-xs text-slate-500 font-bold">
+                KS: <span className="text-slate-800 font-black">{payment.constantSymbol}</span>
               </p>
             )}
           </div>

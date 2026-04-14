@@ -1,23 +1,76 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { QrCode } from "lucide-react";
+import { CreditCard, Home, PiggyBank, QrCode, Shield, TrendingUp, Car } from "lucide-react";
 import type { PaymentInstruction } from "@/app/actions/payment-pdf";
 import { segmentLabel } from "@/app/lib/segment-labels";
+import {
+  PAYMENT_CATEGORY_LABELS,
+  paymentDedupKey,
+  paymentSegmentCategory,
+  type PaymentSegmentCategory,
+} from "@/lib/products/canonical-payment-read";
+import { formatPaymentFrequencyCs } from "@/lib/client-portal/payment-display-cs";
 import { QrPaymentModal } from "../QrPaymentModal";
 
 type ClientPaymentsViewProps = {
   paymentInstructions: PaymentInstruction[];
 };
 
-function formatPaymentAmount(instruction: PaymentInstruction): string {
+function categoryIcon(cat: PaymentSegmentCategory) {
+  switch (cat) {
+    case "bydleni":
+      return Home;
+    case "uvery":
+      return CreditCard;
+    case "pojisteni_osob":
+      return Shield;
+    case "penze":
+      return PiggyBank;
+    case "investice":
+      return TrendingUp;
+    case "pojisteni_majetku":
+      return Home;
+    case "pojisteni_vozidel":
+      return Car;
+    default:
+      return CreditCard;
+  }
+}
+
+function formatPaymentAmountLine(instruction: PaymentInstruction): string {
   const amount = Number(instruction.amount ?? "");
+  const freq = formatPaymentFrequencyCs(instruction.frequency);
+  const freqSuffix = freq ? ` · ${freq}` : instruction.frequency?.trim() ? ` · ${instruction.frequency.trim()}` : "";
+
   if (Number.isFinite(amount) && amount > 0) {
-    const suffix = instruction.frequency ? ` / ${instruction.frequency}` : "";
-    return `${amount.toLocaleString("cs-CZ")} Kč${suffix}`;
+    const cur = instruction.currency?.trim();
+    const suffix = cur && cur.toUpperCase() !== "CZK" ? ` ${cur}` : " Kč";
+    return `${amount.toLocaleString("cs-CZ")}${suffix}${freqSuffix}`;
   }
   if (instruction.note?.trim()) return instruction.note;
   return "Dle smlouvy";
+}
+
+function CopyMiniButton({ text, label }: { text: string; label: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setDone(true);
+          setTimeout(() => setDone(false), 1600);
+        } catch {
+          /* ignore */
+        }
+      }}
+      className="shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+    >
+      {done ? "Hotovo" : label}
+    </button>
+  );
 }
 
 export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewProps) {
@@ -32,8 +85,10 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
       partnerName: payment.partnerName,
       productName: payment.productName,
       accountNumber: payment.accountNumber,
-      amountLabel: formatPaymentAmount(payment),
+      amountLabel: formatPaymentAmountLine(payment),
       variableSymbol: payment.variableSymbol || payment.contractNumber || null,
+      specificSymbol: payment.specificSymbol,
+      constantSymbol: payment.constantSymbol,
       note: payment.note || null,
     };
   }, [selectedIndex, paymentInstructions]);
@@ -41,126 +96,126 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
   return (
     <div className="space-y-8 client-fade-in">
       <div>
-        <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">
-          Platby a příkazy
-        </h2>
+        <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">Platby a příkazy</h2>
         <p className="text-sm font-medium text-slate-500 mt-2">
-          Přehled aktivních platebních údajů napojených na vaše produkty.
+          Přehled aktivních platebních údajů napojených na vaše produkty v evidenci poradce.
         </p>
       </div>
 
       {paymentInstructions.length === 0 ? (
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center">
-          <p className="text-slate-500 font-medium">
-            Žádné aktivní platební údaje nejsou momentálně dostupné.
+        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center space-y-3">
+          <p className="text-slate-600 font-semibold">Žádné aktivní platební údaje nejsou k dispozici</p>
+          <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+            Jakmile poradce zveřejní platby ze schválené dokumentace, nebo doplní údaje z katalogu institucí, zobrazí se
+            zde účet, částka, variabilní symbol a další pole podle toho, co je ve smlouvě k dispozici.
           </p>
         </div>
       ) : (
         <>
-          <div className="hidden md:block bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-100">
-                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Produkt
-                    </th>
-                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Částka
-                    </th>
-                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Číslo účtu
-                    </th>
-                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Var. symbol
-                    </th>
-                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
-                      Akce
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paymentInstructions.map((instruction, index) => (
-                    <tr
-                      key={`${instruction.accountNumber}-${index}`}
-                      className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                    >
-                      <td className="px-6 py-5">
-                        <p className="font-bold text-slate-900 text-sm">
-                          {instruction.productName || segmentLabel(instruction.segment)}
-                        </p>
-                        <p className="text-xs font-medium text-slate-500">
-                          {instruction.partnerName}
-                        </p>
-                      </td>
-                      <td className="px-6 py-5 font-black text-slate-800">
-                        {formatPaymentAmount(instruction)}
-                      </td>
-                      <td className="px-6 py-5 font-bold text-slate-600 font-mono">
-                        {instruction.accountNumber}
-                      </td>
-                      <td className="px-6 py-5 font-bold text-slate-600">
-                        {instruction.variableSymbol || instruction.contractNumber || "—"}
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <button
-                          onClick={() => setSelectedIndex(index)}
-                          className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest transition-colors inline-flex items-center gap-2 min-h-[44px]"
-                        >
-                          <QrCode size={16} />
-                          QR Platba
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {paymentInstructions.map((instruction, index) => {
+              const cat = paymentSegmentCategory(instruction.segment);
+              const CatIcon = categoryIcon(cat);
+              const dedup = paymentDedupKey({
+                partnerName: instruction.partnerName,
+                productName: instruction.productName,
+                contractNumber: instruction.contractNumber,
+                accountNumber: instruction.accountNumber,
+                variableSymbol: instruction.variableSymbol,
+              });
+              const rowKey = instruction.paymentSetupId ?? instruction.contractId ?? `${dedup}-${index}`;
+              const vs = instruction.variableSymbol || instruction.contractNumber || "—";
 
-          <div className="md:hidden space-y-3">
-            {paymentInstructions.map((instruction, index) => (
-              <div
-                key={`${instruction.accountNumber}-${index}`}
-                className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-4"
-              >
-                <p className="text-sm font-black text-slate-900">
-                  {instruction.productName || segmentLabel(instruction.segment)}
-                </p>
-                <p className="text-xs text-slate-500 font-medium mb-3">
-                  {instruction.partnerName}
-                </p>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <p>
-                    <span className="block text-slate-400 font-black uppercase tracking-wider">
-                      Částka
-                    </span>
-                    <span className="text-slate-800 font-bold">{formatPaymentAmount(instruction)}</span>
-                  </p>
-                  <p>
-                    <span className="block text-slate-400 font-black uppercase tracking-wider">
-                      VS
-                    </span>
-                    <span className="text-slate-800 font-bold">
-                      {instruction.variableSymbol || instruction.contractNumber || "—"}
-                    </span>
-                  </p>
-                </div>
-                <p className="text-xs mt-3">
-                  <span className="text-slate-400 font-black uppercase tracking-wider block">
-                    Číslo účtu
-                  </span>
-                  <span className="text-slate-700 font-mono">{instruction.accountNumber}</span>
-                </p>
-                <button
-                  onClick={() => setSelectedIndex(index)}
-                  className="mt-4 w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest transition-colors inline-flex items-center justify-center gap-2 min-h-[44px]"
+              return (
+                <article
+                  key={rowKey}
+                  className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-indigo-200 transition-all"
                 >
-                  <QrCode size={16} />
-                  QR Platba
-                </button>
-              </div>
-            ))}
+                  <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <CatIcon size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-black uppercase tracking-widest text-indigo-700">
+                          {PAYMENT_CATEGORY_LABELS[cat]}
+                        </p>
+                        <h3 className="font-bold text-slate-900 text-sm leading-snug mt-1 line-clamp-2">
+                          {instruction.productName || segmentLabel(instruction.segment)}
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{instruction.partnerName}</p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md border bg-emerald-50 text-emerald-800 border-emerald-100">
+                      Aktivní
+                    </span>
+                  </div>
+
+                  <div className="p-5 flex-1 flex flex-col gap-4 text-sm">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Částka</p>
+                      <p className="text-lg font-black text-slate-900">{formatPaymentAmountLine(instruction)}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                            Účet
+                          </p>
+                          <p className="font-mono text-slate-800 font-bold text-xs break-all">{instruction.accountNumber}</p>
+                        </div>
+                        <CopyMiniButton text={instruction.accountNumber.replace(/\s+/g, "")} label="Kopírovat" />
+                      </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                            Variabilní symbol
+                          </p>
+                          <p className="font-bold text-slate-800 text-sm">{vs}</p>
+                        </div>
+                        {vs !== "—" ? <CopyMiniButton text={vs} label="Kopírovat" /> : null}
+                      </div>
+                      {instruction.specificSymbol ? (
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                              Specifický symbol
+                            </p>
+                            <p className="font-bold text-slate-800 text-sm">{instruction.specificSymbol}</p>
+                          </div>
+                          <CopyMiniButton text={instruction.specificSymbol} label="Kopírovat" />
+                        </div>
+                      ) : null}
+                      {instruction.constantSymbol ? (
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                              Konstantní symbol
+                            </p>
+                            <p className="font-bold text-slate-800 text-sm">{instruction.constantSymbol}</p>
+                          </div>
+                          <CopyMiniButton text={instruction.constantSymbol} label="Kopírovat" />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {instruction.note ? (
+                      <p className="text-xs text-slate-500 leading-relaxed border-t border-slate-100 pt-3">{instruction.note}</p>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedIndex(index)}
+                      className="mt-auto w-full min-h-[48px] rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-800 text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors inline-flex items-center justify-center gap-2"
+                    >
+                      <QrCode size={18} />
+                      QR platba
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </>
       )}
