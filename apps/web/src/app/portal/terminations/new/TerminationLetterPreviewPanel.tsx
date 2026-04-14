@@ -80,8 +80,8 @@ export function TerminationLetterPreviewPanel({
   wizardLetterDraft?: string;
   onWizardLetterDraftChange?: (plain: string) => void;
   /**
-   * Změna klíčových polí (režim, data) → znovu načíst náhled ze serveru (merge s draftem).
-   * Bez toho při stejném requestId zůstane zastaralý dopis po úpravě kroku 2.
+   * Změna klíčových polí (režim, data, instituce, číslo smlouvy, …) → znovu načíst náhled ze serveru (merge s draftem).
+   * Bez toho při stejném requestId zůstane zastaralý dopis po návratu z předchozích kroků.
    */
   letterServerSyncKey?: string;
 }) {

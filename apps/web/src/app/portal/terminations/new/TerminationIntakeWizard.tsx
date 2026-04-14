@@ -295,7 +295,7 @@ export function TerminationIntakeWizard({
   const [previewSyncBusy, setPreviewSyncBusy] = useState(false);
   const [previewGapMessages, setPreviewGapMessages] = useState<string[]>([]);
   const [finishLetterVm, setFinishLetterVm] = useState<TerminationLetterBuildResult["viewModel"] | null>(null);
-  /** Změna termínu/režimu → TerminationLetterPreviewPanel znovu načte merge ze serveru. */
+  /** Změna údajů ovlivňujících generovaný dopis → panel znovu načte text ze serveru (merge s draftem). */
   const letterServerSyncKey = useMemo(
     () =>
       [
@@ -304,6 +304,9 @@ export function TerminationIntakeWizard({
         requestedSubmissionDate,
         contractAnniversaryDate,
         contractStartDate,
+        insurerQuery.trim(),
+        contractNumber.trim(),
+        productSegment.trim(),
       ].join("|"),
     [
       terminationMode,
@@ -311,6 +314,9 @@ export function TerminationIntakeWizard({
       requestedSubmissionDate,
       contractAnniversaryDate,
       contractStartDate,
+      insurerQuery,
+      contractNumber,
+      productSegment,
     ],
   );
   const [uploadBusy, setUploadBusy] = useState(false);

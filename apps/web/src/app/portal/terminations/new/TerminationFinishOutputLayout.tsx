@@ -28,7 +28,7 @@ type Props = {
   /** ISO yyyy-mm-dd; prázdné = při generování dnešní datum. */
   letterHeaderDateIso: string;
   onLetterHeaderDateIsoChange: (iso: string) => void;
-  /** Změna termínu/režimu → znovu načíst náhled dopisu ze serveru. */
+  /** Změna údajů vstupujících do dopisu → znovu načíst náhled ze serveru. */
   letterServerSyncKey: string;
 };
 
