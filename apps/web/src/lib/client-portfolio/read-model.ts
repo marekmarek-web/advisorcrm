@@ -1,9 +1,31 @@
 /**
  * Client-facing portfolio read model: aggregations and segment grouping.
  * Source of truth: normalized `contracts` rows approved for the client portal.
+ *
+ * Per-segment detail + FV readiness live in the canonical layer:
+ * `@/lib/client-portfolio/canonical-contract-read`
  */
 
 import type { PortfolioPersonEntry, PortfolioRiskEntry } from "@/lib/portfolio/build-portfolio-attributes-from-extract";
+
+// Re-export canonical layer so all consumers can import from one place
+export {
+  mapContractToCanonicalProduct,
+  mapContractsToCanonicalProducts,
+  filterFvEligibleProducts,
+} from "./canonical-contract-read";
+export type {
+  CanonicalProduct,
+  SegmentDetail,
+  InvestmentDetail,
+  LifeInsuranceDetail,
+  VehicleDetail,
+  PropertyDetail,
+  PensionDetail,
+  LoanDetail,
+  FvReadiness,
+  RawContractInput,
+} from "./canonical-contract-read";
 
 export type PortfolioUiGroup =
   | "investments_pensions"

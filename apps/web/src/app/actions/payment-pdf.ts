@@ -21,6 +21,8 @@ export type PaymentInstruction = {
   amount: string | null;
   frequency: string | null;
   variableSymbol: string | null;
+  /** Linked contract ID from canonical artifact (nullable for legacy catalog-only entries). */
+  contractId?: string | null;
 };
 
 type AiPaymentSetupInstructionRow = {
@@ -159,15 +161,24 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
     .filter((instruction): instruction is PaymentInstruction => instruction !== null);
   const seen = new Set(out.map(paymentInstructionDedupKey));
 
-  const contractRows = await db.select().from(contracts).where(and(eq(contracts.tenantId, auth.tenantId), eq(contracts.contactId, contactId)));
-  const visibleContractRows =
-    auth.roleName === "Client"
-      ? contractRows.filter(
-          (contract) =>
-            contract.visibleToClient === true &&
-            (contract.portfolioStatus === "active" || contract.portfolioStatus === "ended")
-        )
-      : contractRows;
+  const isClient = auth.roleName === "Client";
+  const contractRows = await db
+    .select()
+    .from(contracts)
+    .where(
+      and(
+        eq(contracts.tenantId, auth.tenantId),
+        eq(contracts.contactId, contactId),
+        ...(isClient
+          ? [
+              eq(contracts.visibleToClient, true),
+              sql`${contracts.portfolioStatus} IN ('active', 'ended')`,
+              sql`${contracts.archivedAt} IS NULL`,
+            ]
+          : []),
+      ),
+    );
+  const visibleContractRows = contractRows;
 
   for (const c of visibleContractRows) {
     try {
@@ -184,6 +195,7 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
           amount: c.premiumAmount ?? null,
           frequency: c.premiumAmount ? "měsíčně" : null,
           variableSymbol: c.contractNumber ?? null,
+          contractId: c.id,
         };
         const dedupKey = paymentInstructionDedupKey(legacyInstruction);
         if (seen.has(dedupKey)) continue;
