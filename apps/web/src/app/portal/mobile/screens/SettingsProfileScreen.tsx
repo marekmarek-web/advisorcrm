@@ -34,7 +34,8 @@ import {
   getAdvisorBirthdayEmailPrefs,
   updateAdvisorBirthdayEmailPrefs,
 } from "@/app/actions/preferences";
-import { getWorkspaceBirthdayEmailTheme, setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings";
+import { setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings";
+import { BirthdayPremiumThemePreview } from "@/app/components/email/BirthdayPremiumThemePreview";
 import type { RoleName } from "@/shared/rolePermissions";
 import {
   listSupervisorOptions,
@@ -254,7 +255,6 @@ export function SettingsProfileScreen({
   const [bdSigRole, setBdSigRole] = useState("");
   const [bdReplyTo, setBdReplyTo] = useState("");
   const [bdThemeOverride, setBdThemeOverride] = useState<"" | "premium_dark" | "birthday_gif">("");
-  const [workspaceBirthdayTheme, setWorkspaceBirthdayTheme] = useState<"premium_dark" | "birthday_gif">("premium_dark");
   const [bdSaving, setBdSaving] = useState(false);
 
   const visibleQuickActionsCount = useMemo(
@@ -294,9 +294,6 @@ export function SettingsProfileScreen({
       setBdReplyTo(p.birthdayReplyToEmail ?? "");
       setBdThemeOverride(p.birthdayEmailTheme ?? "");
     });
-    if (roleName === "Admin") {
-      void getWorkspaceBirthdayEmailTheme().then(setWorkspaceBirthdayTheme);
-    }
   }, [birthdayOpen, roleName]);
 
   function showSuccess(message: string) {
@@ -793,17 +790,13 @@ export function SettingsProfileScreen({
       <BottomSheet open={birthdayOpen} onClose={() => setBirthdayOpen(false)} title="Narozeninové e-maily">
         <div className="space-y-3">
           {roleName === "Admin" ? (
-            <>
+            <div className="space-y-2">
               <p className="text-xs font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wider">Workspace výchozí</p>
-              <select
-                value={workspaceBirthdayTheme}
-                onChange={(e) => setWorkspaceBirthdayTheme(e.target.value as "premium_dark" | "birthday_gif")}
-                className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
-              >
-                <option value="premium_dark">Premium (tmavá hlavička)</option>
-                <option value="birthday_gif">S GIF (fallback premium)</option>
-              </select>
-            </>
+              <p className="w-full min-h-[44px] flex items-center rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm bg-[color:var(--wp-surface-muted)]/60">
+                Premium (tmavá hlavička)
+              </p>
+              <BirthdayPremiumThemePreview minHeightClassName="min-h-[280px]" />
+            </div>
           ) : null}
           <p className="text-xs font-bold text-[color:var(--wp-text-tertiary)] uppercase tracking-wider">Váš podpis</p>
           <input
@@ -842,7 +835,7 @@ export function SettingsProfileScreen({
               setError(null);
               try {
                 if (roleName === "Admin") {
-                  const wr = await setWorkspaceBirthdayEmailTheme(workspaceBirthdayTheme);
+                  const wr = await setWorkspaceBirthdayEmailTheme("premium_dark");
                   if (!wr.ok) {
                     setError(wr.message);
                     setBdSaving(false);

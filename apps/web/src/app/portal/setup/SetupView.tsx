@@ -28,7 +28,8 @@ import {
 } from "lucide-react";
 import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
 import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding, getNotificationPrefs, setNotificationPrefs, getAdvisorBirthdayEmailPrefs, updateAdvisorBirthdayEmailPrefs } from "@/app/actions/preferences";
-import { getWorkspaceBirthdayEmailTheme, setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings";
+import { setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings";
+import { BirthdayPremiumThemePreview } from "@/app/components/email/BirthdayPremiumThemePreview";
 import { GoogleCalendarUpcomingEvents } from "@/app/portal/setup/GoogleCalendarUpcomingEvents";
 import { GoogleCalendarAvailability } from "@/app/portal/setup/GoogleCalendarAvailability";
 import { QUICK_ACTIONS_CATALOG, getDefaultQuickActionsConfig } from "@/lib/quick-actions";
@@ -228,7 +229,6 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [reportWebsite, setReportWebsite] = useState("");
   const [reportContactEmail, setReportContactEmail] = useState("");
   const [reportSaving, setReportSaving] = useState(false);
-  const [workspaceBirthdayTheme, setWorkspaceBirthdayTheme] = useState<"premium_dark" | "birthday_gif">("premium_dark");
   const [workspaceBirthdaySaving, setWorkspaceBirthdaySaving] = useState(false);
   const [bdSigName, setBdSigName] = useState("");
   const [bdSigRole, setBdSigRole] = useState("");
@@ -250,9 +250,6 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         setBdReplyTo(p.birthdayReplyToEmail ?? "");
         setBdThemeOverride(p.birthdayEmailTheme ?? "");
       });
-      if (initial.roleName === "Admin") {
-        getWorkspaceBirthdayEmailTheme().then(setWorkspaceBirthdayTheme);
-      }
     }
   }, [activeTab, initial.roleName]);
 
@@ -1267,21 +1264,19 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   </div>
                   <div className="p-4 space-y-3">
                     <label className={labelClass}>Téma šablony</label>
-                    <select
-                      value={workspaceBirthdayTheme}
-                      onChange={(e) => setWorkspaceBirthdayTheme(e.target.value as "premium_dark" | "birthday_gif")}
-                      className={inputClass}
-                    >
-                      <option value="premium_dark">Premium (tmavá hlavička)</option>
-                      <option value="birthday_gif">S obrázkem / GIF (fallback na premium, pokud chybí soubor)</option>
-                    </select>
+                    <p className="text-sm font-medium text-[color:var(--wp-text)] rounded-xl border border-[color:var(--wp-surface-card-border)] px-4 py-3 bg-[color:var(--wp-surface-muted)]/60">
+                      Premium (tmavá hlavička)
+                    </p>
+                    <p className="text-xs text-[color:var(--wp-text-secondary)]">
+                      Další vzhledy budou později — výchozí pro workspace je zatím vždy Premium.
+                    </p>
                     <button
                       type="button"
                       disabled={workspaceBirthdaySaving}
                       onClick={async () => {
                         setWorkspaceBirthdaySaving(true);
                         try {
-                          const r = await setWorkspaceBirthdayEmailTheme(workspaceBirthdayTheme);
+                          const r = await setWorkspaceBirthdayEmailTheme("premium_dark");
                           if (!r.ok) toast.showToast(r.message, "error");
                           else toast.showToast("Výchozí téma narozenin uloženo.");
                         } catch {
@@ -1294,6 +1289,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                     >
                       {workspaceBirthdaySaving ? "Ukládám…" : "Uložit výchozí téma"}
                     </button>
+                    <BirthdayPremiumThemePreview className="pt-2 border-t border-[color:var(--wp-surface-card-border)]/60 mt-1" />
                   </div>
                 </div>
               ) : null}
