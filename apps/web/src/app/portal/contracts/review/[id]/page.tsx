@@ -464,6 +464,7 @@ export default function ContractReviewDetailPage() {
           load();
         } else {
           toast.showToast(result.error ?? "Chyba", "error");
+          throw new Error(result.error ?? "Nepodařilo se uložit výběr klienta.");
         }
       } finally {
         setActionLoading(null);

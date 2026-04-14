@@ -437,13 +437,13 @@ export function buildAdvisorReviewViewModel(args: BuildArgs): AdvisorReviewViewM
   const manualChecklist: string[] = [];
   for (const w of envelope.reviewWarnings ?? []) {
     if (w.severity === "critical" || w.severity === "warning") {
-      manualChecklist.push(w.message);
+      manualChecklist.push(humanizeReviewReasonLine(w.message));
     }
   }
   // reasonsForReview se neopakují zde — stejné položky jsou v bloku „Stav a kontrola“ / „Co zkontrolovat“
   // (mapování v mappers.humanizeReasonForAdvisor + humanizeReviewReasonLine), aby UI nebylo duplicitní.
   for (const v of validationWarnings ?? []) {
-    if (v.message) manualChecklist.push(v.message);
+    if (v.message) manualChecklist.push(humanizeReviewReasonLine(v.message));
   }
 
   const uniqueManual = [...new Set(manualChecklist.map((s) => s.trim()).filter(Boolean))].slice(0, 24);

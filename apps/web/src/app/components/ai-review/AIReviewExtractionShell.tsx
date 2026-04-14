@@ -1046,6 +1046,7 @@ export function AIReviewExtractionShell({
               onConfirmPendingField={onConfirmPendingField}
               onConfirmCreateNew={onConfirmCreateNew}
               onApproveAndApply={onApproveAndApply}
+              onSelectClient={onSelectClient}
               editedFields={state.editedFields}
             />
           ) : (

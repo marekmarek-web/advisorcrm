@@ -37,6 +37,7 @@ import {
 import { getDocumentTypeLabel } from "@/lib/ai/document-messages";
 import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
 import { CanonicalFieldsPanel } from "./CanonicalFieldsPanel";
+import { ReviewAttachClientDialog } from "./ReviewAttachClientDialog";
 import { formatAiClassifierForAdvisor, humanizeReviewReasonLine } from "@/lib/ai-review/czech-labels";
 import type {
   ExtractionDocument,
@@ -1022,11 +1023,8 @@ const INLINE_APPLY_ACTIONS = new Set([
   "create_or_link_client",
 ]);
 
-/** Action types where we can navigate to the relevant section (link_existing requires client list). */
+/** Akce, které dřív mířily na obecný seznam kontaktů — přesměrování nahrazeno review-scoped výběrem (viz WorkActionsCard). */
 const ACTION_ROUTE_MAP: Record<string, string> = {
-  resolve_client_match: "/portal/contacts",
-  attach_to_existing_client: "/portal/contacts",
-  link_client: "/portal/contacts",
   create_task: "/portal/tasks",
   create_service_task: "/portal/tasks",
   create_service_review_task: "/portal/tasks",
@@ -1051,19 +1049,28 @@ function WorkActionsCard({
   onExecuteDraftAction,
   onConfirmCreateNew,
   onApproveAndApply,
+  onSelectClient,
   editedFields,
 }: {
   doc: ExtractionDocument;
   onExecuteDraftAction?: (action: DraftAction) => void | Promise<void>;
   onConfirmCreateNew?: () => void;
   onApproveAndApply?: (editedFields: Record<string, string>, options?: { overrideGateReasons?: string[]; overrideReason?: string }) => void | Promise<void>;
+  /** Výběr klienta pro tuto revizi — server + obnovení dokumentu (žádný rozcestník kontaktů). */
+  onSelectClient?: (clientId: string) => void | Promise<void>;
   editedFields?: Record<string, string>;
 }) {
   const [busyAction, setBusyAction] = React.useState<string | null>(null);
   const [executedActions, setExecutedActions] = React.useState<Set<string>>(new Set());
+  const [attachOpen, setAttachOpen] = React.useState(false);
+  const [attachMarkKey, setAttachMarkKey] = React.useState<string | null>(null);
   const actions = doc.draftActions ?? [];
   const publishOutcome = doc.applyResultPayload?.publishOutcome;
   const markExecuted = (key: string) => setExecutedActions((prev) => new Set([...prev, key]));
+  const openAttachModal = (actionKey: string) => {
+    setAttachMarkKey(actionKey);
+    setAttachOpen(true);
+  };
 
   // Jedna pravdivá lišta výsledku je v AIReviewExtractionShell — neopakovat stejný text v levém panelu.
   if (doc.isApplied && publishOutcome) {
@@ -1140,16 +1147,31 @@ function WorkActionsCard({
               const displayName = typeof a.payload?.displayName === "string" ? a.payload.displayName : null;
               const alreadyLinked = !!doc.matchedClientId;
               if (!cid) {
+                if (alreadyLinked) {
+                  return (
+                    <li key={actionKey}>
+                      <div className={`${baseClass} text-emerald-800 bg-emerald-50/70 border-emerald-200 cursor-default`}>
+                        <Check size={15} className="text-emerald-600 shrink-0" />
+                        <span className="flex-1">Klient propojen k této revizi</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">
+                          Hotovo
+                        </span>
+                      </div>
+                    </li>
+                  );
+                }
                 return (
                   <li key={actionKey}>
-                    <Link
-                      href="/portal/contacts"
-                      className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40`}
+                    <button
+                      type="button"
+                      disabled={!onSelectClient}
+                      onClick={() => openAttachModal(actionKey)}
+                      className={`${baseClass} text-indigo-700 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50`}
                     >
-                      <ExternalLink size={15} className="text-indigo-500 shrink-0" />
+                      <CheckCircle2 size={15} className="text-indigo-500 shrink-0" />
                       <span className="flex-1">{a.label}</span>
                       <ArrowRight size={14} className="text-indigo-400 shrink-0" />
-                    </Link>
+                    </button>
                   </li>
                 );
               }
@@ -1157,12 +1179,12 @@ function WorkActionsCard({
                 <li key={actionKey}>
                   <button
                     type="button"
-                    disabled={isBusy || alreadyLinked}
+                    disabled={isBusy || alreadyLinked || !onSelectClient}
                     onClick={async () => {
-                      if (!onExecuteDraftAction) return;
+                      if (!onSelectClient || !cid) return;
                       setBusyAction(actionKey);
                       try {
-                        await onExecuteDraftAction(a);
+                        await onSelectClient(cid);
                         markExecuted(actionKey);
                       } finally {
                         setBusyAction(null);
@@ -1189,20 +1211,37 @@ function WorkActionsCard({
             }
 
             if (a.type === "resolve_client_match") {
+              const matchResolved = !!doc.matchedClientId;
+              if (matchResolved) {
+                return (
+                  <li key={actionKey}>
+                    <div className={`${baseClass} text-emerald-800 bg-emerald-50/60 border-emerald-200 cursor-default`}>
+                      <Check size={15} className="text-emerald-600 shrink-0" />
+                      <span className="flex-1 font-semibold">Klient k revizi vybrán</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">Hotovo</span>
+                    </div>
+                  </li>
+                );
+              }
               return (
                 <li key={actionKey}>
                   <div
                     className={`${baseClass} flex-col items-stretch text-[color:var(--wp-text)] bg-amber-50/50 border-amber-200`}
                   >
-                    <div className="flex w-full items-center gap-2">
+                    <div className="flex w-full flex-wrap items-center gap-2">
                       <AlertTriangle size={15} className="text-amber-600 shrink-0" />
-                      <span className="flex-1 font-semibold">{a.label}</span>
-                      <Link href="/portal/contacts" className="text-xs font-bold text-indigo-600 shrink-0">
-                        Otevřít kontakty
-                      </Link>
+                      <span className="flex-1 font-semibold min-w-0">{a.label}</span>
+                      <button
+                        type="button"
+                        disabled={!onSelectClient}
+                        onClick={() => openAttachModal(actionKey)}
+                        className="text-xs font-black text-indigo-700 bg-white border border-indigo-200 rounded-lg px-3 py-1.5 shrink-0 hover:bg-indigo-50 disabled:opacity-50"
+                      >
+                        Vybrat klienta
+                      </button>
                     </div>
                     <p className="text-[11px] text-[color:var(--wp-text-secondary)] mt-2 leading-snug pl-0.5">
-                      Zápis do CRM počká na výběr klienta. Použijte sekci „Klient a další akce“ u dokumentu.
+                      Zápis do CRM počká na výběr klienta. Vyberte správný záznam z navržených shod nebo z celého seznamu — zůstanete v této revizi.
                     </p>
                   </div>
                 </li>
@@ -1291,6 +1330,58 @@ function WorkActionsCard({
               );
             }
 
+            if (a.type === "attach_to_existing_client" || a.type === "link_client") {
+              const resolved = !!doc.matchedClientId;
+              if (resolved) {
+                return (
+                  <li key={actionKey}>
+                    <div className={`${baseClass} text-emerald-800 bg-emerald-50/70 border-emerald-200 cursor-default`}>
+                      <Check size={15} className="text-emerald-600 shrink-0" />
+                      <span className="flex-1">
+                        {a.type === "attach_to_existing_client"
+                          ? "Klient připojen k této revizi"
+                          : "Klient propojen s revizí"}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">
+                        Hotovo
+                      </span>
+                    </div>
+                  </li>
+                );
+              }
+              const mode = effectiveStatus;
+              const rowCls =
+                mode === "recommended"
+                  ? `${baseClass} text-amber-900 bg-amber-50/50 border-amber-200 hover:bg-amber-100/80`
+                  : mode === "cannot_auto"
+                    ? `${baseClass} text-slate-800 bg-slate-50/70 border-slate-200 hover:bg-slate-100`
+                    : `${baseClass} text-indigo-800 bg-indigo-50/60 border-indigo-200 hover:bg-indigo-100/80`;
+              const IconEl = mode === "recommended" ? Lightbulb : mode === "cannot_auto" ? ExternalLink : CheckCircle2;
+              const badge =
+                mode === "recommended" ? "Doporučení" : mode === "cannot_auto" ? "Ruční akce" : "Dostupné";
+              return (
+                <li key={actionKey}>
+                  <button
+                    type="button"
+                    disabled={!onSelectClient}
+                    onClick={() => openAttachModal(actionKey)}
+                    className={`${rowCls} disabled:opacity-50`}
+                  >
+                    <IconEl size={15} className="shrink-0 opacity-90" />
+                    <span className="flex-1">{a.label}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] px-1.5 py-0.5 rounded shrink-0">
+                      {badge}
+                    </span>
+                  </button>
+                  {a.statusNote ? (
+                    <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-1 ml-10 leading-snug">
+                      {a.statusNote}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            }
+
             if (effectiveStatus === "recommended") {
               const recHref = resolveActionHref(a);
               return (
@@ -1368,6 +1459,21 @@ function WorkActionsCard({
           })}
         </ul>
       )}
+      <ReviewAttachClientDialog
+        open={attachOpen}
+        onClose={() => {
+          setAttachOpen(false);
+          setAttachMarkKey(null);
+        }}
+        candidates={doc.clientMatchCandidates ?? []}
+        onConfirm={async (clientId) => {
+          if (!onSelectClient) {
+            throw new Error("Výběr klienta není k dispozici.");
+          }
+          await onSelectClient(clientId);
+          if (attachMarkKey) markExecuted(attachMarkKey);
+        }}
+      />
     </div>
   );
 }
@@ -1809,6 +1915,7 @@ type LeftPanelProps = {
   /** Fáze 1 fix: propagate create/apply callbacks for WorkActionsCard */
   onConfirmCreateNew?: () => void;
   onApproveAndApply?: (editedFields: Record<string, string>, options?: { overrideGateReasons?: string[]; overrideReason?: string }) => void | Promise<void>;
+  onSelectClient?: (clientId: string) => void | Promise<void>;
   editedFields?: Record<string, string>;
 };
 
@@ -1825,6 +1932,7 @@ export function ExtractionLeftPanel({
   onConfirmPendingField,
   onConfirmCreateNew,
   onApproveAndApply,
+  onSelectClient,
   editedFields,
 }: LeftPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1914,6 +2022,7 @@ export function ExtractionLeftPanel({
               onExecuteDraftAction={onExecuteDraftAction}
               onConfirmCreateNew={onConfirmCreateNew}
               onApproveAndApply={onApproveAndApply}
+              onSelectClient={onSelectClient}
               editedFields={editedFields}
             />
             <DocumentFinalityWarning doc={doc} />

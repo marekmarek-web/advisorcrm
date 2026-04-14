@@ -144,6 +144,13 @@ const EXTRA_REASON_CS: Record<string, string> = {
   document_family_unknown: "Rodina produktu nebyla rozpoznána — ověřte typ dokumentu podle jeho obsahu.",
   "document family unknown": "Rodina produktu nebyla rozpoznána — ověřte typ dokumentu podle jeho obsahu.",
   document_family_unclassified: "Rodina produktu nebyla rozpoznána — ověřte typ dokumentu podle jeho obsahu.",
+  platform: "Chybí typ nebo platforma investičního produktu — ověřte podle dokumentu.",
+  investment_payment_instruction:
+    "Platební blok k investici je potřeba ověřit ručně (účet nebo IBAN, variabilní symbol, výše a příjemce).",
+  investment_payment_instructions:
+    "Platební blok k investici je potřeba ověřit ručně (účet nebo IBAN, variabilní symbol, výše a příjemce).",
+  policyholder: "U pojištění ověřte, že pojistník odpovídá osobě a údajům v dokumentu.",
+  policy_holder: "U pojištění ověřte, že pojistník odpovídá osobě a údajům v dokumentu.",
   low_classifier_confidence: "Typ dokumentu nebyl rozpoznán s dostatečnou jistotou — ověřte, zda odpovídá skutečnosti.",
   no_markdown_content_for_pdf: "Z dokumentu se nepodařilo získat čitelný text. Zkuste nahrát čitelnější verzi.",
   scan_pending_ocr: "Dokument čeká na rozpoznání textu ze skenu. Zkuste to za chvíli znovu.",
