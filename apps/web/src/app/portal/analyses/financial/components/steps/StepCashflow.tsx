@@ -349,7 +349,7 @@ export function StepCashflow() {
               <span className="text-lg font-bold text-[color:var(--wp-text)]">{formatCzk(cf.profit ?? 0)}</span>
             </div>
             <div className="rounded-xl border border-amber-100 bg-[color:var(--wp-surface-card)] p-4 dark:border-amber-500/25">
-              <span className="block text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">Cash runway</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">Krytí nákladů (měsíce)</span>
               <span className="text-lg font-bold text-[color:var(--wp-text)]">{runway != null ? `${runway.toFixed(1)} měs.` : "—"}</span>
             </div>
             <div className="rounded-xl border border-amber-100 bg-[color:var(--wp-surface-card)] p-4 dark:border-amber-500/25">

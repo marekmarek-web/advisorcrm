@@ -11,7 +11,8 @@ export function resolveDeepLink(entityType: string, entityId: string): string {
     case "contact":
       return `/portal/contacts/${encodeURIComponent(entityId)}`;
     case "payment":
-      return `/portal/contacts/${encodeURIComponent(entityId)}#payments`;
+      /** Stejná oblast jako blok plateb na přehledu kontaktu (`ContactPaymentSetupsSection`). */
+      return `/portal/contacts/${encodeURIComponent(entityId)}?tab=prehled#contact-payment-setups`;
     case "opportunity":
       return `/portal/pipeline/${encodeURIComponent(entityId)}`;
     case "task":

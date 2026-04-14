@@ -6,9 +6,9 @@
 
 import {
   mapContractToCanonicalProduct,
+  type CanonicalProduct,
   type RawContractInput,
-} from "@/lib/client-portfolio/canonical-contract-read";
-import type { CanonicalProduct } from "@/lib/products/canonical-product-read";
+} from "@/lib/products/canonical-product-read";
 import { computePortalInvestmentFutureValue } from "@/lib/fund-library/shared-future-value";
 
 const FV_SEGMENTS = new Set(["INV", "DIP", "DPS"]);

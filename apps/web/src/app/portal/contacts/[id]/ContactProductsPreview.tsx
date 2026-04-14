@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Briefcase, ChevronRight } from "lucide-react";
 import { getContractsByContact } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
+import { mapContractToCanonicalProduct } from "@/lib/products/canonical-product-read";
 import { ContractProvenanceLine } from "@/app/components/aidvisora/ContractProvenanceLine";
 import type { ContactTabId } from "./contact-detail-tabs";
 
@@ -49,8 +50,10 @@ export function ContactProductsPreview({
       .finally(() => setLoading(false));
   }, [contactId]);
 
-  const displayName = (c: ContractRow) =>
-    c.productName || c.partnerName || `Smlouva ${c.segment}`;
+  const displayName = (c: ContractRow) => {
+    const p = mapContractToCanonicalProduct(c);
+    return p.productName?.trim() || p.segmentLabel;
+  };
 
   return (
     <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">

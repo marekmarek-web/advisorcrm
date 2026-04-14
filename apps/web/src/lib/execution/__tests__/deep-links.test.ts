@@ -14,8 +14,10 @@ describe("resolveDeepLink", () => {
     expect(resolveDeepLink("contact", "c2")).toBe("/portal/contacts/c2");
   });
 
-  it("maps payment with anchor", () => {
-    expect(resolveDeepLink("payment", "p1")).toBe("/portal/contacts/p1#payments");
+  it("maps payment to contact overview with payment block anchor", () => {
+    expect(resolveDeepLink("payment", "p1")).toBe(
+      "/portal/contacts/p1?tab=prehled#contact-payment-setups",
+    );
   });
 
   it("maps task to today", () => {

@@ -48,7 +48,10 @@ export function ContactPaymentSetupsSection({ contactId }: { contactId: string }
 
   if (error) {
     return (
-      <section className="rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm text-red-800">
+      <section
+        id="contact-payment-setups"
+        className="rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm text-red-800"
+      >
         {error}
       </section>
     );
@@ -56,7 +59,10 @@ export function ContactPaymentSetupsSection({ contactId }: { contactId: string }
 
   if (items === null) {
     return (
-      <section className="flex items-center gap-2 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 text-sm text-[color:var(--wp-text-secondary)]">
+      <section
+        id="contact-payment-setups"
+        className="flex items-center gap-2 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 text-sm text-[color:var(--wp-text-secondary)]"
+      >
         <Loader2 className="h-5 w-5 animate-spin shrink-0" aria-hidden />
         Načítám platební údaje…
       </section>
@@ -64,11 +70,24 @@ export function ContactPaymentSetupsSection({ contactId }: { contactId: string }
   }
 
   if (items.length === 0) {
-    return null;
+    return (
+      <section
+        id="contact-payment-setups"
+        className="rounded-2xl border border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/40 p-4 text-sm text-[color:var(--wp-text-secondary)]"
+      >
+        <div className="mb-1 flex items-center gap-2 font-semibold text-[color:var(--wp-text)]">
+          <CreditCard className="h-5 w-5 shrink-0 text-[color:var(--wp-text-secondary)]" aria-hidden />
+          Platební údaje z dokumentů
+        </div>
+        <p className="leading-snug">
+          Zatím zde nejsou žádné uložené platební údaje z dokumentů ani z AI Review. Klient je má v přehledu plateb v klientské zóně, jakmile je systém má k dispozici.
+        </p>
+      </section>
+    );
   }
 
   return (
-    <section className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4">
+    <section id="contact-payment-setups" className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4">
       <div className="mb-3 flex items-center gap-2">
         <CreditCard className="h-5 w-5 text-[color:var(--wp-text-secondary)]" aria-hidden />
         <h2 className="text-base font-semibold text-[color:var(--wp-text)]">Platební údaje (z dokumentů)</h2>

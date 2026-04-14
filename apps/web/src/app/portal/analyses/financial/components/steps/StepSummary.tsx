@@ -10,7 +10,7 @@ import { setFinancialAnalysisLastExportedAt } from "@/app/actions/financial-anal
 import { getAdvisorReportBranding } from "@/app/actions/preferences";
 import clsx from "clsx";
 import { FileText, Printer, CloudUpload, StickyNote, Monitor, TrendingUp } from "lucide-react";
-import { getContractsByContact } from "@/app/actions/contracts";
+import { getClientPortfolioForContact } from "@/app/actions/contracts";
 import {
   buildFaCanonicalInvestmentOverviewRows,
   type FaCanonicalInvestmentOverviewRow,
@@ -38,14 +38,14 @@ function ThemeSelector({ value, onChange }: { value: ReportTheme; onChange: (t: 
           onClick={() => onChange("elegant")}
           className={`min-h-[44px] px-4 py-2 text-sm font-semibold transition-colors ${value === "elegant" ? "bg-[color:var(--wp-primary)] text-[color:var(--wp-link-active)]" : "bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"}`}
         >
-          Elegant
+          Klasický
         </button>
         <button
           type="button"
           onClick={() => onChange("modern")}
           className={`min-h-[44px] px-4 py-2 text-sm font-semibold transition-colors ${value === "modern" ? "bg-blue-600 text-white" : "bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"}`}
         >
-          Modern
+          Výrazný
         </button>
       </div>
     </div>
@@ -110,7 +110,7 @@ export function StepSummary() {
       return;
     }
     let cancelled = false;
-    getContractsByContact(clientId)
+    getClientPortfolioForContact(clientId)
       .then((rows) => {
         if (cancelled) return;
         setCrmInvestments(buildFaCanonicalInvestmentOverviewRows(rows));
@@ -299,7 +299,7 @@ export function StepSummary() {
           </p>
         ) : crmInvestments.length === 0 ? (
           <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 text-sm text-[color:var(--wp-text-secondary)]">
-            U tohoto klienta zatím nejsou v evidenci investiční ani penzijní smlouvy ve sledovaných typech produktů.
+            Žádná odpovídající investiční ani penzijní smlouva ve sledovaných typech — přehled bere jen zveřejněné produkty ve stejném rozsahu jako klientské portfolio.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">

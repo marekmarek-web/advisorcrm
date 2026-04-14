@@ -28,7 +28,7 @@ export const CONTACT_TAB_IDS: ContactTabId[] = [
 export const CONTACT_TAB_LABELS: Record<ContactTabId, string> = {
   prehled: "Přehled",
   detail: "Detail",
-  timeline: "Timeline",
+  timeline: "Časová osa",
   smlouvy: "Produkty",
   dokumenty: "Dokumenty",
   zapisky: "Zápisky",

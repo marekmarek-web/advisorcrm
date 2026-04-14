@@ -58,7 +58,9 @@ export function mapPushNotificationToRoute(notification: PushNotificationSchema)
 
   if (type === "PAYMENT_BLOCKED") {
     const contactId = pickId(data, ["contactId", "relatedEntityId"]);
-    return contactId ? `/portal/contacts/${encodeURIComponent(contactId)}#payments` : "/portal/today";
+    return contactId
+      ? `/portal/contacts/${encodeURIComponent(contactId)}?tab=prehled#contact-payment-setups`
+      : "/portal/today";
   }
 
   if (type === "REMINDER_DUE") {

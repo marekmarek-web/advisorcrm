@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import { getContractsByContact } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
+import { mapContractToCanonicalProduct } from "@/lib/products/canonical-product-read";
 
 export function OpportunityProductsTab({
   contactId,
@@ -15,15 +16,22 @@ export function OpportunityProductsTab({
 }) {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!contactId) {
       setLoading(false);
       return;
     }
+    setLoadError(null);
     getContractsByContact(contactId)
-      .then(setContracts)
-      .catch(() => {})
+      .then((rows) => {
+        setContracts(rows);
+      })
+      .catch(() => {
+        setContracts([]);
+        setLoadError("Nepodařilo se načíst smlouvy klienta. Zkuste obnovit stránku.");
+      })
       .finally(() => setLoading(false));
   }, [contactId]);
 
@@ -36,6 +44,9 @@ export function OpportunityProductsTab({
   }
   if (loading) {
     return <p className="text-sm font-medium text-[color:var(--wp-text-secondary)]">Načítání…</p>;
+  }
+  if (loadError) {
+    return <p className="text-sm font-medium text-red-600">{loadError}</p>;
   }
   if (contracts.length === 0) {
     return (
@@ -60,10 +71,15 @@ export function OpportunityProductsTab({
       </div>
       <ul className="space-y-3">
         {contracts.map((c) => {
+          const p = mapContractToCanonicalProduct(c);
+          const rawName = p.productName?.trim();
+          const title = rawName || p.segmentLabel;
           const premium = c.premiumAnnual
             ? `${Number(c.premiumAnnual).toLocaleString("cs-CZ")} Kč/rok`
             : "—";
-          const subtitle = [c.partnerName, c.productName].filter(Boolean).join(" · ") || "—";
+          const subtitle =
+            [p.partnerName, rawName && rawName !== title ? rawName : null].filter(Boolean).join(" · ") ||
+            p.segmentLabel;
           return (
             <li
               key={c.id}
@@ -75,7 +91,7 @@ export function OpportunityProductsTab({
                 </div>
                 <div className="min-w-0">
                   <p className="font-bold text-[color:var(--wp-text)] text-base leading-snug">
-                    {c.segment || "Produkt"}
+                    {title}
                     {c.contractNumber ? (
                       <span className="text-[color:var(--wp-text-secondary)] font-semibold text-sm block mt-0.5">
                         č. smlouvy {c.contractNumber}
