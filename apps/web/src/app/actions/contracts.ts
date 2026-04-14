@@ -4,7 +4,17 @@ import { cache } from "react";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
-import { contracts, partners, products, documents, contacts, contractUploadReviews, tenants, clientPaymentSetups } from "db";
+import {
+  contracts,
+  partners,
+  products,
+  documents,
+  contacts,
+  contractUploadReviews,
+  tenants,
+  clientPaymentSetups,
+  userProfiles,
+} from "db";
 import { eq, and, asc, or, isNull, inArray, desc, sql } from "db";
 import { contractSegments } from "db";
 import { logActivity } from "./activity";
@@ -288,6 +298,21 @@ function pgErrorMeta(e: unknown): { code?: string; detail?: string; constraint?:
 const FK_VIOLATION_FALLBACK_MESSAGE =
   "Neplatná vazba v databázi. Zkontrolujte klienta, workspace a výběr partnera či produktu z katalogu.";
 
+/**
+ * Databáze může mít FK `contracts.advisor_id` → `user_profiles.user_id`.
+ * Bez řádku v `user_profiles` INSERT selže s „advisor_id“ v detailu — i když je session platná.
+ */
+async function ensureUserProfileRowForAdvisor(userId: string): Promise<void> {
+  if (!userId.trim()) return;
+  await db
+    .insert(userProfiles)
+    .values({
+      userId: userId.trim(),
+      updatedAt: new Date(),
+    })
+    .onConflictDoNothing({ target: userProfiles.userId });
+}
+
 /** Čitelná hláška z Postgres FK detailu (klient / tenant / partner / produkt). */
 function fkViolationUserMessage(detail: string | undefined): string | null {
   if (!detail) return null;
@@ -479,6 +504,8 @@ export async function createContract(
     if (!refCheck.ok) {
       return { ok: false, message: refCheck.message };
     }
+
+    await ensureUserProfileRowForAdvisor(auth.userId);
 
     const [row] = await db
       .insert(contracts)
