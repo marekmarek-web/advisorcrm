@@ -27,6 +27,16 @@ export type {
   RawContractInput,
 } from "./canonical-contract-read";
 
+// Re-export payment foundation for unified access
+export {
+  paymentSegmentCategory,
+  matchPaymentToProduct,
+  paymentDedupKey,
+  PAYMENT_CATEGORY_LABELS,
+  type CanonicalPaymentInstruction,
+  type PaymentSegmentCategory,
+} from "@/lib/products/canonical-payment-read";
+
 export type PortfolioUiGroup =
   | "investments_pensions"
   | "loans"
@@ -176,4 +186,24 @@ export function portfolioRisksFromAttributes(
   const raw = attributes?.risks;
   if (!Array.isArray(raw)) return [];
   return raw.filter(isPortfolioRiskEntry);
+}
+
+/**
+ * Portfolio truthfulness check — verifies no active, visible product is missing
+ * from a client-portal read result. Returns IDs of products that should appear but don't.
+ */
+export function findMissingPortfolioProducts(
+  allContracts: Array<{ id: string; visibleToClient: boolean; portfolioStatus: string; archivedAt: Date | null }>,
+  readResult: Array<{ id: string }>,
+): string[] {
+  const readIds = new Set(readResult.map((r) => r.id));
+  return allContracts
+    .filter(
+      (c) =>
+        c.visibleToClient &&
+        (c.portfolioStatus === "active" || c.portfolioStatus === "ended") &&
+        c.archivedAt == null &&
+        !readIds.has(c.id),
+    )
+    .map((c) => c.id);
 }

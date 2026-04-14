@@ -38,6 +38,7 @@ export type PortfolioAttributes = {
   subcategory?: string;
   loanFixationUntil?: string;
   loanMaturityDate?: string;
+
   /** DPS / DIP — příspěvek účastníka (měsíčně) */
   participantContribution?: string;
   /** DPS / DIP — příspěvek zaměstnavatele (měsíčně) */
@@ -78,6 +79,10 @@ export type PortfolioAttributes = {
   // ─── Identity fields (pro propsat do kontaktu) ─────────────────────────────
   /** Praktický lékař (u ŽP, pokud je v dokumentu) */
   generalPractitioner?: string;
+
+  // ─── Loans extended (Phase 3 / Slice 1) ─────────────────────────────────────
+  /** Úroková sazba úvěru/hypotéky */
+  loanInterestRate?: string;
 
   [key: string]: unknown;
 };
