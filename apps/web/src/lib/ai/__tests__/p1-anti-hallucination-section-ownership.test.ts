@@ -193,8 +193,10 @@ describe("P1.1 — Payment apply gate (quality-gates)", () => {
       },
     });
     const gate = evaluateApplyReadiness(row);
+    // Informative-doc payment source is advisory — must not block whole CRM apply (client match / contract).
+    expect(gate.warnings).toContain("PAYMENT_SOURCE_NOT_ELIGIBLE_INFORMATIVE_DOC");
     const allBarriers = [...gate.blockedReasons, ...gate.applyBarrierReasons];
-    expect(allBarriers).toContain("PAYMENT_SOURCE_NOT_ELIGIBLE_INFORMATIVE_DOC");
+    expect(allBarriers).not.toContain("PAYMENT_SOURCE_NOT_ELIGIBLE_INFORMATIVE_DOC");
   });
 });
 

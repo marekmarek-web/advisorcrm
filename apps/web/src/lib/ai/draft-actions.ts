@@ -359,6 +359,32 @@ function toLegacyProjection(envelope: DocumentReviewEnvelope): ExtractedContract
 }
 
 /**
+ * Same field shape as `create_new_client` draft payload — used when apply only has `link_existing_client`
+ * so identity can still pass through `enforceContactPayload` and merge into the matched contact.
+ */
+export function buildContactMergePayloadFromExtractedEnvelope(
+  extractedPayload: Record<string, unknown>,
+): Record<string, unknown> {
+  const maybeEnvelope = extractedPayload as DocumentReviewEnvelope;
+  if (!maybeEnvelope?.documentClassification || !maybeEnvelope?.extractedFields) {
+    return {};
+  }
+  const legacy = toLegacyProjection(maybeEnvelope);
+  const c = legacy.client ?? {};
+  return {
+    firstName: c.firstName ?? "",
+    lastName: c.lastName ?? "",
+    fullName: c.fullName,
+    email: c.email,
+    phone: c.phone,
+    birthDate: c.birthDate,
+    personalId: c.personalId,
+    companyId: c.companyId,
+    address: c.address,
+  };
+}
+
+/**
  * Build the payment setup draft from the canonical payment contract.
  * Accepts either a live envelope or an already-built canonical payload
  * (used by Phase 3B when regenerating drafts from corrected payloads).

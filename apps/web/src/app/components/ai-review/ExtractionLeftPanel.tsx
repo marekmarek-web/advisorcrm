@@ -1065,31 +1065,9 @@ function WorkActionsCard({
   const publishOutcome = doc.applyResultPayload?.publishOutcome;
   const markExecuted = (key: string) => setExecutedActions((prev) => new Set([...prev, key]));
 
+  // Jedna pravdivá lišta výsledku je v AIReviewExtractionShell — neopakovat stejný text v levém panelu.
   if (doc.isApplied && publishOutcome) {
-    const modeColorMap: Record<string, string> = {
-      product_published_visible_to_client: "bg-emerald-50 border-emerald-200 text-emerald-800",
-      publish_partial_failure: "bg-amber-50 border-amber-200 text-amber-800",
-      supporting_doc_only: "bg-slate-50 border-slate-200 text-slate-700",
-      internal_document_only: "bg-slate-50 border-slate-200 text-slate-700",
-    };
-    const colorClass = modeColorMap[publishOutcome.mode] ?? "bg-slate-50 border-slate-200 text-slate-700";
-    const paymentLabel = publishOutcome.paymentOutcome === "payment_setup_published"
-      ? "Platební údaje zapsány."
-      : null;
-    return (
-      <div
-        data-section="workflow"
-        className={`rounded-[20px] border shadow-sm p-4 md:p-5 ${colorClass}`}
-      >
-        <h3 className="text-[11px] font-black uppercase tracking-widest mb-3 flex items-center gap-2">
-          <Check size={14} /> Výsledek zápisu do CRM
-        </h3>
-        <p className="text-sm font-semibold leading-relaxed">{publishOutcome.label}</p>
-        {paymentLabel && (
-          <p className="text-xs font-medium mt-1 opacity-80">{paymentLabel}</p>
-        )}
-      </div>
-    );
+    return null;
   }
 
   if (doc.isApplied) {

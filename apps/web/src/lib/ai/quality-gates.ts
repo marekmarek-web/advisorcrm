@@ -261,12 +261,12 @@ export function evaluateApplyReadiness(row: ContractReviewRow): ApplyGateResult 
       ]);
       const isInformativeType = informativeTypes.has(normalizedType) || informativeTypes.has(docType);
 
+      // Payment source quality — advisory only at gate level: apply still runs so CRM client/contract
+      // resolution is not blocked; payment rows are enforced inside apply-contract-review (enforcePaymentPayload).
       if (!hasExplicitPaymentSection && isInformativeType) {
-        applyBarrier.push("PAYMENT_SOURCE_NOT_ELIGIBLE_INFORMATIVE_DOC");
+        warnings.push("PAYMENT_SOURCE_NOT_ELIGIBLE_INFORMATIVE_DOC");
       } else if (!hasExplicitPaymentSection && (hasVal(payPayload.iban) || hasVal(payPayload.accountNumber))) {
-        // Contract-type doc with payment fields but no explicit section signal → warn but allow
-        // with advisor review (applyBarrier, not blocked).
-        applyBarrier.push("PAYMENT_SOURCE_REQUIRES_ADVISOR_CONFIRMATION");
+        warnings.push("PAYMENT_SOURCE_REQUIRES_ADVISOR_CONFIRMATION");
       }
     }
   }

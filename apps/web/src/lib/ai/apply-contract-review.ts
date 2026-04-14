@@ -41,6 +41,8 @@ import {
 import { loadContactPortalAccessSnapshot } from "./client-portal-access";
 import { computeAccessVerdict } from "@/lib/auth/access-verdict";
 import { resolveFundFromPortfolioAttributes } from "@/lib/fund-library/fund-resolution";
+import { resolveApplyClientContactId } from "@/lib/ai/apply-client-resolution";
+import { buildContactMergePayloadFromExtractedEnvelope } from "@/lib/ai/draft-actions";
 
 const VALID_SEGMENTS = new Set<string>(contractSegments);
 
@@ -592,23 +594,9 @@ export async function applyContractReview(
     return { ok: false, error: "Žádné návrhové akce k aplikaci." };
   }
 
-  const resolvedClientId = row.matchedClientId ?? null;
   const createNewConfirmed = row.createNewClientConfirmed === "true";
-  let effectiveContactId: string | null = resolvedClientId;
-
-  // Auto-resolve client from top candidate when matchedClientId was not explicitly set.
-  // Applies to both existing_match (high-confidence single match) and near_match (fallback).
-  const trace = row.extractionTrace as Record<string, unknown> | null | undefined;
-  const matchVerdict = trace?.matchVerdict as string | null | undefined;
-  if (!effectiveContactId && !createNewConfirmed && (matchVerdict === "existing_match" || matchVerdict === "near_match")) {
-    const rawCandidates = row.clientMatchCandidates as Array<{ clientId?: string }> | null | undefined;
-    const topCandidateId = Array.isArray(rawCandidates) && rawCandidates.length > 0
-      ? (rawCandidates[0]?.clientId ?? null)
-      : null;
-    if (topCandidateId) {
-      effectiveContactId = topCandidateId;
-    }
-  }
+  const { contactId: resolvedApplyContactId } = resolveApplyClientContactId(row);
+  let effectiveContactId: string | null = resolvedApplyContactId;
 
   if (!effectiveContactId && !createNewConfirmed) {
     return {
@@ -641,12 +629,22 @@ export async function applyContractReview(
       const createClientAction = draftActions.find(
         (a) => a.type === "create_client" || a.type === "create_new_client"
       );
-      const contactEnforce = createClientAction
-        ? enforceContactPayload(
-            createClientAction.payload,
-            extractedPayloadForEnforcement,
-          )
-        : undefined;
+      const hasLinkExisting = draftActions.some((a) => a.type === "link_existing_client");
+      let contactEnforce: ReturnType<typeof enforceContactPayload> | undefined;
+      if (createClientAction) {
+        contactEnforce = enforceContactPayload(
+          createClientAction.payload,
+          extractedPayloadForEnforcement,
+        );
+      } else if (hasLinkExisting && effectiveContactId) {
+        const synthetic = buildContactMergePayloadFromExtractedEnvelope(extractedPayloadForEnforcement);
+        const hasAny = Object.values(synthetic).some(
+          (v) => v != null && String(v).trim() !== "",
+        );
+        if (hasAny) {
+          contactEnforce = enforceContactPayload(synthetic, extractedPayloadForEnforcement);
+        }
+      }
       if (contactEnforce) {
         contactEnforcementResult = contactEnforce;
       }
