@@ -10,12 +10,15 @@ export default async function ClientPaymentsPage() {
   if (!auth.contactId) return null;
 
   let paymentInstructions: PaymentInstruction[] = [];
+  let paymentsLoadFailed = false;
   try {
     paymentInstructions = await getPaymentInstructionsForContact(auth.contactId);
   } catch {
-    // Payments page must never crash — show empty state on any fetch error
+    paymentsLoadFailed = true;
     paymentInstructions = [];
   }
 
-  return <ClientPaymentsView paymentInstructions={paymentInstructions} />;
+  return (
+    <ClientPaymentsView paymentInstructions={paymentInstructions} paymentsLoadFailed={paymentsLoadFailed} />
+  );
 }

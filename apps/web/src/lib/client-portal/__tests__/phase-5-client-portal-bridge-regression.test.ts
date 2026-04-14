@@ -99,6 +99,7 @@ function minimalBundle(
     paymentInstructions: [],
     advisorMaterialRequests: [],
     financialSummaryRaw,
+    visiblePortfolioSourceDocs: {},
     ...overrides,
   };
 }

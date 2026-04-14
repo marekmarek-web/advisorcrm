@@ -80,11 +80,11 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-slate-900/55 backdrop-blur-sm p-4 flex items-center justify-center client-fade-in"
+      className="fixed inset-0 z-[70] bg-slate-900/55 backdrop-blur-sm p-0 sm:p-4 flex items-end sm:items-center justify-center client-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-[30px] border border-slate-100 bg-white shadow-2xl overflow-hidden client-scale-in"
+        className="w-full max-w-md rounded-t-[28px] sm:rounded-[30px] border border-slate-100 border-b-0 sm:border-b bg-white shadow-2xl overflow-hidden client-scale-in max-h-[min(92dvh,640px)] sm:max-h-none flex flex-col pb-[max(0.75rem,var(--safe-area-bottom))] sm:pb-0"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
@@ -98,7 +98,7 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
           </button>
         </div>
 
-        <div className="p-6 space-y-5 text-center">
+        <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 text-center overflow-y-auto">
           <div>
             <p className="text-sm font-bold text-slate-900">{payment.partnerName}</p>
             {payment.productName && (

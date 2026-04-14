@@ -43,6 +43,7 @@ export async function getClientDashboardMetrics(
       premiumAmount: contracts.premiumAmount,
       premiumAnnual: contracts.premiumAnnual,
       portfolioAttributes: contracts.portfolioAttributes,
+      portfolioStatus: contracts.portfolioStatus,
     })
     .from(contracts)
     .where(
@@ -61,12 +62,14 @@ export async function getClientDashboardMetrics(
       premiumAmount: r.premiumAmount != null ? String(r.premiumAmount) : null,
       premiumAnnual: r.premiumAnnual != null ? String(r.premiumAnnual) : null,
       portfolioAttributes: (r.portfolioAttributes ?? {}) as Record<string, unknown>,
+      portfolioStatus: r.portfolioStatus,
     }))
   );
 
   const investmentSegments = new Set(["INV", "DIP", "DPS"]);
   let assetsUnderManagement = 0;
   for (const contract of contractRows) {
+    if (contract.portfolioStatus === "ended") continue;
     if (!investmentSegments.has(contract.segment)) continue;
     const monthly = Number(contract.premiumAmount ?? 0);
     const annual = Number(contract.premiumAnnual ?? 0);

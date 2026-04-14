@@ -1,12 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Bell,
   Briefcase,
+  Building2,
   Calculator,
+  Car,
   Calendar,
   CheckCircle2,
   ChevronRight,
@@ -14,12 +17,15 @@ import {
   CreditCard,
   FileText,
   FolderOpen,
+  Home,
   LayoutDashboard,
   ListTodo,
   LogOut,
   MessageSquare,
   Paperclip,
   Pencil,
+  PiggyBank,
+  Plane,
   Plus,
   Send,
   Settings,
@@ -50,10 +56,19 @@ import { formatPortalNotificationBody } from "@/lib/client-portal/format-portal-
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import {
   aggregatePortfolioMetrics,
+  mapContractToCanonicalProduct,
   PORTFOLIO_GROUP_LABELS,
   segmentToPortfolioGroup,
   type PortfolioUiGroup,
 } from "@/lib/client-portfolio/read-model";
+import {
+  canonicalPortfolioDetailRows,
+  formatPortalPremiumLineCs,
+  isFvEligibleSegment,
+  portfolioContractStatusLabelCs,
+  resolvePortalFundLogoPath,
+} from "@/lib/client-portfolio/portal-portfolio-display";
+import { computePortalInvestmentFutureValue } from "@/lib/fund-library/shared-future-value";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
@@ -96,6 +111,7 @@ import {
 import { isClientPortalAiDisabled } from "@/lib/client-portal/feature-flags";
 import { useDeviceClass } from "@/lib/ui/useDeviceClass";
 import type { ClientMobileInitialData } from "./client-mobile-initial-data";
+import { ClientPaymentsView } from "../payments/payments-client";
 
 function fmtMoney(v: number): string {
   return `${v.toLocaleString("cs-CZ")} Kč`;
@@ -431,7 +447,8 @@ function toTab(pathname: string): TabId {
     pathname.startsWith("/client/profile") ||
     pathname.startsWith("/client/notifications") ||
     pathname.startsWith("/client/portfolio") ||
-    pathname.startsWith("/client/contracts")
+    pathname.startsWith("/client/contracts") ||
+    pathname.startsWith("/client/payments")
   ) {
     return "menu";
   }
@@ -454,21 +471,63 @@ const GROUP_ORDER: PortfolioUiGroup[] = [
   "other",
 ];
 
-function statusLabel(portfolioStatus: string, startDate: string | null): string {
-  if (portfolioStatus === "ended") return "Ukončené";
-  if (!startDate) return "V evidenci";
-  return "Aktivní";
+function contractToCanonicalMobile(c: ClientMobileInitialData["contracts"][number]) {
+  return mapContractToCanonicalProduct({
+    id: c.id,
+    contactId: c.contactId,
+    segment: c.segment,
+    type: c.type,
+    partnerId: c.partnerId,
+    productId: c.productId,
+    partnerName: c.partnerName,
+    productName: c.productName,
+    premiumAmount: c.premiumAmount,
+    premiumAnnual: c.premiumAnnual,
+    contractNumber: c.contractNumber,
+    startDate: c.startDate,
+    anniversaryDate: c.anniversaryDate,
+    note: c.note,
+    visibleToClient: c.visibleToClient,
+    portfolioStatus: c.portfolioStatus,
+    sourceKind: c.sourceKind,
+    portfolioAttributes: c.portfolioAttributes,
+  });
 }
 
-function formatMoneyLine(monthly: string | null, annual: string | null): string {
-  const m = Number(monthly ?? "");
-  const y = Number(annual ?? "");
-  if (Number.isFinite(y) && y > 0) return `${y.toLocaleString("cs-CZ")} Kč / rok`;
-  if (Number.isFinite(m) && m > 0) return `${m.toLocaleString("cs-CZ")} Kč / měs.`;
-  return "Dle smlouvy";
+function productIconMobile(segment: string): typeof Briefcase {
+  switch (segment) {
+    case "INV":
+    case "DIP":
+      return TrendingUp;
+    case "DPS":
+      return PiggyBank;
+    case "HYPO":
+    case "UVER":
+      return CreditCard;
+    case "ZP":
+      return Shield;
+    case "MAJ":
+    case "ODP":
+      return Home;
+    case "AUTO_PR":
+    case "AUTO_HAV":
+      return Car;
+    case "CEST":
+      return Plane;
+    case "FIRMA_POJ":
+      return Building2;
+    default:
+      return Briefcase;
+  }
 }
 
-function PortfolioScreen({ contracts }: { contracts: ClientMobileInitialData["contracts"] }) {
+function PortfolioScreen({
+  contracts,
+  visibleSourceDocs,
+}: {
+  contracts: ClientMobileInitialData["contracts"];
+  visibleSourceDocs: ClientMobileInitialData["visiblePortfolioSourceDocs"];
+}) {
   if (contracts.length === 0) {
     return (
       <EmptyState
@@ -484,8 +543,32 @@ function PortfolioScreen({ contracts }: { contracts: ClientMobileInitialData["co
       premiumAmount: c.premiumAmount,
       premiumAnnual: c.premiumAnnual,
       portfolioAttributes: c.portfolioAttributes,
-    }))
+      portfolioStatus: c.portfolioStatus,
+    })),
   );
+
+  const canonicalById = new Map<string, ReturnType<typeof contractToCanonicalMobile>>();
+  for (const c of contracts) {
+    canonicalById.set(c.id, contractToCanonicalMobile(c));
+  }
+
+  let anyFvShown = false;
+  for (const c of contracts) {
+    const p = canonicalById.get(c.id);
+    if (!p || !isFvEligibleSegment(c.segment) || !p.fvReadiness.fvSourceType) continue;
+    const hit = computePortalInvestmentFutureValue({
+      fvSourceType: p.fvReadiness.fvSourceType,
+      resolvedFundId: p.fvReadiness.resolvedFundId,
+      resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
+      investmentHorizon: p.fvReadiness.investmentHorizon,
+      monthlyContribution: p.premiumMonthly,
+      annualContribution: p.premiumAnnual,
+    });
+    if (hit) {
+      anyFvShown = true;
+      break;
+    }
+  }
 
   const grouped = new Map<PortfolioUiGroup, typeof contracts>();
   for (const c of contracts) {
@@ -497,7 +580,9 @@ function PortfolioScreen({ contracts }: { contracts: ClientMobileInitialData["co
 
   return (
     <>
-      {/* KPI dlaždice — stejný zdroj jako web */}
+      <p className="text-[11px] text-slate-400 px-0.5 -mt-1 mb-1 leading-relaxed">
+        Souhrnné částky počítáme jen u aktivních smluv; ukončené zůstávají v seznamu níže.
+      </p>
       <div className="grid grid-cols-2 gap-2">
         {metrics.monthlyInvestments > 0 && (
           <MobileCard className="p-3">
@@ -523,73 +608,138 @@ function PortfolioScreen({ contracts }: { contracts: ClientMobileInitialData["co
         </MobileCard>
       </div>
 
-      {/* Skupiny dle read-modelu */}
       {GROUP_ORDER.map((groupKey) => {
         const items = grouped.get(groupKey);
         if (!items?.length) return null;
         return (
           <MobileSection key={groupKey} title={PORTFOLIO_GROUP_LABELS[groupKey]}>
             {items.map((contract) => {
-              const st = statusLabel(contract.portfolioStatus, contract.startDate);
+              const p = canonicalById.get(contract.id)!;
+              const st = portfolioContractStatusLabelCs(contract.portfolioStatus, contract.startDate);
               const stTone =
                 st === "Aktivní"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                   : st === "Ukončené"
                     ? "bg-slate-100 text-slate-600 border-slate-200"
                     : "bg-amber-50 text-amber-800 border-amber-100";
+              const LeadIcon = productIconMobile(contract.segment);
+              const logoPath = resolvePortalFundLogoPath(p);
+              const logoAlt =
+                p.segmentDetail?.kind === "investment" && p.segmentDetail.fundName
+                  ? `Logo fondu ${p.segmentDetail.fundName}`
+                  : "Logo instituce";
+              const fv =
+                isFvEligibleSegment(contract.segment) && p.fvReadiness.fvSourceType
+                  ? computePortalInvestmentFutureValue({
+                      fvSourceType: p.fvReadiness.fvSourceType,
+                      resolvedFundId: p.fvReadiness.resolvedFundId,
+                      resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
+                      investmentHorizon: p.fvReadiness.investmentHorizon,
+                      monthlyContribution: p.premiumMonthly,
+                      annualContribution: p.premiumAnnual,
+                    })
+                  : null;
+              const detailRows = canonicalPortfolioDetailRows(p);
+              const visibleDoc =
+                contract.sourceDocumentId && visibleSourceDocs[contract.sourceDocumentId]
+                  ? visibleSourceDocs[contract.sourceDocumentId]
+                  : null;
               return (
-                <MobileCard key={contract.id} className="p-3.5">
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                <MobileCard key={contract.id} className="p-3.5 space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    {logoPath ? (
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                        <Image src={logoPath} alt={logoAlt} width={40} height={40} className="object-contain p-0.5" />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <LeadIcon size={18} />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
-                        {contract.productName || "Produkt"}
-                      </p>
-                      {contract.partnerName && (
-                        <p className="text-xs text-slate-500 truncate mt-0.5">{contract.partnerName}</p>
-                      )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                            {contract.productName || "Produkt"}
+                          </p>
+                          {contract.partnerName ? (
+                            <p className="text-xs text-slate-500 truncate mt-0.5">{contract.partnerName}</p>
+                          ) : null}
+                          <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wide">{p.segmentLabel}</p>
+                        </div>
+                        <span className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${stTone}`}>
+                          {st}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${stTone}`}>
-                      {st}
-                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Platba</p>
-                      <p className="font-bold text-slate-900">{formatMoneyLine(contract.premiumAmount, contract.premiumAnnual)}</p>
+                      <p className="font-bold text-slate-900">
+                        {formatPortalPremiumLineCs(contract.premiumAmount, contract.premiumAnnual)}
+                      </p>
                     </div>
-                    {contract.contractNumber && (
+                    {contract.contractNumber ? (
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Číslo smlouvy</p>
                         <p className="font-mono text-slate-700 truncate">{contract.contractNumber}</p>
                       </div>
-                    )}
-                    {contract.startDate && (
+                    ) : null}
+                    {contract.startDate ? (
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Od</p>
                         <p className="font-bold text-slate-700">{formatDisplayDateCs(contract.startDate) || contract.startDate}</p>
                       </div>
-                    )}
-                    {contract.anniversaryDate && (
+                    ) : null}
+                    {contract.anniversaryDate ? (
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Výročí</p>
                         <p className="font-bold text-slate-700">{formatDisplayDateCs(contract.anniversaryDate) || contract.anniversaryDate}</p>
                       </div>
-                    )}
+                    ) : null}
                   </div>
-                  {contract.sourceDocumentId && (
+
+                  {detailRows.length > 1 ? (
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 space-y-1.5">
+                      {detailRows.map((row) => (
+                        <div key={row.label} className="flex justify-between gap-2 text-[11px]">
+                          <span className="text-slate-500 font-bold shrink-0">{row.label}</span>
+                          <span className="text-slate-800 font-semibold text-right">{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {fv ? (
+                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-2.5 space-y-0.5">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-indigo-700">Odhad budoucí hodnoty</p>
+                      <p className="text-base font-black text-indigo-950">{fv.amount.toLocaleString("cs-CZ")} Kč</p>
+                      <p className="text-[10px] text-indigo-900/85 leading-snug">{fv.sourceExplanation}</p>
+                    </div>
+                  ) : null}
+
+                  {visibleDoc && contract.sourceDocumentId ? (
                     <a
                       href={`/api/documents/${contract.sourceDocumentId}/download`}
-                      className="mt-2.5 inline-flex min-h-[36px] items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-xs font-black text-indigo-700"
+                      className="inline-flex min-h-[40px] w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-[11px] font-black text-indigo-700"
                     >
-                      Zobrazit dokument
+                      Související dokument ({visibleDoc.name})
                     </a>
-                  )}
+                  ) : null}
                 </MobileCard>
               );
             })}
           </MobileSection>
         );
       })}
+
+      {anyFvShown ? (
+        <p className="text-[10px] text-slate-400 leading-relaxed px-0.5">
+          U investičních produktů může být uveden orientační odhad — nejde o záruku výnosu.
+        </p>
+      ) : null}
     </>
   );
 }
@@ -653,17 +803,23 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
   const [newMemberBirthDate, setNewMemberBirthDate] = useState("");
 
   const onPortfolioRoute = pathname.startsWith("/client/portfolio") || pathname.startsWith("/client/contracts");
+  const onPaymentsRoute = pathname.startsWith("/client/payments");
   const onNotificationsRoute = pathname.startsWith("/client/notifications");
   const onProfileRoute = pathname.startsWith("/client/profile");
   const isMessagesActive =
-    pathname.startsWith("/client/messages") && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute;
+    pathname.startsWith("/client/messages") &&
+    !onPortfolioRoute &&
+    !onPaymentsRoute &&
+    !onNotificationsRoute &&
+    !onProfileRoute;
   // Reset MobileScreen scroll when pathname or shell context changes (not only tab — avoids stale layout).
   const pathBase = pathname.split("?")[0] ?? pathname;
-  const screenKey = `${pathBase}|${tab}|${String(onPortfolioRoute)}|${String(onNotificationsRoute)}|${String(onProfileRoute)}`;
+  const screenKey = `${pathBase}|${tab}|${String(onPortfolioRoute)}|${String(onPaymentsRoute)}|${String(onNotificationsRoute)}|${String(onProfileRoute)}`;
   /** Deep routes (portfolio, notifications) are not primary tabs — no misleading “home” highlight. */
   // No tab highlighted on portfolio/notifications deep routes, or during the brief window
   // before window.location.replace fires on non-SPA paths (prevents false "Přehled" flash).
-  const navActiveId = onPortfolioRoute || onNotificationsRoute || !isClientMobileSpaPath(pathname) ? null : tab;
+  const navActiveId =
+    onPortfolioRoute || onPaymentsRoute || onNotificationsRoute || !isClientMobileSpaPath(pathname) ? null : tab;
 
   const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
 
@@ -893,27 +1049,31 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
 
   const headerTitle = onPortfolioRoute
     ? "Portfolio"
-    : onNotificationsRoute
-      ? "Oznámení"
-      : onProfileRoute
-        ? "Můj profil"
-        : tab === "home"
-          ? "Můj přehled"
-          : tab === "messages"
-            ? "Zprávy"
-            : tab === "documents"
-              ? "Dokumenty"
-              : tab === "requests"
-                ? "Požadavky"
-                : "Profil";
+    : onPaymentsRoute
+      ? "Platby a příkazy"
+      : onNotificationsRoute
+        ? "Oznámení"
+        : onProfileRoute
+          ? "Můj profil"
+          : tab === "home"
+            ? "Můj přehled"
+            : tab === "messages"
+              ? "Zprávy"
+              : tab === "documents"
+                ? "Dokumenty"
+                : tab === "requests"
+                  ? "Požadavky"
+                  : "Profil";
 
   const headerSubtitle = onNotificationsRoute
     ? "Notifikační centrum"
     : onPortfolioRoute
       ? "Smlouvy a segmenty"
-      : initialData.advisor?.fullName
-        ? `Poradce: ${initialData.advisor.fullName}`
-        : initialData.fullName;
+      : onPaymentsRoute
+        ? "Údaje z evidence poradce"
+        : initialData.advisor?.fullName
+          ? `Poradce: ${initialData.advisor.fullName}`
+          : initialData.fullName;
 
   return (
     <>
@@ -1040,7 +1200,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         ) : null}
         {busy ? <LoadingSkeleton rows={2} /> : null}
 
-        {tab === "home" && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute ? (
+        {tab === "home" && !onPortfolioRoute && !onPaymentsRoute && !onNotificationsRoute && !onProfileRoute ? (
           <DashboardHome
             initialData={initialData}
             quickStats={quickStats}
@@ -1054,7 +1214,11 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           />
         ) : null}
 
-        {(tab === "documents" || pathname.startsWith("/client/documents")) && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute ? (
+        {(tab === "documents" || pathname.startsWith("/client/documents")) &&
+        !onPortfolioRoute &&
+        !onPaymentsRoute &&
+        !onNotificationsRoute &&
+        !onProfileRoute ? (
           <>
             <SearchBar value={documentsSearch} onChange={setDocumentsSearch} placeholder="Hledat dokument..." />
             <MobileCard>
@@ -1082,7 +1246,11 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           </>
         ) : null}
 
-        {(tab === "requests" || pathname.startsWith("/client/requests")) && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute ? (
+        {(tab === "requests" || pathname.startsWith("/client/requests")) &&
+        !onPortfolioRoute &&
+        !onPaymentsRoute &&
+        !onNotificationsRoute &&
+        !onProfileRoute ? (
           <>
             <FilterChips
               value={requestsFilter}
@@ -1188,7 +1356,14 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         ) : null}
 
         {onPortfolioRoute ? (
-          <PortfolioScreen contracts={contracts} />
+          <PortfolioScreen contracts={contracts} visibleSourceDocs={initialData.visiblePortfolioSourceDocs} />
+        ) : null}
+
+        {onPaymentsRoute ? (
+          <ClientPaymentsView
+            paymentInstructions={initialData.paymentInstructions}
+            embeddedInMobileShell
+          />
         ) : null}
 
         {onNotificationsRoute ? (
@@ -1249,7 +1424,7 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
           </MobileSection>
         ) : null}
 
-        {(onProfileRoute || tab === "menu") && !onPortfolioRoute && !onNotificationsRoute ? (
+        {(onProfileRoute || tab === "menu") && !onPortfolioRoute && !onPaymentsRoute && !onNotificationsRoute ? (
           <MobileSection title="Můj účet">
             {/* ── Přehled účtu ── */}
             <MobileCard className="p-4">
@@ -1421,7 +1596,12 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
       </BottomSheet>
 
       {/* FAB: visible on home/requests/documents; hidden on messages (compose is inline), portfolio, notifications, profile */}
-      {!isMessagesActive && !onPortfolioRoute && !onNotificationsRoute && !onProfileRoute && tab !== "menu" ? (
+      {!isMessagesActive &&
+      !onPortfolioRoute &&
+      !onPaymentsRoute &&
+      !onNotificationsRoute &&
+      !onProfileRoute &&
+      tab !== "menu" ? (
         <button
           type="button"
           onClick={() => {

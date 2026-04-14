@@ -13,7 +13,7 @@ import { getClientRequests } from "@/app/actions/client-portal-requests";
 import type { ContractRow } from "@/app/actions/contracts";
 import { getClientPortfolioForContact } from "@/app/actions/contracts";
 import type { DocumentRow } from "@/app/actions/documents";
-import { getDocumentsForClient } from "@/app/actions/documents";
+import { getClientVisiblePortfolioDocumentNames, getDocumentsForClient } from "@/app/actions/documents";
 import { getClientHouseholdForContact, type ClientHouseholdDetail } from "@/app/actions/households";
 import { getUnreadAdvisorMessagesForClientCount } from "@/app/actions/messages";
 import type { PaymentInstruction } from "@/app/actions/payment-pdf";
@@ -123,6 +123,16 @@ export const loadClientPortalSessionBundle = cache(async function loadClientPort
     ? `${contactRows.firstName ?? ""} ${contactRows.lastName ?? ""}`.trim() || "Klient"
     : "Klient";
 
+  const portfolioSourceDocIds = [
+    ...new Set(contracts.map((c) => c.sourceDocumentId).filter((id): id is string => Boolean(id))),
+  ];
+  const visiblePortfolioSourceDocs =
+    portfolioSourceDocIds.length > 0
+      ? await getClientVisiblePortfolioDocumentNames(contactId, portfolioSourceDocIds).catch(
+          () => ({}) as Record<string, { name: string }>,
+        )
+      : {};
+
   return {
     tenantId: auth.tenantId,
     contactId,
@@ -140,5 +150,6 @@ export const loadClientPortalSessionBundle = cache(async function loadClientPort
     paymentInstructions,
     advisorMaterialRequests,
     financialSummaryRaw,
+    visiblePortfolioSourceDocs,
   };
 });

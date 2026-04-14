@@ -37,6 +37,8 @@ export type ClientMobileInitialData = {
   unreadMessagesCount: number;
   /** Stejný zdroj jako web dashboard (`getPaymentInstructionsForContact`). */
   paymentInstructions: PaymentInstruction[];
+  /** Stejné jako `getClientVisiblePortfolioDocumentNames` na webu portfolia. */
+  visiblePortfolioSourceDocs: Record<string, { name: string }>;
   /** Stejný zdroj jako web (`listClientMaterialRequests`). */
   advisorMaterialRequests: MaterialRequestListItem[];
   /** 5G: Stejná finanční analýza jako web dashboard. */
@@ -69,6 +71,7 @@ export function toClientMobileInitialData(bundle: ClientPortalSessionBundle): Cl
     unreadNotificationsCount: bundle.unreadNotificationsCount,
     unreadMessagesCount: bundle.unreadMessagesCount,
     paymentInstructions: bundle.paymentInstructions,
+    visiblePortfolioSourceDocs: bundle.visiblePortfolioSourceDocs,
     advisorMaterialRequests: bundle.advisorMaterialRequests,
     financialSummaryRaw: bundle.financialSummaryRaw ?? null,
   };

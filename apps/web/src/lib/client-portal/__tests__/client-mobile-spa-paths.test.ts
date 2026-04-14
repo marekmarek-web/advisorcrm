@@ -30,14 +30,15 @@ describe("isClientMobileSpaPath (regression: layout vs. client escape)", () => {
     expect(isClientMobileSpaPath("/client/requests")).toBe(true);
     expect(isClientMobileSpaPath("/client/portfolio")).toBe(true);
     expect(isClientMobileSpaPath("/client/portfolio/foo")).toBe(true);
+    expect(isClientMobileSpaPath("/client/payments")).toBe(true);
     expect(isClientMobileSpaPath("/client/contracts")).toBe(true);
     expect(isClientMobileSpaPath("/client/contracts/bar")).toBe(true);
   });
 
-  it("excludes calculators, payments, advisor material detail (full shell + children)", () => {
+  it("excludes calculators, advisor material detail (full shell + children); payments stay in mobile SPA", () => {
     expect(isClientMobileSpaPath("/client/calculators")).toBe(false);
     expect(isClientMobileSpaPath("/client/calculators/mortgage")).toBe(false);
-    expect(isClientMobileSpaPath("/client/payments")).toBe(false);
+    expect(isClientMobileSpaPath("/client/payments")).toBe(true);
     expect(isClientMobileSpaPath("/client/pozadavky-poradce")).toBe(false);
     expect(isClientMobileSpaPath("/client/pozadavky-poradce/abc-123")).toBe(false);
     expect(isClientMobileSpaPath("/client/requests/new")).toBe(false);

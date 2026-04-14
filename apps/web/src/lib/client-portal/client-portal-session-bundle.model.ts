@@ -50,4 +50,6 @@ export type ClientPortalSessionBundle = {
   paymentInstructions: PaymentInstruction[];
   advisorMaterialRequests: MaterialRequestListItem[];
   financialSummaryRaw: ClientFinancialSummaryView;
+  /** Jen dokumenty zveřejněné klientovi — pro odkaz „související dokument“ v portfoliu (web + mobil). */
+  visiblePortfolioSourceDocs: Record<string, { name: string }>;
 };

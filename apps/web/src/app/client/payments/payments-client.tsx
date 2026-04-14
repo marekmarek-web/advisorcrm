@@ -15,6 +15,10 @@ import { QrPaymentModal } from "../QrPaymentModal";
 
 type ClientPaymentsViewProps = {
   paymentInstructions: PaymentInstruction[];
+  /** True when server action selhal — prázdný stav nesmí vypadat jako „žádné platby v evidenci“. */
+  paymentsLoadFailed?: boolean;
+  /** Skryje titulek/úvod (mobilní shell už má vlastní hlavičku). */
+  embeddedInMobileShell?: boolean;
 };
 
 function categoryIcon(cat: PaymentSegmentCategory) {
@@ -73,7 +77,21 @@ function CopyMiniButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewProps) {
+function paymentContractStatusBadgeClasses(linkedStatus: string | null | undefined): string {
+  if (linkedStatus === "ended") return "bg-slate-100 text-slate-600 border-slate-200";
+  return "bg-emerald-50 text-emerald-800 border-emerald-100";
+}
+
+function paymentContractStatusBadgeLabel(linkedStatus: string | null | undefined): string {
+  if (linkedStatus === "ended") return "Ukončená smlouva";
+  return "Aktivní smlouva";
+}
+
+export function ClientPaymentsView({
+  paymentInstructions,
+  paymentsLoadFailed = false,
+  embeddedInMobileShell = false,
+}: ClientPaymentsViewProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const selectedPayment = useMemo(() => {
@@ -94,25 +112,35 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
   }, [selectedIndex, paymentInstructions]);
 
   return (
-    <div className="space-y-8 client-fade-in">
-      <div>
-        <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">Platby a příkazy</h2>
-        <p className="text-sm font-medium text-slate-500 mt-2">
-          Přehled aktivních platebních údajů napojených na vaše produkty v evidenci poradce.
-        </p>
-      </div>
+    <div className="space-y-6 sm:space-y-8 client-fade-in">
+      {!embeddedInMobileShell ? (
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight">Platby a příkazy</h2>
+          <p className="text-sm font-medium text-slate-500 mt-2 max-w-2xl">
+            Přehled platebních údajů napojených na smlouvy, které máte v portálu zveřejněné od poradce.
+          </p>
+        </div>
+      ) : null}
 
-      {paymentInstructions.length === 0 ? (
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center space-y-3">
-          <p className="text-slate-600 font-semibold">Žádné aktivní platební údaje nejsou k dispozici</p>
+      {paymentsLoadFailed ? (
+        <div className="bg-white rounded-[24px] border border-rose-100 shadow-sm p-8 sm:p-10 text-center space-y-3">
+          <p className="text-slate-800 font-semibold">Platební údaje se nepodařilo načíst</p>
           <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
-            Jakmile poradce zveřejní platby ze schválené dokumentace, nebo doplní údaje z katalogu institucí, zobrazí se
-            zde účet, částka, variabilní symbol a další pole podle toho, co je ve smlouvě k dispozici.
+            Zkuste stránku načíst znovu. Pokud problém přetrvává, napište svému poradci — údaje v evidenci se tím
+            nemění.
+          </p>
+        </div>
+      ) : paymentInstructions.length === 0 ? (
+        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-8 sm:p-10 text-center space-y-3">
+          <p className="text-slate-600 font-semibold">Žádné platební údaje nejsou v portálu k dispozici</p>
+          <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+            Jakmile poradce zveřejní platby u vašich smluv v klientské zóně, nebo doplní údaje z katalogu institucí,
+            zobrazí se zde účet, částka, variabilní symbol a další pole podle toho, co je ve smlouvě k dispozici.
           </p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
             {paymentInstructions.map((instruction, index) => {
               const cat = paymentSegmentCategory(instruction.segment);
               const CatIcon = categoryIcon(cat);
@@ -146,8 +174,10 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
                         <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{instruction.partnerName}</p>
                       </div>
                     </div>
-                    <span className="shrink-0 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md border bg-emerald-50 text-emerald-800 border-emerald-100">
-                      Aktivní
+                    <span
+                      className={`shrink-0 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md border ${paymentContractStatusBadgeClasses(instruction.linkedContractPortfolioStatus)}`}
+                    >
+                      {paymentContractStatusBadgeLabel(instruction.linkedContractPortfolioStatus)}
                     </span>
                   </div>
 
@@ -158,8 +188,8 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                        <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                             Účet
                           </p>
@@ -167,8 +197,8 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
                         </div>
                         <CopyMiniButton text={instruction.accountNumber.replace(/\s+/g, "")} label="Kopírovat" />
                       </div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                        <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                             Variabilní symbol
                           </p>
@@ -177,7 +207,7 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
                         {vs !== "—" ? <CopyMiniButton text={vs} label="Kopírovat" /> : null}
                       </div>
                       {instruction.specificSymbol ? (
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
                           <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                               Specifický symbol
@@ -188,7 +218,7 @@ export function ClientPaymentsView({ paymentInstructions }: ClientPaymentsViewPr
                         </div>
                       ) : null}
                       {instruction.constantSymbol ? (
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
                           <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                               Konstantní symbol

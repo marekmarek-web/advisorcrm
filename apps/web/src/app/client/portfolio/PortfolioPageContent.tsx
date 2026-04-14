@@ -13,7 +13,6 @@ import {
   Plane,
   Shield,
   TrendingUp,
-  Umbrella,
   Users,
 } from "lucide-react";
 import type { ContractRow } from "@/app/actions/contracts";
@@ -25,11 +24,15 @@ import {
   segmentToPortfolioGroup,
   type PortfolioUiGroup,
 } from "@/lib/client-portfolio/read-model";
-import type { CanonicalProduct } from "@/lib/products/canonical-product-read";
 import {
-  computePortalInvestmentFutureValue,
-  fundLibraryLogoPathForPortal,
-} from "@/lib/fund-library/shared-future-value";
+  canonicalPortfolioDetailRows,
+  formatPortalPremiumLineCs,
+  isFvEligibleSegment,
+  portfolioContractStatusLabelCs,
+  resolvePortalFundLogoPath,
+} from "@/lib/client-portfolio/portal-portfolio-display";
+import type { CanonicalProduct } from "@/lib/products/canonical-product-read";
+import { computePortalInvestmentFutureValue } from "@/lib/fund-library/shared-future-value";
 
 type VisibleDocMap = Record<string, { name: string }>;
 
@@ -106,100 +109,21 @@ function productIcon(segment: string): LucideIcon {
   }
 }
 
-function formatMoneyLine(monthly: string | null, annual: string | null): string {
-  const m = Number(monthly ?? "");
-  const y = Number(annual ?? "");
-  if (Number.isFinite(y) && y > 0) return `${y.toLocaleString("cs-CZ")} Kč / rok`;
-  if (Number.isFinite(m) && m > 0) return `${m.toLocaleString("cs-CZ")} Kč / měsíc`;
-  return "Dle smlouvy";
-}
-
-function statusLabel(portfolioStatus: string, startDate: string | null): string {
-  if (portfolioStatus === "ended") return "Ukončené";
-  if (!startDate) return "V evidenci";
-  return "Aktivní";
-}
-
-function isFvSegment(segment: string): boolean {
-  return segment === "INV" || segment === "DIP" || segment === "DPS";
-}
-
-function resolveFundLogoPath(p: CanonicalProduct): string | null {
-  if (p.segmentDetail?.kind === "investment" && p.segmentDetail.resolvedFundId) {
-    return fundLibraryLogoPathForPortal(p.segmentDetail.resolvedFundId);
-  }
-  return fundLibraryLogoPathForPortal(p.fvReadiness.resolvedFundId);
-}
-
-function canonicalDetailBlocks(p: CanonicalProduct): { label: string; value: string }[] {
-  const rows: { label: string; value: string }[] = [];
-  const d = p.segmentDetail;
-
-  rows.push({ label: "Typ produktu", value: p.segmentLabel });
-
-  if (d?.kind === "investment") {
-    if (d.institution) rows.push({ label: "Instituce", value: d.institution });
-    if (d.fundName) rows.push({ label: "Fond / třída", value: d.fundName });
-    if (d.investmentStrategy) rows.push({ label: "Strategie", value: d.investmentStrategy });
-    if (d.investmentHorizon) rows.push({ label: "Investiční horizont", value: d.investmentHorizon });
-    if (d.monthlyContribution != null && d.monthlyContribution > 0) {
-      rows.push({
-        label: "Pravidelná částka",
-        value: `${d.monthlyContribution.toLocaleString("cs-CZ")} Kč / měsíc`,
-      });
-    }
-    if (d.targetAmount) rows.push({ label: "Cílová částka", value: d.targetAmount });
-  } else if (d?.kind === "life_insurance") {
-    if (d.insurer) rows.push({ label: "Pojišťovna", value: d.insurer });
-    if (d.startDate) rows.push({ label: "Počátek", value: formatDisplayDateCs(d.startDate) || d.startDate });
-    if (d.endDate) rows.push({ label: "Výročí / konec pojistné doby", value: formatDisplayDateCs(d.endDate) || d.endDate });
-    if (d.monthlyPremium != null && d.monthlyPremium > 0) {
-      rows.push({ label: "Měsíční pojistné", value: `${d.monthlyPremium.toLocaleString("cs-CZ")} Kč` });
-    }
-    if (d.sumInsured) rows.push({ label: "Pojistná částka", value: d.sumInsured });
-    if (d.persons.length) rows.push({ label: "Osoby ve smlouvě", value: `${d.persons.length}` });
-    if (d.risks.length) rows.push({ label: "Rizika / připojištění", value: `${d.risks.length} položek` });
-  } else if (d?.kind === "vehicle") {
-    rows.push({ label: "Typ", value: d.subtype === "HAV" ? "Havarijní pojištění" : "Povinné ručení" });
-    if (d.vehicleRegistration) rows.push({ label: "SPZ / vozidlo", value: d.vehicleRegistration });
-    if (d.insurer) rows.push({ label: "Pojišťovna", value: d.insurer });
-  } else if (d?.kind === "property") {
-    rows.push({
-      label: "Typ",
-      value: d.subtype === "liability" ? "Odpovědnost" : "Majetek",
-    });
-    if (d.propertyAddress) rows.push({ label: "Adresa / předmět", value: d.propertyAddress });
-    if (d.insurer) rows.push({ label: "Pojišťovna", value: d.insurer });
-    if (d.sumInsured) rows.push({ label: "Limit / pojistná částka", value: d.sumInsured });
-  } else if (d?.kind === "pension") {
-    if (d.company) rows.push({ label: "Společnost", value: d.company });
-    if (d.participantContribution) rows.push({ label: "Účastník", value: d.participantContribution });
-    if (d.employerContribution) rows.push({ label: "Zaměstnavatel", value: d.employerContribution });
-    if (d.stateContributionEstimate) rows.push({ label: "Státní příspěvek (odhad)", value: d.stateContributionEstimate });
-    if (d.investmentStrategy) rows.push({ label: "Strategie", value: d.investmentStrategy });
-    if (p.fvReadiness.investmentHorizon) {
-      rows.push({ label: "Investiční horizont", value: p.fvReadiness.investmentHorizon });
-    }
-  } else if (d?.kind === "loan") {
-    if (d.lender) rows.push({ label: "Úvěrující", value: d.lender });
-    if (d.loanPrincipal) rows.push({ label: "Jistina", value: d.loanPrincipal });
-    if (d.monthlyPayment != null && d.monthlyPayment > 0) {
-      rows.push({ label: "Měsíční splátka", value: `${d.monthlyPayment.toLocaleString("cs-CZ")} Kč` });
-    }
-    if (d.fixationUntil) rows.push({ label: "Fixace do", value: d.fixationUntil });
-    if (d.maturityDate) rows.push({ label: "Splatnost", value: d.maturityDate });
-  }
-
-  return rows;
-}
-
 type PortfolioPageContentProps = {
   contracts: ContractRow[];
   visibleSourceDocs: VisibleDocMap;
 };
 
 export function PortfolioPageContent({ contracts, visibleSourceDocs }: PortfolioPageContentProps) {
-  const metrics = aggregatePortfolioMetrics(contracts);
+  const metrics = aggregatePortfolioMetrics(
+    contracts.map((c) => ({
+      segment: c.segment,
+      premiumAmount: c.premiumAmount,
+      premiumAnnual: c.premiumAnnual,
+      portfolioAttributes: c.portfolioAttributes,
+      portfolioStatus: c.portfolioStatus,
+    })),
+  );
   const canonicalById = new Map<string, CanonicalProduct>();
   for (const c of contracts) {
     canonicalById.set(c.id, contractToCanonical(c));
@@ -230,7 +154,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
   let anyFvShown = false;
   for (const c of contracts) {
     const p = canonicalById.get(c.id);
-    if (!p || !isFvSegment(c.segment) || !p.fvReadiness.fvSourceType) continue;
+    if (!p || !isFvEligibleSegment(c.segment) || !p.fvReadiness.fvSourceType) continue;
     const hit = computePortalInvestmentFutureValue({
       fvSourceType: p.fvReadiness.fvSourceType,
       resolvedFundId: p.fvReadiness.resolvedFundId,
@@ -248,8 +172,8 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
   return (
     <div className="space-y-8 client-fade-in">
       <div>
-        <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">Moje portfolio</h2>
-        <p className="text-sm font-medium text-slate-500 mt-2">
+        <h2 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight">Moje portfolio</h2>
+        <p className="text-sm font-medium text-slate-500 mt-2 max-w-2xl">
           Přehled produktů, které váš poradce eviduje a zveřejnil pro vás v portálu. Údaje odpovídají evidenci smluv —
           žádné ukázkové hodnoty.
         </p>
@@ -273,8 +197,11 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
         <>
           <section className="space-y-4" aria-label="Souhrn portfolia">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Souhrn</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-5">
+            <p className="text-[11px] text-slate-400 -mt-1 mb-1 max-w-2xl leading-relaxed">
+              Částky v souhrnu počítáme jen u aktivních smluv. Ukončené smlouvy zůstávají v přehledu níže, ale neovlivňují měsíční součty.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-4 sm:p-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">
                   Měsíční investice
                 </p>
@@ -282,7 +209,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                   {metrics.monthlyInvestments.toLocaleString("cs-CZ")} Kč
                 </p>
               </div>
-              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-5">
+              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-4 sm:p-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">
                   Měsíční pojistné
                 </p>
@@ -290,7 +217,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                   {metrics.monthlyInsurancePremiums.toLocaleString("cs-CZ")} Kč
                 </p>
               </div>
-              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-5">
+              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-4 sm:p-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">
                   Jistiny úvěrů (evidence)
                 </p>
@@ -298,7 +225,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                   {metrics.totalLoanPrincipal.toLocaleString("cs-CZ")} Kč
                 </p>
               </div>
-              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-5">
+              <div className="bg-white rounded-[20px] border border-slate-100 shadow-sm p-4 sm:p-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
                   Položky v přehledu
                 </p>
@@ -339,18 +266,18 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                   </div>
                   <h3 className="text-lg font-black text-slate-900">{PORTFOLIO_GROUP_LABELS[groupKey]}</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                   {items.map((contract) => {
                     const p = canonicalById.get(contract.id)!;
-                    const st = statusLabel(contract.portfolioStatus, contract.startDate);
+                    const st = portfolioContractStatusLabelCs(contract.portfolioStatus, contract.startDate);
                     const LeadIcon = productIcon(contract.segment);
-                    const logoPath = resolveFundLogoPath(p);
+                    const logoPath = resolvePortalFundLogoPath(p);
                     const logoAlt =
                       p.segmentDetail?.kind === "investment" && p.segmentDetail.fundName
                         ? `Logo fondu ${p.segmentDetail.fundName}`
                         : "Logo instituce";
                     const fv =
-                      isFvSegment(contract.segment) && p.fvReadiness.fvSourceType
+                      isFvEligibleSegment(contract.segment) && p.fvReadiness.fvSourceType
                         ? computePortalInvestmentFutureValue({
                             fvSourceType: p.fvReadiness.fvSourceType,
                             resolvedFundId: p.fvReadiness.resolvedFundId,
@@ -360,7 +287,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                             annualContribution: p.premiumAnnual,
                           })
                         : null;
-                    const detailRows = canonicalDetailBlocks(p);
+                    const detailRows = canonicalPortfolioDetailRows(p);
 
                     return (
                       <article
@@ -410,7 +337,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                                 Platba / pojistné / splátka
                               </span>
                               <span className="font-bold text-slate-900">
-                                {formatMoneyLine(contract.premiumAmount, contract.premiumAnnual)}
+                                {formatPortalPremiumLineCs(contract.premiumAmount, contract.premiumAnnual)}
                               </span>
                             </div>
                             <div>

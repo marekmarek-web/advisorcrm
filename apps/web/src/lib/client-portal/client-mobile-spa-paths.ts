@@ -25,7 +25,8 @@ export function isClientMobileSpaPath(pathname: string): boolean {
     path === "/client/documents" ||
     path === "/client/profile" ||
     path === "/client/notifications" ||
-    path === "/client/requests"
+    path === "/client/requests" ||
+    path === "/client/payments"
   ) {
     return true;
   }

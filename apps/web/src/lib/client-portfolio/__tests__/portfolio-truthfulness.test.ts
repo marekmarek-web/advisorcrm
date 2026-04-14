@@ -10,6 +10,7 @@ import {
   mapContractsToCanonicalProducts,
   type RawContractInput,
 } from "../canonical-contract-read";
+import { aggregatePortfolioMetrics } from "../read-model";
 
 function makeContract(overrides: Partial<RawContractInput> = {}): RawContractInput {
   return {
@@ -108,5 +109,40 @@ describe("portfolio non-empty truthfulness", () => {
     );
     expect(product.partnerName).toBe("Conseq");
     expect(product.segment).toBe("INV");
+  });
+});
+
+describe("aggregatePortfolioMetrics (active vs ended)", () => {
+  it("excludes ended contracts from recurring money KPIs but keeps them in row count", () => {
+    const metrics = aggregatePortfolioMetrics([
+      {
+        segment: "ZP",
+        premiumAmount: "1000",
+        premiumAnnual: null,
+        portfolioAttributes: {},
+        portfolioStatus: "active",
+      },
+      {
+        segment: "ZP",
+        premiumAmount: "500",
+        premiumAnnual: null,
+        portfolioAttributes: {},
+        portfolioStatus: "ended",
+      },
+    ]);
+    expect(metrics.activeContractCount).toBe(2);
+    expect(metrics.monthlyInsurancePremiums).toBe(1000);
+  });
+
+  it("treats missing portfolioStatus as active for backward compatibility", () => {
+    const metrics = aggregatePortfolioMetrics([
+      {
+        segment: "INV",
+        premiumAmount: "3000",
+        premiumAnnual: null,
+        portfolioAttributes: {},
+      },
+    ]);
+    expect(metrics.monthlyInvestments).toBe(3000);
   });
 });

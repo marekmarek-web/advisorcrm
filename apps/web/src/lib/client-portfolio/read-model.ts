@@ -107,6 +107,8 @@ export function aggregatePortfolioMetrics(
     premiumAmount: string | null;
     premiumAnnual: string | null;
     portfolioAttributes: Record<string, unknown> | null;
+    /** When `ended`, recurring amounts and loan principal are excluded from money KPIs (still counted as a row). */
+    portfolioStatus?: string | null;
   }>
 ): PortfolioMetrics {
   let monthlyInvestments = 0;
@@ -116,9 +118,16 @@ export function aggregatePortfolioMetrics(
 
   for (const row of rows) {
     activeContractCount += 1;
+    const ended = row.portfolioStatus === "ended";
     const monthly = toNumber(row.premiumAmount);
     const annual = toNumber(row.premiumAnnual);
-    totalLoanPrincipal += principalFromAttributes(row);
+    if (!ended) {
+      totalLoanPrincipal += principalFromAttributes(row);
+    }
+
+    if (ended) {
+      continue;
+    }
 
     if (INVESTMENT_SEGMENTS.has(row.segment)) {
       // Annual investment contributions normalised to monthly equivalent

@@ -138,6 +138,7 @@ function minimalBundle(overrides: Partial<ClientPortalSessionBundle> = {}): Clie
       },
     ],
     financialSummaryRaw,
+    visiblePortfolioSourceDocs: {},
     ...overrides,
   };
 }

@@ -28,6 +28,8 @@ export type PaymentInstruction = {
   paymentSetupId: string | null;
   /** Linked contract ID from canonical artifact (nullable for legacy catalog-only entries). */
   contractId?: string | null;
+  /** Stav navázané smlouvy v evidenci — pro štítek v portálu (aktivní vs. ukončené). */
+  linkedContractPortfolioStatus?: string | null;
 };
 
 type AiPaymentSetupInstructionRow = {
@@ -48,6 +50,7 @@ type AiPaymentSetupInstructionRow = {
   paymentInstructionsText: string | null;
   /** Canonical segment z navázané smlouvy (preferováno před paymentType mapováním). */
   contractSegment?: string | null;
+  contractPortfolioStatus?: string | null;
 };
 
 function normalizeInstructionKeyPart(value: string | null | undefined): string {
@@ -124,7 +127,13 @@ function mapAiPaymentSetupToInstruction(
     constantSymbol: row.constantSymbol?.trim() || null,
     currency: row.currency?.trim() || null,
     paymentSetupId: row.id,
+    linkedContractPortfolioStatus: row.contractPortfolioStatus?.trim() || null,
   };
+}
+
+function normalizeContractNumberKey(value: string | null | undefined): string | null {
+  const v = value?.replace(/\s+/g, " ").trim().toLowerCase();
+  return v && v.length > 0 ? v : null;
 }
 
 export async function getPaymentInstructionsForContact(contactId: string): Promise<PaymentInstruction[]> {
@@ -162,6 +171,14 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
           AND c.archived_at IS NULL
         LIMIT 1
       )`,
+      contractPortfolioStatus: sql<string | null>`(
+        SELECT c.portfolio_status FROM contracts c
+        WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
+          AND c.contact_id = ${clientPaymentSetups.contactId}
+          AND c.contract_number = ${clientPaymentSetups.contractNumber}
+          AND c.archived_at IS NULL
+        LIMIT 1
+      )`,
     })
     .from(clientPaymentSetups)
     .where(
@@ -173,10 +190,9 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
       )
     );
 
-  const out = aiReviewPaymentRows
+  const fromAi = aiReviewPaymentRows
     .map(mapAiPaymentSetupToInstruction)
     .filter((instruction): instruction is PaymentInstruction => instruction !== null);
-  const seen = new Set(out.map(paymentInstructionDedupKey));
 
   const isClient = auth.roleName === "Client";
   const contractRows = await db
@@ -196,6 +212,22 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
       ),
     );
   const visibleContractRows = contractRows;
+
+  const publishedContractNumberKeys = new Set<string>();
+  for (const c of visibleContractRows) {
+    const k = normalizeContractNumberKey(c.contractNumber != null ? String(c.contractNumber) : null);
+    if (k) publishedContractNumberKeys.add(k);
+  }
+
+  const out = isClient
+    ? fromAi.filter((instr) => {
+        const cn = normalizeContractNumberKey(instr.contractNumber);
+        if (!cn) return false;
+        return publishedContractNumberKeys.has(cn);
+      })
+    : fromAi;
+
+  const seen = new Set(out.map(paymentInstructionDedupKey));
 
   for (const c of visibleContractRows) {
     try {
@@ -217,6 +249,7 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
           currency: null,
           paymentSetupId: null,
           contractId: c.id,
+          linkedContractPortfolioStatus: c.portfolioStatus ?? null,
         };
         const dedupKey = paymentInstructionDedupKey(legacyInstruction);
         if (seen.has(dedupKey)) continue;
