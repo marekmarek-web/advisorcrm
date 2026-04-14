@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, MessageSquare } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, MessageSquare, Briefcase } from "lucide-react";
 import { getContact, getContactAiProvenance, type ContactAiProvenanceResult } from "@/app/actions/contacts";
 import { getHouseholdForContact } from "@/app/actions/households";
 import { AiReviewProvenanceBadge } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
@@ -25,6 +25,7 @@ import { ContactNotesSection } from "./ContactNotesSection";
 import { ContactOverviewKpi } from "./ContactOverviewKpi";
 import { ContactLastNotePreview } from "./ContactLastNotePreview";
 import { ContactProductsPreview } from "./ContactProductsPreview";
+import { ContactOpportunitiesPreview } from "./ContactOpportunitiesPreview";
 import { ContactAiGenerationsBlock } from "./ContactAiGenerationsBlock";
 import { getLatestClientGenerations } from "@/app/actions/ai-generations";
 import { ClientCoverageWidget } from "@/app/components/contacts/ClientCoverageWidget";
@@ -174,6 +175,13 @@ function ContactTabBody({
               {household && <ContactHouseholdCard household={household} />}
             </aside>
           </div>
+          {canReadOpportunities && (
+            <ContactOpportunitiesPreview
+              contactId={contactId}
+              baseQueryNoTab={baseQueryNoTab}
+              canWrite={canWriteOpportunities}
+            />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <ContactOpenTasksPreview contactId={contactId} />
             <ContactAiGenerationsBlock contactId={contactId} initialGenerations={latestGenerations} />
@@ -545,6 +553,15 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
               >
                 <MessageSquare size={16} /> Zpráva
               </Link>
+              {canWriteOpportunities && (
+                <Link
+                  href={`/portal/contacts/${contactId}?tab=obchody&newOpportunity=1`}
+                  prefetch={false}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl text-sm font-black transition-colors w-full sm:w-auto min-h-[44px]"
+                >
+                  <Briefcase size={16} /> Nový obchod
+                </Link>
+              )}
               {contact.email && (
                 <div className="w-full sm:w-auto min-h-[44px] flex items-center">
                   <InviteToClientZoneButton contactId={contactId} verdict={accessVerdict} />

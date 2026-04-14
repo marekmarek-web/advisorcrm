@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Briefcase, ChevronRight, ExternalLink } from "lucide-react";
+import { Briefcase, ChevronRight } from "lucide-react";
 import { getContractsByContact } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
-import { AiReviewProvenanceBadge } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
-import { contractSourceKindLabel, resolveAiProvenanceKind } from "@/lib/portal/ai-review-provenance";
+import { ContractProvenanceLine } from "@/app/components/aidvisora/ContractProvenanceLine";
 import type { ContactTabId } from "./contact-detail-tabs";
 
 const PREVIEW_COUNT = 4;
@@ -76,9 +75,7 @@ export function ContactProductsPreview({
         ) : contracts.length === 0 ? (
           <p className="text-sm text-[color:var(--wp-text-secondary)]">Žádné smlouvy.</p>
         ) : (
-          contracts.map((c) => {
-            const aiProvenanceKind = resolveAiProvenanceKind(c.sourceKind, c.advisorConfirmedAt);
-            return (
+          contracts.map((c) => (
             <Link
               key={c.id}
               href={buildContactDetailHref(contactId, baseQueryNoTab, "smlouvy")}
@@ -96,30 +93,14 @@ export function ContactProductsPreview({
                   <p className="text-xs font-bold text-[color:var(--wp-text-secondary)] truncate">
                     {c.partnerName ?? "—"}
                   </p>
-                  <p className="text-[10px] text-[color:var(--wp-text-tertiary)] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {aiProvenanceKind ? (
-                      <AiReviewProvenanceBadge
-                        kind={aiProvenanceKind}
-                        reviewId={c.sourceContractReviewId}
-                        confirmedAt={c.advisorConfirmedAt}
-                      />
-                    ) : (
-                      <>
-                        <span>Zdroj: {contractSourceKindLabel(c.sourceKind)}</span>
-                        {c.sourceDocumentId ? (
-                          <a
-                            href={`/api/documents/${c.sourceDocumentId}/download`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-indigo-600 font-semibold inline-flex items-center gap-0.5"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Dokument <ExternalLink className="w-3 h-3" aria-hidden />
-                          </a>
-                        ) : null}
-                      </>
-                    )}
-                  </p>
+                  <div className="mt-1">
+                    <ContractProvenanceLine
+                      sourceKind={c.sourceKind}
+                      sourceDocumentId={c.sourceDocumentId}
+                      sourceContractReviewId={c.sourceContractReviewId}
+                      advisorConfirmedAt={c.advisorConfirmedAt}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 md:text-right">
@@ -129,8 +110,7 @@ export function ContactProductsPreview({
                 <ChevronRight size={20} className="text-[color:var(--wp-text-tertiary)] group-hover:text-indigo-600 transition-colors shrink-0" />
               </div>
             </Link>
-            );
-          })
+          ))
         )}
         <Link
           href={buildContactDetailHref(contactId, baseQueryNoTab, "smlouvy", { addContract: true })}
