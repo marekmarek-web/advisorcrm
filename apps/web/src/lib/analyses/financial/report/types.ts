@@ -1,4 +1,5 @@
 import type { FinancialAnalysisData } from '../types';
+import type { FaCanonicalInvestmentOverviewRow } from '../fa-canonical-investment-overview';
 
 export type ReportTheme = 'elegant' | 'modern';
 
@@ -19,6 +20,8 @@ export interface BuildPremiumReportOptions {
   theme?: ReportTheme;
   branding?: ReportBranding;
   includeCompany?: boolean;
+  /** Přehled investic z CRM — stejný kanonický model a FV jako portál. */
+  canonicalInvestmentOverview?: FaCanonicalInvestmentOverviewRow[];
 }
 
 export interface SectionCtx {
@@ -26,4 +29,5 @@ export interface SectionCtx {
   theme: ReportTheme;
   branding: ReportBranding;
   sectionCounter: { n: number };
+  canonicalInvestmentOverview?: FaCanonicalInvestmentOverviewRow[];
 }

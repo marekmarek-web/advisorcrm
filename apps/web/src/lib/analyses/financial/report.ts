@@ -9,6 +9,7 @@ import { CREDIT_WISH_BANKS, INSURANCE_LOGOS } from './constants';
 import { getFaFundDetailForReport, getFaFundLogoUrl } from './fund-library/fa-fund-bridge';
 import { safeMonthlySavingsCzk } from './company-risk-premium';
 import { buildPremiumReportHTML } from './report/index';
+import type { FaCanonicalInvestmentOverviewRow } from './fa-canonical-investment-overview';
 import {
   totalIncome,
   totalExpense,
@@ -1077,6 +1078,8 @@ export interface BuildReportHTMLOptions {
   linkedCompanyName?: string | null;
   branding?: PdfReportBranding;
   theme?: 'elegant' | 'modern';
+  /** Stejný přehled jako v UI shrnutí — kanonický read model + sdílený FV kalkulátor. */
+  canonicalInvestmentOverview?: FaCanonicalInvestmentOverviewRow[];
 }
 
 function provenanceSuffix(path: string, opts?: BuildReportHTMLOptions): string {
@@ -1210,6 +1213,7 @@ export function buildReportHTML(data: FinancialAnalysisData, options?: BuildRepo
       advisorEmail: options.branding.reportContactEmail?.trim() || undefined,
     } : undefined,
     includeCompany: data.includeCompany,
+    canonicalInvestmentOverview: options?.canonicalInvestmentOverview,
   });
 }
 

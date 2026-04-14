@@ -9,6 +9,7 @@ function navIcon(type: string): string {
     bilance: '<path d="M3 12V6M6 12V4M9 12V7M12 12V2"/>',
     cile: '<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/>',
     portfolio: '<path d="M2 14 C4 10,7 6,14 2"/><path d="M9 2h5v5"/>',
+    evidence: '<path d="M3 3h10v3H3zM3 8h10v2H3zM3 12h7v2H3z"/>',
     product: '<circle cx="8" cy="8" r="6"/><path d="M5 8l2 2 4-4"/>',
     projekce: '<polyline points="2,12 5,8 8,9 11,5 14,3"/><polyline points="11,3 14,3 14,6"/>',
     person: '<path d="M8 7a3 3 0 100-6 3 3 0 000 6z"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/>',
@@ -33,6 +34,14 @@ export function renderSidebar(ctx: SectionCtx): string {
     { id: 'cile', label: 'Finanční cíle', icon: 'cile', group: 'Strategie' },
     { id: 'portfolio', label: 'Portfolio', icon: 'portfolio' },
   ];
+
+  if ((ctx.canonicalInvestmentOverview?.length ?? 0) > 0) {
+    items.push({
+      id: 'evidence-investments',
+      label: 'Investice z evidence',
+      icon: 'evidence',
+    });
+  }
 
   const investments = (data.investments ?? []).filter(
     (inv: InvestmentEntry) => inv.amount > 0,

@@ -9,7 +9,12 @@ import { uploadDocument } from "@/app/actions/documents";
 import { setFinancialAnalysisLastExportedAt } from "@/app/actions/financial-analyses";
 import { getAdvisorReportBranding } from "@/app/actions/preferences";
 import clsx from "clsx";
-import { FileText, Printer, CloudUpload, StickyNote, Monitor } from "lucide-react";
+import { FileText, Printer, CloudUpload, StickyNote, Monitor, TrendingUp } from "lucide-react";
+import { getContractsByContact } from "@/app/actions/contracts";
+import {
+  buildFaCanonicalInvestmentOverviewRows,
+  type FaCanonicalInvestmentOverviewRow,
+} from "@/lib/analyses/financial/fa-canonical-investment-overview";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 import { embedLocalImages } from "@/lib/embedLocalImages";
 
@@ -55,6 +60,8 @@ export function StepSummary() {
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [crmInvestments, setCrmInvestments] = useState<FaCanonicalInvestmentOverviewRow[]>([]);
+  const [crmInvestmentsError, setCrmInvestmentsError] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<ReportTheme>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("aidvisora_report_theme") as ReportTheme) || "elegant";
@@ -94,10 +101,39 @@ export function StepSummary() {
     ? { provenance: (data as unknown as Record<string, unknown>)._provenance as Record<string, "linked" | "overridden">, linkedCompanyName: undefined as unknown as string | null }
     : undefined;
 
+  useEffect(() => {
+    const clientId = data.clientId;
+    if (!clientId) {
+      setCrmInvestments([]);
+      setCrmInvestmentsError(null);
+      return;
+    }
+    let cancelled = false;
+    getContractsByContact(clientId)
+      .then((rows) => {
+        if (cancelled) return;
+        setCrmInvestments(buildFaCanonicalInvestmentOverviewRows(rows));
+        setCrmInvestmentsError(null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCrmInvestments([]);
+        setCrmInvestmentsError("Nepodařilo se načíst investice z evidence smluv.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data.clientId]);
+
   const generateHTML = useCallback(async () => {
     const branding = await getAdvisorReportBranding().catch(() => FALLBACK_BRANDING);
-    return buildReportHTML(data, { ...reportOptions, branding, theme: selectedTheme });
-  }, [data, reportOptions, selectedTheme]);
+    return buildReportHTML(data, {
+      ...reportOptions,
+      branding,
+      theme: selectedTheme,
+      canonicalInvestmentOverview: crmInvestments.length > 0 ? crmInvestments : undefined,
+    });
+  }, [data, reportOptions, selectedTheme, crmInvestments]);
 
   const handleDownloadHTML = async () => {
     setExportError(null);
@@ -218,6 +254,74 @@ export function StepSummary() {
           <span className="text-xs text-[color:var(--wp-text-secondary)] uppercase font-bold tracking-wider block">Projekce portfolia (FV)</span>
           <div className="text-lg font-bold text-[color:var(--wp-text)] mt-1">{formatCzk(portfolioFv)}</div>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <h3 className="text-lg font-bold text-[color:var(--wp-text)] mb-2 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-indigo-600 shrink-0" />
+          Investice z evidence smluv
+        </h3>
+        <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4 max-w-3xl">
+          Stejné údaje jako v klientském portfoliu a v záložce Produkty — bez paralelního čtení z nestrukturovaných polí. Odhad budoucí hodnoty používá stejný model jako portál.
+        </p>
+        {!data.clientId ? (
+          <div className="rounded-xl border border-dashed border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-5 text-sm text-[color:var(--wp-text-secondary)]">
+            Propojte analýzu s klientem v úvodním kroku, aby se zde zobrazil přehled investičních a penzijních smluv z evidence.
+          </div>
+        ) : crmInvestmentsError ? (
+          <p className="text-sm text-red-600" role="alert">
+            {crmInvestmentsError}
+          </p>
+        ) : crmInvestments.length === 0 ? (
+          <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-5 text-sm text-[color:var(--wp-text-secondary)]">
+            U tohoto klienta zatím nejsou v evidenci investiční ani penzijní smlouvy ve sledovaných typech produktů.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] shadow-sm">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-[color:var(--wp-surface-card-border)] text-left text-xs uppercase tracking-wider text-[color:var(--wp-text-secondary)]">
+                  <th className="px-4 py-3 font-bold">Produkt</th>
+                  <th className="px-4 py-3 font-bold">Instituce</th>
+                  <th className="px-4 py-3 font-bold">Fond / strategie</th>
+                  <th className="px-4 py-3 font-bold">Platba</th>
+                  <th className="px-4 py-3 font-bold">Horizont</th>
+                  <th className="px-4 py-3 font-bold text-right">Odhad FV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crmInvestments.map((row) => (
+                  <tr key={row.contractId} className="border-b border-[color:var(--wp-surface-card-border)] last:border-0">
+                    <td className="px-4 py-3 align-top">
+                      <div className="font-semibold text-[color:var(--wp-text)]">{row.productTitle}</div>
+                      <div className="text-xs text-[color:var(--wp-text-secondary)] mt-0.5">{row.segmentLabel}</div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-[color:var(--wp-text-secondary)]">{row.institution ?? "—"}</td>
+                    <td className="px-4 py-3 align-top text-[color:var(--wp-text-secondary)]">{row.fundOrStrategy ?? "—"}</td>
+                    <td className="px-4 py-3 align-top text-[color:var(--wp-text)]">{row.contributionSummary}</td>
+                    <td className="px-4 py-3 align-top text-[color:var(--wp-text-secondary)]">{row.horizonLabel ?? "—"}</td>
+                    <td className="px-4 py-3 align-top text-right">
+                      {row.futureValueFormatted ? (
+                        <div>
+                          <div className="font-bold text-indigo-700 dark:text-indigo-300">{row.futureValueFormatted}</div>
+                          {row.futureValueNotes.length > 0 && (
+                            <ul className="mt-2 space-y-1 text-xs text-[color:var(--wp-text-secondary)] text-right list-none">
+                              {row.futureValueNotes.map((note, i) => (
+                                <li key={i}>{note}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[color:var(--wp-text-secondary)]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {(data.notes != null && String(data.notes).trim() !== "") && (
