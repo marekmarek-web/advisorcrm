@@ -68,7 +68,7 @@ import {
   portfolioContractStatusLabelCs,
   resolvePortalFundLogoPath,
 } from "@/lib/client-portfolio/portal-portfolio-display";
-import { computePortalInvestmentFutureValue } from "@/lib/fund-library/shared-future-value";
+import { computeSharedFutureValue, SHARED_FV_DISCLAIMER } from "@/lib/fund-library/shared-future-value";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
@@ -556,7 +556,7 @@ function PortfolioScreen({
   for (const c of contracts) {
     const p = canonicalById.get(c.id);
     if (!p || !isFvEligibleSegment(c.segment) || !p.fvReadiness.fvSourceType) continue;
-    const hit = computePortalInvestmentFutureValue({
+    const hit = computeSharedFutureValue({
       fvSourceType: p.fvReadiness.fvSourceType,
       resolvedFundId: p.fvReadiness.resolvedFundId,
       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
@@ -564,7 +564,7 @@ function PortfolioScreen({
       monthlyContribution: p.premiumMonthly,
       annualContribution: p.premiumAnnual,
     });
-    if (hit) {
+    if (hit.projectionState === "complete" && hit.projectedFutureValue != null) {
       anyFvShown = true;
       break;
     }
@@ -628,9 +628,9 @@ function PortfolioScreen({
                 p.segmentDetail?.kind === "investment" && p.segmentDetail.fundName
                   ? `Logo fondu ${p.segmentDetail.fundName}`
                   : "Logo instituce";
-              const fv =
+              const fvShared =
                 isFvEligibleSegment(contract.segment) && p.fvReadiness.fvSourceType
-                  ? computePortalInvestmentFutureValue({
+                  ? computeSharedFutureValue({
                       fvSourceType: p.fvReadiness.fvSourceType,
                       resolvedFundId: p.fvReadiness.resolvedFundId,
                       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
@@ -638,6 +638,16 @@ function PortfolioScreen({
                       monthlyContribution: p.premiumMonthly,
                       annualContribution: p.premiumAnnual,
                     })
+                  : null;
+              const fv =
+                fvShared?.projectionState === "complete" &&
+                fvShared.projectedFutureValue != null &&
+                fvShared.horizonYears != null
+                  ? {
+                      amount: fvShared.projectedFutureValue,
+                      horizonYears: fvShared.horizonYears,
+                      sourceExplanation: fvShared.sourceLabel,
+                    }
                   : null;
               const detailRows = canonicalPortfolioDetailRows(p);
               const visibleDoc =
@@ -736,9 +746,7 @@ function PortfolioScreen({
       })}
 
       {anyFvShown ? (
-        <p className="text-[10px] text-slate-400 leading-relaxed px-0.5">
-          U investičních produktů může být uveden orientační odhad — nejde o záruku výnosu.
-        </p>
+        <p className="text-[10px] text-slate-400 leading-relaxed px-0.5">{SHARED_FV_DISCLAIMER}</p>
       ) : null}
     </>
   );

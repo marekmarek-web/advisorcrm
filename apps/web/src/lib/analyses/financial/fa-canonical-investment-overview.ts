@@ -9,7 +9,10 @@ import {
   type CanonicalProduct,
   type RawContractInput,
 } from "@/lib/products/canonical-product-read";
-import { computePortalInvestmentFutureValue } from "@/lib/fund-library/shared-future-value";
+import {
+  computePortalInvestmentFutureValue,
+  SHARED_FV_DISCLAIMER,
+} from "@/lib/fund-library/shared-future-value";
 
 const FV_SEGMENTS = new Set(["INV", "DIP", "DPS"]);
 
@@ -29,8 +32,7 @@ export type FaCanonicalInvestmentOverviewRow = {
   futureValueNotes: string[];
 };
 
-const FV_NON_GUARANTEE_CS =
-  "Jedná se o orientační modelaci — není to záruka výnosu ani budoucí hodnoty.";
+const FV_NON_GUARANTEE_CS = SHARED_FV_DISCLAIMER;
 
 const EVIDENCE_SCOPE_CS =
   "Řádek vychází ze skutečné smlouvy v evidenci (zápis v CRM po schválení a publikaci).";

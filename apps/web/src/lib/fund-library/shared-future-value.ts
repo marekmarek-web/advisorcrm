@@ -2,12 +2,15 @@
  * Sdílený server-side odhad budoucí hodnoty (FV) u investičních produktů.
  * Vstupy výhradně z kanonických polí smlouvy (`resolvedFundId`, `resolvedFundCategory`, `fvSourceType`, platby, horizont).
  * Žádné parsování PDF ani názvů souborů — obecná produktová logika.
+ *
+ * Pořadí zdroje sazby: fondová knihovna → fallback podle kategorie → ruční sazba (analýza) → nedostupné.
  */
 
 import type { ResolvedFundCategory, FvSourceType } from "db";
 import { BASE_FUNDS } from "@/lib/analyses/financial/fund-library/base-funds";
 import type { BaseFund } from "@/lib/analyses/financial/fund-library/types";
 import { fundUsesBrandLogoPath } from "@/lib/analyses/financial/fund-library/fund-report-asset-resolver";
+import { displayNameForResolvedFundId } from "@/lib/fund-library/fund-resolution";
 
 const HEURISTIC_ANNUAL_RATE_PERCENT: Record<ResolvedFundCategory, number | null> = {
   equity: 8,
@@ -24,6 +27,34 @@ const HEURISTIC_ANNUAL_RATE_PERCENT: Record<ResolvedFundCategory, number | null>
 const fundByKey: ReadonlyMap<string, BaseFund> = new Map(
   BASE_FUNDS.filter((f) => f.isActive).map((f) => [f.baseFundKey, f]),
 );
+
+/** Jednotné zobrazení v UI — `heuristic-fallback` z DB mapujeme na `category-fallback`. */
+export type SharedFvSourceType = "fund-library" | "category-fallback" | "manual" | "unavailable";
+
+export type SharedFvProjectionState = "complete" | "partial" | "unavailable";
+
+export const SHARED_FV_DISCLAIMER =
+  "Orientační nezaručený výpočet na základě modelových předpokladů. Skutečný vývoj může být výrazně odlišný; nejedná se o záruku výnosu ani budoucí hodnoty.";
+
+export type SharedFvInputs = PortalFvInputs & {
+  /** Aktuální hodnota portfolia, pokud je v evidenci — nepoužívá se k doplnění chybějícího vstupu pro FV. */
+  currentValue?: number | null | undefined;
+};
+
+export type SharedFvOutput = {
+  /** Efektivní modelová sazba po případném posunu (analýza). Null, pokud sazbu nelze stanovit. */
+  expectedAnnualRatePercent: number | null;
+  sourceType: SharedFvSourceType;
+  /** Krátká česká vysvětlivka zdroje modelace (bez interních technických kódů). */
+  sourceLabel: string;
+  /** Efektivní měsíční příspěvek po přepočtu z ročního; u čistě jednorázové investice null. */
+  monthlyContribution: number | null;
+  currentValue: number | null | undefined;
+  horizonYears: number | null;
+  projectedFutureValue: number | null;
+  disclaimer: string;
+  projectionState: SharedFvProjectionState;
+};
 
 /**
  * Parsuje investiční horizont z běžných textových tvarů v CRM (např. „20 let“, „do roku 2045“).
@@ -93,6 +124,213 @@ function resolveHorizonYearsFromPortalInput(input: PortalFvInputs): number | nul
     if (y > 0 && y <= 80) return y;
   }
   return parseInvestmentHorizonYears(input.investmentHorizon ?? null);
+}
+
+function resolveSharedSourcePresentation(
+  fvSourceType: FvSourceType,
+  adjustedRatePercent: number | null,
+  resolvedFundId: string | null,
+  resolvedFundCategory: ResolvedFundCategory | null,
+): Pick<SharedFvOutput, "sourceType" | "sourceLabel" | "expectedAnnualRatePercent"> {
+  if (adjustedRatePercent == null) {
+    if (fvSourceType === "fund-library") {
+      return {
+        sourceType: "unavailable",
+        sourceLabel:
+          "U fondu v knihovně chybí platná modelová roční sazba pro výpočet — nelze stanovit orientační budoucí hodnotu.",
+        expectedAnnualRatePercent: null,
+      };
+    }
+    if (fvSourceType === "heuristic-fallback") {
+      return {
+        sourceType: "unavailable",
+        sourceLabel:
+          resolvedFundCategory === "unknown" || !resolvedFundCategory
+            ? "Nelze rozpoznat kategorii pro obecný model (odhad) — chybí platný fallback."
+            : "Pro vybranou kategorii nelze použít obecný model sazby.",
+        expectedAnnualRatePercent: null,
+      };
+    }
+    return {
+      sourceType: "unavailable",
+      sourceLabel: "Chybí platná modelová roční sazba pro ruční režim.",
+      expectedAnnualRatePercent: null,
+    };
+  }
+
+  if (fvSourceType === "fund-library") {
+    const fundName = displayNameForResolvedFundId(resolvedFundId);
+    return {
+      sourceType: "fund-library",
+      sourceLabel: fundName
+        ? `Odhad vychází z modelové roční sazby u fondu „${fundName}“ v evidenci produktů.`
+        : "Odhad vychází z modelové roční sazby uvedené u fondu v evidenci produktů.",
+      expectedAnnualRatePercent: adjustedRatePercent,
+    };
+  }
+  if (fvSourceType === "heuristic-fallback") {
+    return {
+      sourceType: "category-fallback",
+      sourceLabel: "Odhad vychází z obecné kategorie investice (zjednodušený model).",
+      expectedAnnualRatePercent: adjustedRatePercent,
+    };
+  }
+  return {
+    sourceType: "manual",
+    sourceLabel: "Odhad vychází z modelové roční sazby zadané v analýze (krok strategie).",
+    expectedAnnualRatePercent: adjustedRatePercent,
+  };
+}
+
+/**
+ * Jednotný výstup FV pro portál, detail klienta a finanční analýzu.
+ * Nehalucinuje chybějící horizont ani příspěvek — `projectedFutureValue` zůstává null a `projectionState` je partial / unavailable.
+ */
+export function computeSharedFutureValue(input: SharedFvInputs): SharedFvOutput {
+  const disclaimer = SHARED_FV_DISCLAIMER;
+  const currentValue = input.currentValue ?? null;
+
+  const fvSourceType = input.fvSourceType ?? null;
+  if (fvSourceType !== "fund-library" && fvSourceType !== "heuristic-fallback" && fvSourceType !== "manual") {
+    return {
+      expectedAnnualRatePercent: null,
+      sourceType: "unavailable",
+      sourceLabel:
+        "Nelze stanovit orientační sazbu — chybí platný zdroj (fondová knihovna, kategorie podle evidence, nebo ruční sazba).",
+      monthlyContribution: null,
+      currentValue,
+      horizonYears: null,
+      projectedFutureValue: null,
+      disclaimer,
+      projectionState: "unavailable",
+    };
+  }
+
+  const baseRate = resolveAnnualRatePercent(
+    fvSourceType,
+    input.resolvedFundId ?? null,
+    input.resolvedFundCategory ?? null,
+    input.manualAnnualRatePercent ?? null,
+  );
+  const adjustedRate =
+    baseRate != null && Number.isFinite(baseRate)
+      ? Math.max(0.01, baseRate + (input.annualRateAdjustmentPercentPoints ?? 0))
+      : null;
+
+  const presentation = resolveSharedSourcePresentation(
+    fvSourceType,
+    adjustedRate,
+    input.resolvedFundId ?? null,
+    input.resolvedFundCategory ?? null,
+  );
+
+  const horizonYears = resolveHorizonYearsFromPortalInput(input);
+
+  let monthly = input.monthlyContribution ?? null;
+  if (monthly == null || monthly <= 0) {
+    const annual = input.annualContribution ?? null;
+    if (annual != null && annual > 0) monthly = annual / 12;
+  }
+  const lump = input.lumpContribution ?? null;
+  const useLumpPath =
+    lump != null &&
+    lump > 0 &&
+    (monthly == null || monthly <= 0) &&
+    !(input.annualContribution != null && input.annualContribution > 0);
+
+  const effectiveMonthly = monthly != null && monthly > 0 ? monthly : null;
+
+  if (presentation.expectedAnnualRatePercent == null || presentation.sourceType === "unavailable") {
+    return {
+      expectedAnnualRatePercent: null,
+      sourceType: "unavailable",
+      sourceLabel: presentation.sourceLabel,
+      monthlyContribution: effectiveMonthly,
+      currentValue,
+      horizonYears,
+      projectedFutureValue: null,
+      disclaimer,
+      projectionState: "unavailable",
+    };
+  }
+
+  const rate = presentation.expectedAnnualRatePercent;
+
+  if (horizonYears == null) {
+    return {
+      expectedAnnualRatePercent: rate,
+      sourceType: presentation.sourceType,
+      sourceLabel: presentation.sourceLabel,
+      monthlyContribution: effectiveMonthly,
+      currentValue,
+      horizonYears: null,
+      projectedFutureValue: null,
+      disclaimer,
+      projectionState: "partial",
+    };
+  }
+
+  if (!useLumpPath && (effectiveMonthly == null || effectiveMonthly <= 0)) {
+    return {
+      expectedAnnualRatePercent: rate,
+      sourceType: presentation.sourceType,
+      sourceLabel: presentation.sourceLabel,
+      monthlyContribution: effectiveMonthly,
+      currentValue,
+      horizonYears,
+      projectedFutureValue: null,
+      disclaimer,
+      projectionState: "partial",
+    };
+  }
+
+  if (useLumpPath && (lump == null || lump <= 0)) {
+    return {
+      expectedAnnualRatePercent: rate,
+      sourceType: presentation.sourceType,
+      sourceLabel: presentation.sourceLabel,
+      monthlyContribution: null,
+      currentValue,
+      horizonYears,
+      projectedFutureValue: null,
+      disclaimer,
+      projectionState: "partial",
+    };
+  }
+
+  let fv: number | null;
+  if (useLumpPath) {
+    fv = futureValueOfLumpSum(lump!, horizonYears, rate);
+  } else {
+    const raw = futureValueOfMonthlyContributions(effectiveMonthly!, horizonYears, rate);
+    fv = raw == null ? null : Math.round(raw);
+  }
+
+  if (fv == null || !Number.isFinite(fv) || fv <= 0) {
+    return {
+      expectedAnnualRatePercent: rate,
+      sourceType: presentation.sourceType,
+      sourceLabel: presentation.sourceLabel,
+      monthlyContribution: effectiveMonthly,
+      currentValue,
+      horizonYears,
+      projectedFutureValue: null,
+      disclaimer,
+      projectionState: "partial",
+    };
+  }
+
+  return {
+    expectedAnnualRatePercent: rate,
+    sourceType: presentation.sourceType,
+    sourceLabel: presentation.sourceLabel,
+    monthlyContribution: effectiveMonthly,
+    currentValue,
+    horizonYears,
+    projectedFutureValue: fv,
+    disclaimer,
+    projectionState: "complete",
+  };
 }
 
 /** Budoucí hodnota jednorázového vkladu po N letech, nominální model (složené úročení). */
@@ -175,52 +413,15 @@ export type PortalFvResult = {
  * Vrací null, pokud chybí kterýkoliv vstup nutný k zodpovědnému odhadu.
  */
 export function computePortalInvestmentFutureValue(input: PortalFvInputs): PortalFvResult | null {
-  const { fvSourceType } = input;
-  if (
-    fvSourceType !== "fund-library" &&
-    fvSourceType !== "heuristic-fallback" &&
-    fvSourceType !== "manual"
-  ) {
+  const shared = computeSharedFutureValue(input);
+  if (shared.projectionState !== "complete" || shared.projectedFutureValue == null || shared.horizonYears == null) {
     return null;
   }
-
-  const horizonYears = resolveHorizonYearsFromPortalInput(input);
-  if (horizonYears == null) return null;
-
-  let monthly = input.monthlyContribution ?? null;
-  if (monthly == null || monthly <= 0) {
-    const annual = input.annualContribution ?? null;
-    if (annual != null && annual > 0) monthly = annual / 12;
-  }
-
-  const lump = input.lumpContribution ?? null;
-  const useLumpPath =
-    lump != null &&
-    lump > 0 &&
-    (monthly == null || monthly <= 0) &&
-    !(input.annualContribution != null && input.annualContribution > 0);
-
-  if (!useLumpPath && (monthly == null || monthly <= 0)) return null;
-
-  const rate = resolvePortalFvAnnualRatePercentAdjusted(input);
-  if (rate == null) return null;
-
-  let fv: number | null;
-  if (useLumpPath) {
-    fv = futureValueOfLumpSum(lump!, horizonYears, rate);
-  } else {
-    fv = futureValueOfMonthlyContributions(monthly!, horizonYears, rate);
-  }
-  if (fv == null || !Number.isFinite(fv) || fv <= 0) return null;
-
-  const sourceExplanation =
-    fvSourceType === "fund-library"
-      ? "Odhad vychází z modelové roční sazby uvedené u fondu v evidenci produktů."
-      : fvSourceType === "heuristic-fallback"
-        ? "Odhad vychází z obecné kategorie investice (zjednodušený model)."
-        : "Odhad vychází z modelové roční sazby zadané v analýze (krok strategie).";
-
-  return { amount: Math.round(fv), horizonYears, sourceExplanation };
+  return {
+    amount: shared.projectedFutureValue,
+    horizonYears: shared.horizonYears,
+    sourceExplanation: shared.sourceLabel,
+  };
 }
 
 /**

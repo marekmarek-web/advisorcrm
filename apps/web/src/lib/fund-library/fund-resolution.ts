@@ -83,6 +83,8 @@ const CATEGORY_HEURISTICS: Array<{
   category: ResolvedFundCategory;
 }> = [
   { patterns: /akci[eíoýáě]|equity|stock|msci|s&p|emerging/i, category: "equity" },
+  /** Obecná dynamická strategie — stejná modelová sazba jako akcie (8 % p.a.) v HEURISTIC mapě. */
+  { patterns: /dynamick(á|ý|é)?\s+strateg/i, category: "equity" },
   { patterns: /vyvážen|balanced|smíšen/i, category: "balanced" },
   { patterns: /konzervativn|conservative|opatrn/i, category: "conservative" },
   { patterns: /dluhopis|bond[sy]?|úrokový|interest/i, category: "bond" },

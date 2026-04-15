@@ -32,7 +32,7 @@ import {
   resolvePortalFundLogoPath,
 } from "@/lib/client-portfolio/portal-portfolio-display";
 import type { CanonicalProduct } from "@/lib/products/canonical-product-read";
-import { computePortalInvestmentFutureValue } from "@/lib/fund-library/shared-future-value";
+import { computeSharedFutureValue, SHARED_FV_DISCLAIMER } from "@/lib/fund-library/shared-future-value";
 
 type VisibleDocMap = Record<string, { name: string }>;
 
@@ -155,7 +155,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
   for (const c of contracts) {
     const p = canonicalById.get(c.id);
     if (!p || !isFvEligibleSegment(c.segment) || !p.fvReadiness.fvSourceType) continue;
-    const hit = computePortalInvestmentFutureValue({
+    const hit = computeSharedFutureValue({
       fvSourceType: p.fvReadiness.fvSourceType,
       resolvedFundId: p.fvReadiness.resolvedFundId,
       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
@@ -163,7 +163,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
       monthlyContribution: p.premiumMonthly,
       annualContribution: p.premiumAnnual,
     });
-    if (hit) {
+    if (hit.projectionState === "complete" && hit.projectedFutureValue != null) {
       anyFvShown = true;
       break;
     }
@@ -276,9 +276,9 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                       p.segmentDetail?.kind === "investment" && p.segmentDetail.fundName
                         ? `Logo fondu ${p.segmentDetail.fundName}`
                         : "Logo instituce";
-                    const fv =
+                    const fvShared =
                       isFvEligibleSegment(contract.segment) && p.fvReadiness.fvSourceType
-                        ? computePortalInvestmentFutureValue({
+                        ? computeSharedFutureValue({
                             fvSourceType: p.fvReadiness.fvSourceType,
                             resolvedFundId: p.fvReadiness.resolvedFundId,
                             resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
@@ -286,6 +286,16 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                             monthlyContribution: p.premiumMonthly,
                             annualContribution: p.premiumAnnual,
                           })
+                        : null;
+                    const fv =
+                      fvShared?.projectionState === "complete" &&
+                      fvShared.projectedFutureValue != null &&
+                      fvShared.horizonYears != null
+                        ? {
+                            amount: fvShared.projectedFutureValue,
+                            horizonYears: fvShared.horizonYears,
+                            sourceExplanation: fvShared.sourceLabel,
+                          }
                         : null;
                     const detailRows = canonicalPortfolioDetailRows(p);
 
@@ -368,9 +378,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                                 {fv.amount.toLocaleString("cs-CZ")} Kč
                               </p>
                               <p className="text-[11px] text-indigo-900/80 leading-snug">{fv.sourceExplanation}</p>
-                              <p className="text-[10px] text-indigo-800/90 leading-snug">
-                                Jedná se o orientační modelaci — není to záruka výnosu ani budoucí hodnoty.
-                              </p>
+                              <p className="text-[10px] text-indigo-800/90 leading-snug">{SHARED_FV_DISCLAIMER}</p>
                             </div>
                           ) : null}
 

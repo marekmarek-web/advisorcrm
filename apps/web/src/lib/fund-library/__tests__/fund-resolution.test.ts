@@ -45,6 +45,12 @@ describe("fund-resolution", () => {
       expect(result.fvSourceType).toBe("heuristic-fallback");
     });
 
+    it("classifies generic dynamic strategy as equity-rate fallback (8 % p.a.)", () => {
+      const result = resolveFund("Můj fond", null, "Dynamická strategie");
+      expect(result.resolvedFundCategory).toBe("equity");
+      expect(result.fvSourceType).toBe("heuristic-fallback");
+    });
+
     it("classifies conservative fund", () => {
       const result = resolveFund("Konzervativní fond pojistovny XY", null, null);
       expect(result.resolvedFundCategory).toBe("conservative");

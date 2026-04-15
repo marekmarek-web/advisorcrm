@@ -6,6 +6,8 @@ import {
   parseInvestmentHorizonYears,
   futureValueOfMonthlyContributions,
   computePortalInvestmentFutureValue,
+  computeSharedFutureValue,
+  SHARED_FV_DISCLAIMER,
 } from "../shared-future-value";
 
 describe("parseInvestmentHorizonYears", () => {
@@ -150,5 +152,139 @@ describe("computePortalInvestmentFutureValue", () => {
     });
     expect(r).not.toBeNull();
     expect(r!.amount).toBeGreaterThan(100_000);
+  });
+});
+
+describe("computeSharedFutureValue (shared output model)", () => {
+  it("includes standard disclaimer on every result", () => {
+    const a = computeSharedFutureValue({
+      fvSourceType: null,
+      resolvedFundId: null,
+      resolvedFundCategory: null,
+      investmentHorizon: null,
+      monthlyContribution: null,
+      annualContribution: null,
+    });
+    expect(a.disclaimer).toBe(SHARED_FV_DISCLAIMER);
+    expect(a.disclaimer).toMatch(/nezaručen|orientační/i);
+
+    const b = computeSharedFutureValue({
+      fvSourceType: "heuristic-fallback",
+      resolvedFundId: null,
+      resolvedFundCategory: "equity",
+      investmentHorizon: "10 let",
+      monthlyContribution: 1000,
+      annualContribution: null,
+    });
+    expect(b.disclaimer).toBe(SHARED_FV_DISCLAIMER);
+  });
+
+  it("maps heuristic-fallback to category-fallback sourceType when rate applies", () => {
+    const r = computeSharedFutureValue({
+      fvSourceType: "heuristic-fallback",
+      resolvedFundId: null,
+      resolvedFundCategory: "balanced",
+      investmentHorizon: "15 let",
+      monthlyContribution: 2000,
+      annualContribution: null,
+    });
+    expect(r.sourceType).toBe("category-fallback");
+    expect(r.expectedAnnualRatePercent).toBe(6);
+    expect(r.projectionState).toBe("complete");
+    expect(r.projectedFutureValue).not.toBeNull();
+  });
+
+  it("uses fund-library sourceType when resolved fund has planning rate", () => {
+    const r = computeSharedFutureValue({
+      fvSourceType: "fund-library",
+      resolvedFundId: "conseq_globalni_akciovy_ucastnicky",
+      resolvedFundCategory: null,
+      investmentHorizon: "10 let",
+      monthlyContribution: 1000,
+      annualContribution: null,
+    });
+    expect(r.sourceType).toBe("fund-library");
+    expect(r.projectionState).toBe("complete");
+  });
+
+  it("returns unavailable when fvSourceType is missing", () => {
+    const r = computeSharedFutureValue({
+      fvSourceType: null,
+      resolvedFundId: "conseq_globalni_akciovy_ucastnicky",
+      resolvedFundCategory: null,
+      investmentHorizon: "10 let",
+      monthlyContribution: 1000,
+      annualContribution: null,
+    });
+    expect(r.sourceType).toBe("unavailable");
+    expect(r.projectionState).toBe("unavailable");
+    expect(r.projectedFutureValue).toBeNull();
+  });
+
+  it("partial state: rate known but horizon missing — no fake FV", () => {
+    const r = computeSharedFutureValue({
+      fvSourceType: "heuristic-fallback",
+      resolvedFundId: null,
+      resolvedFundCategory: "equity",
+      investmentHorizon: null,
+      horizonYearsExplicit: null,
+      monthlyContribution: 2000,
+      annualContribution: null,
+    });
+    expect(r.projectionState).toBe("partial");
+    expect(r.projectedFutureValue).toBeNull();
+    expect(r.expectedAnnualRatePercent).toBe(8);
+    expect(r.horizonYears).toBeNull();
+  });
+
+  it("partial state: horizon known but contribution missing — no fake FV", () => {
+    const r = computeSharedFutureValue({
+      fvSourceType: "heuristic-fallback",
+      resolvedFundId: null,
+      resolvedFundCategory: "bond",
+      investmentHorizon: "8 let",
+      monthlyContribution: null,
+      annualContribution: null,
+      lumpContribution: null,
+    });
+    expect(r.projectionState).toBe("partial");
+    expect(r.projectedFutureValue).toBeNull();
+    expect(r.horizonYears).toBe(8);
+  });
+
+  it("passes through currentValue without using it as synthetic input", () => {
+    const r = computeSharedFutureValue({
+      fvSourceType: "heuristic-fallback",
+      resolvedFundId: null,
+      resolvedFundCategory: "equity",
+      investmentHorizon: "10 let",
+      monthlyContribution: 1000,
+      annualContribution: null,
+      currentValue: 500_000,
+    });
+    expect(r.currentValue).toBe(500_000);
+    expect(r.projectedFutureValue).not.toBeNull();
+  });
+
+  it("uses category fallback rates: conservative 4%, bond 6%", () => {
+    const cons = computeSharedFutureValue({
+      fvSourceType: "heuristic-fallback",
+      resolvedFundId: null,
+      resolvedFundCategory: "conservative",
+      investmentHorizon: "10 let",
+      monthlyContribution: 1000,
+      annualContribution: null,
+    });
+    expect(cons.expectedAnnualRatePercent).toBe(4);
+
+    const bond = computeSharedFutureValue({
+      fvSourceType: "heuristic-fallback",
+      resolvedFundId: null,
+      resolvedFundCategory: "bond",
+      investmentHorizon: "10 let",
+      monthlyContribution: 1000,
+      annualContribution: null,
+    });
+    expect(bond.expectedAnnualRatePercent).toBe(6);
   });
 });
