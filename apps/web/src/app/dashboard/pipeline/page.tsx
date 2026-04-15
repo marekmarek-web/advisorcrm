@@ -4,7 +4,13 @@ import { PipelineBoardDynamic } from "./PipelineBoardDynamic";
 
 export default async function PipelinePage() {
   const [stages, contactsList] = await Promise.all([getPipeline(), getContactsList()]);
-  const contacts = contactsList.map((c) => ({ id: c.id, firstName: c.firstName, lastName: c.lastName }));
+  const contacts = contactsList.map((c) => ({
+    id: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    email: c.email,
+    phone: c.phone,
+  }));
 
   return (
     <div className="space-y-6">

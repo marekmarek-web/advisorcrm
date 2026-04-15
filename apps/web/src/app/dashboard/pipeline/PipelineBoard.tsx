@@ -37,13 +37,20 @@ import {
   Save,
 } from "lucide-react";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { ContactSearchSelect } from "@/app/components/ui/ContactSearchSelect";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { useToast } from "@/app/components/Toast";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { useOptionalAiAssistantDrawer } from "@/app/portal/AiAssistantDrawerContext";
 import { PIPELINE_COLUMN_THEMES as COLUMN_THEMES } from "@/lib/pipeline/column-themes";
 
-type ContactOption = { id: string; firstName: string; lastName: string };
+export type ContactOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+};
 
 const CASE_TYPES = [
   { value: "hypotéka", label: "Hypotéka" },
@@ -484,13 +491,7 @@ function CreateForm({
       {!hideContactSelector && (
       <div>
         <label className={labelClass}>Klient / Kontakt</label>
-        <CustomDropdown
-          value={contactId}
-          onChange={setContactId}
-          options={[{ id: "", label: "— Bez přiřazení —" }, ...contacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
-          placeholder="— Bez přiřazení —"
-          icon={User}
-        />
+        <ContactSearchSelect value={contactId} onChange={setContactId} contacts={contacts} inputClass={inputClass} />
       </div>
       )}
       {hideContactSelector && contactDisplayName && (
@@ -592,13 +593,7 @@ function EditForm({
       </div>
       <div>
         <label className={labelClass}>Klient / Kontakt</label>
-        <CustomDropdown
-          value={contactId}
-          onChange={setContactId}
-          options={[{ id: "", label: "— Bez přiřazení —" }, ...contacts.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName}`.trim() }))]}
-          placeholder="— Bez přiřazení —"
-          icon={User}
-        />
+        <ContactSearchSelect value={contactId} onChange={setContactId} contacts={contacts} inputClass={inputClass} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>

@@ -8,9 +8,8 @@ import { getPipelineByContact } from "@/app/actions/pipeline";
 import type { StageWithOpportunities } from "@/app/actions/pipeline";
 import { PipelineBoardDynamic } from "@/app/dashboard/pipeline/PipelineBoardDynamic";
 import { PipelineBoardSkeleton } from "@/app/dashboard/pipeline/PipelineBoardSkeleton";
+import type { ContactOption } from "@/app/dashboard/pipeline/PipelineBoard";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
-
-type ContactOption = { id: string; firstName: string; lastName: string };
 
 const retryButtonClass =
   "inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] px-6 py-2.5 text-sm font-bold text-[color:var(--wp-text)] shadow-sm transition-all hover:bg-[color:var(--wp-surface-muted)] active:scale-[0.98]";

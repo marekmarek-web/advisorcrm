@@ -3,8 +3,7 @@
 import dynamic from "next/dynamic";
 import type { StageWithOpportunities } from "@/app/actions/pipeline";
 import { PipelineBoardSkeleton } from "./PipelineBoardSkeleton";
-
-type ContactOption = { id: string; firstName: string; lastName: string };
+import type { ContactOption } from "./PipelineBoard";
 
 export type PipelineBoardDynamicProps = {
   stages: StageWithOpportunities[];

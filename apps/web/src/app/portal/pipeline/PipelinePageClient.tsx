@@ -5,8 +5,7 @@ import { getPipeline } from "@/app/actions/pipeline";
 import type { StageWithOpportunities } from "@/app/actions/pipeline";
 import { queryKeys } from "@/lib/query-keys";
 import { PipelineBoardDynamic } from "@/app/dashboard/pipeline/PipelineBoardDynamic";
-
-type ContactOption = { id: string; firstName: string; lastName: string };
+import type { ContactOption } from "@/app/dashboard/pipeline/PipelineBoard";
 
 export function PipelinePageClient({
   initialStages,

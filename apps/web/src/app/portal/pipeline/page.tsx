@@ -12,7 +12,13 @@ export default async function PipelinePage() {
     stages = [];
     contactsList = [];
   }
-  const contacts = contactsList.map((c) => ({ id: c.id, firstName: c.firstName, lastName: c.lastName }));
+  const contacts = contactsList.map((c) => ({
+    id: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    email: c.email,
+    phone: c.phone,
+  }));
 
   const totalPotential = stages.reduce(
     (sum, s) => sum + s.opportunities.reduce((a, o) => a + Number(o.expectedValue || 0), 0),
