@@ -1287,19 +1287,35 @@ html.dark .wp-cal-past-hour-today {
   opacity: 0.55;
 }
 
-/* ── Portal calendar workspace: zploštění vnitřního řádku (mini panel + hlavní grid) bez úpravy PortalCalendarView ── */
-.wp-cal-container > .flex-1.flex.overflow-hidden.min-h-0 {
-  padding: 0.25rem !important;
+/* ── /portal/calendar route shell (page.tsx): jedna pracovní plocha, bez vnější „karty“ kolem celého view ── */
+.wp-cal-route-shell {
+  min-width: 0;
+}
+
+.wp-cal-route-shell > .flex.h-full.min-h-0.flex-col:first-child {
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+
+.wp-cal-route-shell .wp-cal-container {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+html.dark .wp-cal-route-shell .wp-cal-container {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Mini panel + hlavní grid: nulové vnější odsazení řádku pro max. šířku mřížky */
+.wp-cal-route-shell .wp-cal-container > .flex-1.flex.overflow-hidden.min-h-0 {
+  padding: 0 !important;
   gap: 0.5rem !important;
 }
-@media (min-width: 640px) {
-  .wp-cal-container > .flex-1.flex.overflow-hidden.min-h-0 {
-    padding: 0.375rem !important;
-  }
-}
 @media (min-width: 1024px) {
-  .wp-cal-container > .flex-1.flex.overflow-hidden.min-h-0 {
-    padding: 0.25rem !important;
+  .wp-cal-route-shell .wp-cal-container > .flex-1.flex.overflow-hidden.min-h-0 {
     gap: 0.375rem !important;
   }
 }

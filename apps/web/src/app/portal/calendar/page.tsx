@@ -12,5 +12,9 @@ const PortalCalendarView = dynamic(
 );
 
 export default function CalendarPage() {
-  return <PortalCalendarView />;
+  return (
+    <div className="wp-cal-route-shell flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <PortalCalendarView />
+    </div>
+  );
 }

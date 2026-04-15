@@ -219,7 +219,7 @@ function PortalShellInner({
     pathname === "/portal/contracts/review" ||
     pathname === "/portal/contracts/review/" ||
     /^\/portal\/contracts\/review\/[^/]+\/?$/.test(pathname);
-  /** Obchodní nástěnka — bez globálního top baru (search, +Nový, profil). */
+  /** Kalendář — vlastní workspace bez globálního top baru (search, +Nový, profil). */
   const isCalendarWorkspace =
     pathname === "/portal/calendar" || pathname.startsWith("/portal/calendar/");
   const hidePortalTopHeader = pathname === "/portal/pipeline" || isCalendarWorkspace;
@@ -290,7 +290,10 @@ function PortalShellInner({
           onMobileDrawerClose={closeMobileSidebarDrawer}
         />
         <div
-          className="relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col pb-[var(--safe-area-bottom)] max-md:min-h-0 md:my-5 md:mr-5"
+          className={clsx(
+            "relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col pb-[var(--safe-area-bottom)] max-md:min-h-0",
+            isCalendarWorkspace ? "md:my-0 md:mr-0" : "md:my-5 md:mr-5",
+          )}
           style={{ marginLeft: mainMarginPx, transition: "margin-left 200ms ease-in-out" }}
         >
           <div className="wp-portal-main-panel flex min-h-0 flex-1 flex-col">
@@ -408,7 +411,7 @@ function PortalShellInner({
                 ? "flex flex-col flex-1 min-h-0 overflow-hidden"
                 : hidePortalTopHeader
                   ? isCalendarWorkspace
-                    ? "flex flex-col flex-1 min-h-0 overflow-hidden px-0 pb-0 pt-0 md:px-1 md:pb-2 md:pt-1 lg:px-2 lg:pb-3 lg:pt-2"
+                    ? "flex flex-col flex-1 min-h-0 overflow-hidden p-0 m-0"
                     : "flex flex-col flex-1 min-h-0 overflow-hidden px-4 pb-5 pt-2 md:px-5 md:pb-6 lg:px-4 lg:pb-5 lg:pt-2"
                   : "px-4 pb-5 pt-4 md:px-5 md:pb-6 lg:px-4 lg:pb-5 lg:pt-3",
             )}>
