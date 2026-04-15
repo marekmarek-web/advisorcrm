@@ -119,12 +119,20 @@ const RAW_CODE_PATTERN = /\b[a-z][a-z0-9]*(?:_[a-z0-9]+){2,}\b/g;
 /** Odstraní interní pipeline názvy typů dokumentů z textu pro poradce (žádné `insurance_contract` v UI). */
 function scrubInternalPipelineLabelsFromAdvisorText(text: string): string {
   let t = text.replace(/\binsurance_contract\b/gi, "životní pojistná smlouva");
+  t = t.replace(/\binvestment_contract\b/gi, "investiční smlouva / rámcová smlouva");
+  t = t.replace(/\blife_insurance_investment_contract\b/gi, "investiční životní pojištění");
   t = t.replace(
     /\blife_insurance_contract\b/gi,
     getDocumentTypeLabel("life_insurance_contract") ?? "Životní pojištění",
   );
+  t = t.replace(/\binvestment_subscription_document\b/gi, "upisovací dokument k investici");
+  t = t.replace(/\binvestment_service_agreement\b/gi, "smlouva o investičních službách");
   t = t.replace(/\blife_insurance_final_contract\b/gi, "Finální životní pojistná smlouva");
   t = t.replace(/\bpolicyholder\b/gi, "pojistník");
+  t = t.replace(/\bcontractStartDate\b/gi, "datum začátku smlouvy");
+  t = t.replace(/\bpolicyStartDate\b/gi, "datum začátku smlouvy");
+  t = t.replace(/\bfundStrategy\b/gi, "investiční strategie");
+  t = t.replace(/\binvestmentStrategy\b/gi, "investiční strategie");
   return t;
 }
 

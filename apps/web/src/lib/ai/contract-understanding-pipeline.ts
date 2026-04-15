@@ -221,6 +221,11 @@ export type ContractPipelineOptions = {
    * Reduces cross-section contamination at the LLM reasoning level.
    */
   bundleSectionTexts?: import("@/lib/ai/combined-extraction").BundleSectionTexts | null;
+  /**
+   * Filled PDF AcroForm widget rows (from pdf.js). When present, a Czech truth block is
+   * prepended to extraction text and values are merged after LLM extraction.
+   */
+  pdfAcroFormFieldRows?: import("@/lib/documents/processing/pdf-acroform-extract").PdfFormFieldRow[] | null;
 };
 
 export async function runContractUnderstandingPipeline(

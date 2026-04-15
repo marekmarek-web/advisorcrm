@@ -39,6 +39,10 @@ import {
 } from "@/lib/ai/document-packet-segmentation";
 import type { StructuredSourceHint } from "@/lib/ai/contract-understanding-pipeline";
 import { buildPageMapFromStructuredData } from "@/lib/adobe/structured-data-parser";
+import {
+  extractPdfAcroFormFieldsFromUrl,
+  type PdfFormFieldRow,
+} from "@/lib/documents/processing/pdf-acroform-extract";
 import { applyCanonicalNormalizationToEnvelope } from "@/lib/ai/life-insurance-canonical-normalizer";
 import {
   orchestrateSubdocumentExtraction,
@@ -309,6 +313,16 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     }
   }
 
+  let pdfAcroFormFieldRows: PdfFormFieldRow[] | null = null;
+  if (mimeType === "application/pdf" && preprocessedUrl) {
+    try {
+      const rows = await extractPdfAcroFormFieldsFromUrl(preprocessedUrl);
+      pdfAcroFormFieldRows = rows.length > 0 ? rows : null;
+    } catch {
+      pdfAcroFormFieldRows = null;
+    }
+  }
+
   const pipelineResult = await runContractUnderstandingPipeline(preprocessedUrl, mimeType, {
     ruleBasedTextHint: adobePreprocessResult?.markdownContent ?? null,
     preprocessMeta,
@@ -316,6 +330,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     bundleHint,
     structuredSource,
     bundleSectionTexts,
+    pdfAcroFormFieldRows,
   });
   const pipelineDurationMs = Date.now() - pipelineStartedAt;
 

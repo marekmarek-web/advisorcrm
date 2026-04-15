@@ -30,6 +30,7 @@ import { selectSchemaForType } from "./document-schema-router";
 import { mapPrimaryToNormalized } from "./normalized-document-taxonomy";
 import { runVerificationPass } from "./document-verification";
 import { applyExtractedFieldAliasNormalizations } from "./extraction-field-alias-normalize";
+import { buildPdfFormFieldPromptBlock } from "./form-aware-extraction";
 import { buildFieldEvidenceSummaries } from "./field-source-priority";
 import { resolveSensitivityProfile } from "./document-sensitivity";
 import { inferDocumentRelationships } from "./document-relationships";
@@ -444,6 +445,12 @@ function finalizeContractPayload(params: {
     );
   }
 
+  const pdfRows = options?.pdfAcroFormFieldRows;
+  if (pdfRows?.length) {
+    data.debug ??= {};
+    data.debug["pdfAcroFormFields"] = pdfRows;
+  }
+
   applyExtractedFieldAliasNormalizations(data);
 
   if (isAiReviewPipelineDebug()) {
@@ -679,7 +686,16 @@ export async function runAiReviewV2Pipeline(
   // Structured source provides exact per-page text without markdown conversion artifacts.
   const structuredText = (options?.structuredSource?.fullText ?? "").trim();
   const useStructuredSource = structuredText.length > 0 && structuredText.length >= hint.length * 0.8;
-  const documentTextForExtraction = useStructuredSource ? structuredText : hint;
+  const baseDocumentText = useStructuredSource ? structuredText : hint;
+  const formRows = options?.pdfAcroFormFieldRows ?? [];
+  const formTruthBlock = buildPdfFormFieldPromptBlock(formRows);
+  const documentTextForExtraction = formTruthBlock.trim()
+    ? `${formTruthBlock}\n\n${baseDocumentText}`
+    : baseDocumentText;
+
+  if (formTruthBlock.trim()) {
+    trace.warnings = [...(trace.warnings ?? []), `pdf_acroform_truth:${formRows.length}_fields`];
+  }
 
   if (useStructuredSource) {
     trace.coreExtractionSource = "adobe_structured_pages";

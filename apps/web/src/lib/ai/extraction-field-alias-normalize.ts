@@ -11,6 +11,11 @@ import {
   sanitizeVariableSymbolForCanonical,
 } from "./payment-field-contract";
 import { applySemanticContractUnderstanding } from "./contract-semantic-understanding";
+import {
+  applyPdfFormFieldTruthToEnvelope,
+  stripLabelOnlyExtractionValues,
+} from "./form-aware-extraction";
+import type { PdfFormFieldRow } from "@/lib/documents/processing/pdf-acroform-extract";
 
 function valuePresent(cell: ExtractedField | undefined): boolean {
   if (!cell) return false;
@@ -1282,6 +1287,13 @@ export function applyExtractedFieldAliasNormalizations(envelope: DocumentReviewE
     if (descriptiveKey in ef && !(canonicalKey in ef)) {
       (ef as Record<string, unknown>)[canonicalKey] = (ef as Record<string, unknown>)[descriptiveKey];
     }
+  }
+
+  // Reject label tokens mistakenly stored as values; then apply PDF AcroForm truth (highest priority).
+  stripLabelOnlyExtractionValues(envelope);
+  const acroRows = envelope.debug?.["pdfAcroFormFields"];
+  if (Array.isArray(acroRows) && acroRows.length > 0) {
+    applyPdfFormFieldTruthToEnvelope(envelope, acroRows as PdfFormFieldRow[]);
   }
 
   const primary = envelope.documentClassification.primaryType;
