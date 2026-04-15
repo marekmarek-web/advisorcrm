@@ -1,13 +1,13 @@
 "use client";
 /* Fix the existing board in place. Do not delete, hide, simplify, or replace columns. Preserve the full schema and only repair layout, sizing, scrolling, status rendering, summaries, and notes. */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
 import { ColumnHeader } from "./ColumnHeader";
 import { Row } from "./Row";
 import { SelectionBar } from "./SelectionBar";
 import { SkeletonLine, SkeletonTableRow } from "@/app/components/Skeleton";
-import { getStatusLabels } from "@/app/lib/status-labels";
+import { getStatusLabels, getPotentialDealStatusIds, STATUS_LABELS_UPDATED_EVENT } from "@/app/lib/status-labels";
 import type { Column, ColumnType, Group, Item } from "./types";
 
 const STATUS_DONE_ID = "hotovo";
@@ -100,7 +100,14 @@ export function BoardTable({
     return () => document.removeEventListener("mousedown", h);
   }, [groupMenuOpenId]);
 
-  const statusLabels = getStatusLabels();
+  const [statusLabelsEpoch, setStatusLabelsEpoch] = useState(0);
+  useEffect(() => {
+    const h = () => setStatusLabelsEpoch((n) => n + 1);
+    window.addEventListener(STATUS_LABELS_UPDATED_EVENT, h);
+    return () => window.removeEventListener(STATUS_LABELS_UPDATED_EVENT, h);
+  }, []);
+  const statusLabels = useMemo(() => getStatusLabels(), [statusLabelsEpoch]);
+  const potentialDealStatusIds = useMemo(() => getPotentialDealStatusIds(statusLabels), [statusLabels]);
   const doneColor = statusLabels.find((s) => s.id === STATUS_DONE_ID)?.color ?? "#00c875";
   const inProgressColor = statusLabels.find((s) => s.id === STATUS_IN_PROGRESS_ID)?.color ?? "#fdab3d";
 
@@ -302,6 +309,7 @@ export function BoardTable({
                             groupId={group.id}
                             mondayStyle
                             actionColumnWidth={ACTION_COLUMN_WIDTH}
+                            potentialDealStatusIds={potentialDealStatusIds}
                           />
                         ))}
                         <tr>

@@ -43,7 +43,7 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
 
   const addLabel = () => {
     const id = `label_${Date.now()}`;
-    setLabels((prev) => [...prev, { id, label: "", color: "#10b981" }]);
+    setLabels((prev) => [...prev, { id, label: "", color: "#10b981", countsTowardPotential: false }]);
   };
 
   const moveLabel = (index: number, direction: "up" | "down") => {
@@ -87,6 +87,7 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
         id: label.id || `label_${idx}_${Date.now()}`,
         label: label.label.trim() || `Štítek ${idx + 1}`,
         color: label.color,
+        countsTowardPotential: label.countsTowardPotential === true,
       }));
       setStatusLabels(normalized);
     }
@@ -114,7 +115,9 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
           </div>
           <div>
             <h2 className="text-xl font-bold text-[color:var(--wp-text)]">Upravit štítky</h2>
-            <p className="text-[color:var(--wp-text-tertiary)] text-sm mt-1">Nastavte barvy, názvy a pořadí štítků.</p>
+            <p className="text-[color:var(--wp-text-tertiary)] text-sm mt-1">
+              Nastavte barvy, názvy a pořadí štítků. Zaškrtněte u štítků, které se mají započítat do počtu potenciálních obchodů v horní liště.
+            </p>
           </div>
         </div>
         <button
@@ -136,7 +139,7 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
             onDragEnter={(e) => handleDragEnter(e, i)}
             onDragEnd={handleDragEnd}
             onDragOver={(e) => e.preventDefault()}
-            className={`group flex items-center gap-4 p-4 bg-[color:var(--wp-surface-card)] border rounded-2xl transition-all duration-200 ${
+            className={`group flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap sm:gap-4 bg-[color:var(--wp-surface-card)] border rounded-2xl transition-all duration-200 ${
               draggedItemIndex === i
                 ? "border-indigo-400 shadow-md scale-[1.01] opacity-80 z-10 relative bg-indigo-50/50"
                 : "border-[color:var(--wp-surface-card-border)] hover:border-purple-200 hover:shadow-md"
@@ -166,8 +169,23 @@ export function EditLabelsEditor({ open, onClose }: EditLabelsEditorProps) {
               value={l.label}
               onChange={(e) => updateLabel(i, { label: e.target.value })}
               placeholder="Název štítku..."
-              className="flex-1 bg-transparent border-none focus:ring-0 text-[color:var(--wp-text-secondary)] font-medium placeholder:text-[color:var(--wp-text-tertiary)] placeholder:font-normal min-h-[44px]"
+              className="min-w-0 flex-1 bg-transparent border-none focus:ring-0 text-[color:var(--wp-text-secondary)] font-medium placeholder:text-[color:var(--wp-text-tertiary)] placeholder:font-normal min-h-[44px]"
             />
+
+            <label
+              className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-transparent px-1 py-1 hover:border-[color:var(--wp-surface-card-border)] sm:flex-col sm:items-center sm:gap-0.5 sm:px-2"
+              title="Započítat buňky s tímto štítkem do „Potenciálních obchodů“ v horní liště (interní přehled pro poradce)."
+            >
+              <input
+                type="checkbox"
+                checked={l.countsTowardPotential === true}
+                onChange={(e) => updateLabel(i, { countsTowardPotential: e.target.checked })}
+                className="h-4 w-4 shrink-0 rounded border-[color:var(--wp-surface-card-border)] text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-[11px] font-medium leading-tight text-[color:var(--wp-text-tertiary)] sm:text-center">
+                Potenciální obchod
+              </span>
+            </label>
 
             <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <button

@@ -29,13 +29,18 @@ import { listTeamMembersWithNames } from "@/app/actions/team-overview";
 import { BaseModal } from "@/app/components/BaseModal";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { PRODUCT_COLUMNS } from "@/app/board/seed-data";
+import {
+  getStatusLabels,
+  getPotentialDealStatusIds,
+  STATUS_LABELS_UPDATED_EVENT,
+  type StatusLabel,
+} from "@/app/lib/status-labels";
 import { Filter, ArrowUpDown } from "lucide-react";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 
 const GROUP_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#a25ddc", "#ff642e", "#ffcb00", "#037f4c", "#333333"];
 
 const STATUS_DONE = "hotovo";
-const ACTIVE_STATUSES = new Set(["rozděláno", "k-podpisu", "domluvit"]);
 
 function openCasesCount(items: Record<string, Item>): number {
   return Object.values(items).filter((item) =>
@@ -44,13 +49,6 @@ function openCasesCount(items: Record<string, Item>): number {
       return v && v !== STATUS_DONE && v !== "x" && v !== "zatím-ne";
     })
   ).length;
-}
-
-function itemHasPotential(item: Item): boolean {
-  return PRODUCT_COLUMNS.some((col) => {
-    const v = String(item.cells[col] ?? "");
-    return ACTIVE_STATUSES.has(v);
-  });
 }
 
 function getInitialPortalState() {
@@ -168,6 +166,15 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [personFilterOptions, setPersonFilterOptions] = useState<{ id: string; name: string }[]>([]);
+  const [statusLabelsSnapshot, setStatusLabelsSnapshot] = useState<StatusLabel[]>(() =>
+    typeof window !== "undefined" ? getStatusLabels() : []
+  );
+  useEffect(() => {
+    const sync = () => setStatusLabelsSnapshot(getStatusLabels());
+    sync();
+    window.addEventListener(STATUS_LABELS_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(STATUS_LABELS_UPDATED_EVENT, sync);
+  }, []);
   useEffect(() => {
     listTeamMembersWithNames("full")
       .then((rows) =>
@@ -251,11 +258,15 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
   }, [board.groups, board.items, searchQuery, filterStatus, sortColumnId, sortDir, assignedTo, groupBy, visibleColumns]);
 
   const kpiOpenCases = useMemo(() => openCasesCount(board.items), [board.items]);
+  const potentialDealStatusIds = useMemo(
+    () => getPotentialDealStatusIds(statusLabelsSnapshot),
+    [statusLabelsSnapshot]
+  );
   const kpiPotentialDeals = useMemo(() => {
     return Object.values(board.items).filter((item) =>
-      PRODUCT_COLUMNS.some((col) => ACTIVE_STATUSES.has(String(item.cells[col] ?? "")))
+      PRODUCT_COLUMNS.some((col) => potentialDealStatusIds.has(String(item.cells[col] ?? "")))
     ).length;
-  }, [board.items]);
+  }, [board.items, potentialDealStatusIds]);
 
   const onViewChange = useCallback(
     (viewId: string) => {

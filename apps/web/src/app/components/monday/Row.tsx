@@ -9,12 +9,12 @@ import { CellDate } from "./CellDate";
 import { CellProduct } from "./CellProduct";
 import type { Column } from "./types";
 import type { Item } from "./types";
+import { PRODUCT_COLUMNS } from "@/app/board/seed-data";
 
-const ACTIVE_STATUSES = new Set(["rozděláno", "k-podpisu", "domluvit"]);
-const PRODUCT_COL_IDS = new Set(["zp", "inv", "hypo", "uver", "dps", "pov_hav", "nem_dom", "odp"]);
+const EMPTY_POTENTIAL_DEAL_IDS = new Set<string>();
 
-function itemHasPotential(item: Item): boolean {
-  return Array.from(PRODUCT_COL_IDS).some((col) => ACTIVE_STATUSES.has(String(item.cells[col] ?? "")));
+function itemHasPotential(item: Item, potentialDealStatusIds: Set<string>): boolean {
+  return PRODUCT_COLUMNS.some((col) => potentialDealStatusIds.has(String(item.cells[col] ?? "")));
 }
 
 interface RowProps {
@@ -33,6 +33,8 @@ interface RowProps {
   mondayStyle?: boolean;
   /** Width of the action column (for explicit style when using table-fixed) */
   actionColumnWidth?: number;
+  /** Buňky s těmito id štítků zvýrazní řádek (shodně s KPI potenciálních obchodů). */
+  potentialDealStatusIds?: Set<string>;
 }
 
 function RowComponent({
@@ -48,8 +50,9 @@ function RowComponent({
   mondayStyle = false,
   onCellNoteChange,
   actionColumnWidth = 60,
+  potentialDealStatusIds = EMPTY_POTENTIAL_DEAL_IDS,
 }: RowProps) {
-  const hasPotential = itemHasPotential(item);
+  const hasPotential = itemHasPotential(item, potentialDealStatusIds);
 
   return (
     <tr
