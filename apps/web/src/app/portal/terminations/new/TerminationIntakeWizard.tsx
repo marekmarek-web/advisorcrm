@@ -1655,9 +1655,9 @@ export function TerminationIntakeWizard({
         </form>
       </div>
 
-      {/* Akční lišta pod průvodcem (ne fixed — scrolluje s portálem) */}
+      {/* Akční lišta — bez „wrapperu“, tlačítka přímo na pozadí plátna */}
       <div
-        className="mt-4 w-full border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(15,23,42,0.06)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)]/95 dark:shadow-black/20"
+        className="mt-6 w-full"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
       >
         <div className="mx-auto flex max-w-[1100px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
@@ -1669,13 +1669,13 @@ export function TerminationIntakeWizard({
               type="button"
               disabled={wizardStep === 0}
               onClick={() => setWizardStep((s) => Math.max(0, s - 1))}
-              className="h-11 min-h-[44px] shrink-0 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-raised)] dark:text-[color:var(--wp-text-secondary)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm"
+              className="h-11 min-h-[44px] shrink-0 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none"
             >
               Zpět
             </button>
             <Link
               href={cancelHref}
-              className="hidden h-11 min-h-[44px] shrink-0 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-raised)] dark:text-[color:var(--wp-text-secondary)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm sm:inline-flex"
+              className="hidden h-11 min-h-[44px] shrink-0 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none sm:inline-flex"
             >
               Zrušit
             </Link>
