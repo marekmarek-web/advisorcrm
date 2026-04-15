@@ -20,15 +20,10 @@ export default async function PipelinePage() {
     phone: c.phone,
   }));
 
-  const totalPotential = stages.reduce(
-    (sum, s) => sum + s.opportunities.reduce((a, o) => a + Number(o.expectedValue || 0), 0),
-    0
-  );
-
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-[color:var(--wp-main-scroll-bg)]">
       <div className="flex-1 min-h-0 flex flex-col pb-4 w-full min-w-0">
-        <PipelinePageClient initialStages={stages} contacts={contacts} totalPotential={totalPotential} />
+        <PipelinePageClient initialStages={stages} contacts={contacts} />
       </div>
     </div>
   );

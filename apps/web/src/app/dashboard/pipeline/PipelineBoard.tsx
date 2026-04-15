@@ -631,7 +631,6 @@ export function PipelineBoard({
   onMutationComplete,
   initialOpenCreateStageId,
   onOpenCreateConsumed,
-  totalPotential: totalPotentialProp,
   readOnly = false,
 }: {
   stages: StageWithOpportunities[];
@@ -644,8 +643,6 @@ export function PipelineBoard({
   initialOpenCreateStageId?: string | null;
   /** Called after opening create modal from initialOpenCreateStageId so parent can clear it. */
   onOpenCreateConsumed?: () => void;
-  /** Total pipeline potential (from server); when set, shows v2 local header. */
-  totalPotential?: number;
   /** Jen prohlížení — bez mutací (např. chybí opportunities:write). */
   readOnly?: boolean;
 }) {
@@ -829,10 +826,6 @@ export function PipelineBoard({
     return { ...stage, opportunities: opps };
   });
 
-  const totalPotential =
-    totalPotentialProp ?? filteredStages.reduce((sum, s) => sum + s.opportunities.reduce((a, o) => a + Number(o.expectedValue || 0), 0), 0);
-  const showLocalHeader = totalPotentialProp !== undefined;
-
   return (
     <>
       <style>{`
@@ -854,36 +847,30 @@ export function PipelineBoard({
       />
 
       <div className="font-pipeline-sans flex min-h-0 flex-1 flex-col text-[color:var(--wp-text)]">
-        {/* Local header (v2): obchodní nástěnka, metadata, filtry */}
-        {showLocalHeader && (
-          <div className="z-10 flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-t-xl border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-0 py-4 sm:gap-4">
-            <div>
-              <h1 className="font-pipeline-display mb-1 text-2xl font-black leading-tight text-[color:var(--wp-text)]">Obchodní nástěnka</h1>
-              <p className="text-xs font-medium text-[color:var(--wp-text-tertiary)] sm:text-sm">Přehled případů podle fáze jednání</p>
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-medium text-[color:var(--wp-text-secondary)]">
-                <span>Potenciál: <strong className="font-bold text-[color:var(--wp-text)]">{new Intl.NumberFormat("cs-CZ", { style: "currency", currency: "CZK", maximumFractionDigits: 0 }).format(totalPotential)}</strong></span>
-                <span className="hidden text-[color:var(--wp-border-strong)] sm:inline">|</span>
-                <span className="flex items-center gap-1 font-bold text-rose-500 dark:text-rose-400"><AlertCircle size={14} /> 2 úkoly k řešení</span>
-              </div>
-            </div>
-            <div className="relative">
+        {/* Toolbar: filtry, hledání, AI asistent, nový obchod */}
+        <div className="flex flex-shrink-0 flex-col items-stretch justify-between gap-3 py-2 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setFilterPopoverOpen((o) => !o)}
-                className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-2.5 text-sm font-bold text-[color:var(--wp-text-secondary)] shadow-sm transition-all hover:bg-[color:var(--wp-surface-raised)]"
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-2.5 text-sm font-bold text-[color:var(--wp-text-secondary)] shadow-sm transition-all hover:bg-[color:var(--wp-surface-raised)] sm:w-auto"
               >
                 <Filter size={16} /> Všechny filtry
               </button>
               {filterPopoverOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setFilterPopoverOpen(false)} aria-hidden />
-                  <div className="absolute right-0 top-full z-20 mt-2 min-w-[180px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 shadow-lg">
+                  <div className="absolute left-0 top-full z-20 mt-2 min-w-[180px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2 shadow-lg sm:left-auto sm:right-0">
                     <p className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Typ případu</p>
                     {[{ v: "all", l: "Vše" }, ...CASE_TYPES.map((t) => ({ v: t.value, l: t.label }))].map((f) => (
                       <button
                         key={f.v}
                         type="button"
-                        onClick={() => { setFilterType(f.v); setFilterPopoverOpen(false); }}
+                        onClick={() => {
+                          setFilterType(f.v);
+                          setFilterPopoverOpen(false);
+                        }}
                         className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-bold transition-all ${filterType === f.v ? "bg-[color:var(--wp-nav-active-bg)] text-[color:var(--wp-nav-active-text)]" : "text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"}`}
                       >
                         {f.l}
@@ -893,12 +880,7 @@ export function PipelineBoard({
                 </>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Toolbar: hledání, AI asistent, nový obchod */}
-        <div className="flex flex-shrink-0 flex-col items-stretch justify-between gap-3 py-3 sm:flex-row sm:items-center">
-          <div className="group relative w-full max-w-md">
+            <div className="group relative w-full max-w-md min-w-0 flex-1">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
               <Search size={16} className="text-[color:var(--wp-text-tertiary)] transition-colors group-focus-within:text-indigo-500" />
             </div>
@@ -909,6 +891,7 @@ export function PipelineBoard({
               onChange={(e) => setPipelineSearch(e.target.value)}
               className="min-h-[44px] w-full rounded-xl border border-[color:var(--wp-input-border)] bg-[color:var(--wp-input-bg)] py-2.5 pl-11 pr-4 text-sm font-bold text-[color:var(--wp-input-text)] outline-none transition-all placeholder:font-medium placeholder:text-[color:var(--wp-text-tertiary)] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25"
             />
+          </div>
           </div>
           <div className="flex flex-shrink-0 items-center gap-3">
             <button

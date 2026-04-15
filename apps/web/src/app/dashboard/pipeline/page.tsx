@@ -13,13 +13,7 @@ export default async function PipelinePage() {
   }));
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold" style={{ color: "var(--brand-dark)" }}>
-        Obchodní nástěnka
-      </h1>
-      <p className="text-[color:var(--wp-text-muted)]">
-        Případy (hypo / invest / pojist) – přesuňte do jiné fáze obchodu.
-      </p>
+    <div className="flex min-h-0 flex-1 flex-col">
       <PipelineBoardDynamic stages={stages} contacts={contacts} />
     </div>
   );
