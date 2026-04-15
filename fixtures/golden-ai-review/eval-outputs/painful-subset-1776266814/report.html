@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="cs"><head><meta charset="utf-8"/><title>AI Review batch lab</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:24px;}
+.green{background:#e8f5e9;}
+.yellow{background:#fff9c4;}
+.red{background:#ffebee;}
+table{border-collapse:collapse;width:100%;}
+td,th{border:1px solid #ccc;padding:6px 8px;font-size:13px;}
+h1{font-size:20px;}
+</style></head><body>
+<h1>AI Review batch lab</h1>
+<p>2026-04-15T15:29:53.662Z · 14 souborů · GREEN 1 · YELLOW 12 · RED 1</p>
+<h2>Severity summary</h2>
+<table><thead><tr><th>Category</th><th>ok</th><th>warn</th><th>fail</th></tr></thead><tbody><tr><td>structured_form_extraction</td><td>0</td><td>13</td><td>1</td></tr>
+<tr><td>segment_mapping</td><td>10</td><td>3</td><td>1</td></tr>
+<tr><td>finality</td><td>13</td><td>0</td><td>1</td></tr>
+<tr><td>client_matching</td><td>13</td><td>0</td><td>1</td></tr>
+<tr><td>crm_write_through</td><td>0</td><td>5</td><td>9</td></tr>
+<tr><td>ocr</td><td>13</td><td>0</td><td>1</td></tr>
+<tr><td>ui_humanization</td><td>14</td><td>0</td><td>0</td></tr></tbody></table>
+<h2>Top 20 worst</h2><ol><li><strong>RED</strong> IŽP - Generali.pdf — 1000<br/><small>PIPELINE_FAILED; structured_extraction; Extrakce ze dokumentu selhala.</small></li><li><strong>YELLOW</strong> Plachý KB DPS.pdf — 385<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li><li><strong>YELLOW</strong> AMUNDI DIP.pdf — 375<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li><li><strong>YELLOW</strong> smlouva o poskytnutí hypotečního úvěru - návrh.pdf — 375<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li><li><strong>YELLOW</strong> Smlouva DPS.pdf — 370<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li><li><strong>YELLOW</strong> SMLOUVA O POSKYTOVÁNÍ SLUŽEB.pdf — 355<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li><li><strong>YELLOW</strong> Investiční smlouva Codya.pdf — 350<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li><li><strong>YELLOW</strong> Patroch Amundi.pdf — 350<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li><li><strong>YELLOW</strong> Pojištění odpovědnosti v zaměstnání.pdf — 290<br/><small></small></li><li><strong>YELLOW</strong> ČPP DOMEX+.pdf — 270<br/><small></small></li><li><strong>YELLOW</strong> INVESTIKA PLACHÝ.pdf — 265<br/><small></small></li><li><strong>YELLOW</strong> Komisionářská smlouva scan.pdf — 240<br/><small></small></li><li><strong>YELLOW</strong> Čučka konsolidace.pdf — 230<br/><small></small></li><li><strong>GREEN</strong> SMLOUVA O ÚVĚRU.pdf — 170<br/><small>contract_number_required: Číslo smlouvy musí být vyplněno pro dokumenty životního cyklu: smlouva, návrh, potvrzení.; policyholder_name_required: Jméno pojistníka / klienta / účastníka musí být vyplněno.; partner_name_required: Název partnera (pojišťovna, banka, fond) musí být vyplněn.</small></li></ol>
+<h2>All files</h2>
+<table><thead><tr><th>File</th><th>Traffic</th><th>Primary</th><th>Match</th><th>Publish</th><th>Error</th></tr></thead><tbody><tr class="yellow"><td>AMUNDI DIP.pdf</td><td>YELLOW</td><td>investment_subscription_document</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>INVESTIKA PLACHÝ.pdf</td><td>YELLOW</td><td>bank_statement</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>Investiční smlouva Codya.pdf</td><td>YELLOW</td><td>investment_service_agreement</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="red"><td>IŽP - Generali.pdf</td><td>RED</td><td>—</td><td>—</td><td>ne</td><td>Extrakce ze dokumentu selhala.</td></tr>
+<tr class="yellow"><td>Komisionářská smlouva scan.pdf</td><td>YELLOW</td><td>consent_or_declaration</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>Patroch Amundi.pdf</td><td>YELLOW</td><td>investment_service_agreement</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>Plachý KB DPS.pdf</td><td>YELLOW</td><td>pension_contract</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>Pojištění odpovědnosti v zaměstnání.pdf</td><td>YELLOW</td><td>liability_insurance_offer</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>SMLOUVA O POSKYTOVÁNÍ SLUŽEB.pdf</td><td>YELLOW</td><td>investment_service_agreement</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="green"><td>SMLOUVA O ÚVĚRU.pdf</td><td>GREEN</td><td>consumer_loan_contract</td><td>skipped_no_tenant_id</td><td>ano</td><td></td></tr>
+<tr class="yellow"><td>Smlouva DPS.pdf</td><td>YELLOW</td><td>pension_contract</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>smlouva o poskytnutí hypotečního úvěru - návrh.pdf</td><td>YELLOW</td><td>mortgage_document</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>ČPP DOMEX+.pdf</td><td>YELLOW</td><td>precontract_information</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr>
+<tr class="yellow"><td>Čučka konsolidace.pdf</td><td>YELLOW</td><td>generic_financial_document</td><td>skipped_no_tenant_id</td><td>ne</td><td></td></tr></tbody></table>
+</body></html>

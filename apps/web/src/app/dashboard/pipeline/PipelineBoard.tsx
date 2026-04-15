@@ -855,7 +855,7 @@ export function PipelineBoard({
 
       <div className="font-pipeline-sans flex min-h-0 flex-1 flex-col text-[color:var(--wp-text)]">
         {showLocalHeader && (
-          <div className="z-10 flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-t-xl border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-0 py-4 sm:gap-4">
+          <div className="z-10 flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[color:var(--wp-surface-card-border)] bg-transparent px-0 py-4 sm:gap-4">
             <div>
               <h1 className="font-pipeline-display mb-1 text-2xl font-black leading-tight text-[color:var(--wp-text)]">Obchodní nástěnka</h1>
               <p className="text-xs font-medium text-[color:var(--wp-text-tertiary)] sm:text-sm">Přehled případů podle fáze jednání</p>

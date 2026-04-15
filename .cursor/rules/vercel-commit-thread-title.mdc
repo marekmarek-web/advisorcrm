@@ -7,7 +7,7 @@ alwaysApply: true
 
 Vercel u deploymentů typicky zobrazuje **první řádek git commit zprávy** (subject) jako popis buildu. Aby šlo nasazení snadno spárovat s konverzací:
 
-1. **Když agent dělá `git commit` po práci v Cursoru**, nastav **první řádek** (`subject`) commit message **přesně na název aktuálního chat vlákna** (thread title), jak ho uživatel vidí v postranním panelu konverzací — např. `AI asistent - UX`.
+1. **Při `git commit` z práce v Cursoru** (až když uživatel o commit **výslovně požádá**), nastav **první řádek** (`subject`) commit message **přesně na název aktuálního chat vlákna** (thread title), jak ho uživatel vidí v postranním panelu konverzací — např. `AI asistent - UX`.
 2. **Další řádky** commit message (body) mohou obsahovat běžný popis změn, důvody, odkazy na soubory — jako doposud.
 3. Pokud název vlákna **není k dispozici** (např. anonymní session), použij srozumitelný subject v češtině jako první řádek a pokračuj body jako obvykle.
 

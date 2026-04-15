@@ -1,16 +1,9 @@
 ---
-description: Always push to origin after commits; keep the remote in sync—do not leave completed work unpushed unless the user opts out.
+description: Agent neprovádí automaticky git commit ani push; zápis do repozitáře jen na výslovnou žádost uživatele.
 alwaysApply: true
 ---
 
-# Git: vždy commit → push
+# Git: žádný automatický commit z agenta
 
-V repu **Aidvisora** platí:
-
-1. **První řádek commit message** = **název aktuálního vlákna chatu v Cursoru** (stejný text jako záhlaví konverzace). Totéž jako úvodní věta u Vercel deploy / shrnutí odvozeného od commitu.
-2. **Každá logická změna** → hned `git add`, **`git commit`**, **`git push`**; nehromadit víc změn bez commitu až na konec úkolu (pokud uživatel neřekne jinak).
-3. **Po každém úspěšném lokálním `git commit`** hned spusť **`git push`** na `origin` a aktuální větev. Pokud remote předběhl lokál, nejdřív `git pull --rebase` (nebo dohodnutý merge), pak znovu push.
-4. **Vše pushuj** v kontextu dokončené práce: neukončuj úkol tak, že zůstanou jen lokální commity, které uživatel musí pushovat sám — kromě případu, kdy uživatel výslovně řekl push přeskočit nebo pracuje offline.
-5. Commity, které agent vytvoří z Cursoru, chovej stejně jako lokální: **vždy po commitu ověřit push** (hook může push udělat sám; pokud ne, pushni ručně).
-
-Repo může používat **`.githooks/post-commit`** (`core.hooksPath`); i tak po commitu z agenta zajisti, že změny jsou na `origin`, aby se chování shodovalo.
+1. **Bez výslovné žádosti uživatele** neprováděj `git commit`, `git push` ani „uzavírací“ `git add` / hromadné stageování jen proto, že úkol skončil.
+2. Když uživatel **požádá o commit** (a případně o push), nastav **první řádek** zprávy podle `vercel-commit-thread-title.mdc` a push proveď jen pokud o něj také požádal.

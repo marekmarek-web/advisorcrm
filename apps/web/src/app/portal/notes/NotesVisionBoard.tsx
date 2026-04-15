@@ -60,10 +60,12 @@ const NOTE_ID_UUID_RE =
 const DOMAINS = [
   { value: "hypo", label: "Hypotéka" },
   { value: "investice", label: "Investice" },
-  { value: "pojisteni", label: "Pojištění" },
+  { value: "zivotni-pojisteni", label: "Životní pojištění" },
+  { value: "majetkove-pojisteni", label: "Majetkové pojištění" },
   { value: "dps", label: "Penzijní spoření" },
   { value: "uvery", label: "Úvěry" },
   { value: "komplex", label: "Komplexní plán" },
+  { value: "jine", label: "Jiné" },
 ];
 
 /** x,y jsou 0–1 relativně k rozměrům plátna (stejné jako v DB). */
@@ -84,10 +86,18 @@ function getProductDesign(type: string) {
         glow: "shadow-emerald-500/30",
       };
     case "pojisteni":
+    case "zivotni-pojisteni":
+    case "majetkove-pojisteni":
       return {
         icon: <Shield size={14} />,
         color: "text-rose-600 bg-rose-100 border-rose-200",
         glow: "shadow-rose-500/30",
+      };
+    case "jine":
+      return {
+        icon: <AlignLeft size={14} />,
+        color: "text-violet-700 bg-violet-100 border-violet-200",
+        glow: "shadow-violet-500/30",
       };
     case "dps":
       return {

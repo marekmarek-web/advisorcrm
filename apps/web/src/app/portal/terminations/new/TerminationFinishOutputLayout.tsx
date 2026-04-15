@@ -50,10 +50,10 @@ export function TerminationFinishOutputLayout({
   return (
     <div className="rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:shadow-black/25">
       {/* Header */}
-      <div className="border-b border-slate-100 px-4 py-4 dark:border-[color:var(--wp-surface-card-border)] sm:px-6">
+      <div className="border-b border-slate-100 px-5 py-4 dark:border-[color:var(--wp-surface-card-border)] sm:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <div className="text-lg font-semibold text-slate-950 dark:text-[color:var(--wp-text)]">Dokončit výstup</div>
+            <div className="text-lg font-bold text-slate-950 dark:text-[color:var(--wp-text)]">Dokončit výstup</div>
             <div className="mt-1 text-sm text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
               Upravte text výpovědi v editoru. Tlačítkem &bdquo;Dokončit žádost&ldquo; uložíte žádost; &bdquo;Exportovat PDF&ldquo; vytiskne dokument.
             </div>
@@ -65,7 +65,7 @@ export function TerminationFinishOutputLayout({
       </div>
 
       {/* Grid: left info + right letter preview */}
-      <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid gap-6 p-5 sm:p-8 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
         {/* Left column */}
         <div className="space-y-4">
           <div className="rounded-2xl bg-slate-50 p-4 dark:bg-[color:var(--wp-surface-muted)]">

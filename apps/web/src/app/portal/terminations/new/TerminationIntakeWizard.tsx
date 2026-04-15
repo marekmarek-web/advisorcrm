@@ -865,9 +865,9 @@ export function TerminationIntakeWizard({
 
   const cancelHref = contactId ? `/portal/contacts/${contactId}` : "/portal/today";
 
-  // Stepper — mobil: horizontální scroll, kompaktní popisky; desktop: mřížka
+  // Stepper — mobil: horizontální scroll, kompaktní popisky; desktop: mřížka s plnými popisky
   const stepper = (
-    <div className="flex items-center gap-2 overflow-x-auto scroll-px-4 pb-2 no-scrollbar snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:items-stretch sm:gap-3 sm:overflow-visible sm:pb-0 sm:snap-none">
+    <div className="flex items-center gap-2 overflow-x-auto scroll-px-4 pb-2 no-scrollbar snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:items-stretch sm:gap-4 sm:overflow-visible sm:pb-0 sm:snap-none">
       {WIZARD_STEPS.map((step, index) => {
         const active = index === wizardStep;
         const done = index < wizardStep;
@@ -884,9 +884,9 @@ export function TerminationIntakeWizard({
               setWizardStep(index);
             }}
             className={cx(
-              "flex min-h-[44px] shrink-0 snap-center items-center gap-2 rounded-xl border px-3 py-2 text-left transition sm:min-w-0 sm:gap-3 sm:rounded-[20px] sm:px-4 sm:py-3",
+              "flex min-h-[44px] shrink-0 snap-center items-center gap-2 rounded-xl border px-3 py-2 text-left transition sm:min-w-0 sm:gap-3 sm:rounded-2xl sm:px-5 sm:py-4",
               active &&
-                "border-indigo-200 bg-white shadow-sm ring-2 ring-indigo-50/60 dark:border-indigo-400/50 dark:bg-[color:var(--wp-surface-card)] dark:ring-indigo-500/25 sm:shadow-md sm:ring-4 sm:ring-indigo-500/15",
+                "border-indigo-200 bg-white shadow-sm ring-2 ring-indigo-50/60 dark:border-indigo-400/50 dark:bg-[color:var(--wp-surface-card)] dark:ring-indigo-500/25 sm:shadow-md sm:ring-4 sm:ring-indigo-500/20",
               done && "border-emerald-100 bg-emerald-50/50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/35 dark:text-emerald-300",
               !active &&
                 !done &&
@@ -895,7 +895,7 @@ export function TerminationIntakeWizard({
           >
             <div
               className={cx(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black transition-colors sm:h-8 sm:w-8 sm:text-xs",
+                "flex shrink-0 items-center justify-center rounded-full text-[10px] font-black transition-colors h-7 w-7 sm:h-9 sm:w-9 sm:text-sm",
                 active && "bg-indigo-600 text-white shadow-sm",
                 done && "bg-emerald-500 text-white",
                 !active && !done && "bg-slate-100 text-slate-400 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)]",
@@ -903,17 +903,28 @@ export function TerminationIntakeWizard({
             >
               {done ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} /> : index + 1}
             </div>
-            <span
-              className={cx(
-                "whitespace-nowrap text-[11px] font-bold uppercase tracking-widest sm:text-sm sm:normal-case sm:tracking-normal",
-                active && "text-indigo-900 dark:text-indigo-200 sm:font-bold",
-                done && "text-emerald-800 dark:text-emerald-300",
-                !active && !done && "text-slate-500 dark:text-[color:var(--wp-text-secondary)]",
-              )}
-            >
-              <span className="sm:hidden">{step.stepperShort}</span>
-              <span className="hidden sm:inline">{step.title}</span>
-            </span>
+            <div className="min-w-0">
+              <span
+                className={cx(
+                  "block whitespace-nowrap text-[11px] font-bold uppercase tracking-widest sm:text-sm sm:normal-case sm:tracking-normal sm:font-bold",
+                  active && "text-indigo-900 dark:text-indigo-200",
+                  done && "text-emerald-800 dark:text-emerald-300",
+                  !active && !done && "text-slate-500 dark:text-[color:var(--wp-text-secondary)]",
+                )}
+              >
+                <span className="sm:hidden">{step.stepperShort}</span>
+                <span className="hidden sm:inline">{step.title}</span>
+              </span>
+              {active ? (
+                <span className="hidden sm:block text-xs font-medium text-slate-400 dark:text-[color:var(--wp-text-muted)] mt-0.5">
+                  Aktuální krok
+                </span>
+              ) : done ? (
+                <span className="hidden sm:block text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  Dokončeno
+                </span>
+              ) : null}
+            </div>
           </button>
         );
       })}
@@ -954,27 +965,35 @@ export function TerminationIntakeWizard({
         </Link>
       </header>
 
-      <div className="mx-auto w-full max-w-[1100px] space-y-4 px-4 pb-4 pt-4 sm:space-y-6 sm:px-8 md:pb-6 md:pt-10 lg:px-10">
+      <div className="mx-auto w-full max-w-[1440px] space-y-4 px-4 pb-4 pt-4 sm:space-y-6 sm:px-6 md:pb-6 md:pt-8 lg:px-10 xl:px-14">
         {/* Hlavička — desktop */}
-        <div className="hidden flex-col gap-6 md:flex md:flex-row md:items-start md:justify-between">
+        <div className="hidden flex-col gap-4 md:flex md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-[color:var(--wp-text)] md:text-4xl">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-[color:var(--wp-text)] lg:text-3xl">
               Výpověď smlouvy
             </h1>
-            <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
+            <p className="mt-1.5 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
               Vyberte klienta, instituci a typ ukončení. V posledním kroku zkontrolujte náhled dopisu před dokončením.
             </p>
           </div>
-          <div
-            className={cx(
-              "inline-flex h-fit shrink-0 items-center gap-2 self-start rounded-xl border px-4 py-2.5 text-xs font-bold uppercase tracking-widest shadow-sm",
-              isComplete
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/50 dark:bg-emerald-950/55 dark:text-emerald-200"
-                : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/45 dark:bg-amber-950/50 dark:text-amber-200",
-            )}
-          >
-            {isComplete ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            {isComplete ? "Připraveno k dokončení" : "Doplňte chybějící údaje"}
+          <div className="flex shrink-0 items-center gap-3">
+            <Link
+              href={cancelHref}
+              className="hidden h-9 shrink-0 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm md:inline-flex"
+            >
+              Zrušit
+            </Link>
+            <div
+              className={cx(
+                "inline-flex h-fit shrink-0 items-center gap-2 self-start rounded-xl border px-4 py-2.5 text-xs font-bold uppercase tracking-widest shadow-sm",
+                isComplete
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/50 dark:bg-emerald-950/55 dark:text-emerald-200"
+                  : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/45 dark:bg-amber-950/50 dark:text-amber-200",
+              )}
+            >
+              {isComplete ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+              {isComplete ? "Připraveno k dokončení" : "Doplňte chybějící údaje"}
+            </div>
           </div>
         </div>
 
@@ -1088,7 +1107,7 @@ export function TerminationIntakeWizard({
           className="space-y-6"
         >
           {/* Hlavní formulářový panel */}
-          <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] sm:p-8">
+          <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] sm:p-8 lg:p-10">
             {wizardStep === 0 ? (
               <div className="space-y-6">
                 {/* Source karty — mobil: horizontální snap (dle mocku); desktop: mřížka */}
@@ -1181,7 +1200,7 @@ export function TerminationIntakeWizard({
                   </button>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
                   <SearchCombobox
                     variant="termination"
                     label="Instituce"
@@ -1325,7 +1344,7 @@ export function TerminationIntakeWizard({
                   </p>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-2">
                   <div>
                     <label className={TERMINATION_LABEL_CLASS}>Segment</label>
                     <select
@@ -1660,7 +1679,7 @@ export function TerminationIntakeWizard({
         className="mt-6 w-full"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
       >
-        <div className="mx-auto flex max-w-[1100px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10 xl:px-14">
           <div className="flex items-center gap-2 overflow-x-auto">
             <span className="inline-flex max-w-[40%] shrink-0 truncate rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-300 sm:max-w-none sm:px-2.5 sm:text-[10px]">
               {sourceFooterLabel}
@@ -1673,12 +1692,6 @@ export function TerminationIntakeWizard({
             >
               Zpět
             </button>
-            <Link
-              href={cancelHref}
-              className="hidden h-11 min-h-[44px] shrink-0 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none sm:inline-flex"
-            >
-              Zrušit
-            </Link>
           </div>
           <div className="flex items-center justify-end gap-3 overflow-x-auto">
             <button

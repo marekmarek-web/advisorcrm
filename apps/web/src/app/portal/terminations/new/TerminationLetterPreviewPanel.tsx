@@ -227,7 +227,7 @@ export function TerminationLetterPreviewPanel({
     }
 
     return (
-      <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)] dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none">
+      <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)] dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none sm:p-7">
         {officialForm ? (
           <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-700 shadow-sm dark:border-slate-300 dark:bg-white dark:text-slate-900">
             <p className="text-base font-bold text-slate-950">{officialForm.title}</p>
@@ -255,7 +255,7 @@ export function TerminationLetterPreviewPanel({
               }}
               spellCheck={false}
               placeholder="Načítám nebo doplňte text výpovědi…"
-              className="min-h-[min(520px,70vh)] w-full resize-y rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-900 whitespace-pre-wrap outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-slate-300 dark:bg-white dark:text-slate-900 dark:focus:ring-violet-300/40"
+              className="min-h-[min(640px,72vh)] w-full resize-y rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-900 whitespace-pre-wrap outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-slate-300 dark:bg-white dark:text-slate-900 dark:focus:ring-violet-300/40"
             />
           </>
         )}

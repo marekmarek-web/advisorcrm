@@ -9,13 +9,17 @@ import { ContractPendingFieldsGuard } from "./ContractPendingFieldsGuard";
 import { ContractProvenanceLine } from "@/app/components/aidvisora/ContractProvenanceLine";
 import { ZpRatingBadge } from "@/app/components/aidvisora/ZpRatingBadge";
 import { advisorPrimaryAmountPresentation } from "./advisor-product-overview-format";
+import { AdvisorProductFvBlock } from "./advisor-product-fv-block";
 import {
   canonicalPortfolioDetailRows,
   resolvePortalFundLogoPath,
+  isFvEligibleSegment,
 } from "@/lib/client-portfolio/portal-portfolio-display";
+import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import {
   Building2,
   Briefcase,
+  Calendar,
   Car,
   ChevronDown,
   ChevronRight,
@@ -111,6 +115,81 @@ function initialsFromPartner(product: CanonicalProduct): string {
     .toUpperCase();
 }
 
+function segmentIconColors(segment: string): string {
+  switch (segment) {
+    case "INV":
+    case "DIP":
+      return "bg-emerald-100 text-emerald-700";
+    case "DPS":
+      return "bg-indigo-100 text-indigo-700";
+    case "ZP":
+      return "bg-purple-100 text-purple-700";
+    case "MAJ":
+    case "ODP":
+      return "bg-blue-100 text-blue-700";
+    case "AUTO_PR":
+    case "AUTO_HAV":
+      return "bg-slate-100 text-slate-700";
+    case "HYPO":
+    case "UVER":
+      return "bg-rose-100 text-rose-700";
+    default:
+      return "bg-indigo-100 text-indigo-700";
+  }
+}
+
+function segmentBadgeColors(segment: string): string {
+  switch (segment) {
+    case "INV":
+    case "DIP":
+      return "bg-emerald-50 text-emerald-800 border border-emerald-200/60";
+    case "DPS":
+      return "bg-indigo-50 text-indigo-800 border border-indigo-200/60";
+    case "ZP":
+      return "bg-purple-50 text-purple-800 border border-purple-200/60";
+    case "MAJ":
+    case "ODP":
+      return "bg-blue-50 text-blue-800 border border-blue-200/60";
+    case "AUTO_PR":
+    case "AUTO_HAV":
+      return "bg-slate-50 text-slate-700 border border-slate-200/60";
+    case "HYPO":
+    case "UVER":
+      return "bg-rose-50 text-rose-800 border border-rose-200/60";
+    default:
+      return "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]";
+  }
+}
+
+function segmentKpiBg(segment: string): string {
+  switch (segment) {
+    case "INV":
+    case "DIP":
+      return "bg-emerald-50/40 border border-emerald-100/60";
+    case "DPS":
+      return "bg-indigo-50/40 border border-indigo-100/60";
+    case "ZP":
+      return "bg-purple-50/40 border border-purple-100/60";
+    case "MAJ":
+    case "ODP":
+      return "bg-blue-50/40 border border-blue-100/60";
+    case "HYPO":
+    case "UVER":
+      return "bg-rose-50/40 border border-rose-100/60";
+    default:
+      return "bg-[color:var(--wp-surface-muted)]/60 border border-[color:var(--wp-border-muted)]";
+  }
+}
+
+function portfolioStatusLabelCs(status: string): string {
+  const m: Record<string, string> = {
+    ended: "Ukončené",
+    pending_review: "Čeká na kontrolu",
+    draft: "Koncept",
+  };
+  return m[status] ?? status;
+}
+
 export type CanonicalProductAdvisorOverviewCardProps = {
   contactId: string;
   contract: ContractRow;
@@ -151,29 +230,38 @@ export function CanonicalProductAdvisorOverviewCard({
   const prop = d?.kind === "property" ? d : null;
   const loan = d?.kind === "loan" ? d : null;
 
+  const lifeStartDisplay = life?.startDate ? (formatDisplayDateCs(life.startDate) || life.startDate) : null;
+  const lifeEndDisplay = life?.endDate ? (formatDisplayDateCs(life.endDate) || life.endDate) : null;
+
   return (
-    <article className="rounded-[var(--wp-radius-lg)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] p-4 shadow-sm flex flex-col gap-3">
-      <div className="flex flex-wrap items-start gap-3">
+    <article className="rounded-[var(--wp-radius-lg)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] shadow-sm flex flex-col gap-0 overflow-hidden">
+      {/* ── Card header: logo + identity ── */}
+      <div className="flex flex-wrap items-start gap-3 px-4 pt-4 pb-3">
         {logoPath ? (
           <div className="size-11 rounded-xl bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-border)] flex items-center justify-center shrink-0 overflow-hidden">
             <Image src={logoPath} alt={logoAlt} width={44} height={44} className="object-contain p-1" />
           </div>
         ) : (
           <div
-            className="size-11 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-black shrink-0"
+            className={`size-11 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${segmentIconColors(contract.segment)}`}
             aria-hidden
           >
             {initialsFromPartner(product)}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <span className="inline-flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center rounded-md bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] text-[10px] font-bold uppercase tracking-wide px-2 py-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+            <span className={`inline-flex items-center gap-1 rounded-md text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 ${segmentBadgeColors(contract.segment)}`}>
+              <LeadIcon className="size-3 shrink-0" aria-hidden />
               {product.segmentLabel}
             </span>
-            <LeadIcon className="size-4 text-[color:var(--wp-text-muted)] shrink-0" aria-hidden />
-          </span>
-          <h3 className="font-bold text-[color:var(--wp-text)] leading-tight mt-1 line-clamp-2">
+            {contract.portfolioStatus && contract.portfolioStatus !== "active" ? (
+              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200/60">
+                {portfolioStatusLabelCs(contract.portfolioStatus)}
+              </span>
+            ) : null}
+          </div>
+          <h3 className="font-bold text-[color:var(--wp-text)] leading-tight line-clamp-2 text-base">
             {contract.productName?.trim() || product.productName?.trim() || "Produkt neuveden"}
           </h3>
           <p className="text-sm text-[color:var(--wp-text-muted)] flex items-center gap-1.5 mt-0.5">
@@ -190,57 +278,91 @@ export function CanonicalProductAdvisorOverviewCard({
         </div>
       </div>
 
-      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        <div>
-          <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">{primary.label}</dt>
-          <dd className="font-bold text-[color:var(--wp-text)] tabular-nums">{primary.value}</dd>
+      {/* ── Primary KPI row ── */}
+      <div className={`mx-4 mb-3 rounded-[var(--wp-radius)] px-3 py-2.5 ${segmentKpiBg(contract.segment)}`}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">{primary.label}</p>
+            <p className="font-bold text-[color:var(--wp-text)] tabular-nums">{primary.value}</p>
+          </div>
+          {contract.contractNumber ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Číslo smlouvy</p>
+              <p className="font-mono tabular-nums text-sm">{contract.contractNumber}</p>
+            </div>
+          ) : null}
+          {/* Life insurance: počátek + konec */}
+          {life && lifeStartDisplay ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)] flex items-center gap-1">
+                <Calendar className="size-3" aria-hidden />
+                Počátek
+              </p>
+              <p className="text-sm font-semibold text-[color:var(--wp-text)]">{lifeStartDisplay}</p>
+            </div>
+          ) : null}
+          {life && lifeEndDisplay ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)] flex items-center gap-1">
+                <Calendar className="size-3" aria-hidden />
+                {life.endDate === product.anniversaryDate ? "Výročí / konec" : "Konec pojistné doby"}
+              </p>
+              <p className="text-sm font-semibold text-[color:var(--wp-text)]">{lifeEndDisplay}</p>
+            </div>
+          ) : null}
+          {/* Investment: příspěvek + horizont */}
+          {inv?.monthlyContribution != null && inv.monthlyContribution > 0 ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Příspěvek / měsíc</p>
+              <p className="font-bold text-emerald-700 tabular-nums">{inv.monthlyContribution.toLocaleString("cs-CZ")} Kč</p>
+            </div>
+          ) : null}
+          {(inv?.investmentHorizon ?? product.fvReadiness.investmentHorizon) ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Horizont</p>
+              <p className="text-sm font-semibold text-[color:var(--wp-text)]">{inv?.investmentHorizon ?? product.fvReadiness.investmentHorizon}</p>
+            </div>
+          ) : null}
+          {/* Pension: příspěvek */}
+          {pen?.participantContribution ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Příspěvek účastníka</p>
+              <p className="font-bold text-[color:var(--wp-text)] tabular-nums">{pen.participantContribution}</p>
+            </div>
+          ) : null}
+          {pen?.employerContribution ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Zaměstnavatel</p>
+              <p className="text-sm font-semibold text-emerald-700">{pen.employerContribution}</p>
+            </div>
+          ) : null}
+          {/* Vehicle: SPZ */}
+          {veh?.vehicleRegistration ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">SPZ / vozidlo</p>
+              <p className="text-sm font-semibold text-[color:var(--wp-text)]">{veh.vehicleRegistration}</p>
+            </div>
+          ) : null}
+          {/* Property: address */}
+          {prop?.propertyAddress ? (
+            <div className="col-span-2">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Adresa / předmět</p>
+              <p className="text-sm font-semibold text-[color:var(--wp-text)]">{prop.propertyAddress}</p>
+            </div>
+          ) : null}
         </div>
-        {contract.contractNumber ? (
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Číslo smlouvy</dt>
-            <dd className="font-mono tabular-nums">{contract.contractNumber}</dd>
-          </div>
-        ) : null}
-        {life?.paymentAccountDisplay ? (
-          <div className="sm:col-span-2">
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Účet</dt>
-            <dd className="font-mono text-xs break-all">{life.paymentAccountDisplay}</dd>
-          </div>
-        ) : null}
-        {life?.paymentFrequencyLabel ? (
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Frekvence</dt>
-            <dd>{life.paymentFrequencyLabel}</dd>
-          </div>
-        ) : null}
-        {life?.paymentVariableSymbol ? (
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Variabilní symbol</dt>
-            <dd className="font-mono tabular-nums">{life.paymentVariableSymbol}</dd>
-          </div>
-        ) : null}
-        {life?.extraPaymentAccountDisplay ? (
-          <div className="sm:col-span-2">
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Další účet</dt>
-            <dd className="font-mono text-xs break-all">{life.extraPaymentAccountDisplay}</dd>
-          </div>
-        ) : null}
-        {veh?.vehicleRegistration ? (
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">SPZ / vozidlo</dt>
-            <dd>{veh.vehicleRegistration}</dd>
-          </div>
-        ) : null}
-        {prop?.propertyAddress ? (
-          <div className="sm:col-span-2">
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Adresa / předmět</dt>
-            <dd>{prop.propertyAddress}</dd>
-          </div>
-        ) : null}
-      </dl>
+      </div>
 
+      {/* ── FV block for investment-eligible segments ── */}
+      {isFvEligibleSegment(contract.segment) ? (
+        <div className="mx-4 mb-3">
+          <AdvisorProductFvBlock product={product} />
+        </div>
+      ) : null}
+
+      {/* ── Life insurance: investment component ── */}
       {life && (life.investmentStrategy || life.investmentPremiumLabel) ? (
-        <div className="rounded-[var(--wp-radius)] border border-emerald-200/80 bg-emerald-50/50 px-3 py-2 text-sm">
+        <div className="mx-4 mb-3 rounded-[var(--wp-radius)] border border-emerald-200/80 bg-emerald-50/50 px-3 py-2 text-sm">
           <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-900 mb-1">Investiční složka</p>
           {life.investmentStrategy ? (
             <p className="text-emerald-950">
@@ -257,28 +379,50 @@ export function CanonicalProductAdvisorOverviewCard({
         </div>
       ) : null}
 
-      <div className="text-[11px] text-[color:var(--wp-text-muted)] flex flex-wrap gap-x-2 gap-y-1">
-        <span>
-          {contract.visibleToClient === false ? "Skryto v klientské zóně" : "V klientské zóně"}
-          {contract.portfolioStatus && contract.portfolioStatus !== "active" ? ` · ${contract.portfolioStatus}` : ""}
-        </span>
-        <ContractProvenanceLine
-          sourceKind={contract.sourceKind}
-          sourceDocumentId={contract.sourceDocumentId}
-          sourceContractReviewId={contract.sourceContractReviewId}
-          advisorConfirmedAt={contract.advisorConfirmedAt}
-        />
-      </div>
+      {/* ── Secondary payment details (collapsible) ── */}
+      {life && (life.paymentAccountDisplay || life.paymentFrequencyLabel || life.paymentVariableSymbol) ? (
+        <div className="px-4 mb-3">
+          <AccordionRow title="Platební údaje" icon={CreditCard}>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {life.paymentFrequencyLabel ? (
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Frekvence</dt>
+                  <dd>{life.paymentFrequencyLabel}</dd>
+                </div>
+              ) : null}
+              {life.paymentVariableSymbol ? (
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Variabilní symbol</dt>
+                  <dd className="font-mono tabular-nums">{life.paymentVariableSymbol}</dd>
+                </div>
+              ) : null}
+              {life.paymentAccountDisplay ? (
+                <div className="sm:col-span-2">
+                  <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Účet</dt>
+                  <dd className="font-mono text-xs break-all">{life.paymentAccountDisplay}</dd>
+                </div>
+              ) : null}
+              {life.extraPaymentAccountDisplay ? (
+                <div className="sm:col-span-2">
+                  <dt className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--wp-text-muted)]">Další účet</dt>
+                  <dd className="font-mono text-xs break-all">{life.extraPaymentAccountDisplay}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </AccordionRow>
+        </div>
+      ) : null}
 
-      <div className="space-y-2">
+      {/* ── Segment-specific accordions ── */}
+      <div className="px-4 pb-3 space-y-2">
         {inv ? (
           <AccordionRow title="Investice / DIP — parametry" icon={TrendingUp} defaultOpen>
             <ul className="space-y-1.5 text-sm">
               {inv.fundName ? (
                 <li>
                   <span className="text-[color:var(--wp-text-muted)]">Fond / třída: </span>
-                  {inv.fundName}
-                  {inv.fundAllocation ? ` (${inv.fundAllocation})` : ""}
+                  <span className="font-semibold">{inv.fundName}</span>
+                  {inv.fundAllocation ? <span className="text-[color:var(--wp-text-muted)]"> ({inv.fundAllocation})</span> : null}
                 </li>
               ) : null}
               {inv.investmentStrategy ? (
@@ -328,19 +472,19 @@ export function CanonicalProductAdvisorOverviewCard({
               {pen.participantContribution ? (
                 <li>
                   <span className="text-[color:var(--wp-text-muted)]">Účastník: </span>
-                  {pen.participantContribution}
+                  <span className="font-semibold">{pen.participantContribution}</span>
                 </li>
               ) : null}
               {pen.employerContribution ? (
                 <li>
                   <span className="text-[color:var(--wp-text-muted)]">Zaměstnavatel: </span>
-                  {pen.employerContribution}
+                  <span className="text-emerald-700 font-semibold">{pen.employerContribution}</span>
                 </li>
               ) : null}
               {pen.stateContributionEstimate ? (
                 <li>
                   <span className="text-[color:var(--wp-text-muted)]">Státní příspěvek (odhad): </span>
-                  {pen.stateContributionEstimate}
+                  <span className="text-indigo-700 font-semibold">{pen.stateContributionEstimate}</span>
                 </li>
               ) : null}
               {pen.investmentStrategy ? (
@@ -372,10 +516,12 @@ export function CanonicalProductAdvisorOverviewCard({
             <ul className="space-y-2">
               {life.risks.map((r, i) => (
                 <li key={`${r.label}-${i}`} className="rounded-md bg-[color:var(--wp-surface-muted)] px-2 py-1.5">
-                  <span className="font-medium">{r.label}</span>
-                  {r.amount ? <span className="text-[color:var(--wp-text-muted)]"> · {r.amount}</span> : null}
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium">{r.label}</span>
+                    {r.amount ? <span className="font-bold text-purple-700 text-sm shrink-0">{r.amount}</span> : null}
+                  </div>
                   {r.coverageEnd ? (
-                    <span className="block text-xs text-[color:var(--wp-text-muted)]">Do {r.coverageEnd}</span>
+                    <span className="block text-xs text-[color:var(--wp-text-muted)] mt-0.5">Do {r.coverageEnd}</span>
                   ) : null}
                   {r.monthlyRiskPremium ? (
                     <span className="block text-xs text-[color:var(--wp-text-muted)]">Měsíční rizikové: {r.monthlyRiskPremium}</span>
@@ -390,15 +536,18 @@ export function CanonicalProductAdvisorOverviewCard({
           <AccordionRow title="Životní pojištění — osoby" icon={User}>
             <ul className="space-y-2">
               {life.persons.map((p, i) => (
-                <li key={`${p.name ?? ""}-${i}`} className="rounded-md bg-[color:var(--wp-surface-muted)] px-2 py-1.5">
-                  <span className="font-medium">{p.name ?? "—"}</span>
-                  <span className="text-[color:var(--wp-text-muted)]"> · {personRoleLabelCs(p.role)}</span>
-                  {p.birthDate ? (
-                    <span className="block text-xs text-[color:var(--wp-text-muted)]">Nar.: {p.birthDate}</span>
-                  ) : null}
-                  {p.personalId ? (
-                    <span className="block text-xs text-[color:var(--wp-text-muted)]">RČ: {p.personalId}</span>
-                  ) : null}
+                <li key={`${p.name ?? ""}-${i}`} className="rounded-md bg-[color:var(--wp-surface-muted)] px-2 py-1.5 flex items-start gap-2">
+                  <User className="size-3.5 text-purple-500 shrink-0 mt-0.5" aria-hidden />
+                  <div className="min-w-0">
+                    <span className="font-medium">{p.name ?? "—"}</span>
+                    <span className="text-[color:var(--wp-text-muted)]"> · {personRoleLabelCs(p.role)}</span>
+                    {p.birthDate ? (
+                      <span className="block text-xs text-[color:var(--wp-text-muted)]">Nar.: {p.birthDate}</span>
+                    ) : null}
+                    {p.personalId ? (
+                      <span className="block text-xs text-[color:var(--wp-text-muted)]">RČ: {p.personalId}</span>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -409,11 +558,11 @@ export function CanonicalProductAdvisorOverviewCard({
           <AccordionRow title="Majetek / vozidlo — limity a připojištění" icon={veh ? Car : Home} defaultOpen>
             <ul className="space-y-2">
               {(veh?.coverageLines ?? prop?.coverageLines ?? []).map((line, i) => (
-                <li key={`cov-${i}`} className="rounded-md bg-[color:var(--wp-surface-muted)] px-2 py-1.5 text-sm">
+                <li key={`cov-${i}`} className="rounded-md bg-[color:var(--wp-surface-muted)] px-2 py-1.5 text-sm flex items-start justify-between gap-2">
                   <span className="font-medium">{line.label ?? "Položka"}</span>
-                  {line.amount ? <span> · {line.amount}</span> : null}
+                  {line.amount ? <span className="font-bold text-[color:var(--wp-text)] shrink-0">{line.amount}</span> : null}
                   {line.description ? (
-                    <span className="block text-xs text-[color:var(--wp-text-muted)]">{line.description}</span>
+                    <span className="block text-xs text-[color:var(--wp-text-muted)] mt-0.5">{line.description}</span>
                   ) : null}
                 </li>
               ))}
@@ -423,7 +572,7 @@ export function CanonicalProductAdvisorOverviewCard({
 
         {prop?.sumInsured ? (
           <AccordionRow title="Majetek — pojistná částka / limit" icon={Home}>
-            <p className="text-sm">{prop.sumInsured}</p>
+            <p className="text-sm font-semibold">{prop.sumInsured}</p>
           </AccordionRow>
         ) : null}
 
@@ -439,7 +588,7 @@ export function CanonicalProductAdvisorOverviewCard({
               {loan.loanPrincipal ? (
                 <li>
                   <span className="text-[color:var(--wp-text-muted)]">Jistina: </span>
-                  {loan.loanPrincipal}
+                  <span className="font-bold text-rose-700">{loan.loanPrincipal}</span>
                 </li>
               ) : null}
               {loan.monthlyPayment != null && loan.monthlyPayment > 0 ? (
@@ -451,7 +600,7 @@ export function CanonicalProductAdvisorOverviewCard({
               {loan.fixationUntil ? (
                 <li>
                   <span className="text-[color:var(--wp-text-muted)]">Fixace do: </span>
-                  {loan.fixationUntil}
+                  <span className="font-semibold text-amber-700">{loan.fixationUntil}</span>
                 </li>
               ) : null}
               {loan.maturityDate ? (
@@ -484,18 +633,33 @@ export function CanonicalProductAdvisorOverviewCard({
         ) : null}
       </div>
 
+      {/* ── Provenance footer ── */}
+      <div className="px-4 pb-3 text-[11px] text-[color:var(--wp-text-muted)] flex flex-wrap gap-x-2 gap-y-1 border-t border-[color:var(--wp-border-muted)] pt-2">
+        <span>
+          {contract.visibleToClient === false ? "Skryto v klientské zóně" : "V klientské zóně"}
+        </span>
+        <ContractProvenanceLine
+          sourceKind={contract.sourceKind}
+          sourceDocumentId={contract.sourceDocumentId}
+          sourceContractReviewId={contract.sourceContractReviewId}
+          advisorConfirmedAt={contract.advisorConfirmedAt}
+        />
+      </div>
+
       {provenance !== undefined ? (
-        provenance?.supportingDocumentGuard ? (
-          <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 leading-none">
-            <FileCheck className="w-3 h-3 text-slate-400" aria-hidden />
-            Podkladový dokument — evidenční záznam bez potvrzovacího toku
-          </span>
-        ) : (
-          <ContractPendingFieldsGuard contractId={contract.id} provenance={provenance} />
-        )
+        <div className="px-4 pb-2">
+          {provenance?.supportingDocumentGuard ? (
+            <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 leading-none">
+              <FileCheck className="w-3 h-3 text-slate-400" aria-hidden />
+              Podkladový dokument — evidenční záznam bez potvrzovacího toku
+            </span>
+          ) : (
+            <ContractPendingFieldsGuard contractId={contract.id} provenance={provenance} />
+          )}
+        </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 pt-1 border-t border-[color:var(--wp-border-muted)]">
+      <div className="flex flex-wrap gap-2 px-4 py-3 border-t border-[color:var(--wp-border-muted)]">
         {variant === "pending" && onApproveForClient ? (
           <button
             type="button"

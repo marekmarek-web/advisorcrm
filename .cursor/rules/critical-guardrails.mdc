@@ -13,10 +13,8 @@ alwaysApply: true
 
 4. **SQL / migrations** — On every task completion, the **final reply** must either list new or changed migrations (with path or copy-pastable SQL) or state clearly that **no SQL migration is needed**. Align with `ukonceni-ukolu-sql-migrace.mdc`.
 
-5. **Commit subject** — First line of every commit message = **exact** Cursor conversation thread title (see `vercel-commit-thread-title.mdc` / `git-auto-push.mdc`). If truly unavailable, use a clear Czech one-line subject and note why.
+5. **Git** — Do **not** automatically `git commit` or `git push`. Git writes only when the user **explicitly** asks. When they ask for a commit, use **exact** thread title as the first line of the message (see `vercel-commit-thread-title.mdc`).
 
-6. **Git after the task** — When work is done: `git add` (relevant files), `git commit`, then `git push` to `origin` on the current branch. On push failure: `git pull --rebase` (or agreed flow), then push again. Skip only if the user says so or is offline.
+6. **No scope drift** — Implement only what was asked. No drive-by refactors, extra files, or “while we’re here” changes.
 
-7. **No scope drift** — Implement only what was asked. No drive-by refactors, extra files, or “while we’re here” changes.
-
-8. **No fake “done”** — Do not claim completion if tests weren’t run when they matter, push didn’t succeed, or the fix wasn’t verified. Say what is actually left.
+7. **No fake “done”** — Do not claim completion if tests weren’t run when they matter, a requested git step failed, or the fix wasn’t verified. Say what is actually left.
