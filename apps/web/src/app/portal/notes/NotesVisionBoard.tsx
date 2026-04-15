@@ -2,6 +2,7 @@
 
 import React, { Suspense, useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Pin,
   GripHorizontal,
@@ -374,9 +375,6 @@ function NotesVisionBoardInner({
     setAttachSaving(true);
     try {
       await createOpportunityFromMeetingNote(attachNote.id, attachStageId, attachDealTitle);
-      const next = { ...positions };
-      delete next[attachNote.id];
-      persistPositions(next);
       await reload();
       closeAttachModal();
     } catch (err) {
@@ -760,6 +758,7 @@ function NotesVisionBoardInner({
                         {contentBody(note.content) || <span className="text-[color:var(--wp-text-tertiary)] italic">Bez obsahu…</span>}
                       </p>
                     </button>
+                    {!note.opportunityId ? (
                     <button
                       type="button"
                       onClick={() => void openAttachToDeal(note)}
@@ -769,6 +768,7 @@ function NotesVisionBoardInner({
                     >
                       <Briefcase size={20} />
                     </button>
+                    ) : null}
                   </li>
                 );
               })}
@@ -826,7 +826,7 @@ function NotesVisionBoardInner({
                 touchAction: "none",
               }}
               className={`
-                notes-glass-card w-[min(100%,clamp(240px,32vw,350px))] max-w-[350px] rounded-2xl border transition-shadow duration-300
+                notes-glass-card w-[min(100%,clamp(220px,min(28vw,85vw),350px))] max-w-[min(100%,350px)] xl:max-w-[320px] 2xl:max-w-[350px] rounded-2xl border transition-shadow duration-300
                 ${isDragging ? "shadow-2xl scale-[1.02] cursor-grabbing opacity-95" : "shadow-lg cursor-grab hover:shadow-xl"}
                 ${pos.pinned ? `border-[color:var(--wp-border-strong)] shadow-[0_0_20px_-5px_rgba(0,0,0,0.1)] ${design.glow}` : "border-[color:var(--wp-surface-card-border)]"}
               `}
@@ -834,6 +834,7 @@ function NotesVisionBoardInner({
               <div className="flex items-center justify-between rounded-t-2xl border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/90 px-4 py-2.5">
                 <GripHorizontal size={18} className="text-[color:var(--wp-text-tertiary)]" />
                 <div className="flex items-center gap-1">
+                  {!note.opportunityId ? (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -845,6 +846,7 @@ function NotesVisionBoardInner({
                   >
                     <Briefcase size={14} />
                   </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={(e) => handleOpenEdit(note, e)}
@@ -877,6 +879,18 @@ function NotesVisionBoardInner({
                 <h3 className="font-bold text-[color:var(--wp-text)] text-base xl:text-lg leading-tight mb-2 pr-2">
                   {contentTitle(note.content)}
                 </h3>
+                {note.opportunityId ? (
+                  <div className="mb-3 xl:mb-4">
+                    <Link
+                      href={`/portal/pipeline/${note.opportunityId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-500/10 px-2.5 py-1 text-[10px] xl:text-[11px] font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-500/15"
+                    >
+                      <Briefcase size={12} />
+                      Navázáno na obchod
+                    </Link>
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-2 mb-3 xl:mb-4">
                   <div className="w-6 h-6 rounded-full bg-[color:var(--wp-surface-muted)] flex items-center justify-center border border-[color:var(--wp-surface-card-border)]">
                     <User size={12} className="text-[color:var(--wp-text-secondary)]" />
@@ -1196,9 +1210,13 @@ function NotesVisionBoardInner({
                       const n = notes.find((x) => x.id === editingId);
                       if (n) void openAttachToDeal(n);
                     }}
-                    disabled={saving}
+                    disabled={saving || !!notes.find((x) => x.id === editingId)?.opportunityId}
                     className="flex items-center justify-center w-12 h-12 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors shadow-sm disabled:opacity-50"
-                    title="Převést do obchodu"
+                    title={
+                      notes.find((x) => x.id === editingId)?.opportunityId
+                        ? "Zápisek je už navázaný na obchod"
+                        : "Převést do obchodu"
+                    }
                   >
                     <Briefcase size={18} />
                   </button>

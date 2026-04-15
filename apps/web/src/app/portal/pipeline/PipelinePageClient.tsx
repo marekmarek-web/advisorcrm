@@ -10,9 +10,11 @@ import type { ContactOption } from "@/app/dashboard/pipeline/PipelineBoard";
 export function PipelinePageClient({
   initialStages,
   contacts,
+  totalPotential,
 }: {
   initialStages: StageWithOpportunities[];
   contacts: ContactOption[];
+  totalPotential: number;
 }) {
   const { data: stages = initialStages } = useQuery({
     queryKey: queryKeys.pipeline.board(),
@@ -21,5 +23,5 @@ export function PipelinePageClient({
     staleTime: 30_000,
   });
 
-  return <PipelineBoardDynamic stages={stages} contacts={contacts} />;
+  return <PipelineBoardDynamic stages={stages} contacts={contacts} totalPotential={totalPotential} />;
 }

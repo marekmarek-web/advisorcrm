@@ -4,7 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db } from "db";
 import { noteTemplates, meetingNotes, contacts, opportunities } from "db";
-import { eq, and, desc, isNull } from "db";
+import { eq, and, desc } from "db";
 import { createOpportunity } from "./pipeline";
 
 export type TemplateRow = { id: string; name: string; domain: string };
@@ -107,6 +107,8 @@ export async function getMeetingNotesFeedForContact(contactId: string): Promise<
 /** Pro Vision Board: zápisky včetně content pro náhled karet */
 export type MeetingNoteForBoard = MeetingNoteRow & {
   contactId?: string;
+  /** Když je zápisek navázaný na obchod, zůstane i na nástěnce + odkaz na detail. */
+  opportunityId?: string | null;
   content: Record<string, unknown> | null;
 };
 
@@ -119,11 +121,12 @@ export async function getMeetingNotesForBoard(): Promise<MeetingNoteForBoard[]> 
       meetingAt: meetingNotes.meetingAt,
       domain: meetingNotes.domain,
       contactId: meetingNotes.contactId,
+      opportunityId: meetingNotes.opportunityId,
       content: meetingNotes.content,
       createdAt: meetingNotes.createdAt,
     })
     .from(meetingNotes)
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), isNull(meetingNotes.opportunityId)))
+    .where(eq(meetingNotes.tenantId, auth.tenantId))
     .orderBy(desc(meetingNotes.meetingAt))
     .limit(100);
   const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
@@ -134,6 +137,7 @@ export async function getMeetingNotesForBoard(): Promise<MeetingNoteForBoard[]> 
     meetingAt: r.meetingAt,
     domain: r.domain,
     contactId: r.contactId ?? undefined,
+    opportunityId: r.opportunityId ?? null,
     contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek",
     createdAt: r.createdAt,
     content: r.content as Record<string, unknown> | null,

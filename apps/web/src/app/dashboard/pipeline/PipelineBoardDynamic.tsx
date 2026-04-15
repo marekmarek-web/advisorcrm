@@ -12,6 +12,8 @@ export type PipelineBoardDynamicProps = {
   onMutationComplete?: () => void;
   initialOpenCreateStageId?: string | null;
   onOpenCreateConsumed?: () => void;
+  /** Celkový potenciál pipeline (ze serveru); zobrazí lokální hlavičku v2. */
+  totalPotential?: number;
   /** Jen prohlížení — bez zakládání, přesunů a úprav (např. chybí opportunities:write). */
   readOnly?: boolean;
 };
