@@ -828,7 +828,7 @@ export function ContactsPageClient({
                 disabled={permanentDeleteBusy}
                 className="rounded-xl px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 min-h-[44px]"
               >
-                {permanentDeleteBusy ? "Mažu…" : "Ano, smazat"}
+                {permanentDeleteBusy ? "Mažu…" : "Ano"}
               </button>
             </div>
           </div>

@@ -590,10 +590,10 @@ export function DashboardEditable(props: DashboardEditableProps) {
                 })}
               </div>
               <Link
-                href="/portal/contacts"
+                href="/portal/tasks"
                 className="text-xs font-semibold text-indigo-600 hover:underline mt-2 inline-block"
               >
-                Přehled klientů
+                Přehled úkolů a péče
               </Link>
             </div>
           );
@@ -748,15 +748,17 @@ export function DashboardEditable(props: DashboardEditableProps) {
           const footerLabel =
             id === "production"
               ? "Otevřít produkci"
-              : id === "activeDeals"
-                ? "Otevřít Board"
-                : id === "clientCare"
-                  ? "Přehled klientů"
-                  : id === "financialAnalyses"
-                    ? "Všechny analýzy"
-                    : id === "businessPlan"
-                      ? "Otevřít business plán"
-                      : "Více";
+              : id === "messages"
+                ? "Otevřít zprávy"
+                : id === "activeDeals"
+                  ? "Otevřít obchody"
+                  : id === "clientCare"
+                    ? "Úkoly a péče"
+                    : id === "financialAnalyses"
+                      ? "Všechny analýzy"
+                      : id === "businessPlan"
+                        ? "Otevřít business plán"
+                        : "Více";
           const topBorderClass = config.widgetColors?.[id]
             ? WIDGET_TOP_BORDER_BY_COLOR[config.widgetColors[id]!]
             : WIDGET_TOP_BORDER_BY_SECTION[WIDGET_SECTION[id]];

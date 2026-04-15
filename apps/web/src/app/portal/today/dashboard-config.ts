@@ -120,11 +120,12 @@ export const WIDGET_COLOR_GRADIENT: Record<WidgetColorId, { bgClass: string; rin
 export const WIDGET_HREF: Partial<Record<WidgetId, string>> = {
   aiAssistant: "/portal/contracts/review",
   myTasks: "/portal/tasks",
-  messages: "/portal/contacts",
+  messages: "/portal/messages",
   activeDeals: "/portal/pipeline",
   production: "/portal/production",
   businessPlan: "/portal/business-plan",
-  clientCare: "/portal/contacts",
+  /** Servisní doporučení a termíny — přehled úkolů, ne jen seznam kontaktů. */
+  clientCare: "/portal/tasks",
   financialAnalyses: "/portal/analyses",
   notes: "/portal/notes",
 };
