@@ -34,6 +34,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 
+import { isDateFieldKey, normalizeDateForAdvisorDisplay } from "@/lib/ai/canonical-date-normalize";
 import { getDocumentTypeLabel } from "@/lib/ai/document-messages";
 import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
 import { CanonicalFieldsPanel } from "./CanonicalFieldsPanel";
@@ -449,6 +450,12 @@ const ENFORCEMENT_FIELD_LABELS: Record<string, string> = {
   constantSymbol: "Konstantní symbol",
 };
 
+/** ISO a podobné datumové řetězce → DD.MM.YYYY v náhledech CRM (draft akce). */
+function formatCrmFieldValueForDisplay(fieldKey: string, value: string): string {
+  if (isDateFieldKey(fieldKey)) return normalizeDateForAdvisorDisplay(value) || value;
+  return value;
+}
+
 function humanizeEnforcementFieldKey(fieldKey: string): string {
   const local = ENFORCEMENT_FIELD_LABELS[fieldKey];
   if (local) return local;
@@ -520,8 +527,11 @@ function CrmFieldRow({
       <span className="text-[9px] font-bold uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
         {label}
       </span>
-      <span className="text-xs font-semibold text-[color:var(--wp-text)] truncate" title={value}>
-        {value}
+      <span
+        className="text-xs font-semibold text-[color:var(--wp-text)] truncate"
+        title={formatCrmFieldValueForDisplay(fieldKey, value)}
+      >
+        {formatCrmFieldValueForDisplay(fieldKey, value)}
       </span>
       {resultStatus
         ? <ApplyResultBadge status={resultStatus} />

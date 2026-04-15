@@ -20,6 +20,8 @@ const DATE_FIELD_KEYS = new Set([
   "birthDate",
   "firstInstallmentDate",
   "firstPaymentDate",
+  /** CRM / draft payload alias */
+  "firstDueDate",
   "expirationDate",
   "lastInstallmentDate",
   "disbursementDate",
@@ -45,6 +47,8 @@ const DATE_FIELD_KEYS = new Set([
   "loanStartDate",
   "loanEndDate",
   "repaymentDate",
+  "idCardIssuedAt",
+  "idCardValidUntil",
 ]);
 
 export function isDateFieldKey(key: string): boolean {

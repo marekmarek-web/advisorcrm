@@ -6,6 +6,7 @@ import { getDocumentTypeLabel } from "../ai/document-messages";
 import { getReasonMessage } from "../ai/reason-codes";
 import { formatAiClassifierForAdvisor, humanizeReviewReasonLine } from "./czech-labels";
 import type { AdvisorReviewViewModel, DraftAction, PaymentSyncPreview } from "./types";
+import { isDateFieldKey, normalizeDateForAdvisorDisplay } from "../ai/canonical-date-normalize";
 import {
   buildCanonicalPaymentPayload,
   formatDomesticAccountDisplayLine,
@@ -227,7 +228,10 @@ function buildPaymentSyncPreview(envelope: DocumentReviewEnvelope): PaymentSyncP
   for (const spec of PAYMENT_FIELD_SPECS) {
     if (spec.tier === "note_only") continue;
     const val = cp[spec.canonical];
-    if (val) presentFields.push({ label: spec.label, value: val });
+    if (!val) continue;
+    const display =
+      isDateFieldKey(spec.canonical) ? normalizeDateForAdvisorDisplay(val) || val : val;
+    presentFields.push({ label: spec.label, value: display });
   }
 
   const warnings: string[] = [];

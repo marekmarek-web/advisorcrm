@@ -191,6 +191,24 @@ describe("Phase 3F — advisor paymentSyncPreview (buildAdvisorReviewViewModel)"
     expect(vm.paymentSyncPreview?.summary).toMatch(/1200/);
   });
 
+  it("paymentSyncPreview zobrazí datum první platby jako DD.MM.YYYY (ne ISO)", () => {
+    const env = minimalEnvelope("final_contract");
+    env.extractedFields = {
+      regularAmount: { value: "1200", status: "extracted", confidence: 0.9 },
+      iban: { value: "CZ6508000000192000145399", status: "extracted", confidence: 0.92 },
+      variableSymbol: { value: "1234567890", status: "extracted", confidence: 0.9 },
+      currency: { value: "CZK", status: "extracted", confidence: 0.99 },
+      paymentFrequency: { value: "měsíčně", status: "extracted", confidence: 0.85 },
+      insurer: { value: "ACME", status: "extracted", confidence: 0.8 },
+      productName: { value: "ŽP", status: "extracted", confidence: 0.82 },
+      firstPaymentDate: { value: "2026-02-01", status: "extracted", confidence: 0.9 },
+    };
+    const vm = buildAdvisorReviewViewModel({ envelope: env });
+    expect(vm.paymentSyncPreview?.status).toBe("will_sync");
+    const fp = vm.paymentSyncPreview?.presentFields.find((f) => f.label === "Datum první platby");
+    expect(fp?.value).toBe("01.02.2026");
+  });
+
   it("will_draft when IBAN present but amount missing", () => {
     const env = minimalEnvelope("final_contract");
     env.extractedFields = {
