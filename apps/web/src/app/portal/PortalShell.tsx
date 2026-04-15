@@ -292,7 +292,7 @@ function PortalShellInner({
         <div
           className={clsx(
             "relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col pb-[var(--safe-area-bottom)] max-md:min-h-0",
-            isCalendarWorkspace ? "md:my-0 md:mr-0" : "md:my-5 md:mr-5",
+            isCalendarWorkspace ? "md:mt-5 md:mb-5 md:mr-0" : "md:my-5 md:mr-5",
           )}
           style={{ marginLeft: mainMarginPx, transition: "margin-left 200ms ease-in-out" }}
         >
