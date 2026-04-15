@@ -74,12 +74,12 @@ export function SearchCombobox({
 
   const inputClass =
     variant === "termination"
-      ? "h-12 min-h-[44px] w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
+      ? "h-12 min-h-[44px] w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:ring-4 focus:ring-violet-100 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:border-violet-400 dark:focus:ring-violet-500/18"
       : "h-12 w-full rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] pl-11 pr-4 text-sm text-[color:var(--wp-text)] outline-none transition placeholder:text-[color:var(--wp-text-muted)] focus:border-[var(--wp-accent)] focus:ring-2 focus:ring-[var(--wp-accent)]/20 min-h-[44px]";
 
   const labelClass =
     variant === "termination"
-      ? "mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+      ? "mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-[color:var(--wp-text-tertiary)]"
       : "mb-2 block text-xs font-medium text-[color:var(--wp-text-muted)]";
 
   return (
@@ -89,7 +89,7 @@ export function SearchCombobox({
         <Search
           className={
             variant === "termination"
-              ? "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              ? "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-[color:var(--wp-text-muted)]"
               : "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--wp-text-muted)]"
           }
           aria-hidden
@@ -143,7 +143,7 @@ export function SearchCombobox({
         <p
           className={
             variant === "termination"
-              ? "mt-2 text-xs leading-5 text-slate-500"
+              ? "mt-2 text-xs leading-5 text-slate-500 dark:text-[color:var(--wp-text-secondary)]"
               : "mt-2 text-xs leading-5 text-[color:var(--wp-text-secondary)]"
           }
         >
@@ -157,14 +157,16 @@ export function SearchCombobox({
           role="listbox"
           className={
             variant === "termination"
-              ? "absolute left-0 right-0 top-full z-20 mt-2 max-h-[min(280px,40vh)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)]"
+              ? "absolute left-0 right-0 top-full z-20 mt-2 max-h-[min(280px,40vh)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
               : "absolute left-0 right-0 top-full z-20 mt-2 max-h-[min(280px,40vh)] overflow-y-auto rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface)] shadow-lg"
           }
         >
           {isLoading ? (
             <div
               className={
-                variant === "termination" ? "px-4 py-3 text-sm text-slate-500" : "px-4 py-3 text-sm text-[color:var(--wp-text-secondary)]"
+                variant === "termination"
+                  ? "px-4 py-3 text-sm text-slate-500 dark:text-[color:var(--wp-text-secondary)]"
+                  : "px-4 py-3 text-sm text-[color:var(--wp-text-secondary)]"
               }
             >
               Načítám…
@@ -187,22 +189,22 @@ export function SearchCombobox({
                 }}
                 className={[
                   "flex w-full items-start justify-between gap-3 border-b px-4 py-3 text-left last:border-b-0",
-                  variant === "termination" ? "border-slate-100" : "border-[color:var(--wp-border)]",
+                  variant === "termination" ? "border-slate-100 dark:border-[color:var(--wp-surface-card-border)]" : "border-[color:var(--wp-border)]",
                   variant === "termination"
                     ? hi
-                      ? "bg-slate-50"
-                      : "hover:bg-slate-50"
+                      ? "bg-slate-50 dark:bg-[color:var(--wp-surface-muted)]"
+                      : "hover:bg-slate-50 dark:hover:bg-[color:var(--wp-surface-muted)]"
                     : hi
                       ? "bg-[color:var(--wp-surface-muted)]"
                       : "hover:bg-[color:var(--wp-surface-muted)]",
-                  active ? (variant === "termination" ? "bg-violet-50" : "bg-[var(--wp-accent)]/10") : "",
+                  active ? (variant === "termination" ? "bg-violet-50 dark:bg-violet-950/45" : "bg-[var(--wp-accent)]/10") : "",
                 ].join(" ")}
               >
                 <div className="min-w-0">
                   <div
                     className={
                       variant === "termination"
-                        ? "truncate text-sm font-semibold text-slate-900"
+                        ? "truncate text-sm font-semibold text-slate-900 dark:text-[color:var(--wp-text)]"
                         : "truncate text-sm font-semibold text-[color:var(--wp-text)]"
                     }
                   >
@@ -212,7 +214,7 @@ export function SearchCombobox({
                     <div
                       className={
                         variant === "termination"
-                          ? "mt-1 line-clamp-2 text-xs text-slate-500"
+                          ? "mt-1 line-clamp-2 text-xs text-slate-500 dark:text-[color:var(--wp-text-secondary)]"
                           : "mt-1 line-clamp-2 text-xs text-[color:var(--wp-text-secondary)]"
                       }
                     >
@@ -224,7 +226,7 @@ export function SearchCombobox({
                   <CheckCircle2
                     className={
                       variant === "termination"
-                        ? "mt-0.5 h-4 w-4 shrink-0 text-violet-600"
+                        ? "mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300"
                         : "mt-0.5 h-4 w-4 shrink-0 text-[var(--wp-accent)]"
                     }
                   />

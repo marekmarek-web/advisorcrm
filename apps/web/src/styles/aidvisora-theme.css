@@ -442,7 +442,8 @@
   --wp-surface-card-border: rgba(255, 255, 255, 0.1);
   --wp-surface-raised: rgba(30, 41, 69, 0.55);
   --wp-surface-inset: rgba(8, 11, 24, 0.88);
-  --wp-surface-muted: rgba(255, 255, 255, 0.04);
+  /* Lehčí než inset karty, ale dost kontrastu pro „šedé“ plochy (hover, stepper) */
+  --wp-surface-muted: rgba(255, 255, 255, 0.08);
   --wp-bg-card: var(--wp-surface-card);
   /* Čitelnější než čistě „šedá“ na tmavém canvasu (board, pipeline karty). */
   --wp-text-secondary: #e2e8f0;

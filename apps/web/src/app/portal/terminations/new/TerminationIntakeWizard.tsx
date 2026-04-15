@@ -86,13 +86,13 @@ const WIZARD_STEP_COUNT = WIZARD_STEPS.length;
 
 // Aidvisora: light + dark (portal tokeny); PDF/tisk zůstává světlý přes termination-letter-html.
 const TERMINATION_FIELD_CLASS =
-  "h-12 w-full min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-tertiary)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20";
+  "h-12 w-full min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20";
 const TERMINATION_LABEL_CLASS =
   "mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-[color:var(--wp-text-tertiary)]";
 const TERMINATION_TEXTAREA_CLASS =
-  "min-h-[104px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 resize-none dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-tertiary)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
+  "min-h-[104px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 resize-none dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
 const TERMINATION_DATE_INPUT_CLASS =
-  "h-12 w-full min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
+  "h-12 w-full min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-[color:var(--wp-input-border)] dark:bg-[color:var(--wp-input-bg)] dark:text-[color:var(--wp-text)] dark:placeholder:text-[color:var(--wp-text-muted)] dark:focus:bg-[color:var(--wp-surface-card)] dark:focus:ring-indigo-500/20";
 const TERMINATION_DATE_LABEL_CLASS = TERMINATION_LABEL_CLASS;
 
 type Props = {
@@ -888,7 +888,9 @@ export function TerminationIntakeWizard({
               active &&
                 "border-indigo-200 bg-white shadow-sm ring-2 ring-indigo-50/60 dark:border-indigo-400/50 dark:bg-[color:var(--wp-surface-card)] dark:ring-indigo-500/25 sm:shadow-md sm:ring-4 sm:ring-indigo-500/15",
               done && "border-emerald-100 bg-emerald-50/50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/35 dark:text-emerald-300",
-              !active && !done && "border-slate-100 bg-white text-slate-400 opacity-60 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:text-[color:var(--wp-text-tertiary)]",
+              !active &&
+                !done &&
+                "border-slate-100 bg-white text-slate-400 opacity-60 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-card)] dark:text-[color:var(--wp-text-secondary)] dark:opacity-100",
             )}
           >
             <div
@@ -896,7 +898,7 @@ export function TerminationIntakeWizard({
                 "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black transition-colors sm:h-8 sm:w-8 sm:text-xs",
                 active && "bg-indigo-600 text-white shadow-sm",
                 done && "bg-emerald-500 text-white",
-                !active && !done && "bg-slate-100 text-slate-400 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-tertiary)]",
+                !active && !done && "bg-slate-100 text-slate-400 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)]",
               )}
             >
               {done ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} /> : index + 1}
@@ -906,7 +908,7 @@ export function TerminationIntakeWizard({
                 "whitespace-nowrap text-[11px] font-bold uppercase tracking-widest sm:text-sm sm:normal-case sm:tracking-normal",
                 active && "text-indigo-900 dark:text-indigo-200 sm:font-bold",
                 done && "text-emerald-800 dark:text-emerald-300",
-                !active && !done && "text-slate-500 dark:text-[color:var(--wp-text-tertiary)]",
+                !active && !done && "text-slate-500 dark:text-[color:var(--wp-text-secondary)]",
               )}
             >
               <span className="sm:hidden">{step.stepperShort}</span>
@@ -967,8 +969,8 @@ export function TerminationIntakeWizard({
             className={cx(
               "inline-flex h-fit shrink-0 items-center gap-2 self-start rounded-xl border px-4 py-2.5 text-xs font-bold uppercase tracking-widest shadow-sm",
               isComplete
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-amber-200 bg-amber-50 text-amber-700",
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/50 dark:bg-emerald-950/55 dark:text-emerald-200"
+                : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/45 dark:bg-amber-950/50 dark:text-amber-200",
             )}
           >
             {isComplete ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
@@ -981,10 +983,12 @@ export function TerminationIntakeWizard({
           <div
             className={cx(
               "flex items-center gap-3 rounded-xl border px-3 py-2.5 shadow-sm",
-              isComplete ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800",
+              isComplete
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-950/55 dark:text-emerald-200"
+                : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700/45 dark:bg-amber-950/50 dark:text-amber-200",
             )}
           >
-            {isComplete ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />}
+            {isComplete ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-300" />}
             <span className="text-[11px] font-black uppercase leading-tight tracking-widest">
               {isComplete ? "Připraveno k dokončení" : "Doplňte chybějící údaje"}
             </span>
@@ -1003,7 +1007,7 @@ export function TerminationIntakeWizard({
         ) : null}
 
         {partialRequestId ? (
-          <p className="text-xs text-slate-400 font-mono">Koncept: {partialRequestId}</p>
+          <p className="text-xs text-slate-400 font-mono dark:text-[color:var(--wp-text-muted)]">Koncept: {partialRequestId}</p>
         ) : null}
 
         {partialSavedOk ? (
@@ -1105,17 +1109,17 @@ export function TerminationIntakeWizard({
                       className={cx(
                         "mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
                         sourceCard === "crm"
-                          ? "bg-indigo-100 text-indigo-600"
-                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500",
+                          ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/25 dark:text-indigo-200"
+                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
                       )}
                     >
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className={cx(
                       "text-base font-bold mb-1",
-                      sourceCard === "crm" ? "text-indigo-900" : "text-slate-800",
+                      sourceCard === "crm" ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-[color:var(--wp-text)]",
                     )}>Vybrat z CRM</div>
-                    <div className="text-xs font-medium text-slate-500">
+                    <div className="text-xs font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
                       Nejrychlejší cesta s předvyplněním údajů.
                     </div>
                   </button>
@@ -1133,17 +1137,17 @@ export function TerminationIntakeWizard({
                       className={cx(
                         "mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
                         sourceCard === "upload"
-                          ? "bg-indigo-100 text-indigo-600"
-                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500",
+                          ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/25 dark:text-indigo-200"
+                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
                       )}
                     >
                       <Upload className="h-5 w-5" />
                     </div>
                     <div className={cx(
                       "text-base font-bold mb-1",
-                      sourceCard === "upload" ? "text-indigo-900" : "text-slate-800",
+                      sourceCard === "upload" ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-[color:var(--wp-text)]",
                     )}>Nahrát smlouvu</div>
-                    <div className="text-xs font-medium text-slate-500">
+                    <div className="text-xs font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
                       AI přečte instituci, číslo smlouvy a pojistníka.
                     </div>
                   </button>
@@ -1161,17 +1165,17 @@ export function TerminationIntakeWizard({
                       className={cx(
                         "mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
                         sourceCard === "manual"
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500",
+                          ? "bg-indigo-600 text-white shadow-sm dark:bg-indigo-500 dark:text-white"
+                          : "bg-slate-100 text-slate-500 group-hover:text-indigo-500 dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)] dark:group-hover:text-indigo-300",
                       )}
                     >
                       <Building2 className="h-5 w-5" />
                     </div>
                     <div className={cx(
                       "text-base font-bold mb-1",
-                      sourceCard === "manual" ? "text-indigo-900" : "text-slate-800",
+                      sourceCard === "manual" ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-[color:var(--wp-text)]",
                     )}>Vyplnit ručně</div>
-                    <div className="text-xs font-medium text-slate-500">
+                    <div className="text-xs font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
                       Pro cizí smlouvy nebo nový případ.
                     </div>
                   </button>
@@ -1221,17 +1225,17 @@ export function TerminationIntakeWizard({
                 </div>
 
                 {/* Adresa pro odeslání */}
-                <div className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-4 md:p-5">
+                <div className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-4 md:p-5 dark:border-indigo-400/35 dark:bg-indigo-950/50">
                   <div className="flex items-start gap-4">
-                    <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" />
+                    <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500 dark:text-indigo-300" />
                     <div>
-                      <div className="text-sm font-bold text-indigo-900">Adresa pro odeslání</div>
-                      <div className="mt-1 text-sm font-medium text-slate-500">
+                      <div className="text-sm font-bold text-indigo-900 dark:text-indigo-100">Adresa pro odeslání</div>
+                      <div className="mt-1 text-sm font-medium text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
                         {deliveryAddressLine ??
                           "Vyberte instituci ze seznamu nebo zadejte název — přesná adresa se doplní z registru po vyhodnocení."}
                       </div>
                       {registryDeliveryMeta?.channelHint ? (
-                        <div className="mt-2 text-xs leading-5 text-slate-500">
+                        <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-[color:var(--wp-text-muted)]">
                           Kanál: {terminationDeliveryChannelLabel(registryDeliveryMeta.channelHint)}
                         </div>
                       ) : null}
@@ -1253,7 +1257,7 @@ export function TerminationIntakeWizard({
                       }}
                     />
                     <div
-                      className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 p-6 cursor-pointer hover:border-violet-300 hover:bg-slate-50 transition"
+                      className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 p-6 cursor-pointer hover:border-violet-300 hover:bg-slate-50 transition dark:border-[color:var(--wp-border-strong)] dark:bg-[color:var(--wp-surface-muted)] dark:hover:border-violet-400/55 dark:hover:bg-[color:var(--wp-surface-raised)]"
                       onClick={() => fileInputRef.current?.click()}
                       onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
                       role="button"
@@ -1265,8 +1269,8 @@ export function TerminationIntakeWizard({
                         if (f) void onFileSelected(f);
                       }}
                     >
-                      <Upload className="h-8 w-8 text-slate-400" />
-                      <div className="text-sm font-medium text-slate-600">
+                      <Upload className="h-8 w-8 text-slate-400 dark:text-[color:var(--wp-text-muted)]" />
+                      <div className="text-sm font-medium text-slate-600 dark:text-[color:var(--wp-text)]">
                         {uploadBusy || aiExtractBusy
                           ? uploadBusy
                             ? "Nahrávám soubor…"
@@ -1275,7 +1279,7 @@ export function TerminationIntakeWizard({
                             ? "Soubor nahrán — klikněte pro nový"
                             : "Přetáhněte soubor nebo klikněte pro výběr"}
                       </div>
-                      <div className="text-xs text-slate-500">PDF nebo obrázek, max 20 MB</div>
+                      <div className="text-xs text-slate-500 dark:text-[color:var(--wp-text-secondary)]">PDF nebo obrázek, max 20 MB</div>
                     </div>
                     {sourceDocumentId.trim() ? (
                       <p className="text-xs text-slate-500 font-mono">
