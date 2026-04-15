@@ -36,6 +36,7 @@ import {
 import { buildAdvisorReviewViewModel } from "./advisor-review-view-model";
 import { deriveFieldApplyPolicy } from "./field-apply-policy";
 import { isAiReviewPipelineDebug } from "../ai/ai-review-debug";
+import { deriveCanonicalPhase1DetailFields } from "../ai/canonical-detail-fields";
 
 type ApiReviewDetail = Record<string, unknown>;
 
@@ -1926,6 +1927,7 @@ export function mapApiToExtractionDocument(
     })(),
     // Phase 2+3: pass through canonical fields from extractedPayload (never raw dump)
     canonicalFields: (() => {
+      const phase1 = deriveCanonicalPhase1DetailFields(extracted as Record<string, unknown>);
       const pm = extracted.packetMeta as Record<string, unknown> | null | undefined;
       const ph = extracted.publishHints as Record<string, unknown> | null | undefined;
       const pts = extracted.participants as Array<Record<string, unknown>> | null | undefined;
@@ -1933,10 +1935,9 @@ export function mapApiToExtractionDocument(
       const hq = extracted.healthQuestionnaires as Array<Record<string, unknown>> | null | undefined;
       const inv = extracted.investmentData as Record<string, unknown> | null | undefined;
       const pay = extracted.paymentData as Record<string, unknown> | null | undefined;
-      const ident = extracted.identityData as Record<string, unknown> | null | undefined;
-      const fr = extracted.fundResolution as Record<string, unknown> | null | undefined;
 
-      if (!pm && !ph && !pts && !ir && !hq && !inv && !pay && !ident && !fr) return undefined;
+      if (!pm && !ph && !pts && !ir && !hq && !inv && !pay && !phase1.identityData && !phase1.fundResolution)
+        return undefined;
 
       return {
         packetMeta: pm ? {
@@ -2000,19 +2001,8 @@ export function mapApiToExtractionDocument(
           bankCode: typeof pay.bankCode === "string" ? pay.bankCode : undefined,
           paymentMethod: typeof pay.paymentMethod === "string" ? pay.paymentMethod : undefined,
         } : null,
-        identityData: ident ? {
-          idCardNumber: typeof ident.idCardNumber === "string" ? ident.idCardNumber : undefined,
-          idCardIssuedBy: typeof ident.idCardIssuedBy === "string" ? ident.idCardIssuedBy : undefined,
-          idCardValidUntil: typeof ident.idCardValidUntil === "string" ? ident.idCardValidUntil : undefined,
-          idCardIssuedAt: typeof ident.idCardIssuedAt === "string" ? ident.idCardIssuedAt : undefined,
-          generalPractitioner: typeof ident.generalPractitioner === "string" ? ident.generalPractitioner : undefined,
-        } : null,
-        fundResolution: fr ? {
-          resolvedFundId: typeof fr.resolvedFundId === "string" ? fr.resolvedFundId : undefined,
-          resolvedFundCategory: typeof fr.resolvedFundCategory === "string" ? fr.resolvedFundCategory : undefined,
-          fvSourceType: typeof fr.fvSourceType === "string" ? fr.fvSourceType : undefined,
-          resolvedFundName: typeof fr.resolvedFundName === "string" ? fr.resolvedFundName : undefined,
-        } : null,
+        identityData: phase1.identityData,
+        fundResolution: phase1.fundResolution,
       };
     })(),
   };

@@ -79,7 +79,13 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/observability/portal-sentry", () => ({ capturePublishGuardFailure: vi.fn() }));
 vi.mock("@/lib/portfolio/build-portfolio-attributes-from-extract", () => ({
   buildPortfolioAttributesFromExtracted: vi.fn().mockReturnValue({}),
-  mergePortfolioAttributesForApply: vi.fn().mockReturnValue({}),
+}));
+vi.mock("@/lib/ai/portfolio-phase1-attributes", () => ({
+  mergeIdentityPortfolioFieldsFromExtracted: vi.fn().mockReturnValue({}),
+  mergePortfolioAttributesWithPhase1Scalars: vi.fn((prev: unknown, next: unknown) => ({
+    ...(prev as Record<string, unknown>),
+    ...(next as Record<string, unknown>),
+  })),
 }));
 vi.mock("@/lib/ai/payment-field-contract", () => ({
   buildCanonicalPaymentPayloadFromRaw: vi.fn().mockReturnValue(null),

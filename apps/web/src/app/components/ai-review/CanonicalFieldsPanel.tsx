@@ -358,7 +358,6 @@ function FundResolutionSection({ fr }: { fr: NonNullable<CanonicalFields["fundRe
   return (
     <Section icon={BookOpen} title="Fond a budoucí hodnota">
       {fr.resolvedFundName && <Row label="Fond" value={fr.resolvedFundName} />}
-      {fr.resolvedFundId && !fr.resolvedFundName && <Row label="Fond (ID)" value={fr.resolvedFundId} />}
       {fr.resolvedFundCategory && (
         <Row label="Kategorie fondu" value={labelFundCategory(fr.resolvedFundCategory)} />
       )}

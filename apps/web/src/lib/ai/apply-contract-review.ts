@@ -15,8 +15,11 @@ import type { ContractReviewRow } from "./review-queue-repository";
 import type { ApplyResultPayload } from "./review-queue-repository";
 import {
   buildPortfolioAttributesFromExtracted,
-  mergePortfolioAttributesForApply,
 } from "@/lib/portfolio/build-portfolio-attributes-from-extract";
+import {
+  mergeIdentityPortfolioFieldsFromExtracted,
+  mergePortfolioAttributesWithPhase1Scalars,
+} from "./portfolio-phase1-attributes";
 import { normalizeDateToISO } from "./canonical-date-normalize";
 import {
   buildCanonicalPaymentPayloadFromRaw,
@@ -720,6 +723,7 @@ export async function applyContractReview(
   // Warnings are non-blocking — they are logged to resultPayload below
 
   const attrsFromReview = buildPortfolioAttributesFromExtracted(row.extractedPayload);
+  Object.assign(attrsFromReview, mergeIdentityPortfolioFieldsFromExtracted(row.extractedPayload));
 
   // Fund-library resolution: match extracted fund names/ISINs against catalog.
   // Runs for every contract (idempotent), only populates when investment data present.
@@ -957,7 +961,7 @@ export async function applyContractReview(
               .limit(1);
             const prevAttrs =
               (existingRow?.portfolioAttributes as Record<string, unknown> | undefined) ?? {};
-            const mergedAttrsForTitle = mergePortfolioAttributesForApply(prevAttrs, attrsFromReview);
+            const mergedAttrsForTitle = mergePortfolioAttributesWithPhase1Scalars(prevAttrs, attrsFromReview);
             const preserveManualLineage = existingRow?.sourceKind === "manual";
             const mergedProductName = pickStrongerInvestmentProductName(
               existingRow?.productName ?? null,

@@ -93,6 +93,12 @@ const CATEGORY_HEURISTICS: Array<{
   { patterns: /růstov|growth/i, category: "equity" },
 ];
 
+export function displayNameForResolvedFundId(resolvedFundId: string | null | undefined): string | null {
+  if (!resolvedFundId) return null;
+  const f = BASE_FUNDS.find((x) => x.baseFundKey === resolvedFundId);
+  return f?.displayName ?? null;
+}
+
 function classifyFundCategory(name: string, strategy?: string | null): ResolvedFundCategory | null {
   const haystack = [name, strategy ?? ""].join(" ");
   for (const h of CATEGORY_HEURISTICS) {

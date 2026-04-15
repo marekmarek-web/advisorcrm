@@ -384,6 +384,27 @@ export const documentReviewEnvelopeSchema = z.object({
     containsAdvisorData: false,
     containsMultipleDocumentSections: false,
   }),
+  /** Kanonický blok OP / dokladu (Agent normalizer nebo post-process). */
+  identityData: z
+    .object({
+      idCardNumber: z.string().optional(),
+      idCardIssuedBy: z.string().optional(),
+      idCardValidUntil: z.string().optional(),
+      idCardIssuedAt: z.string().optional(),
+      generalPractitioner: z.string().optional(),
+    })
+    .optional()
+    .nullable(),
+  /** Rozlišení fondu pro FV backbone (knihovna vs. heuristika). */
+  fundResolution: z
+    .object({
+      resolvedFundId: z.string().nullable().optional(),
+      resolvedFundCategory: z.string().nullable().optional(),
+      fvSourceType: z.string().nullable().optional(),
+      resolvedFundName: z.string().nullable().optional(),
+    })
+    .optional()
+    .nullable(),
   debug: z.record(z.string(), z.unknown()).optional(),
 });
 

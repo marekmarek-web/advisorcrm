@@ -95,6 +95,15 @@ export type PortfolioAttributes = {
   /** Praktický lékař (u ŽP, pokud je v dokumentu) */
   generalPractitioner?: string;
 
+  /** Číslo občanského průkazu / pasu / dokladu totožnosti (z extrakce) */
+  idCardNumber?: string;
+  /** Kdo doklad vydal (úřad, instituce) */
+  idCardIssuedBy?: string;
+  /** Platnost dokladu do (ISO nebo text z dokumentu) */
+  idCardValidUntil?: string;
+  /** Datum vydání dokladu */
+  idCardIssuedAt?: string;
+
   // ─── Loans extended (Phase 3 / Slice 1) ─────────────────────────────────────
   /** Úroková sazba úvěru/hypotéky */
   loanInterestRate?: string;
