@@ -37,7 +37,11 @@ import type { StageWithOpportunities } from "@/app/actions/pipeline";
 import type { MeetingNoteForBoard } from "@/app/actions/meeting-notes";
 import type { NotesBoardStoredPosition } from "@/app/actions/notes-board-positions";
 import type { ContactNamePickerRow } from "@/app/actions/contacts";
-import { pixelsToBoardUnits } from "@/lib/board/notes-board-units";
+import {
+  NOTES_BOARD_SPAWN_HALF_CARD_X_FRAC,
+  NOTES_BOARD_SPAWN_HALF_CARD_Y_FRAC,
+  pixelsToBoardUnits,
+} from "@/lib/board/notes-board-units";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
@@ -586,9 +590,10 @@ function NotesVisionBoardInner({
           const boardRect = boardRef.current.getBoundingClientRect();
           const bw = boardRect.width;
           const bh = boardRect.height;
-          const cardHalfW = Math.min(175, bw * 0.11);
-          const spawnPxX = bw / 2 - cardHalfW + (Math.random() * 40 - 20);
-          const spawnPxY = bh / 2 - 150 + (Math.random() * 40 - 20);
+          const spawnPxX =
+            bw / 2 - bw * NOTES_BOARD_SPAWN_HALF_CARD_X_FRAC + (Math.random() * 40 - 20);
+          const spawnPxY =
+            bh / 2 - bh * NOTES_BOARD_SPAWN_HALF_CARD_Y_FRAC + (Math.random() * 40 - 20);
           const newZ = maxZIndex + 1;
           setMaxZIndex(newZ);
           const xRel = bw > 0 ? pixelsToBoardUnits(spawnPxX, bw) : 0.5;
@@ -649,10 +654,209 @@ function NotesVisionBoardInner({
           background-image: radial-gradient(var(--wp-canvas-dot-color) 1.5px, transparent 0);
           background-size: clamp(18px, 1.75cqw, 28px) clamp(18px, 1.75cqw, 28px);
         }
+        @container (max-width: 1024px) {
+          .notes-dot-grid {
+            background-size: clamp(12px, 2cqw, 22px) clamp(12px, 2cqw, 22px);
+          }
+        }
+        @container (min-width: 1600px) {
+          .notes-dot-grid {
+            background-size: clamp(20px, 1.5cqw, 30px) clamp(20px, 1.5cqw, 30px);
+          }
+        }
         .notes-glass-card {
           background: color-mix(in srgb, var(--wp-surface-card) 94%, transparent);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
+        }
+        /* Board cards: size/density scales with container; positions stay %-based (0–1 units). */
+        .notes-board-card {
+          box-sizing: border-box;
+          width: min(100%, clamp(200px, 26cqw, 340px));
+          max-width: min(100%, 340px);
+          min-height: min(11.5rem, 40cqw);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-card {
+            width: min(100%, clamp(168px, 30cqw, 260px));
+            max-width: min(100%, 260px);
+            min-height: min(9.25rem, 46cqw);
+          }
+        }
+        @container (min-width: 1600px) {
+          .notes-board-card {
+            width: min(100%, clamp(240px, 22cqw, 400px));
+            max-width: min(100%, 400px);
+            min-height: min(13rem, 34cqw);
+          }
+        }
+        .notes-board-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid var(--wp-surface-card-border);
+          background: color-mix(in srgb, var(--wp-surface-muted) 90%, transparent);
+          padding: 0.625rem 1rem;
+        }
+        @container (max-width: 1024px) {
+          .notes-board-card-header {
+            padding: 0.5rem 0.75rem;
+          }
+        }
+        @container (min-width: 1600px) {
+          .notes-board-card-header {
+            padding: 0.75rem 1.125rem;
+          }
+        }
+        .notes-board-card-body {
+          padding: clamp(0.75rem, 2.2cqw, 1.125rem);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-card-body {
+            padding: clamp(0.5rem, 2.4cqw, 0.875rem);
+          }
+        }
+        @container (min-width: 1600px) {
+          .notes-board-card-body {
+            padding: clamp(0.9375rem, 2cqw, 1.25rem);
+          }
+        }
+        .notes-board-meta-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: clamp(0.5rem, 1.6cqw, 0.875rem);
+          gap: 0.375rem;
+        }
+        @container (max-width: 1024px) {
+          .notes-board-meta-row {
+            margin-bottom: clamp(0.375rem, 1.8cqw, 0.625rem);
+          }
+        }
+        .notes-board-card-title {
+          font-weight: 700;
+          line-height: 1.25;
+          margin-bottom: 0.5rem;
+          padding-right: 0.5rem;
+          color: var(--wp-text);
+          font-size: clamp(0.9375rem, 2.8cqw, 1.125rem);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-card-title {
+            font-size: clamp(0.8125rem, 3cqw, 1rem);
+            margin-bottom: 0.375rem;
+          }
+        }
+        .notes-board-client-row {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: clamp(0.5rem, 1.6cqw, 0.875rem);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-client-row {
+            margin-bottom: clamp(0.375rem, 1.8cqw, 0.625rem);
+          }
+        }
+        .notes-board-body-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          border-top: 1px solid var(--wp-surface-card-border);
+          padding-top: 0.75rem;
+        }
+        @container (max-width: 1024px) {
+          .notes-board-body-stack {
+            gap: 0.5rem;
+            padding-top: 0.5rem;
+          }
+        }
+        .notes-board-body-text {
+          color: var(--wp-text-secondary);
+          line-height: 1.625;
+          font-weight: 500;
+          font-size: clamp(11px, 2.6cqw, 13px);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-body-text {
+            font-size: clamp(10px, 2.8cqw, 12px);
+          }
+        }
+        .notes-board-dalsi-box {
+          background: rgb(255 251 235 / 0.5);
+          border: 1px solid rgb(254 243 199);
+          border-radius: 0.5rem;
+          padding: clamp(0.5rem, 1.8cqw, 0.75rem);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-dalsi-box {
+            padding: clamp(0.375rem, 2cqw, 0.625rem);
+          }
+        }
+        .notes-board-dalsi-head {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.025em;
+          color: rgb(180 83 9);
+          margin-bottom: 0.25rem;
+          font-size: clamp(9px, 2.2cqw, 12px);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-dalsi-head {
+            font-size: clamp(8px, 2.4cqw, 11px);
+            margin-bottom: 0.125rem;
+            gap: 0.25rem;
+          }
+        }
+        .notes-board-dalsi-text {
+          color: rgb(120 53 15);
+          line-height: 1.625;
+          font-weight: 500;
+          font-size: clamp(11px, 2.6cqw, 13px);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-dalsi-text {
+            font-size: clamp(10px, 2.8cqw, 12px);
+          }
+        }
+        .notes-board-chip {
+          font-size: clamp(9px, 2.2cqw, 10px);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-chip {
+            font-size: clamp(8px, 2.5cqw, 9px);
+          }
+        }
+        .notes-board-date {
+          font-weight: 700;
+          color: var(--wp-text-tertiary);
+          font-size: clamp(10px, 2.4cqw, 12px);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-date {
+            font-size: clamp(9px, 2.6cqw, 11px);
+          }
+        }
+        .notes-board-contact-name {
+          font-weight: 700;
+          color: var(--wp-text-secondary);
+          font-size: clamp(11px, 2.5cqw, 14px);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-contact-name {
+            font-size: clamp(10px, 2.7cqw, 12px);
+          }
+        }
+        .notes-board-pipeline-link {
+          font-size: clamp(9px, 2.2cqw, 11px);
+        }
+        @container (max-width: 1024px) {
+          .notes-board-pipeline-link {
+            font-size: clamp(8px, 2.4cqw, 10px);
+          }
         }
         .notes-no-scrollbar::-webkit-scrollbar { display: none; }
         .notes-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -831,13 +1035,13 @@ function NotesVisionBoardInner({
                 touchAction: "none",
               }}
               className={`
-                notes-glass-card w-[min(100%,clamp(220px,28cqw,350px))] max-w-[min(100%,350px)] rounded-2xl border transition-shadow duration-300
+                notes-glass-card notes-board-card rounded-2xl border transition-shadow duration-300
                 ${isDragging ? "shadow-2xl scale-[1.02] cursor-grabbing opacity-95" : "shadow-lg cursor-grab hover:shadow-xl"}
                 ${pos.pinned ? `border-[color:var(--wp-border-strong)] shadow-[0_0_20px_-5px_rgba(0,0,0,0.1)] ${design.glow}` : "border-[color:var(--wp-surface-card-border)]"}
               `}
             >
-              <div className="flex items-center justify-between rounded-t-2xl border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/90 px-4 py-2.5">
-                <GripHorizontal size={18} className="text-[color:var(--wp-text-tertiary)]" />
+              <div className="notes-board-card-header rounded-t-2xl">
+                <GripHorizontal size={16} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
                 <div className="flex items-center gap-1">
                   {!note.opportunityId ? (
                   <button
@@ -870,50 +1074,50 @@ function NotesVisionBoardInner({
                   </button>
                 </div>
               </div>
-              <div className="p-[clamp(0.875rem,2.5cqw,1.25rem)]">
-                <div className="flex justify-between items-center mb-[clamp(0.75rem,2cqw,1rem)]">
+              <div className="notes-board-card-body">
+                <div className="notes-board-meta-row">
                   <div
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-bold tracking-wide uppercase border text-[clamp(9px,2.2cqw,10px)] ${design.color}`}
+                    className={`notes-board-chip flex items-center gap-1.5 px-2.5 py-1 rounded-md font-bold tracking-wide uppercase border ${design.color}`}
                   >
                     {design.icon}
                     {DOMAINS.find((d) => d.value === note.domain)?.label ?? note.domain}
                   </div>
-                  <div className="flex items-center gap-1.5 font-bold text-[color:var(--wp-text-tertiary)] text-[clamp(10px,2.4cqw,12px)]">
+                  <div className="notes-board-date flex items-center gap-1.5">
                     <Calendar size={12} />
                     {formatDateCZ(note.meetingAt)}
                   </div>
                 </div>
-                <h3 className="font-bold text-[color:var(--wp-text)] leading-tight mb-2 pr-2 text-[clamp(0.9375rem,2.8cqw,1.125rem)]">
+                <h3 className="notes-board-card-title">
                   {contentTitle(note.content)}
                 </h3>
                 {note.opportunityId ? (
-                  <div className="mb-[clamp(0.75rem,2cqw,1rem)]">
+                  <div className="mb-[clamp(0.5rem,1.6cqw,0.75rem)]">
                     <Link
                       href={`/portal/pipeline/${note.opportunityId}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-500/10 px-2.5 py-1 font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-500/15 text-[clamp(9px,2.2cqw,11px)]"
+                      className="notes-board-pipeline-link inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-500/10 px-2.5 py-1 font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-500/15"
                     >
                       <Briefcase size={12} />
                       Navázáno na obchod
                     </Link>
                   </div>
                 ) : null}
-                <div className="flex items-center gap-2 mb-[clamp(0.75rem,2cqw,1rem)]">
+                <div className="notes-board-client-row">
                   <div className="w-6 h-6 rounded-full bg-[color:var(--wp-surface-muted)] flex items-center justify-center border border-[color:var(--wp-surface-card-border)]">
                     <User size={12} className="text-[color:var(--wp-text-secondary)]" />
                   </div>
-                  <span className="font-bold text-[color:var(--wp-text-secondary)] text-[clamp(11px,2.5cqw,14px)]">{note.contactName}</span>
+                  <span className="notes-board-contact-name">{note.contactName}</span>
                 </div>
-                <div className="border-t border-[color:var(--wp-surface-card-border)] pt-3 space-y-3">
-                  <p className="text-[color:var(--wp-text-secondary)] leading-relaxed font-medium text-[clamp(11px,2.6cqw,13px)]">
+                <div className="notes-board-body-stack">
+                  <p className="notes-board-body-text">
                     {contentBody(note.content) || <span className="text-[color:var(--wp-text-tertiary)] italic">Bez obsahu…</span>}
                   </p>
                   {contentRecommendation(note.content) && (
-                    <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-[clamp(0.625rem,2cqw,0.75rem)]">
-                      <div className="flex items-center gap-1.5 font-bold text-amber-700 uppercase tracking-wide mb-1 text-[clamp(9px,2.2cqw,12px)]">
+                    <div className="notes-board-dalsi-box">
+                      <div className="notes-board-dalsi-head">
                         <CheckCircle2 size={12} /> Další kroky
                       </div>
-                      <p className="text-amber-900 leading-relaxed font-medium text-[clamp(11px,2.6cqw,13px)]">
+                      <p className="notes-board-dalsi-text">
                         {contentRecommendation(note.content)}
                       </p>
                     </div>

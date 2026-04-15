@@ -13,6 +13,13 @@
 export const BOARD_UNIT_MIN = 0;
 export const BOARD_UNIT_MAX = 1;
 
+/**
+ * Spawn placement only: approximate half-card size as a fraction of the board axis.
+ * Used to center new cards in board space; persisted positions remain 0–1 units.
+ */
+export const NOTES_BOARD_SPAWN_HALF_CARD_X_FRAC = 0.11;
+export const NOTES_BOARD_SPAWN_HALF_CARD_Y_FRAC = 0.11;
+
 export function clampBoardUnit(n: number): number {
   if (!Number.isFinite(n)) return BOARD_UNIT_MIN;
   return Math.min(BOARD_UNIT_MAX, Math.max(BOARD_UNIT_MIN, n));
