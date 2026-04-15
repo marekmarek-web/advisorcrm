@@ -288,17 +288,17 @@ export function TeamCalendarButtons({
       <button
         type="button"
         onClick={onOpenEvent}
-        className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--wp-text-secondary)] shadow-sm hover:bg-[color:var(--wp-surface-muted)]"
+        className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-sm transition hover:bg-slate-50"
       >
-        <CalendarPlus className="w-4 h-4" />
+        <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
         Týmová událost
       </button>
       <button
         type="button"
         onClick={onOpenTask}
-        className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--wp-text-secondary)] shadow-sm hover:bg-[color:var(--wp-surface-muted)]"
+        className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-sm transition hover:bg-slate-50"
       >
-        <CheckSquare className="w-4 h-4" />
+        <CheckSquare className="h-3.5 w-3.5" aria-hidden />
         Týmový úkol
       </button>
     </div>

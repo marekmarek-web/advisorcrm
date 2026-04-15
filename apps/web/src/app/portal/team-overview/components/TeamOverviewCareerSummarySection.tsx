@@ -129,8 +129,8 @@ export function TeamOverviewCareerSummarySection({
         </div>
       </div>
 
-      {/* Career table */}
-      <div className="overflow-x-auto">
+      {/* Career table — jedna plocha se staty výše */}
+      <div className="overflow-x-auto border-t border-slate-100/90 bg-white">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-slate-50/80 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
             <tr>
@@ -202,7 +202,7 @@ export function TeamOverviewCareerSummarySection({
                           onOpenProgress(mem.userId);
                           selectMember(mem.userId);
                         }}
-                        className="rounded-[10px] bg-slate-100 px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#16192b] transition hover:bg-slate-200"
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] bg-slate-100 px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#16192b] transition hover:bg-slate-200"
                       >
                         Progres
                       </button>
@@ -213,7 +213,7 @@ export function TeamOverviewCareerSummarySection({
                           onOpenCrm(mem.userId);
                           selectMember(mem.userId);
                         }}
-                        className="rounded-[10px] border border-slate-200 bg-white px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 transition hover:bg-slate-50"
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] border border-slate-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 transition hover:bg-slate-50"
                       >
                         CRM
                       </button>
@@ -226,8 +226,8 @@ export function TeamOverviewCareerSummarySection({
         </table>
       </div>
 
-      {/* Bottom details grid */}
-      <div className="grid gap-5 border-t border-slate-100 p-7 lg:grid-cols-3">
+      {/* Bottom details grid — stejná sekce jako tabulka */}
+      <div className="grid gap-6 border-t border-slate-100 bg-slate-50/40 px-7 py-7 lg:grid-cols-3">
         {/* Větve */}
         <div className="space-y-3">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Podle větve</p>
@@ -318,13 +318,15 @@ export function TeamOverviewCareerSummarySection({
       </div>
 
       {!hasTracks && members.length > 0 ? (
-        <div className="mx-7 mb-6 rounded-[16px] border border-amber-200/60 bg-amber-50/40 px-4 py-2.5">
-          <p className="text-xs text-amber-900/90">
-            <span className="font-semibold">Příležitost:</span> bez vyplněných kariérních větví zůstávají souhrny obecnější.{" "}
-            <Link href="/portal/team-overview#sprava-tymu" className="underline hover:text-amber-800">
-              Doplnit v Správa týmu →
-            </Link>
-          </p>
+        <div className="border-t border-slate-100 bg-amber-50/35 px-7 py-4">
+          <div className="rounded-[14px] border border-amber-200/50 bg-amber-50/50 px-4 py-3">
+            <p className="text-xs text-amber-900/90">
+              <span className="font-semibold">Příležitost:</span> bez vyplněných kariérních větví zůstávají souhrny obecnější.{" "}
+              <Link href="/portal/team-overview#sprava-tymu" className="font-semibold underline hover:text-amber-800">
+                Doplnit v Správa týmu →
+              </Link>
+            </p>
+          </div>
         </div>
       ) : null}
     </section>

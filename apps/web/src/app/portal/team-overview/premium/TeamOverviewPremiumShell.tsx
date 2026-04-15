@@ -3,8 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Sparkles, UserPlus, RefreshCw } from "lucide-react";
-import { PremiumMetricCard, PremiumToggleGroup } from "./primitives";
-import { teamOverviewIcon } from "./icons";
+import { PremiumToggleGroup } from "./primitives";
 
 type ShellProps = {
   title: string;
@@ -56,13 +55,13 @@ export function TeamOverviewPremiumShell({
 }: ShellProps) {
   return (
     <div className="min-h-screen bg-[#f4f5f8] text-slate-900">
-      <div className="mx-auto max-w-[1640px] px-5 pb-10 pt-6 xl:px-7">
+      <div className="mx-auto max-w-[1680px] px-5 pb-12 pt-6 xl:px-8">
 
         {/* HEADER SHELL */}
-        <div className="mb-5 rounded-[32px] border border-white/80 bg-white px-7 py-6 shadow-[0_16px_48px_rgba(15,23,42,0.07)]">
+        <div className="mb-6 rounded-[32px] border border-white/80 bg-white px-7 py-6 shadow-[0_16px_48px_rgba(15,23,42,0.07)]">
 
           {/* Upper row: brand + utility actions */}
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[16px] bg-[#16192b] text-white shadow-[0_12px_30px_rgba(22,25,43,0.20)]">
                 <Sparkles className="h-6 w-6" aria-hidden />
@@ -80,12 +79,12 @@ export function TeamOverviewPremiumShell({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 xl:shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 xl:shrink-0">
               {showTeamManagementQuickLink ? (
                 <Link
                   href={teamManagementHref}
                   onClick={onTeamManagementOpen}
-                  className="inline-flex h-[40px] items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase leading-none tracking-[0.16em] text-slate-700 shadow-sm transition hover:bg-slate-50"
                 >
                   <UserPlus className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   Správa týmu
@@ -96,7 +95,7 @@ export function TeamOverviewPremiumShell({
                 type="button"
                 onClick={onRefresh}
                 disabled={loading}
-                className="inline-flex h-[40px] items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex h-10 items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-[10px] font-extrabold uppercase leading-none tracking-[0.16em] text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                 aria-label="Obnovit data"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
@@ -105,15 +104,15 @@ export function TeamOverviewPremiumShell({
             </div>
           </div>
 
-          {/* Filter pills row — aligned baseline with utility row rhythm */}
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          {/* Filter pills — stejná výška jako utility tlačítka (40px řádek) */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <PremiumToggleGroup items={scopeItems} active={scopeActive} onChange={onScopeItemChange} />
             <PremiumToggleGroup items={periodItems} active={periodActive} onChange={onPeriodItemChange} />
           </div>
 
-          {/* Line tabs — underline flush with border */}
+          {/* Line tabs — sjednocená baseline, podtržení v rovině s borderem */}
           <nav
-            className="mt-5 flex flex-wrap items-end gap-0 border-b border-slate-200/80"
+            className="mt-6 flex flex-wrap items-end gap-x-0.5 border-b border-slate-200/80"
             aria-label="Sekce týmového přehledu"
           >
             {viewItems.map((item) => (
@@ -121,7 +120,7 @@ export function TeamOverviewPremiumShell({
                 key={item}
                 type="button"
                 onClick={() => onViewChange(item)}
-                className={`relative -mb-px border-b-2 border-transparent px-4 pb-3.5 pt-1 text-[13px] font-extrabold tracking-tight transition-colors md:px-5 ${
+                className={`relative -mb-px min-h-[44px] border-b-2 border-transparent px-4 pb-3 pt-2 text-[13px] font-extrabold leading-snug tracking-tight transition-colors md:px-5 ${
                   viewActive === item
                     ? "border-[#16192b] text-[#16192b]"
                     : "text-slate-400 hover:border-slate-200 hover:text-slate-700"
@@ -135,10 +134,12 @@ export function TeamOverviewPremiumShell({
 
         {runtimeChecksSlot}
 
-        {/* MAIN LAYOUT: left content + right sticky panel */}
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <div className="min-w-0 space-y-4">{children}</div>
-          <aside className="min-w-0 xl:sticky xl:top-5 xl:self-start">{aside}</aside>
+        {/* MAIN LAYOUT: vyvážený grid, aside drží výšku kvůli empty panel parity */}
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,400px)] xl:items-start">
+          <div className="min-w-0 space-y-5">{children}</div>
+          <div className="flex min-h-0 min-w-0 flex-col xl:sticky xl:top-6 xl:max-h-[calc(100vh-6rem)] xl:self-start">
+            <div className="flex min-h-[min(720px,calc(100vh-7.5rem))] flex-1 flex-col">{aside}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -182,29 +183,29 @@ export function TeamOverviewPremiumBriefingDark({
         </h2>
       </div>
 
-      {/* 5 stat cards — stejný rytmus jako cockpit KPI */}
-      <div className="grid grid-cols-2 gap-3 px-5 pb-6 pt-5 sm:grid-cols-3 xl:grid-cols-5">
-        <div className="rounded-[20px] border border-amber-200/70 bg-amber-50/60 px-4 py-4">
+      {/* 5 stat cards — horizontální řád = px-7 jako hero */}
+      <div className="grid grid-cols-2 gap-3 px-7 pb-6 pt-5 sm:grid-cols-3 xl:grid-cols-5">
+        <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-amber-200/70 bg-amber-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-amber-700/80">Pozornost</p>
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-amber-900">{stats.attention}</p>
           <p className="mt-1.5 text-[10px] font-semibold text-amber-700/70">CRM / kariérní signály</p>
         </div>
-        <div className="rounded-[20px] border border-sky-200/70 bg-sky-50/60 px-4 py-4">
+        <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-sky-200/70 bg-sky-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-sky-700/80">Adaptace</p>
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-sky-900">{stats.adaptation}</p>
           <p className="mt-1.5 text-[10px] font-semibold text-sky-700/70">90d okno ve scope</p>
         </div>
-        <div className="rounded-[20px] border border-emerald-200/70 bg-emerald-50/60 px-4 py-4">
+        <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-emerald-200/70 bg-emerald-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-emerald-700/80">Na cestě</p>
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-emerald-900">{stats.onTrack}</p>
           <p className="mt-1.5 text-[10px] font-semibold text-emerald-700/70">Kariérní evaluace</p>
         </div>
-        <div className="rounded-[20px] border border-slate-200/80 bg-slate-50/60 px-4 py-4">
+        <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-slate-200/80 bg-slate-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Manažerská</p>
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-slate-900">{stats.managerial}</p>
           <p className="mt-1.5 text-[10px] font-semibold text-slate-400">větev struktury</p>
         </div>
-        <div className="rounded-[20px] border border-violet-200/70 bg-violet-50/60 px-4 py-4">
+        <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-violet-200/70 bg-violet-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-violet-700/80">Výkon</p>
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-violet-900">{stats.performance}</p>
           <p className="mt-1.5 text-[10px] font-semibold text-violet-700/70">výkonové větve</p>

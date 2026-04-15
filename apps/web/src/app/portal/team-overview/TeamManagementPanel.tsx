@@ -75,17 +75,17 @@ export function TeamManagementPanel({
 
       {/* Default career program */}
       {canManageTeamCareer ? (
-        <div className="border-b border-slate-100 bg-slate-50/60 px-7 py-5">
-          <p className="mb-3 text-[11px] font-bold text-slate-500">
+        <div className="border-b border-slate-100 bg-slate-50/50 px-7 py-6">
+          <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
             Výchozí kariérní program pro workspace — předvyplní se u členů bez uloženého programu (nepřepisuje jejich údaje).
           </p>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <select
               value={tenantDefaultCareerProgram}
               onChange={(e) =>
                 setTenantDefaultCareerProgram(e.target.value as "beplan" | "premium_brokers" | "__none__")
               }
-              className="min-h-[40px] rounded-[12px] border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#16192b]/10"
+              className="h-10 rounded-[12px] border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#16192b]/10"
             >
               <option value="__none__">Žádný výchozí</option>
               <option value="beplan">Beplan</option>
@@ -106,7 +106,7 @@ export function TeamManagementPanel({
                   setTenantDefaultSaving(false);
                 }
               }}
-              className="min-h-[40px] rounded-[12px] bg-[#16192b] px-4 py-2 text-sm font-bold text-white transition hover:bg-black disabled:opacity-50"
+              className="h-10 rounded-[12px] bg-[#16192b] px-4 text-sm font-bold text-white transition hover:bg-black disabled:opacity-50"
             >
               {tenantDefaultSaving ? "Ukládám…" : "Uložit výchozí"}
             </button>
@@ -115,8 +115,8 @@ export function TeamManagementPanel({
       ) : null}
 
       {/* Invite section */}
-      <div className="border-b border-slate-700/60 bg-[#16192b] px-7 py-6 text-white">
-        <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">
+      <div className="border-b border-slate-700/60 bg-[#16192b] px-7 py-7 text-white">
+        <p className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">
           Pozvat nového člena
         </p>
         <form
@@ -148,14 +148,14 @@ export function TeamManagementPanel({
               setInviteSending(false);
             }
           }}
-          className="flex flex-wrap items-center gap-3"
+          className="flex flex-wrap items-center gap-2.5"
         >
           <input
             type="email"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="email@kolegy.cz"
-            className="min-h-[44px] min-w-[200px] flex-1 rounded-[12px] border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white placeholder:text-slate-500 focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10"
+            className="h-10 min-w-[200px] flex-1 rounded-[12px] border border-white/10 bg-white/5 px-4 text-sm font-medium text-white placeholder:text-slate-500 focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10"
             required
           />
           <CustomDropdown
@@ -173,7 +173,7 @@ export function TeamManagementPanel({
           <button
             type="submit"
             disabled={inviteSending || !inviteEmail.trim()}
-            className="min-h-[44px] rounded-[12px] bg-white px-5 py-2.5 text-sm font-bold text-[#16192b] transition hover:bg-slate-100 disabled:opacity-50"
+            className="h-10 rounded-[12px] bg-white px-5 text-sm font-bold text-[#16192b] transition hover:bg-slate-100 disabled:opacity-50"
           >
             {inviteSending ? "Odesílám…" : "Pozvat"}
           </button>

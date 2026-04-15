@@ -135,16 +135,16 @@ export function PremiumToggleGroup({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-[24px] border border-white bg-white/70 p-1.5 shadow-[0_8px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+    <div className="inline-flex flex-wrap items-stretch gap-1 rounded-[22px] border border-slate-200/90 bg-white p-1 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
       {items.map((item) => (
         <button
           key={item}
           type="button"
           onClick={() => onChange(item)}
-          className={`rounded-[18px] px-5 py-2.5 text-[11px] font-extrabold uppercase tracking-[0.18em] transition-colors duration-200 ${
+          className={`inline-flex h-10 min-w-[3.25rem] items-center justify-center rounded-[18px] px-4 text-[11px] font-extrabold uppercase leading-none tracking-[0.16em] transition-colors duration-200 ${
             active === item
-              ? "bg-[#16192b] text-white shadow-sm shadow-[#16192b]/25"
-              : "text-slate-500 hover:bg-white/80 hover:text-slate-900"
+              ? "bg-[#16192b] text-white shadow-sm shadow-[#16192b]/20"
+              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
           }`}
         >
           {item}

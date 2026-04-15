@@ -187,6 +187,9 @@ export function TeamStructurePanel({
   metricsByUser?: Map<string, TeamMemberMetrics>;
   newcomerUserIds?: Set<string>;
 }) {
+  const totalNodes = roots.reduce((acc, r) => acc + 1 + countDescendants(r), 0);
+  const compactTree = totalNodes <= 4;
+
   if (roots.length === 0) {
     return (
       <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
@@ -212,9 +215,15 @@ export function TeamStructurePanel({
       </div>
 
       <div className="relative overflow-hidden px-7 py-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:22px_22px] opacity-[0.28]" />
-        <div className="relative z-10 min-h-[520px] overflow-x-auto">
-          <div className="mx-auto max-w-[1080px] pt-1">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-[0.22]" />
+        <div
+          className={`relative z-10 overflow-x-auto ${
+            compactTree
+              ? "flex min-h-[400px] flex-col justify-center py-6"
+              : "min-h-[min(56vh,580px)] py-2"
+          }`}
+        >
+          <div className={`mx-auto w-full max-w-[1080px] ${compactTree ? "" : "pt-1"}`}>
             <TreeBranch
               nodes={roots}
               currentUserId={currentUserId}
@@ -226,6 +235,11 @@ export function TeamStructurePanel({
             />
           </div>
         </div>
+        {compactTree ? (
+          <p className="relative z-10 mx-auto mt-6 max-w-[1080px] border-t border-slate-100 pt-5 text-center text-[12px] leading-relaxed text-slate-500">
+            Struktura v tomto rozsahu je kompaktní — výběr člena v pravém panelu zůstává stejný ve všech záložkách.
+          </p>
+        ) : null}
       </div>
     </section>
   );

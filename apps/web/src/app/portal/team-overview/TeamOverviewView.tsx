@@ -414,7 +414,7 @@ export function TeamOverviewView({
           <button
             type="button"
             onClick={() => selectMember(null)}
-            className="rounded-[10px] border border-slate-200 bg-white px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
+            className="inline-flex h-9 items-center justify-center rounded-[10px] border border-slate-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
           >
             Zrušit výběr
           </button>
@@ -501,7 +501,7 @@ export function TeamOverviewView({
                               openMemberModal("progress", mem.userId);
                               selectMember(mem.userId);
                             }}
-                            className="rounded-[10px] bg-slate-100 px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#16192b] transition hover:bg-slate-200"
+                            className="inline-flex h-9 items-center justify-center rounded-[10px] bg-slate-100 px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#16192b] transition hover:bg-slate-200"
                           >
                             Progres
                           </button>
@@ -512,7 +512,7 @@ export function TeamOverviewView({
                               openMemberModal("crm", mem.userId);
                               selectMember(mem.userId);
                             }}
-                            className="rounded-[10px] border border-slate-200 bg-white px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 transition hover:bg-slate-50"
+                            className="inline-flex h-9 items-center justify-center rounded-[10px] border border-slate-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 transition hover:bg-slate-50"
                           >
                             CRM
                           </button>
@@ -548,7 +548,7 @@ export function TeamOverviewView({
       />
       <TeamOverviewCockpitFourCards kpis={kpis} inProductionCount={inProductionCount} loading={loading} />
       <TeamOverviewPerformanceTrendSection performanceOverTime={performanceOverTime} />
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         <TeamOverviewAttentionSection
           variant="firstFold"
           scope={scope}

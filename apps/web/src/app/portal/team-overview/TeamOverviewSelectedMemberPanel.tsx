@@ -19,7 +19,7 @@ function poolLine(programId: CareerProgramId): string {
 }
 
 const PANEL_CLASS =
-  "overflow-hidden rounded-[28px] border border-slate-800 bg-[#16192b] text-white shadow-[0_20px_48px_rgba(0,0,0,0.18)]";
+  "h-full min-h-0 overflow-hidden rounded-[28px] border border-slate-800 bg-[#16192b] text-white shadow-[0_20px_48px_rgba(0,0,0,0.18)]";
 
 export function TeamOverviewSelectedMemberPanel({
   detail,
@@ -60,11 +60,19 @@ export function TeamOverviewSelectedMemberPanel({
 
   if (loading) {
     return (
-      <aside className={clsx(PANEL_CLASS, "space-y-3 p-6")} aria-busy="true" aria-label="Načítání detailu člena">
-        <SkeletonBlock className="h-5 w-1/2 rounded-[8px] bg-white/10" />
-        <SkeletonBlock className="h-24 rounded-[16px] bg-white/5" />
-        <SkeletonBlock className="h-20 rounded-[16px] bg-white/5" />
-        <SkeletonBlock className="h-16 rounded-[16px] bg-white/5" />
+      <aside
+        className={clsx(PANEL_CLASS, "flex flex-col p-7")}
+        aria-busy="true"
+        aria-label="Načítání detailu člena"
+      >
+        <div className="mb-6 h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" aria-hidden />
+        <div className="space-y-4">
+          <SkeletonBlock className="h-4 w-2/5 rounded-lg bg-white/10" />
+          <SkeletonBlock className="h-8 w-4/5 rounded-xl bg-white/10" />
+          <SkeletonBlock className="h-28 rounded-[18px] bg-white/[0.06]" />
+          <SkeletonBlock className="h-24 rounded-[18px] bg-white/[0.06]" />
+          <SkeletonBlock className="h-20 rounded-[18px] bg-white/[0.06]" />
+        </div>
       </aside>
     );
   }
@@ -72,12 +80,16 @@ export function TeamOverviewSelectedMemberPanel({
   if (!detail) {
     if (selectedUserId) {
       return (
-        <aside className={clsx(PANEL_CLASS, "p-6 text-sm")} role="alert">
-          <p className="font-extrabold text-white">Souhrn se nepodařilo načíst</p>
-          <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">
-            Zkuste znovu načíst data tlačítkem Obnovit v hlavičce.
-          </p>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+        <aside className={clsx(PANEL_CLASS, "flex flex-col justify-between p-7 text-sm")} role="alert">
+          <div>
+            <div className="mb-6 h-px w-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" aria-hidden />
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Stav načtení</p>
+            <p className="mt-3 text-[18px] font-black tracking-tight text-white">Souhrn se nepodařilo načíst</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-slate-400">
+              Zkuste znovu načíst data tlačítkem Obnovit v hlavičce.
+            </p>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">
             {fullDetailHref ? (
               <Link
                 href={fullDetailHref}
@@ -100,14 +112,23 @@ export function TeamOverviewSelectedMemberPanel({
     }
 
     return (
-      <aside className={clsx(PANEL_CLASS, "flex min-h-[280px] flex-col p-7")}>
-        <div className="rounded-[20px] border border-white/10 bg-white/[0.04] px-5 py-6">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Pravý panel</p>
-          <p className="mt-3 text-[18px] font-black tracking-tight text-white">Vyberte člena týmu</p>
-          <p className="mt-2 text-[13px] leading-relaxed text-slate-400">
-            Klikněte na řádek v Lidé nebo Kariéra, na uzel ve Struktuře, nebo na jméno v přehledu pozornosti či cadence.
-            Tady se zobrazí kariéra, plnění cíle a navazující akce.
+      <aside className={clsx(PANEL_CLASS, "flex flex-col")}>
+        <div className="flex flex-1 flex-col justify-center px-7 py-10">
+          <div className="mb-6 h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" aria-hidden />
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Souhrn člena</p>
+          <h2 className="mt-4 text-[22px] font-black leading-tight tracking-tight text-white">Vyberte člena týmu</h2>
+          <p className="mt-3 max-w-[22rem] text-[14px] leading-relaxed text-slate-300">
+            Klikněte na řádek v <span className="font-semibold text-white/95">Lidé</span> nebo{" "}
+            <span className="font-semibold text-white/95">Kariéra</span>, na uzel ve{" "}
+            <span className="font-semibold text-white/95">Struktuře</span>, nebo na jméno v přehledu pozornosti či cadence.
           </p>
+          <p className="mt-4 text-[12px] leading-relaxed text-slate-500">
+            V tomto panelu se zobrazí kariéra, plnění cíle, coaching a akce 1:1 / CRM — ve stejném rytmu ve všech záložkách
+            přehledu.
+          </p>
+        </div>
+        <div className="border-t border-white/10 px-7 py-4 text-center">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600">Žádný výběr</p>
         </div>
       </aside>
     );
@@ -125,12 +146,17 @@ export function TeamOverviewSelectedMemberPanel({
   const hasModalActions = onOpenCrm || onOpenProgress || onOpenOneToOne || onOpenTask;
 
   const actionBtnClass =
-    "flex min-h-[64px] flex-col items-start justify-between rounded-[14px] border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10 active:bg-white/15";
+    "flex min-h-[60px] flex-col items-start justify-between gap-1 rounded-[14px] border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10 active:bg-white/15";
 
   return (
-    <aside className={clsx(PANEL_CLASS, "max-h-[min(90vh,calc(100vh-4rem))] overflow-y-auto overscroll-contain")}>
+    <aside
+      className={clsx(
+        PANEL_CLASS,
+        "flex max-h-[min(90vh,calc(100vh-4rem))] flex-col overscroll-contain"
+      )}
+    >
       {/* Header */}
-      <div className="border-b border-white/10 px-7 pb-5 pt-6">
+      <div className="shrink-0 border-b border-white/10 px-7 pb-5 pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Vybraný člen</p>
@@ -166,7 +192,7 @@ export function TeamOverviewSelectedMemberPanel({
         ) : null}
       </div>
 
-      <div className="space-y-4 px-7 pb-7 pt-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-7 pb-8 pt-4">
         {outsideFilter && (
           <div
             className="rounded-[12px] border border-amber-500/20 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-200"
