@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import clsx from "clsx";
 import { Network, UserCircle, ChevronRight } from "lucide-react";
 import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
@@ -15,20 +14,10 @@ function countDescendants(node: TeamTreeNode): number {
   return node.children.reduce((acc, c) => acc + 1 + countDescendants(c), 0);
 }
 
-function findNodeInForest(nodes: TeamTreeNode[], userId: string): TeamTreeNode | null {
-  for (const n of nodes) {
-    if (n.userId === userId) return n;
-    const inner = findNodeInForest(n.children, userId);
-    if (inner) return inner;
-  }
-  return null;
-}
-
 function TreeBranch({
   nodes,
   currentUserId,
   depth,
-  memberDetailQuery,
   selectedUserId,
   onSelectMember,
   metricsByUser,
@@ -37,9 +26,8 @@ function TreeBranch({
   nodes: TeamTreeNode[];
   currentUserId: string;
   depth: number;
-  memberDetailQuery: string;
   selectedUserId?: string | null;
-  onSelectMember?: (userId: string) => void;
+  onSelectMember: (userId: string) => void;
   metricsByUser?: Map<string, TeamMemberMetrics>;
   newcomerUserIds?: Set<string>;
 }) {
@@ -83,8 +71,8 @@ function TreeBranch({
             <div className="relative">
               {depth > 0 ? (
                 <>
-                  <span className="pointer-events-none absolute -left-8 top-5 h-px w-8 bg-slate-200" />
-                  <span className="pointer-events-none absolute -left-8 -top-4 h-9 w-px bg-slate-200" />
+                  <span className="pointer-events-none absolute -left-8 top-5 h-px w-8 bg-slate-200/90" />
+                  <span className="pointer-events-none absolute -left-8 -top-4 h-9 w-px bg-slate-200/90" />
                 </>
               ) : null}
               <div
@@ -100,31 +88,22 @@ function TreeBranch({
                 {isSelf && depth > 0 && (
                   <UserCircle className="h-4 w-4 shrink-0 text-indigo-500" aria-hidden />
                 )}
-                {onSelectMember ? (
-                  <button
-                    type="button"
-                    onClick={() => onSelectMember(node.userId)}
-                    className={clsx(
-                      "text-left text-[14px] font-extrabold transition hover:underline",
-                      depth === 0
-                        ? "text-white"
-                        : isSelected
-                          ? "text-violet-900"
-                          : isSelf
-                            ? "text-indigo-900"
-                            : "text-slate-900 hover:text-[#16192b]"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ) : (
-                  <Link
-                    href={`/portal/team-overview/${node.userId}${memberDetailQuery}`}
-                    className="text-left text-[14px] font-extrabold text-slate-900 transition hover:text-[#16192b] hover:underline"
-                  >
-                    {label}
-                  </Link>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onSelectMember(node.userId)}
+                  className={clsx(
+                    "text-left text-[14px] font-extrabold transition hover:underline",
+                    depth === 0
+                      ? "text-white"
+                      : isSelected
+                        ? "text-violet-900"
+                        : isSelf
+                          ? "text-indigo-900"
+                          : "text-slate-900 hover:text-[#16192b]"
+                  )}
+                >
+                  {label}
+                </button>
                 <span className={clsx("text-[11px] font-medium", depth === 0 ? "text-slate-400" : "text-slate-400")}>
                   {node.roleName}
                 </span>
@@ -158,16 +137,15 @@ function TreeBranch({
                     +{below}
                   </span>
                 )}
-                <Link
-                  href={`/portal/team-overview/${node.userId}${memberDetailQuery}`}
+                <span
                   className={clsx(
-                    "ml-auto text-[10px] font-extrabold uppercase tracking-[0.14em] opacity-0 transition group-hover:opacity-100",
-                    depth === 0 ? "text-slate-300 hover:text-white" : "text-slate-400 hover:text-[#16192b]"
+                    "ml-auto inline-flex items-center text-[10px] font-extrabold uppercase tracking-[0.14em] opacity-0 transition group-hover:opacity-100",
+                    depth === 0 ? "text-slate-400" : "text-slate-400"
                   )}
-                  title="Plný detail"
+                  aria-hidden
                 >
-                  <ChevronRight className="h-4 w-4" aria-hidden />
-                </Link>
+                  <ChevronRight className="h-4 w-4" />
+                </span>
               </div>
             </div>
             {node.children.length > 0 && (
@@ -175,7 +153,6 @@ function TreeBranch({
                 nodes={node.children}
                 currentUserId={currentUserId}
                 depth={depth + 1}
-                memberDetailQuery={memberDetailQuery}
                 selectedUserId={selectedUserId}
                 onSelectMember={onSelectMember}
                 metricsByUser={metricsByUser}
@@ -193,8 +170,7 @@ export function TeamStructurePanel({
   roots,
   currentUserId,
   scope,
-  memberDetailQuery = "",
-  hierarchyParentLinksConfigured = true,
+  hierarchyParentLinksConfigured: _hierarchyParentLinksConfigured = true,
   selectedUserId = null,
   onSelectMember,
   metricsByUser,
@@ -203,10 +179,11 @@ export function TeamStructurePanel({
   roots: TeamTreeNode[];
   currentUserId: string;
   scope: TeamOverviewScope;
+  /** Zachováno kvůli kompatibilitě volání — UI už neodkazuje na legacy detail page. */
   memberDetailQuery?: string;
   hierarchyParentLinksConfigured?: boolean;
   selectedUserId?: string | null;
-  onSelectMember?: (userId: string) => void;
+  onSelectMember: (userId: string) => void;
   metricsByUser?: Map<string, TeamMemberMetrics>;
   newcomerUserIds?: Set<string>;
 }) {
@@ -234,15 +211,14 @@ export function TeamStructurePanel({
         </span>
       </div>
 
-      <div className="relative overflow-hidden px-7 py-7">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
-        <div className="relative z-10 min-h-[560px] overflow-x-auto">
-          <div className="mx-auto max-w-[1080px]">
+      <div className="relative overflow-hidden px-7 py-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:22px_22px] opacity-[0.28]" />
+        <div className="relative z-10 min-h-[520px] overflow-x-auto">
+          <div className="mx-auto max-w-[1080px] pt-1">
             <TreeBranch
               nodes={roots}
               currentUserId={currentUserId}
               depth={0}
-              memberDetailQuery={memberDetailQuery}
               selectedUserId={selectedUserId}
               onSelectMember={onSelectMember}
               metricsByUser={metricsByUser}

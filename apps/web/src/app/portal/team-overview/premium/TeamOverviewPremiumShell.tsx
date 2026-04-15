@@ -105,29 +105,29 @@ export function TeamOverviewPremiumShell({
             </div>
           </div>
 
-          {/* Filter pills row */}
+          {/* Filter pills row — aligned baseline with utility row rhythm */}
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <PremiumToggleGroup items={scopeItems} active={scopeActive} onChange={onScopeItemChange} />
             <PremiumToggleGroup items={periodItems} active={periodActive} onChange={onPeriodItemChange} />
           </div>
 
-          {/* Line tabs */}
-          <nav className="mt-5 flex flex-wrap items-center gap-0 border-b border-slate-200/80" aria-label="Sekce týmového přehledu">
+          {/* Line tabs — underline flush with border */}
+          <nav
+            className="mt-5 flex flex-wrap items-end gap-0 border-b border-slate-200/80"
+            aria-label="Sekce týmového přehledu"
+          >
             {viewItems.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => onViewChange(item)}
-                className={`relative px-4 py-3.5 text-[13px] font-extrabold tracking-tight transition-all md:px-5 ${
+                className={`relative -mb-px border-b-2 border-transparent px-4 pb-3.5 pt-1 text-[13px] font-extrabold tracking-tight transition-colors md:px-5 ${
                   viewActive === item
-                    ? "text-[#16192b]"
-                    : "text-slate-400 hover:text-slate-700"
+                    ? "border-[#16192b] text-[#16192b]"
+                    : "text-slate-400 hover:border-slate-200 hover:text-slate-700"
                 }`}
               >
                 {item}
-                {viewActive === item ? (
-                  <span className="absolute bottom-0 left-0 h-[2px] w-full rounded-t-full bg-[#16192b]" />
-                ) : null}
               </button>
             ))}
           </nav>
@@ -171,7 +171,7 @@ export function TeamOverviewPremiumBriefingDark({
   return (
     <section className="rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
       {/* Hero briefing */}
-      <div className="px-7 pt-7 pb-6 border-b border-slate-100">
+      <div className="border-b border-slate-100 px-7 pb-6 pt-7">
         <div className="flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
           <span>{periodLabel}</span>
           <span>·</span>
@@ -182,8 +182,8 @@ export function TeamOverviewPremiumBriefingDark({
         </h2>
       </div>
 
-      {/* 5 stat cards */}
-      <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3 xl:grid-cols-5">
+      {/* 5 stat cards — stejný rytmus jako cockpit KPI */}
+      <div className="grid grid-cols-2 gap-3 px-5 pb-6 pt-5 sm:grid-cols-3 xl:grid-cols-5">
         <div className="rounded-[20px] border border-amber-200/70 bg-amber-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-amber-700/80">Pozornost</p>
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-amber-900">{stats.attention}</p>

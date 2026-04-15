@@ -49,16 +49,16 @@ export function TeamOverviewKpiDetailSection({
     >
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 id="team-kpi-detail-heading" className="text-lg font-black tracking-tight text-[color:var(--wp-text)]">
+          <h2 id="team-kpi-detail-heading" className="text-lg font-black tracking-tight text-slate-950">
             Výkon a funnel
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-[color:var(--wp-text-secondary)]">
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">
             CRM metriky za zvolené období.
           </p>
         </div>
         {kpis ? (
-          <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">
-            Období: <span className="font-semibold text-[color:var(--wp-text)]">{kpis.periodLabel}</span>
+          <p className="text-xs font-medium text-slate-500">
+            Období: <span className="font-semibold text-slate-950">{kpis.periodLabel}</span>
           </p>
         ) : null}
       </div>
@@ -79,21 +79,21 @@ export function TeamOverviewKpiDetailSection({
         <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1.4fr)_minmax(248px,0.8fr)]">
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           <Link
-            href="#clenove"
+            href="#lide-v-tymu"
             className="group rounded-3xl border border-slate-200/80 bg-slate-50/35 p-4 shadow-sm transition hover:border-slate-300 hover:bg-white"
           >
             <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.blue.bg}`}>
               <Users className={`h-5 w-5 ${KPI_THEMES.blue.subtitle}`} />
             </div>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.memberCount}</p>
-            <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Lidé ve scope</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{kpis.memberCount}</p>
+            <p className="text-xs font-medium text-slate-500">Lidé ve scope</p>
           </Link>
           <div className="rounded-3xl border border-slate-200/80 bg-slate-50/35 p-4 shadow-sm">
             <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.green.bg}`}>
               <TrendingUp className={`h-5 w-5 ${KPI_THEMES.green.subtitle}`} />
             </div>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.unitsThisPeriod}</p>
-            <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Jednotky</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{kpis.unitsThisPeriod}</p>
+            <p className="text-xs font-medium text-slate-500">Jednotky</p>
             <div className="mt-1">
               <TeamOverviewTrendIndicator trend={kpis.unitsTrend} />
             </div>
@@ -102,10 +102,10 @@ export function TeamOverviewKpiDetailSection({
             <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.purple.bg}`}>
               <TrendingUp className={`h-5 w-5 ${KPI_THEMES.purple.subtitle}`} />
             </div>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">
+            <p className="mt-2 text-2xl font-bold text-slate-950">
               {formatTeamOverviewProduction(kpis.productionThisPeriod)}
             </p>
-            <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Produkce</p>
+            <p className="text-xs font-medium text-slate-500">Produkce</p>
             <div className="mt-1">
               <TeamOverviewTrendIndicator trend={Math.round(kpis.productionTrend)} />
             </div>
@@ -114,46 +114,46 @@ export function TeamOverviewKpiDetailSection({
             <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.green.bg}`}>
               <Calendar className={`h-5 w-5 ${KPI_THEMES.green.subtitle}`} />
             </div>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.meetingsThisWeek}</p>
-            <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Schůzky tento týden</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{kpis.meetingsThisWeek}</p>
+            <p className="text-xs font-medium text-slate-500">Schůzky tento týden</p>
           </div>
           <div className="rounded-3xl border border-slate-200/80 bg-slate-50/35 p-4 shadow-sm">
             <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.amber.bg}`}>
               <UserPlus className={`h-5 w-5 ${KPI_THEMES.amber.subtitle}`} />
             </div>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.newcomersInAdaptation}</p>
-            <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Nováčci v adaptaci</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{kpis.newcomersInAdaptation}</p>
+            <p className="text-xs font-medium text-slate-500">Nováčci v adaptaci</p>
           </div>
           <div className="rounded-3xl border border-slate-200/80 bg-slate-50/35 p-4 shadow-sm">
             <div className={`inline-flex rounded-xl p-2 ${KPI_THEMES.rose.bg}`}>
               <AlertTriangle className={`h-5 w-5 ${KPI_THEMES.rose.subtitle}`} />
             </div>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">{kpis.riskyMemberCount}</p>
-            <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Vyžaduje pozornost</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{kpis.riskyMemberCount}</p>
+            <p className="text-xs font-medium text-slate-500">Vyžaduje pozornost</p>
           </div>
           </div>
           <div className="space-y-2.5">
             <div className="rounded-3xl border border-slate-200/80 bg-slate-50 p-4 shadow-sm">
-              <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Hodnota obchodů</p>
-              <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">
+              <p className="text-xs font-medium text-slate-500">Hodnota obchodů</p>
+              <p className="mt-2 text-2xl font-bold text-slate-950">
                 {formatTeamOverviewProduction(Math.round(kpis.pipelineValue))}
               </p>
-              <p className="mt-1 text-xs font-medium text-[color:var(--wp-text-secondary)]">
+              <p className="mt-1 text-xs font-medium text-slate-500">
                 Konverze: {Math.round(kpis.conversionRate * 100)} %
               </p>
             </div>
             <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
               <div className="rounded-3xl border border-slate-200/80 bg-slate-50 p-4 shadow-sm">
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Top performer</p>
-                <p className="mt-2 text-base font-bold text-[color:var(--wp-text)]">{topPerformerName}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">
+                <p className="text-xs font-medium text-slate-500">Top performer</p>
+                <p className="mt-2 text-base font-bold text-slate-950">{topPerformerName}</p>
+                <p className="text-xs font-medium text-slate-500">
                   {topMetric ? formatTeamOverviewProduction(topMetric.productionThisPeriod) : "—"}
                 </p>
               </div>
               <div className="rounded-3xl border border-slate-200/80 bg-slate-50 p-4 shadow-sm">
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Podpora ve výkonu</p>
-                <p className="mt-2 text-base font-bold text-[color:var(--wp-text)]">{supportName}</p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">
+                <p className="text-xs font-medium text-slate-500">Podpora ve výkonu</p>
+                <p className="mt-2 text-base font-bold text-slate-950">{supportName}</p>
+                <p className="text-xs font-medium text-slate-500">
                   {bottomMetric ? formatTeamOverviewProduction(bottomMetric.productionThisPeriod) : "—"}
                 </p>
               </div>
@@ -163,11 +163,11 @@ export function TeamOverviewKpiDetailSection({
                 <div className="inline-flex rounded-xl bg-indigo-500/20 p-2">
                   <Target className="h-5 w-5 text-indigo-600" />
                 </div>
-                <p className="mt-2 text-2xl font-bold text-[color:var(--wp-text)]">
+                <p className="mt-2 text-2xl font-bold text-slate-950">
                   {kpis.teamGoalProgressPercent != null ? `${kpis.teamGoalProgressPercent} %` : "—"}
                 </p>
-                <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">Splnění týmového cíle</p>
-                <p className="mt-1 text-xs text-[color:var(--wp-text-secondary)]">
+                <p className="text-xs font-medium text-slate-500">Splnění týmového cíle</p>
+                <p className="mt-1 text-xs text-slate-500">
                   {kpis.teamGoalActual != null ? formatTeamOverviewProduction(kpis.teamGoalActual) : "0"} /{" "}
                   {formatTeamOverviewProduction(kpis.teamGoalTarget)}
                   {kpis.teamGoalType === "units" && " jednotek"}
@@ -175,7 +175,7 @@ export function TeamOverviewKpiDetailSection({
                   {kpis.teamGoalType === "meetings" && " schůzek"}
                 </p>
                 {kpis.teamGoalProgressPercent != null && (
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--wp-surface-muted)]">
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
                     <div
                       className="h-full rounded-full bg-indigo-500 transition-all"
                       style={{ width: `${Math.min(kpis.teamGoalProgressPercent, 100)}%` }}

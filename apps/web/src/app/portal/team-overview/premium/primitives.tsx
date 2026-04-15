@@ -141,10 +141,10 @@ export function PremiumToggleGroup({
           key={item}
           type="button"
           onClick={() => onChange(item)}
-          className={`rounded-[18px] px-5 py-2.5 text-[11px] font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
+          className={`rounded-[18px] px-5 py-2.5 text-[11px] font-extrabold uppercase tracking-[0.18em] transition-colors duration-200 ${
             active === item
-              ? "scale-[1.02] bg-[#16192b] text-white shadow-md shadow-[#16192b]/20"
-              : "text-slate-500 hover:bg-white/70 hover:text-slate-900"
+              ? "bg-[#16192b] text-white shadow-sm shadow-[#16192b]/25"
+              : "text-slate-500 hover:bg-white/80 hover:text-slate-900"
           }`}
         >
           {item}

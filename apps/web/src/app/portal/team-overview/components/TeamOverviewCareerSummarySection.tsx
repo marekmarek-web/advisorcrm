@@ -24,7 +24,7 @@ const STATUS_STYLES: Record<string, string> = {
   "Potřebuje pozornost": "text-amber-700 font-semibold",
   "Vyžaduje doplnění": "text-violet-700",
   "Částečně vyhodnoceno": "text-blue-700",
-  "Bez dostatku dat": "text-[color:var(--wp-text-tertiary)]",
+  "Bez dostatku dat": "text-slate-500",
 };
 
 /** Součty pro horní tři karty — vzájemně disjunktní kubky podle progressEvaluation / completeness. */
@@ -56,6 +56,7 @@ export function TeamOverviewCareerSummarySection({
   onOpenProgress,
   periodLabel,
   scopeLabel,
+  selectedUserId = null,
 }: {
   members: TeamMemberInfo[];
   metrics: TeamMemberMetrics[];
@@ -66,6 +67,7 @@ export function TeamOverviewCareerSummarySection({
   onOpenProgress: (userId: string) => void;
   periodLabel?: string;
   scopeLabel?: string;
+  selectedUserId?: string | null;
 }) {
   if (members.length === 0) return null;
 
@@ -111,17 +113,17 @@ export function TeamOverviewCareerSummarySection({
         </div>
       </div>
 
-      {/* 3 stat cards */}
-      <div className="grid grid-cols-3 gap-4 px-7 py-5 border-b border-slate-100">
-        <div className="rounded-[20px] border border-emerald-200/70 bg-emerald-50/60 px-5 py-4">
+      {/* 3 stat cards — jednotná výška karet */}
+      <div className="grid grid-cols-1 gap-4 border-b border-slate-100 px-7 py-5 sm:grid-cols-3">
+        <div className="flex min-h-[112px] flex-col justify-between rounded-[20px] border border-emerald-200/70 bg-emerald-50/60 px-5 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-emerald-700/80">Připraveno k posunu</p>
           <p className="mt-2 text-[30px] font-black leading-none tabular-nums text-emerald-900">{statBuckets.readyToAdvance}</p>
         </div>
-        <div className="rounded-[20px] border border-amber-200/70 bg-amber-50/60 px-5 py-4">
+        <div className="flex min-h-[112px] flex-col justify-between rounded-[20px] border border-amber-200/70 bg-amber-50/60 px-5 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-amber-800/80">Ke schválení</p>
           <p className="mt-2 text-[30px] font-black leading-none tabular-nums text-amber-950">{statBuckets.pendingReview}</p>
         </div>
-        <div className="rounded-[20px] border border-rose-200/70 bg-rose-50/60 px-5 py-4">
+        <div className="flex min-h-[112px] flex-col justify-between rounded-[20px] border border-rose-200/70 bg-rose-50/60 px-5 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-rose-800/80">Blokováno</p>
           <p className="mt-2 text-[30px] font-black leading-none tabular-nums text-rose-950">{statBuckets.blocked}</p>
         </div>
@@ -148,13 +150,16 @@ export function TeamOverviewCareerSummarySection({
                 completenessToPercent(ce.evaluationCompleteness),
                 readinessPercentFromRequirements(ce.missingRequirements)
               );
+              const isRowSelected = selectedUserId === mem.userId;
               return (
                 <tr
                   key={mem.userId}
-                  className="cursor-pointer transition hover:bg-slate-50/60"
+                  className={`cursor-pointer transition ${isRowSelected ? "bg-slate-50" : "hover:bg-slate-50/60"}`}
                   onClick={() => selectMember(mem.userId)}
                 >
-                  <td className="border-b border-slate-100/80 px-7 py-4 font-extrabold text-slate-950">
+                  <td
+                    className={`border-b border-slate-100/80 px-7 py-4 font-extrabold ${isRowSelected ? "text-[#16192b]" : "text-slate-950"}`}
+                  >
                     {displayName(mem)}
                   </td>
                   <td className="border-b border-slate-100/80 px-4 py-4">

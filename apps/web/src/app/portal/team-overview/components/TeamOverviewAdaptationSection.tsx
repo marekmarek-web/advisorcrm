@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Check, X } from "lucide-react";
 import type { TeamMemberInfo } from "@/app/actions/team-overview";
 import type { NewcomerAdaptation } from "@/app/actions/team-overview";
@@ -9,7 +8,6 @@ export function TeamOverviewAdaptationSection({
   members,
   newcomers,
   displayName,
-  memberDetailHref,
   selectMember,
   variant = "compact",
   onCheckIn,
@@ -17,7 +15,6 @@ export function TeamOverviewAdaptationSection({
   members: TeamMemberInfo[];
   newcomers: NewcomerAdaptation[];
   displayName: (m: TeamMemberInfo) => string;
-  memberDetailHref: (userId: string) => string;
   selectMember: (userId: string) => void;
   /** Standalone tab „Adaptace“ — širší karty + check-in CTA. */
   variant?: "compact" | "standalone";
@@ -132,27 +129,20 @@ export function TeamOverviewAdaptationSection({
                   )}
                 </button>
 
-                <div className="flex items-center gap-3 border-t border-slate-100 px-5 py-3">
-                  <Link
-                    href={memberDetailHref(n.userId)}
-                    className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#16192b] transition hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Plný detail →
-                  </Link>
-                  {variant === "standalone" && onCheckIn ? (
+                {variant === "standalone" && onCheckIn ? (
+                  <div className="flex items-center justify-end border-t border-slate-100 px-5 py-3">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onCheckIn(n.userId);
                       }}
-                      className="ml-auto rounded-[12px] bg-[#16192b] px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white transition hover:bg-black"
+                      className="rounded-[12px] bg-[#16192b] px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white transition hover:bg-black"
                     >
                       Check-in
                     </button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
             );
           })}

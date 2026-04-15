@@ -1,22 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { AlertTriangle, ChevronRight } from "lucide-react";
 import type { TeamAlert } from "@/lib/team-overview-alerts";
 
 export function TeamOverviewFullAlertsSection({
   alerts,
   selectMember,
-  memberDetailHref,
 }: {
   alerts: TeamAlert[];
   selectMember: (userId: string) => void;
-  memberDetailHref: (userId: string) => string;
 }) {
   return (
     <section className="mb-8">
-      <h2 className="text-lg font-bold text-[color:var(--wp-text)] mb-1">Kompletní výpis signálů</h2>
-      <p className="mb-3 text-xs text-[color:var(--wp-text-secondary)]">
+      <h2 className="mb-1 text-lg font-black tracking-tight text-slate-950">Kompletní výpis signálů</h2>
+      <p className="mb-3 text-xs text-slate-500">
         CRM i kariérní upozornění — totéž, co v přehledu nahoře; zde celý seznam pro kontrolu nebo tisk.
       </p>
       {alerts.length === 0 ? (
@@ -30,27 +27,20 @@ export function TeamOverviewFullAlertsSection({
         <ul className="space-y-2">
           {alerts.map((a, i) => (
             <li key={i}>
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm hover:border-amber-200 hover:bg-amber-50/50 transition">
-                <button
-                  type="button"
-                  onClick={() => selectMember(a.memberId)}
-                  className="flex flex-1 flex-wrap items-center gap-2 text-left min-w-0"
+              <button
+                type="button"
+                onClick={() => selectMember(a.memberId)}
+                className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-white p-4 text-left shadow-sm transition hover:border-amber-200/80 hover:bg-amber-50/40"
+              >
+                <span
+                  className={`shrink-0 rounded-full p-1 ${a.severity === "critical" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}
                 >
-                  <span className={`rounded-full p-1 shrink-0 ${a.severity === "critical" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}>
-                    <AlertTriangle className="w-4 h-4" />
-                  </span>
-                  <span className="font-medium text-[color:var(--wp-text)]">{a.title}</span>
-                  <span className="text-[color:var(--wp-text-secondary)] text-sm">{a.description}</span>
-                  <ChevronRight className="w-4 h-4 text-[color:var(--wp-text-tertiary)] ml-auto shrink-0" />
-                </button>
-                <Link
-                  href={memberDetailHref(a.memberId)}
-                  className="text-xs font-medium text-indigo-600 hover:underline shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Plný detail
-                </Link>
-              </div>
+                  <AlertTriangle className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1 font-medium text-slate-900">{a.title}</span>
+                <span className="min-w-0 flex-[1_1_100%] text-sm text-slate-500 sm:flex-[1_1_auto]">{a.description}</span>
+                <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-slate-300" aria-hidden />
+              </button>
             </li>
           ))}
         </ul>

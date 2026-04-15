@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CalendarClock, ListChecks, AlertCircle, CheckCircle2, Plus } from "lucide-react";
 import type { TeamOverviewScope } from "@/lib/team-hierarchy-types";
 import type { TeamRhythmComputed } from "@/lib/team-rhythm/compute-view";
@@ -45,7 +44,7 @@ export function TeamRhythmPanel({
   disclaimer,
   scope,
   canCreate,
-  memberDetailHref,
+  onSelectMember,
   resolveMemberLabel,
   onOpenEvent,
   onOpenTask,
@@ -54,7 +53,8 @@ export function TeamRhythmPanel({
   disclaimer: string;
   scope: TeamOverviewScope;
   canCreate: boolean;
-  memberDetailHref: (userId: string) => string;
+  /** Výběr člena pro pravý panel — bez navigace na legacy detail stránku. */
+  onSelectMember: (userId: string) => void;
   resolveMemberLabel: (userId: string) => string;
   onOpenEvent: (prefill?: TeamCalendarModalPrefill) => void;
   onOpenTask: (prefill?: TeamCalendarModalPrefill) => void;
@@ -68,7 +68,7 @@ export function TeamRhythmPanel({
       aria-labelledby="team-rhythm-heading"
     >
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/40 px-6 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/40 px-7 py-4">
         <div className="flex items-center gap-2">
           <CalendarClock className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
           <h2 id="team-rhythm-heading" className="text-[17px] font-black tracking-tight text-slate-950">
@@ -86,7 +86,7 @@ export function TeamRhythmPanel({
             <button
               type="button"
               onClick={() => onOpenTask({ title: "Follow-up — týmový přehled" })}
-              className="inline-flex h-[34px] items-center gap-1.5 rounded-[12px] border border-slate-200 bg-white px-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
+              className="inline-flex h-10 items-center gap-1.5 rounded-[12px] border border-slate-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
             >
               <Plus className="h-3 w-3" aria-hidden />
               Úkol
@@ -94,7 +94,7 @@ export function TeamRhythmPanel({
             <button
               type="button"
               onClick={() => onOpenEvent({ title: "Porada — rozvoj týmu" })}
-              className="inline-flex h-[34px] items-center gap-1.5 rounded-[12px] bg-teal-700 px-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white transition hover:bg-teal-800"
+              className="inline-flex h-10 items-center gap-1.5 rounded-[12px] bg-teal-700 px-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white transition hover:bg-teal-800"
             >
               <Plus className="h-3 w-3" aria-hidden />
               Schůzka
@@ -251,12 +251,13 @@ export function TeamRhythmPanel({
                   className="flex flex-col gap-2 rounded-[16px] border border-slate-200/80 bg-slate-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <Link
-                      href={memberDetailHref(c.userId)}
-                      className="text-[13px] font-extrabold text-slate-950 transition hover:text-[#16192b] hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => onSelectMember(c.userId)}
+                      className="text-left text-[13px] font-extrabold text-slate-950 transition hover:text-[#16192b] hover:underline"
                     >
                       {resolveMemberLabel(c.userId)}
-                    </Link>
+                    </button>
                     <p className="mt-0.5 text-[11px] text-slate-400">{c.reasonCs}</p>
                     <span className="mt-1 inline-block rounded-[8px] border border-teal-200/60 bg-teal-100/80 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-teal-800">
                       {cadenceKindLabel(c.cadenceKind)}
@@ -267,25 +268,26 @@ export function TeamRhythmPanel({
                       <button
                         type="button"
                         onClick={() => onOpenEvent({ title: c.suggestEventTitle, notes: c.reasonCs, memberUserIds: [c.userId] })}
-                        className="h-[34px] rounded-[12px] bg-teal-700 px-3 text-[10px] font-extrabold uppercase tracking-[0.12em] text-white transition hover:bg-teal-800"
+                        className="h-10 rounded-[12px] bg-teal-700 px-3.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-white transition hover:bg-teal-800"
                       >
                         1:1
                       </button>
                       <button
                         type="button"
                         onClick={() => onOpenTask({ title: c.suggestTaskTitle, description: c.reasonCs, memberUserIds: [c.userId] })}
-                        className="h-[34px] rounded-[12px] border border-slate-200 px-3 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-600 transition hover:bg-slate-50"
+                        className="h-10 rounded-[12px] border border-slate-200 px-3.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-600 transition hover:bg-slate-50"
                       >
                         Úkol
                       </button>
                     </div>
                   ) : (
-                    <Link
-                      href={memberDetailHref(c.userId)}
-                      className="shrink-0 text-[11px] font-extrabold text-teal-700 transition hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => onSelectMember(c.userId)}
+                      className="shrink-0 text-[11px] font-extrabold text-teal-800 transition hover:underline"
                     >
-                      Detail
-                    </Link>
+                      Souhrn v panelu
+                    </button>
                   )}
                 </li>
               ))}

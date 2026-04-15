@@ -63,12 +63,12 @@ export function TeamManagementPanel({
       aria-labelledby="team-management-heading"
     >
       {/* Header */}
-      <div className="border-b border-slate-100 px-7 py-6">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Admin surface</p>
-        <h2 id="team-management-heading" className="mt-1.5 text-[22px] font-black tracking-tight text-slate-950">
+      <div className="border-b border-slate-100 px-7 py-5">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Workspace a přístupy</p>
+        <h2 id="team-management-heading" className="mt-2 text-[22px] font-black tracking-tight text-slate-950">
           Správa týmu
         </h2>
-        <p className="mt-1 text-[13px] text-slate-500">
+        <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
           Spolupracujte na klientech se svými asistenty nebo kolegy.
         </p>
       </div>

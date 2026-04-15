@@ -40,7 +40,6 @@ import {
   TeamOverviewPremiumShell,
   TeamOverviewPremiumBriefingDark,
 } from "./premium/TeamOverviewPremiumShell";
-import { TeamOverviewPremiumMemberRow } from "./premium/TeamOverviewPremiumMemberRow";
 import { TeamOverviewPremiumRuntimeChecks } from "./premium/TeamOverviewPremiumRuntimeChecks";
 import { TeamOverviewCockpitFourCards } from "./TeamOverviewCockpitFourCards";
 import { TeamOverviewCrmCardModal } from "./TeamOverviewCrmCardModal";
@@ -241,12 +240,6 @@ export function TeamOverviewView({
   const displayName = useCallback((m: TeamMemberInfo) => m.displayName || "Člen týmu", []);
   const newcomerSet = useMemo(() => new Set(newcomers.map((n) => n.userId)), [newcomers]);
 
-  const memberDetailHref = useCallback(
-    (userId: string) =>
-      `/portal/team-overview/${userId}?${new URLSearchParams({ period, scope }).toString()}`,
-    [period, scope]
-  );
-
   const pageModel = useMemo(
     () =>
       buildTeamOverviewPageModel({
@@ -384,15 +377,18 @@ export function TeamOverviewView({
   );
 
 
+  const selectedMemberForStrip =
+    selectedUserId != null ? members.find((m) => m.userId === selectedUserId) : undefined;
+
   const peopleLideTab = (
     <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-      <div className="border-b border-slate-100 px-6 py-5">
+      <div className="border-b border-slate-100 px-7 py-5">
         <h2 className="text-[22px] font-black tracking-tight text-slate-950">Lidé v týmu</h2>
         <p className="mt-1 text-[13px] text-slate-500">
-          Klikněte na řádek pro souhrn — kariéra, coaching, CRM.
+          Klikněte na řádek pro souhrn v pravém panelu — kariéra, coaching, CRM.
         </p>
       </div>
-      <div className="px-6 py-5">
+      <div className="px-7 py-5">
         <TeamOverviewPeopleFiltersBar
           peopleSearch={peopleSearch}
           onPeopleSearchChange={setPeopleSearch}
@@ -404,8 +400,28 @@ export function TeamOverviewView({
           totalCount={members.length}
         />
       </div>
+      {selectedMemberForStrip && visibleMembers.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/90 px-7 py-3">
+          <p className="text-[12px] font-extrabold text-slate-600">
+            Vybráno:{" "}
+            <span className="text-[#16192b]">{displayName(selectedMemberForStrip)}</span>
+            {selectedOutsideFilter ? (
+              <span className="ml-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-amber-700">
+                mimo filtr
+              </span>
+            ) : null}
+          </p>
+          <button
+            type="button"
+            onClick={() => selectMember(null)}
+            className="rounded-[10px] border border-slate-200 bg-white px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
+          >
+            Zrušit výběr
+          </button>
+        </div>
+      ) : null}
       {visibleMembers.length === 0 ? (
-        <div className="px-6 pb-8 text-center">
+        <div className="px-7 pb-8 text-center">
           <p className="rounded-[20px] border border-slate-200/80 bg-slate-50/90 px-5 py-8 text-sm text-slate-500">
             {members.length === 0
               ? "V tomto rozsahu zatím nejsou žádní členové — zkuste jiný rozsah nebo doplnění hierarchie."
@@ -414,29 +430,15 @@ export function TeamOverviewView({
         </div>
       ) : (
         <>
-          {/* Quick-select rows */}
-          <div className="space-y-2 px-6 pb-4">
-            {visibleMembers.map((m) => (
-              <TeamOverviewPremiumMemberRow
-                key={m.userId}
-                member={m}
-                metrics={metricsByUser.get(m.userId)}
-                displayName={displayName}
-                active={selectedUserId === m.userId}
-                onClick={() => selectMember(m.userId)}
-              />
-            ))}
-          </div>
-          {/* Full table */}
-          <div className="border-t border-slate-100 overflow-x-auto">
+          <div className="overflow-x-auto border-t border-slate-100">
             <table className="w-full min-w-[800px] text-left text-sm">
               <thead className="bg-slate-50/80 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
                 <tr>
-                  <th className="border-b border-slate-100 px-6 py-3.5">Jméno a role</th>
+                  <th className="border-b border-slate-100 px-7 py-3.5">Jméno a role</th>
                   <th className="border-b border-slate-100 px-4 py-3.5">Program / track</th>
                   <th className="border-b border-slate-100 px-4 py-3.5">Produkce</th>
                   <th className="border-b border-slate-100 px-4 py-3.5">Status</th>
-                  <th className="border-b border-slate-100 px-6 py-3.5 text-right">Akce</th>
+                  <th className="border-b border-slate-100 px-7 py-3.5 text-right">Akce</th>
                 </tr>
               </thead>
               <tbody>
@@ -450,7 +452,7 @@ export function TeamOverviewView({
                       className={`cursor-pointer transition ${isActive ? "bg-slate-50" : "hover:bg-slate-50/60"}`}
                       onClick={() => selectMember(mem.userId)}
                     >
-                      <td className="border-b border-slate-100/80 px-6 py-4">
+                      <td className="border-b border-slate-100/80 px-7 py-4">
                         <div className="flex items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-slate-100 text-sm font-black text-slate-700">
                             {displayName(mem).slice(0, 1).toUpperCase()}
@@ -490,7 +492,7 @@ export function TeamOverviewView({
                           {ce?.managerProgressLabel ?? "—"}
                         </span>
                       </td>
-                      <td className="border-b border-slate-100/80 px-6 py-4 text-right">
+                      <td className="border-b border-slate-100/80 px-7 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
@@ -537,7 +539,7 @@ export function TeamOverviewView({
   );
 
   const cockpitBody = (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <TeamOverviewPremiumBriefingDark
         periodLabel={periodLabelActive}
         scopeLabel={scopeLabelActive}
@@ -565,7 +567,7 @@ export function TeamOverviewView({
           }
           scope={scope}
           canCreate={canCreateTeamCalendar}
-          memberDetailHref={memberDetailHref}
+          onSelectMember={selectMember}
           resolveMemberLabel={resolveRhythmMemberLabel}
           onOpenEvent={openTeamEventModal}
           onOpenTask={openTeamTaskModal}
@@ -585,6 +587,7 @@ export function TeamOverviewView({
       onOpenProgress={(uid) => openMemberModal("progress", uid)}
       periodLabel={periodLabelActive}
       scopeLabel={scopeLabelActive}
+      selectedUserId={selectedUserId}
     />
   );
 
@@ -594,7 +597,6 @@ export function TeamOverviewView({
       members={members}
       newcomers={newcomers}
       displayName={displayName}
-      memberDetailHref={memberDetailHref}
       selectMember={selectMember}
       onCheckIn={(userId) => openMemberModal("checkin", userId)}
     />
@@ -605,7 +607,6 @@ export function TeamOverviewView({
       roots={hierarchy}
       currentUserId={currentUserId}
       scope={scope}
-      memberDetailQuery={`?${new URLSearchParams({ period, scope }).toString()}`}
       hierarchyParentLinksConfigured={kpis?.hierarchyParentLinksConfigured !== false}
       selectedUserId={selectedUserId}
       onSelectMember={selectMember}
@@ -680,7 +681,6 @@ export function TeamOverviewView({
           <TeamOverviewSelectedMemberPanel
             detail={selectedDetail}
             loading={detailLoading}
-            fullDetailHref={selectedUserId ? memberDetailHref(selectedUserId) : "#"}
             onClose={() => selectMember(null)}
             canCreateTeamCalendar={canCreateTeamCalendar}
             canEditTeamCareer={canEditTeamCareer}
