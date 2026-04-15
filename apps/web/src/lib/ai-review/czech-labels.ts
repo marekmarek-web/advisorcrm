@@ -154,6 +154,8 @@ const EXTRA_REASON_CS: Record<string, string> = {
   low_classifier_confidence: "Typ dokumentu nebyl rozpoznán s dostatečnou jistotou — ověřte, zda odpovídá skutečnosti.",
   no_markdown_content_for_pdf: "Z dokumentu se nepodařilo získat čitelný text. Zkuste nahrát čitelnější verzi.",
   scan_pending_ocr: "Dokument čeká na rozpoznání textu ze skenu. Zkuste to za chvíli znovu.",
+  ocr_watchdog_timeout:
+    "Čekání na čitelný text překročilo časový limit — stav byl ukončen. Znovu spusťte zpracování nebo nahrajte PDF s textovou vrstvou.",
 };
 
 const PATH_PREFIX_RE =

@@ -24,6 +24,9 @@ export type PreprocessResult = {
   pageCountEstimate: number | null;
 };
 
+/** Musí odpovídat `USABLE_TEXT_MIN` v `contract-review-scan-gate.ts` (scan defer vs. text layer). */
+const USABLE_TEXT_MIN_FOR_PDF_LAYER_FALLBACK = 400;
+
 async function getSignedUrl(path: string): Promise<string | null> {
   const admin = createAdminClient();
   const { signedUrl } = await createSignedStorageUrl({
@@ -100,6 +103,27 @@ export async function preprocessForAiExtraction(
       if (preprocessStatus === "skipped" || preprocessStatus === "failed") {
         preprocessStatus = "partial";
       } else if (preprocessStatus === "completed") {
+        preprocessStatus = "partial";
+      }
+    }
+  }
+
+  // Adobe sometimes returns a short garbage string while the PDF still has a rich native text layer.
+  // Prefer longer pdf-parse output so scan gate + pipeline do not defer to endless "pending OCR".
+  if (
+    isPdf &&
+    markdownContent?.trim() &&
+    markdownContent.trim().length < USABLE_TEXT_MIN_FOR_PDF_LAYER_FALLBACK &&
+    bestFileUrl
+  ) {
+    const fallbackText = await extractTextFromPdfUrl(bestFileUrl);
+    if (fallbackText && fallbackText.trim().length > markdownContent.trim().length) {
+      markdownContent = fallbackText;
+      preprocessMode = "pdf_parse_fallback";
+      warnings.push(
+        "pdf_parse_fallback: replaced short Adobe output with native PDF text layer (longer extract)."
+      );
+      if (preprocessStatus === "completed") {
         preprocessStatus = "partial";
       }
     }

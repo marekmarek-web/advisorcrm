@@ -309,7 +309,11 @@ export type ExtractionDocument = {
     matchVerdict?: MatchVerdict;
     matchVerdictReason?: string;
     autoResolvedClientId?: string;
+    ocrWatchdogExpired?: boolean;
+    ocrScanPendingSinceMs?: number;
   };
+  /** Server: policy while `scan_pending_ocr` (GET refreshes msUntilExpiry). */
+  ocrScanPendingPolicy?: { maxWaitMs: number; msUntilExpiry: number };
   validationWarnings?: Array<{ code?: string; message: string; field?: string }>;
   classificationReasons?: string[];
   fieldConfidenceMap?: Record<string, number>;

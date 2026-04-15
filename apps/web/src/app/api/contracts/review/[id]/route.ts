@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { deleteContractReview, getContractReviewById } from "@/lib/ai/review-queue-repository";
+import { expireStaleScanPendingOcrIfNeeded } from "@/lib/contracts/ocr-scan-pending-watchdog";
 import { serializeContractReviewDetailResponse } from "@/lib/ai/contract-review-serialize";
 import { createAdminClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
@@ -48,7 +49,12 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json(serializeContractReviewDetailResponse(row, includeDebug));
+    const afterWatchdog = await expireStaleScanPendingOcrIfNeeded(row, membership.tenantId, {
+      userId,
+    });
+    const finalRow = afterWatchdog ?? row;
+
+    return NextResponse.json(serializeContractReviewDetailResponse(finalRow, includeDebug));
   } catch {
     return NextResponse.json(
       { error: "Načtení detailu selhalo." },

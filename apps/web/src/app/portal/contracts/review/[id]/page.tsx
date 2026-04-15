@@ -19,6 +19,7 @@ import { AIReviewExtractionShell } from "@/app/components/ai-review/AIReviewExtr
 import { mapApiToExtractionDocument } from "@/lib/ai-review/mappers";
 import type { ExtractionDocument, MatchVerdict } from "@/lib/ai-review/types";
 import { isSupportingDocumentOnly } from "@/lib/ai/apply-policy-enforcement";
+import { DEFAULT_OCR_SCAN_PENDING_MAX_MS } from "@/lib/contracts/ocr-scan-pending-policy";
 
 function resolveMatchVerdictFromDoc(d: ExtractionDocument | null): MatchVerdict | null {
   if (!d) return null;
@@ -113,6 +114,7 @@ export default function ContractReviewDetailPage() {
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [processingStepHint, setProcessingStepHint] = useState<string | undefined>();
   const [scanRetryBusy, setScanRetryBusy] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [matchedClientId, setMatchedClientId] = useState<string | null>(null);
   const [linkDocBusy, setLinkDocBusy] = useState(false);
   const pollTimeoutRef = useRef<number | null>(null);
@@ -200,7 +202,12 @@ export default function ContractReviewDetailPage() {
           setDoc(mapped);
           setLoading(false);
           if (status === "failed") {
-            setError(data.errorMessage ?? "Extrakce selhala.");
+            const trace = data.extractionTrace as { ocrWatchdogExpired?: boolean } | undefined;
+            if (trace?.ocrWatchdogExpired) {
+              setError(null);
+            } else {
+              setError(data.errorMessage ?? "Extrakce selhala.");
+            }
           }
           return;
         }
@@ -274,6 +281,22 @@ export default function ContractReviewDetailPage() {
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
+
+  /** `scan_pending_ocr` — periodické GET kvůli serverovému watchdog; žádné nekonečné „ticho“. */
+  useEffect(() => {
+    if (processingStatus !== "scan_pending_ocr") return;
+    const scanPollTimer = window.setInterval(() => {
+      void load();
+    }, 20_000);
+    return () => window.clearInterval(scanPollTimer);
+  }, [processingStatus, load]);
+
+  /** Odpočet / uplynulý čas u scan pending */
+  useEffect(() => {
+    if (processingStatus !== "scan_pending_ocr") return;
+    const t = window.setInterval(() => setNowTick(Date.now()), 10_000);
+    return () => window.clearInterval(t);
+  }, [processingStatus]);
 
   useEffect(() => {
     const onVis = () => {
@@ -540,22 +563,41 @@ export default function ContractReviewDetailPage() {
   }
 
   if (processingStatus === "scan_pending_ocr") {
+    const policy = doc?.ocrScanPendingPolicy;
+    const maxMin = Math.round((policy?.maxWaitMs ?? DEFAULT_OCR_SCAN_PENDING_MAX_MS) / 60_000);
+    const since = (doc?.extractionTrace as { ocrScanPendingSinceMs?: number } | undefined)?.ocrScanPendingSinceMs;
+    const elapsedMin =
+      since != null ? Math.max(0, Math.floor((nowTick - since) / 60_000)) : null;
+    const remainingMin =
+      policy?.msUntilExpiry != null ? Math.max(0, Math.ceil(policy.msUntilExpiry / 60_000)) : null;
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 px-4 text-center max-w-lg mx-auto">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-2xl font-black">
           OCR
         </div>
         <div>
-          <h1 className="text-xl font-black text-[color:var(--wp-text)] mb-2">Dokument čeká na OCR</h1>
+          <h1 className="text-xl font-black text-[color:var(--wp-text)] mb-2">Čeká na čitelný text (sken / OCR)</h1>
           <p className="text-sm text-[color:var(--wp-text-secondary)] leading-relaxed mb-3">
-            Soubor vypadá jako naskenovaný dokument nebo obrázek — AI Review potřebuje čitelný text.
+            Soubor vypadá jako naskenovaný dokument nebo obrázek — AI Review potřebuje dostatek strojově čitelného textu.
+            Toto není „nekonečný job“ v pozadí: pokud stav nepřejde do výsledku, server ho po {maxMin} minutách ukončí a
+            nabídne znovu spustit zpracování.
           </p>
+          {(elapsedMin != null || remainingMin != null) && (
+            <p className="text-xs font-semibold text-amber-900/90 mb-3" role="status">
+              {elapsedMin != null ? `Uplynulo přibližně ${elapsedMin} min.` : null}
+              {elapsedMin != null && remainingMin != null ? " · " : null}
+              {remainingMin != null
+                ? `Do automatického ukončení zbývá přibližně ${remainingMin} min.`
+                : null}
+            </p>
+          )}
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left space-y-2">
             <p className="text-xs font-bold text-amber-900">Co dál?</p>
             <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside leading-relaxed">
-              <li>Pokud máte PDF s textovou vrstvou, klikněte „Zkusit znovu" — pipeline text rovnou extrahuje.</li>
-              <li>Pokud je soubor fotografií / skenem, aktivujte Adobe OCR v nastavení a poté znovu spusťte zpracování.</li>
-              <li>Alternativně nahrajte verzi dokumentu s textovou vrstvou (ne scan).</li>
+              <li>Pokud máte PDF s textovou vrstvou, klikněte „Zkusit znovu“ — server nejdřív zkusí nativní text vrstvy.</li>
+              <li>Pokud je soubor čistě skenem, zapněte Adobe OCR v nastavení a znovu spusťte zpracování.</li>
+              <li>Alternativně nahrajte verzi dokumentu s textovou vrstvou (ne čistý scan).</li>
             </ul>
           </div>
         </div>
@@ -648,6 +690,13 @@ export default function ContractReviewDetailPage() {
         onRefreshPdf={loadPdf}
         onLinkToClientDocuments={handleLinkToClientDocuments}
         linkDocBusy={linkDocBusy}
+        onRetryPipeline={
+          doc.processingStatus === "failed" &&
+          (doc.extractionTrace as { ocrWatchdogExpired?: boolean } | undefined)?.ocrWatchdogExpired
+            ? handleRetryAfterScan
+            : undefined
+        }
+        retryPipelineBusy={scanRetryBusy}
       />
     </div>
   );

@@ -200,6 +200,12 @@ export type ExtractionTrace = {
   /** Classifier v2: false → skip automatic structured extraction (review path). */
   supportedForDirectExtraction?: boolean;
   scanPendingReason?: string;
+  /** Wall-clock ms when `scan_pending_ocr` was set (watchdog). */
+  ocrScanPendingSinceMs?: number;
+  /** Watchdog closed stale scan-pending; POST /process may retry. */
+  ocrWatchdogExpired?: boolean;
+  ocrWatchdogExpiredAtMs?: number;
+  ocrWatchdogReason?: string;
   totalPipelineDurationMs?: number;
   /**
    * Anthropic/Claude provider path observability.

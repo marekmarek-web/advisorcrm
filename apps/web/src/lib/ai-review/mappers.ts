@@ -1840,6 +1840,7 @@ export function mapApiToExtractionDocument(
     isApplied: reviewStatus === "applied",
     applyResultPayload: detail.applyResultPayload as ExtractionDocument["applyResultPayload"],
     extractionTrace: detail.extractionTrace as ExtractionDocument["extractionTrace"],
+    ocrScanPendingPolicy: detail.ocrScanPendingPolicy as ExtractionDocument["ocrScanPendingPolicy"],
     validationWarnings: detail.validationWarnings as ExtractionDocument["validationWarnings"],
     classificationReasons: detail.classificationReasons as string[] | undefined,
     fieldConfidenceMap,

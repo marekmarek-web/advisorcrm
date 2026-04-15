@@ -183,6 +183,7 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
           adobeJobIds: adobePreprocessResult.providerJobIds,
           readabilityScore: adobePreprocessResult.readabilityScore,
           ocrConfidenceEstimate: adobePreprocessResult.ocrConfidenceEstimate,
+          ocrScanPendingSinceMs: Date.now(),
         },
       });
       await logAudit({

@@ -9,7 +9,8 @@
 import { detectInputMode } from "@/lib/ai/input-mode-detection";
 import type { PreprocessResult } from "@/lib/documents/processing/preprocess-for-ai";
 
-const USABLE_TEXT_MIN = 400;
+/** Min. délka textu z preprocessu, aby se neskončilo ve `scan_pending_ocr` (sdílené s preprocess fallback). */
+export const USABLE_TEXT_MIN = 400;
 const USABLE_TEXT_ALT = 200;
 const READABILITY_OK = 68;
 

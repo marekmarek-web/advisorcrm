@@ -329,6 +329,9 @@ type Props = {
   /** Client document linking (rendered under the wizard in the left panel). */
   onLinkToClientDocuments?: (visibleToClient: boolean) => void | Promise<void>;
   linkDocBusy?: boolean;
+  /** Po vypršení watchdog na `scan_pending_ocr` — znovu spustit pipeline. */
+  onRetryPipeline?: () => void | Promise<void>;
+  retryPipelineBusy?: boolean;
 };
 
 export function AIReviewExtractionShell({
@@ -348,6 +351,8 @@ export function AIReviewExtractionShell({
   onRefreshPdf,
   onLinkToClientDocuments,
   linkDocBusy,
+  onRetryPipeline,
+  retryPipelineBusy,
 }: Props) {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -572,12 +577,34 @@ export function AIReviewExtractionShell({
         <div className="bg-rose-50 border-b border-rose-200 px-6 py-4">
           <div className="max-w-5xl mx-auto flex items-start gap-3">
             <AlertCircle size={20} className="text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-sm font-bold text-rose-900 mb-1">Extrakce selhala</h4>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-bold text-rose-900 mb-1">
+                {(doc.extractionTrace as { ocrWatchdogExpired?: boolean } | undefined)?.ocrWatchdogExpired
+                  ? "Časový limit čekání na čitelný text"
+                  : "Extrakce selhala"}
+              </h4>
               <p className="text-xs text-rose-800 leading-relaxed">{doc.errorMessage}</p>
-              <p className="text-xs text-rose-600 mt-1">
-                Možné příčiny: PDF je naskenované (obrázek) a model neumí text rozpoznat, dokument je poškozený, nebo došlo k chybě API.
-              </p>
+              {(doc.extractionTrace as { ocrWatchdogExpired?: boolean } | undefined)?.ocrWatchdogExpired ? (
+                <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                  Toto není chyba modelu — dokument příliš dlouho zůstal ve stavu „čeká na OCR“ bez dokončení. Zkuste znovu
+                  spustit zpracování; pokud má soubor textovou vrstvu, pipeline ji umí použít bez falešného úspěchu.
+                </p>
+              ) : (
+                <p className="text-xs text-rose-600 mt-1">
+                  Možné příčiny: PDF je naskenované (obrázek) a model neumí text rozpoznat, dokument je poškozený, nebo došlo k chybě API.
+                </p>
+              )}
+              {(doc.extractionTrace as { ocrWatchdogExpired?: boolean } | undefined)?.ocrWatchdogExpired &&
+              onRetryPipeline ? (
+                <button
+                  type="button"
+                  disabled={retryPipelineBusy}
+                  onClick={() => void onRetryPipeline()}
+                  className="mt-3 min-h-[40px] px-4 rounded-lg bg-rose-700 text-white text-xs font-bold disabled:opacity-50"
+                >
+                  {retryPipelineBusy ? "Spouštím…" : "Znovu spustit zpracování"}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

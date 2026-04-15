@@ -2,6 +2,10 @@ import type { ContractReviewRow } from "./review-queue-repository";
 import { maskSensitiveEnvelopeForUi } from "./document-sensitivity";
 import { buildPipelineInsightsFromReviewRow } from "./pipeline-review-insights";
 import { evaluateApplyReadiness } from "./quality-gates";
+import {
+  msUntilScanPendingExpiry,
+  resolveOcrScanPendingMaxMs,
+} from "@/lib/contracts/ocr-scan-pending-policy";
 
 /** Shared JSON body for GET contract/document review detail (Plan 3 §11.3 alias). */
 export function serializeContractReviewDetailResponse(
@@ -103,6 +107,16 @@ export function serializeContractReviewDetailResponse(
       };
     })(),
     applyGate: evaluateApplyReadiness(row),
+    ocrScanPendingPolicy:
+      row.processingStatus === "scan_pending_ocr"
+        ? {
+            maxWaitMs: resolveOcrScanPendingMaxMs(),
+            msUntilExpiry: msUntilScanPendingExpiry(
+              row.extractionTrace as Record<string, unknown> | undefined,
+              row.updatedAt,
+            ),
+          }
+        : undefined,
     debug: includeDebug
       ? {
           classification: {
