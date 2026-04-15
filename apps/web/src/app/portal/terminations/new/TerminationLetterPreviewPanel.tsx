@@ -147,7 +147,7 @@ export function TerminationLetterPreviewPanel({
       <div
         className={
           layout === "wizardFinish"
-            ? "rounded-[26px] border border-slate-200 bg-slate-50 p-6 text-sm text-slate-500"
+            ? "rounded-[26px] border border-slate-200 bg-slate-50 p-6 text-sm text-slate-500 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-muted)] dark:text-[color:var(--wp-text-secondary)]"
             : "rounded-[var(--wp-radius)] border border-[color:var(--wp-border)] bg-[color:var(--wp-surface-muted)] p-4 text-sm text-[color:var(--wp-text-secondary)]"
         }
       >
@@ -161,7 +161,7 @@ export function TerminationLetterPreviewPanel({
       <div
         className={
           layout === "wizardFinish"
-            ? "rounded-[26px] border border-red-200 bg-red-50 p-6 text-sm text-red-800"
+            ? "rounded-[26px] border border-red-200 bg-red-50 p-6 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"
             : "rounded-[var(--wp-radius)] border border-red-200 bg-red-50 p-4 text-sm text-red-800"
         }
       >
@@ -227,9 +227,9 @@ export function TerminationLetterPreviewPanel({
     }
 
     return (
-      <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
+      <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)] dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none">
         {officialForm ? (
-          <div className="space-y-3 text-sm text-slate-700">
+          <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-700 shadow-sm dark:border-slate-300 dark:bg-white dark:text-slate-900">
             <p className="text-base font-bold text-slate-950">{officialForm.title}</p>
             <p className="whitespace-pre-wrap">{officialForm.body}</p>
             <ul className="list-disc space-y-1 pl-5">
@@ -240,7 +240,7 @@ export function TerminationLetterPreviewPanel({
           </div>
         ) : (
           <>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-[color:var(--wp-text-secondary)]">
               Text dopisu (upravte přímo)
             </label>
             <textarea
@@ -255,7 +255,7 @@ export function TerminationLetterPreviewPanel({
               }}
               spellCheck={false}
               placeholder="Načítám nebo doplňte text výpovědi…"
-              className="min-h-[min(520px,70vh)] w-full resize-y rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-relaxed text-slate-900 whitespace-pre-wrap outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="min-h-[min(520px,70vh)] w-full resize-y rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-900 whitespace-pre-wrap outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-slate-300 dark:bg-white dark:text-slate-900 dark:focus:ring-violet-300/40"
             />
           </>
         )}
@@ -264,7 +264,7 @@ export function TerminationLetterPreviewPanel({
             type="button"
             onClick={() => (officialForm ? printCurrentPreview() : printWizardLetter())}
             disabled={!canPrint}
-            className="mt-4 inline-flex min-h-[44px] items-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-4 inline-flex min-h-[44px] items-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-[color:var(--wp-surface-card-border)] dark:bg-[color:var(--wp-surface-raised)] dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)]"
           >
             Rychlý náhled tisku
           </button>

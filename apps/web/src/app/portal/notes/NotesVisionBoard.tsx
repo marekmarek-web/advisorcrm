@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -49,6 +50,10 @@ import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 /** Legacy cache (jen migrace → server); nové pozice jdou výhradně do DB. */
 const BOARD_POSITIONS_KEY = "portal-notes-board-positions";
 const MOBILE_TAB_KEY = "portal-notes-mobile-tab";
+/** Max. z-index pro karty na plátně (bring-to-front při uchopení). Musí zůstat pod NOTES_EDIT_DRAWER_Z. */
+const NOTES_BOARD_CARD_Z_RENDER_CAP = 99_998;
+/** Pravý panel „Nový / Upravit zápisek“ — nad všemi kartami i po dlouhém navyšování z při tažení. */
+const NOTES_EDIT_DRAWER_Z = 999_999;
 const NOTE_ID_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -187,7 +192,10 @@ function NotesVisionBoardInner({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [maxZIndex, setMaxZIndex] = useState(() =>
-    Math.max(10, ...Object.values(initialBoardPositions).map((p) => p.z))
+    Math.min(
+      NOTES_BOARD_CARD_Z_RENDER_CAP,
+      Math.max(10, ...Object.values(initialBoardPositions).map((p) => p.z)),
+    )
   );
   const [isMobile, setIsMobile] = useState(false);
   const [mobileTab, setMobileTab] = useState<"feed" | "board">("board");
@@ -258,6 +266,11 @@ function NotesVisionBoardInner({
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  /** Portal na document.body — fixed drawer nesmí být pod .wp-portal-main-panel (backdrop-filter / stacking). */
+  const [notesDrawerPortalReady, setNotesDrawerPortalReady] = useState(false);
+  useEffect(() => {
+    setNotesDrawerPortalReady(true);
+  }, []);
 
   const flushSaveBoardPositions = useCallback(async (next: Record<string, BoardPosition>) => {
     try {
@@ -312,7 +325,7 @@ function NotesVisionBoardInner({
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     setDraggingId(id);
-    const newZ = maxZIndex + 1;
+    const newZ = Math.min(maxZIndex + 1, NOTES_BOARD_CARD_Z_RENDER_CAP);
     setMaxZIndex(newZ);
     setPosition(id, index, { z: newZ });
   };
@@ -594,7 +607,7 @@ function NotesVisionBoardInner({
             bw / 2 - bw * NOTES_BOARD_SPAWN_HALF_CARD_X_FRAC + (Math.random() * 40 - 20);
           const spawnPxY =
             bh / 2 - bh * NOTES_BOARD_SPAWN_HALF_CARD_Y_FRAC + (Math.random() * 40 - 20);
-          const newZ = maxZIndex + 1;
+          const newZ = Math.min(maxZIndex + 1, NOTES_BOARD_CARD_Z_RENDER_CAP);
           setMaxZIndex(newZ);
           const xRel = bw > 0 ? pixelsToBoardUnits(spawnPxX, bw) : 0.5;
           const yRel = bh > 0 ? pixelsToBoardUnits(spawnPxY, bh) : 0.5;
@@ -988,7 +1001,7 @@ function NotesVisionBoardInner({
 
       <main
         ref={boardRef}
-        className={`relative [container-type:inline-size] flex-1 min-h-[min(420px,58dvh)] cursor-crosshair overflow-auto md:min-h-[min(560px,72vh)] ${
+        className={`relative isolate [container-type:inline-size] flex-1 min-h-[min(420px,58dvh)] cursor-crosshair overflow-auto md:min-h-[min(560px,72vh)] ${
           isMobile && mobileTab === "board" ? "mx-4 max-h-[min(70dvh,520px)] rounded-xl border border-[color:var(--wp-surface-card-border)]" : ""
         } ${isMobile && mobileTab === "feed" ? "hidden" : ""}`}
       >
@@ -1032,7 +1045,7 @@ function NotesVisionBoardInner({
                 position: "absolute",
                 left: `${pos.x * 100}%`,
                 top: `${pos.y * 100}%`,
-                zIndex: isDragging ? 9999 : pos.z,
+                zIndex: Math.min(isDragging ? 9999 : pos.z, NOTES_BOARD_CARD_Z_RENDER_CAP),
                 touchAction: "none",
               }}
               className={`
@@ -1244,15 +1257,18 @@ function NotesVisionBoardInner({
         </div>
       )}
 
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex justify-end bg-[color:var(--wp-overlay-scrim)] backdrop-blur-sm animate-in fade-in duration-300"
-          onMouseDown={(e) => {
-            // Zavřít jen při stisku přímo na backdrop (ne při click po výběru textu z textarea — ten končí mouseupem na backdrop).
-            if (e.target === e.currentTarget) setIsModalOpen(false);
-          }}
-        >
-          <div className="bg-[color:var(--wp-surface-card)] w-full max-w-[480px] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      {notesDrawerPortalReady &&
+        isModalOpen &&
+        createPortal(
+          <div
+            style={{ zIndex: NOTES_EDIT_DRAWER_Z }}
+            className="fixed inset-0 flex justify-end bg-[color:var(--wp-overlay-scrim)] backdrop-blur-sm animate-in fade-in duration-300"
+            onMouseDown={(e) => {
+              // Zavřít jen při stisku přímo na backdrop (ne při click po výběru textu z textarea — ten končí mouseupem na backdrop).
+              if (e.target === e.currentTarget) setIsModalOpen(false);
+            }}
+          >
+            <div className="bg-[color:var(--wp-surface-card)] w-full max-w-[480px] h-full min-h-0 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between px-8 py-6 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/80">
               <div>
                 <h2 className="font-bold text-xl text-[color:var(--wp-text)]">
@@ -1454,8 +1470,9 @@ function NotesVisionBoardInner({
               </CreateActionButton>
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
