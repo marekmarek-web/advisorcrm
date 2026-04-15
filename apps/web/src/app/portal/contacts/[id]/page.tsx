@@ -39,6 +39,7 @@ import { ContactMergeConflictGuard } from "./ContactMergeConflictGuard";
 import { ContactDetailIdentityTab } from "./ContactDetailIdentityTab";
 import { ContactPaymentSetupsSection } from "./ContactPaymentSetupsSection";
 import { ClientReferralSection } from "./ClientReferralSection";
+import { ProductsFvSummarySection } from "./ProductsFvSummarySection";
 import { Suspense, type ReactNode } from "react";
 import { InviteToClientZoneButton } from "@/app/dashboard/contacts/[id]/InviteToClientZoneButton";
 import { computeAccessVerdict, type AccessVerdict } from "@/lib/auth/access-verdict";
@@ -212,6 +213,11 @@ function ContactTabBody({
               >
                 <ContractsSection contactId={contactId} />
               </Suspense>
+              <div className="mt-6">
+                <Suspense fallback={null}>
+                  <ProductsFvSummarySection contactId={contactId} />
+                </Suspense>
+              </div>
               <ClientFinancialSummary contactId={contactId} />
               <div className="mt-6 pt-6 border-t border-[color:var(--wp-surface-card-border)]">
                 <h2 className="text-lg font-black text-[color:var(--wp-text)] mb-2">Platební instrukce</h2>

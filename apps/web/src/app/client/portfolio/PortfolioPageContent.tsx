@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
+  AlertCircle,
   Briefcase,
   Building2,
   Car,
@@ -276,8 +277,9 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                       p.segmentDetail?.kind === "investment" && p.segmentDetail.fundName
                         ? `Logo fondu ${p.segmentDetail.fundName}`
                         : "Logo instituce";
+                    const fvEligible = isFvEligibleSegment(contract.segment);
                     const fvShared =
-                      isFvEligibleSegment(contract.segment) && p.fvReadiness.fvSourceType
+                      fvEligible && p.fvReadiness.fvSourceType
                         ? computeSharedFutureValue({
                             fvSourceType: p.fvReadiness.fvSourceType,
                             resolvedFundId: p.fvReadiness.resolvedFundId,
@@ -297,6 +299,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                             sourceExplanation: fvShared.sourceLabel,
                           }
                         : null;
+                    const fvPartial = !fv && fvEligible && fvShared?.projectionState === "partial";
                     const detailRows = canonicalPortfolioDetailRows(p);
 
                     return (
@@ -379,6 +382,14 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                               </p>
                               <p className="text-[11px] text-indigo-900/80 leading-snug">{fv.sourceExplanation}</p>
                               <p className="text-[10px] text-indigo-800/90 leading-snug">{SHARED_FV_DISCLAIMER}</p>
+                            </div>
+                          ) : fvPartial ? (
+                            <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-3 flex items-start gap-2">
+                              <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" aria-hidden />
+                              <p className="text-[11px] text-amber-800 leading-snug">
+                                U tohoto produktu nelze zobrazit odhad budoucí hodnoty — v evidenci chybí některé
+                                údaje (horizont, příspěvek nebo fond).
+                              </p>
                             </div>
                           ) : null}
 
