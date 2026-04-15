@@ -1,9 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check, type LucideIcon } from "lucide-react";
 
 export type CustomDropdownOption = { id: string; label: string };
+
+const MENU_MAX_HEIGHT_PX = 240;
+const GAP_PX = 8;
+const VIEWPORT_PAD = 8;
+const BUTTON_MENU_WIDTH_PX = 224;
+const Z_BACKDROP = 190;
+const Z_MENU = 200;
+
+function computeMenuPlacement(
+  trigger: DOMRect,
+  direction: "up" | "down",
+  isInput: boolean
+): { left: number; top: number; width: number; maxHeight: number } {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const menuWidth = isInput ? trigger.width : BUTTON_MENU_WIDTH_PX;
+
+  let left = trigger.left;
+  if (left + menuWidth > vw - VIEWPORT_PAD) {
+    left = Math.max(VIEWPORT_PAD, vw - VIEWPORT_PAD - menuWidth);
+  }
+  if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+
+  const spaceBelow = vh - trigger.bottom - GAP_PX - VIEWPORT_PAD;
+  const spaceAbove = trigger.top - GAP_PX - VIEWPORT_PAD;
+
+  let openUp = direction === "up";
+  if (direction === "down" && spaceBelow < 140 && spaceAbove > spaceBelow) openUp = true;
+  if (direction === "up" && spaceAbove < 140 && spaceBelow > spaceAbove) openUp = false;
+
+  let top: number;
+  let maxHeight: number;
+
+  if (openUp) {
+    maxHeight = Math.min(MENU_MAX_HEIGHT_PX, Math.max(80, spaceAbove));
+    top = trigger.top - GAP_PX - maxHeight;
+    if (top < VIEWPORT_PAD) {
+      maxHeight = Math.max(80, trigger.top - VIEWPORT_PAD - GAP_PX);
+      top = VIEWPORT_PAD;
+    }
+  } else {
+    maxHeight = Math.min(MENU_MAX_HEIGHT_PX, Math.max(80, spaceBelow));
+    top = trigger.bottom + GAP_PX;
+    if (top + maxHeight > vh - VIEWPORT_PAD) {
+      maxHeight = Math.max(80, vh - VIEWPORT_PAD - top);
+    }
+  }
+
+  return { left, top, width: menuWidth, maxHeight };
+}
 
 export interface CustomDropdownProps {
   value: string;
@@ -31,6 +82,14 @@ export function CustomDropdown({
   buttonClassName = "",
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [menuPlacement, setMenuPlacement] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+
   const selected = options.find((o) => o.id === value);
   const isPlaceholder = !selected || selected.id === "" || selected.id === "none";
 
@@ -46,6 +105,34 @@ export function CustomDropdown({
 
   const triggerClass = `${buttonClasses}${buttonClassName ? ` ${buttonClassName}` : ""}`;
 
+  const closeDropdown = useCallback(() => {
+    setIsOpen(false);
+    setMenuPlacement(null);
+  }, []);
+
+  const updatePlacement = useCallback(() => {
+    if (!isOpen || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setMenuPlacement(computeMenuPlacement(r, direction, isInput));
+  }, [isOpen, direction, isInput]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    updatePlacement();
+    const el = triggerRef.current;
+    const ro = el ? new ResizeObserver(updatePlacement) : null;
+    if (el && ro) ro.observe(el);
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
+  }, [isOpen, updatePlacement]);
+
+  const portalEl = typeof document !== "undefined" ? document.body : null;
+
   return (
     <div className="relative">
       <style>{`
@@ -55,8 +142,12 @@ export function CustomDropdown({
         .custom-dropdown-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--wp-border-strong); }
       `}</style>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isOpen) closeDropdown();
+          else setIsOpen(true);
+        }}
         className={triggerClass}
       >
         {isInput ? (
@@ -86,29 +177,39 @@ export function CustomDropdown({
         />
       </button>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[110]"
-            onClick={() => setIsOpen(false)}
-            aria-hidden
-          />
-          <div
-            className={`absolute ${isInput ? "left-0 w-full" : "left-0 w-56"} z-[120] max-h-60 overflow-y-auto rounded-2xl border border-[color:var(--wp-dropdown-border)] bg-[color:var(--wp-dropdown-surface)] py-2 shadow-xl shadow-indigo-900/10${lightIsland ? "" : " dark:shadow-black/40"} custom-dropdown-scroll
-              ${direction === "up" ? "bottom-full mb-2" : "top-full mt-2"}
-              animate-in fade-in duration-200
-              ${direction === "up" ? "slide-in-from-bottom-2" : "slide-in-from-top-2"}
-            `}
-          >
-            {options.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  onChange(opt.id);
-                  setIsOpen(false);
+      {isOpen &&
+        portalEl &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0"
+              style={{ zIndex: Z_BACKDROP }}
+              onClick={closeDropdown}
+              aria-hidden
+            />
+            {menuPlacement && (
+              <div
+                role="listbox"
+                className={`fixed overflow-y-auto rounded-2xl border border-[color:var(--wp-dropdown-border)] bg-[color:var(--wp-dropdown-surface)] py-2 shadow-xl shadow-indigo-900/10${lightIsland ? "" : " dark:shadow-black/40"} custom-dropdown-scroll animate-in fade-in duration-200 slide-in-from-top-2`}
+                style={{
+                  zIndex: Z_MENU,
+                  left: menuPlacement.left,
+                  top: menuPlacement.top,
+                  width: menuPlacement.width,
+                  maxHeight: menuPlacement.maxHeight,
                 }}
-                className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-bold transition-colors hover:bg-[color:var(--wp-surface-muted)]
+              >
+                {options.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    role="option"
+                    aria-selected={value === opt.id}
+                    onClick={() => {
+                      onChange(opt.id);
+                      closeDropdown();
+                    }}
+                    className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-bold transition-colors hover:bg-[color:var(--wp-surface-muted)]
                   ${
                     value === opt.id
                       ? lightIsland
@@ -117,16 +218,18 @@ export function CustomDropdown({
                       : "text-[color:var(--wp-text)]"
                   }
                 `}
-              >
-                <span className="truncate pr-4">{opt.label}</span>
-                {value === opt.id && (
-                  <Check size={16} strokeWidth={3} className="shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+                  >
+                    <span className="truncate pr-4">{opt.label}</span>
+                    {value === opt.id && (
+                      <Check size={16} strokeWidth={3} className="shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>,
+          portalEl
+        )}
     </div>
   );
 }

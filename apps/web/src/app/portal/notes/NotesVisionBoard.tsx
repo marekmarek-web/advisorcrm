@@ -581,7 +581,8 @@ function NotesVisionBoardInner({
           const boardRect = boardRef.current.getBoundingClientRect();
           const bw = boardRect.width;
           const bh = boardRect.height;
-          const spawnPxX = bw / 2 - 170 + (Math.random() * 40 - 20);
+          const cardHalfW = Math.min(175, bw * 0.11);
+          const spawnPxX = bw / 2 - cardHalfW + (Math.random() * 40 - 20);
           const spawnPxY = bh / 2 - 150 + (Math.random() * 40 - 20);
           const newZ = maxZIndex + 1;
           setMaxZIndex(newZ);
@@ -824,7 +825,7 @@ function NotesVisionBoardInner({
                 touchAction: "none",
               }}
               className={`
-                notes-glass-card w-[350px] rounded-2xl border transition-shadow duration-300
+                notes-glass-card w-[min(100%,clamp(240px,32vw,350px))] max-w-[350px] rounded-2xl border transition-shadow duration-300
                 ${isDragging ? "shadow-2xl scale-[1.02] cursor-grabbing opacity-95" : "shadow-lg cursor-grab hover:shadow-xl"}
                 ${pos.pinned ? `border-[color:var(--wp-border-strong)] shadow-[0_0_20px_-5px_rgba(0,0,0,0.1)] ${design.glow}` : "border-[color:var(--wp-surface-card-border)]"}
               `}
@@ -861,36 +862,36 @@ function NotesVisionBoardInner({
                   </button>
                 </div>
               </div>
-              <div className="p-5">
-                <div className="flex justify-between items-center mb-4">
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase border ${design.color}`}>
+              <div className="p-4 xl:p-5">
+                <div className="flex justify-between items-center mb-3 xl:mb-4">
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] xl:text-[10px] font-bold tracking-wide uppercase border ${design.color}`}>
                     {design.icon}
                     {DOMAINS.find((d) => d.value === note.domain)?.label ?? note.domain}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[color:var(--wp-text-tertiary)]">
+                  <div className="flex items-center gap-1.5 text-[11px] xl:text-xs font-bold text-[color:var(--wp-text-tertiary)]">
                     <Calendar size={12} />
                     {formatDateCZ(note.meetingAt)}
                   </div>
                 </div>
-                <h3 className="font-bold text-[color:var(--wp-text)] text-lg leading-tight mb-2 pr-2">
+                <h3 className="font-bold text-[color:var(--wp-text)] text-base xl:text-lg leading-tight mb-2 pr-2">
                   {contentTitle(note.content)}
                 </h3>
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-3 xl:mb-4">
                   <div className="w-6 h-6 rounded-full bg-[color:var(--wp-surface-muted)] flex items-center justify-center border border-[color:var(--wp-surface-card-border)]">
                     <User size={12} className="text-[color:var(--wp-text-secondary)]" />
                   </div>
-                  <span className="text-sm font-bold text-[color:var(--wp-text-secondary)]">{note.contactName}</span>
+                  <span className="text-xs xl:text-sm font-bold text-[color:var(--wp-text-secondary)]">{note.contactName}</span>
                 </div>
                 <div className="border-t border-[color:var(--wp-surface-card-border)] pt-3 space-y-3">
-                  <p className="text-[13px] text-[color:var(--wp-text-secondary)] leading-relaxed font-medium">
+                  <p className="text-[12px] xl:text-[13px] text-[color:var(--wp-text-secondary)] leading-relaxed font-medium">
                     {contentBody(note.content) || <span className="text-[color:var(--wp-text-tertiary)] italic">Bez obsahu…</span>}
                   </p>
                   {contentRecommendation(note.content) && (
-                    <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-wide mb-1">
+                    <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-2.5 xl:p-3">
+                      <div className="flex items-center gap-1.5 text-[10px] xl:text-xs font-bold text-amber-700 uppercase tracking-wide mb-1">
                         <CheckCircle2 size={12} /> Další kroky
                       </div>
-                      <p className="text-[13px] text-amber-900 leading-relaxed font-medium">
+                      <p className="text-[12px] xl:text-[13px] text-amber-900 leading-relaxed font-medium">
                         {contentRecommendation(note.content)}
                       </p>
                     </div>
