@@ -2215,7 +2215,7 @@ export function ExtractionLeftPanel({
               onSelectClient={onSelectClient}
               editedFields={editedFields}
             />
-            {!doc.isApplied ? <DocumentFinalityWarning doc={doc} /> : null}
+            {/* DocumentFinalityWarning removed: advisor-confirmed flow replaces publishability wall */}
           </div>
         </div>
       </div>

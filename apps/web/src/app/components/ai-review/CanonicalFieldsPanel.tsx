@@ -131,9 +131,9 @@ function PacketMetaSection({ pm }: { pm: NonNullable<CanonicalFields["packetMeta
         />
       )}
       {pm.hasSensitiveAttachment && (
-        <div className="flex items-start gap-2 mt-1 text-xs rounded-lg bg-amber-50 border border-amber-200 px-2 py-1.5 text-amber-800">
+        <div className="flex items-start gap-2 mt-1 text-xs rounded-lg bg-slate-50 border border-slate-200 px-2 py-1.5 text-slate-600">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-          <span>Obsahuje citlivou přílohu (zdravotní dotazník, AML). Příloha nesmí být publikována jako smlouva.</span>
+          <span>Obsahuje citlivou přílohu (zdravotní dotazník, AML) — zkontrolujte extrahované údaje.</span>
         </div>
       )}
       {(pm.packetWarnings ?? []).map((w, i) => (
@@ -149,37 +149,17 @@ function PacketMetaSection({ pm }: { pm: NonNullable<CanonicalFields["packetMeta
 // ─── PublishHints section ─────────────────────────────────────────────────────
 
 function PublishHintsSection({ ph }: { ph: NonNullable<CanonicalFields["publishHints"]> }) {
-  const isOk = ph.contractPublishable && !ph.sensitiveAttachmentOnly && !ph.needsSplit;
   return (
     <Section
-      icon={ph.contractPublishable ? CheckCircle2 : Lock}
-      title="Publikovatelnost"
-      badgeVariant={isOk ? "ok" : "error"}
-      badge={ph.contractPublishable ? "Publikovatelné" : "Vyžaduje kontrolu"}
+      icon={CheckCircle2}
+      title="Stav dokumentu"
+      badgeVariant="ok"
+      badge="Ke schválení poradcem"
     >
-      {ph.contractPublishable ? (
-        <div className="flex items-center gap-2 text-xs text-emerald-700">
-          <CheckCircle2 size={12} />
-          <span>Smlouva je připravena k zápisu do CRM.</span>
-        </div>
-      ) : (
-        <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5">
-          <XCircle size={12} className="mt-0.5 shrink-0" />
-          <span>
-            {ph.sensitiveAttachmentOnly
-              ? "Dokument je citlivá příloha — nelze publikovat jako finální smlouvu."
-              : ph.needsSplit
-                ? "Dokument vyžaduje rozdělení před zápisem (více sekcí v jednom souboru)."
-                : `Dokument není publikovatelný${ph.reasons?.length ? `: ${ph.reasons.map((x) => humanizeReviewReasonLine(x)).join(", ")}` : "."}`}
-          </span>
-        </div>
-      )}
-      {ph.needsManualValidation && (
-        <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 mt-1">
-          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-          <span>Vyžaduje ruční ověření před zápisem do CRM.</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2 text-xs text-emerald-700">
+        <CheckCircle2 size={12} />
+        <span>Po schválení poradcem bude dokument zapsán do CRM.</span>
+      </div>
     </Section>
   );
 }

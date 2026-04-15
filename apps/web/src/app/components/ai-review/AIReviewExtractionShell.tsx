@@ -390,8 +390,8 @@ export function AIReviewExtractionShell({
   const canApply = isApproved && !doc.isApplied;
   const canApproveAndApply = !!onApproveAndApply && canApproveReject;
   const proposalBarrierReasons = doc.applyGate?.applyBarrierReasons ?? [];
-  const hasProposalBarrier = proposalBarrierReasons.length > 0;
-  const effectiveApplyBarrierReasons = applyOverrideEnabled ? [] : proposalBarrierReasons;
+  const _hasProposalBarrier = proposalBarrierReasons.length > 0;
+  const _effectiveApplyBarrierReasons = applyOverrideEnabled ? [] : proposalBarrierReasons;
 
   const resolveApplyOverrideOptions = useCallback(() => {
     if (!applyOverrideEnabled || proposalBarrierReasons.length === 0) return undefined;
@@ -518,13 +518,24 @@ export function AIReviewExtractionShell({
   }, [doc.id, doc.matchedClientId, router, toast]);
 
   const handleApproveClick = useCallback(() => {
+    setApplyOverrideEnabled(true);
+    if (onConfirmFinalContract && proposalBarrierReasons.length > 0) {
+      void Promise.resolve(onConfirmFinalContract(proposalBarrierReasons)).catch(() => {});
+    }
     void Promise.resolve(onApprove(state.editedFields));
-  }, [onApprove, state.editedFields]);
+  }, [onApprove, onConfirmFinalContract, proposalBarrierReasons, state.editedFields]);
 
   const handleApproveAndApplyClick = useCallback(() => {
     if (!onApproveAndApply) return;
-    void Promise.resolve(onApproveAndApply(state.editedFields, resolveApplyOverrideOptions()));
-  }, [onApproveAndApply, resolveApplyOverrideOptions, state.editedFields]);
+    setApplyOverrideEnabled(true);
+    const overrideOpts = proposalBarrierReasons.length > 0
+      ? { overrideGateReasons: proposalBarrierReasons, overrideReason: "Poradce potvrdil extrahované údaje a schválil zápis do CRM." }
+      : undefined;
+    if (onConfirmFinalContract && proposalBarrierReasons.length > 0) {
+      void Promise.resolve(onConfirmFinalContract(proposalBarrierReasons)).catch(() => {});
+    }
+    void Promise.resolve(onApproveAndApply(state.editedFields, overrideOpts));
+  }, [onApproveAndApply, onConfirmFinalContract, proposalBarrierReasons, state.editedFields]);
 
   const handleDownloadPdf = useCallback(async () => {
     setPdfExportBusy(true);
@@ -561,16 +572,7 @@ export function AIReviewExtractionShell({
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
       `}</style>
 
-      {isApproved && !doc.isApplied && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-6 py-3">
-          <div className="max-w-5xl mx-auto flex items-start gap-3">
-            <AlertCircle size={18} className="text-amber-700 shrink-0 mt-0.5" />
-            <p className="text-sm font-medium text-amber-950 leading-snug">
-              {approvedPendingApplyHint(matchVerdict, hasResolvedClient)}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Approved-pending-apply hint removed: advisor-confirmed flow handles this */}
 
       {/* Failed state banner */}
       {isFailed && doc.errorMessage && (
@@ -825,104 +827,7 @@ export function AIReviewExtractionShell({
         );
       })()}
 
-      {(() => {
-        if (isFailed || isProcessing) return null;
-        const showApplyIssues =
-          doc.applyGate &&
-          (doc.applyGate.blockedReasons.length > 0 ||
-            effectiveApplyBarrierReasons.length > 0 ||
-            doc.applyGate.warnings.length > 0);
-        const showPrepFailed = doc.pipelineInsights?.preprocessStatus === "failed";
-        const showLowCov =
-          typeof doc.pipelineInsights?.textCoverageEstimate === "number" &&
-          doc.pipelineInsights.textCoverageEstimate < 0.35;
-        const showProposal = !applyOverrideEnabled && (doc.reasonsForReview ?? []).some(
-          (r) =>
-            r.includes("proposal_or_modelation") ||
-            r.includes("proposal_not_final") ||
-            r.includes("offer_not_binding")
-        );
-        if (!showApplyIssues && !showPrepFailed && !showLowCov && !showProposal && !applyOverrideEnabled) return null;
-        const showFinalContractCta = hasProposalBarrier && !applyOverrideEnabled;
-        return (
-          <div
-            className={`border-b px-4 py-3 md:px-6 ${
-              showFinalContractCta || applyOverrideEnabled
-                ? "border-amber-200 bg-amber-50"
-                : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]"
-            }`}
-          >
-            <div className="max-w-6xl mx-auto flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
-              <div className="min-w-0 flex flex-col gap-2 text-xs">
-                {doc.applyGate && doc.applyGate.blockedReasons.length > 0 ? (
-                  <span className="text-sm text-amber-800 font-semibold leading-snug">
-                    Ke kontrole: {doc.applyGate.blockedReasons.map(humanizeApplyGateReason).join(" ")}
-                  </span>
-                ) : null}
-                {effectiveApplyBarrierReasons.length > 0 ? (
-                  <p className="text-sm text-amber-950 font-medium leading-snug">
-                    Dokument je označen jako <strong>návrh / modelace</strong>. Pokud jde ve skutečnosti o finální
-                    smlouvu, potvrďte to — jinak zápis do CRM zůstane omezený.
-                  </p>
-                ) : null}
-                {applyOverrideEnabled ? (
-                  <span className="text-sm font-semibold text-emerald-800 leading-snug">
-                    Potvrzeno: dokument bereme jako finální smlouvu. Zápis do CRM je povolen (postupujte přes Schválit /
-                    Zapsat do CRM).
-                  </span>
-                ) : null}
-                {doc.applyGate && doc.applyGate.warnings.length > 0 ? (
-                  <span className="text-[11px] text-amber-900 leading-snug">
-                    {doc.applyGate.warnings.map(humanizeApplyGateReason).join(" ")}
-                  </span>
-                ) : null}
-                {showPrepFailed ? (
-                  <span className="text-[11px] text-amber-800 leading-snug">
-                    Preprocessing selhal — porovnejte extrakci s originálem.
-                  </span>
-                ) : null}
-                {showLowCov ? (
-                  <span className="text-[11px] text-amber-800 leading-snug">
-                    Nízké pokrytí textem (
-                    {Math.round((doc.pipelineInsights?.textCoverageEstimate ?? 0) * 100)} %) — zkontrolujte pole
-                    oproti dokumentu.
-                  </span>
-                ) : null}
-                {showProposal ? (
-                  <span className="text-sm font-semibold text-amber-950 leading-snug">
-                    Návrh / modelace — ne finální smlouva.
-                  </span>
-                ) : null}
-              </div>
-              {showFinalContractCta ? (
-                <button
-                  type="button"
-                  disabled={finalContractBusy}
-                  onClick={async () => {
-                    setApplyOverrideEnabled(true);
-                    if (onConfirmFinalContract && proposalBarrierReasons.length > 0) {
-                      setFinalContractBusy(true);
-                      try {
-                        await onConfirmFinalContract(proposalBarrierReasons);
-                        toast.showToast("Dokument je potvrzený jako finální smlouva a nastavení bylo uloženo.", "success");
-                      } catch {
-                        toast.showToast("Potvrzení se uložilo jen lokálně — při reloadu může zmizet.", "info");
-                      } finally {
-                        setFinalContractBusy(false);
-                      }
-                    } else {
-                      toast.showToast("Dokument je ručně potvrzený jako finální smlouva.", "success");
-                    }
-                  }}
-                  className="shrink-0 inline-flex min-h-[44px] w-full md:w-auto items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-md transition-colors hover:bg-emerald-700 disabled:opacity-60"
-                >
-                  {finalContractBusy ? "Ukládám…" : "Potvrdit jako finální smlouvu"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        );
-      })()}
+      {/* Apply gate / proposal barrier strip removed: advisor-confirmed flow replaces it */}
 
       {/* Mobile tab switcher */}
       <div className="lg:hidden flex border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]">
@@ -1023,7 +928,7 @@ export function AIReviewExtractionShell({
                     ) : (
                       <Check size={14} />
                     )}
-                    <span>Jen schválit</span>
+                    <span>Schválit extrahované údaje</span>
                   </button>
                 ) : null}
                 {canApply ? (
@@ -1096,33 +1001,7 @@ export function AIReviewExtractionShell({
             </div>
           )}
 
-          {/* Client document linking — placed under the extraction workflow */}
-          {doc.matchedClientId && onLinkToClientDocuments && (
-            <div className="border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-4 py-3 md:px-6 shrink-0">
-              <p className="font-bold text-sm text-[color:var(--wp-text)] mb-1.5">Dokumenty klienta</p>
-              <p className="text-xs text-[color:var(--wp-text-secondary)] mb-3 leading-relaxed">
-                Přidejte tento soubor do dokumentové vrstvy klienta. Úložiště se nekopíruje — jen se vytvoří odkaz v CRM.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  disabled={!!linkDocBusy}
-                  onClick={() => void onLinkToClientDocuments(false)}
-                  className="min-h-[40px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 text-xs font-bold text-[color:var(--wp-text)] disabled:opacity-50"
-                >
-                  {linkDocBusy ? "Ukládám…" : "Přidat do dokumentů (interně)"}
-                </button>
-                <button
-                  type="button"
-                  disabled={!!linkDocBusy}
-                  onClick={() => void onLinkToClientDocuments(true)}
-                  className="min-h-[40px] rounded-xl bg-indigo-600 px-4 text-xs font-bold text-white disabled:opacity-50"
-                >
-                  Přidat a zobrazit v klientském portálu
-                </button>
-              </div>
-            </div>
-          )}
+          {/* "Dokumenty klienta" section removed: document linking is handled automatically during CRM write-through */}
           {/* Client match + actions at bottom of left panel */}
           {!doc.isApplied && hasData && (
             <div className="border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 md:p-6 shrink-0">
@@ -1371,7 +1250,10 @@ export function AIReviewExtractionShell({
               <button
                 type="button"
                 onClick={() => {
-                  onApply?.(resolveApplyOverrideOptions());
+                  const overrideOpts = proposalBarrierReasons.length > 0
+                    ? { overrideGateReasons: proposalBarrierReasons, overrideReason: "Poradce potvrdil extrahované údaje a schválil zápis do CRM." }
+                    : resolveApplyOverrideOptions();
+                  onApply?.(overrideOpts);
                   setShowApplyConfirm(false);
                 }}
                 disabled={actionLoading === "apply" || actionLoading === "approveApply"}

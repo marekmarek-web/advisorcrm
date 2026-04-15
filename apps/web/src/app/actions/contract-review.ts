@@ -287,9 +287,14 @@ export async function applyContractReviewDrafts(
   const gate = evaluateApplyReadiness(row);
   const pendingApply = applyReasonsPendingOverride(gate);
   if (pendingApply.length > 0) {
-    // Merge explicit overrides from call site + persisted ignoredWarnings from DB
     const dbIgnored = Array.isArray(rawRow.ignoredWarnings) ? (rawRow.ignoredWarnings as string[]) : [];
-    const overrides = Array.from(new Set([...(options?.overrideGateReasons ?? []), ...dbIgnored]));
+    const explicitOverrides = options?.overrideGateReasons ?? [];
+    // Advisor-confirmed flow: when advisor approved the review, auto-override all
+    // publishability/proposal/payment gate reasons. The advisor takes responsibility.
+    const isAdvisorConfirmedApply = rawRow.reviewStatus === "approved";
+    const overrides = isAdvisorConfirmedApply
+      ? Array.from(new Set([...pendingApply, ...explicitOverrides, ...dbIgnored]))
+      : Array.from(new Set([...explicitOverrides, ...dbIgnored]));
     const remaining = pendingApply.filter((r) => !overrides.includes(r));
     if (remaining.length > 0) {
       breadcrumbContractReviewPaymentGate({
@@ -313,9 +318,20 @@ export async function applyContractReviewDrafts(
         entityId: id,
         meta: {
           overriddenReasons: overrides,
-          overrideReason: options?.overrideReason ?? null,
+          overrideReason: options?.overrideReason ?? "Advisor-confirmed apply: all gates auto-overridden.",
+          advisorConfirmedApply: isAdvisorConfirmedApply,
         },
       }).catch(() => {});
+    }
+    // Persist overrides into ignoredWarnings so apply-contract-review can read them
+    if (isAdvisorConfirmedApply && overrides.length > 0) {
+      try {
+        await updateContractReview(id, auth.tenantId, {
+          ignoredWarnings: overrides,
+        });
+        // Refresh row with persisted overrides for apply
+        (row as Record<string, unknown>).ignoredWarnings = overrides;
+      } catch { /* noop — apply still proceeds with in-memory override */ }
     }
   }
 
@@ -524,10 +540,13 @@ export async function applyContractReviewDrafts(
   }
 
   // Phase 5A: Compute and attach publishOutcome — truthful post-apply status.
-  // Single computation, single read path — no ghost success.
-  // GUARD: publishOutcome is computed from actual DB artifact IDs — never from intent.
+  // Advisor-confirmed apply: supporting doc guard is overridden when advisor explicitly approved.
   const extractedPayloadForOutcome = (row.extractedPayload as Record<string, unknown> | null) ?? {};
-  const isDocumentSupporting = isSupportingDocumentOnly(extractedPayloadForOutcome);
+  const rawIsSupportingForOutcome = isSupportingDocumentOnly(extractedPayloadForOutcome);
+  const advisorOverrodeForOutcome =
+    rawRow.reviewStatus === "approved" &&
+    (Array.isArray(rawRow.ignoredWarnings) && (rawRow.ignoredWarnings as string[]).length > 0);
+  const isDocumentSupporting = rawIsSupportingForOutcome && !advisorOverrodeForOutcome;
   const computedOutcome = computePublishOutcome(bridgedPayload, isDocumentSupporting);
 
   // Truthful enforcement: log guard violations (non-blocking, advisory only)

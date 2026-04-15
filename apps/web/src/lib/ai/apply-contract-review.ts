@@ -779,8 +779,16 @@ export async function applyContractReview(
   // Fáze 9: Resolve extractedPayload pro enforcement engine
   const extractedPayloadForEnforcement = (row.extractedPayload as Record<string, unknown>) ?? {};
 
-  // Supporting document guard — payslip, daňové přiznání, výpis z účtu nesmí generovat contract apply
-  const isSupporting = isSupportingDocumentOnly(extractedPayloadForEnforcement);
+  // Supporting document guard — advisor-confirmed reviews bypass this guard.
+  // When advisor has explicitly approved and is applying, they take responsibility
+  // for the document classification. Only truly supporting docs (payslip, bank statement)
+  // that the advisor did NOT override remain guarded.
+  const rawIsSupporting = isSupportingDocumentOnly(extractedPayloadForEnforcement);
+  const advisorOverrodeClassification =
+    row.reviewStatus === "approved" &&
+    (Array.isArray((row as Record<string, unknown>).ignoredWarnings) &&
+      ((row as Record<string, unknown>).ignoredWarnings as string[]).length > 0);
+  const isSupporting = rawIsSupporting && !advisorOverrodeClassification;
 
   // Kolektory pro enforcement trace
   let contactEnforcementResult: ReturnType<typeof enforceContactPayload> | undefined;

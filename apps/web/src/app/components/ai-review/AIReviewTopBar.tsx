@@ -99,8 +99,8 @@ export function AIReviewTopBar({
                       ) : (
                         <Check size={16} />
                       )}
-                      <span className="hidden lg:inline">Jen schválit kontrolu</span>
-                      <span className="lg:hidden">Jen schválit</span>
+                      <span className="hidden lg:inline">Schválit extrahované údaje</span>
+                      <span className="lg:hidden">Schválit</span>
                     </button>
                   </>
                 ) : (
@@ -112,7 +112,7 @@ export function AIReviewTopBar({
                     icon={Check}
                     className="min-h-[44px] px-4 py-2.5 md:min-h-0 md:px-6"
                   >
-                    <span className="hidden sm:inline">Schválit kontrolu</span>
+                    <span className="hidden sm:inline">Schválit extrahované údaje</span>
                     <span className="sm:hidden">Schválit</span>
                   </CreateActionButton>
                 )}
