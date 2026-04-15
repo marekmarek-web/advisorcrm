@@ -410,6 +410,11 @@ async function main() {
       confidenceOverride: null,
       ignoredWarnings: null,
       correctionReason: null,
+      correctedBy: null,
+      correctedAt: null,
+      matchVerdict: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     const { applyContractReview } = await import("@/lib/ai/apply-contract-review");
