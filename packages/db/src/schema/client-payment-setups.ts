@@ -36,6 +36,10 @@ export const clientPaymentSetups = pgTable("client_payment_setups", {
   paymentInstructionsText: text("payment_instructions_text"),
   confidence: numeric("confidence", { precision: 4, scale: 3 }),
   needsHumanReview: boolean("needs_human_review").default(true),
+  /** Whether this payment setup is visible in the client portal. Advisor controls this. */
+  visibleToClient: boolean("visible_to_client").notNull().default(false),
+  /** Canonical segment code (ZP, MAJ, INV, DPS, HYPO, UVER, …) — used for portal card grouping/icon. */
+  segment: text("segment"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

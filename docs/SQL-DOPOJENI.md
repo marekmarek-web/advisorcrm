@@ -31,6 +31,7 @@ Při **nové** migraci nebo významné úpravě `.sql` přidejte **jeden řádek
 | 2026-04-01 | Moje portfolio: sloupce na `contracts` (viditelnost klienta, zdroj, `portfolio_attributes`, vazba na dokument / AI review) | [contracts-portfolio-2026-04-01.sql](../packages/db/migrations/contracts-portfolio-2026-04-01.sql) |
 | 2026-04-02 | Produkční mezery: `documents.visible_to_client`, tabulky `reminders` + `advisor_notifications` (oprava 42P01 / 42703) | [production-schema-gaps-2026-04-02.sql](../packages/db/migrations/production-schema-gaps-2026-04-02.sql) |
 | 2026-04-02 | Portfolio index na `contracts`: sloupec `client_id` místo přejmenovaného `contact_id` | [contracts-portfolio-2026-04-01.sql](../packages/db/migrations/contracts-portfolio-2026-04-01.sql) |
+| 2026-04-16 | Ruční platební instrukce CRUD: přidány sloupce `visible_to_client` a `segment` do `client_payment_setups`; back-fill aktivních AI Review záznamů | [client_payment_setups_visible_segment_2026-04-16.sql](../packages/db/migrations/client_payment_setups_visible_segment_2026-04-16.sql) |
 
 ---
 
@@ -54,6 +55,13 @@ Odkaz: [`packages/db/migrations/supabase-performance-advisor-2026-04-01.sql`](..
 <summary><strong>advisor-notifications-realtime-rls.sql</strong> — Realtime + RLS pro <code>advisor_notifications</code></summary>
 
 Odkaz: [`packages/db/migrations/advisor-notifications-realtime-rls.sql`](../packages/db/migrations/advisor-notifications-realtime-rls.sql)
+
+</details>
+
+<details>
+<summary><strong>client_payment_setups_visible_segment_2026-04-16.sql</strong> — Ruční platební instrukce: visible_to_client + segment</summary>
+
+Odkaz: [`packages/db/migrations/client_payment_setups_visible_segment_2026-04-16.sql`](../packages/db/migrations/client_payment_setups_visible_segment_2026-04-16.sql)
 
 </details>
 

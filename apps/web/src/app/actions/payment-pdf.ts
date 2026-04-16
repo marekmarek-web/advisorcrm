@@ -24,7 +24,9 @@ export type PaymentInstruction = {
   specificSymbol: string | null;
   constantSymbol: string | null;
   currency: string | null;
-  /** Řádek z aktivního platebního nastavení (AI Review) — jinak null u katalogové šablony. */
+  /** First payment date ISO string — used for "První platba do" pill. */
+  firstPaymentDate?: string | null;
+  /** Řádek z aktivního platebního nastavení (AI Review / manual) — jinak null u katalogové šablony. */
   paymentSetupId: string | null;
   /** Linked contract ID from canonical artifact (nullable for legacy catalog-only entries). */
   contractId?: string | null;
@@ -47,7 +49,10 @@ type AiPaymentSetupInstructionRow = {
   currency: string | null;
   amount: string | null;
   frequency: string | null;
+  firstPaymentDate: string | null;
   paymentInstructionsText: string | null;
+  /** Canonical segment stored on the payment setup row (manual entry / AI). */
+  rowSegment?: string | null;
   /** Canonical segment z navázané smlouvy (preferováno před paymentType mapováním). */
   contractSegment?: string | null;
   contractPortfolioStatus?: string | null;
@@ -69,13 +74,14 @@ function paymentInstructionDedupKey(instruction: PaymentInstruction): string {
 
 /**
  * Resolve canonical segment for portal display.
- * Priority: contractSegment (canonical, from joined contract row) > paymentType fallback mapping.
- * This ensures AI Review payment setups are grouped correctly with the rest of the portfolio.
+ * Priority: rowSegment (manual entry) > contractSegment (canonical, from joined contract row) > paymentType fallback mapping.
  */
 function resolvePortalSegmentFromPaymentType(
   paymentType: string | null | undefined,
   contractSegment?: string | null,
+  rowSegment?: string | null,
 ): string {
+  if (rowSegment?.trim()) return rowSegment.trim();
   if (contractSegment?.trim()) return contractSegment.trim();
   switch ((paymentType ?? "").trim().toLowerCase()) {
     case "insurance":
@@ -113,7 +119,7 @@ function mapAiPaymentSetupToInstruction(
   if (!accountNumber) return null;
 
   return {
-    segment: resolvePortalSegmentFromPaymentType(row.paymentType, row.contractSegment),
+    segment: resolvePortalSegmentFromPaymentType(row.paymentType, row.contractSegment, row.rowSegment),
     partnerName: row.providerName?.trim() || "—",
     productName: row.productName?.trim() || null,
     contractNumber: row.contractNumber?.trim() || null,
@@ -122,6 +128,7 @@ function mapAiPaymentSetupToInstruction(
     note: row.paymentInstructionsText?.trim() || null,
     amount: row.amount?.trim() || null,
     frequency: row.frequency?.trim() || null,
+    firstPaymentDate: row.firstPaymentDate?.trim() || null,
     variableSymbol: row.variableSymbol?.trim() || null,
     specificSymbol: row.specificSymbol?.trim() || null,
     constantSymbol: row.constantSymbol?.trim() || null,
@@ -138,7 +145,8 @@ function normalizeContractNumberKey(value: string | null | undefined): string | 
 
 export async function getPaymentInstructionsForContact(contactId: string): Promise<PaymentInstruction[]> {
   const auth = await requireAuthInAction();
-  if (auth.roleName === "Client") {
+  const isClient = auth.roleName === "Client";
+  if (isClient) {
     if (auth.contactId !== contactId) throw new Error("Forbidden");
   } else if (!hasPermission(auth.roleName, "contacts:read")) {
     throw new Error("Forbidden");
@@ -162,7 +170,9 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
       currency: clientPaymentSetups.currency,
       amount: clientPaymentSetups.amount,
       frequency: clientPaymentSetups.frequency,
+      firstPaymentDate: clientPaymentSetups.firstPaymentDate,
       paymentInstructionsText: clientPaymentSetups.paymentInstructionsText,
+      rowSegment: clientPaymentSetups.segment,
       contractSegment: sql<string | null>`(
         SELECT c.segment FROM contracts c
         WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
@@ -186,7 +196,12 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
         eq(clientPaymentSetups.tenantId, auth.tenantId),
         eq(clientPaymentSetups.contactId, contactId),
         eq(clientPaymentSetups.status, "active"),
-        eq(clientPaymentSetups.needsHumanReview, false)
+        // Client portal: only show rows explicitly marked visible_to_client
+        // Advisor view: show all active rows (including AI Review)
+        ...(isClient
+          ? [eq(clientPaymentSetups.visibleToClient, true)]
+          : [eq(clientPaymentSetups.needsHumanReview, false)]
+        )
       )
     );
 
@@ -194,7 +209,6 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
     .map(mapAiPaymentSetupToInstruction)
     .filter((instruction): instruction is PaymentInstruction => instruction !== null);
 
-  const isClient = auth.roleName === "Client";
   const contractRows = await db
     .select()
     .from(contracts)
@@ -219,8 +233,12 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
     if (k) publishedContractNumberKeys.add(k);
   }
 
+  // For client view: visible_to_client flag already filters in SQL; include all fromAi results.
+  // Legacy contract-number check only applies when no paymentSetupId is present.
   const out = isClient
     ? fromAi.filter((instr) => {
+        // Rows with a paymentSetupId already passed the visible_to_client=true filter in SQL
+        if (instr.paymentSetupId) return true;
         const cn = normalizeContractNumberKey(instr.contractNumber);
         if (!cn) return false;
         return publishedContractNumberKeys.has(cn);

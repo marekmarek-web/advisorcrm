@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { CreditCard, Home, PiggyBank, QrCode, Shield, TrendingUp, Car } from "lucide-react";
 import type { PaymentInstruction } from "@/app/actions/payment-pdf";
 import { segmentLabel } from "@/app/lib/segment-labels";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/products/canonical-payment-read";
 import {
   accountFieldLabel,
+  firstPaymentPillLabel,
   formatPortalPrimaryAmountLine,
   institutionDisplayName,
   isPortalPaymentQrActionEligible,
@@ -19,6 +21,7 @@ import {
   portalPaymentsViewKind,
   variableSymbolDisplay,
 } from "@/lib/client-portal/portal-payments-read-model";
+import { resolveInstitutionLogo, institutionInitials } from "@/lib/institutions/institution-logo";
 import { QrPaymentModal } from "../QrPaymentModal";
 
 type ClientPaymentsViewProps = {
@@ -90,6 +93,18 @@ function CopyMiniButton({ text, label }: { text: string; label: string }) {
       {done ? "Hotovo" : label}
     </button>
   );
+}
+
+function InstitutionLogo({ name }: { name: string | null | undefined }) {
+  const logo = resolveInstitutionLogo(name);
+  if (logo) {
+    return (
+      <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
+        <Image src={logo.src} alt={logo.alt} width={48} height={48} className="object-contain p-1" unoptimized />
+      </div>
+    );
+  }
+  return null;
 }
 
 function paymentContractStatusBadgeClasses(linkedStatus: string | null | undefined): string {
@@ -176,6 +191,8 @@ export function ClientPaymentsView({
               const acctLabel = acct ? accountFieldLabel(acct) : "Účet";
 
               const colors = categoryColors(cat);
+              const logoOrIcon = resolveInstitutionLogo(instruction.partnerName);
+              const pill = firstPaymentPillLabel(instruction.firstPaymentDate);
 
               return (
                 <article
@@ -183,9 +200,15 @@ export function ClientPaymentsView({
                   className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all group"
                 >
                   <div className="p-5 border-b border-slate-50 flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${colors.icon}`}>
-                      <CatIcon size={24} strokeWidth={2} />
-                    </div>
+                    {logoOrIcon ? (
+                      <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                        <Image src={logoOrIcon.src} alt={logoOrIcon.alt} width={48} height={48} className="object-contain p-1" unoptimized />
+                      </div>
+                    ) : (
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${colors.icon}`}>
+                        <CatIcon size={24} strokeWidth={2} />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className={`text-[10px] font-black uppercase tracking-widest ${colors.label}`}>
@@ -202,6 +225,11 @@ export function ClientPaymentsView({
                       </h3>
                       {institution ? (
                         <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{institution}</p>
+                      ) : null}
+                      {pill ? (
+                        <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wide">
+                          {pill}
+                        </span>
                       ) : null}
                     </div>
                   </div>

@@ -71,6 +71,39 @@ export function variableSymbolDisplay(instruction: PaymentInstruction): string |
   return cn || null;
 }
 
+/**
+ * "První platba do <datum>" pill text.
+ * Shows only when the first payment date is in the future or within 2 months in the past.
+ * Returns null when pill should not be shown.
+ */
+export function firstPaymentPillLabel(firstPaymentDate: string | null | undefined): string | null {
+  if (!firstPaymentDate) return null;
+
+  let date: Date | null = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(firstPaymentDate)) {
+    date = new Date(firstPaymentDate + "T00:00:00");
+  } else if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(firstPaymentDate)) {
+    const parts = firstPaymentDate.split(".");
+    const d = parts[0]?.padStart(2, "0");
+    const m = parts[1]?.padStart(2, "0");
+    const y = parts[2];
+    if (d && m && y) date = new Date(`${y}-${m}-${d}T00:00:00`);
+  }
+  if (!date || isNaN(date.getTime())) return null;
+
+  const now = new Date();
+  const twoMonthsAfter = new Date(date);
+  twoMonthsAfter.setMonth(twoMonthsAfter.getMonth() + 2);
+
+  if (now > twoMonthsAfter) return null;
+
+  return `První platba do ${date.toLocaleDateString("cs-CZ", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  })}`;
+}
+
 /** Distinguishes load failure from honest empty list (no published payment instructions). */
 export type PortalPaymentsViewKind = "load_failed" | "empty" | "list";
 

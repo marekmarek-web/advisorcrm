@@ -9,7 +9,7 @@ import { getContact, getContactAiProvenance, type ContactAiProvenanceResult } fr
 import { getHouseholdForContact } from "@/app/actions/households";
 import { AiReviewProvenanceBadge } from "@/app/components/aidvisora/AiReviewProvenanceBadge";
 import { ContractsSection } from "@/app/dashboard/contacts/[id]/ContractsSection";
-import { SendPaymentPdfButton } from "@/app/dashboard/contacts/[id]/SendPaymentPdfButton";
+import { ContactManualPaymentSection } from "./ContactManualPaymentSection";
 import { ContactActivityTimeline } from "@/app/dashboard/contacts/[id]/ContactActivityTimeline";
 import { ClientFinancialSummary } from "@/app/components/contacts/ClientFinancialSummary";
 import { ContactTabNav } from "./ContactTabNav";
@@ -220,8 +220,7 @@ function ContactTabBody({
               </div>
               <ClientFinancialSummary contactId={contactId} />
               <div className="mt-6 pt-6 border-t border-[color:var(--wp-surface-card-border)]">
-                <h2 className="text-lg font-black text-[color:var(--wp-text)] mb-2">Platební instrukce</h2>
-                <SendPaymentPdfButton contactId={contactId} />
+                <ContactManualPaymentSection contactId={contactId} />
               </div>
             </div>
           </div>
