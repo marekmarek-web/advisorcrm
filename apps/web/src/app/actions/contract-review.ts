@@ -281,10 +281,23 @@ function injectContractDraftActionIfMissing(row: ContractReviewRow): ContractRev
 
   const ep = (row.extractedPayload as Record<string, unknown> | null) ?? {};
 
-  // Skip for supporting documents
-  if (isSupportingDocumentOnly(ep)) return row;
-
+  // Advisor-confirmed apply (reviewStatus === "approved") bypasses the supporting document guard,
+  // mirroring the same bypass in applyContractReview (line: isSupporting = rawIsSupporting && reviewStatus !== "approved").
+  // When advisor explicitly approved, they take responsibility for classification — including bundles
+  // with AML/FATCA attachments that caused sensitiveAttachmentOnly=true on the pipeline.
+  // Only skip injection for true standalone supporting types (payslip, bank statement, etc.)
+  // where primaryType itself is in SUPPORTING_TYPES.
   const dc = ep.documentClassification as Record<string, unknown> | undefined;
+  const primaryType = dc?.primaryType as string | undefined;
+  const HARD_SUPPORTING_TYPES = new Set([
+    "payslip", "payslip_document", "income_proof_document", "income_confirmation",
+    "tax_return", "corporate_tax_return", "self_employed_tax_or_income_document",
+    "bank_statement", "supporting_document", "reference_document",
+    "medical_questionnaire", "identity_document", "consent_or_declaration",
+    "aml_fatca_form", "attachment_only", "other_non_publishable",
+  ]);
+  if (primaryType && HARD_SUPPORTING_TYPES.has(primaryType)) return row;
+
   const ef = ep.extractedFields as Record<string, { value?: unknown } | undefined> | undefined;
 
   const fieldStr = (keys: string[]): string | null => {
