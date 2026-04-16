@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Shield,
@@ -32,6 +33,7 @@ import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import { ContractProvenanceLine } from "@/app/components/aidvisora/ContractProvenanceLine";
 import { deleteContract } from "@/app/actions/contracts";
 import type { LucideIcon } from "lucide-react";
+import { resolveInstitutionLogo, institutionInitials } from "@/lib/institutions/institution-logo";
 
 function productIcon(segment: string | undefined): LucideIcon {
   switch (segment) {
@@ -106,6 +108,18 @@ function fmtDate(d: string | null | undefined): string {
   return formatDisplayDateCs(d) || d;
 }
 
+const PERSON_ROLE_LABELS: Record<string, string> = {
+  policyholder: "Pojistník",
+  insured: "Pojištěný",
+  child: "Dítě",
+  beneficiary: "Oprávněná osoba",
+  other: "Ostatní",
+};
+
+function personRoleLabel(role: string | undefined): string {
+  return PERSON_ROLE_LABELS[role ?? ""] ?? role ?? "Osoba";
+}
+
 function ContractDetailCard({
   contract,
   isExpanded,
@@ -161,6 +175,9 @@ function ContractDetailCard({
         ? "bg-slate-100 text-slate-500 border-slate-200"
         : "bg-amber-50 text-amber-700 border-amber-100";
 
+  // Logo instituce
+  const institutionLogo = resolveInstitutionLogo(partnerName);
+
   // Extract segment-specific fields
   const d = product.segmentDetail;
   const persons = d?.kind === "life_insurance" ? (d.persons ?? []) : [];
@@ -190,7 +207,11 @@ function ContractDetailCard({
   }
 
   function handleEdit() {
-    router.push(`${pathname}?tab=smlouvy&edit=${contract.id}`);
+    router.push(`${pathname}?tab=smlouvy`);
+  }
+
+  function handleVypoved() {
+    router.push(`${pathname}?tab=smlouvy`);
   }
 
   return (
@@ -210,9 +231,20 @@ function ContractDetailCard({
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${iconCls}`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border overflow-hidden ${iconCls}`}
           >
-            <Icon size={20} strokeWidth={2} />
+            {institutionLogo ? (
+              <Image
+                src={institutionLogo.src}
+                alt={institutionLogo.alt}
+                width={36}
+                height={36}
+                className="object-contain w-8 h-8"
+                unoptimized
+              />
+            ) : (
+              <Icon size={20} strokeWidth={2} />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -381,7 +413,7 @@ function ContractDetailCard({
                           <span className="font-bold">{p.name ?? "—"}</span>
                           {p.role && (
                             <span className="ml-2 text-[10px] font-bold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] px-1.5 py-0.5 rounded-md">
-                              {p.role}
+                              {personRoleLabel(p.role)}
                             </span>
                           )}
                         </div>
@@ -511,6 +543,7 @@ function ContractDetailCard({
             )}
             <button
               type="button"
+              onClick={handleVypoved}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] transition-colors min-h-[36px]"
             >
               <FileSignature size={15} /> Výpověď

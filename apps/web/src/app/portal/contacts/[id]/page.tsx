@@ -157,13 +157,12 @@ function ContactTabBody({
           {/* KPI row — 4 finanční metriky */}
           <ContactOverviewKpi contactId={contactId} />
 
-          {/* Pokrytí produktů — samostatná sekce, plná šířka */}
-          <ClientCoverageWidget contactId={contactId} />
-
           {/* Hlavní 2-sloupcový grid: produkty + sidebar */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 space-y-6">
               <ContactContractsOverview contactId={contactId} baseQueryNoTab={baseQueryNoTab} />
+              {/* Pokrytí produktů — pod Sjednanými produkty */}
+              <ClientCoverageWidget contactId={contactId} />
               <AiClientSummaryBlock
                 contactId={contactId}
                 initialSummary={latestGenerations.clientSummary}

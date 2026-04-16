@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { GitMerge, X, CheckCheck } from "lucide-react";
 import type { ContactMergeConflictField } from "@/app/actions/contacts";
 
@@ -31,6 +32,13 @@ function fieldLabel(key: string): string {
 
 export function ContactMergeConflictGuard({ mergeConflicts, contactId, reviewId }: Props) {
   const [dismissed, setDismissed] = useState(false);
+  const router = useRouter();
+
+  function dismiss() {
+    setDismissed(true);
+    // Refresh server data so provenance badges in header also update
+    router.refresh();
+  }
 
   if (!mergeConflicts.length || dismissed) return null;
 
@@ -56,7 +64,7 @@ export function ContactMergeConflictGuard({ mergeConflicts, contactId, reviewId 
         </div>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={dismiss}
           className="shrink-0 p-1 rounded hover:bg-orange-100 text-orange-500 hover:text-orange-700 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
           aria-label="Zavřít upozornění"
           title="Zavřít upozornění"
@@ -90,7 +98,7 @@ export function ContactMergeConflictGuard({ mergeConflicts, contactId, reviewId 
         {allManualProtected ? (
           <button
             type="button"
-            onClick={() => setDismissed(true)}
+            onClick={dismiss}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-orange-600 text-white px-3 py-1.5 text-xs font-bold hover:bg-orange-700 transition-colors min-h-[44px] sm:min-h-[32px] w-full sm:w-auto"
           >
             <CheckCheck size={13} aria-hidden />

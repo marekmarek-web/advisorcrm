@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { Sparkles, RefreshCw, Loader2, CheckCircle2, AlertTriangle, TrendingUp, ClipboardList, HelpCircle, Plus } from "lucide-react";
 import {
   generateClientSummaryAction,
@@ -126,6 +126,103 @@ const SECTION_CONFIG: SectionConfig[] = [
   },
 ];
 
+/** Inline modál pro potvrzení úkolu před vytvořením */
+function CreateTaskModal({
+  defaultTitle,
+  contactId,
+  onClose,
+  onCreated,
+}: {
+  defaultTitle: string;
+  contactId: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const router = useRouter();
+  const [title, setTitle] = useState(defaultTitle.slice(0, 120));
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    startTransition(async () => {
+      try {
+        await createTask({ title: title.trim(), contactId });
+        onCreated();
+        router.refresh();
+        onClose();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Nepodařilo se vytvořit úkol.");
+      }
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" role="dialog" aria-modal>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+
+      <div className="relative z-10 w-full max-w-md bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-black text-[color:var(--wp-text)]">Nový úkol</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-muted)] transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+            aria-label="Zavřít"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="task-title" className="block text-xs font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1.5">
+              Název úkolu
+            </label>
+            <input
+              id="task-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full text-sm font-bold text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)] border border-[color:var(--wp-surface-card-border)] rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors min-h-[44px]"
+              autoFocus
+              maxLength={200}
+            />
+          </div>
+
+          {error && (
+            <p className="text-xs text-rose-600" role="alert">{error}</p>
+          )}
+
+          <div className="flex gap-2 justify-end pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-bold rounded-xl border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] transition-colors min-h-[40px]"
+            >
+              Zrušit
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !title.trim()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 min-h-[40px]"
+            >
+              {isPending ? (
+                <Loader2 size={13} className="animate-spin" aria-hidden />
+              ) : (
+                <Plus size={13} aria-hidden />
+              )}
+              Vytvořit úkol
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function StructuredSummary({
   sections,
   contactId,
@@ -135,81 +232,69 @@ function StructuredSummary({
   contactId: string;
   nextStep: string | null;
 }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [showModal, setShowModal] = useState(false);
   const [taskCreated, setTaskCreated] = useState(false);
-
-  function handleCreateTask() {
-    if (!nextStep) return;
-    startTransition(async () => {
-      try {
-        await createTask({
-          title: nextStep.slice(0, 120),
-          contactId,
-          description: `Automaticky vytvořeno z AI shrnutí: ${nextStep}`,
-        });
-        setTaskCreated(true);
-        router.refresh();
-      } catch {
-        // silent — task creation failure non-blocking
-      }
-    });
-  }
 
   const hasSomeContent = Object.values(sections).some((v) => v.length > 0);
 
   if (!hasSomeContent) return null;
 
   return (
-    <div className="space-y-3">
-      {SECTION_CONFIG.map(({ key, icon: Icon, iconClass, labelClass, bulletClass }) => {
-        const items = sections[key];
-        if (!items?.length) return null;
-        return (
-          <div key={key} className="flex gap-3">
-            <span className="mt-0.5 shrink-0">
-              <Icon size={14} className={iconClass} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className={`text-[11px] font-black uppercase tracking-widest mb-1 ${labelClass}`}>{key}</p>
-              <ul className="space-y-1">
-                {items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-[color:var(--wp-text-secondary)]">
-                    <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${bulletClass} opacity-60`} aria-hidden />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
+    <>
+      <div className="space-y-3">
+        {SECTION_CONFIG.map(({ key, icon: Icon, iconClass, labelClass, bulletClass }) => {
+          const items = sections[key];
+          if (!items?.length) return null;
+          return (
+            <div key={key} className="flex gap-3">
+              <span className="mt-0.5 shrink-0">
+                <Icon size={14} className={iconClass} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className={`text-[11px] font-black uppercase tracking-widest mb-1 ${labelClass}`}>{key}</p>
+                <ul className="space-y-1">
+                  {items.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-[color:var(--wp-text-secondary)]">
+                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${bulletClass} opacity-60`} aria-hidden />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
 
-      {nextStep && (
-        <div className="pt-2 border-t border-[color:var(--wp-surface-card-border)]/60">
-          {taskCreated ? (
-            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-bold">
-              <CheckCircle2 size={13} aria-hidden />
-              Úkol vytvořen
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={handleCreateTask}
-              disabled={isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50 min-h-[36px]"
-            >
-              {isPending ? (
-                <Loader2 size={12} className="animate-spin" aria-hidden />
-              ) : (
+        {nextStep && (
+          <div className="pt-2 border-t border-[color:var(--wp-surface-card-border)]/60">
+            {taskCreated ? (
+              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-bold">
+                <CheckCircle2 size={13} aria-hidden />
+                Úkol vytvořen
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors min-h-[36px]"
+              >
                 <Plus size={12} aria-hidden />
-              )}
-              Vytvořit úkol z doporučeného kroku
-            </button>
-          )}
-        </div>
+                Vytvořit úkol z doporučeného kroku
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {showModal && nextStep && (
+        <CreateTaskModal
+          defaultTitle={nextStep}
+          contactId={contactId}
+          onClose={() => setShowModal(false)}
+          onCreated={() => setTaskCreated(true)}
+        />
       )}
-    </div>
+    </>
   );
 }
 
