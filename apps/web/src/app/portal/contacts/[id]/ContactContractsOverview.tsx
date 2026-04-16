@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
@@ -130,6 +130,7 @@ function ContractDetailCard({
   contactId,
   onDelete,
   onOpenPaymentModal,
+  onMenuStackDelta,
 }: {
   contract: ContractRow;
   isExpanded: boolean;
@@ -137,6 +138,7 @@ function ContractDetailCard({
   contactId: string;
   onDelete: (id: string) => void;
   onOpenPaymentModal?: (prefill?: { providerName?: string; productName?: string; segment?: string; variableSymbol?: string }) => void;
+  onMenuStackDelta?: (delta: 1 | -1) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -216,6 +218,12 @@ function ContractDetailCard({
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!onMenuStackDelta || !menuOpen) return;
+    onMenuStackDelta(1);
+    return () => onMenuStackDelta(-1);
+  }, [menuOpen, onMenuStackDelta]);
 
   async function handleDelete() {
     if (!confirm(`Opravdu smazat smlouvu ${displayName}?`)) return;
@@ -668,9 +676,14 @@ export function ContactContractsOverview({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [contractMenuStack, setContractMenuStack] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const menuStackDelta = useCallback((delta: 1 | -1) => {
+    setContractMenuStack((c) => c + delta);
+  }, []);
 
   useEffect(() => {
     getContractsByContact(contactId)
@@ -702,7 +715,11 @@ export function ContactContractsOverview({
   const groups = groupContracts(contracts);
 
   return (
-    <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
+    <div
+      className={`bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm ${
+        contractMenuStack > 0 ? "relative z-50" : ""
+      }`}
+    >
       {/* Header */}
       <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-[color:var(--wp-surface-card-border)]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -792,6 +809,7 @@ export function ContactContractsOverview({
                       contactId={contactId}
                       onDelete={handleDelete}
                       onOpenPaymentModal={onOpenPaymentModal}
+                      onMenuStackDelta={menuStackDelta}
                     />
                   ))}
                 </div>
