@@ -1,0 +1,14 @@
+---
+description: Český zápis data DD.MM.YYYY ve stringech, UI a příkladech v kódu
+alwaysApply: true
+---
+
+# Formát data v kódu (ČR)
+
+1. **Kdykoliv v kódu píšeš datum jako text** (řetězcový literál, mock/fixture, default v konstantě, příklad v komentáři určený pro zobrazení uživateli, `placeholder`, testovací data pro UI), používej **striktně český zápis `DD.MM.YYYY`** (den a měsíc **dvěma číslicemi**, rok čtyřmi), např. `16.04.2026`.
+
+2. **Nepoužívej** pro tyto účely anglický/západní zápis typu `MM/DD/YYYY`, ani čistě americký `M/D/YYYY`, ani zbytečně `YYYY-MM-DD` v uživatelsky čitelných stringech — ten si nech pro místa, kde to **vyžaduje** konkrétní technický kontrakt (např. serializace do JSON/API podle specifikace, literál v SQL `DATE` podle migrace, nebo vstup knihovny, která ISO striktně vyžaduje). I tam po načtení formátuj výstup do CRM/UI jako **`DD.MM.YYYY`**.
+
+3. **Čas u data** (pokud ho text potřebuje): oddělovač času konzistentně s projektem, datumová část zůstává v logice `DD.MM.YYYY` pro CZ zobrazení (např. `16.04.2026 14:30`).
+
+4. **Kontrola**: při code review a při generování kódu agentem nahradit náhodné formáty jednotným `DD.MM.YYYY` u všech výše uvedených textových výskytů.

@@ -9,6 +9,7 @@ import {
   advisorMaterialRequestDocuments,
   documents,
   contacts,
+  portalNotifications,
 } from "db";
 import { eq, and, desc, asc, inArray } from "db";
 import { createPortalNotification } from "./portal-notifications";
@@ -291,6 +292,47 @@ export async function setAdvisorMaterialRequestStatus(
     }
   }
 
+  return { ok: true };
+}
+
+/**
+ * Odstraní požadavek z CRM po splnění. Fyzické dokumenty v trezoru zůstávají; maže se jen vazba požadavku.
+ */
+export async function deleteAdvisorMaterialRequest(
+  requestId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false, error: "Forbidden" };
+  const [row] = await db
+    .select({
+      id: advisorMaterialRequests.id,
+      contactId: advisorMaterialRequests.contactId,
+      status: advisorMaterialRequests.status,
+    })
+    .from(advisorMaterialRequests)
+    .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
+    .limit(1);
+  if (!row) return { ok: false, error: "Nenalezeno." };
+  if (row.status !== "done") {
+    return { ok: false, error: "Smazat lze jen požadavky ve stavu Splněno." };
+  }
+
+  try {
+    await db
+      .delete(portalNotifications)
+      .where(
+        and(
+          eq(portalNotifications.tenantId, auth.tenantId),
+          eq(portalNotifications.contactId, row.contactId),
+          eq(portalNotifications.type, "advisor_material_request"),
+          eq(portalNotifications.relatedEntityId, requestId)
+        )
+      );
+  } catch {
+    /* best-effort */
+  }
+
+  await db.delete(advisorMaterialRequests).where(eq(advisorMaterialRequests.id, requestId));
   return { ok: true };
 }
 

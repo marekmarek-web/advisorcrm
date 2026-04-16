@@ -104,6 +104,14 @@ export function ReviewAttachClientDialog({ open, onClose, onConfirm, candidates,
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Vyhledávání — vždy jako první */}
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">
+              Vyhledat a vybrat klienta
+            </p>
+            <ContactPicker value={selected} onChange={setSelected} label="Klient z CRM" />
+          </div>
+
           {sorted.length > 0 ? (
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">
@@ -141,13 +149,6 @@ export function ReviewAttachClientDialog({ open, onClose, onConfirm, candidates,
               </ul>
             </div>
           ) : null}
-
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">
-              Najít klienta v seznamu
-            </p>
-            <ContactPicker value={selected} onChange={setSelected} label="Klient z CRM" />
-          </div>
 
           {error ? (
             <p className="text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">

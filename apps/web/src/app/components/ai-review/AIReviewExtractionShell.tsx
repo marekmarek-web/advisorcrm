@@ -9,6 +9,7 @@ import {
   AlertCircle,
   ArrowLeft,
   UserPlus,
+  UserRoundSearch,
   Check,
   Send,
   X,
@@ -44,6 +45,7 @@ import {
 import { hasMeaningfulReviewContent } from "@/lib/ai-review/mappers";
 import { aiReviewPdfFileName, buildAiReviewPdfBlob } from "@/lib/ai-review/build-ai-review-pdf";
 import { ExtractionLeftPanel } from "./ExtractionLeftPanel";
+import { ReviewAttachClientDialog } from "./ReviewAttachClientDialog";
 
 const PDFViewerPanel = dynamic(
   () => import("./PDFViewerPanel").then((m) => m.PDFViewerPanel),
@@ -362,6 +364,7 @@ export function AIReviewExtractionShell({
   const [applyOverrideEnabled, setApplyOverrideEnabled] = useState(false);
   const [finalContractBusy, setFinalContractBusy] = useState(false);
   const [pdfExportBusy, setPdfExportBusy] = useState(false);
+  const [shellAttachClientOpen, setShellAttachClientOpen] = useState(false);
   const toast = useToast();
 
   const isFailed = doc.processingStatus === "failed";
@@ -1110,6 +1113,19 @@ export function AIReviewExtractionShell({
                     </div>
                   ) : null}
 
+                  {/* Přiřadit ke klientovi — vždy dostupné */}
+                  {onSelectClient ? (
+                    <button
+                      type="button"
+                      onClick={() => setShellAttachClientOpen(true)}
+                      disabled={!!actionLoading}
+                      className="flex items-center gap-2 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-xl px-3 min-h-[44px] transition-colors disabled:opacity-50"
+                    >
+                      <UserRoundSearch size={14} />
+                      Přiřadit ke klientovi
+                    </button>
+                  ) : null}
+
                   {canOfferCreateClientDraft && matchVerdict !== "existing_match" ? (
                     <div className="flex flex-col gap-2">
                       <button
@@ -1127,7 +1143,7 @@ export function AIReviewExtractionShell({
                       </button>
                       {doc.clientMatchCandidates.length === 0 && matchVerdict === "no_match" ? (
                         <p className="text-xs text-[color:var(--wp-text-tertiary)]">
-                          Shoda v CRM nebyla nalezena — založte nový záznam, pokud jde o nového klienta.
+                          Shoda v CRM nebyla nalezena — přiřaďte existujícího klienta nebo založte nový záznam.
                         </p>
                       ) : null}
                     </div>
@@ -1179,6 +1195,19 @@ export function AIReviewExtractionShell({
           />
         </aside>
       </main>
+
+      {/* Přiřadit ke klientovi — shell-level dialog */}
+      {onSelectClient && (
+        <ReviewAttachClientDialog
+          open={shellAttachClientOpen}
+          onClose={() => setShellAttachClientOpen(false)}
+          candidates={doc.clientMatchCandidates ?? []}
+          onConfirm={async (clientId) => {
+            await onSelectClient(clientId);
+          }}
+          title="Přiřadit ke klientovi"
+        />
+      )}
 
       {/* Reject modal */}
       {showRejectModal && (

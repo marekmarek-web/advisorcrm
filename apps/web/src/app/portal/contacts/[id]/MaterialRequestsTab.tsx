@@ -8,6 +8,7 @@ import {
   listAdvisorMaterialRequestsForContact,
   updateAdvisorMaterialRequestInternalNote,
   setAdvisorMaterialRequestStatus,
+  deleteAdvisorMaterialRequest,
   addAdvisorMaterialRequestReply,
   linkMaterialRequestDocumentToClientVault,
 } from "@/app/actions/advisor-material-requests";
@@ -209,6 +210,37 @@ function MaterialRequestsTabInner({
     } else showToast(r.error, "error");
   }
 
+  async function removeFulfilledRequest() {
+    if (!selectedId || detail?.status !== "done") return;
+    if (
+      !(await confirm({
+        title: "Smazat požadavek",
+        message:
+          "Požadavek a komunikace k němu se odstraní z přehledu. Nahrané soubory v dokumentech klienta zůstanou uložené.",
+        confirmLabel: "Smazat",
+        variant: "destructive",
+      }))
+    ) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const idToRemove = selectedId;
+      const r = await deleteAdvisorMaterialRequest(idToRemove);
+      if (r.ok) {
+        showToast("Požadavek byl smazán.", "success");
+        const nextFocus = list.find((x) => x.id !== idToRemove)?.id ?? null;
+        setSelectedId(nextFocus);
+        setDetail(null);
+        await loadList({ silent: true });
+      } else {
+        showToast(r.error, "error");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function promoteDoc(documentId: string, visible: boolean) {
     if (!selectedId) return;
     if (
@@ -321,6 +353,16 @@ function MaterialRequestsTabInner({
                 >
                   Čeká na doplnění
                 </button>
+                {detail.status === "done" ? (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => void removeFulfilledRequest()}
+                    className="min-h-[40px] rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-900 disabled:opacity-50"
+                  >
+                    Smazat
+                  </button>
+                ) : null}
               </div>
             </header>
 
