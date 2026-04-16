@@ -43,6 +43,11 @@ import { resolveContactIdentityFieldProvenanceForHeader } from "@/lib/portal/con
 import { isMobileUiV1EnabledForRequest } from "@/app/shared/mobile-ui/feature-flag";
 import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import { resolveIdentityCompleteness, buildIncompleteMessage } from "./contact-identity-completeness-logic";
+import type { MaterialRequestsTabInitialPayload } from "@/lib/advisor-material-requests/display";
+import {
+  listAdvisorMaterialRequestsForContact,
+  getAdvisorMaterialRequestDetail,
+} from "@/app/actions/advisor-material-requests";
 
 const DynamicContactOpportunityBoard = dynamic(
   () =>
@@ -127,6 +132,15 @@ type ContactRow = NonNullable<Awaited<ReturnType<typeof getContact>>>;
 type HouseholdForContact = Awaited<ReturnType<typeof getHouseholdForContact>>;
 type LatestGenerations = Awaited<ReturnType<typeof getLatestClientGenerations>>;
 
+function firstSearchParam(
+  query: Record<string, string | string[] | undefined>,
+  key: string,
+): string | undefined {
+  const v = query[key];
+  if (v == null) return undefined;
+  return typeof v === "string" ? v : v[0];
+}
+
 function ContactTabBody({
   tab,
   contactId,
@@ -138,6 +152,7 @@ function ContactTabBody({
   canReadOpportunities,
   canWriteOpportunities,
   identityAdvisoryNoteDeals,
+  materialRequestsInitial,
 }: {
   tab: ContactTabId;
   contactId: string;
@@ -149,6 +164,7 @@ function ContactTabBody({
   canReadOpportunities: boolean;
   canWriteOpportunities: boolean;
   identityAdvisoryNoteDeals: string | null;
+  materialRequestsInitial?: MaterialRequestsTabInitialPayload;
 }): ReactNode {
   switch (tab) {
     case "prehled":
@@ -236,7 +252,10 @@ function ContactTabBody({
             </p>
           </div>
           <div className="p-6">
-            <DynamicMaterialRequestsTab contactId={contactId} />
+            <DynamicMaterialRequestsTab
+              contactId={contactId}
+              initialPayload={materialRequestsInitial}
+            />
           </div>
         </div>
       );
@@ -398,6 +417,22 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
   const identityAdvisoryNoteDeals = identityRowsDeals.some((r) => r.status !== "ok")
     ? buildIncompleteMessage(identityRowsDeals)
     : null;
+
+  let materialRequestsInitial: MaterialRequestsTabInitialPayload | undefined;
+  if (tab === "podklady") {
+    try {
+      const list = await listAdvisorMaterialRequestsForContact(contactId);
+      const rawMr = firstSearchParam(sp, "materialRequest")?.trim() ?? "";
+      const selectedId = rawMr && list.some((r) => r.id === rawMr) ? rawMr : null;
+      let detail: MaterialRequestsTabInitialPayload["detail"] = null;
+      if (selectedId) {
+        detail = await getAdvisorMaterialRequestDetail(selectedId);
+      }
+      materialRequestsInitial = { list, detail, selectedId };
+    } catch {
+      materialRequestsInitial = undefined;
+    }
+  }
 
   const initials =
     [contact.firstName, contact.lastName]
@@ -608,6 +643,7 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
             canReadOpportunities={canReadOpportunities}
             canWriteOpportunities={canWriteOpportunities}
             identityAdvisoryNoteDeals={identityAdvisoryNoteDeals}
+            materialRequestsInitial={materialRequestsInitial}
           />
         </div>
       </main>

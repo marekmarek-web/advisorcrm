@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   createAdvisorMaterialRequest,
@@ -16,6 +16,7 @@ import {
   materialRequestCategoryLabel,
   type MaterialRequestDetail,
   type MaterialRequestListItem,
+  type MaterialRequestsTabInitialPayload,
 } from "@/lib/advisor-material-requests/display";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
@@ -41,15 +42,33 @@ function priorityLabel(p: string): string {
   return m[p] ?? p;
 }
 
-function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
+export type { MaterialRequestsTabInitialPayload };
+
+function MaterialRequestsTabInner({
+  contactId,
+  initialPayload,
+}: {
+  contactId: string;
+  initialPayload?: MaterialRequestsTabInitialPayload;
+}) {
   const searchParams = useSearchParams();
-  const toast = useToast();
+  const { showToast } = useToast();
   const confirm = useConfirm();
-  const [list, setList] = useState<MaterialRequestListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<MaterialRequestDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+
+  const resolvedInitialDetail =
+    initialPayload?.detail &&
+    initialPayload.selectedId &&
+    initialPayload.detail.id === initialPayload.selectedId
+      ? initialPayload.detail
+      : null;
+
+  const [list, setList] = useState<MaterialRequestListItem[]>(() => initialPayload?.list ?? []);
+  const [loading, setLoading] = useState(() => initialPayload == null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => initialPayload?.selectedId ?? null);
+  const [detail, setDetail] = useState<MaterialRequestDetail | null>(() => resolvedInitialDetail);
+  const [detailLoading, setDetailLoading] = useState(
+    () => !!(initialPayload?.selectedId && !resolvedInitialDetail),
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -61,23 +80,29 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
   const [formResponseMode, setFormResponseMode] = useState<"text" | "files" | "both" | "yes_no">("both");
 
   const [replyText, setReplyText] = useState("");
-  const [internalNote, setInternalNote] = useState("");
+  const [internalNote, setInternalNote] = useState(() => resolvedInitialDetail?.internalNote ?? "");
 
-  const loadList = useCallback(async () => {
-    setLoading(true);
-    try {
-      const rows = await listAdvisorMaterialRequestsForContact(contactId);
-      setList(rows);
-    } catch (e) {
-      toast.showToast(e instanceof Error ? e.message : "Nepodařilo se načíst požadavky.", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [contactId, toast]);
+  const detailRequestSeq = useRef(0);
+
+  const loadList = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      try {
+        const rows = await listAdvisorMaterialRequestsForContact(contactId);
+        setList(rows);
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "Nepodařilo se načíst požadavky.", "error");
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [contactId, showToast],
+  );
 
   useEffect(() => {
+    if (initialPayload != null) return;
     void loadList();
-  }, [loadList]);
+  }, [initialPayload, loadList]);
 
   const materialRequestParam = searchParams.get("materialRequest");
   useEffect(() => {
@@ -88,24 +113,30 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
 
   const loadDetail = useCallback(
     async (id: string) => {
+      const seq = ++detailRequestSeq.current;
       setDetailLoading(true);
       try {
         const d = await getAdvisorMaterialRequestDetail(id);
+        if (seq !== detailRequestSeq.current) return;
         setDetail(d);
         setInternalNote(d?.internalNote ?? "");
       } catch {
+        if (seq !== detailRequestSeq.current) return;
         setDetail(null);
-        toast.showToast("Detail se nepodařilo načíst.", "error");
+        showToast("Detail se nepodařilo načíst.", "error");
       } finally {
-        setDetailLoading(false);
+        if (seq === detailRequestSeq.current) {
+          setDetailLoading(false);
+        }
       }
     },
-    [toast]
+    [showToast],
   );
 
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
+      setDetailLoading(false);
       return;
     }
     void loadDetail(selectedId);
@@ -114,7 +145,7 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
   async function handleCreate() {
     const title = formTitle.trim();
     if (!title) {
-      toast.showToast("Vyplňte předmět požadavku.", "error");
+      showToast("Vyplňte předmět požadavku.", "error");
       return;
     }
     setSubmitting(true);
@@ -133,15 +164,15 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
         responseMode: formResponseMode,
       });
       if (res.ok) {
-        toast.showToast("Požadavek byl odeslán klientovi.", "success");
+        showToast("Požadavek byl odeslán klientovi.", "success");
         setModalOpen(false);
         setFormTitle("");
         setFormDescription("");
         setFormDue("");
-        await loadList();
+        await loadList({ silent: true });
         setSelectedId(res.id);
       } else {
-        toast.showToast(res.error, "error");
+        showToast(res.error, "error");
       }
     } finally {
       setSubmitting(false);
@@ -151,19 +182,19 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
   async function saveInternalNote() {
     if (!selectedId) return;
     const r = await updateAdvisorMaterialRequestInternalNote(selectedId, internalNote.trim() || null);
-    if (r.ok) toast.showToast("Interní poznámka uložena.", "success");
-    else toast.showToast(r.error, "error");
+    if (r.ok) showToast("Interní poznámka uložena.", "success");
+    else showToast(r.error, "error");
   }
 
   async function sendReply() {
     if (!selectedId || !replyText.trim()) return;
     const r = await addAdvisorMaterialRequestReply(selectedId, replyText);
     if (r.ok) {
-      toast.showToast("Zpráva odeslána klientovi.", "success");
+      showToast("Zpráva odeslána klientovi.", "success");
       setReplyText("");
       await loadDetail(selectedId);
-      await loadList();
-    } else toast.showToast(r.error, "error");
+      await loadList({ silent: true });
+    } else showToast(r.error, "error");
   }
 
   async function setStatus(
@@ -172,10 +203,10 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
     if (!selectedId) return;
     const r = await setAdvisorMaterialRequestStatus(selectedId, status);
     if (r.ok) {
-      toast.showToast("Stav uložen.", "success");
+      showToast("Stav uložen.", "success");
       await loadDetail(selectedId);
-      await loadList();
-    } else toast.showToast(r.error, "error");
+      await loadList({ silent: true });
+    } else showToast(r.error, "error");
   }
 
   async function promoteDoc(documentId: string, visible: boolean) {
@@ -194,9 +225,9 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
       visibleToClient: visible,
     });
     if (r.ok) {
-      toast.showToast(visible ? "Dokument je viditelný klientovi." : "Uloženo.", "success");
+      showToast(visible ? "Dokument je viditelný klientovi." : "Uloženo.", "success");
       await loadDetail(selectedId);
-    } else toast.showToast(r.error, "error");
+    } else showToast(r.error, "error");
   }
 
   return (
@@ -516,12 +547,18 @@ function MaterialRequestsTabInner({ contactId }: { contactId: string }) {
   );
 }
 
-export function MaterialRequestsTab({ contactId }: { contactId: string }) {
+export function MaterialRequestsTab({
+  contactId,
+  initialPayload,
+}: {
+  contactId: string;
+  initialPayload?: MaterialRequestsTabInitialPayload;
+}) {
   return (
     <Suspense
       fallback={<p className="text-sm text-[color:var(--wp-text-secondary)]">Načítám požadavky…</p>}
     >
-      <MaterialRequestsTabInner contactId={contactId} />
+      <MaterialRequestsTabInner contactId={contactId} initialPayload={initialPayload} />
     </Suspense>
   );
 }

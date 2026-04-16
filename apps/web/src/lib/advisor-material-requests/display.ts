@@ -80,3 +80,10 @@ export type MaterialRequestDetail = MaterialRequestListItem & {
     visibleToClient: boolean | null;
   }>;
 };
+
+/** Server-prefetched payload for kontakt → záložka Podklady (RSC → client). */
+export type MaterialRequestsTabInitialPayload = {
+  list: MaterialRequestListItem[];
+  detail: MaterialRequestDetail | null;
+  selectedId: string | null;
+};
