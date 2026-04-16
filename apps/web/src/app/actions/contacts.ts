@@ -888,16 +888,20 @@ async function loadContactAiProvenance(contactId: string): Promise<ContactAiProv
       manualRequiredFields?: string[];
     } | null | undefined;
     const autoAppliedFields: string[] = contactEnforcement?.autoAppliedFields ?? [];
-    const pendingFields: string[] = contactEnforcement?.pendingConfirmationFields ?? [];
+    // Odebrat z pending ta pole, která již byla potvrzena přes confirmPendingField (confirmedFieldsTrace)
+    const allPendingFromTrace: string[] = contactEnforcement?.pendingConfirmationFields ?? [];
+    const confirmedFieldKeys = new Set(confirmedFields);
+    const pendingFields: string[] = allPendingFromTrace.filter((f) => !confirmedFieldKeys.has(f));
     const manualRequiredFields: string[] = contactEnforcement?.manualRequiredFields ?? [];
 
     // Merge konflikty: pole kde AI přinesla jinou hodnotu než existující manuální data
+    // Odebrat konflikty pro pole, která byla mezitím potvrzena přes confirmPendingField
     const rawMergeConflicts = payload?.pendingFields as
       | Array<{ fieldKey?: string; incomingValue?: string | null; reason?: string }>
       | null
       | undefined;
     const mergeConflictFields: ContactMergeConflictField[] = (rawMergeConflicts ?? [])
-      .filter((f) => f?.fieldKey)
+      .filter((f) => f?.fieldKey && !confirmedFieldKeys.has(f.fieldKey!))
       .map((f) => ({
         fieldKey: f.fieldKey!,
         incomingValue: f.incomingValue ?? null,

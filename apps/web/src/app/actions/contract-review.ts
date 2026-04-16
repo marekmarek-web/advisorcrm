@@ -920,10 +920,10 @@ export async function confirmPendingField(
       (f) => f !== fieldKey && !alreadyConfirmedPayment.includes(f)
     );
     if (remainingPending.length === 0) {
-      // Všechna payment pending pole jsou potvrzena → odblokuj payment setup
+      // Všechna payment pending pole jsou potvrzena → odblokuj payment setup a publikuj do portálu
       await db
         .update(clientPaymentSetups)
-        .set({ needsHumanReview: false, updatedAt: new Date() })
+        .set({ needsHumanReview: false, visibleToClient: true, updatedAt: new Date() })
         .where(
           and(
             eq(clientPaymentSetups.id, targetId),

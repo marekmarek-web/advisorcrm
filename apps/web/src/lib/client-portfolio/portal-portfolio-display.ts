@@ -58,8 +58,26 @@ export function canonicalPortfolioDetailRows(p: CanonicalProduct): { label: stri
       rows.push({ label: "Měsíční pojistné", value: `${d.monthlyPremium.toLocaleString("cs-CZ")} Kč` });
     }
     if (d.sumInsured) rows.push({ label: "Pojistná částka", value: d.sumInsured });
-    if (d.persons.length) rows.push({ label: "Osoby ve smlouvě", value: `${d.persons.length}` });
-    if (d.risks.length) rows.push({ label: "Rizika / připojištění", value: `${d.risks.length} položek` });
+    if (d.persons.length) {
+      const PERSON_ROLE_LABELS: Record<string, string> = {
+        policyholder: "Pojistník",
+        insured: "Pojištěný",
+        child: "Dítě",
+        beneficiary: "Oprávněná osoba",
+        other: "Osoba",
+      };
+      for (const person of d.persons) {
+        const roleLabel = PERSON_ROLE_LABELS[person.role] ?? "Osoba";
+        const personDisplay = person.name || (person.birthDate ? `nar. ${formatDisplayDateCs(person.birthDate) || person.birthDate}` : roleLabel);
+        rows.push({ label: roleLabel, value: personDisplay });
+      }
+    }
+    if (d.risks.length) {
+      for (const risk of d.risks) {
+        const riskValue = risk.amount ? `${risk.amount}` : "V evidenci";
+        rows.push({ label: risk.label, value: riskValue });
+      }
+    }
   } else if (d?.kind === "vehicle") {
     rows.push({ label: "Typ", value: d.subtype === "HAV" ? "Havarijní pojištění" : "Povinné ručení" });
     if (d.vehicleRegistration) rows.push({ label: "SPZ / vozidlo", value: d.vehicleRegistration });

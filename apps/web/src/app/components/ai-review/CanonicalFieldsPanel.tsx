@@ -111,7 +111,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ─── PacketMeta section ───────────────────────────────────────────────────────
 
-function PacketMetaSection({ pm }: { pm: NonNullable<CanonicalFields["packetMeta"]> }) {
+function PacketMetaSection({ pm, isApplied }: { pm: NonNullable<CanonicalFields["packetMeta"]>; isApplied?: boolean }) {
   const candidates = pm.subdocumentCandidates ?? [];
   const primaryType = pm.primarySubdocumentType?.trim()
     ? labelDocumentType(pm.primarySubdocumentType)
@@ -130,7 +130,7 @@ function PacketMetaSection({ pm }: { pm: NonNullable<CanonicalFields["packetMeta
           value={candidates.length > 0 ? candidates.map((c) => c.label).join(", ") : "—"}
         />
       )}
-      {pm.hasSensitiveAttachment && (
+      {pm.hasSensitiveAttachment && !isApplied && (
         <div className="flex items-start gap-2 mt-1 text-xs rounded-lg bg-slate-50 border border-slate-200 px-2 py-1.5 text-slate-600">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" />
           <span>Obsahuje citlivou přílohu (zdravotní dotazník, AML) — zkontrolujte extrahované údaje.</span>
@@ -231,17 +231,19 @@ function InsuredRisksSection({ risks }: { risks: NonNullable<CanonicalFields["in
 
 // ─── HealthQuestionnaires section ─────────────────────────────────────────────
 
-function HealthSection({ hqs }: { hqs: NonNullable<CanonicalFields["healthQuestionnaires"]> }) {
+function HealthSection({ hqs, isApplied }: { hqs: NonNullable<CanonicalFields["healthQuestionnaires"]>; isApplied?: boolean }) {
   const present = hqs.filter((q) => q.questionnairePresent);
   if (present.length === 0) return null;
   return (
     <Section icon={Stethoscope} title="Zdravotní dotazníky" badge={present.length} badgeVariant="warning">
-      <div className="flex items-start gap-2 text-xs rounded-lg bg-amber-50 border border-amber-200 px-2 py-1.5 text-amber-800">
-        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-        <span>
-          Dokument obsahuje zdravotní dotazník — citlivá data. Tato sekce nesmí být sdílena jako součást smlouvy.
-        </span>
-      </div>
+      {!isApplied && (
+        <div className="flex items-start gap-2 text-xs rounded-lg bg-amber-50 border border-amber-200 px-2 py-1.5 text-amber-800">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span>
+            Dokument obsahuje zdravotní dotazník — citlivá data. Tato sekce je evidována interně.
+          </span>
+        </div>
+      )}
       {present.map((q, i) => (
         q.sectionSummary ? (
           <div key={i} className="text-xs text-[color:var(--wp-text-secondary)] mt-1">
@@ -350,7 +352,7 @@ function FundResolutionSection({ fr }: { fr: NonNullable<CanonicalFields["fundRe
 
 // ─── Public component ─────────────────────────────────────────────────────────
 
-export function CanonicalFieldsPanel({ canonicalFields }: { canonicalFields: CanonicalFields }) {
+export function CanonicalFieldsPanel({ canonicalFields, isApplied }: { canonicalFields: CanonicalFields; isApplied?: boolean }) {
   const { packetMeta, publishHints, participants, insuredRisks, healthQuestionnaires, investmentData, paymentData, identityData, fundResolution } = canonicalFields;
 
   const hasContent =
@@ -381,12 +383,12 @@ export function CanonicalFieldsPanel({ canonicalFields }: { canonicalFields: Can
         </p>
       </div>
 
-      {packetMeta?.isBundle && <PacketMetaSection pm={packetMeta} />}
+      {packetMeta?.isBundle && <PacketMetaSection pm={packetMeta} isApplied={isApplied} />}
       {publishHints && <PublishHintsSection ph={publishHints} />}
       {(participants?.length ?? 0) > 0 && <ParticipantsSection participants={participants!} />}
       {(insuredRisks?.length ?? 0) > 0 && <InsuredRisksSection risks={insuredRisks!} />}
       {healthQuestionnaires?.some((q) => q.questionnairePresent) && (
-        <HealthSection hqs={healthQuestionnaires!} />
+        <HealthSection hqs={healthQuestionnaires!} isApplied={isApplied} />
       )}
       {identityData && <IdentityDataSection id={identityData} />}
       {investmentData && <InvestmentSection inv={investmentData} />}

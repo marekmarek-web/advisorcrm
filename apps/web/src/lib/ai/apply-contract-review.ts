@@ -1340,11 +1340,15 @@ function buildPaymentSetupDbValues(
   const amount = parsePaymentAmount(action.payload);
   // Fáze 9: needsHumanReview=true pokud review není schválena NEBO má prefill_confirm pole
   const needsHumanReview = !isApproved || (hasPrefillConfirmFields === true);
+  // visible_to_client=true pokud je review schválena BEZ prefill_confirm polí
+  // (s prefill_confirm se visible_to_client nastaví na true až po potvrzení všech pending polí)
+  const visibleToClient = isApproved && !hasPrefillConfirmFields;
   return {
     tenantId,
     contactId,
     sourceContractReviewId: reviewId,
     status: isApproved ? ("active" as const) : ("draft" as const),
+    visibleToClient,
     paymentType: domainType,
     providerName: (action.payload.provider as string)?.trim() || null,
     productName: (action.payload.productName as string)?.trim() || null,

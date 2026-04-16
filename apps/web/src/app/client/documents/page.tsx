@@ -63,18 +63,31 @@ export default async function ClientDocumentsPage() {
                       <p className="text-xs font-bold text-slate-400">
                         {new Date(document.createdAt).toLocaleDateString("cs-CZ")}
                       </p>
-                      {document.tags && document.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {document.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-block rounded-lg bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {document.tags && document.tags.length > 0 && (() => {
+                        const clientVisibleTags = document.tags.filter((tag) => {
+                          if (!tag || typeof tag !== "string") return false;
+                          const t = tag.trim().toLowerCase();
+                          // Odstranit interní technické štítky
+                          if (t === "ai-smlouva" || t === "ai_smlouva") return false;
+                          if (t.startsWith("review:")) return false;
+                          if (t.startsWith("ai-review:")) return false;
+                          if (t.startsWith("source:")) return false;
+                          return true;
+                        });
+                        if (clientVisibleTags.length === 0) return null;
+                        return (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {clientVisibleTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="inline-block rounded-lg bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      })()}
                       {isPdf && <DocumentPreviewToggle documentId={document.id} />}
                     </div>
                     <a

@@ -2156,7 +2156,7 @@ export function ExtractionLeftPanel({
           {/* Phase 2+3: Canonical fields panel — persons, risks, health, investment, payment, bundle, publish hints */}
           {doc.canonicalFields && (
             <div data-section="canonical">
-              <CanonicalFieldsPanel canonicalFields={doc.canonicalFields} />
+              <CanonicalFieldsPanel canonicalFields={doc.canonicalFields} isApplied={doc.isApplied} />
             </div>
           )}
 
