@@ -32,6 +32,7 @@ Při **nové** migraci nebo významné úpravě `.sql` přidejte **jeden řádek
 | 2026-04-02 | Produkční mezery: `documents.visible_to_client`, tabulky `reminders` + `advisor_notifications` (oprava 42P01 / 42703) | [production-schema-gaps-2026-04-02.sql](../packages/db/migrations/production-schema-gaps-2026-04-02.sql) |
 | 2026-04-02 | Portfolio index na `contracts`: sloupec `client_id` místo přejmenovaného `contact_id` | [contracts-portfolio-2026-04-01.sql](../packages/db/migrations/contracts-portfolio-2026-04-01.sql) |
 | 2026-04-16 | Ruční platební instrukce CRUD: přidány sloupce `visible_to_client` a `segment` do `client_payment_setups`; back-fill aktivních AI Review záznamů | [client_payment_setups_visible_segment_2026-04-16.sql](../packages/db/migrations/client_payment_setups_visible_segment_2026-04-16.sql) |
+| 2026-04-16 | Katalog smluv: globální partner „Conseq penzijní společnost“ (segment DPS) + produkt DPS pro wizard | [catalog_partner_conseq_dps_2026-04-16.sql](../packages/db/migrations/catalog_partner_conseq_dps_2026-04-16.sql) |
 
 ---
 
@@ -62,6 +63,13 @@ Odkaz: [`packages/db/migrations/advisor-notifications-realtime-rls.sql`](../pack
 <summary><strong>client_payment_setups_visible_segment_2026-04-16.sql</strong> — Ruční platební instrukce: visible_to_client + segment</summary>
 
 Odkaz: [`packages/db/migrations/client_payment_setups_visible_segment_2026-04-16.sql`](../packages/db/migrations/client_payment_setups_visible_segment_2026-04-16.sql)
+
+</details>
+
+<details>
+<summary><strong>catalog_partner_conseq_dps_2026-04-16.sql</strong> — Katalog: Conseq penzijní společnost (DPS)</summary>
+
+Odkaz: [`packages/db/migrations/catalog_partner_conseq_dps_2026-04-16.sql`](../packages/db/migrations/catalog_partner_conseq_dps_2026-04-16.sql)
 
 </details>
 

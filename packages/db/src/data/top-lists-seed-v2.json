@@ -59,7 +59,8 @@
       { "partner": "KB Penzijní společnost", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } },
       { "partner": "NN Penzijní společnost", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } },
       { "partner": "Česká spořitelna PS", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } },
-      { "partner": "ČSOB PS", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } }
+      { "partner": "ČSOB PS", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } },
+      { "partner": "Conseq penzijní společnost", "map": { "Doplňkové penzijní spoření (DPS)": ["Doplňkové penzijní spoření (DPS)"] } }
     ]
   },
   "version": "v2"
