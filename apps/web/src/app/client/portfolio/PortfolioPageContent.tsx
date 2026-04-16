@@ -15,6 +15,8 @@ import {
   Landmark,
   PiggyBank,
   Plane,
+  Shield,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import type { ContractRow } from "@/app/actions/contracts";
