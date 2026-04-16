@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GitMerge, X, CheckCheck } from "lucide-react";
 import type { ContactMergeConflictField } from "@/app/actions/contacts";
+import { acknowledgeContactMergeConflicts } from "@/app/actions/contract-review";
+import { useToast } from "@/app/components/Toast";
 
 type Props = {
   mergeConflicts: ContactMergeConflictField[];
@@ -32,11 +34,34 @@ function fieldLabel(key: string): string {
 
 export function ContactMergeConflictGuard({ mergeConflicts, contactId, reviewId }: Props) {
   const [dismissed, setDismissed] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
+  const { showToast } = useToast();
 
-  function dismiss() {
+  /** Jen „vše manuálně chráněné“ — uložíme do applyResultPayload, banner se už nevrátí. */
+  async function dismissPersisted() {
+    const keys = mergeConflicts.filter((c) => c.reason === "manual_protected").map((c) => c.fieldKey);
+    if (!reviewId || keys.length === 0) {
+      showToast("Nelze uložit potvrzení — chybí kontext kontroly dokumentu.", "error");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const result = await acknowledgeContactMergeConflicts(reviewId, keys);
+      if (!result.ok) {
+        showToast(result.error, "error");
+        return;
+      }
+      setDismissed(true);
+      router.refresh();
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  /** Dočasné zavření (smíšené konflikty — část vyžaduje ruční doplnění). */
+  function dismissLocalOnly() {
     setDismissed(true);
-    // Refresh server data so provenance badges in header also update
     router.refresh();
   }
 
@@ -64,8 +89,9 @@ export function ContactMergeConflictGuard({ mergeConflicts, contactId, reviewId 
         </div>
         <button
           type="button"
-          onClick={dismiss}
-          className="shrink-0 p-1 rounded hover:bg-orange-100 text-orange-500 hover:text-orange-700 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+          onClick={allManualProtected ? dismissPersisted : dismissLocalOnly}
+          disabled={allManualProtected && isSaving}
+          className="shrink-0 p-1 rounded hover:bg-orange-100 text-orange-500 hover:text-orange-700 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center disabled:opacity-50"
           aria-label="Zavřít upozornění"
           title="Zavřít upozornění"
         >
@@ -98,11 +124,12 @@ export function ContactMergeConflictGuard({ mergeConflicts, contactId, reviewId 
         {allManualProtected ? (
           <button
             type="button"
-            onClick={dismiss}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-orange-600 text-white px-3 py-1.5 text-xs font-bold hover:bg-orange-700 transition-colors min-h-[44px] sm:min-h-[32px] w-full sm:w-auto"
+            onClick={() => void dismissPersisted()}
+            disabled={isSaving}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-orange-600 text-white px-3 py-1.5 text-xs font-bold hover:bg-orange-700 transition-colors min-h-[44px] sm:min-h-[32px] w-full sm:w-auto disabled:opacity-60 disabled:pointer-events-none"
           >
             <CheckCheck size={13} aria-hidden />
-            Beru na vědomí, data jsou správně
+            {isSaving ? "Ukládám…" : "Beru na vědomí, data jsou správně"}
           </button>
         ) : (
           <Link

@@ -62,6 +62,15 @@ export type ApplyResultPayload = {
     reason: "manual_protected" | "conflict";
   }>;
   /**
+   * Poradce na detailu kontaktu potvrdil přečtení merge konfliktu (manuální CRM hodnota zůstává).
+   * Skryje banner bez přepisu na hodnotu z extrakce — odlišné od confirmPendingField (přijetí AI hodnoty).
+   */
+  mergeConflictAcknowledgedTrace?: Record<string, {
+    acknowledgedAt: string;
+    acknowledgedBy: string;
+    reason: "manual_protected";
+  }>;
+  /**
    * Fáze 11: Per-field confirmation trace — záznamy o potvrzení jednotlivých pending polí poradcem.
    * Klíč = fieldKey (např. "birthDate", "contractNumber"), hodnota = metadata potvrzení.
    */

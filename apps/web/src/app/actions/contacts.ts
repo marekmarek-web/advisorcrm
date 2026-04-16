@@ -900,8 +900,15 @@ async function loadContactAiProvenance(contactId: string): Promise<ContactAiProv
       | Array<{ fieldKey?: string; incomingValue?: string | null; reason?: string }>
       | null
       | undefined;
+    const mergeAckTrace = payload?.mergeConflictAcknowledgedTrace as Record<string, unknown> | null | undefined;
+    const mergeAcknowledgedKeys = mergeAckTrace ? new Set(Object.keys(mergeAckTrace)) : new Set<string>();
     const mergeConflictFields: ContactMergeConflictField[] = (rawMergeConflicts ?? [])
-      .filter((f) => f?.fieldKey && !confirmedFieldKeys.has(f.fieldKey!))
+      .filter(
+        (f) =>
+          f?.fieldKey &&
+          !confirmedFieldKeys.has(f.fieldKey!) &&
+          !mergeAcknowledgedKeys.has(f.fieldKey!),
+      )
       .map((f) => ({
         fieldKey: f.fieldKey!,
         incomingValue: f.incomingValue ?? null,

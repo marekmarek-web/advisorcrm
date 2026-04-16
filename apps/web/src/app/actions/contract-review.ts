@@ -1049,3 +1049,98 @@ export async function confirmPendingField(
 
   return { ok: true, updatedPayload };
 }
+
+export type AcknowledgeContactMergeConflictsResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Trvalé skrytí banneru „AI přinesla odlišnou hodnotu / manuální má přednost“ na detailu kontaktu.
+ * Nezapisuje extrahovanou hodnotu do CRM — jen audit + značka v applyResultPayload.
+ */
+export async function acknowledgeContactMergeConflicts(
+  reviewId: string,
+  fieldKeys: string[],
+): Promise<AcknowledgeContactMergeConflictsResult> {
+  const auth = await requireAuthInAction();
+  const canWrite =
+    hasPermission(auth.roleName, "documents:write") ||
+    hasPermission(auth.roleName, "contacts:write");
+  if (!canWrite) {
+    return { ok: false, error: "Nemáte oprávnění." };
+  }
+
+  const uniqueKeys = Array.from(new Set(fieldKeys.map((k) => k.trim()).filter(Boolean)));
+  if (uniqueKeys.length === 0) {
+    return { ok: false, error: "Chybí pole k potvrzení." };
+  }
+
+  const row = await getContractReviewById(reviewId, auth.tenantId);
+  if (!row) {
+    return { ok: false, error: "Kontrola dokumentu nenalezena." };
+  }
+  if (row.reviewStatus !== "applied") {
+    return { ok: false, error: "Potvrzení je možné jen u aplikovaných kontrol." };
+  }
+
+  const payload = row.applyResultPayload;
+  if (!payload) {
+    return { ok: false, error: "Chybí výsledek aplikace kontroly." };
+  }
+
+  const rawMerge = payload.pendingFields ?? [];
+  const byKey = new Map(rawMerge.map((e) => [e.fieldKey, e]));
+
+  const existingAck = payload.mergeConflictAcknowledgedTrace ?? {};
+  const nextAck = { ...existingAck };
+  let changed = false;
+
+  for (const key of uniqueKeys) {
+    const entry = byKey.get(key);
+    if (!entry) {
+      return {
+        ok: false,
+        error: "Toto upozornění už není aktuální — obnovte stránku.",
+      };
+    }
+    if (entry.reason !== "manual_protected") {
+      return {
+        ok: false,
+        error: `Pole „${key}“ nelze jen přečíst — vyžaduje ruční doplnění nebo úpravu v CRM.`,
+      };
+    }
+    if (!nextAck[key]) {
+      nextAck[key] = {
+        acknowledgedAt: new Date().toISOString(),
+        acknowledgedBy: auth.userId,
+        reason: "manual_protected",
+      };
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return { ok: true };
+  }
+
+  await db.insert(auditLog).values({
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    action: "acknowledge_contact_merge_conflict",
+    entityType: "contract_review",
+    entityId: reviewId,
+    meta: {
+      reviewId,
+      fieldKeys: uniqueKeys,
+    },
+  });
+
+  await updateContractReview(reviewId, auth.tenantId, {
+    applyResultPayload: {
+      ...payload,
+      mergeConflictAcknowledgedTrace: nextAck,
+    },
+  });
+
+  return { ok: true };
+}
