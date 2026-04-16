@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchContactDocumentsBundle } from "@/app/dashboard/contacts/contact-documents-bundle";
 import {
   Shield,
   TrendingUp,
@@ -26,7 +29,6 @@ import {
   FileText,
   MoreHorizontal,
 } from "lucide-react";
-import { getContractsByContact } from "@/app/actions/contracts";
 import type { ContractRow } from "@/app/actions/contracts";
 import { mapContractToCanonicalProduct } from "@/lib/products/canonical-product-read";
 import { ADVISOR_PRODUCT_SOURCE_KINDS } from "@/lib/client-portfolio/contact-overview-kpi";
@@ -672,9 +674,30 @@ export function ContactContractsOverview({
   baseQueryNoTab: string;
   onOpenPaymentModal?: (prefill?: { providerName?: string; productName?: string; segment?: string; variableSymbol?: string }) => void;
 }) {
-  const [contracts, setContracts] = useState<ContractRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const bundleQK = queryKeys.contacts.documentsBundle(contactId);
+  const {
+    data: bundleData,
+    isPending: loading,
+    isError: bundleIsError,
+    error: bundleErr,
+  } = useQuery({
+    queryKey: bundleQK,
+    queryFn: () => fetchContactDocumentsBundle(contactId),
+    staleTime: 45_000,
+  });
+
+  const contracts = useMemo(() => {
+    const list = bundleData?.contracts ?? [];
+    return list.filter((c) => ADVISOR_PRODUCT_SOURCE_KINDS.has(c.sourceKind));
+  }, [bundleData?.contracts]);
+
+  const loadError = bundleIsError
+    ? bundleErr instanceof Error
+      ? bundleErr.message
+      : "Nepodařilo se načíst smlouvy."
+    : null;
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [contractMenuStack, setContractMenuStack] = useState(0);
   const router = useRouter();
@@ -686,22 +709,18 @@ export function ContactContractsOverview({
   }, []);
 
   useEffect(() => {
-    getContractsByContact(contactId)
-      .then((list) => {
-        setLoadError(null);
-        const filtered = list.filter((c) => ADVISOR_PRODUCT_SOURCE_KINDS.has(c.sourceKind));
-        setContracts(filtered);
-        if (filtered.length > 0) setExpandedId(filtered[0].id);
-      })
-      .catch(() => {
-        setContracts([]);
-        setLoadError("Nepodařilo se načíst smlouvy.");
-      })
-      .finally(() => setLoading(false));
-  }, [contactId]);
+    if (contracts.length === 0) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId((prev) =>
+      prev != null && contracts.some((c) => c.id === prev) ? prev : contracts[0].id,
+    );
+  }, [contracts]);
 
   function handleDelete(id: string) {
-    setContracts((prev) => prev.filter((c) => c.id !== id));
+    void queryClient.invalidateQueries({ queryKey: bundleQK });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.contacts.contractDupPairs(contactId) });
     if (expandedId === id) setExpandedId(null);
   }
 
