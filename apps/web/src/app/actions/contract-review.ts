@@ -13,6 +13,7 @@ import { applyContractReview } from "@/lib/ai/apply-contract-review";
 import { isSupportingDocumentOnly } from "@/lib/ai/apply-policy-enforcement";
 import { mapContractReviewToBridgePayload, computePublishOutcome } from "@/lib/ai/write-through-contract";
 import { tryBuildPaymentSetupDraftFromRawPayload } from "@/lib/ai/draft-actions";
+import { resolveSegmentForContractApply } from "@/lib/ai/apply-contract-review";
 import {
   breadcrumbContractReviewPaymentGate,
   captureContractReviewApplyFailure,
@@ -250,6 +251,87 @@ function regeneratePaymentDraftActions(row: ContractReviewRow): ContractReviewRo
   return { ...row, draftActions: updatedActions };
 }
 
+/**
+ * Advisor-confirmed apply: when no contract draft action exists in the stored
+ * draftActions (e.g. document was classified as proposal/illustration at pipeline time
+ * but advisor explicitly approved it as a final contract), inject a synthetic
+ * create_or_update_contract_production action from the extractedPayload.
+ *
+ * This prevents ghost-success: apply returns ok:true but no contract row is created.
+ * Only runs when:
+ * - reviewStatus === "approved" (advisor explicitly confirmed)
+ * - isSupportingDocumentOnly returns false (not a payslip/bank statement/etc.)
+ * - extractedPayload has at least one of: segment, contractNumber, institutionName, productName
+ * - draftActions has NO contract creation action
+ */
+function injectContractDraftActionIfMissing(row: ContractReviewRow): ContractReviewRow {
+  const draftActionsArr = Array.isArray(row.draftActions)
+    ? (row.draftActions as Array<{ type: string; label: string; payload: Record<string, unknown> }>)
+    : [];
+
+  const hasContractAction = draftActionsArr.some(
+    (a) =>
+      a.type === "create_contract" ||
+      a.type === "create_or_update_contract_record" ||
+      a.type === "create_or_update_contract_production",
+  );
+
+  if (hasContractAction) return row;
+  if (row.reviewStatus !== "approved") return row;
+
+  const ep = (row.extractedPayload as Record<string, unknown> | null) ?? {};
+
+  // Skip for supporting documents
+  if (isSupportingDocumentOnly(ep)) return row;
+
+  const dc = ep.documentClassification as Record<string, unknown> | undefined;
+  const ef = ep.extractedFields as Record<string, { value?: unknown } | undefined> | undefined;
+
+  const fieldStr = (keys: string[]): string | null => {
+    for (const k of keys) {
+      const cell = ef?.[k];
+      const v = cell?.value;
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    return null;
+  };
+
+  const contractNumber =
+    fieldStr(["contractNumber", "existingPolicyNumber", "proposalNumber"]) ??
+    (typeof ep.contractNumber === "string" && ep.contractNumber.trim() ? ep.contractNumber.trim() : null);
+  const institutionName =
+    fieldStr(["insurer", "institutionName", "lender", "bankName", "partnerName"]) ??
+    (typeof ep.institutionName === "string" && ep.institutionName.trim() ? ep.institutionName.trim() : null);
+  const productName =
+    fieldStr(["productName", "tariffName", "fundName", "strategyName"]) ??
+    (typeof ep.productName === "string" && ep.productName.trim() ? ep.productName.trim() : null);
+  const effectiveDate =
+    fieldStr(["policyStartDate", "effectiveDate", "disbursementDate", "startDate"]) ??
+    (typeof ep.effectiveDate === "string" && ep.effectiveDate.trim() ? ep.effectiveDate.trim() : null);
+  const segment = resolveSegmentForContractApply({}, ep);
+
+  // Only inject if we have at least minimal contract data
+  const hasContractData = Boolean(contractNumber || institutionName || productName);
+  if (!hasContractData) return row;
+
+  const syntheticAction = {
+    type: "create_or_update_contract_production" as const,
+    label: "Vytvořit nebo aktualizovat smlouvu (advisor-confirmed inject)",
+    payload: {
+      contractNumber: contractNumber ?? undefined,
+      institutionName: institutionName ?? undefined,
+      productName: productName ?? undefined,
+      effectiveDate: effectiveDate ?? undefined,
+      segment,
+      documentType: typeof dc?.primaryType === "string" ? dc.primaryType : undefined,
+      lifecycleStatus:
+        typeof dc?.lifecycleStatus === "string" ? dc.lifecycleStatus : "final_contract",
+    } as Record<string, unknown>,
+  };
+
+  return { ...row, draftActions: [...draftActionsArr, syntheticAction] };
+}
+
 export async function applyContractReviewDrafts(
   id: string,
   options?: {
@@ -281,7 +363,7 @@ export async function applyContractReviewDrafts(
     return { ok: false, error: "U neúspěšné položky nelze aplikovat akce." };
   }
 
-  const row = regeneratePaymentDraftActions(rawRow);
+  const row = injectContractDraftActionIfMissing(regeneratePaymentDraftActions(rawRow));
 
   const { evaluateApplyReadiness, applyReasonsPendingOverride } = await import("@/lib/ai/quality-gates");
   const gate = evaluateApplyReadiness(row);
