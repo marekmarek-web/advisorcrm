@@ -406,8 +406,8 @@ export default async function ContactDetailPage({ params, searchParams }: PagePr
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
 
-      {/* Přilepeno pod wp-portal-top-header: zruší pt scroll kontejneru + full-bleed jako horní lišta */}
-      <header className="sticky top-0 z-30 flex flex-nowrap items-center justify-between gap-3 border-b border-[color:var(--wp-portal-header-border)] bg-[color:var(--wp-portal-header-bg)] py-3 backdrop-blur-md sm:gap-4 md:py-3.5 -mx-4 -mt-4 px-4 md:-mx-5 md:-mt-4 md:px-5 lg:-mx-4 lg:-mt-3 lg:px-4">
+      {/* Přilepeno hned pod wp-portal-top-header — záporné marginy ruší pt kontejneru */}
+      <header className="flex flex-nowrap items-center justify-between gap-3 border-b border-[color:var(--wp-portal-header-border)] bg-[color:var(--wp-portal-header-bg)] py-3 backdrop-blur-sm sm:gap-4 md:py-3.5 -mx-4 -mt-4 px-4 md:-mx-5 md:-mt-4 md:px-5 lg:-mx-4 lg:-mt-3 lg:px-4">
         <div className="flex items-center gap-4 sm:gap-6 min-w-0">
           <Link
             href="/portal/contacts"
