@@ -7,6 +7,7 @@
  */
 
 import type { PortfolioPersonEntry, PortfolioRiskEntry } from "@/lib/portfolio/build-portfolio-attributes-from-extract";
+import { dedupePortfolioRisks } from "@/lib/portfolio/portfolio-risks-dedupe";
 
 // Re-export canonical layer so all consumers can import from one place
 export {
@@ -194,7 +195,7 @@ export function portfolioRisksFromAttributes(
 ): PortfolioRiskEntry[] {
   const raw = attributes?.risks;
   if (!Array.isArray(raw)) return [];
-  return raw.filter(isPortfolioRiskEntry);
+  return dedupePortfolioRisks(raw.filter(isPortfolioRiskEntry));
 }
 
 /**

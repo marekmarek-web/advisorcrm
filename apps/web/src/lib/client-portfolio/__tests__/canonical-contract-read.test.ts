@@ -144,6 +144,62 @@ describe("canonical-contract-read", () => {
         expect(product.segmentDetail.risks).toEqual([]);
       }
     });
+
+    it("deduplicates ŽP risks that only differ by personRef or amount formatting", () => {
+      const product = mapContractToCanonicalProduct(
+        makeContract({
+          segment: "ZP",
+          portfolioAttributes: {
+            risks: [
+              { label: "Smrt (hlavní pojištění)", amount: "50 000 Kč", personRef: "A" },
+              { label: "Smrt (hlavní pojištění)", amount: "50 000 Kč", personRef: "B" },
+              { label: "Smrt (hlavní pojištění)", amount: "50000", personRef: undefined },
+            ],
+          },
+        }),
+      );
+      expect(product.segmentDetail?.kind).toBe("life_insurance");
+      if (product.segmentDetail?.kind === "life_insurance") {
+        expect(product.segmentDetail.risks).toHaveLength(1);
+        expect(product.segmentDetail.risks[0].label).toBe("Smrt (hlavní pojištění)");
+      }
+    });
+
+    it("deduplicates ŽP risks when labels differ only by typography (comma vs dot, spaced digits, NBSP)", () => {
+      const product = mapContractToCanonicalProduct(
+        makeContract({
+          segment: "ZP",
+          portfolioAttributes: {
+            risks: [
+              { label: "Trvalé následky od 0,5 % s progresí 1 000 %", amount: "1\u00a0000\u00a0000" },
+              { label: "Trvalé následky od 0.5 % s progresí 1000 %", amount: "1000000" },
+            ],
+          },
+        }),
+      );
+      expect(product.segmentDetail?.kind).toBe("life_insurance");
+      if (product.segmentDetail?.kind === "life_insurance") {
+        expect(product.segmentDetail.risks).toHaveLength(1);
+      }
+    });
+
+    it("deduplicates ŽP risks when amount is stored as number in JSON", () => {
+      const product = mapContractToCanonicalProduct(
+        makeContract({
+          segment: "ZP",
+          portfolioAttributes: {
+            risks: [
+              { label: "Smrt", amount: "50000" },
+              { label: "Smrt", amount: 50_000 as unknown as string },
+            ],
+          },
+        }),
+      );
+      expect(product.segmentDetail?.kind).toBe("life_insurance");
+      if (product.segmentDetail?.kind === "life_insurance") {
+        expect(product.segmentDetail.risks).toHaveLength(1);
+      }
+    });
   });
 
   describe("vehicle detail (AUTO_PR, AUTO_HAV)", () => {

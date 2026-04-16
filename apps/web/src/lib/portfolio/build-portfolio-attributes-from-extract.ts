@@ -12,6 +12,7 @@ import type {
   PortfolioPersonRole,
   PortfolioRiskEntry,
 } from "db";
+import { normalizeRiskLabel, portfolioRiskDedupKey } from "@/lib/portfolio/portfolio-risks-dedupe";
 
 export type {
   CoverageLineUi,
@@ -216,7 +217,7 @@ function collectRisksFromList(raw: unknown): PortfolioRiskEntry[] {
       personRef,
       description,
     };
-    const k = riskDedupKey(entry);
+    const k = portfolioRiskDedupKey(entry);
     if (seenInList.has(k)) continue;
     seenInList.add(k);
     out.push(entry);
@@ -224,27 +225,12 @@ function collectRisksFromList(raw: unknown): PortfolioRiskEntry[] {
   return out;
 }
 
-function normalizeRiskLabel(label: string): string {
-  return label.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function normalizeRiskAmount(amount: string | undefined): string {
-  if (!amount) return "";
-  // Strip whitespace and non-numeric chars to compare numeric values
-  const n = parseFloat(amount.replace(/\s/g, "").replace(/[^\d.-]/g, ""));
-  return Number.isFinite(n) ? String(Math.round(n)) : amount.trim().toLowerCase();
-}
-
-function riskDedupKey(r: PortfolioRiskEntry): string {
-  return `${normalizeRiskLabel(r.label ?? "")}|${normalizeRiskAmount(r.amount)}|${(r.personRef ?? "").toLowerCase().trim()}`;
-}
-
 function mergeRiskLists(lists: PortfolioRiskEntry[][]): PortfolioRiskEntry[] {
   const seen = new Set<string>();
   const out: PortfolioRiskEntry[] = [];
   for (const list of lists) {
     for (const r of list) {
-      const key = riskDedupKey(r);
+      const key = portfolioRiskDedupKey(r);
       if (seen.has(key)) continue;
       seen.add(key);
       out.push(r);

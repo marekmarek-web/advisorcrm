@@ -16,6 +16,7 @@ import type {
   ResolvedFundCategory,
   FvSourceType,
 } from "db";
+import { dedupePortfolioRisks } from "@/lib/portfolio/portfolio-risks-dedupe";
 
 // ---------------------------------------------------------------------------
 // Raw contract input (minimal shape accepted from any query layer)
@@ -212,12 +213,13 @@ function safePersons(raw: unknown): PortfolioPersonEntry[] {
 
 function safeRisks(raw: unknown): PortfolioRiskEntry[] {
   if (!Array.isArray(raw)) return [];
-  return raw.filter(
+  const filtered = raw.filter(
     (x): x is PortfolioRiskEntry =>
       !!x &&
       typeof x === "object" &&
       typeof (x as Record<string, unknown>).label === "string",
   );
+  return dedupePortfolioRisks(filtered);
 }
 
 function safeCoverageLines(raw: unknown): CoverageLineUi[] {

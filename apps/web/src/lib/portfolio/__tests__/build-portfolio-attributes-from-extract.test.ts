@@ -31,6 +31,17 @@ describe("buildPortfolioAttributesFromExtracted — insuredRisks / AI canonical"
     expect((attrs.risks as Array<{ label: string }>)[0].label).toBe("Invalidita");
   });
 
+  it("collapses the same risk repeated in insuredRisks, riders and coverages", () => {
+    const row = { riskLabel: "Smrt", insuredAmount: "50000" };
+    const attrs = buildPortfolioAttributesFromExtracted({
+      documentClassification: { primaryType: "life_insurance_proposal" },
+      insuredRisks: [{ ...row, linkedParticipantName: "Jan" }],
+      riders: [{ ...row, linkedParticipantName: "Marie" }],
+      coverages: [{ ...row, person: "Dítě" }],
+    });
+    expect(attrs.risks).toHaveLength(1);
+  });
+
   it("feeds canonical product notes row Pojistné krytí end-to-end", () => {
     const attrs = buildPortfolioAttributesFromExtracted({
       documentClassification: { primaryType: "life_insurance_proposal" },
