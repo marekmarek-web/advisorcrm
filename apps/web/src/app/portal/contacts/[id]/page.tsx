@@ -20,25 +20,19 @@ import {
 } from "./contact-detail-tabs";
 import { ContactTasksAndEvents } from "./ContactTasksAndEvents";
 import { ContactHouseholdCard } from "./ContactHouseholdCard";
-import { ContactOpenTasksPreview } from "./ContactOpenTasksPreview";
 import { ContactNotesSection } from "./ContactNotesSection";
 import { ContactOverviewKpi } from "./ContactOverviewKpi";
 import { ContactLastNotePreview } from "./ContactLastNotePreview";
-import { ContactProductsPreview } from "./ContactProductsPreview";
-import { ContactOpportunitiesPreview } from "./ContactOpportunitiesPreview";
-import { ContactAiGenerationsBlock } from "./ContactAiGenerationsBlock";
+import { ContactContractsOverview } from "./ContactContractsOverview";
+import { AiClientSummaryBlock } from "./AiClientSummaryBlock";
 import { getLatestClientGenerations } from "@/app/actions/ai-generations";
 import { ClientCoverageWidget } from "@/app/components/contacts/ClientCoverageWidget";
 import { ContactTagsEditor } from "@/app/components/contacts/ContactTagsEditor";
-import { ContactFinancialAnalysesSection } from "@/app/dashboard/contacts/[id]/ContactFinancialAnalysesSection";
 import { ClientFinancialSummaryBlock } from "./ClientFinancialSummaryBlock";
-import { ClientServiceBlock } from "./ClientServiceBlock";
 import { ContactDetailEditButton } from "./ContactDetailEditButton";
 import { ContactIdentityCompletenessGuard } from "./ContactIdentityCompletenessGuard";
 import { ContactMergeConflictGuard } from "./ContactMergeConflictGuard";
 import { ContactDetailIdentityTab } from "./ContactDetailIdentityTab";
-import { ContactPaymentSetupsSection } from "./ContactPaymentSetupsSection";
-import { ClientReferralSection } from "./ClientReferralSection";
 import { ProductsFvSummarySection } from "./ProductsFvSummarySection";
 import { Suspense, type ReactNode } from "react";
 import { InviteToClientZoneButton } from "@/app/dashboard/contacts/[id]/InviteToClientZoneButton";
@@ -159,33 +153,31 @@ function ContactTabBody({
   switch (tab) {
     case "prehled":
       return (
-        <div className="space-y-8">
+        <div className="space-y-6">
+          {/* KPI row */}
           <ContactOverviewKpi contactId={contactId} />
-          <ClientFinancialSummaryBlock contactId={contactId} />
-          <ClientServiceBlock contactId={contactId} />
-          <ContactPaymentSetupsSection contactId={contactId} />
-          <ClientReferralSection contactId={contactId} />
-          <ClientCoverageWidget contactId={contactId} />
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+
+          {/* Main 2-column grid: products + sidebar */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 space-y-6">
-              <ContactLastNotePreview contactId={contactId} />
-              <ContactProductsPreview contactId={contactId} baseQueryNoTab={baseQueryNoTab} />
-              <ContactFinancialAnalysesSection contactId={contactId} />
+              {/* Products accordion — centre of the overview */}
+              <ContactContractsOverview contactId={contactId} baseQueryNoTab={baseQueryNoTab} />
+
+              {/* AI summary replacing redundant AI utility blocks */}
+              <AiClientSummaryBlock
+                contactId={contactId}
+                initialSummary={latestGenerations.clientSummary}
+              />
+
+              {/* Financial analysis summary (compact, only when data exists) */}
+              <ClientFinancialSummaryBlock contactId={contactId} />
             </div>
+
             <aside className="xl:col-span-1 space-y-6">
               {household && <ContactHouseholdCard household={household} />}
+              <ContactLastNotePreview contactId={contactId} />
+              <ClientCoverageWidget contactId={contactId} />
             </aside>
-          </div>
-          {canReadOpportunities && (
-            <ContactOpportunitiesPreview
-              contactId={contactId}
-              baseQueryNoTab={baseQueryNoTab}
-              canWrite={canWriteOpportunities}
-            />
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ContactOpenTasksPreview contactId={contactId} />
-            <ContactAiGenerationsBlock contactId={contactId} initialGenerations={latestGenerations} />
           </div>
         </div>
       );

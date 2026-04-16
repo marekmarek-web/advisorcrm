@@ -12,16 +12,14 @@ export type ContactTabId =
   | "obchody"
   | "briefing";
 
+/** Záložky zobrazené v hlavní navigaci (smlouvy, ukoly, obchody jsou skryté — obsah je v přehledu). */
 export const CONTACT_TAB_IDS: ContactTabId[] = [
   "prehled",
   "detail",
   "timeline",
-  "smlouvy",
   "dokumenty",
   "zapisky",
   "podklady",
-  "ukoly",
-  "obchody",
   "briefing",
 ];
 
@@ -41,6 +39,10 @@ export const CONTACT_TAB_LABELS: Record<ContactTabId, string> = {
 /** Starý název záložky v odkazech — přesměruje se na `podklady`. */
 const LEGACY_TAB_ALIASES: Record<string, ContactTabId> = {
   aktivita: "podklady",
+  /** Staré přímé linky na smlouvy/ukoly/obchody → přesměruj na přehled */
+  smlouvy: "prehled",
+  ukoly: "prehled",
+  obchody: "prehled",
 };
 
 function firstString(v: string | string[] | undefined): string | undefined {
