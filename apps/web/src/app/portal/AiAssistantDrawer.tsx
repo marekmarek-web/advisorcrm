@@ -26,6 +26,12 @@ import {
   importContactsFromSpreadsheet,
   type CsvPreview,
 } from "@/app/actions/csv-import";
+import {
+  extractPaymentDraftFromImageAction,
+  type PaymentFromImageDraft,
+} from "@/app/actions/ai-payment-from-image";
+import { createManualPaymentSetup, type ManualPaymentSetupInput } from "@/app/actions/manual-payment-setup";
+import { PaymentFromImageDraftPanel } from "./PaymentFromImageDraftPanel";
 import { DEFAULT_CONTACT_IMPORT_MAPPING, type ColumnMapping } from "@/lib/contacts/import-types";
 import { ImportColumnMappingBlock } from "@/app/dashboard/contacts/ImportColumnMappingBlock";
 import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
@@ -273,6 +279,13 @@ export function AiAssistantDrawer() {
   const [importContactsMapping, setImportContactsMapping] = useState<ColumnMapping>(DEFAULT_CONTACT_IMPORT_MAPPING);
   const [importContactsResult, setImportContactsResult] = useState<{ imported: number; skipped: number; errors: { row: number; message: string }[] } | null>(null);
   const [importContactsLoading, setImportContactsLoading] = useState(false);
+
+  // Payment from image flow
+  type PaymentFromImagePhase = "idle" | "extracting" | "draft" | "saving";
+  const [paymentFromImagePhase, setPaymentFromImagePhase] = useState<PaymentFromImagePhase>("idle");
+  const [paymentFromImageDraft, setPaymentFromImageDraft] = useState<PaymentFromImageDraft | null>(null);
+  const paymentFromImageInputRef = useRef<HTMLInputElement>(null);
+
   const latestAssistantContext = getLatestAssistantContextFromMessages(messages);
   const showStickyContextLock = Boolean(latestAssistantContext?.lockedClientId);
   /** Spouští "Upravit zadání": vyplní input textem z poslední uživatelské zprávy a přesune fokus. */
@@ -1186,6 +1199,61 @@ export function AiAssistantDrawer() {
     setImportContactsStep("idle");
   };
 
+  const handlePaymentFromImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !isLikelyAssistantImageFile(file)) {
+      toast.showToast("Vyberte obrázek (JPEG, PNG, HEIC…).", "error");
+      return;
+    }
+    setPaymentFromImagePhase("extracting");
+    setPaymentFromImageDraft(null);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("read_failed"));
+        reader.readAsDataURL(file);
+      });
+      const result = await extractPaymentDraftFromImageAction(dataUrl);
+      if (!result.ok) {
+        toast.showToast(result.error || "Extrakce platebních údajů selhala.", "error");
+        setPaymentFromImagePhase("idle");
+        return;
+      }
+      setPaymentFromImageDraft(result.draft);
+      setPaymentFromImagePhase("draft");
+    } catch {
+      toast.showToast("Zpracování obrázku selhalo.", "error");
+      setPaymentFromImagePhase("idle");
+    }
+  };
+
+  const handlePaymentFromImageConfirm = async (input: ManualPaymentSetupInput) => {
+    setPaymentFromImagePhase("saving");
+    try {
+      const result = await createManualPaymentSetup(input);
+      if (!result.ok) {
+        toast.showToast(result.error || "Uložení platební instrukce selhalo.", "error");
+        setPaymentFromImagePhase("draft");
+        return;
+      }
+      toast.showToast("Platební instrukce vytvořena. Viditelná v detailu klienta.", "success");
+      setPaymentFromImagePhase("idle");
+      setPaymentFromImageDraft(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      router.refresh();
+    } catch {
+      toast.showToast("Uložení selhalo.", "error");
+      setPaymentFromImagePhase("draft");
+    }
+  };
+
+  const handlePaymentFromImageCancel = () => {
+    setPaymentFromImagePhase("idle");
+    setPaymentFromImageDraft(null);
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const list = Array.from(e.dataTransfer.files ?? []);
@@ -1370,6 +1438,13 @@ export function AiAssistantDrawer() {
           className="hidden"
           onChange={handleImportContactsFileChange}
         />
+        <input
+          ref={paymentFromImageInputRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          className="hidden"
+          onChange={handlePaymentFromImageFileChange}
+        />
 
         {/* Nahrání smlouvy — jedna zóna, větší než předchozí strip */}
         <div className="shrink-0 px-4 pb-2">
@@ -1405,6 +1480,16 @@ export function AiAssistantDrawer() {
                     className="mt-1.5 text-xs font-bold text-indigo-600 hover:underline text-left"
                   >
                     Fotka do konverzace (JPEG, PNG, HEIC…)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      paymentFromImageInputRef.current?.click();
+                    }}
+                    className="mt-0.5 text-xs font-bold text-emerald-700 hover:underline text-left"
+                  >
+                    Platební instrukce z fotky / screenshotu
                   </button>
                 </div>
               </>
@@ -1442,6 +1527,30 @@ export function AiAssistantDrawer() {
             </div>
           )}
         </div>
+
+        {/* Payment from image flow */}
+        {paymentFromImagePhase === "extracting" && (
+          <div className="shrink-0 px-4 pb-3">
+            <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-4 flex items-center gap-3 shadow-sm">
+              <Loader2 size={20} className="animate-spin text-emerald-600 shrink-0" aria-hidden />
+              <div>
+                <p className="text-sm font-bold text-[color:var(--wp-text)]">Extrahuji platební údaje…</p>
+                <p className="text-xs text-[color:var(--wp-text-secondary)]">AI čte obrázek a hledá platební instrukce.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {(paymentFromImagePhase === "draft" || paymentFromImagePhase === "saving") && paymentFromImageDraft && (
+          <div className="shrink-0 px-4 pb-3">
+            <PaymentFromImageDraftPanel
+              draft={paymentFromImageDraft}
+              contactId={routeContactId ?? latestAssistantContext?.lockedClientId ?? null}
+              saving={paymentFromImagePhase === "saving"}
+              onConfirm={handlePaymentFromImageConfirm}
+              onCancel={handlePaymentFromImageCancel}
+            />
+          </div>
+        )}
 
         {/* Import klientů block */}
         {importContactsStep !== "idle" && (

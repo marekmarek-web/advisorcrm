@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import { createResponseWithFile } from "@/lib/openai";
+import { createResponseWithFile, createResponseStructuredWithImage } from "@/lib/openai";
 import type { DocumentReviewEnvelope, ExtractedField, ReviewWarning } from "./document-review-types";
 import { isOpenAIRateLimitError } from "./openai-rate-limit";
 
@@ -272,5 +272,66 @@ export async function extractPaymentInstructionsFromDocument(
       ok: false,
       error: e instanceof Error ? e.message : String(e),
     };
+  }
+}
+
+/**
+ * JSON schema for structured image extraction (OpenAI Responses API).
+ * Uses string-only types for full compatibility with structured output.
+ */
+const PAYMENT_IMAGE_JSON_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    institutionName: { type: "string" },
+    productName: { type: "string" },
+    amount: { type: "string" },
+    currency: { type: "string" },
+    paymentFrequency: { type: "string" },
+    dueDay: { type: "string" },
+    dueDate: { type: "string" },
+    iban: { type: "string" },
+    accountNumber: { type: "string" },
+    bankCode: { type: "string" },
+    variableSymbol: { type: "string" },
+    constantSymbol: { type: "string" },
+    specificSymbol: { type: "string" },
+    paymentNote: { type: "string" },
+    firstPaymentDate: { type: "string" },
+    confidence: { type: "number", minimum: 0, maximum: 1 },
+    needsHumanReview: { type: "boolean" },
+  },
+  additionalProperties: false,
+};
+
+/**
+ * Extracts payment instruction fields from a base64 image data URL
+ * (or any URL accepted by OpenAI vision — data:image/... or https).
+ * Used by the AI assistant drawer "payment from image" flow.
+ */
+export async function extractPaymentInstructionsFromImageUrl(
+  imageUrl: string
+): Promise<
+  | { ok: true; data: PaymentInstructionExtraction; raw: string }
+  | { ok: false; error: string; errorCode?: string }
+> {
+  try {
+    const result = await createResponseStructuredWithImage<Record<string, unknown>>(
+      imageUrl,
+      PAYMENT_EXTRACTION_PROMPT,
+      PAYMENT_IMAGE_JSON_SCHEMA,
+      { routing: { category: "ai_review" }, schemaName: "payment_instruction_image" }
+    );
+    const raw = (result.text ?? JSON.stringify(result.parsed)).slice(0, 2000);
+    const parsed = result.parsed;
+    const zResult = paymentInstructionExtractionSchema.safeParse(parsed);
+    if (!zResult.success) {
+      return { ok: false, error: "Platební extrakce z obrázku: neplatná struktura odpovědi modelu." };
+    }
+    return { ok: true, data: zResult.data, raw };
+  } catch (e) {
+    if (isOpenAIRateLimitError(e)) {
+      return { ok: false, error: "OpenAI rate limit při extrakci plateb z obrázku.", errorCode: "OPENAI_RATE_LIMIT" };
+    }
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
