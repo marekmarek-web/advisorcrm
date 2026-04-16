@@ -148,6 +148,18 @@ function ContractDetailCard({
   }
 
   const inPortal = !!product.visibleToClient;
+  const portfolioStatusLabel =
+    product.portfolioStatus === "ended"
+      ? "Ukončené"
+      : product.startDate
+        ? "Aktivní"
+        : "V evidenci";
+  const statusBadgeCls =
+    portfolioStatusLabel === "Aktivní"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+      : portfolioStatusLabel === "Ukončené"
+        ? "bg-slate-100 text-slate-500 border-slate-200"
+        : "bg-amber-50 text-amber-700 border-amber-100";
 
   // Extract segment-specific fields
   const d = product.segmentDetail;
@@ -203,7 +215,7 @@ function ContractDetailCard({
             <Icon size={20} strokeWidth={2} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-start justify-between gap-2 flex-wrap">
               <h3
                 className={`text-sm font-black truncate transition-colors ${
                   isExpanded ? "text-indigo-700" : "text-[color:var(--wp-text)]"
@@ -211,19 +223,24 @@ function ContractDetailCard({
               >
                 {displayName}
               </h3>
+              <span
+                className={`shrink-0 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded border ${statusBadgeCls}`}
+              >
+                {portfolioStatusLabel}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-[10px] font-bold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] px-1.5 py-0.5 rounded-md whitespace-nowrap">
                 {segLabel}
               </span>
-            </div>
-            <div className="flex items-center gap-2 mt-0.5 text-xs font-bold text-[color:var(--wp-text-secondary)] truncate">
-              <span className="truncate">{partnerName}</span>
+              <span className="text-xs font-bold text-[color:var(--wp-text-secondary)] truncate">{partnerName}</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-4 pl-13 sm:pl-0">
           <div className="text-right">
             <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-0.5">
-              Pojistné / Vklad
+              Platba / pojistné / splátka
             </span>
             <span className="text-sm font-black text-[color:var(--wp-text)]">{premium}</span>
           </div>
@@ -246,7 +263,7 @@ function ContractDetailCard({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 bg-[color:var(--wp-surface-muted)]/30">
             <div>
               <span className="block text-[9px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1">
-                Pojistné / Vklad
+                Platba / pojistné / splátka
               </span>
               <span className="text-sm font-bold text-[color:var(--wp-text)]">{premium}</span>
             </div>
