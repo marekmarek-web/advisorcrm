@@ -72,7 +72,7 @@ body{font-family:var(--ff-sans);background:var(--stone-100);color:var(--stone-70
 .fa-proj-range{flex:1;min-width:160px;max-width:360px}
 .fa-proj-control-val{min-width:120px;font-size:12px;font-weight:600;color:var(--navy-800);font-variant-numeric:tabular-nums}
 .fa-proj-chart-print{display:none}
-.fa-proj-canvas-wrap{width:100%;overflow:auto}
+.fa-proj-canvas-wrap{width:100%;overflow:hidden}
 .fa-backtest-controls{margin:var(--s4) 0;display:flex;flex-direction:column;gap:var(--s2)}
 .fa-backtest-label{font-size:11px;font-weight:600;color:var(--stone-600)}
 .fa-backtest-select{max-width:220px;padding:8px 10px;border-radius:var(--r-md);border:1px solid var(--stone-200);font-size:14px;background:var(--white)}
@@ -196,10 +196,10 @@ table.dt td.num{font-family:var(--ff-serif);font-size:15px;font-variant-numeric:
 .product-gallery-image{width:100%;height:auto;max-height:120px;object-fit:contain;display:block}
 .product-gallery-logos .product-gallery-item{background:#fff;padding:12px;display:flex;align-items:center;justify-content:center}
 .product-gallery-logos .product-gallery-image{height:auto;max-height:100px;object-fit:contain}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--stone-100);border:1px solid var(--stone-100);border-radius:var(--r-md);overflow:hidden;margin-bottom:var(--s6)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--stone-100);border:1px solid var(--stone-100);border-radius:var(--r-md);overflow:hidden;margin-bottom:var(--s6)}
 .stat-cell{background:var(--white);padding:var(--s4) var(--s5)}
 .stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--stone-400);margin-bottom:4px}
-.stat-val{font-size:14px;font-weight:600;color:var(--stone-800)}
+.stat-val{font-size:13px;font-weight:600;color:var(--stone-800);white-space:normal;line-height:1.4}
 .bar-section{margin-bottom:var(--s6)}.bar-section-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--stone-400);margin-bottom:var(--s4)}
 .bar-row{display:flex;align-items:center;gap:var(--s4);margin-bottom:var(--s3)}
 .bar-row-name{font-size:12.5px;color:var(--stone-600);flex:0 0 150px}

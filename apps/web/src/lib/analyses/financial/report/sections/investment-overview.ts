@@ -46,11 +46,11 @@ export function renderInvestmentOverview(ctx: SectionCtx): string {
     }
 
     return `<tr>
-      <td>
+      <td style="max-width:220px">
         <div class="ins-provider-cell">${logoHtml}</div>
-        <div class="bold" style="margin-top:4px">${esc(name)}</div>
+        <div class="bold" style="margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(name)}</div>
       </td>
-      <td class="muted">${esc(typeLabel)}</td>
+      <td class="muted inv-type-cell" style="white-space:nowrap;width:80px">${esc(typeLabel)}</td>
       <td class="r">${esc(amountLabel)}</td>
       <td class="r">${esc(horizon)}</td>
       <td class="r num bold">${fmtBigCzk(fv)}</td>
@@ -74,7 +74,7 @@ export function renderInvestmentOverview(ctx: SectionCtx): string {
     <div class="tbl-wrap">
       <div class="tbl-cap"><span class="tbl-cap-title">Investiční produkty</span></div>
       <table class="dt">
-        <thead><tr><th>Produkt / Fond</th><th>Typ</th><th class="r">Platba</th><th class="r">Horizont</th><th class="r">Odhad FV</th></tr></thead>
+        <thead><tr><th style="max-width:220px">Produkt / Fond</th><th style="width:80px;white-space:nowrap">Typ</th><th class="r">Platba</th><th class="r">Horizont</th><th class="r">Odhad FV</th></tr></thead>
         <tbody>
           ${rows.join('\n')}
           <tr class="sum-row">

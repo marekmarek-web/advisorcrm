@@ -211,6 +211,27 @@ export function canonicalPortfolioDetailRows(p: CanonicalProduct): { label: stri
 }
 
 /**
+ * Popisky skryté v klientském portfoliu (u ŽP nahrazuje textové krytí sekce „Rizika / krytí“).
+ */
+const CLIENT_ZONE_PORTFOLIO_DETAIL_OMIT_LABELS = new Set([
+  "Pojistné krytí",
+  "Číslo dokladu (OP/pas)",
+  "Praktický lékař",
+]);
+
+/**
+ * Řádky pro rozbalený detail v klientském portfoliu (web i mobil).
+ * Bez souhrnného krytí, čísla OP u smlouvy a lékaře; bez řádku „Typ produktu“ (je v záhlaví karty).
+ */
+export function canonicalPortfolioDetailRowsForClientPortfolioCard(
+  p: CanonicalProduct,
+): { label: string; value: string }[] {
+  return canonicalPortfolioDetailRows(p)
+    .filter((r) => !CLIENT_ZONE_PORTFOLIO_DETAIL_OMIT_LABELS.has(r.label))
+    .filter((r) => r.label !== "Typ produktu");
+}
+
+/**
  * Text pro sekci „Poznámky k produktu“ na přehledu — strukturované řádky z kanonického modelu
  * + volitelná interní poznámka poradce, pokud doplňuje nebo se liší.
  */

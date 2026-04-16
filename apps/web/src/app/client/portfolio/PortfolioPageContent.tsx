@@ -27,7 +27,7 @@ import {
   type PortfolioUiGroup,
 } from "@/lib/client-portfolio/read-model";
 import {
-  canonicalPortfolioDetailRows,
+  canonicalPortfolioDetailRowsForClientPortfolioCard,
   formatPortalPremiumLineCs,
   isFvEligibleSegment,
   portfolioContractStatusLabelCs,
@@ -137,7 +137,7 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
         }
       : null;
   const fvPartial = !fv && fvEligible && fvShared?.projectionState === "partial";
-  const detailRows = canonicalPortfolioDetailRows(p).filter((r) => r.label !== "Typ produktu");
+  const detailRows = canonicalPortfolioDetailRowsForClientPortfolioCard(p);
 
   const d = p.segmentDetail;
   const persons = d?.kind === "life_insurance" ? (d.persons ?? []) : [];
@@ -267,11 +267,18 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
         <div className="border-t border-slate-100 px-4 pb-5 sm:px-5 pt-4 space-y-4 bg-slate-50/40">
           {/* Detail rows grid */}
           {detailRows.length > 0 && (
-            <div className="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 overflow-hidden shadow-sm">
-              {detailRows.map((row) => (
-                <div key={row.label} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
-                  <span className="text-slate-500 font-semibold shrink-0">{row.label}</span>
-                  <span className="text-slate-800 font-bold text-right">{row.value}</span>
+            <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm overflow-hidden">
+              {detailRows.map((row, idx) => (
+                <div
+                  key={`${row.label}-${idx}`}
+                  className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6 px-4 py-3.5 border-b border-slate-100 last:border-b-0"
+                >
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:w-[min(42%,14rem)] sm:shrink-0">
+                    {row.label}
+                  </span>
+                  <span className="text-sm font-bold text-slate-900 sm:text-right min-w-0 leading-snug break-words">
+                    {row.value}
+                  </span>
                 </div>
               ))}
             </div>
@@ -304,16 +311,21 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
           {/* Risks */}
           {risks.length > 0 && (
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 px-0.5">
                 Rizika / krytí
               </p>
-              <div className="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 overflow-hidden shadow-sm">
+              <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-sm">
                 {risks.map((r, i) => (
-                  <div key={i} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                    <span className="text-slate-700 font-semibold">{r.label || "—"}</span>
-                    {r.amount && (
-                      <span className="text-slate-500 font-bold shrink-0">{r.amount}</span>
-                    )}
+                  <div
+                    key={i}
+                    className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-x-4 px-4 py-3 border-b border-slate-100 last:border-b-0"
+                  >
+                    <span className="text-sm font-semibold text-slate-800 leading-snug">{r.label || "—"}</span>
+                    {r.amount ? (
+                      <span className="text-sm font-bold text-slate-600 tabular-nums shrink-0 sm:text-right">
+                        {r.amount}
+                      </span>
+                    ) : null}
                   </div>
                 ))}
               </div>

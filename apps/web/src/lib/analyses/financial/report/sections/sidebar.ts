@@ -35,14 +35,6 @@ export function renderSidebar(ctx: SectionCtx): string {
     { id: 'portfolio', label: 'Portfolio', icon: 'portfolio' },
   ];
 
-  if ((ctx.canonicalInvestmentOverview?.length ?? 0) > 0) {
-    items.push({
-      id: 'evidence-investments',
-      label: 'Investice z evidence',
-      icon: 'evidence',
-    });
-  }
-
   const investments = (data.investments ?? []).filter(
     (inv: InvestmentEntry) => inv.amount > 0,
   );
@@ -55,6 +47,10 @@ export function renderSidebar(ctx: SectionCtx): string {
       group: items.length === 4 ? 'Produkty' : undefined,
     });
   });
+
+  if (investments.length > 0) {
+    items.push({ id: 'inv-overview', label: 'Investiční přehled', icon: 'portfolio' });
+  }
 
   items.push({ id: 'projekce', label: 'Projekce', icon: 'projekce' });
 

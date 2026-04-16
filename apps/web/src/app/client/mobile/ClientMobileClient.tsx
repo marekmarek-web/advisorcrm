@@ -57,7 +57,7 @@ import {
   type PortfolioUiGroup,
 } from "@/lib/client-portfolio/read-model";
 import {
-  canonicalPortfolioDetailRows,
+  canonicalPortfolioDetailRowsForClientPortfolioCard,
   formatPortalPremiumLineCs,
   isFvEligibleSegment,
   portfolioContractStatusLabelCs,
@@ -645,7 +645,7 @@ function PortfolioScreen({
                       sourceExplanation: fvShared.sourceLabel,
                     }
                   : null;
-              const detailRows = canonicalPortfolioDetailRows(p);
+              const detailRows = canonicalPortfolioDetailRowsForClientPortfolioCard(p);
               const visibleDoc =
                 contract.sourceDocumentId && visibleSourceDocs[contract.sourceDocumentId]
                   ? visibleSourceDocs[contract.sourceDocumentId]
@@ -699,12 +699,19 @@ function PortfolioScreen({
                     ) : null}
                   </div>
 
-                  {detailRows.length > 1 ? (
-                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 space-y-1.5">
-                      {detailRows.map((row) => (
-                        <div key={row.label} className="flex justify-between gap-2 text-[11px]">
-                          <span className="text-slate-500 font-bold shrink-0">{row.label}</span>
-                          <span className="text-slate-800 font-semibold text-right">{row.value}</span>
+                  {detailRows.length > 0 ? (
+                    <div className="rounded-2xl border border-slate-200/90 bg-white p-3 space-y-0 shadow-sm">
+                      {detailRows.map((row, ridx) => (
+                        <div
+                          key={`${row.label}-${ridx}`}
+                          className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline sm:gap-3 py-2.5 border-b border-slate-100 last:border-b-0 first:pt-0 last:pb-0"
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
+                            {row.label}
+                          </span>
+                          <span className="text-[12px] font-bold text-slate-900 text-left sm:text-right min-w-0 leading-snug break-words">
+                            {row.value}
+                          </span>
                         </div>
                       ))}
                     </div>

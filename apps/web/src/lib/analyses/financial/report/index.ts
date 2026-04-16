@@ -82,8 +82,8 @@ export function buildPremiumReportHTML(
   sections.push(renderBilance(ctx));
   sections.push(renderGoals(ctx));
   sections.push(renderPortfolio(ctx));
-  sections.push(renderInvestmentOverview(ctx));
   sections.push(renderProductDetails(ctx));
+  sections.push(renderInvestmentOverview(ctx));
   const monthlyForBacktest = computeReportMonthlyDeposit(data);
   const backtestJson = buildBacktestPresetsForHtml(monthlyForBacktest);
   sections.push(renderInvestmentBacktest(ctx, backtestJson, monthlyForBacktest));

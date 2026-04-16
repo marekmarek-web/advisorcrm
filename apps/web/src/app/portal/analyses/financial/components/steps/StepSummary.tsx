@@ -368,13 +368,13 @@ export function StepSummary() {
           <ThemeSelector value={selectedTheme} onChange={handleThemeChange} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div className="flex flex-wrap gap-3 mb-4">
           <button
             type="button"
             onClick={handleDownloadHTML}
             disabled={isDownloading}
             aria-busy={isDownloading}
-            className={clsx(portalPrimaryButtonClassName, "min-h-[56px] flex w-full items-center gap-3 px-5 py-3 disabled:opacity-60")}
+            className={clsx(portalPrimaryButtonClassName, "min-h-[56px] flex items-center gap-3 px-5 py-3 disabled:opacity-60")}
           >
             <Monitor className="w-5 h-5 flex-shrink-0" />
             <div className="text-left">

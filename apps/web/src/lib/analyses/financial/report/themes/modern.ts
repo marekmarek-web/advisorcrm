@@ -81,7 +81,7 @@ body{font-family:var(--ff-data);background:var(--surface-2);color:var(--ink-2);l
 .fa-proj-range{flex:1;min-width:160px;max-width:360px}
 .fa-proj-control-val{min-width:120px;font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .fa-proj-chart-print{display:none}
-.fa-proj-canvas-wrap{width:100%;overflow:auto}
+.fa-proj-canvas-wrap{width:100%;overflow:hidden}
 .fa-backtest-controls{margin:16px 0;display:flex;flex-direction:column;gap:8px}
 .fa-backtest-label{font-size:11px;font-weight:700;color:var(--ink-3)}
 .fa-backtest-select{max-width:220px;padding:8px 10px;border-radius:var(--r2);border:1px solid var(--surface-3);font-size:14px;background:var(--surface)}
@@ -204,10 +204,10 @@ table.dt td.num{font-size:14px;font-family:var(--ff-ui);font-weight:700}
 .product-gallery-image{width:100%;height:auto;max-height:120px;object-fit:contain;display:block}
 .product-gallery-logos .product-gallery-item{background:#fff;padding:12px;display:flex;align-items:center;justify-content:center}
 .product-gallery-logos .product-gallery-image{height:auto;max-height:100px;object-fit:contain}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--surface-3);border:1px solid var(--surface-3);border-radius:var(--r3);overflow:hidden;margin-bottom:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--surface-3);border:1px solid var(--surface-3);border-radius:var(--r3);overflow:hidden;margin-bottom:20px}
 .stat-cell{background:var(--surface);padding:12px 14px}
 .stat-lbl{font-family:var(--ff-ui);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink-4);margin-bottom:3px}
-.stat-val{font-family:var(--ff-ui);font-size:14px;font-weight:700;color:var(--ink)}
+.stat-val{font-family:var(--ff-ui);font-size:13px;font-weight:700;color:var(--ink);white-space:normal;line-height:1.4}
 .bar-section{margin-bottom:20px}.bar-section-title{font-family:var(--ff-ui);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink-4);margin-bottom:10px}
 .bar-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
 .bar-row-name{font-size:12px;color:var(--ink-3);flex:0 0 140px}
@@ -296,7 +296,7 @@ table.dt td.num{font-size:14px;font-family:var(--ff-ui);font-weight:700}
 .opp-num{width:24px;height:24px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--ff-ui);font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
 .opp-name{font-family:var(--ff-ui);font-size:13px;font-weight:600;color:var(--ink);flex:1}
 .opp-val{font-family:var(--ff-ui);font-size:14px;font-weight:800;color:var(--pos);white-space:nowrap}
-.money,.currency,.kpi-value,.product-invest-amt,.foot-val,.ins-amt,.ins-line-val,.goal-amt-val,.cf-amt,.gap-recommended,.gap-current,.stat-val,.opp-val{white-space:nowrap}
+.money,.currency,.kpi-value,.product-invest-amt,.foot-val,.ins-amt,.ins-line-val,.goal-amt-val,.cf-amt,.gap-recommended,.gap-current,.opp-val{white-space:nowrap}
 
 /* DVZ */
 .dvz-note{padding:11px 16px;background:var(--surface-2);border-radius:var(--r2);border:1px solid var(--surface-3);font-size:11px;color:var(--ink-4);text-align:center;margin-top:16px;font-family:var(--ff-data)}

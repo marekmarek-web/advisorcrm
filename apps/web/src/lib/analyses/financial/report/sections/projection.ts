@@ -266,7 +266,7 @@ export function renderProjection(ctx: SectionCtx): string {
     <div class="chart-wrap">
       <div class="chart-title"><span>Projekce hodnoty portfolia</span><span class="chart-title-right" id="fa-proj-chart-horizon">${maxHorizon} let</span></div>
       <div class="fa-proj-chart-print">${chartSvg}</div>
-      <div class="fa-interactive-only fa-proj-canvas-wrap"><canvas id="fa-proj-canvas" width="820" height="220" aria-hidden="true"></canvas></div>
+      <div class="fa-interactive-only fa-proj-canvas-wrap"><canvas id="fa-proj-canvas" width="820" height="260" style="width:100%;height:auto;display:block" aria-hidden="true"></canvas></div>
     </div>
     <script type="application/json" id="fa-proj-init">${initJson}</script>
 
