@@ -264,9 +264,9 @@ export default function ContractReviewListPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[color:var(--wp-main-scroll-bg)]">
-      <div className="max-w-[1200px] mx-auto w-full p-6 md:p-8 space-y-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 md:p-8">
         {/* Header - reference style */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex shrink-0 flex-col justify-between gap-6 md:flex-row md:items-end">
           <div className="flex items-start gap-4">
             <AiAssistantBrandIcon size={52} className="flex-shrink-0 self-center" />
             <div>
@@ -283,7 +283,7 @@ export default function ContractReviewListPage() {
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-[32px] p-8 md:p-10 bg-[color:var(--wp-surface-card)] text-center cursor-pointer transition-all ${
+          className={`shrink-0 border-2 border-dashed rounded-[32px] p-8 md:p-10 bg-[color:var(--wp-surface-card)] text-center cursor-pointer transition-all ${
             uploading
               ? "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/50 cursor-wait"
               : "border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/20 dark:border-[color:var(--wp-border-strong)] dark:hover:border-indigo-400/40 dark:hover:bg-indigo-950/25"
@@ -324,7 +324,7 @@ export default function ContractReviewListPage() {
 
         {/* Error state - reference */}
         {error && (
-          <div className="flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/35 dark:bg-rose-950/35">
+          <div className="flex shrink-0 items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/35 dark:bg-rose-950/35">
             <div className="flex items-center gap-3 text-rose-700 dark:text-rose-100">
               <AlertCircle size={20} className="shrink-0" />
               <span className="font-bold text-sm">{error}</span>
@@ -340,7 +340,7 @@ export default function ContractReviewListPage() {
         )}
 
         {/* Filters - reference panel */}
-        <div className="bg-[color:var(--wp-surface-card)] p-3 md:p-4 rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div className="flex shrink-0 flex-col items-stretch justify-between gap-4 rounded-[24px] border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3 shadow-sm md:flex-row md:items-center md:p-4">
           <div className="relative flex-1 w-full max-w-md">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--wp-text-tertiary)]" />
             <input
@@ -409,7 +409,7 @@ export default function ContractReviewListPage() {
             </h2>
           </div>
 
-          <div className="flex-1 overflow-auto">
+          <div className="min-h-[12rem] flex-1 overflow-auto">
             {loading && items.length === 0 ? (
               <div className="p-16 flex flex-col items-center justify-center text-center">
                 <RefreshCw size={32} className="animate-spin text-indigo-500 mb-4" />
