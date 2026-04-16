@@ -21,6 +21,7 @@ import {
 import type { TeamAlert, TeamMemberMetrics } from "@/lib/team-overview-alerts";
 import { buildTeamAlertsFromMemberMetrics } from "@/lib/team-overview-alerts";
 import { createTeamEvent, createTeamTask } from "@/app/actions/team-events";
+import { defaultTaskDueDateYmd } from "@/lib/date/date-only";
 import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
 import {
   AIInsightCard,
@@ -171,7 +172,7 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
   const [actionOpen, setActionOpen] = useState(false);
   const [actionType, setActionType] = useState<"event" | "task">("task");
   const [actionTitle, setActionTitle] = useState("");
-  const [actionDate, setActionDate] = useState(new Date().toISOString().slice(0, 10));
+  const [actionDate, setActionDate] = useState(defaultTaskDueDateYmd());
 
   const isTablet = deviceClass === "tablet";
 

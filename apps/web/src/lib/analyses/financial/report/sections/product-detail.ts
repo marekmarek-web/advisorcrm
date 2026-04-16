@@ -4,6 +4,25 @@ import type { InvestmentEntry, FundDetail } from '../../types';
 import { getFaFundDetailForReport, getFaFundLogoUrl } from '../../fund-library/fa-fund-bridge';
 import { investmentFv } from '../../calculations';
 
+/** Converts ISO date YYYY-MM-DD to Czech DD.MM.YYYY within a string. */
+function isoDatesToCzech(text: string): string {
+  return text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3.$2.$1');
+}
+
+/**
+ * Filters performance summary to only show "1 rok" and "Od zal..." lines,
+ * and converts any ISO dates to Czech format.
+ */
+function filterPerformanceSummary(summary: string): string {
+  const lines = summary.split('\n');
+  const filtered = lines.filter((line) => {
+    const l = line.toLowerCase();
+    return l.includes('1 rok') || l.startsWith('od zal') || l.startsWith('od založ');
+  });
+  const result = filtered.length > 0 ? filtered.join('\n') : summary;
+  return isoDatesToCzech(result);
+}
+
 /** Max. `topN` řádků + jeden součet „Ostatní“ (tisk — méně přelévání na 2. stranu). */
 function collapseWeightRows(
   items: Array<{ name: string; weight: number }>,
@@ -130,15 +149,15 @@ export function renderProductDetails(ctx: SectionCtx): string {
         ${detail.galleryImages && detail.galleryImages.length > 0 ? renderGallery(detail.galleryImages, detail.galleryType === "logo") : ""}
         ${
           detail.officialPerformanceSummary
-            ? `<div class="bar-section" style="margin-bottom:1rem"><div class="bar-section-title">Oficiální výkonnost (ze zdroje)</div><p style="font-size:0.8125rem;line-height:1.5;color:var(--wp-text-secondary,#64748b);white-space:pre-line;margin:0">${esc(detail.officialPerformanceSummary)}</p></div>`
+            ? `<div class="bar-section" style="margin-bottom:1rem"><div class="bar-section-title">Oficiální výkonnost (ze zdroje)</div><p style="font-size:0.8125rem;line-height:1.5;color:var(--wp-text-secondary,#64748b);white-space:pre-line;margin:0">${esc(filterPerformanceSummary(detail.officialPerformanceSummary))}</p></div>`
             : ""
         }
         ${
           detail.factsheetUrl
-            ? `<p style="font-size:0.8125rem;margin:0 0 0.75rem 0"><a href="${esc(detail.factsheetUrl)}" rel="noopener noreferrer" target="_blank">Otevřít factsheet</a>${detail.factsheetAsOf ? ` <span style="color:var(--wp-text-secondary)">(k ${esc(detail.factsheetAsOf)})</span>` : ""}</p>`
+            ? `<p style="font-size:0.8125rem;margin:0 0 0.75rem 0"><a href="${esc(detail.factsheetUrl)}" rel="noopener noreferrer" target="_blank">Otevřít factsheet</a>${detail.factsheetAsOf ? ` <span style="color:var(--wp-text-secondary)">(k ${esc(isoDatesToCzech(detail.factsheetAsOf))})</span>` : ""}</p>`
             : ""
         }
-        ${detail.verifiedAt ? `<p style="font-size:0.75rem;color:var(--wp-text-tertiary,#94a3b8);margin:0 0 0.75rem 0">Ověření v katalogu: ${esc(detail.verifiedAt)}</p>` : ""}
+        ${detail.verifiedAt ? `<p style="font-size:0.75rem;color:var(--wp-text-tertiary,#94a3b8);margin:0 0 0.75rem 0">Ověření v katalogu: ${esc(isoDatesToCzech(detail.verifiedAt))}</p>` : ""}
         ${renderStatGrid(detail)}
         ${detail.countries ? renderBars(collapseWeightRows(detail.countries, 3, 'Ostatní'), 'Zastoupení', theme) : ''}
         ${detail.sectors ? renderBars(collapseWeightRows(detail.sectors, 3, 'Ostatní'), 'Sektory', theme) : ''}

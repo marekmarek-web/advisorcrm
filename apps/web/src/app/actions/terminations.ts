@@ -1961,3 +1961,57 @@ Pravidla:
     vehicleVin: toString(parsed.vehicleVin),
   };
 }
+
+export interface TerminationRequestListItem {
+  id: string;
+  insurerName: string;
+  contractNumber: string | null;
+  productSegment: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  requestedEffectiveDate: string | null;
+}
+
+export type ListTerminationRequestsResponse =
+  | { ok: true; items: TerminationRequestListItem[] }
+  | { ok: false; error: string };
+
+export async function listTerminationRequestsAction(): Promise<ListTerminationRequestsResponse> {
+  const auth = await requireAuthInAction();
+  if (!isTerminationsModuleEnabledOnServer()) {
+    return { ok: false, error: "Modul výpovědí je vypnutý." };
+  }
+  if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
+  if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
+
+  const rows = await db
+    .select({
+      id: terminationRequests.id,
+      insurerName: terminationRequests.insurerName,
+      contractNumber: terminationRequests.contractNumber,
+      productSegment: terminationRequests.productSegment,
+      status: terminationRequests.status,
+      createdAt: terminationRequests.createdAt,
+      updatedAt: terminationRequests.updatedAt,
+      requestedEffectiveDate: terminationRequests.requestedEffectiveDate,
+    })
+    .from(terminationRequests)
+    .where(eq(terminationRequests.tenantId, auth.tenantId))
+    .orderBy(desc(terminationRequests.createdAt))
+    .limit(200);
+
+  return {
+    ok: true,
+    items: rows.map((r) => ({
+      id: r.id,
+      insurerName: r.insurerName,
+      contractNumber: r.contractNumber ?? null,
+      productSegment: r.productSegment ?? null,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      requestedEffectiveDate: r.requestedEffectiveDate ?? null,
+    })),
+  };
+}

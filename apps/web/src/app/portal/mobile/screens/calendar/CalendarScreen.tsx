@@ -595,7 +595,6 @@ export function CalendarScreen({
         await createFollowUp(ev.id, type, {
           title,
           startAt: type === "event" ? tomorrow.toISOString() : undefined,
-          dueDate: type === "task" ? tomorrow.toISOString().slice(0, 10) : undefined,
           contactId: ev.contactId || undefined,
         });
         showToast(type === "event" ? "Follow-up vytvořen" : "Úkol vytvořen", "success");

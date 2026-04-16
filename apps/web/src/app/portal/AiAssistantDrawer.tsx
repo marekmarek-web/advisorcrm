@@ -31,7 +31,7 @@ import {
   type PaymentFromImageDraft,
 } from "@/app/actions/ai-payment-from-image";
 import { createManualPaymentSetup, type ManualPaymentSetupInput } from "@/app/actions/manual-payment-setup";
-import { PaymentFromImageDraftPanel } from "./PaymentFromImageDraftPanel";
+import { PaymentFromImageDraftPanel, paymentFromImageDraftPanelKey } from "./PaymentFromImageDraftPanel";
 import { DEFAULT_CONTACT_IMPORT_MAPPING, type ColumnMapping } from "@/lib/contacts/import-types";
 import { ImportColumnMappingBlock } from "@/app/dashboard/contacts/ImportColumnMappingBlock";
 import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
@@ -1304,7 +1304,7 @@ export function AiAssistantDrawer() {
         aria-hidden
       />
       <div
-        className="fixed z-[101] flex min-h-0 flex-col bg-[color:var(--wp-surface-card)] shadow-[-4px_0_24px_rgba(0,0,0,0.12)] max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:top-[calc(var(--safe-area-top,0px)+3.25rem)] max-md:rounded-t-2xl max-md:border max-md:border-b-0 max-md:border-[color:var(--wp-surface-card-border)] md:inset-y-0 md:left-auto md:right-0 md:top-0 md:w-full md:max-w-[420px] md:rounded-none md:border-0"
+        className="fixed z-[101] flex h-full max-h-[100dvh] min-h-0 flex-col bg-[color:var(--wp-surface-card)] shadow-[-4px_0_24px_rgba(0,0,0,0.12)] max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:top-[calc(var(--safe-area-top,0px)+3.25rem)] max-md:max-h-[calc(100dvh-var(--safe-area-top,0px)-3.25rem)] max-md:rounded-t-2xl max-md:border max-md:border-b-0 max-md:border-[color:var(--wp-surface-card-border)] md:inset-y-0 md:left-auto md:right-0 md:top-0 md:w-full md:max-w-[420px] md:rounded-none md:border-0"
         role="dialog"
         aria-label="Interní AI podpora pro CRM"
       >
@@ -1395,8 +1395,12 @@ export function AiAssistantDrawer() {
           </div>
         </div>
 
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${historyHydrationLoading ? "opacity-60 pointer-events-none" : ""}`}
+          >
         {/* Rychlé akce pro poradce (nahrání jen v pásu níže — bez duplicity) */}
-        <div className="shrink-0 px-4 pt-3 pb-2 flex flex-wrap gap-2">
+        <div className="px-4 pt-3 pb-2 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={handleUrgent}
@@ -1447,7 +1451,7 @@ export function AiAssistantDrawer() {
         />
 
         {/* Nahrání smlouvy — jedna zóna, větší než předchozí strip */}
-        <div className="shrink-0 px-4 pb-2">
+        <div className="px-4 pb-2">
           <div
             ref={uploadZoneRef}
             onDrop={handleDrop}
@@ -1530,7 +1534,7 @@ export function AiAssistantDrawer() {
 
         {/* Payment from image flow */}
         {paymentFromImagePhase === "extracting" && (
-          <div className="shrink-0 px-4 pb-3">
+          <div className="px-4 pb-3">
             <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-4 flex items-center gap-3 shadow-sm">
               <Loader2 size={20} className="animate-spin text-emerald-600 shrink-0" aria-hidden />
               <div>
@@ -1541,8 +1545,9 @@ export function AiAssistantDrawer() {
           </div>
         )}
         {(paymentFromImagePhase === "draft" || paymentFromImagePhase === "saving") && paymentFromImageDraft && (
-          <div className="shrink-0 px-4 pb-3">
+          <div className="px-4 pb-3">
             <PaymentFromImageDraftPanel
+              key={paymentFromImageDraftPanelKey(paymentFromImageDraft)}
               draft={paymentFromImageDraft}
               contactId={routeContactId ?? latestAssistantContext?.lockedClientId ?? null}
               saving={paymentFromImagePhase === "saving"}
@@ -1554,7 +1559,7 @@ export function AiAssistantDrawer() {
 
         {/* Import klientů block */}
         {importContactsStep !== "idle" && (
-          <div className="shrink-0 px-4 pb-3">
+          <div className="px-4 pb-3">
             <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm">
               <h3 className="text-sm font-bold text-[color:var(--wp-text)] mb-3">Import klientů</h3>
               {importContactsLoading && importContactsStep === "mapping" && (
@@ -1662,24 +1667,21 @@ export function AiAssistantDrawer() {
         )}
 
         {/* Chat history */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div
-            className={`flex-1 overflow-y-auto px-4 space-y-3 ${historyHydrationLoading ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            {latestAssistantContext?.lockedClientId && (
-              <div className="sticky top-0 z-10 py-2">
-                <ContextLockBadge
-                  lockedClientId={latestAssistantContext.lockedClientId}
-                  lockedClientLabel={latestAssistantContext.lockedClientLabel}
-                />
-              </div>
-            )}
-            {messages.length === 0 && uploadPhase === "idle" && (
-              <p className="text-sm text-[color:var(--wp-text-secondary)] font-medium py-2">
-                Napište zprávu nebo nahrajte PDF. Po zpracování vám nabídneme další kroky.
-              </p>
-            )}
-            {messages.map((m, i) => (
+            <div className="space-y-3 px-4 pb-3">
+              {latestAssistantContext?.lockedClientId && (
+                <div className="sticky top-0 z-10 py-2">
+                  <ContextLockBadge
+                    lockedClientId={latestAssistantContext.lockedClientId}
+                    lockedClientLabel={latestAssistantContext.lockedClientLabel}
+                  />
+                </div>
+              )}
+              {messages.length === 0 && uploadPhase === "idle" && (
+                <p className="text-sm text-[color:var(--wp-text-secondary)] font-medium py-2">
+                  Napište zprávu nebo nahrajte PDF. Po zpracování vám nabídneme další kroky.
+                </p>
+              )}
+              {messages.map((m, i) => (
               <div
                 key={m.role === "user" || m.role === "assistant" ? (m.stableKey ?? `live-${i}`) : `row-${i}`}
                 className={`flex gap-2.5 items-start ${m.role === "user" ? "justify-end" : "justify-start"}`}
@@ -1831,9 +1833,10 @@ export function AiAssistantDrawer() {
             )}
             <div ref={chatEndRef} />
           </div>
+          </div>
 
-          {/* Input area - reference */}
-          <div className="shrink-0 p-4 pt-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80">
+          {/* Input area — fixní pod scrollovacím blokem */}
+          <div className="shrink-0 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/80 p-4 pt-2">
             {(awaitingConfirmationFromLatestTurn || confirmExecuteBusy) ? (
               <div className="mb-2 space-y-1.5">
                 <div className="flex gap-2">

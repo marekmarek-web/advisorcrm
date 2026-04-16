@@ -1693,6 +1693,13 @@ export function TerminationIntakeWizard({
               Zpět
             </button>
           </div>
+          <Link
+            href="/portal/terminations"
+            className="hidden sm:inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-[color:var(--wp-border-strong)] dark:bg-transparent dark:text-[color:var(--wp-text)] dark:hover:bg-[color:var(--wp-surface-muted)] shadow-sm dark:shadow-none"
+          >
+            <FileText className="h-4 w-4 shrink-0" />
+            <span>Seznam výpovědí</span>
+          </Link>
           <div className="flex items-center justify-end gap-3 overflow-x-auto">
             <button
               type="button"

@@ -45,7 +45,7 @@ function ThemeSelector({ value, onChange }: { value: ReportTheme; onChange: (t: 
           onClick={() => onChange("modern")}
           className={`min-h-[44px] px-4 py-2 text-sm font-semibold transition-colors ${value === "modern" ? "bg-blue-600 text-white" : "bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"}`}
         >
-          Výrazný
+          Moderní
         </button>
       </div>
     </div>

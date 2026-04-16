@@ -10,6 +10,7 @@ import { createTask } from "@/app/actions/tasks";
 import type { ContactRow } from "@/app/actions/contacts";
 import { useToast } from "@/app/components/Toast";
 import { queryKeys } from "@/lib/query-keys";
+import { defaultTaskDueDateYmd } from "@/lib/date/date-only";
 
 export type ChatOpportunityOption = { id: string; title: string; contactId: string | null };
 
@@ -49,9 +50,8 @@ export function ChatQuickTaskOverlay({
 
   useEffect(() => {
     if (!open) return;
-    const d = new Date().toISOString().slice(0, 10);
     setTitle(suggestedTitle);
-    setDueDate(d);
+    setDueDate(defaultTaskDueDateYmd());
     setCid(contactId);
     setOid(initialOpportunityId ?? "");
     setDesc(descriptionSeed);

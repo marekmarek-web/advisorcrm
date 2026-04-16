@@ -1189,7 +1189,6 @@ export function PortalCalendarView() {
         await createFollowUp(sourceId, type, {
           title,
           startAt: type === "event" ? tomorrow.toISOString() : undefined,
-          dueDate: type === "task" ? formatDate(tomorrow) : undefined,
           contactId: source?.contactId || undefined,
         });
         setModal(null);

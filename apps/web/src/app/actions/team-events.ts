@@ -6,6 +6,7 @@ import { db } from "db";
 import { teamEvents, teamTasks, events, tasks } from "db";
 import { eq, and } from "db";
 import { logActivity } from "./activity";
+import { defaultTaskDueDateYmd } from "@/lib/date/date-only";
 
 export async function createTeamEvent(
   form: {
@@ -84,6 +85,8 @@ export async function createTeamTask(
 
   if (!form.title?.trim() || targetUserIds.length === 0) return null;
 
+  const dueTeam = form.dueDate?.trim() || defaultTaskDueDateYmd();
+
   const [master] = await db
     .insert(teamTasks)
     .values({
@@ -91,7 +94,7 @@ export async function createTeamTask(
       createdBy: auth.userId,
       title: form.title.trim(),
       description: form.description?.trim() || null,
-      dueDate: form.dueDate ? new Date(form.dueDate) : null,
+      dueDate: new Date(dueTeam),
       targetType: "selected",
       targetUserIds,
       updatedAt: new Date(),
@@ -106,7 +109,7 @@ export async function createTeamTask(
         tenantId: auth.tenantId,
         title: form.title.trim(),
         description: form.description?.trim() || null,
-        dueDate: form.dueDate || null,
+        dueDate: dueTeam,
         assignedTo: userId,
         createdBy: auth.userId,
         teamTaskId: master.id,

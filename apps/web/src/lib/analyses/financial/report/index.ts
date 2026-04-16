@@ -10,7 +10,7 @@ import { renderHero, renderCompanyHero } from './sections/hero';
 import { renderBilance } from './sections/bilance';
 import { renderGoals } from './sections/goals';
 import { renderPortfolio } from './sections/portfolio';
-import { renderCanonicalCrmInvestments } from './sections/canonical-crm-investments';
+import { renderInvestmentOverview } from './sections/investment-overview';
 import { renderProductDetails } from './sections/product-detail';
 import { renderProjection } from './sections/projection';
 import { renderInvestmentBacktest } from './sections/investment-backtest';
@@ -82,9 +82,7 @@ export function buildPremiumReportHTML(
   sections.push(renderBilance(ctx));
   sections.push(renderGoals(ctx));
   sections.push(renderPortfolio(ctx));
-  if ((ctx.canonicalInvestmentOverview?.length ?? 0) > 0) {
-    sections.push(renderCanonicalCrmInvestments(ctx));
-  }
+  sections.push(renderInvestmentOverview(ctx));
   sections.push(renderProductDetails(ctx));
   const monthlyForBacktest = computeReportMonthlyDeposit(data);
   const backtestJson = buildBacktestPresetsForHtml(monthlyForBacktest);

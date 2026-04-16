@@ -28,6 +28,23 @@ export function localCalendarTodayYmd(): string {
   return `${y}-${mo}-${d}`;
 }
 
+/** Lokální kalendářní datum + N dní (pro termín úkolu). */
+export function localCalendarDatePlusDaysYmd(days: number): string {
+  const n = new Date();
+  n.setDate(n.getDate() + days);
+  const y = n.getFullYear();
+  const mo = String(n.getMonth() + 1).padStart(2, "0");
+  const d = String(n.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${d}`;
+}
+
+/** Výchozí termín nového úkolu: alespoň týden na splnění (ne „zítra po termínu“). */
+export const DEFAULT_TASK_DUE_DAYS_FROM_NOW = 7;
+
+export function defaultTaskDueDateYmd(): string {
+  return localCalendarDatePlusDaysYmd(DEFAULT_TASK_DUE_DAYS_FROM_NOW);
+}
+
 /** Je termín (datum) před dneškem? Porovnání jen YYYY-MM-DD. */
 export function isDueDateBeforeLocalToday(dueDate: string | null | undefined): boolean {
   const due = normalizeIsoDateOnly(dueDate);

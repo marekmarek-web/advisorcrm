@@ -7,6 +7,7 @@ import {
   validatePaymentInstructionExtraction,
   type PaymentInstructionExtraction,
 } from "@/lib/ai/payment-instruction-extraction";
+import { formatDomesticAccountDisplayLine } from "@/lib/ai/payment-field-contract";
 
 export type PaymentFromImageDraft = {
   providerName: string;
@@ -77,12 +78,17 @@ export async function extractPaymentDraftFromImageAction(
   const { needsHumanReview } = validatePaymentInstructionExtraction(p);
   const missing = collectMissingFields(p);
 
+  const ibanVal = str(p.iban);
+  const domesticAccountLine = ibanVal
+    ? ""
+    : formatDomesticAccountDisplayLine(str(p.accountNumber), str(p.bankCode));
+
   const draft: PaymentFromImageDraft = {
     providerName: str(p.institutionName),
     productName: str(p.productName),
     segment: guessSegment(p),
-    accountNumber: str(p.accountNumber) + (str(p.bankCode) ? `/${str(p.bankCode)}` : ""),
-    iban: str(p.iban),
+    accountNumber: domesticAccountLine,
+    iban: ibanVal,
     variableSymbol: str(p.variableSymbol),
     constantSymbol: str(p.constantSymbol),
     specificSymbol: str(p.specificSymbol),

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { detectPaymentFrequencyConflict } from "../field-quality-gate";
+import {
+  detectContractVsVariableSymbolConflict,
+  detectPaymentFrequencyConflict,
+} from "../field-quality-gate";
 
 describe("detectPaymentFrequencyConflict", () => {
   it("does not flag povinné ručení when annual and monthly mirror the same annual premium", () => {
@@ -20,5 +23,15 @@ describe("detectPaymentFrequencyConflict", () => {
       productName: { value: "Bel Mondo 20", status: "extracted" },
     });
     expect(result.hasConflict).toBe(true);
+  });
+});
+
+describe("detectContractVsVariableSymbolConflict", () => {
+  it("nepovažuje shodu čísla smlouvy a VS za konflikt (běžné u pojištění i ATRIS)", () => {
+    const result = detectContractVsVariableSymbolConflict({
+      contractNumber: { value: "1234567890", status: "extracted" },
+      variableSymbol: { value: "1234567890", status: "extracted" },
+    });
+    expect(result.hasConflict).toBe(false);
   });
 });

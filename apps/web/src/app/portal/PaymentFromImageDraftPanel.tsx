@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Loader2, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import type { PaymentFromImageDraft } from "@/app/actions/ai-payment-from-image";
 import type { ManualPaymentSetupInput } from "@/app/actions/manual-payment-setup";
+import { ProductPicker } from "@/app/components/aidvisora/ProductPicker";
+import type { ProductPickerValue } from "@/app/components/aidvisora/ProductPicker";
 
 const SEGMENT_OPTIONS: { value: string; label: string }[] = [
   { value: "other", label: "Jiné" },
@@ -21,6 +23,21 @@ const SEGMENT_OPTIONS: { value: string; label: string }[] = [
   { value: "UVER", label: "Úvěr" },
 ];
 
+/** Klíč pro remount panelu při nové extrakci (např. z AiAssistantDrawer). */
+export function paymentFromImageDraftPanelKey(d: PaymentFromImageDraft): string {
+  return [
+    d.providerName,
+    d.productName,
+    d.segment,
+    d.variableSymbol,
+    d.accountNumber,
+    d.iban,
+    d.amount,
+    String(d.confidence),
+    d.note,
+  ].join("\u001f");
+}
+
 export type PaymentDraftEditState = Omit<PaymentFromImageDraft, "missingFields" | "confidence" | "needsHumanReview">;
 
 interface Props {
@@ -32,7 +49,7 @@ interface Props {
 }
 
 export function PaymentFromImageDraftPanel({ draft, contactId, saving, onConfirm, onCancel }: Props) {
-  const [fields, setFields] = useState<PaymentDraftEditState>({
+  const [fields, setFields] = useState<PaymentDraftEditState>(() => ({
     providerName: draft.providerName,
     productName: draft.productName,
     segment: draft.segment,
@@ -45,13 +62,20 @@ export function PaymentFromImageDraftPanel({ draft, contactId, saving, onConfirm
     frequency: draft.frequency,
     firstPaymentDate: draft.firstPaymentDate,
     note: draft.note,
-  });
+  }));
+
+  const [useCatalog, setUseCatalog] = useState(true);
+  const [pickerValue, setPickerValue] = useState<ProductPickerValue>({ partnerId: "", productId: "" });
 
   const set = <K extends keyof PaymentDraftEditState>(k: K, v: PaymentDraftEditState[K]) =>
     setFields((prev) => ({ ...prev, [k]: v }));
 
+  const institutionMissing = useCatalog ? !pickerValue.partnerId : !fields.providerName.trim();
+
   const missingNow: string[] = [];
-  if (!fields.providerName.trim()) missingNow.push("instituce");
+  if (institutionMissing) {
+    missingNow.push(useCatalog ? "instituce (vyberte partnera z katalogu)" : "instituce");
+  }
   if (!fields.iban.trim() && !fields.accountNumber.trim()) missingNow.push("IBAN nebo číslo účtu");
   if (!fields.variableSymbol.trim()) missingNow.push("variabilní symbol");
   const canConfirm = missingNow.length === 0 && !!contactId;
@@ -77,6 +101,7 @@ export function PaymentFromImageDraftPanel({ draft, contactId, saving, onConfirm
   };
 
   const confidencePct = Math.round(draft.confidence * 100);
+  const pickerSegment = fields.segment === "other" ? undefined : fields.segment;
 
   return (
     <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm space-y-3">
@@ -126,31 +151,100 @@ export function PaymentFromImageDraftPanel({ draft, contactId, saving, onConfirm
 
       {/* Editable fields */}
       <div className="space-y-2">
-        <FieldRow
-          label="Instituce *"
-          value={fields.providerName}
-          onChange={(v) => set("providerName", v)}
-          placeholder="Název banky / pojišťovny"
-          highlight={!fields.providerName.trim()}
-        />
-        <FieldRow
-          label="Produkt"
-          value={fields.productName}
-          onChange={(v) => set("productName", v)}
-          placeholder="Název produktu"
-        />
         <div className="flex flex-col gap-0.5">
           <label className="text-[11px] font-bold text-[color:var(--wp-text-secondary)]">Segment</label>
           <select
             value={fields.segment}
-            onChange={(e) => set("segment", e.target.value)}
+            onChange={(e) => {
+              const seg = e.target.value;
+              setFields((f) => ({ ...f, segment: seg }));
+              setPickerValue({ partnerId: "", productId: "" });
+            }}
             className="w-full rounded-lg border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-2.5 py-1.5 text-xs text-[color:var(--wp-text)] min-h-[36px]"
           >
             {SEGMENT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         </div>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold text-[color:var(--wp-text-secondary)]">Partner a produkt</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setUseCatalog(true)}
+              className={`min-h-[40px] rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                useCatalog
+                  ? "border-indigo-400 bg-indigo-50 text-indigo-900"
+                  : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)]"
+              }`}
+            >
+              Z katalogu CRM
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUseCatalog(false);
+                setPickerValue({ partnerId: "", productId: "" });
+              }}
+              className={`min-h-[40px] rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                !useCatalog
+                  ? "border-indigo-400 bg-indigo-50 text-indigo-900"
+                  : "border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)]"
+              }`}
+            >
+              Mimo katalog (text)
+            </button>
+          </div>
+        </div>
+
+        {useCatalog ? (
+          <div
+            className={`rounded-lg border p-2 ${
+              institutionMissing ? "border-rose-300 bg-rose-50/50" : "border-[color:var(--wp-surface-card-border)]"
+            }`}
+          >
+            <ProductPicker
+              segment={pickerSegment}
+              value={pickerValue}
+              className="text-[12px]"
+              onChange={(v) => {
+                setPickerValue(v);
+                setFields((f) => ({
+                  ...f,
+                  providerName: v.partnerId ? (v.partnerName?.trim() ?? f.providerName) : "",
+                  productName: v.productId ? (v.productName?.trim() ?? "") : "",
+                }));
+              }}
+            />
+            {draft.providerName.trim() && !pickerValue.partnerId ? (
+              <p className="text-[10px] text-[color:var(--wp-text-secondary)] mt-2 font-medium">
+                Návrh z obrázku (instituce): {draft.providerName}
+                {draft.productName.trim() ? ` · ${draft.productName}` : ""}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <FieldRow
+              label="Instituce *"
+              value={fields.providerName}
+              onChange={(v) => set("providerName", v)}
+              placeholder="Název banky / pojišťovny"
+              highlight={!fields.providerName.trim()}
+            />
+            <FieldRow
+              label="Název produktu"
+              value={fields.productName}
+              onChange={(v) => set("productName", v)}
+              placeholder="Název produktu"
+            />
+          </>
+        )}
+
         <FieldRow
           label="IBAN"
           value={fields.iban}

@@ -56,6 +56,17 @@ const PROJECTION_INTERACTIVE_JS = `
     if(lump>0&&yr>0)fv+=lump*Math.pow(1+rate,yr);
     return fv;
   }
+  var tooltipEl=null;
+  function getOrCreateTooltip(){
+    if(!tooltipEl){
+      tooltipEl=document.createElement('div');
+      tooltipEl.style.cssText='position:absolute;background:rgba(15,23,42,0.88);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;pointer-events:none;white-space:nowrap;display:none;z-index:10;';
+      var wrap=canvas.parentElement;
+      if(wrap){wrap.style.position='relative';wrap.appendChild(tooltipEl);}
+    }
+    return tooltipEl;
+  }
+  var lastPts=[];var lastPadL=0;var lastPadT=0;var lastCh=0;var lastCw=0;var lastMaxV=1;
   function draw(monthly,lump,years,rate,totalFV){
     var ctx=canvas.getContext('2d');
     if(!ctx)return;
@@ -69,16 +80,23 @@ const PROJECTION_INTERACTIVE_JS = `
       var yr=Math.min(i*stepYears,years);
       var v=fvAt(monthly,lump,yr,rate);
       if(i===milestones-1)v=totalFV;
-      pts.push({x:i/(milestones-1),v:v});
+      pts.push({x:i/(milestones-1),v:v,yr:yr});
       if(v>maxV)maxV=v;
     }
     if(maxV<1)maxV=1;
-    var padL=48,padR=12,padT=12,padB=36;
+    var padL=56,padR=12,padT=16,padB=36;
     var cw=w-padL-padR,ch=h-padT-padB;
+    lastPts=pts;lastPadL=padL;lastPadT=padT;lastCh=ch;lastCw=cw;lastMaxV=maxV;
     ctx.strokeStyle='#e5e7eb';
+    ctx.lineWidth=1;
     for(var g=0;g<=4;g++){
       var gy=padT+(g/4)*ch;
       ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(w-padR,gy);ctx.stroke();
+      if(g<4){
+        var gv=maxV*(1-g/4);
+        ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='right';
+        ctx.fillText(fmt(gv),padL-4,gy+3);
+      }
     }
     var xs=[],ys=[];
     pts.forEach(function(p){
@@ -98,6 +116,45 @@ const PROJECTION_INTERACTIVE_JS = `
     ctx.closePath();
     ctx.fillStyle='rgba(22,163,74,0.08)';
     ctx.fill();
+    ctx.font='9px sans-serif';ctx.textAlign='center';
+    for(var i=0;i<pts.length;i++){
+      ctx.fillStyle='#16a34a';
+      ctx.beginPath();ctx.arc(xs[i],ys[i],3,0,2*Math.PI);ctx.fill();
+      ctx.fillStyle='#374151';
+      ctx.fillText(pts[i].yr+' let',xs[i],padT+ch+14);
+      if(i>0){
+        ctx.fillStyle='#16a34a';
+        var lbl=fmt(pts[i].v);
+        var ty=ys[i]-8;
+        if(ty<padT+10)ty=ys[i]+16;
+        ctx.fillText(lbl,xs[i],ty);
+      }
+    }
+  }
+  if(canvas){
+    canvas.addEventListener('mousemove',function(e){
+      var rect=canvas.getBoundingClientRect();
+      var mx=(e.clientX-rect.left)*(canvas.width/rect.width);
+      var tip=getOrCreateTooltip();
+      var closest=null;var closestDist=Infinity;
+      for(var i=0;i<lastPts.length;i++){
+        var cx2=lastPadL+lastPts[i].x*lastCw;
+        var d=Math.abs(mx-cx2);
+        if(d<closestDist){closestDist=d;closest=lastPts[i];}
+      }
+      if(closest&&closestDist<lastCw/lastPts.length){
+        tip.textContent=closest.yr+' let: '+fmt(closest.v);
+        var scaleX=rect.width/canvas.width;
+        var cx3=(lastPadL+closest.x*lastCw)*scaleX;
+        var cy3=(lastPadT+lastCh-(closest.v/lastMaxV)*lastCh)*(rect.height/canvas.height);
+        tip.style.left=(cx3+8)+'px';tip.style.top=(cy3-20)+'px';tip.style.display='block';
+      } else {
+        tip.style.display='none';
+      }
+    });
+    canvas.addEventListener('mouseleave',function(){
+      var tip=getOrCreateTooltip();tip.style.display='none';
+    });
   }
   function recalc(){
     var monthly=parseFloat(monthlyEl&&monthlyEl.value)||0;

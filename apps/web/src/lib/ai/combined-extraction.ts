@@ -401,6 +401,7 @@ Platební sekce mají prioritu:
 Pravidla:
 - payment fields (totalMonthlyPremium, bankAccount, variableSymbol, paymentFrequency) taháš VŽDY z těchto explicitních bloků pokud existují.
 - Pokud je uvedeno "variabilní symbol = číslo smlouvy / návrhu" → propisuj VS z contractNumber nebo proposalNumber.
+- ATRIS investiční společnost: variabilní symbol u podílových fondů je vždy 6místné číslo. První číslice = typ investice do fondu (1=Renta PLUS, 3=SPORO, 4=Stavební, 7=Důchodová renta, 9=Cíl). Zbývajících pět číslic = identifikační číslo investora / číslo smlouvy (doplněno nulami zepředu, pokud je kratší). Příklad: číslo smlouvy „40369“ a typ „3“ (SPORO) → VS „340369“. Pokud dokument obsahuje tabulku typů fondu nebo vyplněné pole „Typ investice do Fondu“, zkombinuj ho s číslem smlouvy podle tohoto pravidla; VS z platebního pokynu nebo QR ber jako zdroj pravdy, pokud je uveden explicitně.
 - proposal / offer dokumenty mají payments stejně jako final_contract — NEIGNORUJ platby jen kvůli lifecycleStatus.
 - Pokud obsahuje "Rozsah pojistného krytí", "Přehled pojistného krytí" nebo tabulku rizik → extrahuj coverages jako JSON string array [{ riskType, riskLabel, insuredAmount, premium }].
 - Risk/coverage tables extrahuj i u proposal docs a offer docs.

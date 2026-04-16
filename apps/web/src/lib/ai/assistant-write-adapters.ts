@@ -41,6 +41,7 @@ import { upsertCoverageItem } from "@/app/actions/coverage";
 import { sendMessage } from "@/app/actions/messages";
 import { createAdvisorClientRequest } from "../assistant/create-advisor-client-request";
 import { validatePartnerInCatalog, validateProductInCatalog } from "./ratings/toplists";
+import { defaultTaskDueDateYmd } from "@/lib/date/date-only";
 import { normalizeCoverageStatus } from "./assistant-coverage-item-resolve";
 import { resolveContractSegmentFromUserText, PRODUCT_DOMAIN_DEFAULT_SEGMENT, type ProductDomain } from "./assistant-domain-model";
 import { enrichBirthDateFromPersonalIdInParams } from "./czech-personal-id-birth-date";
@@ -707,11 +708,11 @@ export function registerAssistantWriteAdapters(): void {
       const due =
         strParam(params, "resolvedDate") ??
         (typeof params.dueDate === "string" ? params.dueDate : undefined) ??
-        new Date().toISOString().slice(0, 10);
+        defaultTaskDueDateYmd();
       const id = await createTaskAction({
         title,
         contactId,
-        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : new Date().toISOString().slice(0, 10),
+        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : defaultTaskDueDateYmd(),
       });
       if (!id) return errResult("Připomínka (úkol) se nepodařila.");
       return okResult(id, "task", ["Připomínka uložena jako úkol s termínem."]);

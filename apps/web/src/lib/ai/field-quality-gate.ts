@@ -138,30 +138,11 @@ export function detectPaymentFrequencyConflict(
 // ─── Contract number vs variableSymbol guard ─────────────────────────────────
 
 export function detectContractVsVariableSymbolConflict(
-  ef: Record<string, { value?: unknown; status?: string } | undefined>
+  _ef: Record<string, { value?: unknown; status?: string } | undefined>
 ): { hasConflict: boolean; reason?: string } {
-  const contractNum = ef["contractNumber"]?.value;
-  const variableSymbol = ef["variableSymbol"]?.value;
-  const proposalNum = ef["proposalNumber"]?.value;
-
-  if (!contractNum || !variableSymbol) return { hasConflict: false };
-
-  const cn = String(contractNum).trim();
-  const vs = String(variableSymbol).trim();
-
-  // If contractNumber and variableSymbol are identical, one of them is likely wrong
-  if (cn === vs) {
-    return {
-      hasConflict: true,
-      reason: "Číslo smlouvy a variabilní symbol jsou shodné — variabilní symbol může být špatně použit jako číslo smlouvy.",
-    };
-  }
-
-  // If proposalNumber matches contractNumber, prefer contractNumber (already OK, no conflict)
-  if (proposalNum && String(proposalNum).trim() === cn) {
-    return { hasConflict: false };
-  }
-
+  // Shoda čísla smlouvy a VS je u většiny smluv záměr (včetně textu „VS = číslo smlouvy“).
+  // U ATRIS je VS 6místné: první číslice typ fondu, dalších pět = číslo smlouvy (viz RULE 4 v combined-extraction).
+  // Proto zde nehlásíme falešný konflikt jen z rovnosti hodnot.
   return { hasConflict: false };
 }
 

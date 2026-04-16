@@ -48,6 +48,7 @@ import { getProductionSummary } from "@/app/actions/production";
 import { getBusinessPlanWidgetData } from "@/app/actions/business-plan";
 import { getNotificationBadgeCount } from "@/app/actions/notification-log";
 import { getUnreadConversationsCount } from "@/app/actions/messages";
+import { defaultTaskDueDateYmd, localCalendarTodayYmd } from "@/lib/date/date-only";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
@@ -381,7 +382,7 @@ export function MobilePortalClient({
   const [taskWizardStep, setTaskWizardStep] = useState(1);
   const [taskDraft, setTaskDraft] = useState<{ title: string; dueDate: string; contactId: string; description: string }>({
     title: "",
-    dueDate: new Date().toISOString().slice(0, 10),
+    dueDate: defaultTaskDueDateYmd(),
     contactId: "",
     description: "",
   });
@@ -669,7 +670,7 @@ export function MobilePortalClient({
         });
         setTaskCreateOpen(false);
         setTaskWizardStep(1);
-        setTaskDraft({ title: "", dueDate: new Date().toISOString().slice(0, 10), contactId: "", description: "" });
+        setTaskDraft({ title: "", dueDate: defaultTaskDueDateYmd(), contactId: "", description: "" });
         refreshTasks(taskFilter);
         showToast("Úkol byl vytvořen", "success");
       } catch (e) {
@@ -681,7 +682,7 @@ export function MobilePortalClient({
   async function onTaskQuickOverdueFix(task: TaskRow) {
     startTransition(async () => {
       try {
-        await updateTask(task.id, { dueDate: new Date().toISOString().slice(0, 10) });
+        await updateTask(task.id, { dueDate: localCalendarTodayYmd() });
         refreshTasks(taskFilter);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Úkol se nepodařilo přesunout.");
@@ -772,7 +773,7 @@ export function MobilePortalClient({
         <CalculatorsHubScreen
           detailSlugFromPath={selectedCalculatorSlug}
           onCreateTaskFromResult={(title) => {
-            setTaskDraft((prev) => ({ ...prev, title, dueDate: prev.dueDate || new Date().toISOString().slice(0, 10) }));
+            setTaskDraft((prev) => ({ ...prev, title, dueDate: prev.dueDate || defaultTaskDueDateYmd() }));
             setTaskCreateOpen(true);
           }}
           onCreateOpportunityFromResult={(title) => {

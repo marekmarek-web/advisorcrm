@@ -14,6 +14,7 @@ import {
   addOneCalendarDayYmd,
   hasExplicitIsoOffset,
 } from "@/app/portal/calendar/date-utils";
+import { defaultTaskDueDateYmd } from "@/lib/date/date-only";
 
 function parseInstantRequired(fieldLabel: string, s: string): Date {
   if (!hasExplicitIsoOffset(s)) {
@@ -502,12 +503,13 @@ export async function createFollowUp(
       return row?.id ?? null;
     }
 
+    const dueFollowUp = form.dueDate?.trim() || defaultTaskDueDateYmd();
     const [row] = await db
       .insert(tasks)
       .values({
         tenantId: auth.tenantId,
         title: form.title.trim(),
-        dueDate: form.dueDate || null,
+        dueDate: dueFollowUp,
         contactId: form.contactId || null,
         assignedTo: auth.userId,
         createdBy: auth.userId,

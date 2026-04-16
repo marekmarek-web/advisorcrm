@@ -7,6 +7,7 @@ import { createTeamEvent, createTeamTask } from "@/app/actions/team-events";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 import type { TeamMemberInfo, NewcomerAdaptation } from "@/app/actions/team-overview";
 import type { TeamMemberMetrics } from "@/lib/team-overview-alerts";
+import { defaultTaskDueDateYmd } from "@/lib/date/date-only";
 
 type ModalType = "event" | "task" | null;
 
@@ -58,7 +59,7 @@ export function TeamCalendarModal({
     setTitle(prefill?.title ?? "");
     setDescription(prefill?.description ?? "");
     setNotes(prefill?.notes ?? "");
-    setDueDate(prefill?.dueDate ?? "");
+    setDueDate(prefill?.dueDate ?? (type === "task" ? defaultTaskDueDateYmd() : ""));
     setStartAt(prefill?.startAt ?? "");
     setEndAt("");
     setLocation("");

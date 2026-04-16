@@ -95,6 +95,14 @@ export const HISTORICAL_DATA: HistoricalDataPoint[] = [
   { date: "2022-10", sp500: 3580, gold: 1650, bonds: 155, re: 230 },
   { date: "2023-12", sp500: 4700, gold: 2040, bonds: 162, re: 245 },
   { date: "2024-04", sp500: 5200, gold: 2350, bonds: 164, re: 250 },
+  { date: "2024-07", sp500: 5543, gold: 2446, bonds: 163, re: 264 },
+  { date: "2024-10", sp500: 5792, gold: 2747, bonds: 162, re: 269 },
+  { date: "2025-01", sp500: 5980, gold: 2796, bonds: 165, re: 313 },
+  { date: "2025-04", sp500: 5370, gold: 3292, bonds: 167, re: 272 },
+  { date: "2025-07", sp500: 6297, gold: 3290, bonds: 170, re: 231 },
+  { date: "2025-10", sp500: 6736, gold: 4065, bonds: 172, re: 224 },
+  { date: "2026-01", sp500: 6929, gold: 4744, bonds: 171, re: 259 },
+  { date: "2026-04", sp500: 7060, gold: 4800, bonds: 170, re: 253 },
 ];
 
 export const INVESTMENT_FAQ: FaqItem[] = [
@@ -145,7 +153,7 @@ export const INVESTMENT_DEFAULTS = {
   yearsMax: 30,
   yearsDefault: 10,
   startYearMin: 1995,
-  startYearMax: 2019,
+  startYearMax: 2022,
   startYearDefault: 1995,
   /** Default profile index (0 = Konzervativní, 1 = Vyvážená, 2 = Dynamická) */
   profileIndexDefault: 1,

@@ -56,7 +56,7 @@ import {
   FileText,
 } from "lucide-react";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
-import { isDueDateBeforeLocalToday } from "@/lib/date/date-only";
+import { defaultTaskDueDateYmd, isDueDateBeforeLocalToday, localCalendarTodayYmd } from "@/lib/date/date-only";
 
 type Filter = "all" | "today" | "week" | "overdue" | "completed";
 
@@ -456,7 +456,7 @@ function NewTaskWizard({
   const [error, setError] = useState<string | null>(null);
   const [taskData, setTaskData] = useState({
     title: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: defaultTaskDueDateYmd(),
     priority: "normal",
     reminder: "1h",
     client:
@@ -906,7 +906,7 @@ function TasksPageContent() {
     if (!newTaskTitle.trim()) return;
     setQuickAddSubmitting(true);
     try {
-      await createTask({ title: newTaskTitle.trim(), dueDate: new Date().toISOString().slice(0, 10) });
+      await createTask({ title: newTaskTitle.trim() });
       setNewTaskTitle("");
       setIsInputFocused(false);
       await invalidateTasks();
@@ -979,7 +979,7 @@ function TasksPageContent() {
   }
 
   async function handleMoveToToday(id: string) {
-    await updateTask(id, { dueDate: new Date().toISOString().slice(0, 10) });
+    await updateTask(id, { dueDate: localCalendarTodayYmd() });
     await invalidateTasks();
   }
 

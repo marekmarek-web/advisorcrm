@@ -6,7 +6,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { db, tasks, contacts, opportunities, meetingNotes, eq, and, asc, desc, isNull, isNotNull, gte, lt, lte, sql } from "db";
 import { logActivity } from "./activity";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
-import { normalizeIsoDateOnly } from "@/lib/date/date-only";
+import { defaultTaskDueDateYmd, normalizeIsoDateOnly } from "@/lib/date/date-only";
 
 export type TaskRow = {
   id: string;
@@ -298,6 +298,9 @@ export async function createTask(data: {
       assignee = data.assignedTo;
     }
 
+    const dueTrimmed = data.dueDate?.trim() ?? "";
+    const dueDateResolved = dueTrimmed.length > 0 ? dueTrimmed : defaultTaskDueDateYmd();
+
     const [row] = await db
       .insert(tasks)
       .values({
@@ -305,7 +308,7 @@ export async function createTask(data: {
         title: data.title.trim(),
         description: data.description?.trim() || null,
         contactId: data.contactId || null,
-        dueDate: data.dueDate || null,
+        dueDate: dueDateResolved,
         analysisId: data.analysisId || null,
         opportunityId: data.opportunityId || null,
         assignedTo: assignee,

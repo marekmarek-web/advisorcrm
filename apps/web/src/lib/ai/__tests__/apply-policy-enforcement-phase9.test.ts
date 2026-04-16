@@ -247,7 +247,7 @@ describe("enforceContractPayload", () => {
       publishHints: { contractPublishable: true },
     };
 
-    // Simulujeme konflikt ručně (detectContractVsVariableSymbolConflict vyžaduje konkrétní pattern)
+    // Simulujeme konflikt ručně (contractConflict z envelope se už z rovnosti VS/smlouvy neodvozuje)
     // Test ověřuje, že enforceField s hasConflict=true vrací manual_required
     const result = enforceField("contractNumber", { value: "123", status: "extracted" }, undefined, true);
     expect(result.policy).toBe("manual_required");
