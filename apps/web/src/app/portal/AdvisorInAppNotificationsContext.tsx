@@ -14,7 +14,10 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { ADVISOR_NOTIFICATION_TYPES_CSV } from "@/lib/advisor-in-app/advisor-notification-types";
 
-const POLL_MS = 45_000;
+/** Záloha když Realtime nezafunguje (RLS, publikace, síť). Krátký interval = toast do pár sekund. */
+const POLL_MS = 4_000;
+/** Jednorázový druhý fetch brzy po mountu — doručí řádky vytvořené těsně před dokončením Realtime subscribe. */
+const WARMUP_REFETCH_MS = 2_000;
 const ADVISOR_TOAST_TYPES = ADVISOR_NOTIFICATION_TYPES_CSV;
 
 export type AdvisorInAppNotificationRow = {
@@ -77,6 +80,9 @@ export function AdvisorInAppNotificationsProvider({ children }: { children: Reac
   useEffect(() => {
     mounted.current = true;
     void load();
+    const warmup = window.setTimeout(() => {
+      if (mounted.current && document.visibilityState === "visible") void load();
+    }, WARMUP_REFETCH_MS);
     const onVis = () => {
       if (document.visibilityState === "visible") void load();
     };
@@ -88,6 +94,7 @@ export function AdvisorInAppNotificationsProvider({ children }: { children: Reac
     window.addEventListener("portal-notifications-badge-refresh", onBadgeRefresh);
     return () => {
       mounted.current = false;
+      window.clearTimeout(warmup);
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
       window.removeEventListener("portal-notifications-badge-refresh", onBadgeRefresh);
@@ -102,6 +109,8 @@ export function AdvisorInAppNotificationsProvider({ children }: { children: Reac
     const supabase = createClient();
     let cancelled = false;
     let channel: RealtimeChannel | null = null;
+    /** Browser timer id (DOM lib); avoids NodeJS.Timeout vs number mismatch. */
+    let insertFollowUp: number | null = null;
 
     void (async () => {
       const {
@@ -122,14 +131,22 @@ export function AdvisorInAppNotificationsProvider({ children }: { children: Reac
           () => {
             if (!mounted.current) return;
             void load();
+            if (insertFollowUp) window.clearTimeout(insertFollowUp);
+            insertFollowUp = window.setTimeout(() => {
+              insertFollowUp = null;
+              if (mounted.current) void load();
+            }, 400);
           }
         );
       if (cancelled) return;
-      channel = ch.subscribe();
+      channel = ch.subscribe((status) => {
+        if (status === "SUBSCRIBED" && mounted.current) void load();
+      });
     })();
 
     return () => {
       cancelled = true;
+      if (insertFollowUp) window.clearTimeout(insertFollowUp);
       if (channel) {
         void supabase.removeChannel(channel);
       }

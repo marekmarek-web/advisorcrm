@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
@@ -424,6 +425,13 @@ export async function createClientPortalRequest(params: {
     caseTypeLabel,
     descriptionPreview: previewBits.join(" — ") || "",
   }).catch(() => {});
+
+  try {
+    revalidatePath("/client/requests");
+    revalidatePath("/client");
+  } catch {
+    /* ignore */
+  }
 
   return { success: true, id: newId };
 }

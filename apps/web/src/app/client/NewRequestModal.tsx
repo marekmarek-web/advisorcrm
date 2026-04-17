@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronRight, X } from "lucide-react";
 import { createClientPortalRequest } from "@/app/actions/client-portal-requests";
 
@@ -59,6 +60,7 @@ const CATEGORIES: RequestCategory[] = [
 ];
 
 export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestModalProps) {
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [isPending, startTransition] = useTransition();
   const [categoryId, setCategoryId] = useState<string>("");
@@ -95,6 +97,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
         setError(result.error || "Požadavek se nepodařilo odeslat.");
         return;
       }
+      router.refresh();
       setStep(4);
     });
   }

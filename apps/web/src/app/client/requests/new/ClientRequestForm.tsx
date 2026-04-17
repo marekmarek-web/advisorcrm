@@ -26,7 +26,8 @@ export function ClientRequestForm() {
         description: description.trim() || null,
       });
       if (result.success) {
-        router.push("/client/requests");
+        await router.push("/client/requests");
+        router.refresh();
       } else {
         setError(result.error);
       }
