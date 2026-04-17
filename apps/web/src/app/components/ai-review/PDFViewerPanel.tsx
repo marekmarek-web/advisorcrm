@@ -13,7 +13,8 @@ import {
   ChevronRight,
   RefreshCw,
 } from "lucide-react";
-import type { ExtractionDocument, FieldStatus } from "@/lib/ai-review/types";
+import type { ExtractionDocument, FieldStatus, ApplyResultPayload } from "@/lib/ai-review/types";
+import { resolveEffectiveFieldStatus } from "@/lib/ai-review/field-visual-status";
 
 type HighlightEntry = {
   fieldId: string;
@@ -35,9 +36,17 @@ type Props = {
   onHighlightClick: (fieldId: string, page?: number) => void;
   /** Získá nový signed URL (např. po vypršení JWT v iframe). */
   onRefreshPdf?: () => void | Promise<void>;
+  /** Local confirmation state from review UI — used to show confirmed fields as green. */
+  confirmedFields?: Record<string, boolean>;
+  /** Post-apply payload — used to resolve auto-applied and confirmed fields as green. */
+  applyResultPayload?: ApplyResultPayload;
 };
 
-function buildHighlights(doc: ExtractionDocument): HighlightEntry[] {
+function buildHighlights(
+  doc: ExtractionDocument,
+  confirmedFields?: Record<string, boolean>,
+  applyResultPayload?: ApplyResultPayload,
+): HighlightEntry[] {
   const entries: HighlightEntry[] = [];
   for (const group of doc.groups) {
     for (const field of group.fields) {
@@ -46,7 +55,12 @@ function buildHighlights(doc: ExtractionDocument): HighlightEntry[] {
           fieldId: field.id,
           label: field.label,
           value: field.value,
-          status: field.status,
+          status: resolveEffectiveFieldStatus({
+            fieldId: field.id,
+            fieldStatus: field.status,
+            locallyConfirmed: confirmedFields?.[field.id] ?? false,
+            applyResultPayload,
+          }),
           page: field.page,
         });
       }
@@ -76,11 +90,13 @@ export function PDFViewerPanel({
   onFullscreenToggle,
   onHighlightClick,
   onRefreshPdf,
+  confirmedFields,
+  applyResultPayload,
 }: Props) {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("ready");
   const [iframeError, setIframeError] = useState(false);
   const [refreshBusy, setRefreshBusy] = useState(false);
-  const highlights = buildHighlights(doc);
+  const highlights = buildHighlights(doc, confirmedFields, applyResultPayload);
   const pageHighlights = highlights.filter((h) => h.page === activePage);
   const hasPdf = !!doc.pdfUrl && doc.pdfUrl.length > 0;
 

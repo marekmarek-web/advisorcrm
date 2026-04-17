@@ -9,7 +9,7 @@ type Props = {
   onBack: () => void;
   onDiscard: () => void;
   onApprove: () => void | Promise<void>;
-  /** Schválit kontrolu a hned zapsat do CRM (když je vyřešený klient). */
+  /** Schválit kontrolu a hned propsat do Aidvisory (když je vyřešený klient). */
   onApproveAndApply?: () => void | Promise<void>;
   onReject?: () => void;
   onApply?: () => void;
@@ -85,8 +85,8 @@ export function AIReviewTopBar({
                       ) : (
                         <Send size={16} />
                       )}
-                      <span className="hidden sm:inline">Schválit a zapsat do CRM</span>
-                      <span className="sm:hidden">Schválit + CRM</span>
+                      <span className="hidden sm:inline">Schválit a propsat do Aidvisory</span>
+                      <span className="sm:hidden">Schválit + propsat</span>
                     </button>
                     <button
                       type="button"
@@ -130,8 +130,8 @@ export function AIReviewTopBar({
                 ) : (
                   <Send size={16} />
                 )}
-                <span className="hidden sm:inline">Zapsat do CRM</span>
-                <span className="sm:hidden">Zapsat</span>
+                <span className="hidden sm:inline">Propsat do Aidvisory</span>
+                <span className="sm:hidden">Propsat</span>
               </button>
             )}
             {!canApproveReject && !canApply && (

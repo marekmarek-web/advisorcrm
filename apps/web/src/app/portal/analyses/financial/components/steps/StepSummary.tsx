@@ -266,7 +266,7 @@ export function StepSummary() {
         <p className="font-semibold text-[color:var(--wp-text)] mb-1">Jak číst dva přehledy vedle sebe</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>
-            <strong className="text-[color:var(--wp-text)]">Evidence skutečných investic</strong> — produkty zapsané u klienta v CRM po schválení; odhad budoucí hodnoty používá stejný model jako klientské portfolio.
+            <strong className="text-[color:var(--wp-text)]">Evidence skutečných investic</strong> — produkty zapsané u klienta v Aidvisory po schválení; odhad budoucí hodnoty používá stejný model jako klientské portfolio.
           </li>
           <li>
             <strong className="text-[color:var(--wp-text)]">Modelace v kroku strategie</strong> — vámi zadaný návrhový scénář v průvodci analýzy; slouží k porovnání variant, není závazným stavem smluv.

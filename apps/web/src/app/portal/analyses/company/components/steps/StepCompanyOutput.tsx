@@ -96,7 +96,7 @@ export function StepCompanyOutput() {
 
       {!canSaveToDocuments && (
         <p className="mt-3 text-sm text-amber-700">
-          Pro uložení reportu do dokumentů musí být k analýze přiřazen hlavní kontakt (primary contact). Uložte analýzu do CRM s vybranou firmou a kontaktem.
+          Pro uložení reportu do dokumentů musí být k analýze přiřazen hlavní kontakt (primary contact). Uložte analýzu do Aidvisory s vybranou firmou a kontaktem.
         </p>
       )}
 

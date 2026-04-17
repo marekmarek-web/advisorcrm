@@ -154,7 +154,7 @@ export function buildCreateContractDraft(extracted: ExtractedContractSchema): Dr
   const { premiumAmount, premiumAnnual } = computeDraftPremiums(segment, extracted);
   return {
     type: "create_contract",
-    label: "Vytvořit smlouvu v CRM",
+    label: "Vytvořit smlouvu v Aidvisory",
     payload: {
       contractNumber: extracted.contractNumber,
       institutionName: extracted.institutionName,

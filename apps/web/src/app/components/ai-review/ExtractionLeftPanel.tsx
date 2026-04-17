@@ -40,6 +40,7 @@ import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
 import { CanonicalFieldsPanel } from "./CanonicalFieldsPanel";
 import { ReviewAttachClientDialog } from "./ReviewAttachClientDialog";
 import { formatAiClassifierForAdvisor, humanizeReviewReasonLine } from "@/lib/ai-review/czech-labels";
+import { resolveEffectiveFieldStatus } from "@/lib/ai-review/field-visual-status";
 import type {
   ExtractionDocument,
   ExtractedGroup,
@@ -188,7 +189,7 @@ function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
     in_review: { label: "V řešení", className: "text-indigo-600" },
     approved: { label: "Schváleno", className: "text-emerald-600" },
     rejected: { label: "Zamítnuto", className: "text-rose-600" },
-    applied: { label: "Zapsáno do CRM", className: "text-emerald-700" },
+    applied: { label: "Propsáno do Aidvisory", className: "text-emerald-700" },
   };
   const reviewStatus = statusMap[doc.reviewStatus] ?? statusMap.pending;
   return (
@@ -594,7 +595,7 @@ function CrmMappingProposalCard({ doc }: { doc: ExtractionDocument }) {
         className="w-full px-5 md:px-6 py-4 flex items-center justify-between text-left"
       >
         <span className="text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] flex items-center gap-2">
-          <ListChecks size={14} className="text-indigo-500" /> Návrh zápisu do CRM
+          <ListChecks size={14} className="text-indigo-500" /> Návrh propsání do Aidvisory
           <span className={`ml-2 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${readinessBadge.cls}`}>
             {readinessBadge.label}
           </span>
@@ -628,7 +629,7 @@ function CrmMappingProposalCard({ doc }: { doc: ExtractionDocument }) {
 
           {!prefillCount && !manualCount && (
             <p className="mt-3 text-xs text-[color:var(--wp-text-tertiary)] leading-relaxed">
-              Tato data se zapíší do CRM po kliknutí na <strong>Zapsat do CRM</strong>. Zkontrolujte je před odesláním.
+              Tato data se propíší do Aidvisory po kliknutí na <strong>Propsat do Aidvisory</strong>. Zkontrolujte je před odesláním.
             </p>
           )}
 
@@ -893,7 +894,7 @@ function ManualFieldRow({
               }
             }}
             className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-            title="Potvrdit a zapsat do CRM"
+            title="Potvrdit a propsat do Aidvisory"
           >
             {busy ? (
               <span className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -948,7 +949,7 @@ function EnforcementResultCard({
         ? `Výsledek zápisu — ${s.totalManualRequired} ${s.totalManualRequired === 1 ? "pole vyžaduje" : "polí vyžaduje"} ruční doplnění`
         : hasPending
           ? `Výsledek zápisu — ${s.totalPendingConfirmation} čeká na potvrzení`
-          : "Výsledek zápisu do CRM";
+          : "Výsledek propsání do Aidvisory";
 
   return (
     <div className={`bg-[color:var(--wp-surface-card)] rounded-[20px] border shadow-sm overflow-hidden ${borderClass}`}>
@@ -1181,7 +1182,7 @@ function resolveActionHref(action: DraftAction): string | null {
   return ACTION_ROUTE_MAP[action.type] ?? null;
 }
 
-/** Po zápisu do CRM — žádné návrhové CTA; jen stavové řádky podle `applyResultPayload`. */
+/** Po propsání do Aidvisory — žádné návrhové CTA; jen stavové řádky podle `applyResultPayload`. */
 function PublishedWorkflowStepsCard({ doc }: { doc: ExtractionDocument }) {
   const p = doc.applyResultPayload;
   const o = p?.publishOutcome;
@@ -1194,13 +1195,13 @@ function PublishedWorkflowStepsCard({ doc }: { doc: ExtractionDocument }) {
   if (clientId) {
     rows.push({
       key: "client",
-      label: p.createdClientId ? "Klient založen v CRM" : "Propojeno s existujícím klientem",
+      label: p.createdClientId ? "Klient založen v Aidvisory" : "Propojeno s existujícím klientem",
       status: "executed",
     });
   } else {
     rows.push({
       key: "client",
-      label: "Záznam klienta v CRM",
+      label: "Záznam klienta v Aidvisory",
       status: "not_applicable",
       hint: "Bez nového ani propojeného klienta",
     });
@@ -1211,7 +1212,7 @@ function PublishedWorkflowStepsCard({ doc }: { doc: ExtractionDocument }) {
     o.mode === "supporting_doc_only" || o.mode === "internal_document_only" || supporting;
 
   if (p.createdContractId) {
-    rows.push({ key: "contract", label: "Smlouva / produkt zapsán do CRM", status: "executed" });
+    rows.push({ key: "contract", label: "Smlouva / produkt propsán do Aidvisory", status: "executed" });
   } else if (isSupportingMode && p.linkedDocumentId) {
     rows.push({
       key: "doclink",
@@ -1241,7 +1242,7 @@ function PublishedWorkflowStepsCard({ doc }: { doc: ExtractionDocument }) {
   } else {
     rows.push({
       key: "contract",
-      label: "Nová smlouva v CRM",
+      label: "Nová smlouva v Aidvisory",
       status: "not_applicable",
       hint: "Bez vytvořeného produktového záznamu",
     });
@@ -1375,11 +1376,11 @@ function WorkActionsCard({
         className="bg-emerald-50 rounded-[20px] border border-emerald-200 shadow-sm p-4 md:p-5"
       >
         <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-800 mb-2 flex items-center gap-2">
-          <Check size={14} /> Zapsáno do CRM
+          <Check size={14} /> Propsáno do Aidvisory
         </h3>
         <p className="text-sm text-emerald-800 font-medium leading-relaxed">
           Dokument byl zapsán. U starších položek nemusí být uložený strukturovaný výsledek — podrobnosti jsou v horní
-          liště nebo v CRM.
+          liště nebo v Aidvisory.
         </p>
       </div>
     );
@@ -1394,7 +1395,7 @@ function WorkActionsCard({
         <Wrench size={14} className="text-indigo-500" /> Navrhované pracovní kroky
       </h3>
       <p className="text-xs text-[color:var(--wp-text-tertiary)] mb-4 leading-relaxed">
-        Stav kroků: dostupné → provedeno / přeskočeno / nevztažitelné. Návrhové akce zapsané přes CRM zmizí po úspěšném
+        Stav kroků: dostupné → provedeno / přeskočeno / nevztažitelné. Návrhové akce propsané do Aidvisory zmizí po úspěšném
         zápisu — nahradí je výsledek níže.
       </p>
       {actions.length === 0 ? (
@@ -1551,7 +1552,7 @@ function WorkActionsCard({
                       </button>
                     </div>
                     <p className="text-[11px] text-[color:var(--wp-text-secondary)] mt-2 leading-snug pl-0.5">
-                      Zápis do CRM počká na výběr klienta. Vyberte správný záznam z navržených shod nebo z celého seznamu — zůstanete v této revizi.
+                      Propsání do Aidvisory počká na výběr klienta. Vyberte správný záznam z navržených shod nebo z celého seznamu — zůstanete v této revizi.
                     </p>
                   </div>
                 </li>
@@ -1593,7 +1594,7 @@ function WorkActionsCard({
                       <CheckCircle2 size={15} className="text-indigo-500 shrink-0" />
                     )}
                     <span className="flex-1">
-                      {alreadyLinked ? "Klient nastaven — spustit zápis do CRM" : a.label}
+                      {alreadyLinked ? "Klient nastaven — spustit propsání do Aidvisory" : a.label}
                     </span>
                     <ArrowRight size={14} className="text-indigo-400 shrink-0" />
                   </button>
@@ -1759,11 +1760,11 @@ function WorkActionsCard({
               <li
                 key={actionKey}
                 className={`${baseClass} text-[color:var(--wp-text)] bg-[color:var(--wp-surface-muted)]/50 border-[color:var(--wp-surface-card-border)] cursor-default`}
-                title="Provede se automaticky při zápisu do CRM"
+                title="Provede se automaticky při propsání do Aidvisory"
               >
                 <ArrowRight size={15} className="text-indigo-400 shrink-0" />
                 <span className="flex-1">{a.label}</span>
-                <span className="text-[10px] text-[color:var(--wp-text-tertiary)] font-normal shrink-0">při zápisu do CRM</span>
+                <span className="text-[10px] text-[color:var(--wp-text-tertiary)] font-normal shrink-0">při propsání do Aidvisory</span>
               </li>
             );
           })}
@@ -1942,6 +1943,7 @@ function ExtractedFieldRow({
   isActive,
   editedValue,
   isConfirmed,
+  applyResultPayload,
   onFieldClick,
   onEdit,
   onConfirm,
@@ -1951,6 +1953,7 @@ function ExtractedFieldRow({
   isActive: boolean;
   editedValue?: string;
   isConfirmed: boolean;
+  applyResultPayload?: ApplyResultPayload;
   onFieldClick: (fieldId: string, page?: number) => void;
   onEdit: (fieldId: string, value: string) => void;
   onConfirm: (fieldId: string) => void;
@@ -1960,21 +1963,29 @@ function ExtractedFieldRow({
   const displayValue = editedValue ?? field.value;
   const hasBeenEdited = isEdited && editedValue !== field.originalAiValue;
 
+  const effectiveStatus = resolveEffectiveFieldStatus({
+    fieldId: field.id,
+    fieldStatus: field.status,
+    locallyConfirmed: isConfirmed,
+    applyResultPayload,
+  });
+  const isEffectivelyConfirmed = effectiveStatus === "success" && field.status !== "success";
+
   return (
     <div
       className={`relative flex flex-col transition-all ${
-        field.status !== "success" ? "md:col-span-2" : ""
+        effectiveStatus !== "success" ? "md:col-span-2" : ""
       } ${isActive ? "ring-2 ring-indigo-300 rounded-xl" : ""}`}
     >
       <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2 ml-1 flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 min-w-0 flex-1">
           <span className="truncate">{field.label}</span>
-          {isConfirmed && (
+          {isEffectivelyConfirmed && (
             <span className="inline-flex items-center gap-0.5 text-emerald-600">
               <Check size={10} /> OK
             </span>
           )}
-          {hasBeenEdited && !isConfirmed && (
+          {hasBeenEdited && !isEffectivelyConfirmed && (
             <span className="text-blue-500 normal-case tracking-normal font-bold">
               upraveno
             </span>
@@ -1994,12 +2005,12 @@ function ExtractedFieldRow({
           onChange={(e) => onEdit(field.id, e.target.value)}
           onClick={() => onFieldClick(field.id, field.page)}
           className={`w-full px-4 py-3 rounded-xl text-sm font-bold transition-all border outline-none ${fieldInputClass(
-            field.status
-          )} ${isConfirmed ? "opacity-70" : ""}`}
-          readOnly={isConfirmed}
+            effectiveStatus
+          )} ${isEffectivelyConfirmed ? "opacity-70" : ""}`}
+          readOnly={isEffectivelyConfirmed}
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/input:opacity-100 transition-all">
-          {!isConfirmed && (
+          {!isEffectivelyConfirmed && (
             <button
               onClick={() => onConfirm(field.id)}
               title="Potvrdit hodnotu"
@@ -2017,7 +2028,7 @@ function ExtractedFieldRow({
               <RotateCcw size={14} />
             </button>
           )}
-          {isConfirmed && (
+          {isEffectivelyConfirmed && isConfirmed && (
             <button
               onClick={() => onRevert(field.id)}
               title="Zrušit potvrzení"
@@ -2037,7 +2048,8 @@ function ExtractedFieldRow({
         </div>
       )}
 
-      {field.message && (
+      {/* Warning message: hide when field has been effectively confirmed */}
+      {field.message && effectiveStatus !== "success" && (
         <div
           className={`mt-2 ml-1 text-xs font-bold flex items-start gap-1.5 ${
             field.status === "warning" ? "text-amber-600" : "text-rose-600"
@@ -2092,6 +2104,7 @@ function ExtractedGroupCard({
   isCollapsed,
   onToggle,
   state,
+  applyResultPayload,
   onFieldClick,
   onEdit,
   onConfirm,
@@ -2102,6 +2115,7 @@ function ExtractedGroupCard({
   isCollapsed: boolean;
   onToggle: () => void;
   state: ExtractionReviewState;
+  applyResultPayload?: ApplyResultPayload;
   onFieldClick: (fieldId: string, page?: number) => void;
   onEdit: (fieldId: string, value: string) => void;
   onConfirm: (fieldId: string) => void;
@@ -2119,7 +2133,17 @@ function ExtractedGroupCard({
     return true;
   });
 
-  const warningCount = group.fields.filter((f) => f.status === "warning").length;
+  // Unconfirmed warnings: warnings that haven't been effectively confirmed yet
+  const warningCount = group.fields.filter((f) => {
+    if (f.status !== "warning") return false;
+    const eff = resolveEffectiveFieldStatus({
+      fieldId: f.id,
+      fieldStatus: f.status,
+      locallyConfirmed: state.confirmedFields[f.id] ?? false,
+      applyResultPayload,
+    });
+    return eff === "warning";
+  }).length;
   const errorCount = group.fields.filter((f) => f.status === "error").length;
 
   if (filteredFields.length === 0 && filter !== "all") return null;
@@ -2165,6 +2189,7 @@ function ExtractedGroupCard({
               isActive={state.activeFieldId === field.id}
               editedValue={state.editedFields[field.id]}
               isConfirmed={state.confirmedFields[field.id] ?? false}
+              applyResultPayload={applyResultPayload}
               onFieldClick={onFieldClick}
               onEdit={onEdit}
               onConfirm={onConfirm}
@@ -2327,6 +2352,7 @@ export function ExtractionLeftPanel({
                   isCollapsed={state.collapsedGroups[group.id] ?? false}
                   onToggle={() => onToggleGroup(group.id)}
                   state={state}
+                  applyResultPayload={doc.applyResultPayload}
                   onFieldClick={onFieldClick}
                   onEdit={onEdit}
                   onConfirm={onConfirm}

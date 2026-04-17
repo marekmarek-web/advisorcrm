@@ -463,7 +463,7 @@ export async function routeAssistantMessage(
     if (!write.ok) {
       logAssistantTelemetry(AssistantTelemetryAction.MORTGAGE_BUNDLE_WRITE, { path: "legacy", ok: false });
       return {
-        message: `Zápis do CRM se nepodařil: ${mapErrorForAdvisor(write.error ?? "", null, "legacy-crm-write")}`,
+        message: `Propsání do Aidvisory se nepodařilo: ${mapErrorForAdvisor(write.error ?? "", null, "legacy-crm-write")}`,
         referencedEntities: [],
         suggestedActions: [],
         warnings: [],
@@ -477,7 +477,7 @@ export async function routeAssistantMessage(
     logAssistantTelemetry(AssistantTelemetryAction.MORTGAGE_BUNDLE_WRITE, { path: "legacy", ok: true });
 
     const lines = [
-      "Záznam do CRM proběhl.",
+      "Propsání do Aidvisory proběhlo.",
       "✓ Obchod vytvořen",
       "✓ Úkol vytvořen",
       write.dueDate ? `Termín: ${formatDisplayDateCs(write.dueDate) || write.dueDate}` : "",
@@ -1083,7 +1083,7 @@ export async function routeAssistantMessageCanonical(
     if (!write.ok) {
       logAssistantTelemetry(AssistantTelemetryAction.MORTGAGE_BUNDLE_WRITE, { path: "canonical", ok: false });
       return {
-        message: `Zápis do CRM se nepodařil: ${mapErrorForAdvisor(write.error ?? "", null, "canonical-crm-write")}`,
+        message: `Propsání do Aidvisory se nepodařilo: ${mapErrorForAdvisor(write.error ?? "", null, "canonical-crm-write")}`,
         referencedEntities: [],
         suggestedActions: [],
         warnings: [],
@@ -1095,7 +1095,7 @@ export async function routeAssistantMessageCanonical(
     session.lockedDealId = write.dealId;
     logAssistantTelemetry(AssistantTelemetryAction.MORTGAGE_BUNDLE_WRITE, { path: "canonical", ok: true });
     const lines = [
-      "Záznam do CRM proběhl.",
+      "Propsání do Aidvisory proběhlo.",
       "✓ Obchod vytvořen",
       "✓ Úkol vytvořen",
       write.dueDate ? `Termín: ${formatDisplayDateCs(write.dueDate) || write.dueDate}` : "",

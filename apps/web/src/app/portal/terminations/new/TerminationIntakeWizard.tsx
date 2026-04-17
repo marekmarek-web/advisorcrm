@@ -1529,7 +1529,7 @@ export function TerminationIntakeWizard({
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className={`${TERMINATION_DATE_LABEL_CLASS} mb-1`}>Adresa pojistníka – ulice (doplní dopis, není-li v CRM)</label>
+                        <label className={`${TERMINATION_DATE_LABEL_CLASS} mb-1`}>Adresa pojistníka – ulice (doplní dopis, není-li v Aidvisory)</label>
                         <input
                           value={policyholderAddressLine1Override}
                           onChange={(e) => setPolicyholderAddressLine1Override(e.target.value)}

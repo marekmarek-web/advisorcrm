@@ -208,7 +208,7 @@ export function StepClientInfo() {
         {clientId ? (
           <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5 sm:mt-0" />
-            <span className="text-sm text-emerald-800 font-semibold">Klient je propojen s CRM</span>
+            <span className="text-sm text-emerald-800 font-semibold">Klient je propojen s Aidvisory</span>
             <Link
               href={`/portal/contacts/${clientId}`}
               className="text-sm text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1"
@@ -225,7 +225,7 @@ export function StepClientInfo() {
               className={clsx(portalPrimaryButtonClassName, "px-5 py-2.5 font-semibold disabled:opacity-50")}
             >
               <UserPlus className="w-4 h-4" />
-              {creatingClient ? "Vytvářím…" : "Přidat klienta do CRM"}
+              {creatingClient ? "Vytvářím…" : "Přidat klienta do Aidvisory"}
             </button>
             {justCreated && (
               <span className="text-sm text-emerald-700 font-semibold flex items-center gap-1">
@@ -246,7 +246,7 @@ export function StepClientInfo() {
               className="flex min-h-[44px] items-center gap-2 rounded-xl bg-[color:var(--wp-button-bg)] px-5 py-2.5 font-semibold text-white transition-colors hover:bg-[color:var(--wp-primary-hover)]"
             >
               <Users className="w-4 h-4" />
-              Synchronizovat celou rodinu do CRM
+              Synchronizovat celou rodinu do Aidvisory
             </button>
             <p className="text-xs text-[color:var(--wp-text-secondary)]">Vytvoří kontakty pro partnera, děti a domácnost.</p>
           </div>

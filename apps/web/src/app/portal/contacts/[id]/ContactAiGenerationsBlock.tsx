@@ -38,7 +38,7 @@ const SECTION_CONFIG = {
     key: "clientOpportunities" as const,
   },
   nextBestAction: {
-    title: "Návrh dalšího kroku v CRM (AI, interní)",
+    title: "Návrh dalšího kroku v Aidvisory (AI, interní)",
     action: generateNextBestActionAction,
     key: "nextBestAction" as const,
   },
@@ -168,7 +168,7 @@ export function ContactAiGenerationsBlock({ contactId, initialGenerations }: Pro
       </div>
       <AdvisorAiOutputNotice className="mb-4" variant="compact" />
       <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4">
-        Informativní shrnutí a návrhy administrativních kroků výhradně pro práci poradce v CRM — nejde o radu klientovi.
+        Informativní shrnutí a návrhy administrativních kroků výhradně pro práci poradce v Aidvisory — nejde o radu klientovi.
       </p>
       <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3">
         <div className="flex items-center justify-between gap-2">

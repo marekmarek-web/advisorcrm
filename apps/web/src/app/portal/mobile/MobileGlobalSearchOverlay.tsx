@@ -112,7 +112,7 @@ export function MobileGlobalSearchOverlay({
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
         {!value.trim() ? (
-          <p className="text-sm text-[color:var(--wp-text-secondary)] text-center py-8">Začněte psát pro vyhledávání v CRM.</p>
+          <p className="text-sm text-[color:var(--wp-text-secondary)] text-center py-8">Začněte psát pro vyhledávání v Aidvisory.</p>
         ) : !loading && !hasAny ? (
           <p className="text-sm text-[color:var(--wp-text-secondary)] text-center py-8">Žádné výsledky.</p>
         ) : null}

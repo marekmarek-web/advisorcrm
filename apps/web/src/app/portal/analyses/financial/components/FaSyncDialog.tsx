@@ -122,7 +122,7 @@ export function FaSyncDialog({ analysisId, onClose, onDone }: {
                       {p.matchedContactId && (
                         <p className="text-xs text-amber-700 flex items-center gap-1 mt-1">
                           <AlertTriangle className="w-3 h-3" />
-                          Nalezen v CRM (shoda: {p.matchReason}) – bude aktualizován
+                          Nalezen v Aidvisory (shoda: {p.matchReason}) – bude aktualizován
                         </p>
                       )}
                       {!p.matchedContactId && (

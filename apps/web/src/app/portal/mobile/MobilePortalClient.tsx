@@ -1049,7 +1049,7 @@ export function MobilePortalClient({
             className="w-full flex items-center gap-2 min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 text-sm font-semibold text-[color:var(--wp-text-secondary)] text-left active:scale-[0.99] transition-transform"
           >
             <Search size={16} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />
-            <span className="truncate">Hledat v CRM…</span>
+            <span className="truncate">Hledat v Aidvisory…</span>
           </button>
         }
       />

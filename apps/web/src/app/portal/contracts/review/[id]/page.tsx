@@ -393,7 +393,7 @@ export default function ContractReviewDetailPage() {
     const verdict = resolveMatchVerdictFromDoc(doc);
     if (verdict === "ambiguous_match") {
       toast.showToast(
-        "Nejdřív vyberte klienta v sekci níže — zápis do CRM je do výběru pozastavený.",
+        "Nejdřív vyberte klienta v sekci níže — propsání do Aidvisory je do výběru pozastavené.",
         "error"
       );
       return false;
@@ -438,7 +438,7 @@ export default function ContractReviewDetailPage() {
       if (!ready) return;
       const result = await applyContractReviewDrafts(id, options);
       if (result.ok) {
-        toast.showToast("Údaje zapsány do CRM.", "success");
+        toast.showToast("Údaje propsány do Aidvisory.", "success");
         load();
       } else {
         toast.showToast(result.error ?? "Chyba", "error");
@@ -467,7 +467,7 @@ export default function ContractReviewDetailPage() {
           overrideReason: options?.overrideReason,
         });
         if (result.ok) {
-          toast.showToast("Kontrola schválena a údaje zapsány do CRM.", "success");
+          toast.showToast("Kontrola schválena a údaje propsány do Aidvisory.", "success");
           load();
         } else {
           toast.showToast(result.error ?? "Chyba", "error");
@@ -564,7 +564,7 @@ export default function ContractReviewDetailPage() {
     async (fieldKey: string, scope: "contact" | "contract" | "payment", value: string) => {
       const result = await confirmManualField(id, fieldKey, scope, value);
       if (result.ok) {
-        toast.showToast(`Pole "${fieldKey}" doplněno a zapsáno do CRM.`, "success");
+        toast.showToast(`Pole "${fieldKey}" doplněno a propsáno do Aidvisory.`, "success");
         load();
       } else {
         toast.showToast(result.error ?? "Zápis selhal.", "error");
@@ -580,7 +580,7 @@ export default function ContractReviewDetailPage() {
       const result = await confirmAllPendingFields(id);
       if (result.ok) {
         if (result.confirmedCount > 0) {
-          toast.showToast(`${result.confirmedCount} ${result.confirmedCount === 1 ? "pole potvrzeno" : "polí potvrzeno"} a zapsáno do CRM.`, "success");
+          toast.showToast(`${result.confirmedCount} ${result.confirmedCount === 1 ? "pole potvrzeno" : "polí potvrzeno"} a propsáno do Aidvisory.`, "success");
         } else {
           toast.showToast("Žádná pole k potvrzení.", "info");
         }

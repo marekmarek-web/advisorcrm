@@ -853,7 +853,7 @@ export function BusinessPlanView() {
                 </label>
               </div>
               <p className="text-[color:var(--wp-text-secondary)] pt-2">
-                <strong>Cílový mix</strong> (váhy) se použije v koláči, jen když v období není žádná produkce v CRM.
+                <strong>Cílový mix</strong> (váhy) se použije v koláči, jen když v období není žádná produkce v Aidvisory.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {(

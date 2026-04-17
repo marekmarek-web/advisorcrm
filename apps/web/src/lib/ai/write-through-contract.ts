@@ -234,7 +234,7 @@ export function computePublishOutcome(
       mode: "product_published_visible_to_client",
       paymentOutcome,
       visibleToClient: true,
-      label: "Smlouva/produkt zapsán do CRM a zobrazen v klientském portálu.",
+      label: "Smlouva/produkt propsán do Aidvisory a zobrazen v klientském portálu.",
     };
   }
 

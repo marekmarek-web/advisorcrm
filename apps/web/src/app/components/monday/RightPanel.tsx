@@ -367,7 +367,7 @@ export function RightPanel({
                 placeholder={
                   contactId
                     ? "Napište poznámku k řádku… (Enter odešle do vlákna, Shift+Enter nový řádek)"
-                    : "Napište poznámku… (Enter odešle do vlákna). Propojte kontakt pro zápisky u klienta v CRM."
+                    : "Napište poznámku… (Enter odešle do vlákna). Propojte kontakt pro zápisky u klienta v Aidvisory."
                 }
                 rows={4}
                 className="w-full resize-none rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-3 text-sm text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-main)]/25"
@@ -390,7 +390,7 @@ export function RightPanel({
             {(localThreadByItem[itemId] ?? []).length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">
-                  Poznámky u řádku (jen zde, ne v CRM)
+                  Poznámky u řádku (jen zde, ne v Aidvisory)
                 </p>
                 <ul className="space-y-3">
                   {(localThreadByItem[itemId] ?? []).map((p) => (

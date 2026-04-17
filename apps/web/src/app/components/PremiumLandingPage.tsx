@@ -230,7 +230,7 @@ const AiSandbox = () => {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-purple-400/60 shrink-0" />
-                  Vytvořit smlouvu v CRM
+                  Vytvořit smlouvu v Aidvisory
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-purple-400/60 shrink-0" />

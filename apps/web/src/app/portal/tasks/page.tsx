@@ -958,7 +958,7 @@ function TasksPageContent() {
       !(await confirm({
         title: "Přesunout do zápisků",
         message:
-          "Úkol bude odebrán ze seznamu Úkolů a uložen jako interní zápisek na board Zápisky (pouze pro práci poradce v CRM). Pokračovat?",
+          "Úkol bude odebrán ze seznamu Úkolů a uložen jako interní zápisek na board Zápisky (pouze pro práci poradce v Aidvisory). Pokračovat?",
         confirmLabel: "Přesunout",
       }))
     ) {

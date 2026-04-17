@@ -91,13 +91,13 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       const head = routeMismatch
         ? fromCrmScreenshot
           ? [
-              "Údaje na screenshotu nesedí s kontaktem, který máte právě otevřený v CRM — automaticky ho k němu nepřiřazuji.",
+              "Údaje na screenshotu nesedí s kontaktem, který máte právě otevřený v Aidvisory — automaticky ho k němu nepřiřazuji.",
               "",
               "Z rozpoznaných údajů můžete přesto založit nového klienta a podklady uložit podle plánu níže.",
               "",
             ]
           : [
-              "Doklad vypadá na jinou osobu než kontakt, který máte právě otevřený v CRM — automaticky ho k němu nepřiřazuji.",
+              "Doklad vypadá na jinou osobu než kontakt, který máte právě otevřený v Aidvisory — automaticky ho k němu nepřiřazuji.",
               "",
               "Z údajů na dokladu můžete přesto založit nového klienta a podklady uložit podle plánu níže.",
               "",
@@ -131,7 +131,7 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       if (handoff?.recommended) {
         return `Obrázek vypadá jako kandidát na podrobnější analýzu. ${handoff.advisorExplanation.slice(0, 200)}`;
       }
-      return "Na obrázku jsem nenašel použitelné CRM informace. Obrázek lze archivovat, ale navrhovat žádnou CRM akci nemám.";
+      return "Na obrázku jsem nenašel použitelné informace pro Aidvisory. Obrázek lze archivovat, ale navrhovat žádnou akci nemám.";
     }
 
     case "ambiguous_needs_input": {
@@ -175,7 +175,7 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       const bindHintForUpdate =
         parsedIntent?.operation === "update_contact" &&
         (binding === "insufficient_binding" || binding === "multiple_candidates" || binding === "weak_candidate")
-          ? "\n\nZ textu se mi nepodařilo jednoznačně najít klienta v CRM — údaje z obrázku jsou v náhledu. Otevřete správnou kartu klienta nebo upřesněte jméno a zkuste znovu."
+          ? "\n\nZ textu se mi nepodařilo jednoznačně najít klienta v Aidvisory — údaje z obrázku jsou v náhledu. Otevřete správnou kartu klienta nebo upřesněte jméno a zkuste znovu."
           : "";
       const isForm = looksLikeStructuredFormScreenshot(result.response.factBundle);
       const typeLabel = isForm
@@ -193,14 +193,14 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       if (!factText && !missing) {
         const intro = multimodalFailed
           ? `Údaje z obrázku${client} se mi nepodařilo spolehlivě přečíst.`
-          : `Na obrázku${client} jsem zatím nenašel použitelné údaje pro zápis do CRM.`;
+          : `Na obrázku${client} jsem zatím nenašel použitelné údaje pro propsání do Aidvisory.`;
         return `${intro}${bindHintForUpdate}\n\nZkuste nahrát ostřejší screenshot nebo přiložit další část formuláře.`;
       }
       const previewOnly = result.response.actionPlan.actionAuthority === "preview_only";
       const intro = isForm
         ? previewOnly
           ? `Našel jsem údaje z formuláře${client}, ale zatím je ukazuji jen v náhledu.`
-          : `Našel jsem údaje z formuláře a připravil návrh k uložení do CRM${client}.`
+          : `Našel jsem údaje z formuláře a připravil návrh k uložení do Aidvisory${client}.`
         : previewOnly
           ? `Rozpoznal jsem obrázek s ${typeLabel}. Zatím ukazuji jen náhled rozpoznaných údajů${client}.`
           : `Rozpoznal jsem obrázek s ${typeLabel}. Navrhuji uložit klíčové informace${client}.`;
@@ -226,7 +226,7 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
             : f.existingCrmValue ?? "–";
         const tag =
           f.diffStatus === "new" ? " 🆕"
-          : f.diffStatus === "conflict" ? ` ⚠ (CRM: ${crmShow})`
+          : f.diffStatus === "conflict" ? ` ⚠ (evidence: ${crmShow})`
           : f.diffStatus === "same" ? " ✓"
           : "";
         lines.push(`• ${label}: ${val}${tag}`);
@@ -240,18 +240,18 @@ function buildIntakeMessage(result: ImageIntakeOrchestratorResult): string {
       if (hasRealUpdateAction) {
         const confirmNote = diffFacts.some((f) => f.needsConfirmation)
           ? "\n\nCitlivé údaje (rodné číslo, datum narození) vyžadují vaše potvrzení."
-          : "\n\nPo potvrzení zapíšu změny do CRM.";
+          : "\n\nPo potvrzení zapíšu změny do Aidvisory.";
         return `Připravil jsem návrh aktualizace údajů${client} na základě nahraných obrázků.${factText}${confirmNote}`;
       }
       // No real updateContact step — honest fallback
       if (!factText) {
         const reason = multimodalFailed
           ? `Údaje z obrázku${client} se mi nepodařilo spolehlivě přečíst.`
-          : `Na obrázku${client} jsem zatím nenašel použitelné údaje pro zápis do CRM.`;
+          : `Na obrázku${client} jsem zatím nenašel použitelné údaje pro propsání do Aidvisory.`;
         return `${reason}\n\nZkuste nahrát ostřejší screenshot nebo přiložit i část s identifikačními údaji klienta.`;
       }
       const intro = factText
-        ? `Rozpoznal jsem údaje z obrázku${client}.${factText}\n\nPro zápis do CRM doplňte nebo potvrďte údaje v náhledu kroků.`
+        ? `Rozpoznal jsem údaje z obrázku${client}.${factText}\n\nPro propsání do Aidvisory doplňte nebo potvrďte údaje v náhledu kroků.`
         : `Obrázek byl přijat${client}.`;
       return intro;
     }

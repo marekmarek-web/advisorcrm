@@ -158,7 +158,7 @@ function PublishHintsSection({ ph }: { ph: NonNullable<CanonicalFields["publishH
     >
       <div className="flex items-center gap-2 text-xs text-emerald-700">
         <CheckCircle2 size={12} />
-        <span>Po schválení poradcem bude dokument zapsán do CRM.</span>
+        <span>Po schválení poradcem bude dokument propsán do Aidvisory.</span>
       </div>
     </Section>
   );
@@ -379,7 +379,7 @@ export function CanonicalFieldsPanel({ canonicalFields, isApplied }: { canonical
         </div>
         <p className="mt-1.5 text-[11px] leading-snug text-[color:var(--wp-text-secondary)] pl-5">
           Strukturovaný výpis z modelu (osoby, rizika, platby). Pole ve sloupcích vpravo u jednotlivých bloků jsou
-          hodnoty připravené pro zápis do CRM — doplňují tento přehled, nejsou duplicitní výplň.
+          hodnoty připravené pro propsání do Aidvisory — doplňují tento přehled, nejsou duplicitní výplň.
         </p>
       </div>
 

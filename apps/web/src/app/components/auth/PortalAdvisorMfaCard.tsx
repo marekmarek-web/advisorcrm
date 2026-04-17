@@ -45,7 +45,7 @@ export function PortalAdvisorMfaCard() {
     const supabase = createClient();
     const { data, error: enErr } = await supabase.auth.mfa.enroll({
       factorType: "totp",
-      friendlyName: "Aidvisora CRM",
+      friendlyName: "Aidvisora",
     });
     setBusy(false);
     if (enErr) {

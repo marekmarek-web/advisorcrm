@@ -68,7 +68,7 @@ export function TeamOverviewPremiumShell({
               </div>
               <div>
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-slate-400">
-                  AIDVISORA CRM PORTAL
+                  AIDVISORA PORTAL
                 </p>
                 <h1 className="mt-1 text-[28px] font-black leading-tight tracking-tight text-[#16192b]">
                   {title}
@@ -188,7 +188,7 @@ export function TeamOverviewPremiumBriefingDark({
         <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-amber-200/70 bg-amber-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-amber-700/80">Pozornost</p>
           <p className="mt-2 text-[28px] font-black leading-none tabular-nums text-amber-900">{stats.attention}</p>
-          <p className="mt-1.5 text-[10px] font-semibold text-amber-700/70">CRM / kariérní signály</p>
+          <p className="mt-1.5 text-[10px] font-semibold text-amber-700/70">Aidvisory / kariérní signály</p>
         </div>
         <div className="flex min-h-[108px] flex-col justify-between rounded-[20px] border border-sky-200/70 bg-sky-50/60 px-4 py-4">
           <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-sky-700/80">Adaptace</p>

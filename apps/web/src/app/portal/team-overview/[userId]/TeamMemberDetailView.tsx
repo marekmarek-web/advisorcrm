@@ -91,7 +91,7 @@ export function TeamMemberDetailView({
               <span className="font-semibold text-[color:var(--wp-text)]">Odvozené</span> — název pozice, pořadí kroku, další krok z interní konfigurace; případná normalizace legacy hodnot (viz poznámky u evaluace).
             </li>
             <li>
-              <span className="font-semibold text-[color:var(--wp-text)]">K ručnímu ověření</span> — položky v seznamu „Položky k doplnění“ a vše, co v CRM nemáme jako BJ/BJS/licence z PDF.
+              <span className="font-semibold text-[color:var(--wp-text)]">K ručnímu ověření</span> — položky v seznamu „Položky k doplnění“ a vše, co v Aidvisory nemáme jako BJ/BJS/licence z PDF.
             </li>
           </ul>
           <div className="flex flex-wrap gap-2 items-center">

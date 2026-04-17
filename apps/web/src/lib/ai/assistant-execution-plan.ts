@@ -705,7 +705,7 @@ function buildStepLabel(action: WriteActionType, _params: Record<string, unknown
     draftClientPortalMessage: "Připravit zprávu klientovi",
     sendPortalMessage: "Poslat portálovou zprávu",
     approveAiContractReview: "Schválit AI kontrolu smlouvy",
-    applyAiContractReviewToCrm: "Aplikovat schválenou AI kontrolu do CRM",
+    applyAiContractReviewToCrm: "Propsat schválenou AI kontrolu do Aidvisory",
     linkAiContractReviewToDocuments: "Propojit soubor z AI kontroly do dokumentů klienta",
     setDocumentVisibleToClient: "Zobrazit dokument klientovi v portálu",
     linkDocumentToMaterialRequest: "Přiřadit dokument k materiálovému požadavku",
@@ -718,7 +718,7 @@ function buildStepLabel(action: WriteActionType, _params: Record<string, unknown
 }
 
 const STEP_DESCRIPTIONS: Partial<Record<WriteActionType, string>> = {
-  createOpportunity: "Vytvoří nový obchod v CRM",
+  createOpportunity: "Vytvoří nový obchod v Aidvisory",
   updateOpportunity: "Aktualizuje existující obchod",
   createServiceCase: "Založí servisní případ pro smlouvu klienta",
   createTask: "Vytvoří úkol a přiřadí ke klientovi",
@@ -727,7 +727,7 @@ const STEP_DESCRIPTIONS: Partial<Record<WriteActionType, string>> = {
   createMeetingNote: "Zapíše poznámku ze schůzky",
   appendMeetingNote: "Doplní existující poznámku",
   createInternalNote: "Uloží interní poznámku ke klientovi",
-  createContact: "Vytvoří nový kontakt v CRM",
+  createContact: "Vytvoří nový kontakt v Aidvisory",
   attachDocumentToClient: "Přiřadí dokument ke kartě klienta",
   attachDocumentToOpportunity: "Přiřadí dokument k obchodu",
   classifyDocument: "Nastaví typ dokumentu pro správné zařazení",
@@ -742,7 +742,7 @@ const STEP_DESCRIPTIONS: Partial<Record<WriteActionType, string>> = {
   draftClientPortalMessage: "Připraví zprávu do klientského portálu",
   sendPortalMessage: "Odešle zprávu do klientského portálu",
   approveAiContractReview: "Schválí výsledek AI kontroly smlouvy",
-  applyAiContractReviewToCrm: "Zapíše schválená data z AI kontroly do CRM",
+  applyAiContractReviewToCrm: "Propíše schválená data z AI kontroly do Aidvisory",
   linkAiContractReviewToDocuments: "Propojí soubor z AI kontroly s dokumenty klienta",
   setDocumentVisibleToClient: "Zpřístupní dokument klientovi v portálu",
   linkDocumentToMaterialRequest: "Propojí nahraný dokument s požadavkem na podklady",
@@ -1093,8 +1093,8 @@ export function buildPostUploadReviewPlan(
       action: "applyAiContractReviewToCrm",
       params: { reviewId },
       label: applyBlockedReason
-        ? `Aplikovat AI kontrolu do CRM — vyžaduje ruční ověření`
-        : "Aplikovat schválenou AI kontrolu do CRM",
+        ? `Propsat AI kontrolu do Aidvisory — vyžaduje ruční ověření`
+        : "Propsat schválenou AI kontrolu do Aidvisory",
       requiresConfirmation: true,
       isReadOnly: false,
       dependsOn: [sApprove],

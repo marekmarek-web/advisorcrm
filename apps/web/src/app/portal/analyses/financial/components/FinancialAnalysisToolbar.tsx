@@ -121,7 +121,7 @@ export function FinancialAnalysisToolbar() {
           type="button"
           onClick={() => goToStep(1)}
           className="min-h-[44px] min-w-[44px] text-xs px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors flex items-center gap-1.5 font-semibold text-amber-800"
-          title="Přejít na krok 1 a přidat klienta do CRM"
+          title="Přejít na krok 1 a přidat klienta do Aidvisory"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Přidat klienta</span>

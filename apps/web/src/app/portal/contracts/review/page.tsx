@@ -115,7 +115,7 @@ function getStatusConfig(
   if (reviewStatus === "applied") {
     return {
       icon: <CheckCircle2 size={16} />,
-      text: "Aplikováno v CRM",
+      text: "Propsáno do Aidvisory",
       color:
         "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-500/35",
       dot: "bg-emerald-500",
@@ -272,7 +272,7 @@ export default function ContractReviewListPage() {
             <div>
               <h1 className="text-3xl font-black text-[color:var(--wp-text)] tracking-tight mb-1">Review smluv</h1>
               <p className="text-sm font-medium text-[color:var(--wp-text-secondary)] max-w-xl leading-relaxed">
-                Seznam nahraných a zpracovaných smluv. Otevřete položku pro kontrolu a aplikaci do CRM.
+                Seznam nahraných a zpracovaných smluv. Otevřete položku pro kontrolu a propsání do Aidvisory.
               </p>
             </div>
           </div>
@@ -546,7 +546,7 @@ export default function ContractReviewListPage() {
                               href={`/portal/contracts/review/${row.id}`}
                               className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[color:var(--wp-surface-muted)] transition-all shadow-sm"
                             >
-                              Otevřít v CRM <ArrowRight size={14} />
+                              Otevřít v Aidvisory <ArrowRight size={14} />
                             </Link>
                           )}
                         </div>

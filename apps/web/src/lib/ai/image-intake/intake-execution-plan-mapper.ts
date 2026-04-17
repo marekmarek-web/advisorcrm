@@ -112,7 +112,7 @@ const WRITE_ACTION_ADVISOR_DESCRIPTION: Partial<Record<WriteActionType, string>>
   createTask: "Úkol přidáte do úkolů u klienta — před potvrzením zkontrolujte znění.",
   createFollowUp: "Následná aktivita se zaznamená u klienta.",
   createContact: "Vytvoří nový kontakt podle předvyplněných údajů z dokladu.",
-  updateContact: "Aktualizuje existující kontakt — rozpoznané údaje se zapíší do CRM.",
+  updateContact: "Aktualizuje existující kontakt — rozpoznané údaje se propíší do Aidvisory.",
   attachDocumentToClient: "Podklad přiložíte k dokumentům klienta.",
   draftEmail: "Připraví se koncept e-mailu (nic se neodešle bez dalšího kroku).",
   draftClientPortalMessage: "Připraví se koncept zprávy do portálu klienta.",

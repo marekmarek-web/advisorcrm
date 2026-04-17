@@ -152,7 +152,7 @@ export function PublicBookingSetupBlock({ initial, canonicalBaseUrl }: Props) {
           Veřejný rezervační odkaz
         </h3>
         <p className="text-sm font-bold text-indigo-50 mb-2 leading-relaxed">
-          Klienti bez přihlášení vyberou termín; schůzka se zapíše do vašeho kalendáře v CRM. Slouží jen k domluvě administrativního termínu.
+          Klienti bez přihlášení vyberou termín; schůzka se zapíše do vašeho kalendáře v Aidvisory. Slouží jen k domluvě administrativního termínu.
         </p>
         <p className="text-xs text-indigo-100/95 mb-4 leading-relaxed">
           Odkaz pošlete klientovi e-mailem nebo jinou zprávou — otevře jednoduchou stránku (podobně jako Calendly), kde si zvolí volný čas a vyplní kontakt.
@@ -277,7 +277,7 @@ export function PublicBookingSetupBlock({ initial, canonicalBaseUrl }: Props) {
           href="/portal/calendar"
           className="mt-4 text-xs font-black uppercase tracking-widest text-white hover:text-indigo-200 transition-colors flex items-center gap-1 min-h-[44px] inline-flex"
         >
-          Otevřít kalendář v CRM <ChevronRight size={14} aria-hidden />
+          Otevřít kalendář v Aidvisory <ChevronRight size={14} aria-hidden />
         </Link>
       </div>
     </div>

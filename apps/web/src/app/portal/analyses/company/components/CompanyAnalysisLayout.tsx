@@ -55,8 +55,8 @@ export function CompanyAnalysisLayout({
             {saving
               ? "Ukládám…"
               : analysisId
-                ? "Uložit do CRM"
-                : "Uložit do CRM (vytvořit analýzu)"}
+                ? "Uložit do Aidvisory"
+                : "Uložit do Aidvisory (vytvořit analýzu)"}
           </button>
         </div>
       </div>

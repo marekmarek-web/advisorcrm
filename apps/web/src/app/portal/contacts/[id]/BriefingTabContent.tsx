@@ -104,7 +104,7 @@ export function BriefingTabContent({ contactId }: Props) {
               Interní AI briefing (prompt)
             </h2>
             <p className="text-sm text-[color:var(--wp-text-secondary)] mt-0.5">
-              Informativní podklad pro poradce z dat v CRM (OpenAI prompt) — nejde o doporučení klientovi.
+              Informativní podklad pro poradce z dat v Aidvisory (OpenAI prompt) — nejde o doporučení klientovi.
             </p>
           </div>
           <button

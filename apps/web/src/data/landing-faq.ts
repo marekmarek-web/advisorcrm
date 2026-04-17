@@ -18,7 +18,7 @@ export const LANDING_FAQS = [
   {
     id: 4,
     q: "Co přesně AI umí a neumí?",
-    a: "Asistent navrhuje shrnutí, priority a dokáže pracovat s vybranými údaji z dokumentů v rámci vašeho plánu a oprávnění. Rozhodnutí a zápis do CRM zůstává na vás — bez vašeho potvrzení se klientská data nemění. Konkrétní rozsah (např. AI review PDF) závisí na tarifu.",
+    a: "Asistent navrhuje shrnutí, priority a dokáže pracovat s vybranými údaji z dokumentů v rámci vašeho plánu a oprávnění. Rozhodnutí a propsání do Aidvisory zůstává na vás — bez vašeho potvrzení se klientská data nemění. Konkrétní rozsah (např. AI review PDF) závisí na tarifu.",
   },
   {
     id: 5,

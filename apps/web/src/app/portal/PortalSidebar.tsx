@@ -808,7 +808,7 @@ export function PortalSidebar({
                 {!contentCollapsed && (
                   <div className="min-w-0">
                     <p className={`text-sm font-black truncate ${isDark ? "text-white" : "text-[color:var(--wp-text)]"}`}>{userName ?? userEmail ?? "Profil"}</p>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${isDark ? "text-white/60" : "text-[color:var(--wp-text-tertiary)]"}`}>AIDVISORA CRM V2.0</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest truncate ${isDark ? "text-white/60" : "text-[color:var(--wp-text-tertiary)]"}`}>AIDVISORA V2.0</p>
                   </div>
                 )}
               </div>

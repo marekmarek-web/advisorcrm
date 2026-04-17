@@ -18,7 +18,7 @@ const REVIEW_STATUS_CS: Record<string, string> = {
   in_review: "V kontrole",
   approved: "Schváleno",
   rejected: "Zamítnuto",
-  applied: "Zapsáno do CRM",
+  applied: "Propsáno do Aidvisory",
 };
 
 /** Ubuntu supports češtinu; standardní PDF fonty (Helvetica) ne. */

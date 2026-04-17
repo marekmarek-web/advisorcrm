@@ -80,7 +80,7 @@ const APPLY_GATE_REASON_LABELS: Record<string, string> = {
   LOW_TEXT_COVERAGE: "Dokument má slabé textové pokrytí.",
   PREPROCESS_FAILED: "Předzpracování dokumentu nebylo zcela spolehlivé.",
   PIPELINE_FAILED_STEP: "Část pipeline během zpracování selhala.",
-  AMBIGUOUS_CLIENT_MATCH: "V CRM je více možných klientů a je potřeba vybrat správného.",
+  AMBIGUOUS_CLIENT_MATCH: "V evidenci Aidvisory je více možných klientů a je potřeba vybrat správného.",
   LLM_CLIENT_MATCH_AMBIGUOUS: "AI našla více možných klientů.",
   UNSUPPORTED_DOCUMENT_TYPE: "Typ dokumentu nebyl jednoznačně rozpoznán — ověřte a doplňte ručně.",
   PAYMENT_MISSING_AMOUNT: "Chybí částka platby — doplňte ručně.",
@@ -538,7 +538,7 @@ export function AIReviewExtractionShell({
     if (!onApproveAndApply) return;
     setApplyOverrideEnabled(true);
     const overrideOpts = proposalBarrierReasons.length > 0
-      ? { overrideGateReasons: proposalBarrierReasons, overrideReason: "Poradce potvrdil extrahované údaje a schválil zápis do CRM." }
+      ? { overrideGateReasons: proposalBarrierReasons, overrideReason: "Poradce potvrdil extrahované údaje a schválil propsání do Aidvisory." }
       : undefined;
     if (onConfirmFinalContract && proposalBarrierReasons.length > 0) {
       void Promise.resolve(onConfirmFinalContract(proposalBarrierReasons)).catch(() => {});
@@ -671,7 +671,7 @@ export function AIReviewExtractionShell({
 
                 {/* Primary label */}
                 <span className={`text-xs font-black leading-tight ${textCls}`}>
-                  {outcome ? outcome.label : "Zapsáno do CRM"}
+                  {outcome ? outcome.label : "Propsáno do Aidvisory"}
                 </span>
 
                 {/* Badges */}
@@ -922,7 +922,7 @@ export function AIReviewExtractionShell({
                     ) : (
                       <Send size={14} />
                     )}
-                    <span>Schválit a zapsat do CRM</span>
+                    <span>Schválit a propsat do Aidvisory</span>
                   </button>
                 ) : null}
                 {canApproveReject ? (
@@ -952,7 +952,7 @@ export function AIReviewExtractionShell({
                     ) : (
                       <Send size={14} />
                     )}
-                    <span>Zapsat do CRM</span>
+                    <span>Propsat do Aidvisory</span>
                   </button>
                 ) : null}
                 {!canApproveReject && !canApply && !doc.isApplied ? (
@@ -1057,7 +1057,7 @@ export function AIReviewExtractionShell({
                       <h4 className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-secondary)] mb-2">
                         {matchVerdict === "ambiguous_match"
                           ? "Vyberte správného klienta (řazeno podle shody)"
-                          : "Kandidáti v CRM"}
+                          : "Kandidáti v evidenci"}
                       </h4>
                       <div className="space-y-2">
                         {doc.clientMatchCandidates.map((c, idx) => {
@@ -1151,7 +1151,7 @@ export function AIReviewExtractionShell({
                       </button>
                       {doc.clientMatchCandidates.length === 0 && matchVerdict === "no_match" ? (
                         <p className="text-xs text-[color:var(--wp-text-tertiary)]">
-                          Shoda v CRM nebyla nalezena — přiřaďte existujícího klienta nebo založte nový záznam.
+                          Shoda v evidenci nebyla nalezena — přiřaďte existujícího klienta nebo založte nový záznam.
                         </p>
                       ) : null}
                     </div>
@@ -1200,6 +1200,8 @@ export function AIReviewExtractionShell({
             }
             onHighlightClick={handleHighlightClick}
             onRefreshPdf={onRefreshPdf}
+            confirmedFields={state.confirmedFields}
+            applyResultPayload={doc.applyResultPayload}
           />
         </aside>
       </main>
@@ -1269,7 +1271,7 @@ export function AIReviewExtractionShell({
             className="rounded-2xl bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] p-6 max-w-md w-full shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-[color:var(--wp-text)] mb-2">Zapsat do CRM?</h3>
+            <h3 className="text-lg font-bold text-[color:var(--wp-text)] mb-2">Propsat do Aidvisory?</h3>
             <p className="text-sm text-[color:var(--wp-text-secondary)] mb-4">
               Návrhové akce (klient, smlouva, úkol…) budou zapsány do databáze. Tuto akci lze provést jen jednou.
               {!hasResolvedClient
@@ -1288,7 +1290,7 @@ export function AIReviewExtractionShell({
                 type="button"
                 onClick={() => {
                   const overrideOpts = proposalBarrierReasons.length > 0
-                    ? { overrideGateReasons: proposalBarrierReasons, overrideReason: "Poradce potvrdil extrahované údaje a schválil zápis do CRM." }
+                    ? { overrideGateReasons: proposalBarrierReasons, overrideReason: "Poradce potvrdil extrahované údaje a schválil propsání do Aidvisory." }
                     : resolveApplyOverrideOptions();
                   onApply?.(overrideOpts);
                   setShowApplyConfirm(false);
@@ -1296,7 +1298,7 @@ export function AIReviewExtractionShell({
                 disabled={actionLoading === "apply" || actionLoading === "approveApply"}
                 className="px-4 min-h-[44px] rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50"
               >
-                {actionLoading === "apply" ? "Zapisuji…" : "Zapsat"}
+                {actionLoading === "apply" ? "Propisuji…" : "Propsat"}
               </button>
             </div>
           </div>

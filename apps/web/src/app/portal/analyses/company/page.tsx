@@ -303,7 +303,7 @@ export default function CompanyAnalysesPage() {
         <section className="mb-8 p-6 bg-[color:var(--wp-surface-muted)] rounded-2xl border border-[color:var(--wp-surface-card-border)]">
           <h2 className="text-lg font-semibold text-[color:var(--wp-text)] mb-2">Osobní finanční analýza</h2>
           <p className="text-[color:var(--wp-text-secondary)] text-sm mb-4">
-            Nahraný soubor je ve formátu osobní finanční analýzy. Můžete ji otevřít v modulu osobní FA, upravit a uložit do CRM.
+            Nahraný soubor je ve formátu osobní finanční analýzy. Můžete ji otevřít v modulu osobní FA, upravit a uložit do Aidvisory.
           </p>
           <div className="flex flex-wrap gap-3">
             <button

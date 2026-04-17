@@ -50,6 +50,7 @@ import { confidenceToPercentForUi } from "@/lib/ai/review-ui-confidence";
 import { mapApiToExtractionDocument, hasMeaningfulReviewContent } from "@/lib/ai-review/mappers";
 import { aiReviewPdfFileName, buildAiReviewPdfBlob } from "@/lib/ai-review/build-ai-review-pdf";
 import type { ApplyResultPayload } from "@/lib/ai-review/types";
+import { resolveEffectiveFieldStatus } from "@/lib/ai-review/field-visual-status";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -445,17 +446,23 @@ function ReviewDetailPanel({
               {group.fields.slice(0, 20).map((field) => {
                 const dsStatus = field.displayStatus;
                 const dsSource = field.displaySource;
+                const effectiveStatus = resolveEffectiveFieldStatus({
+                  fieldId: field.id,
+                  fieldStatus: field.status,
+                  locallyConfirmed: false,
+                  applyResultPayload: detail.applyResultPayload as ApplyResultPayload | undefined,
+                });
                 const tone =
-                  dsStatus === "Chybí"
-                    ? ("danger" as const)
-                    : dsStatus === "Odvozeno"
-                      ? ("warning" as const)
-                      : field.status === "warning"
+                  effectiveStatus === "success"
+                    ? ("success" as const)
+                    : dsStatus === "Chybí" || effectiveStatus === "error"
+                      ? ("danger" as const)
+                      : dsStatus === "Odvozeno" || effectiveStatus === "warning"
                         ? ("warning" as const)
-                        : field.status === "error"
-                          ? ("danger" as const)
-                          : ("success" as const);
-                const displayLabel = dsStatus ?? (field.status === "error" ? "Chybí" : field.status === "warning" ? "Odvozeno" : "Nalezeno");
+                        : ("success" as const);
+                const displayLabel = effectiveStatus === "success" && field.status === "warning"
+                  ? "Ověřeno"
+                  : dsStatus ?? (field.status === "error" ? "Chybí" : field.status === "warning" ? "Odvozeno" : "Nalezeno");
                 return (
                   <div key={field.id} className="flex flex-col gap-0.5 py-2.5">
                     <div className="flex items-center justify-between gap-2">
@@ -518,7 +525,7 @@ function ReviewDetailPanel({
             <div className="flex items-center gap-2 mb-2.5">
               <Shield size={14} className="text-emerald-600" />
               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">
-                {isSupporting ? "Výsledek zpracování" : "Výsledek zápisu do CRM"}
+                {isSupporting ? "Výsledek zpracování" : "Výsledek propsání do Aidvisory"}
               </p>
             </div>
             {isSupporting ? (
@@ -671,12 +678,12 @@ function ReviewDetailPanel({
             {hasResolvedClient
               ? (
                 <>
-                  Schváleno, ale v CRM ještě není zapsáno. Klepněte na <strong>Zapsat do CRM</strong> níže.
+                  Schváleno, ale v Aidvisory ještě není zapsáno. Klepněte na <strong>Propsat do Aidvisory</strong> níže.
                 </>
               )
               : (
                 <>
-                  Schváleno, ale v CRM ještě není zapsáno. Klepněte na <strong>Zapsat do CRM</strong> níže a systém
+                  Schváleno, ale v Aidvisory ještě není zapsáno. Klepněte na <strong>Propsat do Aidvisory</strong> níže a systém
                   nejdřív připraví nového klienta ze smlouvy.
                 </>
               )}
@@ -727,7 +734,7 @@ function ReviewDetailPanel({
               disabled={pending}
               className="w-full min-h-[44px] rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-wide"
             >
-              Schválit a zapsat do CRM
+              Schválit a propsat do Aidvisory
             </button>
           ) : null}
           {isApprovedOnly && !isApplied ? (
@@ -738,7 +745,7 @@ function ReviewDetailPanel({
               className="min-h-[44px] w-full"
               icon={null}
             >
-              Zapsat do CRM
+              Propsat do Aidvisory
             </CreateActionButton>
           ) : null}
         </div>

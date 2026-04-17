@@ -123,7 +123,7 @@ export function CompanyAnalysisShell({
             disabled={saving}
             className="min-h-[44px] px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50"
           >
-            {saving ? "Ukládám…" : analysisId ? "Uložit do CRM" : "Uložit do CRM (vytvořit analýzu)"}
+            {saving ? "Ukládám…" : analysisId ? "Uložit do Aidvisory" : "Uložit do Aidvisory (vytvořit analýzu)"}
           </button>
         </div>
       </div>

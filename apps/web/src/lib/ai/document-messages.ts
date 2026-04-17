@@ -246,12 +246,12 @@ export function buildMatchVerdictBanner(
         tone: "danger",
         title: "Nejednoznačná shoda",
         body:
-          "V CRM je více rozumných kandidátů nebo jsou si příliš podobní. Vyberte správného klienta níže — zápis do CRM je do výběru blokovaný.",
+          "V evidenci Aidvisory je více rozumných kandidátů nebo jsou si příliš podobní. Vyberte správného klienta níže — propsání do Aidvisory je do výběru blokované.",
       };
     case "no_match":
       return {
         tone: "neutral",
-        title: "Žádný odpovídající klient v CRM",
+        title: "Žádný odpovídající klient v evidenci Aidvisory",
         body:
           "Nepodařilo se najít spolehlivou shodu. Pokládáte-li nového klienta, potvrďte vytvoření níže.",
       };
@@ -265,12 +265,12 @@ export function approvedPendingApplyHint(
   hasResolvedClient: boolean
 ): string {
   if (!hasResolvedClient) {
-    return "Kontrola je schválená, ale ještě není zapsaná do CRM. Při kliknutí na Zapsat do CRM se použije vybraný klient, nebo se podle potvrzení založí nový záznam.";
+    return "Kontrola je schválená, ale ještě není propsána do Aidvisory. Při kliknutí na Propsat do Aidvisory se použije vybraný klient, nebo se podle potvrzení založí nový záznam.";
   }
   if (verdict === "existing_match") {
-    return "Kontrola je schválená, ale změny do CRM ještě neproběhly — dokončíte je kliknutím na Zapsat do CRM. Připojení je k existujícímu klientovi v CRM.";
+    return "Kontrola je schválená, ale propsání do Aidvisory ještě neproběhlo — dokončíte je kliknutím na Propsat do Aidvisory. Připojení je k existujícímu klientovi v evidenci.";
   }
-  return "Kontrola je schválená, ale změny do CRM ještě neproběhly — dokončíte je kliknutím na Zapsat do CRM. Schválení potvrzuje správnost extrakce.";
+  return "Kontrola je schválená, ale propsání do Aidvisory ještě neproběhlo — dokončíte je kliknutím na Propsat do Aidvisory. Schválení potvrzuje správnost extrakce.";
 }
 
 /**
