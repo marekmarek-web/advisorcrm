@@ -13,7 +13,7 @@ alwaysApply: true
 
 4. **SQL / migrations** — On every task completion, the **final reply** must either list new or changed migrations (with path or copy-pastable SQL) or state clearly that **no SQL migration is needed**. Align with `ukonceni-ukolu-sql-migrace.mdc`.
 
-5. **Git** — Do **not** automatically `git commit` or `git push`. Git writes only when the user **explicitly** asks. When they ask for a commit, use **exact** thread title as the first line of the message (see `vercel-commit-thread-title.mdc`).
+5. **Git** — Do **not** automatically `git commit` or `git push` kromě výjimky v `git-auto-push.mdc` (po **ověřené** opravě build/CI/TS/lint chyby → auto commit + push změn z opravy). Jinak git zápis jen když uživatel **výslovně** požádá. U commitu na žádost: první řádek = přesný název vlákna (viz `vercel-commit-thread-title.mdc`).
 
 6. **No scope drift** — Implement only what was asked. No drive-by refactors, extra files, or “while we’re here” changes.
 
