@@ -1943,6 +1943,7 @@ function ExtractedFieldRow({
   isActive,
   editedValue,
   isConfirmed,
+  isApproved,
   applyResultPayload,
   onFieldClick,
   onEdit,
@@ -1953,6 +1954,8 @@ function ExtractedFieldRow({
   isActive: boolean;
   editedValue?: string;
   isConfirmed: boolean;
+  /** True when the advisor approved or applied the whole review. */
+  isApproved: boolean;
   applyResultPayload?: ApplyResultPayload;
   onFieldClick: (fieldId: string, page?: number) => void;
   onEdit: (fieldId: string, value: string) => void;
@@ -1967,6 +1970,7 @@ function ExtractedFieldRow({
     fieldId: field.id,
     fieldStatus: field.status,
     locallyConfirmed: isConfirmed,
+    reviewApproved: isApproved,
     applyResultPayload,
   });
   const isEffectivelyConfirmed = effectiveStatus === "success" && field.status !== "success";
@@ -2105,6 +2109,7 @@ function ExtractedGroupCard({
   onToggle,
   state,
   applyResultPayload,
+  isApproved,
   onFieldClick,
   onEdit,
   onConfirm,
@@ -2116,6 +2121,8 @@ function ExtractedGroupCard({
   onToggle: () => void;
   state: ExtractionReviewState;
   applyResultPayload?: ApplyResultPayload;
+  /** True when the advisor approved or applied the whole review — all warning fields turn green. */
+  isApproved: boolean;
   onFieldClick: (fieldId: string, page?: number) => void;
   onEdit: (fieldId: string, value: string) => void;
   onConfirm: (fieldId: string) => void;
@@ -2140,6 +2147,7 @@ function ExtractedGroupCard({
       fieldId: f.id,
       fieldStatus: f.status,
       locallyConfirmed: state.confirmedFields[f.id] ?? false,
+      reviewApproved: isApproved,
       applyResultPayload,
     });
     return eff === "warning";
@@ -2189,6 +2197,7 @@ function ExtractedGroupCard({
               isActive={state.activeFieldId === field.id}
               editedValue={state.editedFields[field.id]}
               isConfirmed={state.confirmedFields[field.id] ?? false}
+              isApproved={isApproved}
               applyResultPayload={applyResultPayload}
               onFieldClick={onFieldClick}
               onEdit={onEdit}
@@ -2353,6 +2362,7 @@ export function ExtractionLeftPanel({
                   onToggle={() => onToggleGroup(group.id)}
                   state={state}
                   applyResultPayload={doc.applyResultPayload}
+                  isApproved={doc.reviewStatus === "approved" || doc.reviewStatus === "applied" || doc.isApplied}
                   onFieldClick={onFieldClick}
                   onEdit={onEdit}
                   onConfirm={onConfirm}

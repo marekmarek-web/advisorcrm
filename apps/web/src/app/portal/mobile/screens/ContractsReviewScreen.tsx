@@ -450,6 +450,7 @@ function ReviewDetailPanel({
                   fieldId: field.id,
                   fieldStatus: field.status,
                   locallyConfirmed: false,
+                  reviewApproved: detail.reviewStatus === "approved" || detail.reviewStatus === "applied",
                   applyResultPayload: detail.applyResultPayload as ApplyResultPayload | undefined,
                 });
                 const tone =

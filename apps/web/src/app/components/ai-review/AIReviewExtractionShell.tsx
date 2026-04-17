@@ -1202,6 +1202,7 @@ export function AIReviewExtractionShell({
             onRefreshPdf={onRefreshPdf}
             confirmedFields={state.confirmedFields}
             applyResultPayload={doc.applyResultPayload}
+            reviewApproved={doc.reviewStatus === "approved" || doc.reviewStatus === "applied" || doc.isApplied}
           />
         </aside>
       </main>

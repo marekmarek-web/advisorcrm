@@ -40,12 +40,15 @@ type Props = {
   confirmedFields?: Record<string, boolean>;
   /** Post-apply payload — used to resolve auto-applied and confirmed fields as green. */
   applyResultPayload?: ApplyResultPayload;
+  /** True when reviewer approved/applied the whole review — all warnings turn green. */
+  reviewApproved?: boolean;
 };
 
 function buildHighlights(
   doc: ExtractionDocument,
   confirmedFields?: Record<string, boolean>,
   applyResultPayload?: ApplyResultPayload,
+  reviewApproved?: boolean,
 ): HighlightEntry[] {
   const entries: HighlightEntry[] = [];
   for (const group of doc.groups) {
@@ -59,6 +62,7 @@ function buildHighlights(
             fieldId: field.id,
             fieldStatus: field.status,
             locallyConfirmed: confirmedFields?.[field.id] ?? false,
+            reviewApproved,
             applyResultPayload,
           }),
           page: field.page,
@@ -92,11 +96,12 @@ export function PDFViewerPanel({
   onRefreshPdf,
   confirmedFields,
   applyResultPayload,
+  reviewApproved,
 }: Props) {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("ready");
   const [iframeError, setIframeError] = useState(false);
   const [refreshBusy, setRefreshBusy] = useState(false);
-  const highlights = buildHighlights(doc, confirmedFields, applyResultPayload);
+  const highlights = buildHighlights(doc, confirmedFields, applyResultPayload, reviewApproved);
   const pageHighlights = highlights.filter((h) => h.page === activePage);
   const hasPdf = !!doc.pdfUrl && doc.pdfUrl.length > 0;
 
