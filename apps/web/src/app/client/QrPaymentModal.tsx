@@ -29,6 +29,36 @@ function sanitizeAmount(amountLabel: string): number | null {
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
+function isCzechOrGeneralIban(account: string): boolean {
+  const c = account.replace(/\s+/g, "").toUpperCase();
+  return /^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(c) && c.length >= 15;
+}
+
+/**
+ * Převede české domácí číslo účtu (formát [prefix-]číslo/kódbanky) na IBAN.
+ * SPAYD standard (ČNB/CBA) vyžaduje IBAN v poli ACC: — jinak bankovní
+ * aplikace QR odmítnou jako neplatný.
+ */
+function czechDomesticToIban(account: string): string | null {
+  const m = account.replace(/\s+/g, "").match(/^(?:(\d{1,6})-)?(\d{1,10})\/(\d{4})$/);
+  if (!m) return null;
+  const prefix = (m[1] ?? "0").padStart(6, "0");
+  const number = m[2].padStart(10, "0");
+  const bankCode = m[3];
+  const bban = `${bankCode}${prefix}${number}`;
+  // Mod97 check: bban + "CZ" (→ 1235) + "00"
+  const checkInput = `${bban}123500`;
+  const mod = BigInt(checkInput) % 97n;
+  const checkDigits = String(98n - mod).padStart(2, "0");
+  return `CZ${checkDigits}${bban}`;
+}
+
+function accountToIban(accountNumber: string): string {
+  const raw = sanitizeAccount(accountNumber);
+  if (isCzechOrGeneralIban(raw)) return raw;
+  return czechDomesticToIban(raw) ?? raw;
+}
+
 function createSpaydPayload(
   accountNumber: string,
   amountLabel: string,
@@ -36,10 +66,17 @@ function createSpaydPayload(
   specificSymbol: string | null | undefined,
   constantSymbol: string | null | undefined,
   note: string | null,
-) {
+): string | null {
+  const iban = accountToIban(accountNumber);
+  // Pokud se převod nezdařil a stále nemáme IBAN, payload nebude platný
+  if (!isCzechOrGeneralIban(iban)) return null;
+
   const amount = sanitizeAmount(amountLabel);
-  const parts = [`SPD*1.0*ACC:${sanitizeAccount(accountNumber)}`];
-  if (amount) parts.push(`AM:${amount.toFixed(2)}`);
+  const parts = [`SPD*1.0*ACC:${iban}`];
+  if (amount) {
+    parts.push(`AM:${amount.toFixed(2)}`);
+    parts.push("CC:CZK");
+  }
   if (variableSymbol?.trim()) parts.push(`X-VS:${variableSymbol.trim()}`);
   if (specificSymbol?.trim()) parts.push(`X-SS:${specificSymbol.trim()}`);
   if (constantSymbol?.trim()) parts.push(`X-KS:${constantSymbol.trim()}`);
@@ -63,7 +100,10 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
   }, [payment]);
 
   useEffect(() => {
-    if (!open || !spaydPayload) return;
+    if (!open || !spaydPayload) {
+      setQrDataUrl("");
+      return;
+    }
     QRCode.toDataURL(spaydPayload, {
       width: 280,
       margin: 1,
