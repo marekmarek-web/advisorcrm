@@ -248,8 +248,6 @@ interface PortalSidebarProps {
   onMount?: () => void;
   mobileDrawerOpen?: boolean;
   onMobileDrawerClose?: () => void;
-  /** Myš/trackpad: při opuštění panelu zavřít sliding drawer (mobil / úzký desktop). */
-  slidingNavCloseOnPointerLeave?: boolean;
 }
 
 function filterSectionsByRole(sections: SectionConfig[], showTeamOverview: boolean | undefined): SectionConfig[] {
@@ -278,7 +276,6 @@ export function PortalSidebar({
   onMount,
   mobileDrawerOpen = false,
   onMobileDrawerClose,
-  slidingNavCloseOnPointerLeave = false,
 }: PortalSidebarProps = {}) {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
@@ -338,11 +335,6 @@ export function PortalSidebar({
     },
     [isControlled, onMobileDrawerClose]
   );
-
-  const handleSlidingNavAsidePointerLeave = useCallback(() => {
-    if (!slidingNavCloseOnPointerLeave || !isSlidingNav || !navDrawerOpen || paletteOpen) return;
-    setMobileOpen(false);
-  }, [slidingNavCloseOnPointerLeave, isSlidingNav, navDrawerOpen, paletteOpen, setMobileOpen]);
 
   const { openTasks: openTasksCount, unreadConversations: unreadMessagesCount } = usePortalBadgeCounts();
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -482,7 +474,6 @@ export function PortalSidebar({
         style={{
           width: isSlidingNav ? "min(85vw, 300px)" : `${effectiveWidthPx}px`,
         }}
-        onMouseLeave={slidingNavCloseOnPointerLeave ? handleSlidingNavAsidePointerLeave : undefined}
       >
         <div
           className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent opacity-80"

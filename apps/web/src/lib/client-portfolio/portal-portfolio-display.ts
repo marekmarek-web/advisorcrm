@@ -203,6 +203,7 @@ export function canonicalPortfolioDetailRows(p: CanonicalProduct): { label: stri
     if (d.monthlyPayment != null && d.monthlyPayment > 0) {
       rows.push({ label: "Měsíční splátka", value: `${d.monthlyPayment.toLocaleString("cs-CZ")} Kč` });
     }
+    if (d.interestRate) rows.push({ label: "Úroková sazba", value: d.interestRate });
     if (d.fixationUntil) rows.push({ label: "Fixace do", value: d.fixationUntil });
     if (d.maturityDate) rows.push({ label: "Splatnost", value: d.maturityDate });
   }
@@ -211,17 +212,22 @@ export function canonicalPortfolioDetailRows(p: CanonicalProduct): { label: stri
 }
 
 /**
- * Popisky skryté v klientském portfoliu (u ŽP nahrazuje textové krytí sekce „Rizika / krytí“).
+ * Popisky skryté v klientském portfoliu (u ŽP nahrazuje textové krytí sekce „Rizika / krytí“,
+ * u DPS nahrazuje řádky příspěvků sekce „Složení měsíčního vkladu“).
  */
 const CLIENT_ZONE_PORTFOLIO_DETAIL_OMIT_LABELS = new Set([
   "Pojistné krytí",
   "Číslo dokladu (OP/pas)",
   "Praktický lékař",
+  "Účastník",
+  "Zaměstnavatel",
+  "Státní příspěvek (odhad)",
 ]);
 
 /**
  * Řádky pro rozbalený detail v klientském portfoliu (web i mobil).
- * Bez souhrnného krytí, čísla OP u smlouvy a lékaře; bez řádku „Typ produktu“ (je v záhlaví karty).
+ * Bez souhrnného krytí, čísla OP u smlouvy a lékaře; bez DPS příspěvků (jsou v breakdown widgetu);
+ * bez řádku „Typ produktu“ (je v záhlaví karty).
  */
 export function canonicalPortfolioDetailRowsForClientPortfolioCard(
   p: CanonicalProduct,

@@ -145,12 +145,23 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
   const persons = d?.kind === "life_insurance" ? (d.persons ?? []) : [];
   const risks = d?.kind === "life_insurance" ? (d.risks ?? []) : [];
 
+  const dpsBreakdown =
+    d?.kind === "pension" &&
+    (d.participantContribution || d.employerContribution || d.stateContributionEstimate)
+      ? {
+          participant: d.participantContribution,
+          employer: d.employerContribution,
+          state: d.stateContributionEstimate,
+        }
+      : null;
+
   const hasDetail =
     detailRows.length > 0 ||
     fv ||
     fvPartial ||
     persons.length > 0 ||
     risks.length > 0 ||
+    dpsBreakdown ||
     (contract.sourceDocumentId && visibleSourceDocs[contract.sourceDocumentId]);
 
   const statusColors =
@@ -310,26 +321,62 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
             </div>
           )}
 
-          {/* Risks */}
+          {/* Risks — tile grid (label + amount) */}
           {risks.length > 0 && (
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 px-0.5">
                 Rizika / krytí
               </p>
-              <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {risks.map((r, i) => (
                   <div
                     key={i}
-                    className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-x-4 px-4 py-3 border-b border-slate-100 last:border-b-0"
+                    className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-sm flex items-start justify-between gap-3"
                   >
-                    <span className="text-sm font-semibold text-slate-800 leading-snug">{r.label || "—"}</span>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">
+                        Krytí
+                      </p>
+                      <p className="text-[13px] font-bold text-slate-800 leading-snug break-words">
+                        {r.label || "—"}
+                      </p>
+                    </div>
                     {r.amount ? (
-                      <span className="text-sm font-bold text-slate-600 tabular-nums shrink-0 sm:text-right">
+                      <span className="text-[13px] font-black text-purple-700 tabular-nums shrink-0 mt-3.5">
                         {r.amount}
                       </span>
                     ) : null}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* DPS contribution breakdown */}
+          {dpsBreakdown && (
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                Složení měsíčního vkladu
+              </p>
+              <div className="space-y-2">
+                {dpsBreakdown.participant ? (
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                    <span>Vlastní vklad</span>
+                    <span className="tabular-nums text-slate-900">{dpsBreakdown.participant}</span>
+                  </div>
+                ) : null}
+                {dpsBreakdown.state ? (
+                  <div className="flex justify-between items-center text-xs font-bold text-indigo-700">
+                    <span>Státní příspěvek (odhad)</span>
+                    <span className="tabular-nums">+ {dpsBreakdown.state}</span>
+                  </div>
+                ) : null}
+                {dpsBreakdown.employer ? (
+                  <div className="flex justify-between items-center text-xs font-bold text-emerald-700">
+                    <span>Zaměstnavatel</span>
+                    <span className="tabular-nums">+ {dpsBreakdown.employer}</span>
+                  </div>
+                ) : null}
               </div>
             </div>
           )}
@@ -413,6 +460,31 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
   const activeGroups = groupOrder.filter((k) => (grouped.get(k)?.length ?? 0) > 0);
 
   const annualInsurance = Math.round(metrics.monthlyInsurancePremiums * 12);
+
+  // Light coverage projection — deterministic, evidence-based only.
+  // Compliance: purely informative — does NOT recommend products to client.
+  const coverageGroupOrder: PortfolioUiGroup[] = [
+    "investments_pensions",
+    "income_protection_life",
+    "property_liability",
+    "vehicles",
+    "loans",
+  ];
+  const coverageStatus: { group: PortfolioUiGroup; count: number; risksCount: number; personsCount: number }[] =
+    coverageGroupOrder.map((g) => {
+      const items = grouped.get(g) ?? [];
+      let risksCount = 0;
+      let personsCount = 0;
+      for (const c of items) {
+        const p = canonicalById.get(c.id);
+        const d = p?.segmentDetail;
+        if (d?.kind === "life_insurance") {
+          risksCount += d.risks?.length ?? 0;
+          personsCount += d.persons?.length ?? 0;
+        }
+      }
+      return { group: g, count: items.length, risksCount, personsCount };
+    });
 
   let anyFvShown = false;
   for (const c of contracts) {
@@ -580,6 +652,73 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
               </div>
             </section>
           )}
+
+          {/* ── B2. Coverage projection (evidence-based, informative only) ─── */}
+          <section aria-label="Přehled evidovaných oblastí">
+            <div className="flex items-baseline justify-between mb-2">
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-500">
+                Přehled evidovaných oblastí
+              </h3>
+              <p className="text-[10px] text-slate-400 font-medium">
+                Pouze informativní — odráží stav v evidenci poradce
+              </p>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
+              {coverageStatus.map(({ group, count, risksCount, personsCount }) => {
+                const Icon = groupIcon(group);
+                const colors = groupIconColors(group);
+                const covered = count > 0;
+                return (
+                  <div
+                    key={group}
+                    className={`bg-white rounded-2xl border p-3 md:p-4 flex items-start gap-2.5 transition-colors ${
+                      covered ? "border-slate-200" : "border-dashed border-slate-200"
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        covered ? colors : "bg-slate-50 text-slate-300"
+                      }`}
+                    >
+                      <Icon size={14} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold text-slate-700 leading-tight line-clamp-2">
+                        {PORTFOLIO_GROUP_LABELS[group]}
+                      </p>
+                      {covered ? (
+                        <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 mt-1">
+                          V evidenci
+                        </p>
+                      ) : (
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">
+                          Bez evidence
+                        </p>
+                      )}
+                      {covered && (risksCount > 0 || personsCount > 0) ? (
+                        <p className="text-[10px] text-slate-500 mt-1 leading-snug">
+                          {risksCount > 0 ? (
+                            <span>
+                              {risksCount} {risksCount === 1 ? "krytí" : "krytí"}
+                            </span>
+                          ) : null}
+                          {risksCount > 0 && personsCount > 0 ? <span> · </span> : null}
+                          {personsCount > 0 ? (
+                            <span>
+                              {personsCount} {personsCount === 1 ? "osoba" : personsCount < 5 ? "osoby" : "osob"}
+                            </span>
+                          ) : null}
+                        </p>
+                      ) : null}
+                      {covered && count > 1 ? (
+                        <p className="text-[10px] text-slate-400 mt-0.5">{count} smluv</p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
 
           {/* ── C. Segmented accordion product list ──────────────── */}
           {groupOrder.map((groupKey) => {

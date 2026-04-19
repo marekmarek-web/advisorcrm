@@ -313,7 +313,6 @@ function PortalShellInner({
           onMount={initSidebarState}
           mobileDrawerOpen={sidebarDrawerOpen}
           onMobileDrawerClose={closeMobileSidebarDrawer}
-          slidingNavCloseOnPointerLeave={pointerFineHover}
         />
         {slidingNavMode && !sidebarDrawerOpen && pointerFineHover ? (
           <div

@@ -166,6 +166,7 @@ export type LoanDetail = {
   monthlyPayment: number | null;
   fixationUntil: string | null;
   maturityDate: string | null;
+  interestRate: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -371,6 +372,7 @@ function buildLoanDetail(
     monthlyPayment: safeNumber(contract.premiumAmount),
     fixationUntil: safeString(attrs.loanFixationUntil),
     maturityDate: safeString(attrs.loanMaturityDate),
+    interestRate: safeString(attrs.loanInterestRate),
   };
 }
 

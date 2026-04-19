@@ -61,6 +61,7 @@ import {
   formatPortalPremiumLineCs,
   isFvEligibleSegment,
   portfolioContractStatusLabelCs,
+  resolveFvMonthlyContribution,
   resolvePortalProductDisplayLogo,
 } from "@/lib/client-portfolio/portal-portfolio-display";
 import { institutionInitials } from "@/lib/institutions/institution-logo";
@@ -565,7 +566,7 @@ function PortfolioScreen({
       resolvedFundId: p.fvReadiness.resolvedFundId,
       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
       investmentHorizon: p.fvReadiness.investmentHorizon,
-      monthlyContribution: p.premiumMonthly,
+      monthlyContribution: resolveFvMonthlyContribution(p),
       annualContribution: p.premiumAnnual,
     });
     if (hit.projectionState === "complete" && hit.projectedFutureValue != null) {
@@ -633,7 +634,7 @@ function PortfolioScreen({
                       resolvedFundId: p.fvReadiness.resolvedFundId,
                       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
                       investmentHorizon: p.fvReadiness.investmentHorizon,
-                      monthlyContribution: p.premiumMonthly,
+                      monthlyContribution: resolveFvMonthlyContribution(p),
                       annualContribution: p.premiumAnnual,
                     })
                   : null;
@@ -648,6 +649,17 @@ function PortfolioScreen({
                     }
                   : null;
               const detailRows = canonicalPortfolioDetailRowsForClientPortfolioCard(p);
+              const dDetail = p.segmentDetail;
+              const lifeRisks = dDetail?.kind === "life_insurance" ? (dDetail.risks ?? []) : [];
+              const dpsBreakdown =
+                dDetail?.kind === "pension" &&
+                (dDetail.participantContribution || dDetail.employerContribution || dDetail.stateContributionEstimate)
+                  ? {
+                      participant: dDetail.participantContribution,
+                      employer: dDetail.employerContribution,
+                      state: dDetail.stateContributionEstimate,
+                    }
+                  : null;
               const visibleDoc =
                 contract.sourceDocumentId && visibleSourceDocs[contract.sourceDocumentId]
                   ? visibleSourceDocs[contract.sourceDocumentId]
@@ -716,6 +728,55 @@ function PortfolioScreen({
                           </span>
                         </div>
                       ))}
+                    </div>
+                  ) : null}
+
+                  {lifeRisks.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-0.5">Rizika / krytí</p>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {lifeRisks.map((r, i) => (
+                          <div
+                            key={i}
+                            className="rounded-lg border border-slate-200 bg-white p-2 flex items-start justify-between gap-2 shadow-sm"
+                          >
+                            <span className="text-[12px] font-bold text-slate-800 leading-snug min-w-0 break-words">
+                              {r.label || "—"}
+                            </span>
+                            {r.amount ? (
+                              <span className="text-[12px] font-black text-purple-700 tabular-nums shrink-0">
+                                {r.amount}
+                              </span>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {dpsBreakdown ? (
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Složení vkladu</p>
+                      <div className="space-y-1.5">
+                        {dpsBreakdown.participant ? (
+                          <div className="flex justify-between text-[12px] font-bold text-slate-700">
+                            <span>Vlastní</span>
+                            <span className="tabular-nums text-slate-900">{dpsBreakdown.participant}</span>
+                          </div>
+                        ) : null}
+                        {dpsBreakdown.state ? (
+                          <div className="flex justify-between text-[12px] font-bold text-indigo-700">
+                            <span>Stát (odhad)</span>
+                            <span className="tabular-nums">+ {dpsBreakdown.state}</span>
+                          </div>
+                        ) : null}
+                        {dpsBreakdown.employer ? (
+                          <div className="flex justify-between text-[12px] font-bold text-emerald-700">
+                            <span>Zaměstnavatel</span>
+                            <span className="tabular-nums">+ {dpsBreakdown.employer}</span>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   ) : null}
 
