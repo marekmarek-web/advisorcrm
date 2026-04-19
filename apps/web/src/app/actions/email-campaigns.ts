@@ -16,33 +16,19 @@ import {
   sql,
 } from "db";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
+import {
+  CAMPAIGN_SEGMENTS,
+  type CampaignSegment,
+  type CampaignSegmentId,
+  type EmailCampaignRow,
+  type CampaignListRow,
+  type SegmentCount,
+  type SendEmailCampaignResult,
+} from "@/lib/email/campaign-shared";
 
 const CAMPAIGN_TEMPLATE_LOG = "email_campaign";
 /** Ochrana proti timeoutu serverless — zbytek pošlete druhou kampaní nebo rozšiřte limit. */
 const MAX_RECIPIENTS_PER_SEND = 80;
-
-/**
- * Segmenty pro výběr příjemců kampaně.
- * Filtrujeme na úrovni DB pomocí pole `contacts.tags` (lowercased match).
- * Segment `all` = žádný dodatečný filtr.
- * Segment `test` = neodesílá se skrz audienci, ale na e-mail přihlášeného poradce (viz `sendTestCampaign`).
- */
-export type CampaignSegmentId = "all" | "vip" | "investors" | "mortgage" | "test";
-
-export type CampaignSegment = {
-  id: CampaignSegmentId;
-  label: string;
-  /** Seznam tagů (lowercased), které sedí do tohoto segmentu. Prázdné = `all`. */
-  tags: string[];
-};
-
-export const CAMPAIGN_SEGMENTS: CampaignSegment[] = [
-  { id: "all", label: "Všichni klienti", tags: [] },
-  { id: "vip", label: "VIP klienti", tags: ["vip"] },
-  { id: "investors", label: "Investoři", tags: ["investor", "investice", "investice-aktivni"] },
-  { id: "mortgage", label: "Klienti s hypotékou", tags: ["hypoteka", "hypotéka", "mortgage"] },
-  { id: "test", label: "Testovací odeslání (pouze mně)", tags: [] },
-];
 
 function getSegment(id?: string | null): CampaignSegment {
   const found = CAMPAIGN_SEGMENTS.find((s) => s.id === id);
@@ -73,15 +59,6 @@ function personalizeHtml(html: string, firstName: string, lastName: string): str
     .replace(/\{\{cele_jmeno\}\}/gi, escapeHtml(name));
 }
 
-export type EmailCampaignRow = {
-  id: string;
-  name: string;
-  subject: string;
-  status: string;
-  createdAt: Date;
-  sentAt: Date | null;
-};
-
 export async function listEmailCampaigns(): Promise<EmailCampaignRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) {
@@ -102,14 +79,6 @@ export async function listEmailCampaigns(): Promise<EmailCampaignRow[]> {
     .limit(50);
   return rows;
 }
-
-export type CampaignListRow = EmailCampaignRow & {
-  bodyHtml: string;
-  /** Počet úspěšně doručených (status='sent') – reálně z `email_campaign_recipients`. */
-  sentCount: number;
-  /** Počet chyb při odeslání. */
-  failedCount: number;
-};
 
 /** Rozšířené data pro novou UI (historie + pokračování draftu). */
 export async function listEmailCampaignsFull(): Promise<CampaignListRow[]> {
@@ -163,12 +132,6 @@ export async function listEmailCampaignsFull(): Promise<CampaignListRow[]> {
     failedCount: failedMap.get(r.id) ?? 0,
   }));
 }
-
-export type SegmentCount = {
-  id: CampaignSegmentId;
-  label: string;
-  count: number;
-};
 
 /** Spočítá počet "eligible" příjemců pro každý segment v aktuálním tenantu. */
 export async function getSegmentCounts(): Promise<SegmentCount[]> {
@@ -229,15 +192,6 @@ export async function createEmailCampaignDraft(input: {
   if (!row) throw new Error("Kampaň se nepodařilo vytvořit.");
   return { id: row.id };
 }
-
-export type SendEmailCampaignResult = {
-  ok: true;
-  sent: number;
-  skipped: number;
-  failed: number;
-  capped?: boolean;
-  cap?: number;
-};
 
 /**
  * Odešle draft kampaně způsobilým kontaktům (e-mail, ne do_not_email, ne archiv).

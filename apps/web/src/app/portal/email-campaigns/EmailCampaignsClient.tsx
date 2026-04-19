@@ -35,11 +35,13 @@ import {
   deleteEmailCampaignDraft,
   sendEmailCampaign,
   sendTestCampaign,
+} from "@/app/actions/email-campaigns";
+import {
   CAMPAIGN_SEGMENTS,
   type CampaignListRow,
   type CampaignSegmentId,
   type SegmentCount,
-} from "@/app/actions/email-campaigns";
+} from "@/lib/email/campaign-shared";
 import { CAMPAIGN_TEMPLATES, findTemplate } from "@/lib/email/campaign-templates";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
