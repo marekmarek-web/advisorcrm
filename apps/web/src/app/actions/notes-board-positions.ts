@@ -4,7 +4,17 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db, advisorPreferences, eq, and } from "db";
 
-export type NotesBoardStoredPosition = { x: number; y: number; z: number; pinned: boolean };
+/**
+ * `order` je volitelný index v mobilním masonry feedu. Když chybí, UI odvodí
+ * pořadí ze `z` desc (pinned první). Na free-boardu se ignoruje.
+ */
+export type NotesBoardStoredPosition = {
+  x: number;
+  y: number;
+  z: number;
+  pinned: boolean;
+  order?: number;
+};
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -27,7 +37,13 @@ function sanitizePositions(raw: unknown): Record<string, NotesBoardStoredPositio
     if (!Number.isFinite(z)) z = 1;
     z = Math.min(99999, Math.max(1, Math.floor(z)));
     const pinned = Boolean(o.pinned);
-    out[key] = { x, y, z, pinned };
+    const orderRaw = typeof o.order === "number" ? o.order : Number(o.order);
+    const hasOrder = Number.isFinite(orderRaw);
+    const base: NotesBoardStoredPosition = { x, y, z, pinned };
+    if (hasOrder) {
+      base.order = Math.min(99999, Math.max(0, Math.floor(orderRaw)));
+    }
+    out[key] = base;
   }
   return out;
 }
