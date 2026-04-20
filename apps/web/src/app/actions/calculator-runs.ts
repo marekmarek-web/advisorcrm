@@ -37,6 +37,20 @@ export async function logCalculatorRun(params: {
   if (!hasPermission(auth.roleName, "contacts:read")) {
     throw new Error("Forbidden");
   }
+
+  let safeContactId: string | null = null;
+  if (params.contactId) {
+    const [contact] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, params.contactId), eq(contacts.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!contact) {
+      throw new Error("Kontakt nepatří do vašeho workspace.");
+    }
+    safeContactId = contact.id;
+  }
+
   const [row] = await db
     .insert(calculatorRuns)
     .values({
@@ -44,7 +58,7 @@ export async function logCalculatorRun(params: {
       createdBy: auth.userId,
       calculatorType: params.calculatorType,
       label: params.label ?? null,
-      contactId: params.contactId ?? null,
+      contactId: safeContactId,
       inputs: params.inputs ?? null,
       outputs: params.outputs ?? null,
     })

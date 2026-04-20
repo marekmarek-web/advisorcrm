@@ -14,8 +14,8 @@ export function getBillingReturnUrls(base: string, ctx: StripeBillingContext) {
     };
   }
   return {
-    successUrl: `${b}/portal/profile?tab=fakturace&billing=success`,
-    cancelUrl: `${b}/portal/profile?tab=fakturace&billing=cancel`,
-    portalReturnUrl: `${b}/portal/profile?tab=fakturace`,
+    successUrl: `${b}/portal/setup?tab=fakturace&billing=success`,
+    cancelUrl: `${b}/portal/setup?tab=fakturace&billing=cancel`,
+    portalReturnUrl: `${b}/portal/setup?tab=fakturace`,
   };
 }

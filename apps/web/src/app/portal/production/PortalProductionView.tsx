@@ -376,7 +376,11 @@ export function PortalProductionView() {
                     <span
                       className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
                       style={{ background: "var(--wp-bg)", color: "var(--wp-text-muted)" }}
-                      title={`${data.careerPosition.positionLabel} · ${data.careerPosition.bjValueCzk.toLocaleString("cs-CZ")} Kč / BJ`}
+                      title={
+                        data.careerPosition.bjBonusCzk > 0
+                          ? `${data.careerPosition.positionLabel} · ${data.careerPosition.bjValueCzk.toLocaleString("cs-CZ")} Kč / BJ (základ ${data.careerPosition.bjBaseValueCzk.toLocaleString("cs-CZ")} + výjimka ${data.careerPosition.bjBonusCzk.toLocaleString("cs-CZ")})`
+                          : `${data.careerPosition.positionLabel} · ${data.careerPosition.bjValueCzk.toLocaleString("cs-CZ")} Kč / BJ`
+                      }
                     >
                       {data.careerPosition.positionKey}
                     </span>
@@ -390,7 +394,7 @@ export function PortalProductionView() {
                 </div>
                 <div className="text-[11px] font-medium mt-1" style={{ color: "var(--wp-text-muted)" }}>
                   {data.totalBjCzk == null ? (
-                    <Link href="/portal/profile?tab=osobni" className="underline hover:no-underline">
+                    <Link href="/portal/setup?tab=osobni" className="underline hover:no-underline">
                       Nastavit pozici →
                     </Link>
                   ) : (

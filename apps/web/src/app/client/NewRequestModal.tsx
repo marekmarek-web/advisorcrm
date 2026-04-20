@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight, Paperclip, X } from "lucide-react";
 import { createClientPortalRequestFromForm } from "@/app/actions/client-portal-requests";
+import { summarizeAttachmentOutcomes } from "@/app/lib/client-portal/attachment-outcome";
 
 type NewRequestModalProps = {
   open: boolean;
@@ -73,6 +74,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
   const [description, setDescription] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [attachmentWarning, setAttachmentWarning] = useState<string | null>(null);
 
   const selectedCategory = useMemo(
     () => CATEGORIES.find((category) => category.id === categoryId) ?? null,
@@ -87,6 +89,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
     setDescription("");
     setFiles([]);
     setError(null);
+    setAttachmentWarning(null);
     onClose();
   }
 
@@ -106,6 +109,8 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
         setError(result.error || "Požadavek se nepodařilo odeslat.");
         return;
       }
+      const { warning } = summarizeAttachmentOutcomes(result.attachments);
+      setAttachmentWarning(warning);
       router.refresh();
       setStep(4);
     });
@@ -276,6 +281,11 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
                 Požadavek je v poradenském portálu v pipeline. Pokud má váš tým v Aidvisoře nastavený e-mail pro
                 oznámení, odešle se také upozornění na schránku pro tým.
               </p>
+              {attachmentWarning && (
+                <div className="mb-6 w-full max-w-sm whitespace-pre-line rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800">
+                  {attachmentWarning}
+                </div>
+              )}
               <button
                 onClick={resetAndClose}
                 className="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"

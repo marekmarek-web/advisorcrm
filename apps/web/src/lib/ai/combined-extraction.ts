@@ -829,9 +829,35 @@ export async function runCombinedClassifyAndExtract(params: {
   // Fourth attempt: nuclear fallback — strip all problematic fields and parse with minimal valid shape.
   // Preserves documentClassification and valid extractedFields, drops everything else to defaults.
   const nuclear = coercedAggressive as Record<string, unknown>;
+
+  /**
+   * Best-effort preservation of `reviewWarnings` — drop only the entries that
+   * really can't be parsed, keep the rest. We salvage any `{ severity, code,
+   * message }`-shaped objects with string fields instead of nuking the full
+   * array; losing all warnings has caused advisors to approve reviews without
+   * seeing real red flags (audit finding).
+   */
+  const rawWarnings = Array.isArray(nuclear.reviewWarnings) ? (nuclear.reviewWarnings as unknown[]) : [];
+  type PreservedWarning = { severity: string; code: string; message: string; field?: string };
+  const preservedWarnings: PreservedWarning[] = rawWarnings
+    .map((entry): PreservedWarning | null => {
+      if (!entry || typeof entry !== "object") return null;
+      const r = entry as Record<string, unknown>;
+      const severityRaw = typeof r.severity === "string" ? r.severity.toLowerCase() : "info";
+      const severity =
+        severityRaw === "error" || severityRaw === "warning" || severityRaw === "info"
+          ? severityRaw
+          : "info";
+      const message = typeof r.message === "string" && r.message.trim() ? r.message : null;
+      if (!message) return null;
+      const code = typeof r.code === "string" && r.code.trim() ? r.code : "UNKNOWN";
+      const field = typeof r.field === "string" && r.field.trim() ? r.field : undefined;
+      return field ? { severity, code, message, field } : { severity, code, message };
+    })
+    .filter((v): v is PreservedWarning => v !== null);
+
   const nuclearMinimal = {
     ...nuclear,
-    // Strip potentially broken nested objects to let Zod defaults take over
     productsOrObligations: [],
     financialTerms: {},
     serviceTerms: {},
@@ -839,7 +865,7 @@ export async function runCombinedClassifyAndExtract(params: {
     candidateMatches: undefined,
     sectionSensitivity: {},
     relationshipInference: undefined,
-    reviewWarnings: [],  // nuclear: strip to empty — severity coercion should have run first; if still failing, drop all
+    reviewWarnings: preservedWarnings,
     suggestedActions: Array.isArray(nuclear.suggestedActions) ? nuclear.suggestedActions : [],
     parties: (nuclear.parties && typeof nuclear.parties === "object" && !Array.isArray(nuclear.parties)) ? nuclear.parties : {},
     extractedFields: (nuclear.extractedFields && typeof nuclear.extractedFields === "object" && !Array.isArray(nuclear.extractedFields)) ? nuclear.extractedFields : {},
@@ -857,11 +883,29 @@ export async function runCombinedClassifyAndExtract(params: {
     };
   }
 
+  // Preserved warnings may themselves be the reason for the remaining Zod failure — retry with empty.
+  const nuclearEmptyWarnings = { ...nuclearMinimal, reviewWarnings: [] };
+  const parsedNuclearEmpty = documentReviewEnvelopeSchema.safeParse(nuclearEmptyWarnings);
+  if (parsedNuclearEmpty.success) {
+    console.warn(
+      "[combined-extraction] nuclear fallback succeeded after dropping warnings — warnings lost",
+      {
+        preservedWarningsCount: preservedWarnings.length,
+        rawHead: rawText.slice(0, 200),
+      },
+    );
+    return {
+      raw: rawText,
+      envelope: parsedNuclearEmpty.data,
+    };
+  }
+
   // All coercion attempts failed — throw coerced error (better signal) so combined path falls back
   console.warn("[combined-extraction] all coercion attempts failed", {
     firstAttemptErrors: parsed.error.issues.slice(0, 5).map((i) => ({ path: i.path.join("."), message: i.message })),
     aggressiveErrors: parsedAggressive.error.issues.slice(0, 5).map((i) => ({ path: i.path.join("."), message: i.message })),
     nuclearErrors: parsedNuclear.error.issues.slice(0, 5).map((i) => ({ path: i.path.join("."), message: i.message })),
+    nuclearEmptyErrors: parsedNuclearEmpty.error.issues.slice(0, 5).map((i) => ({ path: i.path.join("."), message: i.message })),
     rawHead: rawText.slice(0, 300),
   });
   throw new z.ZodError(parsedAggressive.error.issues);

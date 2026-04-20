@@ -8,11 +8,13 @@ import {
   emailCampaigns,
   emailCampaignRecipients,
   contacts,
+  unsubscribeTokens,
   eq,
   and,
   isNull,
   isNotNull,
   desc,
+  lt,
   sql,
 } from "db";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
@@ -52,11 +54,49 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function personalizeHtml(html: string, firstName: string, lastName: string): string {
+function personalizeHtml(
+  html: string,
+  firstName: string,
+  lastName: string,
+  unsubscribeUrl?: string,
+): string {
   const name = [firstName, lastName].filter(Boolean).join(" ").trim() || "kliente";
+  const unsub = unsubscribeUrl?.trim() || "";
   return html
     .replace(/\{\{jmeno\}\}/gi, escapeHtml(firstName.trim() || name))
-    .replace(/\{\{cele_jmeno\}\}/gi, escapeHtml(name));
+    .replace(/\{\{cele_jmeno\}\}/gi, escapeHtml(name))
+    .replace(/\{\{unsubscribe_url\}\}/gi, unsub);
+}
+
+function makeUnsubscribeToken(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
+function unsubscribeTokenExpiry(): Date {
+  return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+}
+
+function appBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    "https://www.aidvisora.cz"
+  ).replace(/\/$/, "");
+}
+
+async function mintUnsubscribeUrlForContact(contactId: string): Promise<string | null> {
+  try {
+    const token = makeUnsubscribeToken();
+    await db.insert(unsubscribeTokens).values({
+      contactId,
+      token,
+      expiresAt: unsubscribeTokenExpiry(),
+    });
+    return `${appBaseUrl()}/client/unsubscribe?token=${token}`;
+  } catch (e) {
+    console.error("[email-campaigns] unsubscribe token mint failed", { contactId, error: e });
+    return null;
+  }
 }
 
 export async function listEmailCampaigns(): Promise<EmailCampaignRow[]> {
@@ -257,82 +297,101 @@ export async function sendEmailCampaign(
   let sent = 0;
   let failed = 0;
   let skipped = 0;
+  let terminalWritten = false;
 
-  for (const c of targets) {
-    const email = c.email!.trim();
-    const html = personalizeHtml(campaign.bodyHtml, c.firstName ?? "", c.lastName ?? "");
-
-    const [recRow] = await db
-      .insert(emailCampaignRecipients)
-      .values({
-        tenantId: auth.tenantId,
-        campaignId,
-        contactId: c.id,
-        email,
-        status: "pending",
-      })
-      .returning({ id: emailCampaignRecipients.id });
-
-    if (!recRow) {
-      skipped += 1;
-      continue;
-    }
-
-    const result = await sendEmail({
-      to: email,
-      subject: campaign.subject,
-      html,
-    });
-
-    if (result.ok) {
-      sent += 1;
+  async function writeTerminalStatus() {
+    if (terminalWritten) return;
+    terminalWritten = true;
+    const finalStatus = failed > 0 && sent === 0 ? "failed" : "sent";
+    try {
       await db
-        .update(emailCampaignRecipients)
+        .update(emailCampaigns)
         .set({
-          status: "sent",
-          providerMessageId: result.messageId ?? null,
+          status: finalStatus,
+          updatedAt: new Date(),
           sentAt: new Date(),
         })
-        .where(eq(emailCampaignRecipients.id, recRow.id));
-      await logNotification({
-        tenantId: auth.tenantId,
-        contactId: c.id,
-        template: CAMPAIGN_TEMPLATE_LOG,
-        subject: campaign.subject,
-        recipient: email,
-        status: "sent",
-        meta: { campaignId, campaignName: campaign.name },
-      });
-    } else {
-      failed += 1;
-      await db
-        .update(emailCampaignRecipients)
-        .set({
-          status: "failed",
-          errorMessage: result.error ?? "unknown",
-        })
-        .where(eq(emailCampaignRecipients.id, recRow.id));
-      await logNotification({
-        tenantId: auth.tenantId,
-        contactId: c.id,
-        template: CAMPAIGN_TEMPLATE_LOG,
-        subject: campaign.subject,
-        recipient: email,
-        status: "failed",
-        meta: { campaignId, error: result.error },
-      });
+        .where(eq(emailCampaigns.id, campaignId));
+    } catch (e) {
+      console.error("[sendEmailCampaign] failed to write terminal status", { campaignId, error: e });
     }
   }
 
-  const finalStatus = failed > 0 && sent === 0 ? "failed" : "sent";
-  await db
-    .update(emailCampaigns)
-    .set({
-      status: finalStatus,
-      updatedAt: new Date(),
-      sentAt: new Date(),
-    })
-    .where(eq(emailCampaigns.id, campaignId));
+  try {
+    for (const c of targets) {
+      const email = c.email!.trim();
+      const unsubscribeUrl = (await mintUnsubscribeUrlForContact(c.id)) ?? undefined;
+      const html = personalizeHtml(
+        campaign.bodyHtml,
+        c.firstName ?? "",
+        c.lastName ?? "",
+        unsubscribeUrl,
+      );
+
+      const [recRow] = await db
+        .insert(emailCampaignRecipients)
+        .values({
+          tenantId: auth.tenantId,
+          campaignId,
+          contactId: c.id,
+          email,
+          status: "pending",
+        })
+        .returning({ id: emailCampaignRecipients.id });
+
+      if (!recRow) {
+        skipped += 1;
+        continue;
+      }
+
+      const result = await sendEmail({
+        to: email,
+        subject: campaign.subject,
+        html,
+      });
+
+      if (result.ok) {
+        sent += 1;
+        await db
+          .update(emailCampaignRecipients)
+          .set({
+            status: "sent",
+            providerMessageId: result.messageId ?? null,
+            sentAt: new Date(),
+          })
+          .where(eq(emailCampaignRecipients.id, recRow.id));
+        await logNotification({
+          tenantId: auth.tenantId,
+          contactId: c.id,
+          template: CAMPAIGN_TEMPLATE_LOG,
+          subject: campaign.subject,
+          recipient: email,
+          status: "sent",
+          meta: { campaignId, campaignName: campaign.name },
+        });
+      } else {
+        failed += 1;
+        await db
+          .update(emailCampaignRecipients)
+          .set({
+            status: "failed",
+            errorMessage: result.error ?? "unknown",
+          })
+          .where(eq(emailCampaignRecipients.id, recRow.id));
+        await logNotification({
+          tenantId: auth.tenantId,
+          contactId: c.id,
+          template: CAMPAIGN_TEMPLATE_LOG,
+          subject: campaign.subject,
+          recipient: email,
+          status: "failed",
+          meta: { campaignId, error: result.error },
+        });
+      }
+    }
+  } finally {
+    await writeTerminalStatus();
+  }
 
   return {
     ok: true,
@@ -342,6 +401,56 @@ export async function sendEmailCampaign(
     capped,
     cap: MAX_RECIPIENTS_PER_SEND,
   };
+}
+
+/**
+ * Reclaim campaigns that are stuck in `sending` longer than the watchdog
+ * window. Called by a cron or manually from the admin UI. Safe: only flips
+ * campaigns whose last update is in the past (beyond cutoff).
+ */
+const SENDING_WATCHDOG_MINUTES = 15;
+
+export async function reapStuckSendingCampaigns(
+  minutes: number = SENDING_WATCHDOG_MINUTES,
+): Promise<{ reaped: number }> {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "contacts:write")) {
+    throw new Error("Nemáte oprávnění spustit reclamation kampaní.");
+  }
+  const cutoff = new Date(Date.now() - minutes * 60 * 1000);
+  const stuck = await db
+    .select({
+      id: emailCampaigns.id,
+      sent: sql<number>`count(*) filter (where ${emailCampaignRecipients.status} = 'sent')::int`,
+      failed: sql<number>`count(*) filter (where ${emailCampaignRecipients.status} = 'failed')::int`,
+    })
+    .from(emailCampaigns)
+    .leftJoin(
+      emailCampaignRecipients,
+      and(
+        eq(emailCampaignRecipients.campaignId, emailCampaigns.id),
+        eq(emailCampaignRecipients.tenantId, auth.tenantId),
+      ),
+    )
+    .where(
+      and(
+        eq(emailCampaigns.tenantId, auth.tenantId),
+        eq(emailCampaigns.status, "sending"),
+        lt(emailCampaigns.updatedAt, cutoff),
+      ),
+    )
+    .groupBy(emailCampaigns.id);
+
+  let reaped = 0;
+  for (const s of stuck) {
+    const terminal = s.failed > 0 && s.sent === 0 ? "failed" : "sent";
+    await db
+      .update(emailCampaigns)
+      .set({ status: terminal, updatedAt: new Date(), sentAt: new Date() })
+      .where(eq(emailCampaigns.id, s.id));
+    reaped += 1;
+  }
+  return { reaped };
 }
 
 /**
@@ -395,8 +504,9 @@ export async function sendTestCampaign(input: {
     return { ok: false, error: "Nepodařilo se zjistit váš e-mail. Vyplňte ho ručně." };
   }
 
-  const html = personalizeHtml(bodyHtml, "Jan", "Jan Novák");
-  const previewSubject = personalizeHtml(subject, "Jan", "Jan Novák");
+  const previewUnsubscribeUrl = `${appBaseUrl()}/client/unsubscribe`;
+  const html = personalizeHtml(bodyHtml, "Jan", "Jan Novák", previewUnsubscribeUrl);
+  const previewSubject = personalizeHtml(subject, "Jan", "Jan Novák", previewUnsubscribeUrl);
 
   const result = await sendEmail({
     to,

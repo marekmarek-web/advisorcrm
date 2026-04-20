@@ -72,7 +72,7 @@ export default async function CalculatorHistoryPage() {
                 <div className="flex items-center gap-3">
                   {item.contactId && (
                     <Link
-                      href={`/dashboard/contacts/${item.contactId}${buildOfferLink(
+                      href={`/portal/contacts/${item.contactId}${buildOfferLink(
                         item.id,
                         item.calculatorType,
                         item.label ?? item.contactName ?? calculatorTypeLabelCs(item.calculatorType),

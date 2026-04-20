@@ -882,6 +882,7 @@ export function clientServiceDueReminderTemplate(params: {
   firstName: string | null;
   lastName: string | null;
   nextServiceDue: string;
+  unsubscribeUrl?: string;
 }) {
   const displayName = [params.firstName, params.lastName].filter(Boolean).join(" ").trim();
 
@@ -891,6 +892,7 @@ export function clientServiceDueReminderTemplate(params: {
       `připomínáme, že máte naplánovaný <strong style="color:#0B1021;">servisní termín</strong> (${e(params.nextServiceDue)}). Pro domluvení detailů se obraťte na svého poradce.`,
       0,
     ),
+    unsubscribeLine(params.unsubscribeUrl),
   ].join("");
 
   return buildTemplate({

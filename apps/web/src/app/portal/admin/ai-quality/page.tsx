@@ -81,6 +81,7 @@ export default function AIControlPlane() {
   // Dead-letter
   const [deadLetters, setDeadLetters] = useState<DeadLetterRow[]>([]);
   const [deadLetterLoading, setDeadLetterLoading] = useState(false);
+  const [deadLetterError, setDeadLetterError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== "quality") return;
@@ -107,8 +108,19 @@ export default function AIControlPlane() {
   useEffect(() => {
     if (activeTab !== "dead-letter" || deadLetters.length > 0) return;
     setDeadLetterLoading(true);
+    setDeadLetterError(null);
     getDeadLetterItems()
-      .then(setDeadLetters)
+      .then((rows) => {
+        setDeadLetters(rows);
+      })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : "";
+        setDeadLetterError(
+          msg === "Forbidden"
+            ? "Nemáte oprávnění prohlížet dead-letter frontu."
+            : "Nepodařilo se načíst dead-letter frontu.",
+        );
+      })
       .finally(() => setDeadLetterLoading(false));
   }, [activeTab, deadLetters.length]);
 
@@ -317,6 +329,10 @@ export default function AIControlPlane() {
           </p>
           {deadLetterLoading ? (
             <p className="text-sm text-[color:var(--wp-text-secondary)]">Načítám...</p>
+          ) : deadLetterError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-sm font-medium text-red-700">{deadLetterError}</p>
+            </div>
           ) : deadLetters.length === 0 ? (
             <div className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-8 text-center">
               <p className="text-sm font-medium text-emerald-600">Žádné položky v dead-letteru. ✓</p>

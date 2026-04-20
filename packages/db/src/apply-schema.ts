@@ -231,6 +231,7 @@ ALTER TABLE contact_coverage ADD COLUMN IF NOT EXISTS fa_item_id uuid REFERENCES
 ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS fund_library jsonb;
 ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS report_contact_email text;
 ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS notes_board_positions jsonb;
+ALTER TABLE advisor_preferences ADD COLUMN IF NOT EXISTS career_bj_bonus_czk numeric(10, 2);
 CREATE TABLE IF NOT EXISTS fund_add_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

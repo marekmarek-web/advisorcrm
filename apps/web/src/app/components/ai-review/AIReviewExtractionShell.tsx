@@ -526,25 +526,53 @@ export function AIReviewExtractionShell({
     }
   }, [doc.id, doc.matchedClientId, router, toast]);
 
-  const handleApproveClick = useCallback(() => {
+  const handleApproveClick = useCallback(async () => {
     setApplyOverrideEnabled(true);
     if (onConfirmFinalContract && proposalBarrierReasons.length > 0) {
-      void Promise.resolve(onConfirmFinalContract(proposalBarrierReasons)).catch(() => {});
+      try {
+        await onConfirmFinalContract(proposalBarrierReasons);
+      } catch (e) {
+        const message =
+          e instanceof Error && e.message.trim()
+            ? e.message
+            : "Potvrzení finální smlouvy se nezdařilo. Zkuste to znovu.";
+        toast.showToast(message, "error");
+        return;
+      }
     }
-    void Promise.resolve(onApprove(state.editedFields));
-  }, [onApprove, onConfirmFinalContract, proposalBarrierReasons, state.editedFields]);
+    try {
+      await onApprove(state.editedFields);
+    } catch (e) {
+      const message = e instanceof Error && e.message.trim() ? e.message : "Schválení se nezdařilo.";
+      toast.showToast(message, "error");
+    }
+  }, [onApprove, onConfirmFinalContract, proposalBarrierReasons, state.editedFields, toast]);
 
-  const handleApproveAndApplyClick = useCallback(() => {
+  const handleApproveAndApplyClick = useCallback(async () => {
     if (!onApproveAndApply) return;
     setApplyOverrideEnabled(true);
     const overrideOpts = proposalBarrierReasons.length > 0
       ? { overrideGateReasons: proposalBarrierReasons, overrideReason: "Poradce potvrdil extrahované údaje a schválil propsání do Aidvisory." }
       : undefined;
     if (onConfirmFinalContract && proposalBarrierReasons.length > 0) {
-      void Promise.resolve(onConfirmFinalContract(proposalBarrierReasons)).catch(() => {});
+      try {
+        await onConfirmFinalContract(proposalBarrierReasons);
+      } catch (e) {
+        const message =
+          e instanceof Error && e.message.trim()
+            ? e.message
+            : "Potvrzení finální smlouvy se nezdařilo. Zkuste to znovu.";
+        toast.showToast(message, "error");
+        return;
+      }
     }
-    void Promise.resolve(onApproveAndApply(state.editedFields, overrideOpts));
-  }, [onApproveAndApply, onConfirmFinalContract, proposalBarrierReasons, state.editedFields]);
+    try {
+      await onApproveAndApply(state.editedFields, overrideOpts);
+    } catch (e) {
+      const message = e instanceof Error && e.message.trim() ? e.message : "Schválení se nezdařilo.";
+      toast.showToast(message, "error");
+    }
+  }, [onApproveAndApply, onConfirmFinalContract, proposalBarrierReasons, state.editedFields, toast]);
 
   const handleDownloadPdf = useCallback(async () => {
     setPdfExportBusy(true);

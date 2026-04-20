@@ -124,6 +124,8 @@ export default function ContractReviewDetailPage() {
   /** Aktuální iterace backoff pollingu (pro visibility + hidden interval). */
   const pollRunRef = useRef<(() => Promise<void>) | null>(null);
   const processingStartedRef = useRef(false);
+  /** `pdfUrl` zrcadlo pro load/poller, abychom neinvaliovali useCallback pokaždé, když se PDF URL načte — dříve to restartovalo polling a způsobovalo re-entrance race. */
+  const pdfUrlRef = useRef("");
 
   const loadPdf = useCallback(async () => {
     try {
@@ -132,6 +134,7 @@ export default function ContractReviewDetailPage() {
         const data = (await res.json()) as { url?: string };
         const url = data.url;
         if (url) {
+          pdfUrlRef.current = url;
           setPdfUrl(url);
           setDoc((prev) => (prev ? { ...prev, pdfUrl: url } : prev));
         }
@@ -154,14 +157,14 @@ export default function ContractReviewDetailPage() {
       const data = await res.json();
       setProcessingStatus(data.processingStatus ?? null);
       setMatchedClientId(typeof data.matchedClientId === "string" ? data.matchedClientId : null);
-      const mapped = mapApiToExtractionDocument(data, pdfUrl);
+      const mapped = mapApiToExtractionDocument(data, pdfUrlRef.current);
       setDoc(mapped);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Chyba");
     } finally {
       setLoading(false);
     }
-  }, [id, pdfUrl]);
+  }, [id]);
 
   const stopPolling = useCallback(() => {
     if (pollTimeoutRef.current != null) {
@@ -200,7 +203,7 @@ export default function ContractReviewDetailPage() {
         if (status !== "uploaded" && status !== "processing") {
           stopPolling();
           pollBackoffMsRef.current = 2500;
-          const mapped = mapApiToExtractionDocument(data, pdfUrl);
+          const mapped = mapApiToExtractionDocument(data, pdfUrlRef.current);
           setDoc(mapped);
           setLoading(false);
           if (status === "failed") {
@@ -225,7 +228,7 @@ export default function ContractReviewDetailPage() {
     pollTimeoutRef.current = window.setTimeout(() => {
       void run();
     }, pollBackoffMsRef.current);
-  }, [id, pdfUrl, stopPolling]);
+  }, [id, stopPolling]);
 
   const triggerProcessing = useCallback(async () => {
     if (processingStartedRef.current) return;
@@ -274,11 +277,16 @@ export default function ContractReviewDetailPage() {
         setProcessingStatus("processing");
         setProcessingStepHint("preprocessing");
         startPolling();
+        return;
       }
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      toast.showToast(body.error ?? "Spuštění zpracování selhalo.", "error");
+    } catch {
+      toast.showToast("Spuštění zpracování selhalo.", "error");
     } finally {
       setScanRetryBusy(false);
     }
-  }, [id, startPolling]);
+  }, [id, startPolling, toast]);
 
   useEffect(() => {
     return () => stopPolling();

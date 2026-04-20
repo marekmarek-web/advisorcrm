@@ -40,6 +40,7 @@ Při **nové** migraci nebo významné úpravě `.sql` přidejte **jeden řádek
 | 2026-04-19 | WS-2 Batch 2 / M3+M4 — RLS ON + FORCE + tenant-scoped policies na `messages` (včetně participant scope pro klienta), `message_attachments`, `contact_coverage`, a hlavní PII/document/contract tabulky (contacts, documents, tasks, …) | [rls-m3-m4-messages-and-core-tables-2026-04-19.sql](../packages/db/migrations/rls-m3-m4-messages-and-core-tables-2026-04-19.sql) |
 | 2026-04-19 | Návrhy od poradce v klientské zóně: tabulka `advisor_proposals` (generated `savings_annual`, segment/status enum checks), RLS tenant scope + client scope přes `client_contacts`; klient vidí jen publikované a může zareagovat | [advisor-proposals-2026-04-19.sql](../packages/db/migrations/advisor-proposals-2026-04-19.sql) |
 | 2026-04-20 | WS-1 Billing: append-only `billing_audit_log` (tenant RLS, REVOKE UPDATE/DELETE), dunning sloupce na `subscriptions` (grace_period_ends_at, failed_payment_attempts, last_payment_failed_at, restricted_at, promo_code) a VAT capture na `tenants` (billing_ico, billing_dic, billing_company_name, billing_address_line, billing_notes) | [billing-audit-and-dunning-2026-04-20.sql](../packages/db/migrations/billing-audit-and-dunning-2026-04-20.sql) |
+| 2026-04-20 | Kariérní BJ: volitelný osobní příplatek `career_bj_bonus_czk` na `advisor_preferences` (Kč za 1 BJ navíc k pozici) | [advisor_preferences_career_bj_bonus_2026-04-20.sql](../packages/db/migrations/advisor_preferences_career_bj_bonus_2026-04-20.sql) |
 
 ---
 

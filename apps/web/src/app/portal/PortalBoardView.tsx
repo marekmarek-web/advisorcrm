@@ -37,6 +37,7 @@ import {
 } from "@/app/lib/status-labels";
 import { Filter, ArrowUpDown } from "lucide-react";
 import { useConfirm } from "@/app/components/ConfirmDialog";
+import { useToast } from "@/app/components/Toast";
 
 const GROUP_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#a25ddc", "#ff642e", "#ffcb00", "#037f4c", "#333333"];
 
@@ -73,6 +74,9 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
 
   const router = useRouter();
   const confirm = useConfirm();
+  const toast = useToast();
+  /** Abychom při neúspěchu uvnitř dávky nezobrazovali toast opakovaně (save se opakuje debounced). */
+  const lastBatchFailureKeyRef = useRef<string>("");
   const [board, setBoard] = useState<Board>(() => fallback.board);
   const [activeViewId, setActiveViewId] = useState(() => fallback.activeViewId);
   const [selection, setSelection] = useState<Set<string>>(new Set());
@@ -107,8 +111,28 @@ export function PortalBoardView({ dbViewId, initialBoard }: PortalBoardViewProps
         return item ? { id: item.id, name: item.name, groupId: g.id, cells: item.cells as Record<string, string | number>, sortOrder: gi * 1000 + ii } : null;
       }).filter(Boolean) as Array<{ id: string; name: string; groupId: string; cells: Record<string, string | number>; sortOrder: number }>
     );
-    saveBoardItemsBatch(dbViewId, allItems).catch((err) => console.error("[board] saveBoardItemsBatch failed", err));
-  }, [dbViewId]);
+    saveBoardItemsBatch(dbViewId, allItems)
+      .then((result) => {
+        if (!result || result.failedCount === 0) {
+          lastBatchFailureKeyRef.current = "";
+          return;
+        }
+        const key = result.failures.map((f) => `${f.id}:${f.error}`).join("|");
+        if (key === lastBatchFailureKeyRef.current) return;
+        lastBatchFailureKeyRef.current = key;
+        const names = result.failures.slice(0, 3).map((f) => f.name).filter(Boolean).join(", ");
+        const suffix = result.failedCount > 3 ? ` a dalších ${result.failedCount - 3}` : "";
+        toast.showToast(
+          `Uložení se nezdařilo u ${result.failedCount} položky${names ? ` (${names}${suffix})` : ""}. Změny nejsou uloženy, zkuste znovu.`,
+          "error",
+          6000,
+        );
+      })
+      .catch((err) => {
+        console.error("[board] saveBoardItemsBatch failed", err);
+        toast.showToast("Uložení boardu selhalo. Změny zůstaly pouze lokálně.", "error", 5000);
+      });
+  }, [dbViewId, toast]);
 
   useEffect(() => {
     if (initialLoad.current) {

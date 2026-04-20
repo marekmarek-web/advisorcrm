@@ -19,6 +19,7 @@ import {
   LEGAL_DIC_PENDING_NOTE,
   LEGAL_EFFECTIVE_CS,
   LEGAL_ICO,
+  LEGAL_SECURITY_EMAIL,
   LEGAL_SUPPORT_EMAIL,
 } from "@/app/legal/legal-meta";
 import { LegalSubprocessorsTable } from "@/app/legal/LegalSubprocessorsTable";
@@ -267,16 +268,38 @@ export default function BezpecnostPage() {
                 výsledek; stav je k dispozici v rámci enterprise due diligence.
               </p>
             </TopicCard>
-            <TopicCard icon={AlertTriangle} title="Incident response runbook" status="soon">
+            <TopicCard icon={AlertTriangle} title="Incident response runbook" status="live">
               <p>
-                Interní runbook pro detekci, mitigaci, komunikaci a post-mortem. Doplňujeme breach notifikační
-                proces v mezích 72 hodin dle GDPR článku 33.
+                Interní runbook s klasifikací incidentů (P0–P3), reakčními lhůtami, rollback postupy pro
+                aplikaci, databázi i platební bránu a šablonami komunikace. Dostupný pro enterprise due
+                diligence na vyžádání (
+                <a
+                  href={`mailto:${LEGAL_SECURITY_EMAIL}?subject=Security%20%E2%80%93%20runbook`}
+                  className="text-indigo-300 underline underline-offset-4"
+                >
+                  {LEGAL_SECURITY_EMAIL}
+                </a>
+                ).
               </p>
             </TopicCard>
-            <TopicCard icon={Headset} title="Status stránka" status="soon">
+            <TopicCard icon={ShieldCheck} title="Breach playbook (GDPR čl. 33 a 34)" status="live">
+              <p>
+                Samostatný playbook pro porušení zabezpečení osobních údajů — decision tree, 72h notifikační
+                lhůta ÚOOÚ, šablony pro zákazníky i subjekty údajů, forenzní sběr a credential rotace.
+                Dostupný na vyžádání v rámci due diligence.
+              </p>
+            </TopicCard>
+            <TopicCard icon={FileText} title="Sentry alerty a monitoring playbook" status="live">
+              <p>
+                Katalog produkčních alertů (5xx spike, webhook failure, auth burst, LLM cost anomaly, DB
+                saturation) s mapováním na konkrétní kroky v runbooku. Průběžně rozšiřujeme s růstem
+                aplikace.
+              </p>
+            </TopicCard>
+            <TopicCard icon={Headset} title="Veřejná status stránka" status="soon">
               <p>
                 Veřejnou statuspage s historií incidentů a plánovaných údržeb otevřeme spolu se začátkem
-                placeného provozu.
+                placeného provozu. Do té doby o incidentech informujeme dotčené workspace adminy e-mailem.
               </p>
             </TopicCard>
           </div>
@@ -403,13 +426,13 @@ export default function BezpecnostPage() {
                 <div>
                   <p className="text-sm font-bold text-white">Bezpečnostní kontakt</p>
                   <a
-                    href={`mailto:${LEGAL_SUPPORT_EMAIL}?subject=Security%20report`}
+                    href={`mailto:${LEGAL_SECURITY_EMAIL}?subject=Security%20report`}
                     className="text-sm text-indigo-300 underline underline-offset-4"
                   >
-                    {LEGAL_SUPPORT_EMAIL}
+                    {LEGAL_SECURITY_EMAIL}
                   </a>
                   <p className="mt-1 text-xs text-slate-500">
-                    Předmět začněte slovem „Security&nbsp;—&nbsp;…&rdquo;, pomůže nám to rychleji triagovat.
+                    Dedikovaný kanál pro bezpečnostní hlášení (oddělený od běžné podpory). Odpovídáme do 72 h.
                   </p>
                 </div>
               </div>

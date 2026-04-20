@@ -601,10 +601,15 @@ export async function updateContact(
       throw new Error("Nebylo předáno žádné pole k aktualizaci kontaktu.");
     }
 
-    await tx
+    const updated = await tx
       .update(contacts)
       .set(patch)
-      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, id)));
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, id)))
+      .returning({ id: contacts.id });
+
+    if (updated.length === 0) {
+      throw new Error("Kontakt nebyl nalezen nebo nepatří do vašeho workspace.");
+    }
 
     // WS-2 Batch 2 / minimal audit coverage — client profile update.
     // Meta cíleně neobsahuje hodnoty polí (PII), jen seznam změněných klíčů.

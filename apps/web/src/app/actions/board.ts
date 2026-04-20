@@ -274,6 +274,12 @@ export async function deleteBoardItems(itemIds: string[]) {
   }
 }
 
+export type SaveBoardItemsBatchResult = {
+  savedCount: number;
+  failedCount: number;
+  failures: Array<{ id: string; name: string; error: string }>;
+};
+
 export async function saveBoardItemsBatch(
   viewId: string,
   items: Array<{
@@ -283,9 +289,12 @@ export async function saveBoardItemsBatch(
     cells: Record<string, string | number>;
     sortOrder: number;
   }>
-) {
+): Promise<SaveBoardItemsBatchResult> {
   const auth = await requireAuthInAction();
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const failures: Array<{ id: string; name: string; error: string }> = [];
+  let savedCount = 0;
 
   for (const item of items) {
     try {
@@ -299,6 +308,7 @@ export async function saveBoardItemsBatch(
           sortOrder: item.sortOrder,
         }).returning({ id: boardItems.id });
         item.id = row.id;
+        savedCount += 1;
         continue;
       }
 
@@ -330,8 +340,16 @@ export async function saveBoardItemsBatch(
           sortOrder: item.sortOrder,
         });
       }
+      savedCount += 1;
     } catch (err) {
       console.error(`[board] saveBoardItemsBatch failed for item ${item.id}:`, err);
+      failures.push({
+        id: item.id,
+        name: item.name,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
+
+  return { savedCount, failedCount: failures.length, failures };
 }

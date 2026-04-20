@@ -4,6 +4,7 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { getMembership } from "@/lib/auth/get-membership";
 import { hasPermission } from "@/lib/auth/permissions";
+import type { RoleName } from "@/shared/rolePermissions";
 import { tasks, contacts, opportunities, meetingNotes, eq, and, asc, desc, isNull, isNotNull, gte, lt, lte, sql } from "db";
 import { logActivity } from "./activity";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
@@ -32,13 +33,29 @@ export type TaskCounts = {
   completed: number;
 };
 
+export type TasksScope = "mine" | "team";
+
+/** Resolve an effective scope for the current user. "team" requires team_overview:read; otherwise we fall back to "mine". */
+function resolveTasksScope(
+  auth: { roleName: RoleName },
+  requested: TasksScope | undefined,
+): TasksScope {
+  if (requested === "team" && hasPermission(auth.roleName, "team_overview:read")) return "team";
+  return "mine";
+}
+
 export async function getTasksList(
-  filter?: "all" | "overdue" | "today" | "week" | "completed"
+  filter?: "all" | "overdue" | "today" | "week" | "completed",
+  scope?: TasksScope,
 ): Promise<TaskRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+  const effectiveScope = resolveTasksScope(auth, scope);
 
   const conditions: ReturnType<typeof eq>[] = [eq(tasks.tenantId, auth.tenantId)];
+  if (effectiveScope === "mine") {
+    conditions.push(eq(tasks.assignedTo, auth.userId));
+  }
   const today = new Date().toISOString().slice(0, 10);
 
   switch (filter) {
@@ -112,27 +129,36 @@ export async function getTasksList(
   }));
 }
 
-/** Count of open (incomplete) tasks for the current tenant; for sidebar badge. */
-export async function getOpenTasksCount(): Promise<number> {
+/** Count of open (incomplete) tasks assigned to the current user (defaults to "mine" for sidebar badge). */
+export async function getOpenTasksCount(scope?: TasksScope): Promise<number> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) return 0;
+  const effectiveScope = resolveTasksScope(auth, scope);
+  const scopeCondition =
+    effectiveScope === "mine" ? [eq(tasks.assignedTo, auth.userId)] : [];
   const rows = await withTenantContextFromAuth(auth, (tx) =>
     tx
       .select({ count: sql<number>`count(*)::int` })
       .from(tasks)
-      .where(and(eq(tasks.tenantId, auth.tenantId), isNull(tasks.completedAt))),
+      .where(
+        and(eq(tasks.tenantId, auth.tenantId), isNull(tasks.completedAt), ...scopeCondition),
+      ),
   );
   return Number(rows[0]?.count ?? 0);
 }
 
-export async function getTasksCounts(): Promise<TaskCounts> {
+export async function getTasksCounts(scope?: TasksScope): Promise<TaskCounts> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) return { all: 0, today: 0, week: 0, overdue: 0, completed: 0 };
+  const effectiveScope = resolveTasksScope(auth, scope);
 
   const today = new Date().toISOString().slice(0, 10);
   const weekEnd = new Date();
   weekEnd.setDate(weekEnd.getDate() + 7);
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
+
+  const scopeCondition =
+    effectiveScope === "mine" ? [eq(tasks.assignedTo, auth.userId)] : [];
 
   const rows = await withTenantContextFromAuth(auth, (tx) =>
     tx
@@ -144,7 +170,7 @@ export async function getTasksCounts(): Promise<TaskCounts> {
         completed: sql<number>`count(*) filter (where ${tasks.completedAt} is not null)::int`,
       })
       .from(tasks)
-      .where(eq(tasks.tenantId, auth.tenantId)),
+      .where(and(eq(tasks.tenantId, auth.tenantId), ...scopeCondition)),
   );
 
   const r = rows[0];
@@ -157,13 +183,17 @@ export async function getTasksCounts(): Promise<TaskCounts> {
   };
 }
 
-export async function getTasksForDate(dateStr: string): Promise<TaskRow[]> {
+export async function getTasksForDate(dateStr: string, scope?: TasksScope): Promise<TaskRow[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
-  const conditions = [
+  const effectiveScope = resolveTasksScope(auth, scope);
+  const conditions: ReturnType<typeof eq>[] = [
     eq(tasks.tenantId, auth.tenantId),
     eq(tasks.dueDate, dateStr),
   ];
+  if (effectiveScope === "mine") {
+    conditions.push(eq(tasks.assignedTo, auth.userId));
+  }
   const rows = await withTenantContextFromAuth(auth, (tx) =>
     tx
       .select({

@@ -49,14 +49,26 @@ export default async function PortalLayout({
   }
   const headerList = await headers();
   if (auth.roleName === "Advisor") {
-    const pathname = headerList.get("x-pathname");
+    const pathname =
+      headerList.get("x-pathname") ??
+      headerList.get("next-url") ??
+      (headerList.get("referer")
+        ? (() => {
+            try {
+              return new URL(headerList.get("referer")!).pathname;
+            } catch {
+              return "";
+            }
+          })()
+        : "");
     let contactsCount = -1;
     try {
       contactsCount = await getContactsCount();
     } catch {
       contactsCount = -1;
     }
-    if (pathname && !pathname.startsWith("/portal/setup") && contactsCount === 0) {
+    const onSetupPage = pathname.startsWith("/portal/setup");
+    if (!onSetupPage && contactsCount === 0) {
       redirect("/portal/setup");
     }
   }

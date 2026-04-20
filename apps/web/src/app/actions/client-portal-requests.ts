@@ -461,10 +461,20 @@ const PORTAL_REQUEST_ATTACHMENT_MIMES = new Set([
   "image/webp",
 ]);
 
-async function persistClientPortalRequestFiles(opportunityId: string, files: File[]): Promise<void> {
-  if (files.length === 0) return;
+export type ClientPortalAttachmentOutcome = {
+  fileName: string;
+  status: "uploaded" | "too_large" | "bad_type" | "upload_failed" | "db_failed";
+};
+
+async function persistClientPortalRequestFiles(
+  opportunityId: string,
+  files: File[],
+): Promise<ClientPortalAttachmentOutcome[]> {
+  if (files.length === 0) return [];
   const auth = await requireAuthInAction();
-  if (auth.roleName !== "Client" || !auth.contactId) return;
+  if (auth.roleName !== "Client" || !auth.contactId) {
+    return files.map((f) => ({ fileName: f.name, status: "upload_failed" as const }));
+  }
 
   const [opp] = await db
     .select({ id: opportunities.id })
@@ -477,38 +487,56 @@ async function persistClientPortalRequestFiles(opportunityId: string, files: Fil
       ),
     )
     .limit(1);
-  if (!opp) return;
+  if (!opp) {
+    return files.map((f) => ({ fileName: f.name, status: "upload_failed" as const }));
+  }
 
+  const outcomes: ClientPortalAttachmentOutcome[] = [];
   const admin = createAdminClient();
   for (const file of files) {
     if (!(file instanceof File) || !file.size) continue;
-    if (file.size > PORTAL_REQUEST_ATTACHMENT_MAX_BYTES) continue;
-    if (!PORTAL_REQUEST_ATTACHMENT_MIMES.has(file.type)) continue;
+    if (file.size > PORTAL_REQUEST_ATTACHMENT_MAX_BYTES) {
+      outcomes.push({ fileName: file.name, status: "too_large" });
+      continue;
+    }
+    if (!PORTAL_REQUEST_ATTACHMENT_MIMES.has(file.type)) {
+      outcomes.push({ fileName: file.name, status: "bad_type" });
+      continue;
+    }
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `${auth.tenantId}/${auth.contactId}/portal-request-${opportunityId}-${Date.now()}-${safeName}`;
     const { error: uploadError } = await admin.storage.from("documents").upload(storagePath, file, { upsert: false });
-    if (uploadError) continue;
+    if (uploadError) {
+      console.error("[client-portal-request] upload failed", file.name, uploadError);
+      outcomes.push({ fileName: file.name, status: "upload_failed" });
+      continue;
+    }
 
-    const [docRow] = await db
-      .insert(documents)
-      .values({
-        tenantId: auth.tenantId,
-        contactId: auth.contactId,
-        contractId: null,
-        opportunityId,
-        name: file.name,
-        storagePath,
-        tags: ["požadavek portálu"],
-        mimeType: file.type || null,
-        sizeBytes: file.size,
-        visibleToClient: true,
-        uploadSource: "web",
-        uploadedBy: auth.userId,
-      })
-      .returning({ id: documents.id });
+    try {
+      const [docRow] = await db
+        .insert(documents)
+        .values({
+          tenantId: auth.tenantId,
+          contactId: auth.contactId,
+          contractId: null,
+          opportunityId,
+          name: file.name,
+          storagePath,
+          tags: ["požadavek portálu"],
+          mimeType: file.type || null,
+          sizeBytes: file.size,
+          visibleToClient: true,
+          uploadSource: "web",
+          uploadedBy: auth.userId,
+        })
+        .returning({ id: documents.id });
 
-    const documentId = docRow?.id;
-    if (documentId) {
+      const documentId = docRow?.id;
+      if (!documentId) {
+        outcomes.push({ fileName: file.name, status: "db_failed" });
+        continue;
+      }
+
       await logActivity("document", documentId, "upload", {
         contactId: auth.contactId,
         opportunityId,
@@ -520,8 +548,14 @@ async function persistClientPortalRequestFiles(opportunityId: string, files: Fil
         documentId,
         documentLabel: file.name,
       }).catch(() => {});
+
+      outcomes.push({ fileName: file.name, status: "uploaded" });
+    } catch (err) {
+      console.error("[client-portal-request] document insert failed", file.name, err);
+      outcomes.push({ fileName: file.name, status: "db_failed" });
     }
   }
+  return outcomes;
 }
 
 /**
@@ -529,7 +563,10 @@ async function persistClientPortalRequestFiles(opportunityId: string, files: Fil
  */
 export async function createClientPortalRequestFromForm(
   formData: FormData
-): Promise<{ success: true; id: string } | { success: false; error: string }> {
+): Promise<
+  | { success: true; id: string; attachments?: ClientPortalAttachmentOutcome[] }
+  | { success: false; error: string }
+> {
   const caseType = String(formData.get("caseType") ?? "").trim();
   const subjectRaw = formData.get("subject");
   const descriptionRaw = formData.get("description");
@@ -544,8 +581,8 @@ export async function createClientPortalRequestFromForm(
   });
   if (!created.success) return created;
 
-  await persistClientPortalRequestFiles(created.id, files);
-  return created;
+  const attachments = await persistClientPortalRequestFiles(created.id, files);
+  return { ...created, attachments };
 }
 
 /**

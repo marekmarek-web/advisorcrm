@@ -84,6 +84,12 @@
       "fn": "findReasonByCode",
       "table": "terminationReasonCatalog",
       "reason": "Globální katalog s tenant-specific overrides. Výběr v paměti preferuje tenant před globálem."
+    },
+    {
+      "file": "apps/web/src/app/api/cron/stuck-contract-reviews/route.ts",
+      "fn": "GET",
+      "table": "contractUploadReviews",
+      "reason": "Cron watchdog (cronAuthResponse) — globální reaper zaseknutých řádků processing→failed napříč tenanty; není uživatelský kontext."
     }
   ]
 }

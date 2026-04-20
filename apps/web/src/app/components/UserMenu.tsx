@@ -114,11 +114,8 @@ export function UserMenu({ variant = "default", advisorAvatarUrl = null }: UserM
           }}
           role="menu"
         >
-          <Link href="/portal/profile" className={itemClass} onClick={() => setOpen(false)} role="menuitem">
-            Profil
-          </Link>
           <Link href="/portal/setup" className={itemClass} onClick={() => setOpen(false)} role="menuitem">
-            Nastavení
+            Nastavení účtu
           </Link>
           <div className="my-1 border-t border-[color:var(--wp-border)]" aria-hidden />
           <button

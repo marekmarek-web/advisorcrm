@@ -24,8 +24,9 @@ import {
   AlertCircle,
   Settings2,
   Loader2,
+  User,
 } from "lucide-react";
-import { updatePortalProfile, updatePortalPassword } from "@/app/actions/auth";
+import { updatePortalProfile, updatePortalPassword, type SupervisorOption } from "@/app/actions/auth";
 import { getQuickActionsConfig, setQuickActionsConfig, getAdvisorAvatarUrl, uploadAdvisorAvatar, getAdvisorReportFields, updateAdvisorReportBranding, getNotificationPrefs, setNotificationPrefs, getAdvisorBirthdayEmailPrefs, updateAdvisorBirthdayEmailPrefs } from "@/app/actions/preferences";
 import { setWorkspaceBirthdayEmailTheme } from "@/app/actions/birthday-greetings";
 import { BirthdayPremiumThemePreview } from "@/app/components/email/BirthdayPremiumThemePreview";
@@ -36,6 +37,7 @@ import { PUBLIC_PRICING_SUMMARY_CS } from "@/lib/billing/plan-public-marketing";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
+import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { BaseModal } from "@/app/components/BaseModal";
 import { PortalAdvisorMfaCard } from "@/app/components/auth/PortalAdvisorMfaCard";
 import { formatStoredSubscriptionPlanLabel } from "@/lib/billing/plan-catalog";
@@ -46,17 +48,12 @@ import { queryKeys } from "@/lib/query-keys";
 import { getBillingOverview, type InvoiceRow } from "@/app/actions/billing";
 import type { FundLibrarySetupSnapshot } from "@/lib/fund-library/fund-library-setup-types";
 import { FundLibrarySettings } from "@/app/portal/setup/FundLibrarySettings";
+import { CareerPositionBlock } from "@/app/portal/setup/CareerPositionBlock";
+import { SETUP_TABS, type SetupTabId } from "@/app/portal/setup/setup-tabs";
 
-const TABS = [
-  { id: "osobni", label: "Osobní údaje", keywords: ["osobní", "údaje", "fakturace", "heslo", "zabezpečení", "2fa", "rychlé", "demo"] },
-  { id: "profil", label: "Profil poradce", keywords: ["profil", "poradce", "vizitka"] },
-  { id: "fakturace", label: "Fakturace a Tarif", keywords: ["fakturace", "tarif", "platba", "faktura"] },
-  { id: "notifikace", label: "Notifikace", keywords: ["notifikace", "email", "push", "rezervace", "rezervační", "odkaz", "veřejn"] },
-  { id: "fondy", label: "Knihovna fondů", keywords: ["fond", "fondy", "knihovna", "knihovna fondů", "etf", "investice", "portfolio"] },
-  { id: "integrace", label: "Integrace", keywords: ["integrace", "google", "api", "kalendář"] },
-] as const;
+const TABS = SETUP_TABS;
 
-type TabId = (typeof TABS)[number]["id"];
+type TabId = SetupTabId;
 
 export type SetupInitial = {
   userId: string;
@@ -76,6 +73,9 @@ export type SetupInitial = {
   publicBooking: PublicBookingSettingsDTO;
   canonicalBaseUrl: string;
   fundLibrarySnapshot: FundLibrarySetupSnapshot;
+  /** Nadřízený v hierarchii (memberships.parent_id). */
+  currentSupervisorId?: string | null;
+  supervisorOptions?: SupervisorOption[];
 };
 
 function parseFullName(full: string | null): { firstName: string; lastName: string } {
@@ -210,6 +210,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const [firstName, setFirstName] = useState(parsed.firstName);
   const [lastName, setLastName] = useState(parsed.lastName);
   const [phone, setPhone] = useState(initial.phone ?? "");
+  const [supervisorUserId, setSupervisorUserId] = useState(initial.currentSupervisorId ?? "");
   const [ico, setIco] = useState(initial.ico ?? "");
   const [address, setAddress] = useState(initial.correspondenceAddress ?? "");
   const [profileSaving, setProfileSaving] = useState(false);
@@ -277,10 +278,23 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     const origName = initial.fullName?.trim() || "";
     const nameDirty = (full || "") !== origName;
     const phoneDirty = (phone.trim() || "") !== (initial.phone?.trim() ?? "");
+    const supDirty = (supervisorUserId.trim() || "") !== (initial.currentSupervisorId?.trim() ?? "");
     const icoDirty = (ico.trim() || "") !== (initial.ico?.trim() ?? "");
     const addrDirty = (address.trim() || "") !== (initial.correspondenceAddress?.trim() ?? "");
-    return nameDirty || phoneDirty || icoDirty || addrDirty;
-  }, [firstName, lastName, initial.fullName, initial.phone, initial.ico, initial.correspondenceAddress, phone, ico, address]);
+    return nameDirty || phoneDirty || supDirty || icoDirty || addrDirty;
+  }, [
+    firstName,
+    lastName,
+    initial.fullName,
+    initial.phone,
+    initial.currentSupervisorId,
+    initial.ico,
+    initial.correspondenceAddress,
+    phone,
+    supervisorUserId,
+    ico,
+    address,
+  ]);
 
   const handleUpdatePassword = useCallback(
     async (e: React.FormEvent) => {
@@ -804,14 +818,18 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     setProfileSaving(true);
     try {
       const fullName = [firstName, lastName].filter(Boolean).join(" ").trim() || "";
-      await updatePortalProfile(fullName, {
-        phone: phone.trim(),
-        ico: ico.trim(),
-        company: company.trim(),
-        correspondenceAddress: address.trim(),
-        bio: bio.trim(),
-        publicRole: publicRole.trim(),
-      });
+      await updatePortalProfile(
+        fullName,
+        {
+          phone: phone.trim(),
+          ico: ico.trim(),
+          company: company.trim(),
+          correspondenceAddress: address.trim(),
+          bio: bio.trim(),
+          publicRole: publicRole.trim(),
+        },
+        supervisorUserId.trim() || null,
+      );
       setProfileSaved(true);
       toast.showToast("Údaje uloženy");
       router.refresh();
@@ -820,7 +838,19 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
     } finally {
       setProfileSaving(false);
     }
-  }, [firstName, lastName, phone, ico, address, company, bio, publicRole, toast, router]);
+  }, [
+    firstName,
+    lastName,
+    phone,
+    supervisorUserId,
+    ico,
+    address,
+    company,
+    bio,
+    publicRole,
+    toast,
+    router,
+  ]);
 
   const globalSaveDisabled = !settingsDirty || profileSaving;
   const handleGlobalSave = useCallback(() => {
@@ -964,6 +994,26 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                       </div>
                     </div>
                   </div>
+                  {(initial.roleName === "Advisor" ||
+                    initial.roleName === "Manager" ||
+                    initial.roleName === "Director") && (
+                    <div>
+                      <label className={labelClass}>Nadřízený</label>
+                      <CustomDropdown
+                        value={supervisorUserId}
+                        onChange={setSupervisorUserId}
+                        options={[
+                          { id: "", label: "Bez nadřízeného" },
+                          ...(initial.supervisorOptions ?? []).map((opt) => ({
+                            id: opt.userId,
+                            label: `${opt.displayName} (${opt.roleName})`,
+                          })),
+                        ]}
+                        placeholder="Bez nadřízeného"
+                        icon={User}
+                      />
+                    </div>
+                  )}
                   <div className="pt-6 border-t border-[color:var(--wp-surface-card-border)] grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className={labelClass}>IČO</label>
@@ -982,6 +1032,8 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   </div>
                 </div>
               </div>
+
+              <CareerPositionBlock />
 
               {/* Demo data action intentionally removed from production setup */}
 
@@ -1514,6 +1566,29 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
         {/* Tab: Notifikace */}
         {activeTab === "notifikace" && (
           <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden p-6 sm:p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <Bell size={20} className="text-[color:var(--wp-text-tertiary)]" />
+                <h2 className="text-lg font-black text-[color:var(--wp-text)]">Klientské požadavky a e-maily</h2>
+              </div>
+              <p className="text-sm text-[color:var(--wp-text-secondary)] mb-6 max-w-xl">
+                Inbox požadavků z klientské zóny a historie odeslaných systémových e-mailů.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/portal/notifications"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors min-h-[44px]"
+                >
+                  <Bell size={18} /> Klientské požadavky
+                </Link>
+                <Link
+                  href="/portal/settings/notification-log"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 border border-[color:var(--wp-surface-card-border)] rounded-xl text-sm font-bold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)] transition-colors min-h-[44px]"
+                >
+                  Historie e-mailů
+                </Link>
+              </div>
+            </div>
             <div className="bg-[color:var(--wp-surface-card)] rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">
               <div className="px-6 sm:px-8 py-6 border-b border-[color:var(--wp-surface-card-border)]/50 flex items-center gap-3">
                 <Mail size={20} className="text-indigo-500" />

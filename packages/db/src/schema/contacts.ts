@@ -44,6 +44,8 @@ export const contacts = pgTable("contacts", {
   serviceCycleMonths: text("service_cycle_months"),
   lastServiceDate: date("last_service_date", { mode: "string" }),
   nextServiceDue: date("next_service_due", { mode: "string" }),
+  /** Poslední úspěšně odeslaná servisní připomínka (cron + processServiceReminders); zabraňuje spamu klienta. */
+  lastServiceReminderSentAt: timestamp("last_service_reminder_sent_at", { withTimezone: true }),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedReason: text("archived_reason"),
   preferredChannel: text("preferred_channel"),

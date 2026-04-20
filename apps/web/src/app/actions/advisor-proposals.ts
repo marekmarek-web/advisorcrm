@@ -183,6 +183,7 @@ export async function createAdvisorProposal(
   }
 
   try {
+    revalidatePath(`/portal/contacts/${input.contactId}`);
     revalidatePath(`/dashboard/contacts/${input.contactId}`);
   } catch {
     /* ignore */
@@ -244,6 +245,7 @@ export async function updateAdvisorProposal(
     );
 
   try {
+    revalidatePath(`/portal/contacts/${row.contactId}`);
     revalidatePath(`/dashboard/contacts/${row.contactId}`);
   } catch {
     /* ignore */
@@ -278,6 +280,7 @@ export async function publishAdvisorProposal(
     );
 
   try {
+    revalidatePath(`/portal/contacts/${row.contactId}`);
     revalidatePath(`/dashboard/contacts/${row.contactId}`);
     revalidatePath("/client");
     revalidatePath("/client/navrhy");
@@ -313,6 +316,7 @@ export async function withdrawAdvisorProposal(
     );
 
   try {
+    revalidatePath(`/portal/contacts/${row.contactId}`);
     revalidatePath(`/dashboard/contacts/${row.contactId}`);
     revalidatePath("/client");
     revalidatePath("/client/navrhy");
@@ -345,6 +349,7 @@ export async function deleteAdvisorProposal(
     );
 
   try {
+    revalidatePath(`/portal/contacts/${row.contactId}`);
     revalidatePath(`/dashboard/contacts/${row.contactId}`);
   } catch {
     /* ignore */

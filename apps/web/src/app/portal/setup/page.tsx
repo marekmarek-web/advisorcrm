@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { requireAuth, getCachedSupabaseUser } from "@/lib/auth/require-auth";
 import { getWorkspaceBillingSnapshot } from "@/lib/stripe/workspace-billing";
-import { db, tenants, advisorPreferences } from "db";
+import { listSupervisorOptions } from "@/app/actions/auth";
+import { db, tenants, advisorPreferences, memberships } from "db";
 import { eq, and } from "db";
 import { SetupView } from "./SetupView";
 import { getPublicBookingSettings } from "@/app/actions/public-booking-settings";
@@ -11,21 +12,28 @@ import type { RoleName } from "@/shared/rolePermissions";
 export default async function SetupPage() {
   const auth = await requireAuth();
 
-  const [user, prefRows, tenantRows, publicBooking, fundLibrarySnapshot] = await Promise.all([
-    getCachedSupabaseUser(),
-    db
-      .select({ phone: advisorPreferences.phone })
-      .from(advisorPreferences)
-      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
-      .limit(1),
-    db
-      .select({ name: tenants.name, stripeCustomerId: tenants.stripeCustomerId })
-      .from(tenants)
-      .where(eq(tenants.id, auth.tenantId))
-      .limit(1),
-    getPublicBookingSettings(),
-    getFundLibrarySetupSnapshot(auth.tenantId, auth.userId, auth.roleName as RoleName),
-  ]);
+  const [user, prefRows, tenantRows, membershipRows, publicBooking, fundLibrarySnapshot, supervisorOptions] =
+    await Promise.all([
+      getCachedSupabaseUser(),
+      db
+        .select({ phone: advisorPreferences.phone })
+        .from(advisorPreferences)
+        .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+        .limit(1),
+      db
+        .select({ name: tenants.name, stripeCustomerId: tenants.stripeCustomerId })
+        .from(tenants)
+        .where(eq(tenants.id, auth.tenantId))
+        .limit(1),
+      db
+        .select({ parentId: memberships.parentId })
+        .from(memberships)
+        .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)))
+        .limit(1),
+      getPublicBookingSettings(),
+      getFundLibrarySetupSnapshot(auth.tenantId, auth.userId, auth.roleName as RoleName),
+      listSupervisorOptions().catch(() => []),
+    ]);
 
   const [tenantRow] = tenantRows;
   // Pass stripeCustomerId so billing can skip its own tenant round-trip.
@@ -44,6 +52,7 @@ export default async function SetupPage() {
   const metaCorr = typeof meta.correspondence_address === "string" ? meta.correspondence_address.trim() : "";
 
   const [prefRow] = prefRows;
+  const [membershipRow] = membershipRows;
   const tenantName = tenantRow?.name ?? "—";
 
   /** Legacy: sídlo se dřív ukládalo do `company`; po migraci je v correspondence_address. */
@@ -69,6 +78,8 @@ export default async function SetupPage() {
           publicBooking,
           canonicalBaseUrl,
           fundLibrarySnapshot,
+          currentSupervisorId: membershipRow?.parentId ?? null,
+          supervisorOptions,
         }}
       />
     </Suspense>

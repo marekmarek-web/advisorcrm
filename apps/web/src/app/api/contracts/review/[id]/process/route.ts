@@ -113,20 +113,53 @@ export async function POST(
       request,
     }).catch(() => {});
 
-    const admin = createAdminClient();
-    const signed = await createSignedStorageUrl({
-      adminClient: admin,
-      bucket: "documents",
-      path: review.storagePath!,
-      purpose: "internal_processing",
-    });
-    const fileUrl = signed.signedUrl;
+    /**
+     * Any throw between this point and the end of this `try` block leaves the
+     * row stuck in `processing`. We guard with a local try/catch that reverts
+     * to `failed` before rethrowing.
+     */
+    let fileUrl: string | undefined;
+    let mimeType: string;
+    let storagePath: string;
+    let requestContext: ReturnType<typeof buildRequestContext>;
 
-    if (!fileUrl) {
+    try {
+      const admin = createAdminClient();
+      const signed = await createSignedStorageUrl({
+        adminClient: admin,
+        bucket: "documents",
+        path: review.storagePath!,
+        purpose: "internal_processing",
+      });
+      fileUrl = signed.signedUrl ?? undefined;
+
+      if (!fileUrl) {
+        await updateContractReview(id, tenantId, {
+          processingStatus: "failed",
+          errorMessage: "Nepodařilo se vytvořit odkaz na soubor.",
+        });
+        await logAudit({
+          tenantId,
+          userId,
+          action: "extraction_failed",
+          entityType: "contract_review",
+          entityId: id,
+          request,
+          meta: { reason: "no_signed_url" },
+        }).catch(() => {});
+        return NextResponse.json({ error: "Zpracování selhalo.", code: "NO_SIGNED_URL" }, { status: 500 });
+      }
+
+      mimeType = review.mimeType ?? "application/pdf";
+      storagePath = review.storagePath!;
+      requestContext = buildRequestContext(request);
+    } catch (pre) {
+      const message = pre instanceof Error ? pre.message : String(pre);
+      console.error("[contracts/review/[id]/process] pre-after() setup failed", message);
       await updateContractReview(id, tenantId, {
         processingStatus: "failed",
-        errorMessage: "Nepodařilo se vytvořit odkaz na soubor.",
-      });
+        errorMessage: "Zpracování smlouvy se nepodařilo spustit.",
+      }).catch(() => {});
       await logAudit({
         tenantId,
         userId,
@@ -134,14 +167,13 @@ export async function POST(
         entityType: "contract_review",
         entityId: id,
         request,
-        meta: { reason: "no_signed_url" },
+        meta: { reason: "pre_after_setup", message: message.slice(0, 200) },
       }).catch(() => {});
-      return NextResponse.json({ error: "Zpracování selhalo.", code: "NO_SIGNED_URL" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Zpracování selhalo při inicializaci.", code: "PROCESS_PRE_AFTER" },
+        { status: 500 },
+      );
     }
-
-    const mimeType = review.mimeType ?? "application/pdf";
-    const storagePath = review.storagePath!;
-    const requestContext = buildRequestContext(request);
 
     const SAFETY_TIMEOUT_MS = (maxDuration - 15) * 1000;
 

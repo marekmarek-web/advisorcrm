@@ -35,8 +35,20 @@ export type ProductionRow = {
 export type ProductionCareerPositionInfo = {
   positionKey: string;
   positionLabel: string;
+  /** Hodnota ze sazebníku pozice (před osobní výjimkou). */
+  bjBaseValueCzk: number;
+  /** Osobní příplatek z advisor_preferences (Kč / BJ). */
+  bjBonusCzk: number;
+  /** Účinná sazba: základ + příplatek. */
   bjValueCzk: number;
 } | null;
+
+function parseCareerBjBonusCzk(v: unknown): number {
+  if (v == null || v === "") return 0;
+  const raw = typeof v === "string" ? String(v).trim().replace(",", ".") : v;
+  const n = typeof raw === "string" ? Number(raw) : Number(raw);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
 
 export type ProductionSummary = {
   rows: ProductionRow[];
@@ -57,7 +69,7 @@ export type ProductionSummary = {
   totalLendingCount: number;
   /** Celkový součet BJ za období (napříč segmenty). */
   totalBjUnits: number;
-  /** Přepočet `totalBjUnits * bjValueCzk` nebo `null`, pokud poradce nemá nastavenou pozici. */
+  /** Přepočet `totalBjUnits × (základ + výjimka)` nebo `null`, pokud poradce nemá nastavenou pozici. */
   totalBjCzk: number | null;
   /** Aktuálně nastavená kariérní pozice poradce (nebo null). */
   careerPosition: ProductionCareerPositionInfo;
@@ -152,19 +164,25 @@ export async function getProductionSummary(
   // Přepočet BJ → Kč podle kariérní pozice. Pokud poradce pozici nemá nastavenou,
   // necháme `totalBjCzk = null`, aby UI ukázalo „nezadána pozice" místo nesmyslné nuly.
   const [prefRow] = await db
-    .select({ careerPositionKey: advisorPreferences.careerPositionKey })
+    .select({
+      careerPositionKey: advisorPreferences.careerPositionKey,
+      careerBjBonusCzk: advisorPreferences.careerBjBonusCzk,
+    })
     .from(advisorPreferences)
     .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
     .limit(1);
   const careerRow = await findCareerPosition(auth.tenantId, prefRow?.careerPositionKey ?? null);
+  const bjBonusCzk = parseCareerBjBonusCzk(prefRow?.careerBjBonusCzk ?? null);
   const careerPosition: ProductionCareerPositionInfo = careerRow
     ? {
         positionKey: careerRow.positionKey,
         positionLabel: careerRow.positionLabel,
-        bjValueCzk: careerRow.bjValueCzk,
+        bjBaseValueCzk: careerRow.bjValueCzk,
+        bjBonusCzk,
+        bjValueCzk: roundCzk(careerRow.bjValueCzk + bjBonusCzk),
       }
     : null;
-  const totalBjCzk = careerRow ? roundCzk(totalBjUnits * careerRow.bjValueCzk) : null;
+  const totalBjCzk = careerRow ? roundCzk(totalBjUnits * (careerRow.bjValueCzk + bjBonusCzk)) : null;
 
   return {
     rows: mapped,

@@ -89,8 +89,12 @@ export async function listDocuments(): Promise<(DocumentRow & { contactName?: st
         msg.includes("does not exist") || msg.includes("column") || msg.includes("42703");
       console.error("[listDocuments] query failed:", err);
       if (likelySchemaDrift) {
-        console.error("[listDocuments] Pravděpodobně chybí migrace tabulky documents — viz pnpm db:verify-documents-schema a OPS_RUNBOOK.");
-        return [];
+        // Historický stav: vracelo `[]`, což maskovalo chybu — uživatel viděl prázdnou knihovnu
+        // místo chyby. Teď vyhodíme explicitní chybu, aby ji UI mohlo zobrazit a operátor věděl,
+        // že je potřeba dojet migraci (pnpm db:verify-documents-schema, viz OPS_RUNBOOK).
+        throw new Error(
+          "Načtení dokumentů selhalo: chybí migrace tabulky `documents`. Spusťte migraci dle OPS_RUNBOOK.",
+        );
       }
       throw err;
     }

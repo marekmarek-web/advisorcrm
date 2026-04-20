@@ -277,7 +277,7 @@ const ROUTE_META: Array<{
   { test: (p) => p.startsWith("/portal/calculators"), title: "Kalkulačky", subtitle: "Výpočty a CTA" },
   { test: (p) => p.startsWith("/portal/business-plan"), title: "Můj plán", subtitle: "Business plán" },
   { test: (p) => p.startsWith("/portal/team-overview"), title: "Týmový přehled", subtitle: "Týmové KPI a alerty" },
-  { test: (p) => p.startsWith("/portal/setup") || p.startsWith("/portal/profile"), title: "Nastavení", subtitle: "Profil, preference, integrace" },
+  { test: (p) => p.startsWith("/portal/setup"), title: "Nastavení", subtitle: "Profil, preference, integrace" },
   { test: (p) => p.startsWith("/portal/notifications"), title: "Klientské požadavky", subtitle: "Inbox z klientského portálu" },
   { test: (p) => p.startsWith("/portal/calendar"), title: "Kalendář", subtitle: "Schůzky a události" },
   { test: (p) => p.startsWith("/portal/ai"), title: "AI Asistent", subtitle: "Váš CRM asistent s přístupem k datům" },
@@ -468,7 +468,7 @@ export function MobilePortalClient({
   const onCalculatorsRoute = pathname.startsWith("/portal/calculators");
   const onBusinessPlanRoute = pathname.startsWith("/portal/business-plan");
   const onTeamOverviewRoute = pathname.startsWith("/portal/team-overview");
-  const onSetupRoute = pathname.startsWith("/portal/setup") || pathname.startsWith("/portal/profile");
+  const onSetupRoute = pathname.startsWith("/portal/setup");
   const onNotificationsRoute = pathname.startsWith("/portal/notifications");
   const onCalendarRoute = pathname.startsWith("/portal/calendar");
   const onToolsRoute = pathname.startsWith("/portal/tools");

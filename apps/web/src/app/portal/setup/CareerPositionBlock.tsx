@@ -6,25 +6,32 @@ import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import {
   getMyCareerPosition,
   setMyCareerPosition,
+  setMyCareerBjBonusCzk,
   listCareerPositionOptions,
   type CareerPositionOption,
 } from "@/app/actions/bj-career-position";
 
 /**
- * Výběr kariérní pozice v profilu poradce.
- *
- * Pozice určuje hodnotu 1 BJ v Kč (např. T1 = 62,50 Kč, D3 = 200 Kč) a použije
- * se v produkčním reportu pro převod součtu BJ na Kč. Změna je okamžitá
- * (server-side persist), protože je to jediný řídicí prvek na kartě.
+ * Výběr kariérní pozice v nastavení účtu (BJ → Kč v produkčním reportu).
  */
 export function CareerPositionBlock(): React.ReactElement {
   const [options, setOptions] = useState<CareerPositionOption[] | null>(null);
   const [selected, setSelected] = useState<string>("");
   const [selectedOption, setSelectedOption] = useState<CareerPositionOption | null>(null);
+  const [bonusCzk, setBonusCzk] = useState<number | null>(null);
+  const [bonusDraft, setBonusDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [bonusSaving, setBonusSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  function applyPayload(current: Awaited<ReturnType<typeof getMyCareerPosition>>): void {
+    setSelected(current.positionKey ?? "");
+    setSelectedOption(current.option);
+    setBonusCzk(current.careerBjBonusCzk);
+    setBonusDraft(formatBonusDraft(current.careerBjBonusCzk));
+  }
 
   useEffect(() => {
     let active = true;
@@ -36,8 +43,7 @@ export function CareerPositionBlock(): React.ReactElement {
         ]);
         if (!active) return;
         setOptions(opts);
-        setSelected(current.positionKey ?? "");
-        setSelectedOption(current.option);
+        applyPayload(current);
       } catch (e) {
         if (!active) return;
         setError(e instanceof Error ? e.message : "Nepodařilo se načíst pozice.");
@@ -69,14 +75,39 @@ export function CareerPositionBlock(): React.ReactElement {
     setSelected(next);
     try {
       const result = await setMyCareerPosition(next || null);
-      setSelected(result.positionKey ?? "");
-      setSelectedOption(result.option);
+      applyPayload(result);
       setSaved(true);
     } catch (e) {
       setSelected(prev);
       setError(e instanceof Error ? e.message : "Uložení selhalo.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleBonusBlur(): Promise<void> {
+    setError(null);
+    const parsed = parseBonusDraft(bonusDraft);
+    if (parsed === undefined) {
+      setError("Zadejte platné číslo (např. 5 nebo 5,5), nebo pole nechte prázdné.");
+      setBonusDraft(formatBonusDraft(bonusCzk));
+      return;
+    }
+    const prevSaved = bonusCzk;
+    if (parsed === prevSaved || (parsed == null && prevSaved == null)) return;
+    if (parsed != null && prevSaved != null && Math.abs(parsed - prevSaved) < 0.001) return;
+
+    setBonusSaving(true);
+    setSaved(false);
+    try {
+      const result = await setMyCareerBjBonusCzk(parsed);
+      applyPayload(result);
+      setSaved(true);
+    } catch (e) {
+      setBonusDraft(formatBonusDraft(bonusCzk));
+      setError(e instanceof Error ? e.message : "Uložení výjimky selhalo.");
+    } finally {
+      setBonusSaving(false);
     }
   }
 
@@ -89,7 +120,8 @@ export function CareerPositionBlock(): React.ReactElement {
       <div className="p-6 sm:p-8 space-y-4">
         <p className="text-sm text-[color:var(--wp-text-secondary)]">
           Pozice určuje hodnotu 1 bankovní jednotky (BJ) v Kč. Součet BJ za období
-          se v produkčním reportu přepočítá podle této sazby.
+          se v produkčním reportu přepočítá podle účinné sazby (základ z řádu + volitelná
+          osobní výjimka).
         </p>
         <div>
           <label className="block text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2 ml-1">
@@ -105,14 +137,42 @@ export function CareerPositionBlock(): React.ReactElement {
             />
           </div>
         </div>
+        <div>
+          <label className="block text-[11px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2 ml-1">
+            Výjimka (+ Kč / BJ)
+          </label>
+          <p className="text-xs text-[color:var(--wp-text-tertiary)] mb-2 ml-1">
+            Volitelné navýšení nad sazbu pozice (např. 5). Prázdné = bez příplatku.
+          </p>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={bonusDraft}
+            onChange={(e) => setBonusDraft(e.target.value)}
+            onBlur={() => void handleBonusBlur()}
+            disabled={loading || bonusSaving}
+            className="w-full rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 text-sm font-medium text-[color:var(--wp-text)] placeholder:text-[color:var(--wp-text-tertiary)] disabled:opacity-60"
+            placeholder="0"
+            aria-label="Výjimka příplatek Kč za jednu bankovní jednotku"
+          />
+        </div>
         {selectedOption && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <StatCard label="1 BJ = " value={formatCzk(selectedOption.bjValueCzk)} />
             <StatCard
-              label="Threshold"
+              label="1 BJ = "
+              value={formatCzk(selectedOption.bjValueCzk + (bonusCzk ?? 0))}
+            />
+            <StatCard
+              label="Práh"
               value={selectedOption.bjThreshold == null ? "—" : `${selectedOption.bjThreshold} BJ`}
             />
           </div>
+        )}
+        {selectedOption && bonusCzk != null && bonusCzk > 0 && (
+          <p className="text-xs text-[color:var(--wp-text-secondary)]">
+            Z kariérního řádu {formatCzk(selectedOption.bjValueCzk)} + výjimka{" "}
+            {formatCzk(bonusCzk)}.
+          </p>
         )}
         {error && (
           <p className="text-xs text-rose-600 bg-rose-50 px-3 py-2 rounded-lg border border-rose-200" role="alert">
@@ -146,4 +206,18 @@ function formatCzk(n: number): string {
     currency: "CZK",
     maximumFractionDigits: 2,
   }).format(n);
+}
+
+function formatBonusDraft(n: number | null): string {
+  if (n == null || n === 0) return "";
+  return new Intl.NumberFormat("cs-CZ", { maximumFractionDigits: 2, useGrouping: false }).format(n);
+}
+
+/** null = clear stored bonus; undefined = invalid input */
+function parseBonusDraft(s: string): number | null | undefined {
+  const t = s.trim().replace(/\s/g, "").replace(",", ".");
+  if (t === "") return null;
+  const n = Number(t);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.round(n * 100) / 100;
 }

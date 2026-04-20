@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, jsonb, unique, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, jsonb, unique, integer, boolean, numeric } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
 
 /** ISO weekday 1 = Monday … 7 = Sunday; each day has ordered non-overlapping windows "HH:mm". */
@@ -44,6 +44,11 @@ export const advisorPreferences = pgTable(
      * Používá se v BJ kalkulaci k určení výplatního násobku.
      */
     careerPositionKey: text("career_position_key"),
+    /**
+     * Příplatek k sazbě 1 BJ v Kč (např. osobní výjimka +5 Kč). Přičítá se k
+     * `career_position_coefficients.bj_value_czk` pro danou pozici.
+     */
+    careerBjBonusCzk: numeric("career_bj_bonus_czk", { precision: 10, scale: 2 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

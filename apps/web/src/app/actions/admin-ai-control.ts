@@ -25,8 +25,11 @@ export type AiControlSettings = {
 
 export async function getDeadLetterItems(limit = 50): Promise<DeadLetterRow[]> {
   const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName as RoleName, "admin:*") && !hasPermission(auth.roleName as RoleName, "settings:read")) {
-    return [];
+  if (
+    !hasPermission(auth.roleName as RoleName, "admin:*") &&
+    !hasPermission(auth.roleName as RoleName, "settings:read")
+  ) {
+    throw new Error("Forbidden");
   }
   const rows = await db
     .select({
@@ -56,6 +59,12 @@ export async function getDeadLetterItems(limit = 50): Promise<DeadLetterRow[]> {
 
 export async function getAiControlSettings(): Promise<AiControlSettings> {
   const auth = await requireAuthInAction();
+  if (
+    !hasPermission(auth.roleName as RoleName, "admin:*") &&
+    !hasPermission(auth.roleName as RoleName, "settings:read")
+  ) {
+    throw new Error("Forbidden");
+  }
   const [assistantEnabled, maxAutomationLevel, assistantProfile, allowApplySuggestions] = await Promise.all([
     getEffectiveSettingValue<boolean>(auth.tenantId, "ai.assistant_enabled"),
     getEffectiveSettingValue<string>(auth.tenantId, "ai.max_automation_level"),
