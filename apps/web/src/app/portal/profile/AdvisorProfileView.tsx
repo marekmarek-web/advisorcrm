@@ -36,6 +36,7 @@ import {
 } from "@/app/actions/preferences";
 import type { PublicBookingSettingsDTO } from "@/app/actions/public-booking-settings";
 import { PublicBookingSetupBlock } from "@/app/portal/setup/PublicBookingSetupBlock";
+import { CareerPositionBlock } from "./CareerPositionBlock";
 
 const VALID_TABS = ["osobni", "rezervace", "integrace", "notifikace", "fakturace"] as const;
 type TabId = (typeof VALID_TABS)[number];
@@ -618,6 +619,9 @@ export function AdvisorProfileView({
                 </div>
               </div>
             </div>
+
+            {/* Kariérní pozice — hodnota 1 BJ v Kč pro produkční report */}
+            <CareerPositionBlock />
 
             {/* Zabezpečení účtu */}
             <div className="bg-[color:var(--wp-surface-card)] rounded-2xl sm:rounded-[24px] border border-[color:var(--wp-surface-card-border)] shadow-sm overflow-hidden">

@@ -12,6 +12,7 @@ import {
   BarChart3,
   Filter,
   ExternalLink,
+  Award,
 } from "lucide-react";
 import { getProductionSummary, type PeriodType, type ProductionSummary } from "@/app/actions/production";
 import { SkeletonBlock } from "@/app/components/Skeleton";
@@ -269,7 +270,7 @@ export function PortalProductionView() {
         ) : (
           <>
             {/* --- KPI cards: compact on mobile --- */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 md:gap-6 mb-4 md:mb-8">
               {/* Card 1: Vybrané období – gradient */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] text-white shadow-md relative overflow-hidden min-h-[100px] md:min-h-0"
@@ -356,6 +357,45 @@ export function PortalProductionView() {
                   {data.totalLendingCount > 0
                     ? `Úvěry: ${data.totalLending.toLocaleString("cs-CZ")} Kč (${data.totalLendingCount})`
                     : `Roční ekv.: ${data.totalInvestmentAnnual.toLocaleString("cs-CZ")} Kč`}
+                </div>
+              </div>
+
+              {/* Card 5: Bankovní jednotky (BJ) + přepočet na Kč podle pozice */}
+              <div
+                className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
+                style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div
+                    className="w-9 h-9 md:w-10 md:h-10 rounded-[var(--wp-radius-sm)] flex items-center justify-center shrink-0"
+                    style={{ background: "var(--wp-bg)", color: "var(--wp-text-muted)" }}
+                  >
+                    <Award size={18} className="md:w-5 md:h-5" />
+                  </div>
+                  {data.careerPosition && (
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+                      style={{ background: "var(--wp-bg)", color: "var(--wp-text-muted)" }}
+                      title={`${data.careerPosition.positionLabel} · ${data.careerPosition.bjValueCzk.toLocaleString("cs-CZ")} Kč / BJ`}
+                    >
+                      {data.careerPosition.positionKey}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--wp-text-muted)" }}>
+                  BJ celkem
+                </span>
+                <div className="text-xl md:text-2xl font-bold leading-none tracking-tight" style={{ color: "var(--wp-text)" }}>
+                  {data.totalBjUnits.toLocaleString("cs-CZ", { maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[11px] font-medium mt-1" style={{ color: "var(--wp-text-muted)" }}>
+                  {data.totalBjCzk == null ? (
+                    <Link href="/portal/profile?tab=osobni" className="underline hover:no-underline">
+                      Nastavit pozici →
+                    </Link>
+                  ) : (
+                    `≈ ${data.totalBjCzk.toLocaleString("cs-CZ", { maximumFractionDigits: 0 })} Kč`
+                  )}
                 </div>
               </div>
             </div>

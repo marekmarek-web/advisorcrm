@@ -537,6 +537,12 @@ export async function runAiReviewBatchLab(options: RunAiReviewBatchLabOptions): 
           correctedBy: null,
           correctedAt: null,
           matchVerdict: resolvedMatchVerdict,
+          productCategory: null,
+          productSubtypes: null,
+          extractionConfidence: null,
+          needsHumanReview: null,
+          missingFields: null,
+          proposedAssumptions: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         };

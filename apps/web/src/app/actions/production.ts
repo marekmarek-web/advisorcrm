@@ -10,6 +10,8 @@ import {
   getSegmentUiGroup,
   type ContractSegmentUiGroup,
 } from "@/lib/contracts/contract-segment-wizard-config";
+import { advisorPreferences } from "db";
+import { findCareerPosition } from "@/lib/bj/coefficients-repository";
 
 export type PeriodType = "month" | "quarter" | "year";
 
@@ -22,7 +24,19 @@ export type ProductionRow = {
   totalPremium: number;
   totalAnnual: number;
   count: number;
+  /** Součet BJ za tuto dvojici segment + partner (nebo 0, pokud nejsou spočítané). */
+  bjUnits: number;
 };
+
+/**
+ * Přehled kariérní pozice pro produkční report — používá se k přepočtu
+ * BJ součtu na Kč a k zobrazení, jakou sazbu vlastně aplikujeme.
+ */
+export type ProductionCareerPositionInfo = {
+  positionKey: string;
+  positionLabel: string;
+  bjValueCzk: number;
+} | null;
 
 export type ProductionSummary = {
   rows: ProductionRow[];
@@ -41,6 +55,12 @@ export type ProductionSummary = {
   /** Nové agregáty: úvěry / hypotéky (HYPO/UVER) */
   totalLending: number;
   totalLendingCount: number;
+  /** Celkový součet BJ za období (napříč segmenty). */
+  totalBjUnits: number;
+  /** Přepočet `totalBjUnits * bjValueCzk` nebo `null`, pokud poradce nemá nastavenou pozici. */
+  totalBjCzk: number | null;
+  /** Aktuálně nastavená kariérní pozice poradce (nebo null). */
+  careerPosition: ProductionCareerPositionInfo;
   periodLabel: string;
 };
 
@@ -98,6 +118,7 @@ export async function getProductionSummary(
       partnerName: contracts.partnerName,
       totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
       totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
+      totalBjUnits: sql<number>`coalesce(sum(${contracts.bjUnits}::numeric), 0)`,
       count: sql<number>`count(*)::int`,
     })
     .from(contracts)
@@ -119,12 +140,31 @@ export async function getProductionSummary(
     partnerName: r.partnerName,
     totalPremium: Number(r.totalPremium),
     totalAnnual: Number(r.totalAnnual),
+    bjUnits: Number(r.totalBjUnits ?? 0),
     count: Number(r.count),
   }));
 
   const insurance = mapped.filter((r) => r.group === "insurance");
   const investment = mapped.filter((r) => r.group === "investment");
   const lending = mapped.filter((r) => r.group === "lending");
+  const totalBjUnits = mapped.reduce((s, r) => s + r.bjUnits, 0);
+
+  // Přepočet BJ → Kč podle kariérní pozice. Pokud poradce pozici nemá nastavenou,
+  // necháme `totalBjCzk = null`, aby UI ukázalo „nezadána pozice" místo nesmyslné nuly.
+  const [prefRow] = await db
+    .select({ careerPositionKey: advisorPreferences.careerPositionKey })
+    .from(advisorPreferences)
+    .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+    .limit(1);
+  const careerRow = await findCareerPosition(auth.tenantId, prefRow?.careerPositionKey ?? null);
+  const careerPosition: ProductionCareerPositionInfo = careerRow
+    ? {
+        positionKey: careerRow.positionKey,
+        positionLabel: careerRow.positionLabel,
+        bjValueCzk: careerRow.bjValueCzk,
+      }
+    : null;
+  const totalBjCzk = careerRow ? roundCzk(totalBjUnits * careerRow.bjValueCzk) : null;
 
   return {
     rows: mapped,
@@ -139,8 +179,16 @@ export async function getProductionSummary(
     totalInvestmentCount: investment.reduce((s, r) => s + r.count, 0),
     totalLending: lending.reduce((s, r) => s + r.totalPremium, 0),
     totalLendingCount: lending.reduce((s, r) => s + r.count, 0),
+    totalBjUnits,
+    totalBjCzk,
+    careerPosition,
     periodLabel: label,
   };
+}
+
+/** Zaokrouhlí CZK na dvě desetinná místa (BJ × sazba může dát necelé haléře). */
+function roundCzk(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 export type ContractInPeriodRow = {

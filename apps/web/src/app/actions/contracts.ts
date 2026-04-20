@@ -26,6 +26,7 @@ import {
 } from "@/lib/contracts/contract-form-payload";
 import { breadcrumbContractAiReviewMissingSourceReview } from "@/lib/observability/contract-review-sentry";
 import { ensureUserProfileRowForAdvisor } from "@/lib/db/ensure-user-profile-for-contract-fk";
+import { recomputeBjForContract } from "@/lib/bj/recompute-bj-for-contract";
 
 export type ContractRow = {
   id: string;
@@ -541,6 +542,13 @@ export async function createContract(
       try {
         await logActivity("contract", outcome.id, "create", { segment, contactId });
       } catch {}
+      // BJ se zatím u ručně zakládaných smluv počítá jen pokud má vyplněnou
+      // productCategory — ta u createContract typicky není (formulář ji
+      // ještě nenastavuje). Přesto zavoláme recompute, aby i smlouvy, u nichž
+      // někdo doplní kategorii přímo v DB, šly refreshnout.
+      try {
+        await recomputeBjForContract({ tenantId: auth.tenantId, contractId: outcome.id });
+      } catch {}
     }
     return outcome;
   } catch (e) {
@@ -735,6 +743,11 @@ export async function updateContract(
     });
     try {
       await logActivity("contract", id, "update", { fields: Object.keys(form) });
+    } catch {}
+    // Po editaci premium/loanPrincipal/paymentType se mohla změnit BJ hodnota.
+    // Repo-level reload + recompute je sync s UI, proto to pouštíme hned.
+    try {
+      await recomputeBjForContract({ tenantId: auth.tenantId, contractId: id });
     } catch {}
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

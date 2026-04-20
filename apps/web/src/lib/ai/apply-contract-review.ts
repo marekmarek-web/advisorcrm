@@ -53,6 +53,29 @@ import {
   ensureUserProfileRowForAdvisor,
   formatContractAdvisorFkApplyError,
 } from "@/lib/db/ensure-user-profile-for-contract-fk";
+import { recomputeBjForContract } from "@/lib/bj/recompute-bj-for-contract";
+import {
+  PRODUCT_CATEGORIES,
+  PRODUCT_SUBTYPES,
+  type ProductCategory,
+  type ProductSubtype,
+} from "@/lib/ai/product-categories";
+
+const PRODUCT_CATEGORY_SET = new Set<string>(PRODUCT_CATEGORIES);
+const PRODUCT_SUBTYPE_SET = new Set<string>(PRODUCT_SUBTYPES);
+
+/** Defensive narrowing pro `row.productCategory` — vrací `null` pokud jde o neznámou kategorii. */
+function asProductCategoryOrNull(raw: string | null | undefined): ProductCategory | null {
+  if (!raw) return null;
+  return PRODUCT_CATEGORY_SET.has(raw) ? (raw as ProductCategory) : null;
+}
+
+/** Zachová jen známé subtypy — ostatní tiše odstraní (defensive). */
+function filterProductSubtypes(raw: string[] | null | undefined): ProductSubtype[] | null {
+  if (!raw || raw.length === 0) return null;
+  const clean = raw.filter((s) => PRODUCT_SUBTYPE_SET.has(s)) as ProductSubtype[];
+  return clean.length > 0 ? clean : null;
+}
 
 const VALID_SEGMENTS = new Set<string>(contractSegments);
 
@@ -1006,6 +1029,8 @@ export async function applyContractReview(
                   ).catch(() => ({ partnerId: null, productId: null }))
                 : { partnerId: existingRow?.partnerId ?? null, productId: existingRow?.productId ?? null };
 
+            const categoryFromReview = asProductCategoryOrNull(row.productCategory);
+            const subtypesFromReview = filterProductSubtypes(row.productSubtypes);
             await tx
               .update(contracts)
               .set({
@@ -1026,6 +1051,8 @@ export async function applyContractReview(
                 portfolioStatus: "active",
                 portfolioAttributes: mergedAttrsForTitle,
                 extractionConfidence,
+                ...(categoryFromReview ? { productCategory: categoryFromReview } : {}),
+                ...(subtypesFromReview ? { productSubtype: subtypesFromReview } : {}),
                 ...(resolvedFKs.partnerId ? { partnerId: resolvedFKs.partnerId } : {}),
                 ...(resolvedFKs.productId ? { productId: resolvedFKs.productId } : {}),
                 updatedAt: new Date(),
@@ -1057,6 +1084,8 @@ export async function applyContractReview(
                 ).catch(() => ({ partnerId: null, productId: null }))
               : { partnerId: null, productId: null };
 
+            const categoryFromReviewInsert = asProductCategoryOrNull(row.productCategory);
+            const subtypesFromReviewInsert = filterProductSubtypes(row.productSubtypes);
             const [inserted] = await tx
               .insert(contracts)
               .values({
@@ -1080,6 +1109,8 @@ export async function applyContractReview(
                 confirmedByUserId: userId,
                 portfolioAttributes: attrsFromReview,
                 extractionConfidence,
+                ...(categoryFromReviewInsert ? { productCategory: categoryFromReviewInsert } : {}),
+                ...(subtypesFromReviewInsert ? { productSubtype: subtypesFromReviewInsert } : {}),
                 ...(newFKs.partnerId ? { partnerId: newFKs.partnerId } : {}),
                 ...(newFKs.productId ? { productId: newFKs.productId } : {}),
               })
@@ -1293,6 +1324,21 @@ export async function applyContractReview(
       resultPayload.portalClientAccess = await loadContactPortalAccessSnapshot(tenantId, contactIdForPortal);
     } catch (portalErr) {
       Sentry.captureException(portalErr);
+    }
+  }
+
+  // BJ recompute — jakmile je smlouva insertnutá/updatenutá, musíme dopočítat
+  // bankovní jednotky a zapsat je do contracts.bj_units. Běží mimo hlavní
+  // transakci (je to derived field) a nesmí rozbít apply, i kdyby spadl sazebník.
+  if (resultPayload.createdContractId) {
+    try {
+      await recomputeBjForContract({
+        tenantId,
+        contractId: resultPayload.createdContractId,
+      });
+    } catch (bjErr) {
+      console.error("[apply-contract-review] BJ recompute failed:", bjErr);
+      Sentry.captureException(bjErr);
     }
   }
 

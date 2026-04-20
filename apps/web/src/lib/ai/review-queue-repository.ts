@@ -311,6 +311,16 @@ export type ContractReviewRow = {
   correctedAt: Date | null;
   /** Deterministic client match verdict. Null for legacy rows. */
   matchVerdict: string | null;
+  /** Kategorie produktu pro BJ kalkulaci (INVESTMENT_ENTRY_FEE, …). */
+  productCategory: string | null;
+  /** Subtypy produktu (with_ppi, single_payment, …). */
+  productSubtypes: string[] | null;
+  /** Text high | medium | low — zapisováno z classifyProduct(). */
+  extractionConfidence: string | null;
+  /** Text "true" | "false" — zda smlouva vyžaduje ruční kontrolu. */
+  needsHumanReview: string | null;
+  missingFields: string[] | null;
+  proposedAssumptions: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
 };

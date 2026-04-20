@@ -106,9 +106,58 @@ export const contracts = pgTable("contracts", {
   productCategory: text("product_category"),
   /** Upřesňující subtypy (with_ppi, single_payment, biometric_signed, …). */
   productSubtype: jsonb("product_subtype").$type<string[]>(),
+  /**
+   * Spočítané bankovní jednotky (BJ) pro tuto smlouvu — vstup do produkčního
+   * reportu a provizního přepočtu. NULL = dosud nespočítáno, 0 = spočítáno,
+   * ale nelze určit částku / kategorii (pak `bjCalculation.notes` řekne proč).
+   */
+  bjUnits: numeric("bj_units", { precision: 14, scale: 4 }),
+  /** Snapshot vstupů a pravidla (viz ContractBjCalculation) — audit / rekalkulace. */
+  bjCalculation: jsonb("bj_calculation").$type<ContractBjCalculation | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Snapshot výpočtu BJ na smlouvě.
+ *
+ * Ukládáme úplný vstup (částku a koeficient), abychom uměli při změně sazebníku
+ * smlouvu rekalkulovat bez zpětného zpracování celé AI review fronty.
+ */
+export type ContractBjCalculation = {
+  /** Která částka se použila — viz bj_coefficients.formula. */
+  formula:
+    | "entry_fee"
+    | "client_contribution"
+    | "annual_premium"
+    | "loan_principal"
+    | "investment_amount";
+  /** Vstupní částka v Kč (po uplatnění cap/floor). */
+  amountCzk: number;
+  /** Původní částka (před cap/floor), pokud došlo k ořezu. */
+  amountRawCzk?: number;
+  /** Přímý multiplikátor, nebo null pokud se použil divisor. */
+  coefficient: number | null;
+  /** Alternativa — divisor (Amundi 238.10). */
+  divisor: number | null;
+  /** Cap/floor pravidla ze sazebníku. */
+  cap?: number | null;
+  floor?: number | null;
+  appliedCap?: boolean;
+  appliedFloor?: boolean;
+  /** Který řádek sazebníku se použil. */
+  matchedRule: {
+    productCategory: string;
+    partnerPattern: string | null;
+    subtype: string | null;
+    /** global = tenant_id NULL; tenant = per-tenant override. */
+    tenantScope: "global" | "tenant";
+  };
+  /** Volitelné poznámky (např. „nepodařilo se určit partnera, použit category default"). */
+  notes: string[];
+  /** ISO timestamp výpočtu — rekalkulace přepíše. */
+  computedAt: string;
+};
 
 /** Platební katalog: globální (tenant_id null) nebo tenant override. Partner + Segment → účet, banka, poznámka. */
 export const paymentAccounts = pgTable("payment_accounts", {
