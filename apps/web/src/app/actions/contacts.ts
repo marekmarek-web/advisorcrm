@@ -329,6 +329,8 @@ export type ContactEditPageBundle = {
   householdId: string | null;
   referralPicker: { id: string; label: string }[];
   householdOptions: { id: string; name: string }[];
+  /** Oprávnění `contacts:delete` — trvalé smazání v UI. */
+  canPermanentlyDelete: boolean;
 };
 
 /** Jeden round-trip pro portal edit kontaktu (kontakt + domácnost + pickery). */
@@ -358,6 +360,7 @@ export async function getContactEditPageData(contactId: string): Promise<Contact
         .filter((r) => r.id !== contactId)
         .map((r) => ({ id: r.id, label: `${r.firstName} ${r.lastName}` })),
       householdOptions: householdRows.map((h) => ({ id: h.id, name: h.name })),
+      canPermanentlyDelete: hasPermission(auth.roleName, "contacts:delete"),
     };
   });
 }

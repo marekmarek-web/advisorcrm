@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getContactEditPageData, updateContact, uploadContactAvatar, archiveContact, getContactDependencyCounts } from "@/app/actions/contacts";
+import { getContactEditPageData, updateContact, uploadContactAvatar, archiveContact, getContactDependencyCounts, permanentlyDeleteContacts } from "@/app/actions/contacts";
 import { setContactHousehold } from "@/app/actions/households";
 import { ArrowLeft, Flag, User, Home, RefreshCw } from "lucide-react";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
@@ -59,8 +59,11 @@ export default function EditContactPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [permanentDeleting, setPermanentDeleting] = useState(false);
+  const [canPermanentlyDelete, setCanPermanentlyDelete] = useState(false);
   const [depCounts, setDepCounts] = useState<{ contracts: number; opportunities: number; documents: number; tasks: number; analyses: number } | null>(null);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [showPermanentDeleteDialog, setShowPermanentDeleteDialog] = useState(false);
   const [addressSectionOpen, setAddressSectionOpen] = useState(false);
 
   useEffect(() => {
@@ -71,6 +74,7 @@ export default function EditContactPage() {
         const c = bundle.contact;
         if (!c) setLoadErr("Kontakt nenalezen.");
         else {
+          setCanPermanentlyDelete(bundle.canPermanentlyDelete);
           setAvatarUrl(c.avatarUrl ?? null);
           setContactOptions(bundle.referralPicker);
           setHouseholdOptions(bundle.householdOptions);
@@ -191,11 +195,25 @@ export default function EditContactPage() {
 
   async function onArchiveClick() {
     setShowArchiveDialog(false);
+    setShowPermanentDeleteDialog(false);
     setDepCounts(null);
     try {
       const counts = await getContactDependencyCounts(id);
       setDepCounts(counts);
       setShowArchiveDialog(true);
+    } catch (err) {
+      setSubmitErr(err instanceof Error ? err.message : "Nepodařilo se načíst závislosti.");
+    }
+  }
+
+  async function onPermanentDeleteClick() {
+    setShowPermanentDeleteDialog(false);
+    setShowArchiveDialog(false);
+    setDepCounts(null);
+    try {
+      const counts = await getContactDependencyCounts(id);
+      setDepCounts(counts);
+      setShowPermanentDeleteDialog(true);
     } catch (err) {
       setSubmitErr(err instanceof Error ? err.message : "Nepodařilo se načíst závislosti.");
     }
@@ -211,6 +229,19 @@ export default function EditContactPage() {
     } finally {
       setDeleting(false);
       setShowArchiveDialog(false);
+    }
+  }
+
+  async function onPermanentDeleteConfirm() {
+    setPermanentDeleting(true);
+    try {
+      await permanentlyDeleteContacts([id]);
+      router.push("/portal/contacts");
+    } catch (err) {
+      setSubmitErr(err instanceof Error ? err.message : "Smazání se nezdařilo");
+    } finally {
+      setPermanentDeleting(false);
+      setShowPermanentDeleteDialog(false);
     }
   }
 
@@ -558,21 +589,39 @@ export default function EditContactPage() {
             </div>
           </section>
 
-          {/* Archivace */}
-          <section className="rounded-[24px] border border-amber-200 bg-amber-50/50 p-6 md:p-8">
-            <h2 className="text-lg font-black text-amber-800 mb-2">Archivace kontaktu</h2>
-            <p className="text-sm text-[color:var(--wp-text-secondary)] mb-5">
-              Archivovaný kontakt zmizí ze seznamu, ale data (smlouvy, obchody, dokumenty, analýzy) zůstanou zachována a kontakt lze kdykoli obnovit.
-            </p>
-            <button
-              type="button"
-              onClick={onArchiveClick}
-              disabled={deleting}
-              className="rounded-xl px-5 py-2.5 text-sm font-bold border border-amber-300 text-amber-800 bg-[color:var(--wp-surface-card)] hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
-            >
-              {deleting ? "Archivuji…" : "Archivovat kontakt"}
-            </button>
-          </section>
+          {/* Archivace a trvalé smazání */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section className="rounded-[24px] border border-amber-200 bg-amber-50/50 p-6 md:p-8">
+              <h2 className="text-lg font-black text-amber-800 mb-2">Archivace kontaktu</h2>
+              <p className="text-sm text-[color:var(--wp-text-secondary)] mb-5">
+                Archivovaný kontakt zmizí ze seznamu, ale data (smlouvy, obchody, dokumenty, analýzy) zůstanou zachována a kontakt lze kdykoli obnovit.
+              </p>
+              <button
+                type="button"
+                onClick={onArchiveClick}
+                disabled={deleting || permanentDeleting}
+                className="rounded-xl px-5 py-2.5 text-sm font-bold border border-amber-300 text-amber-800 bg-[color:var(--wp-surface-card)] hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
+              >
+                {deleting ? "Archivuji…" : "Archivovat kontakt"}
+              </button>
+            </section>
+            {canPermanentlyDelete && (
+              <section className="rounded-[24px] border border-red-200 bg-red-50/50 p-6 md:p-8">
+                <h2 className="text-lg font-black text-red-800 mb-2">Trvale smazat kontakt</h2>
+                <p className="text-sm text-[color:var(--wp-text-secondary)] mb-5">
+                  Kontakt včetně navázaných záznamů (smlouvy, dokumenty, úkoly, analýzy a další) bude nenávratně odstraněn. Tuto akci nelze vrátit zpět.
+                </p>
+                <button
+                  type="button"
+                  onClick={onPermanentDeleteClick}
+                  disabled={deleting || permanentDeleting}
+                  className="rounded-xl px-5 py-2.5 text-sm font-bold border border-red-300 text-red-800 bg-[color:var(--wp-surface-card)] hover:bg-red-50 disabled:opacity-50 min-h-[44px]"
+                >
+                  {permanentDeleting ? "Mažu…" : "Trvale smazat kontakt"}
+                </button>
+              </section>
+            )}
+          </div>
 
           {showArchiveDialog && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -603,6 +652,43 @@ export default function EditContactPage() {
                     className="rounded-xl px-5 py-2.5 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 min-h-[44px]"
                   >
                     {deleting ? "Archivuji…" : "Archivovat"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showPermanentDeleteDialog && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="bg-[color:var(--wp-surface-card)] rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-red-200">
+                <h3 className="text-lg font-black text-red-800">Opravdu trvale smazat?</h3>
+                <p className="text-sm text-[color:var(--wp-text-secondary)]">
+                  Tímto nenávratně odstraníte kontakt a související záznamy. Archivace je bezpečnější volba, pokud data můžete potřebovat.
+                </p>
+                {depCounts && (
+                  <div className="text-sm text-[color:var(--wp-text-secondary)] space-y-1">
+                    {depCounts.contracts > 0 && <p>Smlouvy: <strong>{depCounts.contracts}</strong></p>}
+                    {depCounts.opportunities > 0 && <p>Obchody: <strong>{depCounts.opportunities}</strong></p>}
+                    {depCounts.documents > 0 && <p>Dokumenty: <strong>{depCounts.documents}</strong></p>}
+                    {depCounts.tasks > 0 && <p>Úkoly: <strong>{depCounts.tasks}</strong></p>}
+                    {depCounts.analyses > 0 && <p>Finanční analýzy: <strong>{depCounts.analyses}</strong></p>}
+                  </div>
+                )}
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPermanentDeleteDialog(false)}
+                    className="rounded-xl px-4 py-2.5 text-sm font-bold border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-card)] hover:bg-[color:var(--wp-surface-muted)] min-h-[44px]"
+                  >
+                    Zrušit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onPermanentDeleteConfirm}
+                    disabled={permanentDeleting}
+                    className="rounded-xl px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 min-h-[44px]"
+                  >
+                    {permanentDeleting ? "Mažu…" : "Trvale smazat"}
                   </button>
                 </div>
               </div>
