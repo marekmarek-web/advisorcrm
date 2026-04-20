@@ -109,6 +109,21 @@ export const contractUploadReviews = pgTable("contract_upload_reviews", {
    * Values: existing_match | near_match | ambiguous_match | no_match | null (legacy rows).
    */
   matchVerdict: text("match_verdict"),
+  /**
+   * Product classification pro BJ kalkulaci — výstup z classifyProduct().
+   * Hodnota odpovídá ProductCategory (INVESTMENT_ENTRY_FEE, LIFE_INSURANCE_REGULAR, …).
+   */
+  productCategory: text("product_category"),
+  /** Upřesňující subtypy (with_ppi, single_payment, biometric_signed, …). */
+  productSubtypes: jsonb("product_subtypes").$type<string[]>(),
+  /** Celková důvěra v extrakci — "high" | "medium" | "low". */
+  extractionConfidence: text("extraction_confidence"),
+  /** Flag pro UI: údaje jsou nejisté → poradce musí zkontrolovat / potvrdit. */
+  needsHumanReview: text("needs_human_review").$type<"true" | "false" | null>(),
+  /** Seznam pole/klíče, které LLM nedokázal jistě odvodit (pro doplnění). */
+  missingFields: jsonb("missing_fields").$type<string[]>(),
+  /** Navrhované předpoklady (AI je navrhl, uživatel potvrzuje). */
+  proposedAssumptions: jsonb("proposed_assumptions").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -89,6 +89,12 @@ export type PortfolioAttributes = {
   paymentAccountDisplay?: string;
   /** Frekvence plateb — lidský text z dokumentu */
   paymentFrequencyLabel?: string;
+  /**
+   * Normalizovaný typ platby — používá se pro Produkci/BJ kalkulaci a Pokrytí produktu.
+   * - "one_time" = jednorázová platba (investiční pokyn / single premium)
+   * - "regular"  = pravidelná platba (měsíční/roční pojistné, příspěvek, splátka)
+   */
+  paymentType?: "one_time" | "regular";
   /** Druhý účet (např. mimořádné pojistné), pokud je v dokumentu */
   extraPaymentAccountDisplay?: string;
   /** Investiční pojistné / složka — text z dokumentu */

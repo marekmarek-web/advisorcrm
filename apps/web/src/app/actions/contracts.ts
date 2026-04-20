@@ -419,6 +419,8 @@ export async function createContract(
     startDate?: string;
     anniversaryDate?: string;
     note?: string;
+    /** "one_time" = jednorázová, "regular" = pravidelná, null = neznámo */
+    paymentType?: "one_time" | "regular" | null;
   }
 ): Promise<CreateContractResult> {
   try {
@@ -498,6 +500,11 @@ export async function createContract(
         return { ok: false, message: refCheck.message };
       }
 
+      const initialPortfolioAttributes: Record<string, unknown> = {};
+      if (normalized.paymentType) {
+        initialPortfolioAttributes.paymentType = normalized.paymentType;
+      }
+
       const [row] = await tx
         .insert(contracts)
         .values({
@@ -521,7 +528,7 @@ export async function createContract(
           sourceKind: "manual",
           advisorConfirmedAt: new Date(),
           confirmedByUserId: advisorUid,
-          portfolioAttributes: {},
+          portfolioAttributes: initialPortfolioAttributes,
         })
         .returning({ id: contracts.id });
       const newId = row?.id ?? null;
@@ -664,6 +671,12 @@ export async function updateContract(
       if (["draft", "pending_review", "active", "ended"].includes(ps)) {
         portfolioPatch.portfolioStatus = ps;
       }
+    }
+    // Při změně typu platby slijeme hodnotu do existujícího portfolio_attributes JSONB
+    // (Postgres `||` operátor), abychom nepřepisovali ostatní klíče.
+    if (normalized.paymentType) {
+      const patchJson = JSON.stringify({ paymentType: normalized.paymentType });
+      portfolioPatch.portfolioAttributes = sql`COALESCE(${contracts.portfolioAttributes}, '{}'::jsonb) || ${patchJson}::jsonb`;
     }
     const touchPortfolioMeta =
       form.visibleToClient !== undefined || form.portfolioStatus !== undefined;

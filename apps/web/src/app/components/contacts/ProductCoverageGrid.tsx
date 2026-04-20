@@ -173,7 +173,17 @@ export function ProductCoverageGrid({ contactId }: { contactId: string }) {
 
   const setStatus = useCallback(
     (key: string) => {
-      persist({ ...manualStatus, [key]: nextStatus(getStatus(key)) });
+      const next = nextStatus(getStatus(key));
+      const patch: Record<string, CoverageStatus> = { [key]: next };
+      // Investice: „Pravidelné" a „Jednorázové" jsou vzájemně výlučné — při zapnutí
+      // jednoho (done/in_progress) druhé automaticky shodíme, aby nebyly oba zaškrtnuté.
+      if (next !== "none") {
+        const INVESTICE_REGULAR = "Investice:Pravidelné";
+        const INVESTICE_ONE_TIME = "Investice:Jednorázové";
+        if (key === INVESTICE_REGULAR) patch[INVESTICE_ONE_TIME] = "none";
+        if (key === INVESTICE_ONE_TIME) patch[INVESTICE_REGULAR] = "none";
+      }
+      persist({ ...manualStatus, ...patch });
     },
     [manualStatus, persist, getStatus]
   );

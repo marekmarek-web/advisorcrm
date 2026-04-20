@@ -98,6 +98,14 @@ export const contracts = pgTable("contracts", {
     .$type<PortfolioAttributes>(),
   /** Internal 0–1 confidence from extraction; not exposed to client UI. */
   extractionConfidence: numeric("extraction_confidence", { precision: 5, scale: 4 }),
+  /**
+   * Klasifikace produktu pro BJ kalkulaci a reportování (INVESTMENT_ENTRY_FEE,
+   * LIFE_INSURANCE_REGULAR, MORTGAGE, …). Vyplněno buď z AI extrakce nebo z
+   * manuální editace v detailu smlouvy.
+   */
+  productCategory: text("product_category"),
+  /** Upřesňující subtypy (with_ppi, single_payment, biometric_signed, …). */
+  productSubtype: jsonb("product_subtype").$type<string[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

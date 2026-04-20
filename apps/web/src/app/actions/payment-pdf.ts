@@ -9,6 +9,7 @@ import { getPaymentAccountForContract } from "./payment-accounts";
 import { loadAdvisorMailHeadersForCurrentUser } from "@/lib/email/advisor-mail-headers";
 import { paymentPdfAttachmentClientTemplate } from "@/lib/email/templates";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { formatDomesticAccountDisplayLine } from "@/lib/ai/payment-field-contract";
 
 export type PaymentInstruction = {
   segment: string;
@@ -108,8 +109,8 @@ function buildPortalPaymentAccount(row: AiPaymentSetupInstructionRow): string | 
   const accountNumber = row.accountNumber?.trim();
   if (!accountNumber) return null;
 
-  const bankCode = row.bankCode?.trim();
-  return bankCode ? `${accountNumber}/${bankCode}` : accountNumber;
+  const display = formatDomesticAccountDisplayLine(accountNumber, row.bankCode?.trim() ?? "");
+  return display || accountNumber;
 }
 
 function mapAiPaymentSetupToInstruction(

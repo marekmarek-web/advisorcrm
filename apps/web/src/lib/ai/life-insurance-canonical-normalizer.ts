@@ -69,7 +69,42 @@ function roleFromString(raw: string): ParticipantRole {
   if (r.includes("spoludlužník") || r.includes("co_applicant") || r.includes("co-applicant")) return "co_applicant";
   if (r.includes("dlužník") || r.includes("borrower")) return "borrower";
   if (r.includes("ručitel") || r.includes("guarantor")) return "guarantor";
+  if (
+    r.includes("investor") ||
+    r.includes("upisovatel") ||
+    r.includes("účastník") ||
+    r.includes("ucastnik") ||
+    r.includes("participant")
+  ) {
+    return "investor";
+  }
   return "other";
+}
+
+/**
+ * Canonical primary role depends on the document family: investment docs use
+ * "investor", pension / DPS docs use "participant", loan docs use "borrower".
+ * Returns "policyholder" as a safe fallback for insurance documents and
+ * anything not explicitly mapped.
+ */
+function defaultPrimaryRoleForDocType(
+  primary: DocumentReviewEnvelope["documentClassification"]["primaryType"],
+): ParticipantRole {
+  switch (primary) {
+    case "investment_subscription_document":
+    case "investment_service_agreement":
+    case "investment_modelation":
+    case "investment_payment_instruction":
+      return "investor";
+    case "pension_contract":
+      return "investor";
+    case "mortgage_document":
+    case "consumer_loan_contract":
+    case "consumer_loan_with_payment_protection":
+      return "borrower";
+    default:
+      return "policyholder";
+  }
 }
 
 // ─── Participant extraction ───────────────────────────────────────────────────
@@ -156,17 +191,28 @@ function extractParticipants(env: DocumentReviewEnvelope): ParticipantRecord[] {
     });
   }
 
-  // Case A: flat primary client fields — add as policyholder if no participant yet.
-  // investorFullName is used by DIP/investment subscription schemas.
+  // Case A: flat primary client fields — add with role derived from the document
+  // family (investor / participant / borrower / policyholder) if no primary client
+  // participant exists yet. investorFullName is used by DIP/investment subscription schemas.
   const primaryName =
     fieldVal(ef, "fullName") ??
     fieldVal(ef, "clientFullName") ??
     fieldVal(ef, "investorFullName") ??
+    fieldVal(ef, "participantFullName") ??
+    fieldVal(ef, "borrowerName") ??
     fieldVal(ef, "policyholderName") ??
     fieldVal(ef, "proposerName");
-  if (primaryName && !participants.some((p) => p.role === "policyholder" || p.role === "insured")) {
+  const primaryRole = defaultPrimaryRoleForDocType(env.documentClassification.primaryType);
+  const hasPrimaryClient = participants.some(
+    (p) =>
+      p.role === "policyholder" ||
+      p.role === "insured" ||
+      p.role === "investor" ||
+      p.role === "borrower",
+  );
+  if (primaryName && !hasPrimaryClient) {
     participants.unshift({
-      role: "policyholder",
+      role: primaryRole,
       fullName: primaryName,
       birthDate: fieldVal(ef, "birthDate"),
       maskedPersonalId: fieldVal(ef, "maskedPersonalId") ?? fieldVal(ef, "personalId"),

@@ -140,16 +140,21 @@ export function ContactContractModals({ contactId }: { contactId: string }) {
     if (segmentUsesAnnualPremiumPrimaryInput(c.segment) && !premiumAnnual.trim() && premiumAmount.trim()) {
       premiumAnnual = annualPremiumFromMonthlyInput(premiumAmount);
     }
-    // Derive paymentType from portfolioAttributes.paymentFrequency
-    const paymentFreq = String(
-      (c.portfolioAttributes as Record<string, unknown>)?.paymentFrequency ?? ""
-    ).toLowerCase();
-    const paymentType: "one_time" | "regular" | null =
-      /jednorázov|jednorazov|one.?time|lump.?sum|single/.test(paymentFreq)
-        ? "one_time"
-        : paymentFreq
-          ? "regular"
-          : null;
+    // Derive paymentType:
+    //   1) explicit `paymentType` in portfolioAttributes (preferred, zapisované
+    //      v updateContract / createContract formuláři),
+    //   2) fallback z paymentFrequency ("single"/"monthly"/"ročně"/…).
+    // Výchozí hodnota je "regular" (měsíční) — jinak by se editační formulář
+    // choval jako „nevyplněno" a UI by to mohlo reportovat jako jednorázovou.
+    const attrs = (c.portfolioAttributes as Record<string, unknown> | null | undefined) ?? {};
+    const rawPaymentType = typeof attrs.paymentType === "string" ? attrs.paymentType : "";
+    const paymentFreq = String(attrs.paymentFrequency ?? "").toLowerCase();
+    const paymentType: "one_time" | "regular" =
+      rawPaymentType === "one_time" || rawPaymentType === "regular"
+        ? (rawPaymentType as "one_time" | "regular")
+        : /jednorázov|jednorazov|one.?time|lump.?sum|single/.test(paymentFreq)
+          ? "one_time"
+          : "regular";
     setForm({
       segment: c.segment,
       partnerId: c.partnerId ?? "",

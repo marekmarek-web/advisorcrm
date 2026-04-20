@@ -819,6 +819,71 @@ export async function linkContractReviewFileToContactDocuments(
 
 // ─── Fáze 11: Per-field Pending Confirmation ──────────────────────────────────
 
+/**
+ * Shared CRM writer used by both per-field confirm and bulk "Potvrdit vše"
+ * flows. Writes the normalized field value into the matching column in
+ * contacts / contracts based on scope + fieldKey. Payment-scope writes and
+ * needsHumanReview flip are handled by the callers (idempotent rules differ).
+ */
+async function applyConfirmationCrmWrite(
+  tenantId: string,
+  scope: "contact" | "contract" | "payment",
+  targetId: string | null,
+  fieldKey: string,
+  normalizedValue: string | null,
+): Promise<void> {
+  if (!targetId || !normalizedValue) return;
+  if (scope === "contact") {
+    const contactPatch: Record<string, unknown> = { updatedAt: new Date() };
+    if (fieldKey === "fullName") {
+      const parts = normalizedValue.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) {
+        contactPatch.firstName = parts[0];
+      } else {
+        contactPatch.firstName = parts.slice(0, -1).join(" ");
+        contactPatch.lastName = parts.slice(-1).join(" ");
+      }
+    } else if (fieldKey === "address") {
+      contactPatch.street = normalizedValue;
+    } else if ([
+      "firstName", "lastName", "email", "phone", "personalId", "birthDate",
+      "idCardNumber", "idCardIssuedBy", "idCardValidUntil", "idCardIssuedAt",
+      "generalPractitioner", "city", "zip", "street",
+    ].includes(fieldKey)) {
+      contactPatch[fieldKey] = normalizedValue;
+    }
+    if (Object.keys(contactPatch).length > 1) {
+      await db
+        .update(contacts)
+        .set(contactPatch)
+        .where(and(eq(contacts.id, targetId), eq(contacts.tenantId, tenantId)));
+    }
+    return;
+  }
+  if (scope === "contract") {
+    const contractPatch: Record<string, unknown> = { updatedAt: new Date() };
+    if (fieldKey === "institutionName" || fieldKey === "insurer" || fieldKey === "provider") {
+      contractPatch.partnerName = normalizedValue;
+    } else if (fieldKey === "productName") {
+      contractPatch.productName = normalizedValue;
+    } else if (fieldKey === "contractNumber") {
+      contractPatch.contractNumber = normalizedValue;
+    } else if (fieldKey === "policyStartDate" || fieldKey === "effectiveDate" || fieldKey === "startDate") {
+      contractPatch.startDate = normalizedValue;
+    } else if (fieldKey === "premiumAmount" || fieldKey === "totalMonthlyPremium") {
+      contractPatch.premiumAmount = normalizedValue;
+    } else if (fieldKey === "premiumAnnual" || fieldKey === "annualPremium") {
+      contractPatch.premiumAnnual = normalizedValue;
+    }
+    if (Object.keys(contractPatch).length > 1) {
+      await db
+        .update(contracts)
+        .set(contractPatch)
+        .where(and(eq(contracts.id, targetId), eq(contracts.tenantId, tenantId)));
+    }
+  }
+}
+
 export type ConfirmPendingFieldResult =
   | { ok: true; updatedPayload: import("@/lib/ai/review-queue-repository").ApplyResultPayload }
   | { ok: false; error: string };
@@ -934,64 +999,7 @@ export async function confirmPendingField(
   }
 
   if ((scope === "contact" || scope === "contract") && targetId && normalizedValue) {
-    if (scope === "contact") {
-      const contactPatch: Record<string, unknown> = { updatedAt: new Date() };
-      if (fieldKey === "fullName") {
-        const parts = normalizedValue.split(/\s+/).filter(Boolean);
-        if (parts.length === 1) {
-          contactPatch.firstName = parts[0];
-        } else {
-          contactPatch.firstName = parts.slice(0, -1).join(" ");
-          contactPatch.lastName = parts.slice(-1).join(" ");
-        }
-      } else if (fieldKey === "address") {
-        contactPatch.street = normalizedValue;
-      } else if ([
-        "firstName", "lastName", "email", "phone", "personalId", "birthDate",
-        "idCardNumber", "idCardIssuedBy", "idCardValidUntil", "idCardIssuedAt",
-        "generalPractitioner", "city", "zip", "street",
-      ].includes(fieldKey)) {
-        contactPatch[fieldKey] = normalizedValue;
-      }
-      if (Object.keys(contactPatch).length > 1) {
-        await db
-          .update(contacts)
-          .set(contactPatch)
-          .where(
-            and(
-              eq(contacts.id, targetId),
-              eq(contacts.tenantId, auth.tenantId),
-            )
-          );
-      }
-    }
-    if (scope === "contract") {
-      const contractPatch: Record<string, unknown> = { updatedAt: new Date() };
-      if (fieldKey === "institutionName" || fieldKey === "insurer" || fieldKey === "provider") {
-        contractPatch.partnerName = normalizedValue;
-      } else if (fieldKey === "productName") {
-        contractPatch.productName = normalizedValue;
-      } else if (fieldKey === "contractNumber") {
-        contractPatch.contractNumber = normalizedValue;
-      } else if (fieldKey === "policyStartDate" || fieldKey === "effectiveDate" || fieldKey === "startDate") {
-        contractPatch.startDate = normalizedValue;
-      } else if (fieldKey === "premiumAmount" || fieldKey === "totalMonthlyPremium") {
-        contractPatch.premiumAmount = normalizedValue;
-      } else if (fieldKey === "premiumAnnual" || fieldKey === "annualPremium") {
-        contractPatch.premiumAnnual = normalizedValue;
-      }
-      if (Object.keys(contractPatch).length > 1) {
-        await db
-          .update(contracts)
-          .set(contractPatch)
-          .where(
-            and(
-              eq(contracts.id, targetId),
-              eq(contracts.tenantId, auth.tenantId),
-            )
-          );
-      }
-    }
+    await applyConfirmationCrmWrite(auth.tenantId, scope, targetId, fieldKey, normalizedValue);
   }
 
   // Zapíše audit log
@@ -1422,6 +1430,10 @@ export async function confirmAllPendingFields(
       const normalizedValue =
         fromValue == null ? null : typeof fromValue === "string" ? fromValue.trim() : String(fromValue);
 
+      if ((scope === "contact" || scope === "contract") && targetId && normalizedValue) {
+        await applyConfirmationCrmWrite(auth.tenantId, scope, targetId, fieldKey, normalizedValue);
+      }
+
       updatedTrace = {
         ...updatedTrace,
         [fieldKey]: {
@@ -1441,7 +1453,8 @@ export async function confirmAllPendingFields(
         ...updatedPolicyTrace,
         [enforcementKey]: {
           ...enforcement,
-          pendingConfirmationFields: enforcement.pendingConfirmationFields.filter((f) => updatedTrace[f]),
+          // Keep only fields NOT yet in updatedTrace (not yet confirmed).
+          pendingConfirmationFields: enforcement.pendingConfirmationFields.filter((f) => !updatedTrace[f]),
           autoAppliedFields: [...enforcement.autoAppliedFields, ...pendingFields],
         },
       };

@@ -36,6 +36,7 @@ export * from "./team-goals";
 export * from "./team-events";
 export * from "./advisor-business-plan";
 export * from "./advisor-vision-goals";
+export * from "./bj-coefficients";
 export * from "./coverage";
 export * from "./fa-plan-items";
 export * from "./fa-sync-log";

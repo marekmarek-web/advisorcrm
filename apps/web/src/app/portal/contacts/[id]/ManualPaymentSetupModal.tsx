@@ -59,6 +59,20 @@ export type ManualPaymentSetupPrefill = {
   productName?: string;
   segment?: string;
   variableSymbol?: string;
+  /** Tuzemské číslo účtu (případně ve tvaru „1234/0800" — zobrazí se tak jak přijde). */
+  accountNumber?: string;
+  /** Samostatný kód banky (přebije hodnotu zjištěnou z accountNumber). */
+  bankCode?: string;
+  /** IBAN (pokud v dokumentu). */
+  iban?: string;
+  constantSymbol?: string;
+  specificSymbol?: string;
+  /** Částka v Kč (např. z AI Review — částka k úhradě nebo měsíční platba). */
+  amount?: string;
+  /** Lidská frekvence plateb („Měsíčně", „Jednorázově" …). */
+  frequency?: string;
+  /** Datum první platby / splatnosti (ISO nebo lidský tvar). */
+  firstPaymentDate?: string;
 };
 
 export function ManualPaymentSetupModal({
@@ -81,6 +95,19 @@ export function ManualPaymentSetupModal({
     ...(prefill?.productName ? { productName: prefill.productName } : {}),
     ...(prefill?.segment ? { segment: prefill.segment } : {}),
     ...(prefill?.variableSymbol ? { variableSymbol: prefill.variableSymbol } : {}),
+    ...(prefill?.accountNumber
+      ? {
+          accountNumber: prefill.bankCode
+            ? `${prefill.accountNumber}/${prefill.bankCode}`.replace(/\/+$/, "")
+            : prefill.accountNumber,
+        }
+      : {}),
+    ...(prefill?.iban ? { iban: prefill.iban } : {}),
+    ...(prefill?.constantSymbol ? { constantSymbol: prefill.constantSymbol } : {}),
+    ...(prefill?.specificSymbol ? { specificSymbol: prefill.specificSymbol } : {}),
+    ...(prefill?.amount ? { amount: prefill.amount } : {}),
+    ...(prefill?.frequency ? { frequency: prefill.frequency } : {}),
+    ...(prefill?.firstPaymentDate ? { firstPaymentDate: prefill.firstPaymentDate } : {}),
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();

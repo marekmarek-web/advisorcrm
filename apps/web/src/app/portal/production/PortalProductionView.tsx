@@ -309,7 +309,7 @@ export function PortalProductionView() {
                 </div>
               </div>
 
-              {/* Card 3: Pojistné celkem */}
+              {/* Card 3: Pojistné (insurance only) */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
                 style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
@@ -323,14 +323,17 @@ export function PortalProductionView() {
                   </div>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--wp-text-muted)" }}>
-                  Produkce celkem
+                  Pojistné ({data.totalInsuranceCount})
                 </span>
                 <div className="text-xl md:text-2xl font-bold leading-none tracking-tight" style={{ color: "var(--wp-text)" }}>
-                  {data.totalPremium.toLocaleString("cs-CZ")} Kč
+                  {data.totalInsurancePremium.toLocaleString("cs-CZ")} Kč
+                </div>
+                <div className="text-[11px] font-medium mt-1" style={{ color: "var(--wp-text-muted)" }}>
+                  Roční ekv.: {data.totalInsuranceAnnual.toLocaleString("cs-CZ")} Kč
                 </div>
               </div>
 
-              {/* Card 4: Roční souhrn */}
+              {/* Card 4: Investice */}
               <div
                 className="p-4 md:p-6 rounded-[var(--wp-radius-sm)] border flex flex-col justify-between transition-shadow hover:shadow-md min-h-[120px] md:min-h-0"
                 style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
@@ -344,10 +347,15 @@ export function PortalProductionView() {
                   </div>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--wp-text-muted)" }}>
-                  Roční souhrn (YTD)
+                  Investice ({data.totalInvestmentCount})
                 </span>
                 <div className="text-xl md:text-2xl font-bold leading-none tracking-tight" style={{ color: "var(--wp-text)" }}>
-                  {data.totalAnnual.toLocaleString("cs-CZ")} Kč
+                  {data.totalInvestment.toLocaleString("cs-CZ")} Kč
+                </div>
+                <div className="text-[11px] font-medium mt-1" style={{ color: "var(--wp-text-muted)" }}>
+                  {data.totalLendingCount > 0
+                    ? `Úvěry: ${data.totalLending.toLocaleString("cs-CZ")} Kč (${data.totalLendingCount})`
+                    : `Roční ekv.: ${data.totalInvestmentAnnual.toLocaleString("cs-CZ")} Kč`}
                 </div>
               </div>
             </div>
@@ -400,7 +408,7 @@ export function PortalProductionView() {
 
               {/* Pravý panel: Detail produkce */}
               <div
-                className="xl:col-span-2 rounded-[var(--wp-radius-sm)] border overflow-hidden flex flex-col min-w-0 shadow-sm"
+                className="xl:col-span-2 rounded-[var(--wp-radius-sm)] border flex flex-col min-w-0 shadow-sm"
                 style={{ background: "var(--wp-bg-card)", borderColor: "var(--wp-border)" }}
               >
                 <div

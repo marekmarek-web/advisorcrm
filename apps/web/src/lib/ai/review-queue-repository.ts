@@ -580,6 +580,12 @@ export async function updateContractReview(
     correctedBy?: string | null;
     correctedAt?: Date | null;
     matchVerdict?: string | null;
+    productCategory?: string | null;
+    productSubtypes?: string[] | null;
+    extractionConfidence?: string | null;
+    needsHumanReview?: "true" | "false" | null;
+    missingFields?: string[] | null;
+    proposedAssumptions?: Record<string, unknown> | null;
   }
 ): Promise<void> {
   const createNewClientConfirmed =

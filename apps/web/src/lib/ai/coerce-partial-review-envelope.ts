@@ -13,6 +13,7 @@ import {
   EXTRACTION_FIELD_STATUSES,
   PRIMARY_DOCUMENT_TYPES,
 } from "./document-review-types";
+import { dedupeCzechAccountTrailingBankCode } from "./payment-field-contract";
 
 const PRIMARY_SET = new Set<string>(PRIMARY_DOCUMENT_TYPES);
 const LIFECYCLE_SET = new Set<string>(DOCUMENT_LIFECYCLE_STATUSES);
@@ -113,6 +114,31 @@ function discountedFieldConfidenceFromDoc(raw: unknown): number {
   return Math.min(1, Math.max(0.45, d * 0.8));
 }
 
+/**
+ * Bank-account-like field keys — pro tyto klíče odstraníme opakovaný kód banky
+ * za lomítkem (např. 213038282/0600/0600 → 213038282/0600) už při coerce fázi,
+ * aby se do `extractedFields` ani `client_payment_setups` nikdy neuložil "duplicate".
+ */
+const BANK_ACCOUNT_FIELD_KEYS = new Set<string>([
+  "bankAccount",
+  "bank_account",
+  "accountNumber",
+  "account_number",
+  "paymentAccountNumber",
+  "payment_account_number",
+  "recipientAccount",
+  "recipient_account",
+  "accountForRepayment",
+  "account_for_repayment",
+]);
+
+function dedupeBankAccountLike(key: string, value: unknown): unknown {
+  if (!BANK_ACCOUNT_FIELD_KEYS.has(key)) return value;
+  if (typeof value !== "string") return value;
+  const cleaned = dedupeCzechAccountTrailingBankCode(value);
+  return cleaned ?? value;
+}
+
 function normalizeExtractedFieldCell(key: string, v: unknown): Record<string, unknown> {
   const defaultConf =
     docClassificationConfidenceForPartialCoerce !== undefined
@@ -129,10 +155,13 @@ function normalizeExtractedFieldCell(key: string, v: unknown): Record<string, un
     } else {
       o.confidence = defaultConf;
     }
+    if ("value" in o) {
+      o.value = dedupeBankAccountLike(key, o.value);
+    }
     return o;
   }
   return {
-    value: v,
+    value: dedupeBankAccountLike(key, v),
     status: "inferred_low_confidence",
     confidence: defaultConf,
   };

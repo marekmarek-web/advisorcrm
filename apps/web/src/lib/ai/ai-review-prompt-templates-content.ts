@@ -71,6 +71,15 @@ FREKVENCE PLATEB — POVINNÉ ROZLIŠENÍ:
 ZPROSTŘEDKOVATEL vs INSTITUCE:
 - intermediaryName je poradce/makléř klienta.
 - Osoba nebo firma podepsaná za pojišťovnu/banku NENÍ zprostředkovatel. Zprostředkovatel pochází z bloku "Zprostředkovatel" nebo "Zprostředkovatel úvěru".
+
+PRODUKTOVÝ NÁZEV — NEHALUCINUJ:
+- productName extrahuj pouze z dokumentu. Pokud název produktu není v textu jasně uveden, NEVYMÝŠLEJ ho ani nekombinuj části nadpisů.
+- Pokud název produktu chybí / je nejasný: ponech productName prázdný ("" nebo null) a uveď institutionName / partner (např. "Amundi", "NN", "Raiffeisenbank") — systém následně použije safe fallback "<poskytovatel> — produkt k doplnění" a nastaví needs_human_review=true.
+- Obecné fráze typu "Smlouva", "Pojištění", "Investice", "Produkt" NEJSOU název produktu — raději vrať null.
+
+POVINNÝ REVIEW / CONFIDENCE FLAG:
+- Vždy vrať implicitní míru jistoty extrakce. Pokud chybí kterékoli povinné pole (název produktu, pojistitel/věřitel, číslo smlouvy u podepsané smlouvy, datum počátku), označ needs_human_review=true a confidence="low".
+- Žádnou hodnotu si NEVYMÝŠLEJ — raději vrať null + poznámku do reasonsForReview než "přibližný" odhad.
 `.trim();
 
 const BUNDLE_PUBLISH_RULES = `

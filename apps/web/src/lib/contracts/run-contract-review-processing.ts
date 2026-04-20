@@ -48,6 +48,7 @@ import {
   orchestrateSubdocumentExtraction,
   describeSubdocumentExtractionRoute,
 } from "@/lib/ai/subdocument-extraction-orchestrator";
+import { classifyProduct, safeProductNameFallback } from "@/lib/ai/product-categories";
 
 export type RunContractReviewProcessingParams = {
   id: string;
@@ -685,6 +686,57 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     ...(autoResolvedClientId ? { autoResolvedClientId } : {}),
   };
 
+  // ── Product classification (BJ calc + needs-human-review flag) ───────────
+  // Deterministic classifier over institution + product + segment. Output is
+  // persisted alongside extraction so that UI (badges) and production reports
+  // can consume it without re-running the LLM. Note: we deliberately avoid
+  // fallback product name mutation — we store the suggested safe name as a
+  // proposed assumption and let the reviewer confirm it.
+  const efRaw = (data as { extractedFields?: Record<string, unknown> }).extractedFields ?? {};
+  const readField = (key: string): string | null => {
+    const cell = efRaw[key];
+    if (cell == null) return null;
+    if (typeof cell === "string") return cell.trim() || null;
+    if (typeof cell === "object") {
+      const v = (cell as { value?: unknown }).value;
+      if (typeof v === "string") return v.trim() || null;
+    }
+    return null;
+  };
+  const providerName = readField("institutionName") ?? readField("partnerName");
+  const rawProductName = readField("productName");
+  const segmentHint = readField("productSegment") ?? readField("segment") ?? data.documentClassification.primaryType ?? null;
+  const paymentTypeHint: "one_time" | "regular" | null = (() => {
+    const pt = readField("paymentType");
+    if (!pt) return null;
+    if (/jednor[aá]z|one[_-]?time|single/i.test(pt)) return "one_time";
+    if (/pravideln|regular|monthly|ročn[ií]|rocn/i.test(pt)) return "regular";
+    return null;
+  })();
+  const classification = classifyProduct({
+    providerName,
+    productName: rawProductName,
+    segment: segmentHint,
+    paymentType: paymentTypeHint,
+  });
+  const safeProductName = safeProductNameFallback(rawProductName, providerName);
+  const proposedAssumptions: Record<string, unknown> = {};
+  if (!rawProductName && safeProductName) {
+    proposedAssumptions.productName = {
+      value: safeProductName,
+      reason: "raw_product_name_missing_fallback_to_provider",
+    };
+  }
+  for (const n of classification.notes) {
+    reasonsForReview.push(`classifier:${n}`);
+  }
+  if (classification.needsHumanReview) {
+    reasonsForReview.push("classifier_needs_human_review");
+  }
+  const missingFields: string[] = [];
+  if (!providerName) missingFields.push("institutionName");
+  if (!rawProductName) missingFields.push("productName");
+
   await updateContractReview(id, tenantId, {
     processingStatus: pipelineResult.processingStatus,
     processingStage: null,
@@ -693,6 +745,12 @@ export async function runContractReviewProcessing(params: RunContractReviewProce
     clientMatchCandidates,
     confidence: pipelineResult.confidence,
     reasonsForReview: reasonsForReview.length ? reasonsForReview : null,
+    productCategory: classification.category,
+    productSubtypes: classification.subtypes.length ? classification.subtypes : null,
+    extractionConfidence: classification.confidence,
+    needsHumanReview: classification.needsHumanReview ? "true" : "false",
+    missingFields: missingFields.length ? missingFields : null,
+    proposedAssumptions: Object.keys(proposedAssumptions).length ? proposedAssumptions : null,
     inputMode: pipelineResult.inputMode,
     extractionMode: pipelineResult.extractionMode,
     detectedDocumentType: pipelineResult.detectedDocumentType,

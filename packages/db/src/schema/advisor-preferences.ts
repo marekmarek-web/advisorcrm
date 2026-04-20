@@ -39,6 +39,11 @@ export const advisorPreferences = pgTable(
     notesBoardPositions: jsonb("notes_board_positions").$type<
       Record<string, { x: number; y: number; z: number; pinned: boolean }>
     >(),
+    /**
+     * Kariérní pozice poradce — klíč do career_position_coefficients.position_key.
+     * Používá se v BJ kalkulaci k určení výplatního násobku.
+     */
+    careerPositionKey: text("career_position_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

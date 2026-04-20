@@ -331,6 +331,20 @@ export type ExtractionDocument = {
   };
   /** Human-readable pipeline sub-step while status is processing (from API `processingStage`). */
   processingStageLabel?: string;
+  /**
+   * Product classification from classifyProduct() — shown as a badge above
+   * the extraction groups and used in production reports for BJ calculation.
+   */
+  productCategory?: string | null;
+  productSubtypes?: string[] | null;
+  /** "high" | "medium" | "low" — overall AI extraction confidence. */
+  extractionConfidenceLevel?: "high" | "medium" | "low" | null;
+  /** When true, reviewer must verify data before apply. */
+  needsHumanReview?: boolean;
+  /** Fields the LLM could not reliably infer — UI shows them in a checklist. */
+  missingFields?: string[];
+  /** Proposed fallback values from AI that require reviewer confirmation. */
+  proposedAssumptions?: Record<string, unknown>;
   /** Server input mode (e.g. text_pdf) for readability-aware field warnings. */
   inputMode?: string;
   /** Structured advisor summary + work actions (not raw envelope dump). */

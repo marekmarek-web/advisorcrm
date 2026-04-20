@@ -17,6 +17,7 @@ import {
 } from "@/app/actions/manual-payment-setup";
 import { resolveInstitutionLogo, institutionInitials } from "@/lib/institutions/institution-logo";
 import { SEGMENT_LABELS } from "@/lib/db-constants";
+import { formatDomesticAccountDisplayLine } from "@/lib/ai/payment-field-contract";
 
 type PaymentSetupRow = {
   id: string;
@@ -92,9 +93,9 @@ function PaymentSetupCard({
 
   const displayAccount =
     row.iban?.trim() ||
-    (row.accountNumber && row.bankCode
-      ? `${row.accountNumber}/${row.bankCode}`
-      : row.accountNumber) ||
+    (row.accountNumber
+      ? formatDomesticAccountDisplayLine(row.accountNumber, row.bankCode ?? "")
+      : null) ||
     null;
 
   const pill = firstPaymentPillText(row.firstPaymentDate);

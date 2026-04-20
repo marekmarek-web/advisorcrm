@@ -1102,6 +1102,20 @@ function flattenEnvelopeToGroups(
         finalMessage = contractConflict.reason ?? "Číslo smlouvy a variabilní symbol si mohou odporovat.";
       }
 
+      // productName anti-hallucination hint — pokud je nízká jistota nebo
+      // hodnota obsahuje "— produkt k doplnění" fallback z safeProductNameFallback(),
+      // ukážeme amber warning. Prompt rule v SECTION_AWARE_RULES zakazuje vymýšlet
+      // název, takže low confidence typicky znamená provider-based návrh.
+      if (fKey === "productName") {
+        const looksLikeProviderFallback =
+          typeof strVal === "string" && /— produkt k doplnění/i.test(strVal);
+        const lowConfidence = confPct < 60;
+        if (looksLikeProviderFallback || lowConfidence) {
+          finalMessage =
+            "Navrženo podle poskytovatele — ověřte, zda v dokumentu není konkrétní název produktu.";
+        }
+      }
+
       const hasFieldConflict =
         (paymentConflict.hasConflict && (fKey === "paymentFrequency" || fKey === "totalMonthlyPremium" || fKey === "annualPremium")) ||
         (contractConflict.hasConflict && (fKey === "contractNumber" || fKey === "variableSymbol"));
@@ -1113,13 +1127,24 @@ function flattenEnvelopeToGroups(
         hasFieldConflict,
       );
 
+      // productName s nízkou jistotou / provider fallbackem → force warning,
+      // aby UI žlutě označilo „ověřte název produktu".
+      const productNameNeedsVerify =
+        fKey === "productName" &&
+        (confPct < 60 || (typeof strVal === "string" && /— produkt k doplnění/i.test(strVal)));
+
       pushGroupedField({
         id: `extractedFields.${fKey}`,
         groupId: "extractedFields",
         label: fieldLabelForKeyAndFamily(fKey, productFamily, primaryType),
         value: strVal,
         confidence: confPct,
-        status: gateResult.level === "displayable_with_review" ? "warning" : pres.status,
+        status:
+          productNameNeedsVerify
+            ? "warning"
+            : gateResult.level === "displayable_with_review"
+              ? "warning"
+              : pres.status,
         message: gateResult.level === "displayable_with_review" && !finalMessage
           ? "Ověřte oproti originálu dokumentu."
           : finalMessage,
@@ -1931,6 +1956,18 @@ export function mapApiToExtractionDocument(
       };
     })(),
     reviewUiMeta: usedSyntheticGroups ? { usedSyntheticGroups: true } : undefined,
+    productCategory: (detail.productCategory as string | null | undefined) ?? null,
+    productSubtypes: (detail.productSubtypes as string[] | null | undefined) ?? null,
+    extractionConfidenceLevel: (() => {
+      const v = detail.extractionConfidence as string | null | undefined;
+      return v === "high" || v === "medium" || v === "low" ? v : null;
+    })(),
+    needsHumanReview: detail.needsHumanReview === "true",
+    missingFields: Array.isArray(detail.missingFields) ? (detail.missingFields as string[]) : undefined,
+    proposedAssumptions:
+      detail.proposedAssumptions && typeof detail.proposedAssumptions === "object"
+        ? (detail.proposedAssumptions as Record<string, unknown>)
+        : undefined,
     publishReadiness: (() => {
       if (reviewStatus === "applied") return "published" as const;
       const gate = detail.applyGate as { readiness?: string; blockedReasons?: string[] } | undefined;

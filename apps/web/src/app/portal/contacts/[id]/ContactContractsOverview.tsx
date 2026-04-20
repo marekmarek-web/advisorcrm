@@ -139,7 +139,19 @@ function ContractDetailCard({
   onToggle: () => void;
   contactId: string;
   onDelete: (id: string) => void;
-  onOpenPaymentModal?: (prefill?: { providerName?: string; productName?: string; segment?: string; variableSymbol?: string }) => void;
+  onOpenPaymentModal?: (
+    prefill?: {
+      providerName?: string;
+      productName?: string;
+      segment?: string;
+      variableSymbol?: string;
+      accountNumber?: string;
+      iban?: string;
+      amount?: string;
+      frequency?: string;
+      firstPaymentDate?: string;
+    }
+  ) => void;
   onMenuStackDelta?: (delta: 1 | -1) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -348,7 +360,20 @@ function ContractDetailCard({
                         providerName: product.partnerName ?? undefined,
                         productName: product.productName ?? undefined,
                         segment: product.segment,
-                        variableSymbol: product.contractNumber ?? undefined,
+                        variableSymbol: paymentVs ?? product.contractNumber ?? undefined,
+                        accountNumber: paymentAccount ?? undefined,
+                        amount:
+                          product.premiumMonthly != null
+                            ? String(product.premiumMonthly)
+                            : product.premiumAnnual != null
+                              ? String(product.premiumAnnual)
+                              : undefined,
+                        frequency:
+                          product.premiumMonthly
+                            ? "Měsíčně"
+                            : product.premiumAnnual
+                              ? "Ročně"
+                              : undefined,
                       });
                     }}
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] transition-colors text-left"
@@ -672,7 +697,19 @@ export function ContactContractsOverview({
 }: {
   contactId: string;
   baseQueryNoTab: string;
-  onOpenPaymentModal?: (prefill?: { providerName?: string; productName?: string; segment?: string; variableSymbol?: string }) => void;
+  onOpenPaymentModal?: (
+    prefill?: {
+      providerName?: string;
+      productName?: string;
+      segment?: string;
+      variableSymbol?: string;
+      accountNumber?: string;
+      iban?: string;
+      amount?: string;
+      frequency?: string;
+      firstPaymentDate?: string;
+    }
+  ) => void;
 }) {
   const queryClient = useQueryClient();
   const bundleQK = queryKeys.contacts.documentsBundle(contactId);

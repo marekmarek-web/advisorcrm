@@ -3,6 +3,7 @@
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { db, contacts, clientPaymentSetups, eq, and } from "db";
+import { dedupeCzechAccountTrailingBankCode } from "@/lib/ai/payment-field-contract";
 
 export type ManualPaymentSetupInput = {
   contactId: string;
@@ -68,12 +69,13 @@ export async function createManualPaymentSetup(
   let bankCodeField: string | null = null;
 
   if (!ibanVal && accountNumber) {
-    const slashIdx = accountNumber.indexOf("/");
+    const deduped = dedupeCzechAccountTrailingBankCode(accountNumber);
+    const slashIdx = deduped.indexOf("/");
     if (slashIdx !== -1) {
-      accountNumberField = accountNumber.substring(0, slashIdx).trim();
-      bankCodeField = accountNumber.substring(slashIdx + 1).trim();
+      accountNumberField = deduped.substring(0, slashIdx).trim();
+      bankCodeField = deduped.substring(slashIdx + 1).trim();
     } else {
-      accountNumberField = accountNumber;
+      accountNumberField = deduped;
     }
   }
 

@@ -6,12 +6,18 @@ import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guar
 import { db } from "db";
 import { contracts, SEGMENT_LABELS } from "db";
 import { eq, and, gte, lt, sql } from "db";
+import {
+  getSegmentUiGroup,
+  type ContractSegmentUiGroup,
+} from "@/lib/contracts/contract-segment-wizard-config";
 
 export type PeriodType = "month" | "quarter" | "year";
 
 export type ProductionRow = {
   segment: string;
   segmentLabel: string;
+  /** UI skupina pro agregaci produkce (pojištění / investice / úvěry). */
+  group: ContractSegmentUiGroup;
   partnerName: string | null;
   totalPremium: number;
   totalAnnual: number;
@@ -20,9 +26,21 @@ export type ProductionRow = {
 
 export type ProductionSummary = {
   rows: ProductionRow[];
+  /** Legacy — součet všech `premiumAmount` napříč segmenty (pro zpětnou kompatibilitu UI). */
   totalPremium: number;
   totalAnnual: number;
   totalCount: number;
+  /** Nové agregáty: pojistné (ZP/MAJ/ODP/AUTO/CEST/FIRMA_POJ) */
+  totalInsurancePremium: number;
+  totalInsuranceAnnual: number;
+  totalInsuranceCount: number;
+  /** Nové agregáty: investice (INV/DIP/DPS) */
+  totalInvestment: number;
+  totalInvestmentAnnual: number;
+  totalInvestmentCount: number;
+  /** Nové agregáty: úvěry / hypotéky (HYPO/UVER) */
+  totalLending: number;
+  totalLendingCount: number;
   periodLabel: string;
 };
 
@@ -97,17 +115,30 @@ export async function getProductionSummary(
   const mapped: ProductionRow[] = rows.map((r) => ({
     segment: r.segment,
     segmentLabel: SEGMENT_LABELS[r.segment] ?? r.segment,
+    group: getSegmentUiGroup(r.segment),
     partnerName: r.partnerName,
     totalPremium: Number(r.totalPremium),
     totalAnnual: Number(r.totalAnnual),
     count: Number(r.count),
   }));
 
+  const insurance = mapped.filter((r) => r.group === "insurance");
+  const investment = mapped.filter((r) => r.group === "investment");
+  const lending = mapped.filter((r) => r.group === "lending");
+
   return {
     rows: mapped,
     totalPremium: mapped.reduce((s, r) => s + r.totalPremium, 0),
     totalAnnual: mapped.reduce((s, r) => s + r.totalAnnual, 0),
     totalCount: mapped.reduce((s, r) => s + r.count, 0),
+    totalInsurancePremium: insurance.reduce((s, r) => s + r.totalPremium, 0),
+    totalInsuranceAnnual: insurance.reduce((s, r) => s + r.totalAnnual, 0),
+    totalInsuranceCount: insurance.reduce((s, r) => s + r.count, 0),
+    totalInvestment: investment.reduce((s, r) => s + r.totalPremium, 0),
+    totalInvestmentAnnual: investment.reduce((s, r) => s + r.totalAnnual, 0),
+    totalInvestmentCount: investment.reduce((s, r) => s + r.count, 0),
+    totalLending: lending.reduce((s, r) => s + r.totalPremium, 0),
+    totalLendingCount: lending.reduce((s, r) => s + r.count, 0),
     periodLabel: label,
   };
 }

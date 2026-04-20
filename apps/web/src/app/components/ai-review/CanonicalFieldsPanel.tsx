@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type { ExtractionDocument } from "@/lib/ai-review/types";
 import { normalizeDateForAdvisorDisplay, normalizePaymentFrequency } from "@/lib/ai/canonical-date-normalize";
+import { formatDomesticAccountDisplayLine } from "@/lib/ai/payment-field-contract";
 import { humanizeReviewReasonLine, labelDocumentType } from "@/lib/ai-review/czech-labels";
 import { labelFundCategory, labelFvSourceType } from "@/lib/ai-review/label-dictionary";
 
@@ -303,11 +304,9 @@ function PaymentDataSection({ pay }: { pay: NonNullable<CanonicalFields["payment
   const accountDisplay =
     pay.iban != null && pay.iban !== ""
       ? null
-      : acc || pay.bankCode
-        ? acc && pay.bankCode
-          ? `${acc}/${pay.bankCode}`
-          : acc || pay.bankCode
-        : null;
+      : acc
+        ? formatDomesticAccountDisplayLine(acc, pay.bankCode ?? "") || acc
+        : pay.bankCode || null;
   return (
     <Section icon={CreditCard} title="Platební údaje">
       {pay.variableSymbol && <Row label="Variabilní symbol" value={pay.variableSymbol} />}

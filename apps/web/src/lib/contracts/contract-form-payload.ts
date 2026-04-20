@@ -49,6 +49,8 @@ export type ContractPersistPayload = {
   startDate?: string;
   anniversaryDate?: string;
   note?: string;
+  /** "one_time" = jednorázová platba; "regular" = pravidelná; undefined = neuvádí se / neznámo */
+  paymentType?: "one_time" | "regular";
 };
 
 const optionalTrimmed = z
@@ -97,6 +99,7 @@ export function normalizeContractFormForSave(form: ContractFormState): ContractP
     startDate: form.startDate?.trim() || undefined,
     anniversaryDate: form.anniversaryDate?.trim() || undefined,
     note: form.note?.trim() || undefined,
+    paymentType: form.paymentType ?? undefined,
   };
 }
 
@@ -112,6 +115,7 @@ const persistSchema = z.object({
   startDate: optionalTrimmed,
   anniversaryDate: optionalTrimmed,
   note: optionalTrimmed,
+  paymentType: z.enum(["one_time", "regular"]).optional(),
 });
 
 /** Validace před uložením (klient i server). */

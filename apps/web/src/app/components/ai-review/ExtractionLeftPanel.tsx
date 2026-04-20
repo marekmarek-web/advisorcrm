@@ -36,6 +36,12 @@ import {
 
 import { isDateFieldKey, normalizeDateForAdvisorDisplay } from "@/lib/ai/canonical-date-normalize";
 import { getDocumentTypeLabel } from "@/lib/ai/document-messages";
+import {
+  PRODUCT_CATEGORY_LABELS,
+  PRODUCT_SUBTYPE_LABELS,
+  type ProductCategory,
+  type ProductSubtype,
+} from "@/lib/ai/product-categories";
 import type { PrimaryDocumentType } from "@/lib/ai/document-review-types";
 import { CanonicalFieldsPanel } from "./CanonicalFieldsPanel";
 import { ReviewAttachClientDialog } from "./ReviewAttachClientDialog";
@@ -224,7 +230,7 @@ function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-3 mt-3">
+      <div className="flex items-center gap-3 mt-3 flex-wrap">
         <div className="flex items-center gap-2 bg-[color:var(--wp-surface-card)] border border-[color:var(--wp-surface-card-border)] rounded-xl px-3 py-2 shadow-sm">
           <Activity size={14} className="text-indigo-500" />
           <span className="text-xs font-black text-[color:var(--wp-text-secondary)]">
@@ -239,6 +245,57 @@ function DocumentMetaHeader({ doc }: { doc: ExtractionDocument }) {
           </span>
         </div>
       </div>
+      <ClassificationBadges doc={doc} />
+    </div>
+  );
+}
+
+/**
+ * Produkt. klasifikace z classifyProduct() + needs_human_review flag.
+ * Zobrazuje se jen pokud máme alespoň kategorii — jinak by byl řádek prázdný.
+ */
+function ClassificationBadges({ doc }: { doc: ExtractionDocument }) {
+  const category = (doc.productCategory ?? null) as ProductCategory | null;
+  const subtypes = (doc.productSubtypes ?? []) as ProductSubtype[];
+  const confidence = doc.extractionConfidenceLevel;
+  const needsReview = doc.needsHumanReview === true;
+  if (!category && !confidence && !needsReview && (!subtypes || subtypes.length === 0)) {
+    return null;
+  }
+  const confidenceMap: Record<"high" | "medium" | "low", { label: string; className: string }> = {
+    high: { label: "Vysoká jistota", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    medium: { label: "Střední jistota", className: "bg-amber-50 text-amber-700 border-amber-200" },
+    low: { label: "Nízká jistota", className: "bg-rose-50 text-rose-700 border-rose-200" },
+  };
+  return (
+    <div className="flex items-center gap-2 mt-2 flex-wrap">
+      {category ? (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <Sparkles size={11} />
+          {PRODUCT_CATEGORY_LABELS[category] ?? category}
+        </span>
+      ) : null}
+      {subtypes.map((st) => (
+        <span
+          key={st}
+          className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)] border border-[color:var(--wp-surface-card-border)]"
+        >
+          {PRODUCT_SUBTYPE_LABELS[st] ?? st}
+        </span>
+      ))}
+      {confidence ? (
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${confidenceMap[confidence].className}`}
+        >
+          {confidenceMap[confidence].label}
+        </span>
+      ) : null}
+      {needsReview ? (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-700 border border-rose-200">
+          <AlertTriangle size={11} />
+          Vyžaduje ověření poradcem
+        </span>
+      ) : null}
     </div>
   );
 }

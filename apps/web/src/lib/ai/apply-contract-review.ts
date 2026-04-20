@@ -23,6 +23,7 @@ import {
 import { normalizeDateToISO } from "./canonical-date-normalize";
 import {
   buildCanonicalPaymentPayloadFromRaw,
+  dedupeCzechAccountTrailingBankCode,
   isPaymentSyncReady,
   type CanonicalPaymentPayload,
 } from "./payment-field-contract";
@@ -1372,11 +1373,27 @@ function buildPaymentSetupDbValues(
       (action.payload.contractNumber as string)?.trim() ||
       null,
     beneficiaryName: (action.payload.beneficiaryName as string)?.trim() || null,
-    accountNumber:
-      (action.payload.recipientAccount as string)?.trim() ||
-      (action.payload.accountNumber as string)?.trim() ||
-      null,
-    bankCode: (action.payload.bankCode as string)?.trim() || null,
+    ...(() => {
+      const rawAcc =
+        (action.payload.recipientAccount as string)?.trim() ||
+        (action.payload.accountNumber as string)?.trim() ||
+        "";
+      const rawBankCode = (action.payload.bankCode as string)?.trim() || "";
+      if (!rawAcc) {
+        return { accountNumber: null, bankCode: rawBankCode || null };
+      }
+      const deduped = dedupeCzechAccountTrailingBankCode(rawAcc);
+      const slashIdx = deduped.indexOf("/");
+      if (slashIdx !== -1) {
+        const accPart = deduped.substring(0, slashIdx).trim();
+        const codePart = deduped.substring(slashIdx + 1).trim();
+        return {
+          accountNumber: accPart || null,
+          bankCode: codePart || rawBankCode || null,
+        };
+      }
+      return { accountNumber: deduped || null, bankCode: rawBankCode || null };
+    })(),
     iban: (action.payload.iban as string)?.trim() || null,
     bic: (action.payload.bic as string)?.trim() || null,
     variableSymbol: (action.payload.variableSymbol as string)?.trim() || null,
