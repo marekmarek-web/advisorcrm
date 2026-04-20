@@ -17,6 +17,7 @@ export function ClientRequestForm() {
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [attachmentWarning, setAttachmentWarning] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,6 +106,18 @@ export function ClientRequestForm() {
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-[var(--wp-radius-sm)] px-3 py-2">
           {error}
         </p>
+      )}
+
+      {attachmentWarning && (
+        <div className="space-y-2 whitespace-pre-line rounded-[var(--wp-radius-sm)] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="font-bold">Požadavek byl odeslán, ale některé přílohy se neuložily.</div>
+          <div>{attachmentWarning}</div>
+          <div>
+            <Link href="/client/requests" className="font-bold underline">
+              Pokračovat na moje požadavky
+            </Link>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-3">
