@@ -162,7 +162,7 @@ async function loadItemsForView(viewId: string): Promise<BoardItemRow[]> {
     })
     .from(boardItems)
     .leftJoin(contacts, eq(boardItems.contactId, contacts.id))
-    .where(eq(boardItems.viewId, viewId))
+    .where(and(eq(boardItems.tenantId, auth.tenantId), eq(boardItems.viewId, viewId)))
     .orderBy(asc(boardItems.sortOrder));
   return items.map((i) => ({
     id: i.id,
@@ -219,10 +219,18 @@ export async function createBoardItem(
   data: { name: string; groupId: string; cells?: Record<string, string | number> }
 ): Promise<string> {
   const auth = await requireAuthInAction();
+
+  const [owningView] = await db
+    .select({ id: boardViews.id })
+    .from(boardViews)
+    .where(and(eq(boardViews.tenantId, auth.tenantId), eq(boardViews.id, viewId)))
+    .limit(1);
+  if (!owningView) throw new Error("Board view nepatří tomuto tenantovi nebo neexistuje.");
+
   const maxOrder = await db
     .select({ sortOrder: boardItems.sortOrder })
     .from(boardItems)
-    .where(eq(boardItems.viewId, viewId))
+    .where(and(eq(boardItems.tenantId, auth.tenantId), eq(boardItems.viewId, viewId)))
     .orderBy(asc(boardItems.sortOrder));
   const nextOrder = maxOrder.length > 0 ? Math.max(...maxOrder.map((r) => r.sortOrder)) + 1 : 0;
 

@@ -41,6 +41,9 @@ jobs:
         run: pnpm compliance:copy-check
         continue-on-error: true
 
+      - name: Tenant-scope audit (blokující)
+        run: pnpm audit:tenant
+
       - name: Unit tests
         working-directory: apps/web
         run: pnpm test

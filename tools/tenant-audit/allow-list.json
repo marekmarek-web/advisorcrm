@@ -1,0 +1,89 @@
+{
+  "$schema": "Known false positives — každé pole je {file, fn, table, reason}. Scripty audit:tenant povoluje tyto záznamy. Nové nálezy budou v CI failovat.",
+  "entries": [
+    {
+      "file": "apps/web/src/app/actions/business-plan.ts",
+      "fn": "getActivePlan",
+      "table": "advisorBusinessPlanTargets",
+      "reason": "advisorBusinessPlanTargets je scoped přes plan_id; plán se načítá o pár řádků výš s eq(tenantId, auth.tenantId). FK integrity brání cross-tenant přístupu."
+    },
+    {
+      "file": "apps/web/src/app/actions/business-plan.ts",
+      "fn": "getPlanWithTargets",
+      "table": "advisorBusinessPlanTargets",
+      "reason": "Viz getActivePlan — targets přes plan_id z tenant-gated plánu."
+    },
+    {
+      "file": "apps/web/src/app/actions/business-plan.ts",
+      "fn": "getTeamBusinessPlanSummary",
+      "table": "advisorBusinessPlanTargets",
+      "reason": "Viz getActivePlan — targets přes plan_id z tenant-gated plánu."
+    },
+    {
+      "file": "apps/web/src/app/actions/export-pdf.ts",
+      "fn": "getClientSummary",
+      "table": "householdMembers",
+      "reason": "household_members nemá vlastní tenant_id; izolace přes household_id, kde household byl načten s tenant filterem nebo přes auth.contactId."
+    },
+    {
+      "file": "apps/web/src/app/actions/fa-sync.ts",
+      "fn": "syncFaToContacts",
+      "table": "householdMembers",
+      "reason": "household_id byl předtím ověřen jako tenantův (eq(households.tenantId, auth.tenantId)) nebo právě vytvořen v tomto tenantovi."
+    },
+    {
+      "file": "apps/web/src/app/actions/financial-analyses.ts",
+      "fn": "getFinancialAnalysis",
+      "table": "householdMembers",
+      "reason": "householdId pochází z tenant-gated financial_analyses záznamu."
+    },
+    {
+      "file": "apps/web/src/app/actions/financial-analyses.ts",
+      "fn": "getFinancialAnalysesForHousehold",
+      "table": "householdMembers",
+      "reason": "householdId pochází z tenant-gated households záznamu."
+    },
+    {
+      "file": "apps/web/src/app/actions/households.ts",
+      "fn": "getHouseholdIdForContactWithAuth",
+      "table": "householdMembers",
+      "reason": "Inner join s households filtrovaný eq(households.tenantId, auth.tenantId)."
+    },
+    {
+      "file": "apps/web/src/app/api/invite/metadata/route.ts",
+      "fn": "GET",
+      "table": "clientInvitations",
+      "reason": "Bootstrap flow — invitation lookup po veřejném tokenu před resolvem tenantu. Tenant se z invitace až získá."
+    },
+    {
+      "file": "apps/web/src/lib/ai/client-matching.ts",
+      "fn": "findMatchedHouseholds",
+      "table": "householdMembers",
+      "reason": "Inner join s households filtrovaný eq(households.tenantId, tenantId)."
+    },
+    {
+      "file": "apps/web/src/lib/ai/image-intake/binding-household.ts",
+      "fn": "resolveHouseholdBinding",
+      "table": "householdMembers",
+      "reason": "Queries jsou ohraničené přes eq(contacts.tenantId, tenantId) v hlavním joinu; subquery pro primaryClientId je zaúžená outer where."
+    },
+    {
+      "file": "apps/web/src/lib/auth/require-auth.ts",
+      "fn": "findPendingClientPasswordChangeRedirect",
+      "table": "clientInvitations",
+      "reason": "Bootstrap flow — lookup po userId před dokončením signup / password changu, tenant se ještě neresolvul."
+    },
+    {
+      "file": "apps/web/src/lib/terminations/catalog.ts",
+      "fn": "findInsurerByCatalogKey",
+      "table": "insurerTerminationRegistry",
+      "reason": "Globální katalog s tenant-specific overrides. Výběr v paměti preferuje tenant před globálem."
+    },
+    {
+      "file": "apps/web/src/lib/terminations/catalog.ts",
+      "fn": "findReasonByCode",
+      "table": "terminationReasonCatalog",
+      "reason": "Globální katalog s tenant-specific overrides. Výběr v paměti preferuje tenant před globálem."
+    }
+  ]
+}

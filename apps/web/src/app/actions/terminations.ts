@@ -591,7 +591,15 @@ export async function createTerminationDraft(
     const [ir] = await db
       .select({ mailingAddress: insurerTerminationRegistry.mailingAddress })
       .from(insurerTerminationRegistry)
-      .where(eq(insurerTerminationRegistry.id, rules.insurerRegistryId))
+      .where(
+        and(
+          eq(insurerTerminationRegistry.id, rules.insurerRegistryId),
+          or(
+            isNull(insurerTerminationRegistry.tenantId),
+            eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+          )
+        )
+      )
       .limit(1);
     mailing = ir?.mailingAddress ?? null;
   }
@@ -1159,7 +1167,15 @@ export async function updateTerminationRequestFieldsAndReevaluateAction(
     const [ir] = await db
       .select({ mailingAddress: insurerTerminationRegistry.mailingAddress })
       .from(insurerTerminationRegistry)
-      .where(eq(insurerTerminationRegistry.id, rules.insurerRegistryId))
+      .where(
+        and(
+          eq(insurerTerminationRegistry.id, rules.insurerRegistryId),
+          or(
+            isNull(insurerTerminationRegistry.tenantId),
+            eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+          )
+        )
+      )
       .limit(1);
     mailing = ir?.mailingAddress ?? null;
   }
@@ -1320,7 +1336,15 @@ async function loadTerminationLetterBuildResult(
         mailingAddress: insurerTerminationRegistry.mailingAddress,
       })
       .from(insurerTerminationRegistry)
-      .where(eq(insurerTerminationRegistry.id, req.insurerRegistryId))
+      .where(
+        and(
+          eq(insurerTerminationRegistry.id, req.insurerRegistryId),
+          or(
+            isNull(insurerTerminationRegistry.tenantId),
+            eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+          )
+        )
+      )
       .limit(1);
     if (ir) {
       insurerRegistry = {
@@ -1337,7 +1361,15 @@ async function loadTerminationLetterBuildResult(
     const [rc] = await db
       .select({ labelCs: terminationReasonCatalog.labelCs })
       .from(terminationReasonCatalog)
-      .where(eq(terminationReasonCatalog.id, req.reasonCatalogId))
+      .where(
+        and(
+          eq(terminationReasonCatalog.id, req.reasonCatalogId),
+          or(
+            isNull(terminationReasonCatalog.tenantId),
+            eq(terminationReasonCatalog.tenantId, auth.tenantId)
+          )
+        )
+      )
       .limit(1);
     if (rc?.labelCs) reasonLabel = rc.labelCs;
   }

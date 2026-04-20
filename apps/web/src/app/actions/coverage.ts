@@ -355,7 +355,12 @@ export async function createOpportunityFromFaItem(
   const [fa] = await db
     .select({ contactId: financialAnalyses.contactId })
     .from(financialAnalyses)
-    .where(eq(financialAnalyses.id, item.analysisId))
+    .where(
+      and(
+        eq(financialAnalyses.tenantId, auth.tenantId),
+        eq(financialAnalyses.id, item.analysisId)
+      )
+    )
     .limit(1);
 
   let targetStageId = stageId;

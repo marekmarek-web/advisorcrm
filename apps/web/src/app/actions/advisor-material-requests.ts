@@ -155,7 +155,12 @@ async function buildMaterialRequestDetail(
       createdAt: advisorMaterialRequestMessages.createdAt,
     })
     .from(advisorMaterialRequestMessages)
-    .where(eq(advisorMaterialRequestMessages.requestId, requestId))
+    .where(
+      and(
+        eq(advisorMaterialRequestMessages.tenantId, tenantId),
+        eq(advisorMaterialRequestMessages.requestId, requestId)
+      )
+    )
     .orderBy(asc(advisorMaterialRequestMessages.createdAt));
 
   const docLinks = await db
@@ -164,7 +169,12 @@ async function buildMaterialRequestDetail(
       attachmentRole: advisorMaterialRequestDocuments.attachmentRole,
     })
     .from(advisorMaterialRequestDocuments)
-    .where(eq(advisorMaterialRequestDocuments.requestId, requestId));
+    .where(
+      and(
+        eq(advisorMaterialRequestDocuments.tenantId, tenantId),
+        eq(advisorMaterialRequestDocuments.requestId, requestId)
+      )
+    );
 
   const docIds = docLinks.map((d) => d.documentId);
   const docMeta =
@@ -589,7 +599,7 @@ export async function respondClientMaterialRequest(
     const [cn] = await db
       .select({ firstName: contacts.firstName, lastName: contacts.lastName })
       .from(contacts)
-      .where(eq(contacts.id, req.contactId))
+      .where(and(eq(contacts.tenantId, req.tenantId), eq(contacts.id, req.contactId)))
       .limit(1);
     const clientName = cn
       ? [cn.firstName, cn.lastName].filter(Boolean).join(" ").trim() || "Klient"
