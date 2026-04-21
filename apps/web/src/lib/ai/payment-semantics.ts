@@ -121,13 +121,34 @@ export function selectCanonicalPaymentAmount(
   }
 
   if (INVESTMENT_PRIMARIES.has(primary)) {
+    // `intendedInvestment` = celková zamýšlená investice za celý horizont
+    // (viz RULE v combined-extraction: „Předpokládaná výše investice"),
+    // a `amountToPay` může být cílový target. U pravidelného investování
+    // (měsíčně / čtvrtletně / pololetně / ročně) NESMÍ tyto součtové/cílové
+    // hodnoty přebít skutečnou splátku (regularAmount / premiumAmount /
+    // totalMonthlyPremium / installmentAmount). Jinak shrnutí ukáže např.
+    // „576 000 CZK (měsíčně)" místo reálných 3 000 CZK / měs.
+    if (freq === "monthly" || freq === "quarterly" || freq === "semi_annual" || freq === "annual") {
+      return fv(ef, [
+        "regularAmount",
+        "premiumAmount",
+        "totalMonthlyPremium",
+        "installmentAmount",
+        "annualPremium",
+        // až jako poslední – pokud nic explicitního není nalezeno,
+        // povol i cílové / celkové pole (lepší něco než „—").
+        "amountToPay",
+        "intendedInvestment",
+      ]);
+    }
+    // one_time / unknown → lump-sum pořadí (zde má intendedInvestment smysl).
     return fv(ef, [
-      "regularAmount",
+      "oneOffAmount",
       "amountToPay",
       "intendedInvestment",
+      "regularAmount",
       "premiumAmount",
       "installmentAmount",
-      "oneOffAmount",
       "totalMonthlyPremium",
       "annualPremium",
     ]);
