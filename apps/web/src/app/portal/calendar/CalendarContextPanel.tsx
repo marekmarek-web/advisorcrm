@@ -55,6 +55,13 @@ export interface CalendarContextPanelProps {
   dayEvents: EventRow[];
   dayTasks: TaskRow[];
   dayTasksLoading: boolean;
+  /**
+   * Chybová hláška z `getTasksForDate` — dříve se chyba polykala do prázdného pole a
+   * uživatel si myslel, že „nejsou žádné úkoly“. Nyní ji vykreslíme jako varování
+   * se zjevným CTA pro reload.
+   */
+  dayTasksError?: string | null;
+  onRetryDayTasks?: () => void;
   unreadMessagesCount?: number;
   onToggleTask: (task: TaskRow) => void;
   /** Called when user clicks "Přidat úkol"; parent should open new-task modal with this date. */
@@ -69,6 +76,8 @@ export function CalendarContextPanel({
   dayEvents,
   dayTasks,
   dayTasksLoading,
+  dayTasksError = null,
+  onRetryDayTasks,
   unreadMessagesCount = 0,
   onToggleTask,
   onAddTask,
@@ -131,6 +140,22 @@ export function CalendarContextPanel({
           <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">Úkoly</h4>
           {dayTasksLoading ? (
             <p className="text-sm text-[color:var(--wp-text-secondary)]">Načítám…</p>
+          ) : dayTasksError ? (
+            <div
+              role="alert"
+              className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-800/60 dark:bg-rose-950/35 dark:text-rose-200"
+            >
+              <p className="font-bold">{dayTasksError}</p>
+              {onRetryDayTasks && (
+                <button
+                  type="button"
+                  onClick={onRetryDayTasks}
+                  className="mt-1 font-bold underline hover:text-rose-900 dark:hover:text-rose-100"
+                >
+                  Načíst znovu
+                </button>
+              )}
+            </div>
           ) : dayTasks.length === 0 ? (
             <p className="text-sm text-[color:var(--wp-text-secondary)] mb-2">Žádné úkoly na tento den</p>
           ) : (

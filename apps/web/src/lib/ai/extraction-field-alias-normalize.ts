@@ -1302,7 +1302,16 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
     case "investment_payment_instruction":
       mergeFromAliases(ef, "provider", ["institutionName", "insurer", "payerBank", "recipientName"]);
       mergeFromAliases(ef, "contractReference", ["contractNumber", "policyNumber", "referenceNumber"]);
-      mergeFromAliases(ef, "bankAccount", ["recipientAccount"]);
+      // Semantics guard: on payment instruction docs the account is ALWAYS the
+      // recipient (institution/platform) account — the client does not own it.
+      // Promote any bankAccount / accountNumber value into recipientAccount,
+      // then clear bankAccount so the UI does not label it "Číslo účtu klienta".
+      mergeFromAliases(ef, "recipientAccount", ["bankAccount", "accountNumber"]);
+      if (valuePresent(ef.recipientAccount)) {
+        if (valuePresent(ef.bankAccount)) {
+          ef.bankAccount = { value: null, status: "not_applicable" as const, confidence: 1 };
+        }
+      }
       break;
 
     case "insurance_policy_change_or_service_doc":

@@ -323,26 +323,28 @@ const PipelineOpportunityCard = memo(function PipelineOpportunityCard({
             {dateShort}
           </div>
           <div className="flex gap-1">
-            {opp.contactId && (
-              <>
-                <Link
-                  href={`/portal/contacts/${opp.contactId}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-emerald-500/15 hover:text-emerald-600 dark:hover:text-emerald-400"
-                  title="Zavolat"
-                >
-                  <Phone size={12} />
-                </Link>
-                <Link
-                  href={`/portal/contacts/${opp.contactId}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400"
-                  title="Napsat e-mail"
-                >
-                  <Mail size={12} />
-                </Link>
-              </>
-            )}
+            {opp.contactId && opp.contactPhone ? (
+              <a
+                href={`tel:${opp.contactPhone.replace(/\s+/g, "")}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-emerald-500/15 hover:text-emerald-600 dark:hover:text-emerald-400"
+                title={`Zavolat ${opp.contactPhone}`}
+                aria-label={`Zavolat ${opp.contactName}`}
+              >
+                <Phone size={12} />
+              </a>
+            ) : null}
+            {opp.contactId && opp.contactEmail ? (
+              <a
+                href={`mailto:${opp.contactEmail}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex h-6 w-6 items-center justify-center rounded-md border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text-secondary)] transition-colors hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400"
+                title={`Napsat e-mail na ${opp.contactEmail}`}
+                aria-label={`Napsat e-mail ${opp.contactName}`}
+              >
+                <Mail size={12} />
+              </a>
+            ) : null}
             {!readOnly ? (
               <>
                 <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight, Paperclip, X } from "lucide-react";
 import { createClientPortalRequestFromForm } from "@/app/actions/client-portal-requests";
@@ -81,7 +81,7 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
     [categoryId]
   );
 
-  function resetAndClose() {
+  const resetAndClose = useCallback(() => {
     setStep(1);
     setCategoryId("");
     setSelectedCaseType(defaultCaseType ?? "");
@@ -91,7 +91,22 @@ export function NewRequestModal({ open, onClose, defaultCaseType }: NewRequestMo
     setError(null);
     setAttachmentWarning(null);
     onClose();
-  }
+  }, [defaultCaseType, onClose]);
+
+  // Escape zavírá modal (backdrop-click už funguje). Bez toho by klient uvízl
+  // v modálu při ztrátě focusu — zejména v případě, že overlay notifikace
+  // zachycují kliky.
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isPending) {
+        event.preventDefault();
+        resetAndClose();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, isPending, resetAndClose]);
 
   function submitRequest() {
     if (!selectedCaseType) return;

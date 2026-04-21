@@ -183,7 +183,7 @@ export function CalendarEventForm({
         </div>
 
         <div
-          className="flex-1 min-h-0 space-y-5 overflow-y-auto overscroll-y-contain px-4 py-5"
+          className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-y-contain px-3 py-4"
           style={
             largeScreen
               ? keyboardInset
@@ -210,7 +210,7 @@ export function CalendarEventForm({
                       reminderMinutes: t.id === "ukol" || t.id === "priorita" ? 15 : 30,
                     }))
                   }
-                  className={`flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center text-xs font-bold transition-all active:scale-[0.97] sm:flex-row sm:text-sm ${getChipClasses(t.id, isActive, colorOverride)}`}
+                  className={`flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-center text-[11px] font-bold leading-tight transition-all active:scale-[0.97] ${getChipClasses(t.id, isActive, colorOverride)}`}
                   style={getChipInlineStyle(t.id, isActive, colorOverride)}
                 >
                   <span className="text-base leading-none">{t.icon}</span>

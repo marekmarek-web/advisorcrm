@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   TrendingUp,
-  BarChart2,
   FileText,
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  Coins,
+  Receipt,
+  FileSignature,
+  BarChart3,
 } from "lucide-react";
 import {
   getProductionSummary,
@@ -18,12 +21,18 @@ import {
 } from "@/app/actions/production";
 import {
   EmptyState,
-  ErrorState,
-  FilterChips,
   MobileCard,
   MobileSection,
-  StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
+import {
+  HeroCard,
+  HeroAction,
+  HeroMetaDot,
+  InlineAlert,
+  KpiCard,
+  MetricGrid,
+  SegmentPills,
+} from "@/app/shared/portal-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -59,29 +68,81 @@ function getSegmentColor(segment: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Summary KPI bar                                                    */
+/*  Summary hero (HeroCard + KPI grid)                                 */
 /* ------------------------------------------------------------------ */
 
-function SummaryBar({ summary }: { summary: ProductionSummary }) {
+function SummaryHero({
+  summary,
+  onRefresh,
+  pending,
+}: {
+  summary: ProductionSummary;
+  onRefresh: () => void;
+  pending: boolean;
+}) {
+  const career = summary.careerPosition;
+  const bjCzkLabel =
+    summary.totalBjCzk != null
+      ? fmtCzk(summary.totalBjCzk)
+      : career
+        ? "—"
+        : "Nezadaná pozice";
+
   return (
-    <div className="px-4 py-4 bg-gradient-to-br from-[#0a0f29] to-indigo-950">
-      <p className="text-xs font-black uppercase tracking-widest text-indigo-300 mb-3">
-        {summary.periodLabel}
-      </p>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-indigo-300/70">Roční pojistné</p>
-          <p className="text-lg font-black text-white mt-0.5">{fmtCzk(summary.totalAnnual)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-indigo-300/70">Měsíční poj.</p>
-          <p className="text-lg font-black text-white mt-0.5">{fmtCzk(summary.totalPremium)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-indigo-300/70">Smluv</p>
-          <p className="text-lg font-black text-white mt-0.5">{summary.totalCount}</p>
-        </div>
-      </div>
+    <div className="space-y-3 px-4 pt-4">
+      <HeroCard
+        eyebrow="Produkce"
+        title={summary.periodLabel}
+        subtitle={
+          career
+            ? `Pozice: ${career.positionLabel} · ${career.bjValueCzk.toLocaleString("cs-CZ")} Kč / BJ`
+            : "Nastav kariérní pozici v profilu pro přepočet BJ na Kč."
+        }
+        icon={<TrendingUp size={20} className="text-white" />}
+        actions={
+          <HeroAction onClick={onRefresh} aria-label="Obnovit">
+            <RefreshCw size={13} className={cx(pending && "animate-spin")} />
+            Obnovit
+          </HeroAction>
+        }
+        meta={
+          <>
+            <span>{summary.totalCount} smluv</span>
+            <HeroMetaDot />
+            <span>{fmtCzk(summary.totalPremium)} / měs.</span>
+            <HeroMetaDot />
+            <span>{fmtCzk(summary.totalAnnual)} / rok</span>
+          </>
+        }
+      />
+
+      <MetricGrid cols={2}>
+        <KpiCard
+          label="Roční pojistné"
+          value={fmtCzk(summary.totalAnnual)}
+          icon={<Coins size={14} />}
+          variant="compact"
+        />
+        <KpiCard
+          label="Měsíční pojistné"
+          value={fmtCzk(summary.totalPremium)}
+          icon={<Receipt size={14} />}
+          variant="compact"
+        />
+        <KpiCard
+          label="Smluv v období"
+          value={summary.totalCount}
+          icon={<FileSignature size={14} />}
+          variant="compact"
+        />
+        <KpiCard
+          label="BJ → Kč"
+          value={bjCzkLabel}
+          icon={<BarChart3 size={14} />}
+          health={career ? "ok" : "neutral"}
+          variant="compact"
+        />
+      </MetricGrid>
     </div>
   );
 }
@@ -274,41 +335,52 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
   }, [summary]);
 
   return (
-    <>
-      {error ? <ErrorState title={error} onRetry={loadData} /> : null}
-      <div
-        className={cx(
-          "pb-6",
-          pending && summary && "opacity-60 pointer-events-none transition-opacity duration-200"
-        )}
-      >
-      {/* Summary hero */}
-      {summary ? <SummaryBar summary={summary} /> : null}
+    <div
+      className={cx(
+        "pb-6",
+        pending && summary && "opacity-60 pointer-events-none transition-opacity duration-200"
+      )}
+    >
+      {error ? (
+        <div className="px-4 pt-4">
+          <InlineAlert
+            tone="danger"
+            title="Produkci se nepodařilo načíst"
+            description={error}
+            action={
+              <button
+                type="button"
+                onClick={loadData}
+                className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-[11px] font-black uppercase tracking-wide text-rose-700 hover:bg-rose-50"
+              >
+                <RefreshCw size={12} /> Zkusit znovu
+              </button>
+            }
+          />
+        </div>
+      ) : null}
+
+      {summary ? (
+        <SummaryHero summary={summary} onRefresh={loadData} pending={pending} />
+      ) : null}
       {pending && !summary ? (
-        <div className="h-28 bg-gradient-to-br from-[#0a0f29] to-indigo-950 animate-pulse rounded-b-2xl" />
+        <div className="px-4 pt-4">
+          <div className="h-32 animate-pulse rounded-[24px] bg-gradient-to-br from-[var(--aidv-hero-navy)] to-indigo-950 opacity-60" />
+        </div>
       ) : null}
 
       {/* Period selector */}
-      <div className="px-4 py-3 bg-[color:var(--wp-surface-card)] border-b border-[color:var(--wp-surface-card-border)]">
-        <div className="flex items-center justify-between gap-2">
-          <FilterChips
-            value={period}
-            onChange={(id) => setPeriod(id as PeriodType)}
-            options={[
-              { id: "month", label: "Měsíc" },
-              { id: "quarter", label: "Kvartál" },
-              { id: "year", label: "Rok" },
-            ]}
-          />
-          <button
-            type="button"
-            onClick={loadData}
-            disabled={pending}
-            className="flex items-center gap-1.5 min-h-[36px] px-2.5 rounded-lg border border-[color:var(--wp-surface-card-border)] text-xs font-bold text-[color:var(--wp-text-secondary)] disabled:opacity-50"
-          >
-            <RefreshCw size={12} className={cx(pending && "animate-spin")} /> Obnovit
-          </button>
-        </div>
+      <div className="px-4 pt-3">
+        <SegmentPills
+          label="Období"
+          value={period}
+          onChange={(id) => setPeriod(id as PeriodType)}
+          options={[
+            { id: "month", label: "Měsíc" },
+            { id: "quarter", label: "Kvartál" },
+            { id: "year", label: "Rok" },
+          ]}
+        />
       </div>
 
       {pending && !summary ? (
@@ -382,7 +454,6 @@ export function ProductionScreen({ deviceClass = "phone" }: { deviceClass?: Devi
           />
         </MobileSection>
       ) : null}
-      </div>
-    </>
+    </div>
   );
 }

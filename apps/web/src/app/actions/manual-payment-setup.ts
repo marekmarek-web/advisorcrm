@@ -16,10 +16,14 @@ export type ManualPaymentSetupInput = {
   constantSymbol?: string;
   specificSymbol?: string;
   amount?: string;
+  /** ISO 4217 měna. Pokud není předána, default je CZK. */
+  currency?: string;
   frequency?: string;
   firstPaymentDate?: string;
   visibleToClient: boolean;
 };
+
+const SUPPORTED_PAYMENT_CURRENCIES = new Set(["CZK", "EUR", "USD", "GBP", "PLN", "HUF", "CHF"]);
 
 export type ManualPaymentSetupResult =
   | { ok: true; id: string }
@@ -96,7 +100,10 @@ export async function createManualPaymentSetup(
       constantSymbol: input.constantSymbol?.trim() || null,
       specificSymbol: input.specificSymbol?.trim() || null,
       amount: amountValue,
-      currency: "CZK",
+      currency: (() => {
+        const raw = (input.currency ?? "").trim().toUpperCase();
+        return raw && SUPPORTED_PAYMENT_CURRENCIES.has(raw) ? raw : "CZK";
+      })(),
       frequency: input.frequency?.trim() || null,
       firstPaymentDate: input.firstPaymentDate?.trim() || null,
       needsHumanReview: false,

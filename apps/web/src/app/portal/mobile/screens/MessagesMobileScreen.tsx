@@ -467,7 +467,7 @@ export function MessagesMobileScreen() {
       return <ErrorState title={conversationsError} onRetry={() => void refetchConversations()} />;
     }
     return (
-      <div className="-mx-4 -mt-4 flex flex-col min-h-[calc(100dvh-8rem)]">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* Search + New message */}
         <div className="px-4 pt-3 pb-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] space-y-2 shrink-0">
           <div className="flex gap-2">
@@ -578,7 +578,7 @@ export function MessagesMobileScreen() {
   /*  DETAIL VIEW — Message thread (full screen on mobile)         */
   /* ============================================================ */
   return (
-    <div className="-mx-4 -mt-4 flex flex-col h-[calc(100dvh-4rem)]">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Thread header */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] min-h-[56px]">
         <button

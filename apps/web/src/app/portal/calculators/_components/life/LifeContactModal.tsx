@@ -168,42 +168,33 @@ export function LifeContactModal({
         onClick={handleClose}
         aria-hidden
       />
-      <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+      <div className="absolute inset-0 flex items-end sm:items-center justify-center p-2 sm:p-4 pointer-events-none">
         <div
           ref={contentRef}
-          className="bg-[color:var(--wp-surface-card)] rounded-2xl shadow-2xl w-full max-w-md transform scale-95 opacity-0 transition-all duration-300 pointer-events-auto relative overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="bg-[color:var(--wp-surface-card)] rounded-2xl shadow-2xl w-full max-w-md transform scale-95 opacity-0 transition-all duration-300 pointer-events-auto relative overflow-hidden max-h-[85vh] flex flex-col"
           role="dialog"
           aria-modal
           aria-labelledby="life-modal-title"
         >
-          <button
-            type="button"
-            onClick={handleClose}
-            className="absolute top-4 right-4 text-[color:var(--wp-text-tertiary)] hover:text-[#0a0f29] transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-[color:var(--wp-surface-muted)] z-10"
-            aria-label="Zavřít"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
+          <div className="flex shrink-0 items-start gap-3 bg-[color:var(--wp-surface-muted)] border-b border-[color:var(--wp-surface-card-border)] px-5 py-4">
+            <div className="min-w-0 flex-1">
+              <h3 id="life-modal-title" className="text-[17px] font-black leading-tight text-[#0a0f29]">
+                {TITLES[type]}
+              </h3>
+              <p className="mt-0.5 text-xs font-medium text-[color:var(--wp-text-secondary)]">{SUBTITLES[type]}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Zavřít"
+              className="grid min-h-[40px] min-w-[40px] shrink-0 place-items-center rounded-xl text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-card)] hover:text-[#0a0f29]"
             >
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
-          <div className="bg-[color:var(--wp-surface-muted)] p-6 border-b border-[color:var(--wp-surface-card-border)]">
-            <h3
-              id="life-modal-title"
-              className="text-xl font-bold text-[#0a0f29]"
-            >
-              {TITLES[type]}
-            </h3>
-            <p className="text-xs text-[color:var(--wp-text-secondary)] mt-1">{SUBTITLES[type]}</p>
+              <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.25} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <div className="p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
             <form
               ref={formRef}
               onSubmit={handleSubmit}

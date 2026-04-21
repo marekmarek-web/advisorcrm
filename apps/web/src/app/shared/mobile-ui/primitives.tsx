@@ -25,9 +25,9 @@ export function MobileAppShell({
         "flex flex-col bg-[color:var(--wp-bg)] text-[color:var(--wp-text)]",
         /* Phone/tablet: fill visual viewport so document/body never scrolls or rubber-bands behind the shell. */
         deviceClass === "phone" &&
-          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+max(0.5rem,var(--safe-area-bottom)))]",
+          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--safe-area-bottom,0px))]",
         deviceClass === "tablet" &&
-          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-tablet)+max(0.5rem,var(--safe-area-bottom)))]",
+          "fixed inset-0 z-[1] min-h-0 overflow-hidden pb-[calc(var(--aidv-mobile-tabbar-inner-h-tablet)+var(--safe-area-bottom,0px))]",
         deviceClass === "desktop" && "min-h-[100dvh] pb-0",
         className
       )}
@@ -158,12 +158,12 @@ export function MobileBottomNav({
     <nav
       className={cx(
         "fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]",
-        "pb-[max(0.5rem,var(--safe-area-bottom))]",
-        "pl-[max(0.25rem,env(safe-area-inset-left,0px))] pr-[max(0.25rem,env(safe-area-inset-right,0px))]"
+        "pb-[var(--safe-area-bottom,0px)]",
+        "pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
       )}
     >
       {useFab && deviceClass === "phone" ? (
-        <div className="grid grid-cols-5 gap-0.5 px-1 pt-1 pb-2 items-end max-w-lg mx-auto">
+        <div className="grid grid-cols-5 gap-0.5 px-1 pt-1 pb-1 items-end max-w-lg mx-auto">
           {left.map((item) => (
             <NavTabButton
               key={item.id}
@@ -185,7 +185,7 @@ export function MobileBottomNav({
           ))}
         </div>
       ) : useFab && (deviceClass === "tablet" || deviceClass === "desktop") ? (
-        <div className="flex items-end justify-between gap-2 px-4 pt-1 pb-2 max-w-3xl mx-auto">
+        <div className="flex items-end justify-between gap-2 px-4 pt-1 pb-1 max-w-3xl mx-auto">
           {left.map((item) => (
             <NavTabButton
               key={item.id}
@@ -260,10 +260,15 @@ export function MobileCard({ children, className, pressable }: { children: React
   return (
     <div
       className={cx(
-        "rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4 shadow-sm",
+        "border bg-[color:var(--wp-surface-card)] p-4",
         pressable && "transition-transform active:scale-[0.99] cursor-pointer",
         className
       )}
+      style={{
+        borderColor: "var(--aidv-mobile-card-border)",
+        borderRadius: "var(--aidv-radius-card-sm)",
+        boxShadow: "var(--aidv-mobile-card-shadow)",
+      }}
     >
       {children}
     </div>
@@ -411,7 +416,7 @@ export function FloatingActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="fixed z-40 flex min-h-[52px] min-w-[52px] items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform active:scale-95 bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--aidv-mobile-fab-above-tabbar)+max(0.5rem,var(--safe-area-bottom)))] right-[max(1rem,env(safe-area-inset-right,0px))]"
+      className="fixed z-40 flex min-h-[52px] min-w-[52px] items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform active:scale-95 bottom-[calc(var(--aidv-mobile-tabbar-inner-h-phone)+var(--aidv-mobile-fab-above-tabbar)+var(--safe-area-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))]"
       aria-label={label}
       title={label}
     >
@@ -426,12 +431,15 @@ function OverlayContainer({
   children,
   fullScreen,
   labelId,
+  compact,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   fullScreen?: boolean;
   labelId?: string;
+  /** Bottom sheet height: content-hugging with max 60dvh instead of the default 85dvh. */
+  compact?: boolean;
 }) {
   // Lock body scroll when open
   useEffect(() => {
@@ -447,6 +455,38 @@ function OverlayContainer({
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  // Integrate with browser history — push a state when opened, close on popstate.
+  // Gives Android hardware back + iOS edge-swipe a way to dismiss sheets.
+  useEffect(() => {
+    if (!open) return;
+    if (typeof window === "undefined") return;
+    const marker = { __aidvSheet: true };
+    try {
+      window.history.pushState(marker, "");
+    } catch {
+      return;
+    }
+    let popped = false;
+    const onPop = () => {
+      popped = true;
+      onClose();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (!popped) {
+        try {
+          // We pushed a state; pop it back when the sheet closes via UI.
+          if (window.history.state && (window.history.state as { __aidvSheet?: boolean }).__aidvSheet) {
+            window.history.back();
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -471,12 +511,25 @@ function OverlayContainer({
           "animate-in slide-in-from-bottom duration-300 ease-out",
           fullScreen
             ? "top-0 bottom-0 max-h-[100dvh] min-h-0 rounded-none pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)]"
-            : "bottom-0 max-h-[min(85dvh,85vh)] rounded-t-3xl pb-0"
+            : compact
+              ? "bottom-0 max-h-[min(60dvh,60vh)] rounded-t-3xl pb-0"
+              : "bottom-0 max-h-[min(85dvh,85vh)] rounded-t-3xl pb-0"
         )}
       >
         {children}
       </div>
     </div>
+  );
+}
+
+function SheetDragHandle({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label="Zavřít panel"
+      className="mx-auto mt-2 mb-1 h-1 w-10 shrink-0 rounded-full bg-[color:var(--wp-surface-card-border)] transition-colors hover:bg-[color:var(--wp-text-tertiary)]"
+    />
   );
 }
 
@@ -487,31 +540,35 @@ export function BottomSheet({
   children,
   /** Spodní navigace portálu (~104px) + FAB — aby šly odkliknout poslední akce v listu. */
   reserveMobileBottomNav = false,
+  /** Hug the content (max 60dvh) instead of the default 85dvh tall sheet. */
+  compact = false,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   reserveMobileBottomNav?: boolean;
+  compact?: boolean;
 }) {
   const labelId = `bs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   const scrollPad = reserveMobileBottomNav
     ? "pb-[max(1.25rem,calc(var(--aidv-mobile-tabbar-inner-h-phone)+max(0.5rem,var(--safe-area-bottom))+1.25rem))]"
     : "pb-[max(1rem,calc(var(--safe-area-bottom)+0.5rem))]";
   return (
-    <OverlayContainer open={open} onClose={onClose} labelId={labelId}>
+    <OverlayContainer open={open} onClose={onClose} labelId={labelId} compact={compact}>
       <div className="flex min-h-0 flex-1 flex-col">
+        <SheetDragHandle onClose={onClose} />
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] px-4 py-3">
-          <h3 id={labelId} className="font-black text-sm">
+          <h3 id={labelId} className="min-w-0 flex-1 font-black text-sm">
             {title}
           </h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Zavřít panel"
-            className="grid min-h-[36px] min-w-[36px] place-items-center rounded-lg border border-[color:var(--wp-surface-card-border)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+            className="grid min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-full bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text)] transition-colors hover:bg-[color:var(--wp-surface-card-border)]"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
         <div className={cx("min-h-0 flex-1 overflow-y-auto overscroll-contain p-4", scrollPad)}>
@@ -529,12 +586,15 @@ export function FullscreenSheet({
   children,
   /** Rezerva nad fixní spodní navigací portálu (~104px + safe area). */
   reserveMobileBottomNav = false,
+  /** Skip default horizontal/vertical padding of the content area — caller controls inner padding. */
+  noPadding = false,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   reserveMobileBottomNav?: boolean;
+  noPadding?: boolean;
 }) {
   const labelId = `fs-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
   const scrollPad = reserveMobileBottomNav
@@ -543,20 +603,29 @@ export function FullscreenSheet({
   return (
     <OverlayContainer open={open} onClose={onClose} fullScreen labelId={labelId}>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] px-4 py-3">
-          <h3 id={labelId} className="min-w-0 flex-1 font-black text-sm leading-snug">
+        <div className="flex shrink-0 items-center gap-3 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-5 py-4">
+          <h3
+            id={labelId}
+            className="min-w-0 flex-1 truncate text-[15px] font-black leading-tight text-[color:var(--wp-text)]"
+          >
             {title}
           </h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Zavřít"
-            className="grid min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-lg border border-[color:var(--wp-surface-card-border)] transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+            className="grid min-h-[40px] min-w-[40px] shrink-0 place-items-center rounded-xl border border-transparent text-[color:var(--wp-text-secondary)] transition-colors hover:border-[color:var(--wp-surface-card-border)] hover:bg-[color:var(--wp-surface-muted)] hover:text-[color:var(--wp-text)]"
           >
-            <X size={16} />
+            <X size={18} strokeWidth={2.25} />
           </button>
         </div>
-        <div className={cx("min-h-0 flex-1 overflow-y-auto overscroll-contain p-4", scrollPad)}>
+        <div
+          className={cx(
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            noPadding ? "" : "p-4",
+            scrollPad
+          )}
+        >
           {children}
         </div>
       </div>

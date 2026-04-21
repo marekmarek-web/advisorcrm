@@ -98,23 +98,30 @@ export function PDFViewerPanel({
   applyResultPayload,
   reviewApproved,
 }: Props) {
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("ready");
-  const [iframeError, setIframeError] = useState(false);
+  // Stavový automat náhledu:
+  //   loading — právě se (re)načítá iframe s PDF,
+  //   ready   — iframe odhlásil úspěšný load (zobrazen bez tokenových chyb),
+  //   error   — iframe selhal (např. vypršený signed URL); přepínáme na fallback s „Obnovit odkaz“.
+  // Dříve se `loadState` inicializoval na „ready“ a nikdy se neaktualizoval,
+  // takže se loading indikátor neobjevil a stav se neresetoval při změně URL.
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [refreshBusy, setRefreshBusy] = useState(false);
   const highlights = buildHighlights(doc, confirmedFields, applyResultPayload, reviewApproved);
   const pageHighlights = highlights.filter((h) => h.page === activePage);
   const hasPdf = !!doc.pdfUrl && doc.pdfUrl.length > 0;
 
+  // Při změně URL (refresh, první načtení) resetujeme do loading; pokud URL není,
+  // rovnou „ready“, aby se zobrazil SimulatedPDFPage.
   useEffect(() => {
-    setIframeError(false);
-  }, [doc.pdfUrl]);
+    setLoadState(hasPdf ? "loading" : "ready");
+  }, [doc.pdfUrl, hasPdf]);
 
   const handleRefreshPdf = useCallback(async () => {
     if (!onRefreshPdf) return;
     setRefreshBusy(true);
     try {
       await Promise.resolve(onRefreshPdf());
-      setIframeError(false);
+      setLoadState("loading");
     } finally {
       setRefreshBusy(false);
     }
@@ -204,10 +211,10 @@ export function PDFViewerPanel({
                 </button>
               </>
             ) : null}
-            {hasPdf && !iframeError ? (
+            {hasPdf && loadState !== "error" ? (
               <button
                 type="button"
-                onClick={() => setIframeError(true)}
+                onClick={() => setLoadState("error")}
                 className="hidden sm:inline text-[10px] font-bold text-indigo-600 hover:text-indigo-800 px-2 max-w-[140px] leading-tight text-left"
                 title="Když místo PDF vidíte chybovou hlášku (např. vypršený token), klepněte zde a obnovte odkaz."
               >
@@ -220,56 +227,43 @@ export function PDFViewerPanel({
 
       {/* Viewer area */}
       <div className="flex-1 overflow-auto custom-scroll p-4 md:p-8 flex justify-center">
-        {loadState === "loading" && (
-          <div className="flex flex-col items-center justify-center gap-3 text-[color:var(--wp-text-secondary)] py-20">
+        {/* loading overlay — renderujeme jen pro PDF iframe; SimulatedPDFPage bez pdfUrl je ready okamžitě */}
+        {hasPdf && loadState === "loading" ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[color:var(--wp-surface-muted)]/80 text-[color:var(--wp-text-secondary)] py-20 pointer-events-none">
             <Loader2 size={32} className="animate-spin text-indigo-400" />
             <p className="text-sm font-medium">Načítám dokument…</p>
           </div>
-        )}
+        ) : null}
 
-        {loadState === "error" && (
-          <div className="flex flex-col items-center justify-center gap-3 text-[color:var(--wp-text-secondary)] py-20">
-            <AlertCircle size={32} className="text-rose-400" />
-            <p className="text-sm font-medium">Nepodařilo se načíst dokument</p>
-            <button
-              onClick={() => setLoadState("loading")}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
-            >
-              Zkusit znovu
-            </button>
-          </div>
-        )}
-
-        {loadState === "ready" && (
-          <div
-            className="w-full max-w-[700px] bg-[color:var(--wp-surface-card)] shadow-2xl rounded-sm relative"
-            style={{
-              transform: `scale(${zoomLevel / 100})`,
-              transformOrigin: "top center",
-            }}
-          >
-            {hasPdf && !iframeError ? (
-              <iframe
-                key={doc.pdfUrl}
-                src={doc.pdfUrl}
-                className="w-full min-h-[1000px]"
-                title="PDF náhled"
-                onError={() => setIframeError(true)}
-              />
-            ) : hasPdf && iframeError ? (
-              <PdfIframeErrorFallback
-                onRefresh={onRefreshPdf ? () => void handleRefreshPdf() : undefined}
-                refreshBusy={refreshBusy}
-              />
-            ) : (
-              <SimulatedPDFPage
-                highlights={pageHighlights}
-                activeFieldId={activeFieldId}
-                onHighlightClick={onHighlightClick}
-              />
-            )}
-          </div>
-        )}
+        <div
+          className="w-full max-w-[700px] bg-[color:var(--wp-surface-card)] shadow-2xl rounded-sm relative"
+          style={{
+            transform: `scale(${zoomLevel / 100})`,
+            transformOrigin: "top center",
+          }}
+        >
+          {hasPdf && loadState !== "error" ? (
+            <iframe
+              key={doc.pdfUrl}
+              src={doc.pdfUrl}
+              className="w-full min-h-[1000px]"
+              title="PDF náhled"
+              onLoad={() => setLoadState("ready")}
+              onError={() => setLoadState("error")}
+            />
+          ) : hasPdf && loadState === "error" ? (
+            <PdfIframeErrorFallback
+              onRefresh={onRefreshPdf ? () => void handleRefreshPdf() : undefined}
+              refreshBusy={refreshBusy}
+            />
+          ) : (
+            <SimulatedPDFPage
+              highlights={pageHighlights}
+              activeFieldId={activeFieldId}
+              onHighlightClick={onHighlightClick}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

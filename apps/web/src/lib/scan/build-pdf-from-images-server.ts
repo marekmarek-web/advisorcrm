@@ -22,6 +22,11 @@ export async function buildPdfFromImageBuffers(
 
   const pdfDoc = await PDFDocument.create();
   pdfDoc.setProducer("Aidvisora Quick Upload");
+  // Deterministic metadata — enables SHA-256 dedup on the output PDF across
+  // repeated uploads of the same images.
+  const FIXED_DATE = new Date(0);
+  pdfDoc.setCreationDate(FIXED_DATE);
+  pdfDoc.setModificationDate(FIXED_DATE);
 
   for (const page of pages) {
     const mime = page.mime.toLowerCase().split(";")[0]!.trim();

@@ -671,6 +671,10 @@ Odeslání nelze vrátit zpět.`,
                 Odesláno
               </th>
               <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {/* Nový sloupec — failedCount byl dostupný v datech, ale na desktopu se nikde nezobrazoval. */}
+                Chyby
+              </th>
+              <th className="px-5 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Výkon
               </th>
               <th className="px-5 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -684,7 +688,7 @@ Odeslání nelze vrátit zpět.`,
           <tbody>
             {initialRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-400">
+                <td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-400">
                   Zatím žádný koncept ani odeslaná kampaň.
                 </td>
               </tr>
@@ -709,6 +713,22 @@ Odeslání nelze vrátit zpět.`,
                     {row.status === "sent" || row.status === "sending"
                       ? `${row.sentCount} příjemců`
                       : "—"}
+                  </td>
+                  <td className="px-5 py-4 text-center text-sm">
+                    {row.status === "sent" || row.status === "sending" ? (
+                      row.failedCount > 0 ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-black text-rose-600"
+                          title={`${row.failedCount} selhaných odeslání`}
+                        >
+                          {row.failedCount}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-bold text-emerald-600">0</span>
+                      )
+                    ) : (
+                      <span className="text-xs font-bold text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="px-5 py-4 text-center">
                     {row.status === "sent" ? (

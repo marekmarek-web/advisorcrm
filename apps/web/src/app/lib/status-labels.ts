@@ -92,6 +92,55 @@ export function setStatusLabels(labels: StatusLabel[]): void {
   }
 }
 
+/**
+ * Paleta pro auto-registrované labely bez uživatelského nastavení.
+ * Index se deterministicky odvozuje z id (hash) — stejné id → stejná barva napříč sessions.
+ */
+const AUTO_LABEL_PALETTE: string[] = [
+  "#579bfc", // blue
+  "#037f4c", // green
+  "#fdab3d", // orange
+  "#e2445c", // red
+  "#a25ddc", // violet
+  "#00c875", // emerald
+  "#7f5af0", // indigo
+  "#0073ea", // cobalt
+  "#ff7575", // coral
+  "#9aadbd", // slate
+];
+
+function hashString(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function autoPaletteColor(id: string): string {
+  const palette = AUTO_LABEL_PALETTE;
+  const fallback = palette[0] ?? "#579bfc";
+  return palette[hashString(id) % palette.length] ?? fallback;
+}
+
+/**
+ * Čitelný humanizovaný popisek z raw id.
+ *   "label_1776298128" → "Štítek #28128"
+ *   "k-podpisu"        → "K podpisu"
+ *   "rozdelano"        → "Rozdelano"
+ */
+function humanizeLabelId(id: string): string {
+  const ts = id.match(/^label_(\d+)$/);
+  if (ts) {
+    const digits = ts[1]!;
+    const short = digits.slice(-5);
+    return `Štítek #${short}`;
+  }
+  const cleaned = id.replace(/[-_]+/g, " ").trim();
+  if (!cleaned) return "Štítek";
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
 export function getStatusById(labels: StatusLabel[], id: string): StatusLabel {
   const empty: StatusLabel = { id: "", label: "", color: "#e5e5e5" };
   if (!id?.trim()) return empty;
@@ -100,5 +149,6 @@ export function getStatusById(labels: StatusLabel[], id: string): StatusLabel {
   if (id === "done") {
     return { id: "done", label: "Hotovo", color: "#00c875" };
   }
-  return { id, label: id, color: "#c4c4c4" };
+  // Fallback: už žádné raw id v UI – derivujeme čitelný label + deterministickou barvu z palette.
+  return { id, label: humanizeLabelId(id), color: autoPaletteColor(id) };
 }

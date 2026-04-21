@@ -76,7 +76,13 @@ export function usePushNotifications(options: UsePushNotificationsOptions = {}) 
 
   const isNative = useMemo(() => Capacitor.isNativePlatform(), []);
   const platform = useMemo(() => Capacitor.getPlatform(), []);
-  const isSupportedPlatform = platform === "ios" || platform === "android";
+  // v1.0 release scope: push je na Androidu vypnut, protože Firebase / FCM
+  // nejsou nakonfigurované (chybí `apps/web/android/app/google-services.json`).
+  // `PushNotifications.register()` by bez Firebase ukončil aplikaci nativně.
+  // iOS jede na APNs a má entitlement `aps-environment=production`.
+  // Pro v1.1 stačí odebrat tuto podmínku po dodání `google-services.json`
+  // a uploadu FCM klíče do push backendu. Viz docs/release-v1-decisions.md.
+  const isSupportedPlatform = platform === "ios";
   const isSupported = isNative && isSupportedPlatform;
 
   const markSoftPromptSeen = useCallback(() => {

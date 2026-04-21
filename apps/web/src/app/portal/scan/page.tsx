@@ -217,18 +217,43 @@ export default function ScanPage() {
   useEffect(() => {
     if (!quickDocId) return;
     let cancelled = false;
+    let consecutiveFailures = 0;
+    // Terminální stavy zastaví poller — bez toho jsme se ptali každých 2.5 s
+    // navždy i po dokončení / selhání, což zbytečně zatěžovalo síť a baterii.
+    const TERMINAL_STATUSES = new Set([
+      "completed",
+      "failed",
+      "preprocessing_failed",
+      "skipped",
+    ]);
     const poll = async () => {
       try {
         const res = await fetch(`/api/documents/${quickDocId}/process`, { credentials: "same-origin" });
-        if (!res.ok || cancelled) return;
+        if (cancelled) return;
+        if (!res.ok) {
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= 5) {
+            setQuickProcessingStatus((prev) => prev ?? "unknown");
+          }
+          return;
+        }
+        consecutiveFailures = 0;
         const data = (await res.json()) as {
           processingStatus?: string | null;
           processingStage?: string | null;
         };
         setQuickProcessingStatus(data.processingStatus ?? null);
         setQuickProcessingStage(data.processingStage ?? null);
-      } catch {
-        /* ignore */
+        if (data.processingStatus && TERMINAL_STATUSES.has(data.processingStatus)) {
+          cancelled = true;
+          window.clearInterval(id);
+        }
+      } catch (err) {
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 5) {
+          console.warn("[scan/quick] processing status poll failing", err);
+          setQuickProcessingStatus((prev) => prev ?? "unknown");
+        }
       }
     };
     void poll();
@@ -466,6 +491,8 @@ export default function ScanPage() {
       if (s === "completed") return "Zpracování dokončeno";
       if (s === "failed" || s === "preprocessing_failed") return "Zpracování selhalo";
       if (s === "skipped") return "Zpracování přeskočeno (vypnuto nebo nepodporováno)";
+      if (s === "unknown")
+        return "Stav zpracování se nepodařilo ověřit (zkontrolujte v sekci Dokumenty).";
       if (s === "processing" || s === "preprocessing_running")
         return `Probíhá zpracování${quickProcessingStage && quickProcessingStage !== "none" ? ` · ${quickProcessingStage}` : ""}…`;
       return "Ve frontě na zpracování…";

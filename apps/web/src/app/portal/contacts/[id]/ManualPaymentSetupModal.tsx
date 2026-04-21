@@ -34,10 +34,21 @@ type FormState = {
   constantSymbol: string;
   specificSymbol: string;
   amount: string;
+  currency: string;
   frequency: string;
   firstPaymentDate: string;
   visibleToClient: boolean;
 };
+
+const CURRENCY_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "CZK", label: "CZK — Česká koruna" },
+  { value: "EUR", label: "EUR — Euro" },
+  { value: "USD", label: "USD — Dolar" },
+  { value: "GBP", label: "GBP — Libra" },
+  { value: "PLN", label: "PLN — Zlotý" },
+  { value: "HUF", label: "HUF — Forint" },
+  { value: "CHF", label: "CHF — Frank" },
+];
 
 const EMPTY_FORM: FormState = {
   providerName: "",
@@ -49,6 +60,7 @@ const EMPTY_FORM: FormState = {
   constantSymbol: "",
   specificSymbol: "",
   amount: "",
+  currency: "CZK",
   frequency: "Měsíčně",
   firstPaymentDate: "",
   visibleToClient: true,
@@ -148,6 +160,7 @@ export function ManualPaymentSetupModal({
       constantSymbol: form.constantSymbol || undefined,
       specificSymbol: form.specificSymbol || undefined,
       amount: form.amount || undefined,
+      currency: form.currency || undefined,
       frequency: form.frequency || undefined,
       firstPaymentDate: form.firstPaymentDate || undefined,
       visibleToClient: form.visibleToClient,
@@ -319,7 +332,7 @@ export function ManualPaymentSetupModal({
             {/* Amount */}
             <div>
               <label className="block text-xs font-bold text-[color:var(--wp-text-secondary)] mb-1">
-                Částka (Kč)
+                Částka
               </label>
               <input
                 value={form.amount}
@@ -328,6 +341,24 @@ export function ManualPaymentSetupModal({
                 inputMode="decimal"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
               />
+            </div>
+
+            {/* Currency */}
+            <div>
+              <label className="block text-xs font-bold text-[color:var(--wp-text-secondary)] mb-1">
+                Měna
+              </label>
+              <select
+                value={form.currency}
+                onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+              >
+                {CURRENCY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Frequency */}

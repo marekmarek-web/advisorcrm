@@ -1,0 +1,12 @@
+# Aidvisora Android upload keystore — key.properties TEMPLATE
+#
+# NIKDY nepushovat skutečné hodnoty do gitu.
+# Zkopíruj tento soubor jako `key.properties` do SAME složky (apps/web/android/)
+# a vyplň reálné hodnoty z vygenerovaného upload keystore.
+#
+# Postup generování je v docs/runbook-signing.md.
+
+storeFile=app/aidvisora-upload.jks
+storePassword=REPLACE_WITH_REAL_STORE_PASSWORD
+keyAlias=aidvisora-upload
+keyPassword=REPLACE_WITH_REAL_KEY_PASSWORD

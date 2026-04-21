@@ -26,6 +26,10 @@ export function CsvImportForm() {
   const [mapping, setMapping] = useState<ColumnMapping>(DEFAULT_CONTACT_IMPORT_MAPPING);
   const [result, setResult] = useState<{ imported: number; skipped: number; errors: { row: number; message: string }[] } | null>(null);
   const [loading, setLoading] = useState(false);
+  // CSV/Excel import dříve tiše spolknul selhání serverových akcí (try/finally
+  // bez catch); uživatel viděl pouze to, že nic nenastalo. Přidáváme explicitní
+  // chybový stav, abychom selhání (parser, oprávnění, velikost) zobrazili.
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const stepIndex = WIZARD_STEPS.indexOf(step);
 
@@ -40,12 +44,29 @@ export function CsvImportForm() {
     setMapping(DEFAULT_CONTACT_IMPORT_MAPPING);
     setLoading(true);
     setResult(null);
+    setErrorMessage(null);
     const fd = new FormData();
     fd.set("file", f);
     try {
       const p = isExcelFile(f) ? await getSpreadsheetPreview(fd) : await getCsvPreview(fd);
+      if (!p) {
+        setErrorMessage(
+          "Soubor se nepodařilo načíst. Zkontrolujte, že je ve správném formátu (CSV UTF-8 / XLSX) a nemá poškozenou strukturu.",
+        );
+        setStep("upload");
+        return;
+      }
       setPreview(p);
-      setStep(p ? "mapping" : "upload");
+      setStep("mapping");
+    } catch (err) {
+      console.error("[CsvImportForm] preview failed", err);
+      setErrorMessage(
+        err instanceof Error && err.message
+          ? err.message
+          : "Náhled souboru selhal. Zkuste soubor uložit znovu jako CSV UTF-8 / XLSX a akci opakujte.",
+      );
+      setPreview(null);
+      setStep("upload");
     } finally {
       setLoading(false);
     }
@@ -54,6 +75,7 @@ export function CsvImportForm() {
   async function onSheetChange(sheet: string) {
     if (!file || !isExcelFile(file)) return;
     setLoading(true);
+    setErrorMessage(null);
     const fd = new FormData();
     fd.set("file", file);
     fd.set("sheetName", sheet);
@@ -62,7 +84,14 @@ export function CsvImportForm() {
       if (p) {
         setPreview(p);
         setMapping(DEFAULT_CONTACT_IMPORT_MAPPING);
+      } else {
+        setErrorMessage("Náhled listu se nepodařilo načíst. Zkuste vybrat jiný list nebo znovu nahrát soubor.");
       }
+    } catch (err) {
+      console.error("[CsvImportForm] sheet change failed", err);
+      setErrorMessage(
+        err instanceof Error && err.message ? err.message : "Přepnutí listu selhalo. Zkuste znovu nahrát soubor.",
+      );
     } finally {
       setLoading(false);
     }
@@ -72,6 +101,7 @@ export function CsvImportForm() {
     if (!file || !preview) return;
     setLoading(true);
     setResult(null);
+    setErrorMessage(null);
     const fd = new FormData();
     fd.set("file", file);
     if (isExcelFile(file) && preview.activeSheet) {
@@ -84,6 +114,13 @@ export function CsvImportForm() {
       setResult(r);
       setStep("done");
       if (r.imported > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.contacts.list() });
+    } catch (err) {
+      console.error("[CsvImportForm] import failed", err);
+      setErrorMessage(
+        err instanceof Error && err.message
+          ? err.message
+          : "Import selhal. Pokud se chyba opakuje, ověřte oprávnění a zkuste menší soubor.",
+      );
     } finally {
       setLoading(false);
     }
@@ -105,6 +142,14 @@ export function CsvImportForm() {
           </span>
         ))}
       </div>
+      {errorMessage && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/35 dark:text-rose-200"
+        >
+          {errorMessage}
+        </div>
+      )}
       {step === "upload" && (
         <div>
           <ol className="text-sm text-[color:var(--wp-text-muted)] mb-4 list-decimal pl-5 space-y-1.5">

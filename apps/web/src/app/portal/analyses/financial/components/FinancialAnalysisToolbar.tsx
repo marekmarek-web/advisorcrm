@@ -89,33 +89,40 @@ export function FinancialAnalysisToolbar() {
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-3 pb-6 mb-6 border-b border-[color:var(--wp-surface-card-border)]">
+    <div className="mb-5 flex flex-wrap items-center gap-2 border-b border-[color:var(--wp-surface-card-border)] pb-4 sm:mb-6 sm:gap-3 sm:pb-6">
       <button
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className={clsx(portalPrimaryButtonClassName, "min-h-[44px] min-w-[44px] rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50")}
+        className={clsx(
+          portalPrimaryButtonClassName,
+          "min-h-[40px] gap-1.5 rounded-xl px-3 text-[12px] font-black uppercase tracking-wide sm:min-h-[44px] sm:px-4 sm:text-sm disabled:opacity-50",
+        )}
         title="Uložit do Aidvisora"
       >
-        <CloudUpload className="w-4 h-4" />
+        <CloudUpload className="h-4 w-4" />
         <span>{saving ? "…" : "Uložit"}</span>
       </button>
       {hasCrmContext ? (
-        <span className="text-xs text-[color:var(--wp-text-secondary)] hidden sm:inline">Propojeno s klientem / domácností</span>
+        <span className="ml-auto hidden text-xs font-semibold text-[color:var(--wp-text-secondary)] sm:inline">
+          Propojeno s klientem / domácností
+        </span>
       ) : (
         <button
           type="button"
           onClick={() => goToStep(1)}
-          className="min-h-[44px] min-w-[44px] text-xs px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors flex items-center gap-1.5 font-semibold text-amber-800"
+          className="ml-auto inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 text-[11px] font-black uppercase tracking-wide text-amber-800 hover:bg-amber-100 sm:min-h-[44px]"
           title="Přejít na krok 1 a přidat klienta do Aidvisory"
         >
-          <UserPlus className="w-3.5 h-3.5" />
+          <UserPlus className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Přidat klienta</span>
         </button>
       )}
-      <label className="min-h-[44px] min-w-[44px] text-sm px-4 py-2 bg-[color:var(--wp-surface-muted)] hover:bg-[color:var(--wp-surface-card-border)] rounded-lg transition-colors flex items-center gap-2 font-semibold text-[color:var(--wp-text-secondary)] cursor-pointer">
-        <FolderOpen className="w-4 h-4" />
-        <span className="hidden sm:inline">Načíst ze souboru</span>
+      <label
+        className="inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl bg-[color:var(--wp-surface-muted)] px-3 text-[11px] font-black uppercase tracking-wide text-[color:var(--wp-text-secondary)] transition-colors hover:bg-[color:var(--wp-surface-card-border)] sm:min-h-[44px] sm:text-xs"
+      >
+        <FolderOpen className="h-4 w-4" />
+        <span className="hidden sm:inline">Načíst</span>
         <input
           ref={fileInputRef}
           type="file"
@@ -127,7 +134,7 @@ export function FinancialAnalysisToolbar() {
       <CreateActionButton
         type="button"
         onClick={handleReset}
-        className="min-w-[44px] shadow-lg"
+        className="min-h-[40px] sm:min-h-[44px]"
         title="Začít nový plán"
         icon={PlusCircle}
       >

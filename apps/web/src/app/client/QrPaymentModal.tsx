@@ -16,8 +16,16 @@ type QrPaymentModalProps = {
     specificSymbol?: string | null;
     constantSymbol?: string | null;
     note: string | null;
+    /**
+     * ISO 4217 kód měny platby. QR platby podle SPAYD standardu musí obsahovat
+     * `CC:` s reálnou měnou, jinak bankovní aplikace odmítnou nebo (hůř) převedou
+     * částku v cizí měně jako CZK — historický default bylo napevno „CZK“.
+     */
+    currency?: string | null;
   } | null;
 };
+
+const SUPPORTED_SPAYD_CURRENCIES = new Set(["CZK", "EUR", "USD", "GBP", "PLN", "HUF", "CHF"]);
 
 function sanitizeAccount(account: string): string {
   return account.replace(/\s+/g, "");
@@ -59,6 +67,13 @@ function accountToIban(accountNumber: string): string {
   return czechDomesticToIban(raw) ?? raw;
 }
 
+function resolveCurrency(currency: string | null | undefined): string {
+  const normalized = (currency ?? "").trim().toUpperCase();
+  if (!normalized) return "CZK";
+  if (SUPPORTED_SPAYD_CURRENCIES.has(normalized)) return normalized;
+  return "CZK";
+}
+
 function createSpaydPayload(
   accountNumber: string,
   amountLabel: string,
@@ -66,6 +81,7 @@ function createSpaydPayload(
   specificSymbol: string | null | undefined,
   constantSymbol: string | null | undefined,
   note: string | null,
+  currency: string | null | undefined,
 ): string | null {
   const iban = accountToIban(accountNumber);
   // Pokud se převod nezdařil a stále nemáme IBAN, payload nebude platný
@@ -75,7 +91,7 @@ function createSpaydPayload(
   const parts = [`SPD*1.0*ACC:${iban}`];
   if (amount) {
     parts.push(`AM:${amount.toFixed(2)}`);
-    parts.push("CC:CZK");
+    parts.push(`CC:${resolveCurrency(currency)}`);
   }
   if (variableSymbol?.trim()) parts.push(`X-VS:${variableSymbol.trim()}`);
   if (specificSymbol?.trim()) parts.push(`X-SS:${specificSymbol.trim()}`);
@@ -96,6 +112,7 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
       payment.specificSymbol,
       payment.constantSymbol,
       payment.note,
+      payment.currency,
     );
   }, [payment]);
 
@@ -115,6 +132,20 @@ export function QrPaymentModal({ open, onClose, payment }: QrPaymentModalProps) 
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(""));
   }, [open, spaydPayload]);
+
+  // Escape zavírá modal — bez této věci klient uvízne v modálu na desktopu,
+  // pokud se ztratí focus a kliknutí na backdrop neprojde (např. overlay toasty).
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
 
   if (!open || !payment) return null;
 

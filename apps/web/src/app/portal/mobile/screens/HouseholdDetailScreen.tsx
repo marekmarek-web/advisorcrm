@@ -33,13 +33,19 @@ import {
   BottomSheet,
   EmptyState,
   ErrorState,
-  FilterChips,
   MobileCard,
   MobileSection,
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
+import {
+  HeroCard,
+  HeroAction,
+  HeroMetaDot,
+  SegmentPills,
+} from "@/app/shared/portal-ui/primitives";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
+import { HOUSEHOLD_ROLES, householdRoleLabel } from "@/lib/households/roles";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -105,7 +111,7 @@ export function HouseholdDetailScreen({
 
   const [addOpen, setAddOpen] = useState(false);
   const [newMemberContactId, setNewMemberContactId] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState("member");
+  const [newMemberRole, setNewMemberRole] = useState("partner");
 
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -259,56 +265,58 @@ export function HouseholdDetailScreen({
       )}
     >
       {/* Hero */}
-      <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] px-4 pt-4 pb-5">
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-[color:var(--wp-surface-card)]/10 border border-white/20 flex items-center justify-center flex-shrink-0">
-            <Home size={22} className="text-white/80" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-black text-white truncate">{householdName}</h2>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={openEditSheet}
-                disabled={deleteBusy}
-                className="flex items-center gap-1 text-[11px] font-black text-white/90 bg-[color:var(--wp-surface-card)]/15 px-2.5 py-1.5 rounded-lg min-h-[36px] border border-white/20"
-              >
-                <Pencil size={12} /> Upravit
-              </button>
-              <button
-                type="button"
+      <div className="px-4 pt-3">
+        <HeroCard
+          eyebrow="Domácnost"
+          title={householdName}
+          icon={<Home size={20} className="text-white" />}
+          actions={
+            <>
+              <HeroAction onClick={openEditSheet} disabled={deleteBusy} aria-label="Upravit domácnost">
+                <Pencil size={12} />
+                Upravit
+              </HeroAction>
+              <HeroAction
+                tone="danger"
                 onClick={handleDeleteHousehold}
                 disabled={deleteBusy}
-                className="flex items-center gap-1 text-[11px] font-black text-rose-100 bg-rose-500/30 px-2.5 py-1.5 rounded-lg min-h-[36px] border border-rose-400/40"
+                aria-label="Smazat domácnost"
               >
-                <Trash2 size={12} /> {deleteBusy ? "Mažu…" : "Smazat"}
-              </button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className="flex items-center gap-1 text-[11px] font-black text-white/70 bg-[color:var(--wp-surface-card)]/10 px-2 py-0.5 rounded-lg">
-                <Users size={11} /> {detail.members.length} {detail.members.length === 1 ? "člen" : detail.members.length < 5 ? "členové" : "členů"}
+                <Trash2 size={12} />
+                {deleteBusy ? "Mažu…" : "Smazat"}
+              </HeroAction>
+            </>
+          }
+          meta={
+            <>
+              <span className="flex items-center gap-1">
+                <Users size={11} /> {detail.members.length}{" "}
+                {detail.members.length === 1 ? "člen" : detail.members.length < 5 ? "členové" : "členů"}
               </span>
-              <span className="flex items-center gap-1 text-[11px] font-black text-white/70 bg-[color:var(--wp-surface-card)]/10 px-2 py-0.5 rounded-lg">
+              <HeroMetaDot />
+              <span className="flex items-center gap-1">
                 <Briefcase size={11} /> {opportunities.length} obchodů
               </span>
-              <span className="flex items-center gap-1 text-[11px] font-black text-white/70 bg-[color:var(--wp-surface-card)]/10 px-2 py-0.5 rounded-lg">
+              <HeroMetaDot />
+              <span className="flex items-center gap-1">
                 <BarChart2 size={11} /> {analyses.length} analýz
               </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push("/portal/documents")}
-              className="mt-3 text-[11px] font-bold text-indigo-200 underline-offset-2 hover:underline min-h-[44px] text-left"
-            >
-              Otevřít knihovnu dokumentů
-            </button>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <button
+            type="button"
+            onClick={() => router.push("/portal/documents")}
+            className="text-[11px] font-black uppercase tracking-wide text-white/85 underline-offset-2 hover:text-white hover:underline"
+          >
+            Otevřít knihovnu dokumentů →
+          </button>
+        </HeroCard>
       </div>
 
       {/* Tab bar */}
-      <div className="px-4 py-2 bg-[color:var(--wp-surface-card)] border-b border-[color:var(--wp-surface-card-border)] sticky top-0 z-10">
-        <FilterChips
+      <div className="px-4 py-3 sticky top-0 z-10 bg-[color:var(--wp-bg)]/90 backdrop-blur">
+        <SegmentPills
           value={tab}
           onChange={(id) => setTab(id as HouseholdTab)}
           options={[
@@ -356,7 +364,7 @@ export function HouseholdDetailScreen({
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {member.role ? (
                           <span className="text-[11px] font-bold text-[color:var(--wp-text-secondary)] bg-[color:var(--wp-surface-muted)] px-1.5 py-0.5 rounded-lg border border-[color:var(--wp-surface-card-border)]">
-                            {member.role}
+                            {householdRoleLabel(member.role)}
                           </span>
                         ) : null}
                         {member.email ? (
@@ -537,13 +545,13 @@ export function HouseholdDetailScreen({
           </div>
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-1 block">
-              Role
+              Rodinná role
             </label>
-            <input
+            <CustomDropdown
               value={newMemberRole}
-              onChange={(e) => setNewMemberRole(e.target.value)}
-              className="w-full min-h-[44px] rounded-xl border border-[color:var(--wp-surface-card-border)] px-3 text-sm"
-              placeholder="Např. partner, dítě, rodič"
+              onChange={setNewMemberRole}
+              placeholder="Vyberte roli"
+              options={HOUSEHOLD_ROLES.map((r) => ({ id: r.value, label: r.label }))}
             />
           </div>
           <button

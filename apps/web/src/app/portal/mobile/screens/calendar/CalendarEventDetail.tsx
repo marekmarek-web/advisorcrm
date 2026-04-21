@@ -101,81 +101,43 @@ function EventDetailBody({
   const accentStyle = getEventAccentStyle(ev, eventTypeColors);
 
   return (
-    <div className="space-y-4">
-      <MobileCard className="overflow-hidden p-0">
-        <div className="h-1.5 w-full" style={accentStyle} />
-        <div className="px-4 pb-4 pt-3">
-          <div className="mb-4 flex items-center justify-end gap-1.5">
-            {canWriteCalendar ? (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                aria-label="Upravit"
-              >
-                <Edit2 size={16} />
-              </button>
-            ) : null}
-            <a
-              href={mailtoHref}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-              aria-label="Poslat e-mail"
-            >
-              <Send size={16} />
-            </a>
-            {canWriteCalendar ? (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                aria-label="Smazat"
-              >
-                <Trash2 size={16} />
-              </button>
-            ) : null}
-            <div className="mx-1 h-5 w-px bg-slate-200" />
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-800"
-              aria-label="Zavřít"
-            >
-              <X size={18} />
-            </button>
-          </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        <div className="overflow-hidden rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]">
+          <div className="h-1.5 w-full" style={accentStyle} />
+          <div className="px-4 pb-4 pt-4">
+            <div className="mb-4">
+              <h2 className="text-xl font-extrabold leading-tight text-[color:var(--wp-text)]">{ev.title}</h2>
+              {statusObj ? (
+                <p className="mt-1 text-xs font-bold text-[color:var(--wp-text-secondary)]">
+                  {statusObj.label}
+                  {duration ? ` · ${duration}` : null}
+                </p>
+              ) : null}
+            </div>
 
-          <div className="mb-5 px-1">
-            <h2 className="text-2xl font-extrabold leading-tight text-[#0B1021]">{ev.title}</h2>
-            {statusObj ? (
-              <p className="mt-1 text-xs font-bold text-[color:var(--wp-text-secondary)]">
-                {statusObj.label}
-                {duration ? ` · ${duration}` : null}
-              </p>
-            ) : null}
-          </div>
+            <EventTypeChipGrid
+              eventType={ev.eventType}
+              eventTypeColors={eventTypeColors}
+              onChangeType={canWriteCalendar ? onChangeType : undefined}
+              disabled={!canWriteCalendar}
+              className="mb-4"
+            />
 
-          <EventTypeChipGrid
-            eventType={ev.eventType}
-            eventTypeColors={eventTypeColors}
-            onChangeType={canWriteCalendar ? onChangeType : undefined}
-            disabled={!canWriteCalendar}
-            className="mb-5 px-1"
-          />
-
-          <div className="space-y-2 px-1">
-            <EventDetailInfoBlock icon={Clock} label="Kdy" accentStyle={accentStyle}>
-              <p className="text-sm font-semibold text-slate-800">{dateLine}</p>
-            </EventDetailInfoBlock>
-            <EventDetailInfoBlock icon={MapPin} label="Místo" subdued={!ev.location}>
-              <p className={ev.location ? "text-sm font-medium text-slate-700" : "text-sm font-medium text-slate-500"}>
-                {ev.location?.trim() || "Místo nebylo zadáno."}
-              </p>
-            </EventDetailInfoBlock>
+            <div className="space-y-2">
+              <EventDetailInfoBlock icon={Clock} label="Kdy" accentStyle={accentStyle}>
+                <p className="text-sm font-semibold text-[color:var(--wp-text)]">{dateLine}</p>
+              </EventDetailInfoBlock>
+              <EventDetailInfoBlock icon={MapPin} label="Místo" subdued={!ev.location}>
+                <p className={ev.location ? "text-sm font-medium text-[color:var(--wp-text-secondary)]" : "text-sm font-medium text-[color:var(--wp-text-tertiary)]"}>
+                  {ev.location?.trim() || "Místo nebylo zadáno."}
+                </p>
+              </EventDetailInfoBlock>
+            </div>
           </div>
         </div>
-      </MobileCard>
 
-      <MobileCard className="divide-y divide-[color:var(--wp-surface-card-border)] px-4 py-0">
+        <MobileCard className="divide-y divide-[color:var(--wp-surface-card-border)] px-4 py-0">
         {ev.contactName && ev.contactId ? (
           <div className="flex items-center justify-between gap-3 py-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -266,17 +228,24 @@ function EventDetailBody({
         ) : null}
       </MobileCard>
 
-      {ev.notes ? (
-        <MobileCard className="p-3.5">
-          <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
-            Poznámky
+        {ev.notes ? (
+          <MobileCard className="p-4">
+            <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
+              Poznámky
+            </p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-[color:var(--wp-text-secondary)]">{ev.notes}</p>
+          </MobileCard>
+        ) : null}
+
+        {!canWriteCalendar ? (
+          <p className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2 text-center text-xs text-[color:var(--wp-text-secondary)]">
+            Nemáte oprávnění upravovat kalendář — zobrazení je jen pro čtení.
           </p>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-[color:var(--wp-text-secondary)]">{ev.notes}</p>
-        </MobileCard>
-      ) : null}
+        ) : null}
+      </div>
 
       {canWriteCalendar ? (
-        <div className="sticky bottom-0 z-[5] -mx-4 mt-2 space-y-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 pb-[max(0.75rem,var(--safe-area-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
+        <div className="shrink-0 space-y-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-4 py-3 pb-[max(0.75rem,var(--safe-area-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
@@ -326,11 +295,7 @@ function EventDetailBody({
             </button>
           </div>
         </div>
-      ) : (
-        <p className="rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] px-3 py-2 text-center text-xs text-[color:var(--wp-text-secondary)]">
-          Nemáte oprávnění upravovat kalendář — zobrazení je jen pro čtení.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -437,7 +402,7 @@ export function CalendarEventDetail({
   }
 
   return (
-    <FullscreenSheet open onClose={onClose} title={ev.title}>
+    <FullscreenSheet open onClose={onClose} title={ev.title} noPadding>
       <EventDetailBody
         ev={ev}
         onClose={onClose}

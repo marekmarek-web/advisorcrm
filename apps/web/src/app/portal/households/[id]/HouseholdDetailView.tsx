@@ -25,6 +25,7 @@ import clsx from "clsx";
 import { User, UserCog, Share2, MapPin, Activity, Baby, Mail, Phone, Target, Briefcase, Plus, Trash2, ChevronRight } from "lucide-react";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 import { useConfirm } from "@/app/components/ConfirmDialog";
+import { HOUSEHOLD_ROLES, householdRoleLabel } from "@/lib/households/roles";
 
 type ContactOption = { id: string; firstName: string; lastName: string };
 
@@ -34,16 +35,10 @@ type HouseholdDetailViewProps = {
   opportunities: OpportunityByHouseholdRow[];
 };
 
-const ROLES = [
-  { value: "primary", label: "Hlavní" },
-  { value: "member", label: "Člen" },
-  { value: "child", label: "Dítě" },
-];
+const ROLES = HOUSEHOLD_ROLES as ReadonlyArray<{ value: string; label: string }>;
 
 function roleLabel(role: string | null): string {
-  if (!role) return "—";
-  const r = ROLES.find((x) => x.value === role);
-  return r?.label ?? role;
+  return householdRoleLabel(role);
 }
 
 function initials(firstName: string | null, lastName: string | null): string {
@@ -54,7 +49,8 @@ function initials(firstName: string | null, lastName: string | null): string {
 }
 
 function isChildMember(member: { role: string | null; birthDate?: string | null }): boolean {
-  if (member.role === "child") return true;
+  // Nové rodinné role: dite / syn / dcera jsou vždy "dítě"; legacy "child" zůstává pro bezpečnost.
+  if (member.role === "dite" || member.role === "syn" || member.role === "dcera" || member.role === "child") return true;
   if (!member.birthDate) return false;
   const birthDate = new Date(member.birthDate);
   if (Number.isNaN(birthDate.getTime())) return false;
@@ -83,7 +79,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
 
   const [addingMember, setAddingMember] = useState(false);
   const [memberContactId, setMemberContactId] = useState("");
-  const [memberRole, setMemberRole] = useState("member");
+  const [memberRole, setMemberRole] = useState("partner");
   const [addMode, setAddMode] = useState<"select" | "new">("select");
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
@@ -164,7 +160,7 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
       await addHouseholdMember(household.id, contactId, memberRole);
       setMemberContactId("");
       setContactSearch("");
-      setMemberRole("member");
+      setMemberRole("partner");
       setNewFirstName("");
       setNewLastName("");
       setAddMode("select");
@@ -551,10 +547,12 @@ export function HouseholdDetailView({ household, contacts, opportunities }: Hous
                               <div className="min-w-0">
                                 <span
                                   className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest mb-1 ${
-                                    m.role === "primary"
+                                    m.role === "partner" || m.role === "partnerka" || m.role === "otec" || m.role === "matka"
                                       ? "bg-indigo-50 text-indigo-700"
-                                      : m.role === "child"
+                                      : isChildMember({ role: m.role, birthDate: (m as { birthDate?: string | null }).birthDate })
                                       ? "bg-amber-100 text-amber-700"
+                                      : m.role === "prarodic"
+                                      ? "bg-violet-50 text-violet-700"
                                       : "bg-[color:var(--wp-surface-muted)] text-[color:var(--wp-text-secondary)]"
                                   }`}
                                 >

@@ -697,7 +697,7 @@ export function CalendarScreen({
         </div>
       )}
 
-      {canWriteCalendar && !formOpen ? (
+      {canWriteCalendar && !formOpen && !selectedEvent ? (
         <FloatingActionButton onClick={openCreateForm} label="Nová aktivita" icon={Plus} />
       ) : null}
 

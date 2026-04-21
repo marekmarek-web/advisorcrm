@@ -496,6 +496,8 @@ function NewTaskWizard({
         contactId,
         dueDate: taskData.date || undefined,
         opportunityId: dealId,
+        priority: taskData.priority,
+        reminder: taskData.reminder,
       });
       if (id) {
         onCreated();

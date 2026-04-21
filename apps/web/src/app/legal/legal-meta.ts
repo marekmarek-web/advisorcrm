@@ -8,7 +8,8 @@ export const LEGAL_ICO = "05474434";
 /** DIČ doplníte po přidělení; do té doby zůstává tento text. */
 export const LEGAL_DIC_PENDING_NOTE = "DIČ bude uvedeno po přidělení.";
 
-export const LEGAL_SUPPORT_EMAIL = "support@aidvisora.cz";
+/** Primární veřejný kontakt — sjednoceno s marketingem a patičkou webu. */
+export const LEGAL_SUPPORT_EMAIL = "podpora@aidvisora.cz";
 export const LEGAL_PODPORA_EMAIL = "podpora@aidvisora.cz";
 
 /** Datum účinnosti veřejných právních textů (shodně ve všech dokumentech). */

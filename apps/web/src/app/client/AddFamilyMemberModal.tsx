@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { addHouseholdMemberFromClient } from "@/app/actions/households";
+import { HOUSEHOLD_ROLES } from "@/lib/households/roles";
 
 type AddFamilyMemberModalProps = {
   open: boolean;
@@ -91,11 +92,7 @@ export function AddFamilyMemberModal({
             <CustomDropdown
               value={role}
               onChange={setRole}
-              options={[
-                { id: "partner", label: "Partner / Manželka" },
-                { id: "child", label: "Dítě" },
-                { id: "member", label: "Jiné" },
-              ]}
+              options={HOUSEHOLD_ROLES.map((r) => ({ id: r.value, label: r.label }))}
             />
           </div>
 

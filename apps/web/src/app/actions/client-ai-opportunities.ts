@@ -106,7 +106,11 @@ export async function aggregateSignalsForContact(
         return items
           .filter((i) => i.status !== "sold" && i.status !== "not_relevant" && i.status !== "cancelled")
           .map((i) => ({ label: i.label ?? "—", status: i.status, segmentCode: i.segmentCode, provider: i.provider }));
-      } catch {
+      } catch (err) {
+        // Pozn.: pendingFaPlanItems je sekundární pole pro AI signal surface — pokud načtení
+        // selže, necháme zbytek agregátu projít a jen zalogujeme, aby byla chyba viditelná
+        // v observability a my si mohli ověřit incidenty (dříve se tichá [] maskovala).
+        console.error("[aggregateSignalsForContact] getFaPlanItems failed", err);
         return [];
       }
     })(),

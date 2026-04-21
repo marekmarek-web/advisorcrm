@@ -20,6 +20,7 @@ import {
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { MobileCard, MobileSection } from "@/app/shared/mobile-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
+import { isColdContactsEnabled } from "@/lib/portal/cold-contacts-enabled";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -56,7 +57,9 @@ const TOOL_SECTIONS: ToolSection[] = [
     title: "Klientská databáze",
     items: [
       { label: "Domácnosti", href: "/portal/households", icon: Home },
-      { label: "Studené kontakty", href: "/portal/cold-contacts", icon: Users },
+      ...(isColdContactsEnabled()
+        ? ([{ label: "Studené kontakty", href: "/portal/cold-contacts", icon: Users }] as ToolItem[])
+        : []),
       { label: "E-mail kampaně", href: "/portal/email-campaigns", icon: Megaphone },
     ],
   },

@@ -26,22 +26,18 @@ export function CalendarHeader({
   refreshing: boolean;
 }) {
   return (
-    <header className="shrink-0 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 pb-2 pt-1 shadow-sm">
+    <header className="shrink-0 px-3 pt-2 pb-2">
+      {/* Top row — drawer + search */}
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenDrawer}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-muted)] active:scale-95"
-            aria-label="Menu kalendáře"
-          >
-            <Menu size={22} />
-          </button>
-          <h1 className="truncate font-display text-lg font-bold tracking-tight text-[color:var(--wp-text)]">
-            {formatMonthYear(anchorDate)}
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onOpenDrawer}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-muted)] active:scale-95"
+          aria-label="Menu kalendáře"
+        >
+          <Menu size={22} />
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={onOpenSearch}
@@ -52,45 +48,49 @@ export function CalendarHeader({
           </button>
           <button
             type="button"
-            onClick={onToday}
-            className="rounded-lg bg-[color:var(--wp-surface-muted)] px-2.5 py-1.5 text-xs font-bold text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-card-border)] active:scale-[0.98]"
-          >
-            Dnes
-          </button>
-          <button
-            type="button"
             onClick={onRefresh}
             disabled={refreshing}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--wp-surface-card-border)] transition-colors active:scale-95 disabled:opacity-60"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-muted)] active:scale-95 disabled:opacity-60"
             aria-label="Obnovit"
           >
-            <RefreshCw size={14} className={refreshing ? "animate-spin text-[color:var(--wp-text-secondary)]" : "text-[color:var(--wp-text-secondary)]"} />
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-1">
-          <button
-            type="button"
-            onClick={onPrev}
-            className="rounded-lg p-1.5 text-[color:var(--wp-text-secondary)] transition-all active:bg-[color:var(--wp-surface-card)] active:shadow-sm"
-            aria-label="Předchozí období"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            className="rounded-lg p-1.5 text-[color:var(--wp-text-secondary)] transition-all active:bg-[color:var(--wp-surface-card)] active:shadow-sm"
-            aria-label="Následující období"
-          >
-            <ChevronRight size={20} />
-          </button>
+      {/* Unified pill — month + arrows + Today + view label */}
+      <div className="flex items-center gap-2 rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-2 shadow-sm">
+        <button
+          type="button"
+          onClick={onPrev}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-muted)]"
+          aria-label="Předchozí období"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <div className="min-w-0 flex-1 text-center">
+          <h1 className="truncate font-display text-base font-bold tracking-tight text-[color:var(--wp-text)]">
+            {formatMonthYear(anchorDate)}
+          </h1>
+          <p className="mt-0.5 text-[10px] font-black uppercase tracking-widest text-indigo-600">
+            {viewModeLabel(view)}
+          </p>
         </div>
-        <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
-          {viewModeLabel(view)}
-        </div>
+        <button
+          type="button"
+          onClick={onNext}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-muted)]"
+          aria-label="Následující období"
+        >
+          <ChevronRight size={20} />
+        </button>
+        <button
+          type="button"
+          onClick={onToday}
+          className="shrink-0 rounded-xl bg-[color:var(--wp-surface-muted)] px-3 py-1.5 text-xs font-bold text-[color:var(--wp-text-secondary)] transition-colors active:bg-[color:var(--wp-surface-card-border)]"
+        >
+          Dnes
+        </button>
       </div>
     </header>
   );

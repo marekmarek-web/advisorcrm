@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck — komponenta 1:1 z main page.txt (původně JS), typy doplněny později
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
@@ -13,7 +12,7 @@ import {
   PieChart, Play, Search, Server, Share2, Shield, ShieldCheck, 
   Smartphone, Sparkles, Sun, Sunrise, Sunset, Tags, UploadCloud, 
   User, Users, Zap, Link as LinkIcon, ChevronDown, HelpCircle, Mail,
-  Globe, XCircle, CheckCircle, Headset, Timer, LineChart, BookOpen, Database, Plus, Home
+  Globe, XCircle, CheckCircle, Headset, Timer, LineChart, BookOpen, Database, Home
 } from 'lucide-react';
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { LANDING_FAQS } from "@/data/landing-faq";
@@ -31,6 +30,20 @@ import {
   PUBLIC_PLAN_START_EXCLUDES,
   PUBLIC_PLAN_TAGLINE,
 } from "@/lib/billing/plan-public-marketing";
+import { LEGAL_PODPORA_EMAIL, LEGAL_SECURITY_EMAIL } from "@/app/legal/legal-meta";
+
+const DEMO_BOOKING_MAILTO = `mailto:${LEGAL_PODPORA_EMAIL}?subject=${encodeURIComponent("Demo Aidvisora (cca 20 min)")}`;
+
+/** Badge pro funkce dostupné od tarifu Pro (marketing). */
+function ProPlanBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border border-indigo-400/40 bg-indigo-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-indigo-200 ${className}`}
+    >
+      Pro
+    </span>
+  );
+}
 
 // --- CUSTOM HOOK & KOMPONENTA PRO SCROLL ANIMACE (REVEAL) ---
 interface ScrollRevealProps {
@@ -43,12 +56,36 @@ interface ScrollRevealProps {
 const ScrollReveal = (props: ScrollRevealProps) => {
   const { children, className = "", delay = 0, direction = "up", immediate = false } = props;
   const [isVisible, setIsVisible] = useState(immediate);
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (immediate) {
-       const timer = setTimeout(() => setIsVisible(true), delay);
-       return () => clearTimeout(timer);
+      const timer = setTimeout(() => setIsVisible(true), delay);
+      return () => clearTimeout(timer);
+    }
+
+    const node = ref.current;
+    if (!node) return;
+
+    // Fallback pro prohlížeče bez IntersectionObserver (sklouzne na „ihned zobraz“,
+    // aby uživateli neschovalo celou sekci kvůli chybějícímu API — dříve zůstala
+    // na opacity-0 a z landing page zmizel veškerý obsah).
+    if (typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+
+    // Elementy už v initial viewportu (nad rýhou) museli dříve čekat na první
+    // scroll event od uživatele, než je IO „zaregistroval“ — proto se stávalo,
+    // že první viewport landingu zůstal blikající mezi opacity-0 a opacity-100.
+    // Kontrola `getBoundingClientRect` je levná a spouští reveal okamžitě.
+    const rect = node.getBoundingClientRect();
+    const inInitialViewport =
+      rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.bottom > 0;
+    if (inInitialViewport) {
+      const timer = window.setTimeout(() => setIsVisible(true), delay);
+      return () => window.clearTimeout(timer);
     }
 
     const observer = new IntersectionObserver(
@@ -60,7 +97,7 @@ const ScrollReveal = (props: ScrollRevealProps) => {
       },
       { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
     );
-    if (ref.current) observer.observe(ref.current);
+    observer.observe(node);
     return () => observer.disconnect();
   }, [immediate, delay]);
 
@@ -188,8 +225,8 @@ const AiSandbox = () => {
             {/* A — stav / soubor */}
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Review dokumentu</p>
-              <p className="text-sm font-medium text-white truncate" title="Smlouva_o_ŽP_2025.pdf">
-                Smlouva_o_ŽP_2025.pdf
+              <p className="text-sm font-medium text-white truncate" title="Smlouva_o_ZP_2026.pdf">
+                Smlouva_o_ZP_2026.pdf
               </p>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <span className="text-[11px] text-slate-500">Stav:</span>
@@ -203,10 +240,10 @@ const AiSandbox = () => {
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 space-y-2.5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Rozpoznané údaje</p>
               <div className="space-y-2 pt-0.5">
-                {row("Instituce", "Allianz pojišťovna a.s.")}
+                {row("Instituce", "Pojišťovna XY (ukázka)")}
                 {row("Typ produktu", "životní pojištění")}
                 {row("Klient", "Jan Novák")}
-                {row("Číslo smlouvy", "ZP-2025-004821")}
+                {row("Číslo smlouvy", "ZP-2026-004821")}
               </div>
             </div>
 
@@ -230,7 +267,7 @@ const AiSandbox = () => {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-purple-400/60 shrink-0" />
-                  Vytvořit smlouvu v Aidvisory
+                  Vytvořit smlouvu v Aidvisoře
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-purple-400/60 shrink-0" />
@@ -266,167 +303,6 @@ const AiSandbox = () => {
           </div>
         )}
       </div>
-    </div>
-  );
-};
-
-// --- INTERAKTIVNÍ MINI-MINDMAP KOMPONENTA (Světlé pozadí s možností úprav a přidávání) ---
-const InteractiveMindmap = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes] = useState([
-    { id: 'core', x: 40, y: 140, label: 'Nová mapa', subtitle: 'Libovolná mapa', type: 'core' },
-    { id: 'n1', x: 300, y: 60, label: 'Nová kategorie', type: 'category' },
-    { id: 'n2', x: 300, y: 220, label: 'Nová položka', subtitle: '0 Kč', type: 'item' }
-  ]);
-  const [edges, setEdges] = useState([
-    { source: 'core', target: 'n1' },
-    { source: 'core', target: 'n2' }
-  ]);
-  const [addedCount, setAddedCount] = useState(0);
-  const [dragging, setDragging] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
-
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, id: string) => {
-    // Ignorovat, pokud uživatel kliká do inputu (aby mohl přejmenovat uzly)
-    const target = e.target as HTMLElement;
-    if (target.tagName?.toLowerCase() === 'input' || target.tagName?.toLowerCase() === 'button') {
-      return;
-    }
-    
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDragging({ id, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragging || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - dragging.offsetX;
-    const y = e.clientY - rect.top - dragging.offsetY;
-
-    // Omezení hranic, aby uzly nevyjely z plátna
-    const boundedX = Math.max(10, Math.min(x, rect.width - 200));
-    const boundedY = Math.max(10, Math.min(y, rect.height - 80));
-
-    setNodes(nodes.map(n => n.id === dragging.id ? { ...n, x: boundedX, y: boundedY } : n));
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragging) e.currentTarget.releasePointerCapture(e.pointerId);
-    setDragging(null);
-  };
-
-  // Přidání nového uzlu (limitováno na 2 navíc)
-  const handleAddNode = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (addedCount >= 2) return;
-    
-    const newNodeId = `new-${Date.now()}`;
-    setNodes([...nodes, {
-      id: newNodeId,
-      x: 300,
-      y: 140 + (addedCount * 80),
-      label: 'Další položka',
-      type: 'category'
-    }]);
-    setEdges([...edges, { source: 'core', target: newNodeId }]);
-    setAddedCount(prev => prev + 1);
-  };
-
-  // Přejmenování uzlu v reálném čase
-  const handleLabelChange = (id: string, newLabel: string) => {
-    setNodes(nodes.map(n => n.id === id ? { ...n, label: newLabel } : n));
-  };
-
-  return (
-    <div ref={containerRef} className="absolute inset-0 z-10" onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}>
-       <svg className="absolute inset-0 w-full h-full pointer-events-none">
-         {edges.map(edge => {
-            const source = nodes.find(n => n.id === edge.source);
-            const target = nodes.find(n => n.id === edge.target);
-            if (!source || !target) return null;
-
-            // Výpočet křivek spojení
-            const sCX = source.x + (source.type === 'core' ? 180 : 150); 
-            const sCY = source.y + 40;
-            const tCX = target.x;
-            const tCY = target.y + 30;
-
-            return (
-              <path 
-                key={`edge-${edge.source}-${edge.target}`} 
-                d={`M ${sCX} ${sCY} Q ${(sCX+tCX)/2} ${sCY} ${tCX} ${tCY}`} 
-                fill="none" 
-                stroke="#cbd5e1" 
-                strokeWidth="2" 
-                className="transition-all duration-75"
-              />
-            )
-         })}
-       </svg>
-       {nodes.map(n => {
-         const isCore = n.type === 'core';
-         const isItem = n.type === 'item';
-         
-         return (
-           <div 
-              key={n.id} 
-              onPointerDown={(e) => handlePointerDown(e, n.id)} 
-              style={{ left: n.x, top: n.y }} 
-              className={`absolute flex flex-col justify-center rounded-[20px] shadow-lg transition-shadow duration-200
-                ${dragging?.id === n.id ? 'shadow-2xl cursor-grabbing z-50 ring-2 ring-indigo-300' : 'cursor-grab z-10 hover:shadow-xl'}
-                ${isCore ? 'bg-aidv-create text-white w-48 py-4 px-5' : 
-                  isItem ? 'bg-white border-2 border-dashed border-slate-300 text-slate-800 w-44 py-3 px-4' : 
-                  'bg-white border border-slate-200 text-slate-800 w-44 py-3 px-4'}
-              `}
-           >
-             {/* Tlačítko pro přidání (Viditelné jen na Jádru) */}
-             {isCore && (
-               <div className="absolute -right-4 top-1/2 -translate-y-1/2">
-                 <button 
-                    onClick={handleAddNode}
-                    disabled={addedCount >= 2}
-                    className="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-400 hover:scale-110 disabled:opacity-0 disabled:scale-0 transition-all duration-300"
-                    title={addedCount >= 2 ? "Maximum" : "Přidat uzel"}
-                  >
-                   <Plus size={16} strokeWidth={3} />
-                 </button>
-               </div>
-             )}
-             
-             {isCore && (
-               <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center mb-3 shadow-inner">
-                 <User size={20} className="text-white" />
-               </div>
-             )}
-             {!isCore && !isItem && (
-                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center mb-2">
-                  <FileText size={16} className="text-indigo-600" />
-                </div>
-             )}
-
-             {/* Interaktivní Input pro název */}
-             <input 
-                type="text" 
-                value={n.label} 
-                onChange={(e) => handleLabelChange(n.id, e.target.value)}
-                className={`w-full bg-transparent border-none outline-none font-black text-[15px] p-0 rounded-sm focus:ring-2 focus:ring-indigo-400/50
-                  ${isCore ? 'text-white' : 'text-slate-800'}
-                `}
-             />
-             
-             {n.subtitle && (
-               <div className={`text-xs mt-1 font-medium ${isCore ? 'text-slate-400' : 'text-emerald-500'}`}>
-                 {n.subtitle}
-               </div>
-             )}
-           </div>
-         );
-       })}
-       <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-         <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold bg-white/80 px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
-           Přetahujte a editujte uzly
-         </span>
-       </div>
     </div>
   );
 };
@@ -481,6 +357,11 @@ export default function PremiumLandingPage() {
   }, []);
 
   const formatNumber = (num: number) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+  const calendarMonthLabel = useMemo(() => {
+    const s = new Date().toLocaleDateString("cs-CZ", { month: "long", year: "numeric" });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0f29] font-inter text-slate-300 selection:bg-indigo-500 selection:text-white overflow-x-hidden relative">
@@ -624,12 +505,19 @@ export default function PremiumLandingPage() {
           <div className="hidden lg:flex items-center gap-8 xl:gap-10 font-inter font-medium text-sm text-slate-400">
             <a href="#jak-to-funguje" className="hover:text-white transition-colors">Jak to funguje</a>
             <a href="#pro-koho" className="hover:text-white transition-colors">Pro koho</a>
+            <Link href="/demo" className="hover:text-white transition-colors">Ukázka</Link>
             <a href="#cenik" className="hover:text-white transition-colors">Ceník</a>
             <Link href="/bezpecnost" className="hover:text-white transition-colors">Bezpečnost</Link>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href={DEMO_BOOKING_MAILTO}
+              className="hidden xl:inline-flex px-4 py-2.5 border border-white/20 text-slate-200 rounded-full text-sm font-semibold hover:bg-white/10 transition-all items-center min-h-[44px]"
+            >
+              Domluvit demo
+            </a>
             <Link
               href="/prihlaseni?register=1"
               className="hidden sm:inline-flex px-5 py-2.5 bg-indigo-600 text-white rounded-full text-sm font-bold hover:bg-indigo-500 transition-all items-center min-h-[44px]"
@@ -670,22 +558,30 @@ export default function PremiumLandingPage() {
               </div>
 
               <h1 className="hero-anim delay-100 font-jakarta text-4xl sm:text-5xl md:text-6xl lg:text-[3.25rem] xl:text-7xl font-extrabold tracking-tight text-glow-shimmer leading-[1.1] mb-6 hyphens-none">
-                Přestaňte řídit poradenství přes Excel,{" "}
-                <span className="whitespace-nowrap">e-mail</span> a chaotické skupinové chaty.
+                Jeden nástroj pro finanční poradenství — od prvního kontaktu po uzavření.
               </h1>
 
-              <p className="hero-anim delay-200 font-inter text-lg md:text-xl text-slate-400 max-w-2xl mb-8 leading-relaxed lg:mx-0 mx-auto">
+              <p className="hero-anim delay-200 font-inter text-lg md:text-xl text-slate-400 max-w-2xl mb-3 leading-relaxed lg:mx-0 mx-auto">
                 CRM, klientská zóna a workflow pro finanční poradce — klienti, dokumenty, schůzky a úkoly na jednom místě.
                 <span className="block mt-2 text-base md:text-lg text-slate-500">Méně administrativy, více přehledu a lepší servis pro klienta.</span>
               </p>
+              <p className="hero-anim delay-200 text-sm text-slate-500 max-w-2xl mb-8 leading-relaxed lg:mx-0 mx-auto">
+                Pro samostatné poradce, týmy i broker pooly — jeden workspace, role Manažer / Poradce / Asistent.
+              </p>
 
-              <div className="hero-anim delay-300 mb-5 lg:justify-start justify-center flex">
+              <div className="hero-anim delay-300 mb-5 lg:justify-start justify-center flex flex-col sm:flex-row flex-wrap gap-3">
                 <Link
                   href="/prihlaseni?register=1"
                   className="w-full sm:w-auto px-8 py-4 bg-white text-[#0a0f29] rounded-full text-base font-bold tracking-wide hover:bg-slate-200 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.2)] text-center min-h-[44px] flex items-center justify-center"
                 >
                   Založit účet — {trialDaysLabel} zdarma
                 </Link>
+                <a
+                  href={DEMO_BOOKING_MAILTO}
+                  className="w-full sm:w-auto px-8 py-4 border border-white/25 text-white rounded-full text-base font-bold tracking-wide hover:bg-white/10 transition-all text-center min-h-[44px] flex items-center justify-center"
+                >
+                  Domluvit demo (cca 20 min)
+                </a>
               </div>
               <p className="hero-anim delay-300 text-xs text-slate-500 mb-5 lg:text-left text-center">
                 Bez závazku — {trialDaysLabel} v úrovni Pro (pak zvolíte tarif).
@@ -693,13 +589,15 @@ export default function PremiumLandingPage() {
               <div className="hero-anim delay-300 flex flex-wrap gap-x-4 gap-y-2 justify-center lg:justify-start text-[11px] sm:text-xs text-slate-500 mb-8">
                 <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-500/80 shrink-0" /> Data v EU</span>
                 <span className="text-slate-600 hidden sm:inline">·</span>
-                <span>Auditní stopa</span>
+                <span>TLS · šifrovaný přenos</span>
                 <span className="text-slate-600 hidden sm:inline">·</span>
-                <span>Role a oprávnění</span>
+                <span>Záznam citlivých akcí (zavádíme)</span>
+                <span className="text-slate-600 hidden sm:inline">·</span>
+                <span>Role Manažer / Poradce / Asistent</span>
               </div>
 
               <p className="hero-anim delay-400 text-sm md:text-base text-slate-400 max-w-xl border-t border-white/10 pt-6 lg:text-left text-center lg:mx-0 mx-auto">
-                Méně chaosu v podkladech. Více dotažených obchodů.
+                Méně chaosu v podkladech. Více přehledu v práci s klienty.
               </p>
             </div>
 
@@ -834,6 +732,13 @@ export default function PremiumLandingPage() {
                 >
                   Zpracovatelská smlouva
                 </Link>
+                <span className="text-slate-600">·</span>
+                <a
+                  href={`mailto:${LEGAL_SECURITY_EMAIL}?subject=${encodeURIComponent("Security — dotaz z webu")}`}
+                  className="underline-offset-4 hover:text-slate-300 hover:underline"
+                >
+                  {LEGAL_SECURITY_EMAIL}
+                </a>
               </div>
             </div>
           </div>
@@ -849,12 +754,18 @@ export default function PremiumLandingPage() {
             <div className="bg-white/5 border border-white/10 rounded-[48px] p-8 md:p-16 lg:p-24 backdrop-blur-md flex flex-col lg:flex-row items-center gap-16 shadow-2xl mb-16">
               
               <div className="lg:w-1/2">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-8">
-                  <Bot size={16} /> Pomocník se smlouvou, ne místo vás
+                <div className="flex flex-wrap items-center gap-2 mb-8">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest">
+                    <Bot size={16} /> Pomocník se smlouvou, ne místo vás
+                  </div>
+                  <ProPlanBadge className="shrink-0" />
                 </div>
                 <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
                   AI, která pomůže se <span className="text-glow-shimmer">smlouvou a dalším krokem.</span>
                 </h2>
+                <p className="text-xs text-slate-500 -mt-4 mb-6 max-w-xl">
+                  Plné AI review PDF a pokročilý asistent jsou od tarifu Pro; ve Startu je základní asistent bez review PDF.
+                </p>
                 <p className="text-base md:text-lg text-slate-400 mb-10 md:mb-12 leading-relaxed max-w-xl">
                   Přečte PDF s vámi na mysli: vytáhne klíčové údaje, upozorní na mezery a navrhne, co ověřit. Rozhodujete vy — nic se nemění bez vašeho potvrzení.
                 </p>
@@ -918,12 +829,20 @@ export default function PremiumLandingPage() {
                   <div className="flex flex-col gap-2">
                     <Search size={24} className="text-emerald-400 mb-2"/>
                     <h4 className="font-bold text-white">Auditovatelnost</h4>
-                    <p className="text-sm text-slate-400">Vždy přesně víte, z jakého dokumentu a věty AI daný údaj vyčetla.</p>
+                    <p className="text-sm text-slate-400">
+                      U výstupu vidíte zdrojový dokument; u pole často i stránku a krátký úryvek z textu pro kontrolu.
+                    </p>
                   </div>
                   <div className="flex flex-col gap-2">
                     <Lock size={24} className="text-emerald-400 mb-2"/>
                     <h4 className="font-bold text-white">Bezpečné zpracování</h4>
-                    <p className="text-sm text-slate-400">Data z PDF se po analýze nikde netrénují a zůstávají v uzavřeném sandboxu.</p>
+                    <p className="text-sm text-slate-400">
+                      Používáme API dodavatelů AI podle smluvních podmínek (obvykle bez trénování na vašich vstupech). Podrobnosti v{" "}
+                      <Link href="/legal/ai-disclaimer" className="text-indigo-300 underline underline-offset-2 hover:text-white">
+                        AI disclaimeru
+                      </Link>
+                      .
+                    </p>
                   </div>
                </div>
             </div>
@@ -1063,7 +982,7 @@ export default function PremiumLandingPage() {
             <ScrollReveal className="lg:w-1/2 w-full" direction="left">
               <div className="bg-[#f8fafc] rounded-[24px] border border-white/10 shadow-[0_0_50px_rgba(99,102,241,0.15)] relative overflow-hidden h-[400px] flex flex-col">
                 <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
-                  <span className="font-bold text-slate-800">Březen 2026</span>
+                  <span className="font-bold text-slate-800 capitalize">{calendarMonthLabel}</span>
                   <div className="flex gap-2"><span className="px-3 py-1 bg-slate-100 rounded text-xs font-bold text-slate-600">Pracovní</span><span className="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-bold text-slate-600">Týden</span></div>
                 </div>
                 <div className="flex-1 flex overflow-hidden">
@@ -1140,15 +1059,25 @@ export default function PremiumLandingPage() {
               <div className="w-14 h-14 bg-orange-500/20 text-orange-400 rounded-2xl flex items-center justify-center mb-6 border border-orange-500/30"><Network size={28}/></div>
               <h3 className="font-jakarta text-4xl font-bold text-white leading-tight">Struktura portfolia rodiny na jednom plátně.</h3>
               <p className="text-lg text-slate-400 leading-relaxed">
-                Interaktivní mindmapa umožňuje vizualizovat vztahy a portfolio rodiny. Uzly lze přidávat a přesouvat.
+                Mindmapa v aplikaci zobrazuje vztahy a portfolio domácnosti. Po přihlášení si ji upravíte přetahováním uzlů — na webu ukazujeme jen náhled.
               </p>
             </ScrollReveal>
 
             <ScrollReveal className="lg:w-1/2 w-full" direction="left">
-              <div className="bg-[#f8fafc] rounded-[32px] border border-slate-200 shadow-[0_0_50px_rgba(99,102,241,0.05)] relative overflow-hidden h-[400px]">
-                <div className="absolute inset-0 mindmap-dots pointer-events-none"></div>
-                {/* Interaktivní komponenta s uzly (Nyní světlá s Plus tlačítkem) */}
-                <InteractiveMindmap />
+              <div className="bg-[#f8fafc] rounded-[32px] border border-slate-200 shadow-[0_0_50px_rgba(99,102,241,0.05)] relative overflow-hidden h-[400px] flex flex-col items-center justify-center p-8 mindmap-dots">
+                <div className="relative z-10 max-w-sm text-center space-y-4">
+                  <Network size={40} className="text-orange-500 mx-auto" aria-hidden />
+                  <p className="text-slate-700 font-jakarta font-bold text-lg">Mindmapa portfolia</p>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    Živou mindmapu s úpravami uzlů najdete v sekci Mindmap po založení účtu.
+                  </p>
+                  <Link
+                    href="/prihlaseni?register=1"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors"
+                  >
+                    Otevřít v aplikaci
+                  </Link>
+                </div>
               </div>
             </ScrollReveal>
           </div>
@@ -1182,7 +1111,15 @@ export default function PremiumLandingPage() {
                 <div className="relative z-10 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm text-center">
                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2 block">Budoucí hodnota (Při 7% p.a.)</span>
                   <div className="text-4xl sm:text-5xl font-black text-white mb-2">{formatNumber(futureValue)} <span className="text-xl sm:text-2xl text-slate-500">Kč</span></div>
-                  <button className="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition-colors w-full">Vložit do PDF Reportu</button>
+                  <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
+                    Výstup do PDF reportu si připravíte v aplikaci po přihlášení (analýzy a kalkulačky).
+                  </p>
+                  <Link
+                    href="/prihlaseni?register=1"
+                    className="mt-4 inline-flex w-full min-h-[40px] items-center justify-center px-4 py-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-xs font-bold text-emerald-200 hover:bg-emerald-500/20 transition-colors"
+                  >
+                    Založit účet a zkusit v aplikaci
+                  </Link>
                 </div>
               </div>
             </ScrollReveal>
@@ -1219,9 +1156,17 @@ export default function PremiumLandingPage() {
                   <div className="w-1/5 bg-indigo-400 h-[90%] rounded-t-sm"></div>
                   <div className="w-1/5 bg-slate-200 h-[50%] rounded-t-sm"></div>
                 </div>
-                <div className="bg-purple-600 text-white p-4 rounded-xl shadow-md flex items-center justify-between">
-                  <div className="flex items-center gap-2"><Sparkles size={16}/> <span className="text-sm font-bold">AI Shrnutí týmu</span></div>
-                  <button className="text-xs bg-white text-purple-700 px-3 py-1.5 rounded-lg font-bold">Generovat</button>
+                <div className="bg-purple-600/90 text-white p-4 rounded-xl shadow-md">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <Sparkles size={16} aria-hidden />
+                    <span className="text-sm font-bold">Manažerské shrnutí týmu (AI)</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
+                      Management
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-purple-100/90 leading-relaxed">
+                    V produkci generujete z přehledu týmu — zde je jen ilustrace rozhraní.
+                  </p>
                 </div>
                 <div className="bg-red-50 border border-red-100 p-3 rounded-xl flex items-center gap-3">
                   <AlertTriangle size={16} className="text-red-500 shrink-0"/>
@@ -1230,6 +1175,42 @@ export default function PremiumLandingPage() {
               </div>
             </ScrollReveal>
           </div>
+
+          {/* 6. DALŠÍ NÁSTROJE V APLIKACI */}
+          <ScrollReveal>
+            <div className="mx-auto max-w-[1000px] rounded-[32px] border border-white/10 bg-white/[0.03] p-8 md:p-12">
+              <h3 className="font-jakarta text-center text-2xl font-bold text-white md:text-3xl mb-3">
+                Další nástroje v aplikaci
+              </h3>
+              <p className="text-slate-400 text-center text-sm md:text-base max-w-2xl mx-auto mb-8 leading-relaxed">
+                Kromě kalendáře, pipeline a mindmapy najdete v portálu například finanční analýzy, kalkulačky, business plán,
+                e-mailové kampaně, klientské požadavky, zápisky a napojení na Google nástroje podle tarifu.
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-300 max-w-3xl mx-auto">
+                {[
+                  "Finanční analýzy a kalkulačky",
+                  "Business plán a produkce",
+                  "E-mailové kampaně",
+                  "Klientské požadavky (workflow)",
+                  "Zápisky a dokumenty",
+                  "Google Kalendář, Gmail a Drive (Pro+)",
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" aria-hidden />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-center mt-8">
+                <Link
+                  href="/prihlaseni?register=1"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition-colors"
+                >
+                  Prohlédnout po registraci
+                </Link>
+              </p>
+            </div>
+          </ScrollReveal>
 
         </div>
       </section>
@@ -1295,11 +1276,13 @@ export default function PremiumLandingPage() {
             <ScrollReveal className="relative flex flex-col md:flex-row items-start md:items-center justify-between mb-16 md:mb-24 group">
               <div className="md:hidden pl-20 pr-4 mb-4 w-full order-first">
                  <h3 className="font-jakarta text-lg font-bold text-white mb-1">Portál klienta</h3>
-                 <p className="text-sm text-slate-400">Klient nahraje podklad nebo napíše — u vás úkol a upozornění.</p>
+                 <p className="text-sm text-slate-400">Klient nahraje podklad; chat a požadavky od tarifu Pro — u vás úkol a upozornění.</p>
               </div>
-              <div className="hidden md:block md:w-5/12 text-right pr-12">
+                <div className="hidden md:block md:w-5/12 text-right pr-12">
                  <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Portál klienta</h3>
-                 <p className="text-slate-400">Klient bezpečně nahraje podklad nebo pošle zprávu — u vás vznikne úkol a upozornění.</p>
+                 <p className="text-slate-400">
+                   Klient bezpečně nahraje podklad (Start). Chat a zprávy z portálu od tarifu Pro — u vás vznikne úkol a upozornění.
+                 </p>
               </div>
               <div className="absolute left-0 md:left-1/2 w-14 h-14 bg-[#0a0f29] border-4 border-slate-800 rounded-full flex items-center justify-center md:-translate-x-1/2 z-10 shadow-[0_0_20px_rgba(16,185,129,0.2)] group-hover:border-emerald-500 transition-colors">
                 <Smartphone className="text-emerald-500" size={24} />
@@ -1307,7 +1290,10 @@ export default function PremiumLandingPage() {
               <div className="w-full pl-20 md:pl-0 md:w-5/12 md:text-left md:pl-12">
                  <SpotlightCard className="p-6 border-emerald-500/30">
                    <div className="flex items-center gap-3 mb-3"><Bell className="text-emerald-400" size={20}/><span className="text-sm font-bold text-white">Nová notifikace (14:30)</span></div>
-                   <p className="text-sm text-slate-300">Klient <strong className="text-white">Jan Novák</strong> nahrál soubor "Obcanka.pdf" a píše novou zprávu.</p>
+                   <p className="text-sm text-slate-300">
+                   Klient <strong className="text-white">Jan Novák</strong> nahrál soubor „Občanka.pdf“.
+                   <span className="block mt-1 text-[11px] text-slate-500">Zprávy v portálu od tarifu Pro.</span>
+                 </p>
                  </SpotlightCard>
               </div>
             </ScrollReveal>
@@ -1363,7 +1349,7 @@ export default function PremiumLandingPage() {
                 <p className="text-slate-400 mb-6 leading-relaxed">Ztrácíte přehled o tom, na čem vaši lidé pracují, a excelové reporty produkce jsou věčně neaktuální.</p>
                 <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10">
                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1 block">Klíčový modul</span>
-                  <p className="text-sm text-slate-300 font-medium">Sdílené pohledy a <strong className="text-white">KPI Produkce</strong> v reálném čase.</p>
+                  <p className="text-sm text-slate-300 font-medium">Sdílené pohledy a <strong className="text-white">KPI a produkce</strong> v jednom přehledu (tarif Management).</p>
                 </div>
               </SpotlightCard>
             </ScrollReveal>
@@ -1384,10 +1370,14 @@ export default function PremiumLandingPage() {
               <SpotlightCard className="p-8 h-full flex flex-col">
                 <div className="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center text-rose-400 mb-6"><Building size={24}/></div>
                 <h3 className="font-jakarta text-2xl font-bold text-white mb-2">Firma / Broker pool</h3>
-                <p className="text-slate-400 mb-6 leading-relaxed">Potřebujete zajistit 100% soulad s GDPR a mít nástroj, který lidé reálně rádi používají.</p>
+                <p className="text-slate-400 mb-6 leading-relaxed">
+                  Potřebujete oddělený datový prostor pro pobočky, jasné role a smluvní rámec (DPA) — bez přehnaných slibů o „stoprocentním“ GDPR.
+                </p>
                 <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1 block">Klíčový modul</span>
-                  <p className="text-sm text-slate-300 font-medium"><strong className="text-white">Multi-tenant architektura</strong> s pokročilým řízením rolí.</p>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1 block">Klíčový přínos</span>
+                  <p className="text-sm text-slate-300 font-medium">
+                    <strong className="text-white">Izolovaný workspace</strong> pro vaši organizaci, řízení přístupů podle rolí a podpora při due diligence.
+                  </p>
                 </div>
               </SpotlightCard>
             </ScrollReveal>
@@ -1402,7 +1392,12 @@ export default function PremiumLandingPage() {
           <ScrollReveal>
             <div className="text-center mb-16">
               <h2 className="font-jakarta text-4xl md:text-6xl font-bold text-white mb-6">Dva světy. Jedna platforma.</h2>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">Vy řídíte obchod a vztahy. Klient má jednoduchý digitální servis. Když něco potřebuje, zadá požadavek v portálu a vám se okamžitě vytvoří navazující krok.</p>
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                Vy řídíte obchod a vztahy. Klient má jednoduchý digitální servis — u tarifu{" "}
+                <strong className="text-slate-300">Start</strong> hlavně dokumenty v portálu;{" "}
+                <strong className="text-slate-300">chat, nové požadavky z portálu a plný servis</strong> jsou od tarifu{" "}
+                <strong className="text-slate-300">Pro</strong>.
+              </p>
             </div>
           </ScrollReveal>
 
@@ -1420,19 +1415,48 @@ export default function PremiumLandingPage() {
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8">
                   <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-500/30 mb-4"><Smartphone size={24} /></div>
                   <h3 className="font-jakarta text-xl font-bold text-white mb-2">Klientská zóna</h3>
-                  <p className="text-slate-400 leading-relaxed text-sm md:text-base mb-4">Klient zadá požadavek, nahraje podklady a napíše zprávu. Vy dostanete upozornění a vše řešíte v navazujícím workflow.</p>
+                  <p className="text-slate-400 leading-relaxed text-sm md:text-base mb-4">
+                    Klient nahraje podklady do portálu (Start). Od tarifu <strong className="text-slate-300">Pro</strong> přibývá
+                    zadání požadavku, chat a zprávy — vše s upozorněním a úkolem u vás v aplikaci.
+                  </p>
                   <ul className="space-y-2">
-                    <li className="flex items-center gap-2 text-slate-400 text-sm"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> Nový požadavek od klienta</li>
-                    <li className="flex items-center gap-2 text-slate-400 text-sm"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> Bezpečné nahrání dokumentů</li>
-                    <li className="flex items-center gap-2 text-slate-400 text-sm"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> Přímá zpráva poradci</li>
+                    <li className="flex items-center gap-2 text-slate-400 text-sm">
+                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> Bezpečné nahrání dokumentů (Start)
+                    </li>
+                    <li className="flex items-center gap-2 text-slate-400 text-sm">
+                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                      <span className="inline-flex items-center gap-2 flex-wrap">
+                        Nový požadavek z portálu <ProPlanBadge />
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2 text-slate-400 text-sm">
+                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                      <span className="inline-flex items-center gap-2 flex-wrap">
+                        Chat a zpráva poradci <ProPlanBadge />
+                      </span>
+                    </li>
                     <li className="flex items-center gap-2 text-slate-400 text-sm"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> Upozornění a navazující úkol</li>
                   </ul>
+                  <p className="mt-4 text-xs text-slate-500 leading-relaxed border-t border-white/10 pt-4">
+                    Pro přihlášení poradců plánujeme povinné dvoufaktorové ověření (TOTP) před ostrým veřejným spuštěním — viz{" "}
+                    <Link href="/bezpecnost" className="text-indigo-300 underline underline-offset-2 hover:text-white">
+                      přehled bezpečnosti
+                    </Link>
+                    .
+                  </p>
                 </div>
               </ScrollReveal>
             </div>
 
             {/* App Mockup: Klientská zóna - Zadání požadavku */}
-            <ScrollReveal direction="right" delay={200} className="order-1 lg:order-2 relative">
+            <ScrollReveal direction="right" delay={200} className="order-1 lg:order-2">
+              <div className="relative">
+                <div className="absolute -top-1 right-0 z-20">
+                  <ProPlanBadge className="shadow-lg" />
+                </div>
+                <p className="text-center text-xs text-slate-500 mb-3 lg:text-right pr-16 sm:pr-20">
+                  Ukázka požadavku z portálu — funkce od tarifu Pro
+                </p>
               <div className="aspect-[4/3] bg-[#0a0f29] rounded-[40px] border border-white/10 shadow-[0_0_80px_rgba(59,130,246,0.15)] p-3 relative overflow-hidden group cursor-pointer">
                 <div className="absolute inset-0 bg-blue-500/10 mix-blend-overlay"></div>
                 <div className="w-full h-full bg-[#f8fafc] rounded-[32px] overflow-hidden flex flex-col relative z-10 border border-slate-200">
@@ -1456,6 +1480,7 @@ export default function PremiumLandingPage() {
                        </div>
                   </div>
                 </div>
+              </div>
               </div>
             </ScrollReveal>
           </div>
@@ -1513,7 +1538,9 @@ export default function PremiumLandingPage() {
                     <Lock size={24} className="text-emerald-400 group-hover:scale-110 transition-transform" />
                     <h3 className="font-bold text-xl text-white">Ochrana dat a GDPR</h3>
                   </div>
-                  <p className="text-slate-400 leading-relaxed text-lg pl-10">Evidence souhlasů, auditní stopa citlivých akcí a export dat na žádost klienta. Data jsou uložena v EU.</p>
+                  <p className="text-slate-400 leading-relaxed text-lg pl-10">
+                    Evidence souhlasů, export dat na žádost a zavádění jednotného záznamu citlivých akcí. Data jsou uložena v EU — stav po jednotlivých oblastech najdete v přehledu níže.
+                  </p>
                 </div>
               </ScrollReveal>
 
@@ -1525,9 +1552,11 @@ export default function PremiumLandingPage() {
                 >
                   <div className="flex items-center gap-4 mb-3">
                     <Server size={24} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                    <h3 className="font-bold text-xl text-white">Škálovatelný Cloud</h3>
+                    <h3 className="font-bold text-xl text-white">Provoz v cloudu (EU)</h3>
                   </div>
-                  <p className="text-slate-400 leading-relaxed text-lg pl-10">Zapomeňte na instalace. Aplikace běží na zabezpečených serverech, je bleskově rychlá a přístupná odkudkoliv, i z mobilu či tabletu.</p>
+                  <p className="text-slate-400 leading-relaxed text-lg pl-10">
+                    Bez instalace — aplikace běží v zabezpečeném prostředí s evropským regionem pro data a přístup z prohlížeče na počítači i mobilu.
+                  </p>
                 </div>
               </ScrollReveal>
 
@@ -1539,9 +1568,30 @@ export default function PremiumLandingPage() {
                 >
                   <div className="flex items-center gap-4 mb-3">
                     <Users size={24} className="text-purple-400 group-hover:scale-110 transition-transform" />
-                    <h3 className="font-bold text-xl text-white">Izolace a Role (RBAC)</h3>
+                    <h3 className="font-bold text-xl text-white">Izolace workspace a role</h3>
                   </div>
-                  <p className="text-slate-400 leading-relaxed text-lg pl-10">Precizní řízení přístupů (Manažer, Poradce, Asistent). Každá firma má svůj izolovaný datový prostor (Multi-tenant architektura).</p>
+                  <p className="text-slate-400 leading-relaxed text-lg pl-10">
+                    Každá organizace má vlastní izolovaný datový prostor; přístup řídíte rolemi <strong className="text-slate-300">Manažer</strong>,{" "}
+                    <strong className="text-slate-300">Poradce</strong> a <strong className="text-slate-300">Asistent</strong> podle vašeho nastavení.
+                  </p>
+                </div>
+              </ScrollReveal>
+
+              <ScrollReveal delay={400} direction="left" className="w-full">
+                <div className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6 md:p-8 text-center md:text-left">
+                  <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-4">
+                    Podrobný stav opatření (co je spuštěné, co dokončujeme) máme rozvedený na stránce Bezpečnost včetně kontaktu{" "}
+                    <a href={`mailto:${LEGAL_SECURITY_EMAIL}`} className="text-indigo-300 underline underline-offset-2 hover:text-white">
+                      {LEGAL_SECURITY_EMAIL}
+                    </a>
+                    .
+                  </p>
+                  <Link
+                    href="/bezpecnost"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-white text-[#0a0f29] px-6 py-3 text-sm font-bold hover:bg-slate-200 transition-colors"
+                  >
+                    Podrobný přehled bezpečnosti
+                  </Link>
                 </div>
               </ScrollReveal>
             </div>
@@ -1699,6 +1749,27 @@ export default function PremiumLandingPage() {
                <p className="text-xs text-slate-500 mt-2 max-w-xl mx-auto">
                  Zkušební verze {trialDaysLabel} v úrovni <strong className="text-slate-400">Pro</strong>.
                </p>
+               <p className="text-xs text-slate-500 mt-3 max-w-xl mx-auto leading-relaxed">
+                 Ceny jsou za <strong className="text-slate-400">jeden workspace</strong> (vaši organizaci v systému). Rozsah uživatelů a
+                 seatů upřesníme podle vaší praxe — u broker poolů a větších týmů si{" "}
+                 <a href={DEMO_BOOKING_MAILTO} className="text-indigo-300 underline underline-offset-2 hover:text-white">
+                   domluvte krátké demo
+                 </a>
+                 .
+               </p>
+               <p className="text-[11px] text-slate-600 mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                 <Link href="/cookies" className="hover:text-slate-400 underline-offset-4 hover:underline">
+                   Cookies
+                 </Link>
+                 <span aria-hidden>·</span>
+                 <Link href="/subprocessors" className="hover:text-slate-400 underline-offset-4 hover:underline">
+                   Subdodavatelé
+                 </Link>
+                 <span aria-hidden>·</span>
+                 <Link href="/legal/ai-disclaimer" className="hover:text-slate-400 underline-offset-4 hover:underline">
+                   AI disclaimer
+                 </Link>
+               </p>
              </div>
           </ScrollReveal>
 
@@ -1831,22 +1902,28 @@ export default function PremiumLandingPage() {
              <ScrollReveal delay={100} direction="up" className="relative">
                <div className="bg-white/5 border border-white/10 p-8 rounded-3xl h-full text-left">
                  <div className="w-12 h-12 bg-indigo-500/20 text-indigo-400 font-black text-xl rounded-full flex items-center justify-center mb-6">1</div>
-                 <h4 className="font-bold text-white text-xl mb-3">Založíte účet</h4>
-                 <p className="text-slate-400 text-sm leading-relaxed">Během chvíle získáte přístup do připraveného prostředí, kde můžete začít s nastavením práce, klientů a procesů.</p>
+                 <h4 className="font-bold text-white text-xl mb-3">Ověříte e-mail a workspace</h4>
+                 <p className="text-slate-400 text-sm leading-relaxed">
+                   Založíte účet poradce, potvrdíte e-mail a projdete krátké založení workspace (název organizace, základní nastavení).
+                 </p>
                </div>
              </ScrollReveal>
              <ScrollReveal delay={200} direction="up" className="relative">
                <div className="bg-white/5 border border-white/10 p-8 rounded-3xl h-full text-left">
                  <div className="w-12 h-12 bg-indigo-500/20 text-indigo-400 font-black text-xl rounded-full flex items-center justify-center mb-6">2</div>
-                 <h4 className="font-bold text-white text-xl mb-3">Importujete data</h4>
-                 <p className="text-slate-400 text-sm leading-relaxed">Nahrajete Excel nebo CSV s klienty. Pomůžeme vám data napárovat a odstranit duplicity bez ručního přepisování.</p>
+                 <h4 className="font-bold text-white text-xl mb-3">Import a napojení kalendáře</h4>
+                 <p className="text-slate-400 text-sm leading-relaxed">
+                   Nahrajete klienty z Excelu/CSV (pomůžeme s mapováním sloupců) a připojíte Google Kalendář pro schůzky.
+                 </p>
                </div>
              </ScrollReveal>
              <ScrollReveal delay={300} direction="up" className="relative">
                <div className="bg-white/5 border border-white/10 p-8 rounded-3xl h-full text-left">
                  <div className="w-12 h-12 bg-indigo-500/20 text-indigo-400 font-black text-xl rounded-full flex items-center justify-center mb-6">3</div>
-                 <h4 className="font-bold text-white text-xl mb-3">Spustíte onboarding</h4>
-                 <p className="text-slate-400 text-sm leading-relaxed">Pomůžeme vám nastavit klientskou zónu, základní workflow i používání systému v týmu.</p>
+                 <h4 className="font-bold text-white text-xl mb-3">Klientská zóna a tarif</h4>
+                 <p className="text-slate-400 text-sm leading-relaxed">
+                   Nastavíte klientský portál podle tarifu (Start vs Pro), role v týmu a první workflow — podle potřeby s naší podporou.
+                 </p>
                </div>
              </ScrollReveal>
           </div>
@@ -1909,7 +1986,7 @@ export default function PremiumLandingPage() {
               Vyzkoušejte Aidvisoru v praxi
             </h2>
             <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              14 dní bez závazku — stejné prostředí jako po přihlášení. CRM, klientská zóna, kalendář a dokumenty na jednom místě.
+              {PUBLIC_TRIAL_DURATION_DAYS} dní bez závazku — stejné prostředí jako po přihlášení. CRM, klientská zóna, kalendář a dokumenty na jednom místě.
             </p>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 sm:gap-6">
               <Link
@@ -1918,6 +1995,12 @@ export default function PremiumLandingPage() {
               >
                 Založit účet — {trialDaysLabel} zdarma <ArrowRight size={18} />
               </Link>
+              <a
+                href={DEMO_BOOKING_MAILTO}
+                className="w-full sm:w-auto px-10 py-5 border border-white/25 text-white rounded-full text-lg font-bold hover:bg-white/10 transition-colors text-center min-h-[44px] flex items-center justify-center"
+              >
+                Domluvit demo
+              </a>
               <Link
                 href="/prihlaseni"
                 className="w-full sm:w-auto px-10 py-5 border border-white/20 text-white rounded-full text-lg font-bold hover:bg-white/10 transition-colors text-center min-h-[44px] flex items-center justify-center"
@@ -1926,7 +2009,7 @@ export default function PremiumLandingPage() {
               </Link>
             </div>
             <p className="mt-8 text-slate-500 text-sm max-w-xl mx-auto">
-              Na přihlášení zvolte roli poradce nebo klienta.
+              Na přihlášení zvolte roli poradce nebo klienta. Po skončení trialu zvolíte placený tarif nebo může dojít k omezení funkcí workspace — podrobnosti v FAQ; data standardně nemazeme bez vašeho pokynu.
             </p>
           </ScrollReveal>
         </div>
@@ -1951,13 +2034,18 @@ export default function PremiumLandingPage() {
               </Link>
               <p className="text-sm max-w-sm leading-relaxed mb-6">Pracovní systém pro finanční poradce a týmy. CRM, klientská zóna a workflow na jednom místě.</p>
               <p className="text-xs">
-                <a href="mailto:podpora@aidvisora.cz" className="hover:text-white transition-colors">podpora@aidvisora.cz</a>
+                <a href={`mailto:${LEGAL_PODPORA_EMAIL}`} className="hover:text-white transition-colors">
+                  {LEGAL_PODPORA_EMAIL}
+                </a>
               </p>
             </div>
 
             <div>
               <h4 className="text-white font-bold mb-6 font-jakarta text-lg">Produkt</h4>
               <ul className="space-y-4 text-sm">
+                <li><Link href="/o-nas" className="hover:text-white transition-colors">O nás</Link></li>
+                <li><Link href="/demo" className="hover:text-white transition-colors">Ukázka a demo</Link></li>
+                <li><Link href="/pro-brokery" className="hover:text-white transition-colors">Pro brokery a firmy</Link></li>
                 <li><a href="#aplikace" className="hover:text-white transition-colors">Vlastnosti CRM</a></li>
                 <li><a href="#klientska-zona" className="hover:text-white transition-colors">Klientská zóna</a></li>
                 <li><Link href="/prihlaseni" className="hover:text-white transition-colors">Portál Aidvisora</Link></li>
@@ -1992,7 +2080,10 @@ export default function PremiumLandingPage() {
                 <li><Link href="/kontakt" className="hover:text-white transition-colors">Kontakt</Link></li>
                 <li><Link href="/status" className="hover:text-white transition-colors">Provozní stav</Link></li>
                 <li>
-                  <a href="mailto:podpora@aidvisora.cz?subject=Onboarding%20a%20podpora" className="hover:text-white transition-colors">
+                  <a
+                    href={`mailto:${LEGAL_PODPORA_EMAIL}?subject=${encodeURIComponent("Onboarding a podpora")}`}
+                    className="hover:text-white transition-colors"
+                  >
                     Onboarding a technická podpora
                   </a>
                 </li>

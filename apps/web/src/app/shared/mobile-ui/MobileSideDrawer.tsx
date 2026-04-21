@@ -31,6 +31,7 @@ import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { hasPermission, type RoleName } from "@/shared/rolePermissions";
 import { AiAssistantBrandIcon } from "@/app/components/AiAssistantBrandIcon";
 import { isPortalMultiPageScanEnabled } from "@/lib/portal/portal-scan-enabled";
+import { isColdContactsEnabled } from "@/lib/portal/cold-contacts-enabled";
 import { signOutAndRedirectClient } from "@/lib/auth/sign-out-client";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -80,7 +81,7 @@ function buildSections(showTeamOverview: boolean, roleName: RoleName): DrawerSec
   const databaze: DrawerNavItem[] = [
     { href: "/portal/contacts", label: "Klienti", Icon: Users },
     { href: "/portal/households", label: "Domácnosti", Icon: Building2 },
-    ...(hasPermission(roleName, "contacts:read")
+    ...(isColdContactsEnabled() && hasPermission(roleName, "contacts:read")
       ? [{ href: "/portal/cold-contacts", label: "Studené kontakty", Icon: UserPlus } as DrawerNavItem]
       : []),
   ];

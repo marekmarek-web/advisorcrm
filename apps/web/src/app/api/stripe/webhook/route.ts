@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { db, eq, stripeWebhookEvents } from "db";
+import { db, eq, stripeWebhookEvents, sql } from "db";
 import { getStripe } from "@/lib/stripe/server";
 import {
   resolveTenantIdForSubscription,
@@ -239,25 +239,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
   }
 
-  const inserted = await db
+  // Idempotentní přihláška k eventu:
+  //  - nový event: insert se statusem `processing`
+  //  - duplicitní `completed`: nic nedělat, vrátit duplicate=true
+  //  - dřívější `failed`/`processing`: znovu převzít (Stripe retry) a inkrementovat attempts
+  const now = new Date();
+  const claimed = await db
     .insert(stripeWebhookEvents)
-    .values({ id: event.id })
-    .onConflictDoNothing()
-    .returning({ id: stripeWebhookEvents.id });
+    .values({
+      id: event.id,
+      status: "processing",
+      attempts: 1,
+      receivedAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: stripeWebhookEvents.id,
+      set: {
+        status: "processing",
+        attempts: sql`${stripeWebhookEvents.attempts} + 1`,
+        updatedAt: now,
+        lastError: null,
+      },
+      where: sql`${stripeWebhookEvents.status} <> 'completed'`,
+    })
+    .returning({
+      id: stripeWebhookEvents.id,
+      status: stripeWebhookEvents.status,
+      attempts: stripeWebhookEvents.attempts,
+    });
 
-  if (inserted.length === 0) {
+  if (claimed.length === 0) {
+    // RETURNING prázdné → WHERE vyloučil řádek (status === 'completed')
     return NextResponse.json({ received: true, duplicate: true });
   }
 
   try {
     await handleStripeEvent(event);
+    await db
+      .update(stripeWebhookEvents)
+      .set({ status: "completed", processedAt: new Date(), updatedAt: new Date(), lastError: null })
+      .where(eq(stripeWebhookEvents.id, event.id));
   } catch (err) {
-    await db.delete(stripeWebhookEvents).where(eq(stripeWebhookEvents.id, event.id));
+    const message = err instanceof Error ? err.message : String(err);
+    await db
+      .update(stripeWebhookEvents)
+      .set({ status: "failed", updatedAt: new Date(), lastError: message.slice(0, 2000) })
+      .where(eq(stripeWebhookEvents.id, event.id));
     console.error("[stripe webhook]", {
       eventId: event.id,
       type: event.type,
       objectId: stripeObjectIdFromEvent(event),
-      err: err instanceof Error ? err.message : String(err),
+      err: message,
     });
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }

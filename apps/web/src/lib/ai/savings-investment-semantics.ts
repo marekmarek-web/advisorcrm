@@ -217,6 +217,170 @@ export function resolveParticipantIntermediaryDuplicateForPension(
   };
 }
 
+const INVESTMENT_LIKE_PRIMARIES_FOR_TOTAL_INVESTED = new Set<PrimaryDocumentType>([
+  "investment_subscription_document",
+  "investment_service_agreement",
+  "investment_modelation",
+  "investment_payment_instruction",
+  "life_insurance_investment_contract",
+  "pension_contract",
+]);
+
+function toNumericAmount(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === "number") return Number.isFinite(raw) && raw > 0 ? raw : null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  const cleaned = s
+    .replace(/[\u00a0\u202f]/g, " ")
+    .replace(/[Kč\s]/gi, "")
+    .replace(/czk/gi, "")
+    .replace(/,/g, ".")
+    .replace(/\.(?=\d{3}(\D|$))/g, "")
+    .trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function toYearsFromDuration(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw)) return null;
+    if (raw > 0 && raw <= 80) return raw;
+    if (raw > 80 && raw <= 960) return raw / 12;
+    return null;
+  }
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  const yearTarget = s.match(/do\s+roku\s+(\d{4})/);
+  if (yearTarget) {
+    const y = Number(yearTarget[1]);
+    const cur = new Date().getFullYear();
+    if (Number.isFinite(y) && y > cur) {
+      const n = y - cur;
+      return n > 0 && n <= 80 ? n : null;
+    }
+  }
+  const plusLet = s.match(/(\d{1,2})\s*\+\s*let/);
+  if (plusLet) {
+    const n = Number(plusLet[1]);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  const nLet = s.match(/(\d{1,3})\s*(?:let|roků|roku|r\.)/);
+  if (nLet) {
+    const n = Number(nLet[1]);
+    if (Number.isFinite(n) && n > 0 && n <= 80) return n;
+  }
+  const nMes = s.match(/(\d{1,3})\s*(?:měs|mesi|měsíců|mesicu|months|m\.)/);
+  if (nMes) {
+    const n = Number(nMes[1]);
+    if (Number.isFinite(n) && n > 0 && n <= 960) return n / 12;
+  }
+  const bare = Number(s.replace(/[^\d.]/g, ""));
+  if (Number.isFinite(bare) && bare > 0 && bare <= 80) return bare;
+  return null;
+}
+
+function yearsBetweenDates(startRaw: unknown, endRaw: unknown): number | null {
+  const parseCzDate = (r: unknown): Date | null => {
+    if (!r) return null;
+    const s = String(r).trim();
+    if (!s) return null;
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const d = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T00:00:00Z`);
+      return Number.isFinite(d.valueOf()) ? d : null;
+    }
+    const cz = s.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+    if (cz) {
+      const dd = cz[1].padStart(2, "0");
+      const mm = cz[2].padStart(2, "0");
+      const d = new Date(`${cz[3]}-${mm}-${dd}T00:00:00Z`);
+      return Number.isFinite(d.valueOf()) ? d : null;
+    }
+    return null;
+  };
+  const s = parseCzDate(startRaw);
+  const e = parseCzDate(endRaw);
+  if (!s || !e) return null;
+  const years = (e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  return years > 0 && years <= 80 ? years : null;
+}
+
+const MONTHLY_FREQUENCY_MARKERS = ["měsíč", "mesicn", "mesic", "month"];
+const ANNUAL_FREQUENCY_MARKERS = ["ročn", "rocn", "annual", "yearly"];
+const ONE_OFF_FREQUENCY_MARKERS = ["jednoráz", "jednoraz", "lump", "once"];
+
+function frequencyMultiplierPerYear(paymentFrequency: unknown): number | null {
+  const s = String(paymentFrequency ?? "").trim().toLowerCase();
+  if (!s) return null;
+  if (ONE_OFF_FREQUENCY_MARKERS.some((m) => s.includes(m))) return 0;
+  if (MONTHLY_FREQUENCY_MARKERS.some((m) => s.includes(m))) return 12;
+  if (s.includes("čtvrt") || s.includes("ctvrt") || s.includes("quarter")) return 4;
+  if (s.includes("pololetn") || s.includes("semiannual") || s.includes("half")) return 2;
+  if (ANNUAL_FREQUENCY_MARKERS.some((m) => s.includes(m))) return 1;
+  return null;
+}
+
+/**
+ * Compute intendedInvestment (total invested amount) for regular-investment documents
+ * when the model returned a monthly contribution and a horizon but omitted the total.
+ *
+ * Formula: intendedInvestment ≈ monthlyAmount × 12 × years
+ *          (or paymentFrequencyPerYear × amount × years when frequency is quarterly/annual).
+ *
+ * Skips jednorázová investice (one-off) — in that case amount IS intendedInvestment itself.
+ * Never overwrites an existing intendedInvestment with a plausible value.
+ */
+export function computeIntendedInvestmentFromRegularContributions(
+  primary: PrimaryDocumentType,
+  ef: Record<string, ExtractedField | undefined>,
+): void {
+  if (!INVESTMENT_LIKE_PRIMARIES_FOR_TOTAL_INVESTED.has(primary)) return;
+
+  const freqMul = frequencyMultiplierPerYear(ef.paymentFrequency?.value);
+  if (freqMul === 0) return;
+
+  const existing = toNumericAmount(ef.intendedInvestment?.value);
+  const monthlyCandidate =
+    toNumericAmount(ef.investmentPremium?.value) ??
+    toNumericAmount(ef.totalMonthlyPremium?.value) ??
+    toNumericAmount(ef.contributionAmount?.value) ??
+    toNumericAmount(ef.regularAmount?.value) ??
+    toNumericAmount(ef.amount?.value) ??
+    toNumericAmount(ef.premiumAmount?.value);
+  if (monthlyCandidate == null) return;
+
+  const years =
+    toYearsFromDuration(ef.policyDuration?.value) ??
+    toYearsFromDuration(ef.investmentHorizon?.value) ??
+    toYearsFromDuration(ef.investmentHorizonYears?.value) ??
+    toYearsFromDuration(ef.horizonYears?.value) ??
+    yearsBetweenDates(ef.policyStartDate?.value ?? ef.startDate?.value, ef.policyEndDate?.value ?? ef.endDate?.value);
+  if (years == null || !Number.isFinite(years) || years <= 0) return;
+
+  const effectiveMul = freqMul ?? 12;
+  const totalInvested = Math.round(monthlyCandidate * effectiveMul * years);
+  if (!Number.isFinite(totalInvested) || totalInvested <= 0) return;
+
+  const tolerance = 0.2;
+  if (existing != null && Math.abs(existing - totalInvested) / Math.max(existing, totalInvested) <= tolerance) {
+    return;
+  }
+
+  const plausiblyMatchesExistingMonthly =
+    existing != null && Math.abs(existing - monthlyCandidate) / Math.max(existing, monthlyCandidate) < 0.02;
+
+  if (existing == null || plausiblyMatchesExistingMonthly) {
+    ef.intendedInvestment = {
+      value: String(totalInvested),
+      status: "extracted",
+      confidence: 0.82,
+      evidenceSnippet: `[semantic] Dopočet celkové investované částky = ${monthlyCandidate} × ${effectiveMul} × ${years.toFixed(2)} let = ${totalInvested} Kč.`,
+    };
+  }
+}
+
 /**
  * Bounded pass: insurer role + participant/investor vs intermediary disambiguation for savings/investment.
  */
@@ -227,4 +391,5 @@ export function applySavingsInvestmentSemantics(
   suppressInsuranceInsurerFieldForPensionAndInvestment(primary, ef);
   suppressIntermediaryCompanyWhenDuplicatesAssetManager(primary, ef);
   resolveParticipantIntermediaryDuplicateForPension(primary, ef);
+  computeIntendedInvestmentFromRegularContributions(primary, ef);
 }

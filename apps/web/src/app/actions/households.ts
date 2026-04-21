@@ -5,6 +5,7 @@ import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth
 import { hasPermission } from "@/lib/auth/permissions";
 import { db, households, householdMembers, contacts, eq, and, asc, sql, inArray } from "db";
 import { notifyAdvisorClientHouseholdUpdate } from "@/lib/client-portal/notify-advisor-client-self-service";
+import { normalizeHouseholdRole } from "@/lib/households/roles";
 import { logActivity } from "./activity";
 
 /** Drizzle `db` nebo tx z `withTenantContext` — strukturálně kompatibilní `select` API. */
@@ -369,6 +370,7 @@ export async function deleteHousehold(id: string) {
 export async function addHouseholdMember(householdId: string, contactId: string, role?: string) {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "households:write")) throw new Error("Forbidden");
+  const normalizedRole = normalizeHouseholdRole(role ?? null);
   return withTenantContextFromAuth(auth, async (tx) => {
     const [h] = await tx
       .select({ id: households.id })
@@ -378,9 +380,37 @@ export async function addHouseholdMember(householdId: string, contactId: string,
     if (!h) throw new Error("Household not found");
     const [row] = await tx
       .insert(householdMembers)
-      .values({ householdId, contactId, role: role || null })
+      .values({ householdId, contactId, role: normalizedRole })
       .returning({ id: householdMembers.id });
     return row?.id ?? null;
+  });
+}
+
+/**
+ * Aktualizuje rodinnou roli člena domácnosti (enum z @/lib/households/roles).
+ * Nevalidní hodnoty se ukládají jako `null` (DB CHECK constraint by je stejně odmítl).
+ */
+export async function updateHouseholdMemberRole(memberId: string, role: string | null) {
+  const auth = await requireAuthInAction();
+  if (!hasPermission(auth.roleName, "households:write")) throw new Error("Forbidden");
+  const normalizedRole = normalizeHouseholdRole(role);
+  await withTenantContextFromAuth(auth, async (tx) => {
+    const [member] = await tx
+      .select({ householdId: householdMembers.householdId })
+      .from(householdMembers)
+      .where(eq(householdMembers.id, memberId))
+      .limit(1);
+    if (!member) return;
+    const [h] = await tx
+      .select({ id: households.id })
+      .from(households)
+      .where(and(eq(households.tenantId, auth.tenantId), eq(households.id, member.householdId)))
+      .limit(1);
+    if (!h) throw new Error("Forbidden");
+    await tx
+      .update(householdMembers)
+      .set({ role: normalizedRole })
+      .where(eq(householdMembers.id, memberId));
   });
 }
 
@@ -474,7 +504,7 @@ export async function addHouseholdMemberFromClient(params: {
         await tx.insert(householdMembers).values({
           householdId,
           contactId: clientContactId,
-          role: "primary",
+          role: "partner",
         });
       }
     }
@@ -494,7 +524,7 @@ export async function addHouseholdMemberFromClient(params: {
       .returning({ id: contacts.id });
 
     if (!newContact?.id) throw new Error("Nepodařilo se vytvořit člena domácnosti.");
-    const roleLabel = params.role?.trim() || "member";
+    const roleLabel = normalizeHouseholdRole(params.role) ?? "jiny";
     await tx.insert(householdMembers).values({
       householdId,
       contactId: newContact.id,

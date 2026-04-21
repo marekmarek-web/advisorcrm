@@ -1,5 +1,16 @@
 apply plugin: 'com.android.application'
 
+// Release signing config sourced from `key.properties` (untracked, see key.properties.example).
+// Required keys: storeFile, storePassword, keyAlias, keyPassword.
+// When key.properties is missing (e.g. CI without secrets), release build still
+// runs but is left unsigned and must not be uploaded to Play.
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+def hasReleaseKeystore = keystorePropertiesFile.exists()
+if (hasReleaseKeystore) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "cz.aidvisora.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +27,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            release {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn("key.properties not found — release AAB will be UNSIGNED. See docs/runbook-signing.md.")
+            }
         }
     }
 }

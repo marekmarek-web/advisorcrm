@@ -16,6 +16,30 @@ import {
 } from "@/app/portal/calendar/date-utils";
 import { defaultTaskDueDateYmd } from "@/lib/date/date-only";
 
+/**
+ * Klasifikuje chybu Google Calendar integrace pro log — chceme vědět, jestli šlo
+ * o „user nemá připojený kalendář“ (OK → v DB uložíme beze změny) vs. „reálné
+ * selhání Google API“ (warning pro operátora, případně opakovat).
+ * Dříve byl v akcích `catch {}` bez logu, takže incidenty zmizely.
+ */
+function logGoogleCalendarSyncFailure(
+  operation: "create" | "update" | "delete",
+  context: { userId?: string; tenantId?: string; eventId?: string; googleEventId?: string | null },
+  error: unknown,
+): void {
+  const msg = error instanceof Error ? error.message : String(error);
+  const expectedNoConnection =
+    msg.includes("not connected") ||
+    msg.includes("NO_TOKEN") ||
+    msg.includes("token_not_found") ||
+    msg.includes("calendar_not_selected");
+  if (expectedNoConnection) {
+    console.info(`[google-calendar] ${operation}: integrace není připojená (tichý fallback)`, context);
+    return;
+  }
+  console.warn(`[google-calendar] ${operation} failed`, { ...context, error: msg });
+}
+
 function parseInstantRequired(fieldLabel: string, s: string): Date {
   if (!hasExplicitIsoOffset(s)) {
     throw new Error(
@@ -317,8 +341,12 @@ export async function createEvent(form: {
     });
     googleEventId = googleEvent.id ?? null;
     googleCalendarId = valid.calendarId;
-  } catch {
-    // Google not connected or API error – event will be stored only in DB
+  } catch (err) {
+    logGoogleCalendarSyncFailure(
+      "create",
+      { userId: auth.userId, tenantId: auth.tenantId },
+      err,
+    );
   }
   const [row] = await withTenantContextFromAuth(auth, (tx) =>
     tx
@@ -429,8 +457,17 @@ export async function updateEvent(
       if (Object.keys(patch).length > 0) {
         await updateCalendarEvent(valid.accessToken, calendarId, existing.googleEventId, patch);
       }
-    } catch {
-      // Google not connected or API error – DB update still proceeds
+    } catch (err) {
+      logGoogleCalendarSyncFailure(
+        "update",
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId,
+          eventId: id,
+          googleEventId: existing.googleEventId,
+        },
+        err,
+      );
     }
   }
   const scheduleChanged = scheduleTimesOrReminderChanged(existing, form);
@@ -477,8 +514,17 @@ export async function deleteEvent(id: string): Promise<void> {
       const valid = await getValidAccessToken(auth.userId, auth.tenantId);
       const calendarId = existing.googleCalendarId ?? valid.calendarId;
       await deleteCalendarEvent(valid.accessToken, calendarId, existing.googleEventId);
-    } catch {
-      // Google not connected or API error – still delete from DB
+    } catch (err) {
+      logGoogleCalendarSyncFailure(
+        "delete",
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId,
+          eventId: id,
+          googleEventId: existing.googleEventId,
+        },
+        err,
+      );
     }
   }
   await withTenantContextFromAuth(auth, (tx) =>

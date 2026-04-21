@@ -175,11 +175,30 @@ INVESTICE — povinná extrakce:
 - investmentFunds: [{ name, allocation, isin? }] — PRIMÁRNĚ z investiční sekce
   → Pro každý fond/třídu: name, isin, allocation (%), currency
 - isin (primární ISIN pokud je jednoznačný)
-- intendedInvestment / investmentAmount (zamýšlená výše investice / jistina)
+- intendedInvestment / investmentAmount (celková zamýšlená výše investice / jistina)
 - entryFeePercent / vstupniPoplatek (vstupní poplatek v %)
 - amountToPay / castkaKUhrade (částka k úhradě po odečtení poplatku nebo celkem)
-- investmentPremium / contributionAmount (pravidelný příspěvek)
-- paymentFrequency, bankAccount, variableSymbol, iban (platební instrukce — NEMASKOVAT)
+- investmentPremium / contributionAmount (pravidelný příspěvek / měsíční investice)
+- paymentFrequency, recipientAccount, variableSymbol, iban (platební instrukce — NEMASKOVAT)
+- policyDuration / investmentHorizonYears (doba investování v letech — pro pravidelné investování KLÍČOVÉ)
+
+CELKOVÁ INVESTOVANÁ ČÁSTKA — KRITICKÉ PRO PRAVIDELNÉ INVESTICE:
+- U pokynů k pravidelné investici (FUNDOO Pravidelná, RYTMUS, pravidelný investiční program, spořicí plán):
+  intendedInvestment = celková částka kterou klient za dobu trvání investuje do produktu.
+  Pokud dokument uvádí měsíční investici a dobu trvání v letech/měsících:
+    intendedInvestment = měsíční_investice × 12 × počet_let (měsíční × počet_měsíců)
+  Pokud dokument uvádí měsíční investici a datum konce (policyEndDate) + počátek (policyStartDate):
+    spočítej počet_měsíců z datumů a vynásob měsíční investicí.
+  NEDÁVEJ do intendedInvestment měsíční částku u pravidelných investic — to je investmentPremium, ne celková investovaná částka.
+- U jednorázové investice (FUNDOO Jednorázová, "Pokyn k jednorázové investici"):
+  intendedInvestment = částka uvedená u dané jednorázové investice.
+  Pokud jde o více fondů, intendedInvestment = SOUČET částek všech vybraných fondů.
+  NEPLEŤ si s variabilním symbolem, ISIN kódem, ani s číslem smlouvy.
+
+ÚČET — SÉMANTIKA:
+- Účet uvedený v pokynu k investici (kam klient posílá peníze) je VŽDY účet instituce/platformy — dej ho do \`recipientAccount\` (NE do \`bankAccount\`).
+- \`bankAccount\` je VÝHRADNĚ účet klienta/investora — pokud dokument neuvádí explicitně klientův vlastní účet, nech prázdné.
+- U FUNDOO/AMUNDI pokynů je účet uvedený jako "platební spojení" / "bankovní spojení" účet AMUNDI, nikdy klientův.
 - parties[] — owner/investor, beneficiary, zprostředkovatel kde relevantní
 - intermediaryName / zprostredkovatel (zprostředkovatel — VÝHRADNĚ z bloku "Zprostředkovatel" nebo "Poradce")
 - isModeledData: true pokud jde o ilustraci, ne smlouvu
@@ -695,17 +714,31 @@ Adobe signály: {{adobe_signals}}
 
 PLATEBNÍ POKYNY — povinná extrakce:
 - contractNumber (číslo smlouvy, ke které se platba vztahuje)
-- insurer / institution
+- institutionName (kam klient posílá peníze — pojišťovna, investiční společnost, banka)
 - amount (výše platby)
 - paymentFrequency
-- bankAccount (číslo účtu pro platbu)
+- recipientAccount (číslo účtu PŘÍJEMCE — instituce/platformy, KAM klient platí)
 - variableSymbol, specificSymbol, constantSymbol
-- iban
+- iban (IBAN PŘÍJEMCE)
 - dueDate / firstPaymentDate
 - paymentDescription (popis platby)
 - payer: fullName, contractNumber
 - contentFlags.containsPaymentInstructions = true
 - documentClassification.documentFamily = "payment_instruction"
+
+ÚČET — SÉMANTIKA (DŮLEŽITÉ):
+- V platebním pokynu je UVEDENÝ účet VŽDY účet PŘÍJEMCE (instituce/platformy), kam klient zasílá peníze.
+- Dej ho do \`recipientAccount\`, NE do \`bankAccount\`.
+- \`bankAccount\` je VÝHRADNĚ klientův/plátcův vlastní účet — pokud dokument výslovně neuvádí "účet klienta / plátce / z jakého účtu hradit", nech \`bankAccount\` PRÁZDNÉ.
+- U investičních pokynů (FUNDOO/AMUNDI/RYTMUS apod.) je účet uvedený v platebních údajích vždy účet správce fondů / platformy.
+
+INVESTIČNÍ PRAVIDELNÉ POKYNY — PŘÍDAVNÁ PRAVIDLA:
+- Pokud jde o pravidelnou investici (FUNDOO Pravidelná, RYTMUS, pravidelný investiční program):
+  * amount = měsíční investice (pravidelná částka)
+  * paymentFrequency = "měsíčně" (nebo jiná frekvence z dokumentu)
+  * Pokud je uvedena doba investování v letech (např. "20 let") nebo datum konce (policyEndDate) + počátek (policyStartDate), vrať to v polích policyDuration / policyStartDate / policyEndDate.
+  * NEPLEŤ měsíční investici s "celkovou investovanou částkou" — pokud dokument uvádí celkovou částku za celou dobu, dej ji do intendedInvestment; měsíční částka je vždy investmentPremium/amount.
+- U jednorázové investice: amount = jednorázová částka, paymentFrequency = "jednorázově".
 
 TEXT DOKUMENTU:
 {{extracted_text}}

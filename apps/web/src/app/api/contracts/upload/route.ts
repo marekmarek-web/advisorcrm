@@ -10,20 +10,18 @@ import { logAudit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { detectMagicMimeTypeFromBytes, mimeMatchesAllowedSignature } from "@/lib/security/file-signature";
 import { tryBeginIdempotencyWindow } from "@/lib/security/idempotency";
+import {
+  ALLOWED_MIME_TYPES_CONTRACTS,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_LABEL,
+} from "@/lib/upload/validation";
 
 export const dynamic = "force-dynamic";
 
 // PDF is the primary format. Common image types are accepted too — scan gate handles text-less scans.
 // DOC/DOCX are NOT accepted: no server-side conversion pipeline is available.
-const ALLOWED_MIME = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-];
-const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+const ALLOWED_MIME: readonly string[] = ALLOWED_MIME_TYPES_CONTRACTS;
+const MAX_SIZE_BYTES = MAX_FILE_SIZE_BYTES;
 
 /** Set by middleware; /api/contracts/* autorizujeme jen přes hlavičku (bez Supabase v route). */
 const USER_ID_HEADER = "x-user-id";
@@ -88,7 +86,7 @@ export async function POST(request: Request) {
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     if (fileBytes.byteLength > MAX_SIZE_BYTES) {
       return NextResponse.json(
-        { error: "Soubor je příliš velký (max 20 MB)." },
+        { error: `Soubor je příliš velký (max ${MAX_FILE_SIZE_LABEL}).` },
         { status: 400 }
       );
     }

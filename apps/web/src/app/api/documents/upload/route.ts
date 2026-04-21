@@ -10,22 +10,19 @@ import { executeIdempotent } from "@/lib/security/idempotency";
 import { detectMagicMimeTypeFromBytes, mimeMatchesAllowedSignature } from "@/lib/security/file-signature";
 import { isUuid, sanitizeStorageSegment, toTrimmedString } from "@/lib/security/validation";
 import { computeDocumentFingerprint } from "@/lib/documents/processing/fingerprint";
+import { findExistingDocumentByFingerprint } from "@/lib/documents/dedup";
 import { notifyClientAdvisorSharedDocument } from "@/lib/documents/notify-client-visible-document";
+import {
+  ALLOWED_MIME_TYPES_GENERAL,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_LABEL,
+} from "@/lib/upload/validation";
 import type { DocumentSourceChannel } from "db";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_MIME_TYPES = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-]);
-
-const MAX_SIZE_BYTES = 20 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set<string>(ALLOWED_MIME_TYPES_GENERAL);
+const MAX_SIZE_BYTES = MAX_FILE_SIZE_BYTES;
 
 type UploadSource =
   | "web"
@@ -49,6 +46,8 @@ type UploadResponseBody =
       ok: true;
       documentId: string;
       processingStatus: string | null;
+      duplicate?: boolean;
+      duplicateOf?: string;
     };
 
 function parseUploadSource(value: FormDataEntryValue | null): UploadSource {
@@ -137,7 +136,7 @@ export async function POST(request: Request) {
     const declaredMime = (file.type || "").toLowerCase().trim();
 
     if (file.size > MAX_SIZE_BYTES) {
-      return NextResponse.json({ error: "Soubor je příliš velký (max 20 MB)." }, { status: 400 });
+      return NextResponse.json({ error: `Soubor je příliš velký (max ${MAX_FILE_SIZE_LABEL}).` }, { status: 400 });
     }
 
     // Single read: avoid passing File to Storage after arrayBuffer() (breaks on Node/Undici for some clients).
@@ -231,6 +230,35 @@ export async function POST(request: Request) {
     const storagePath = `${membership.tenantId}/${pathPrefix}/${Date.now()}-${safeName}`;
 
     const performUpload = async (): Promise<{ status: number; body: UploadResponseBody }> => {
+      // Dedup: spočítej fingerprint a zkus najít existující dokument ve stejném
+      // scopu (tenant + contact). Když najdeš, nepřehrávej ho do storage znovu
+      // a vrať 200 s `duplicateOf` — frontend to zobrazí jako success, ne chybu.
+      const fingerprint = await computeDocumentFingerprint(fileBytes).catch(() => null);
+      if (fingerprint) {
+        const existing = await findExistingDocumentByFingerprint({
+          tenantId: membership.tenantId,
+          userId: user.id,
+          contactId,
+          fingerprint,
+        }).catch(() => null);
+        if (existing) {
+          return {
+            status: 200,
+            body: {
+              id: existing.id,
+              name: existing.name,
+              mimeType: existing.mimeType,
+              sizeBytes: existing.sizeBytes,
+              ok: true as const,
+              documentId: existing.id,
+              processingStatus: existing.processingStatus ?? "none",
+              duplicate: true,
+              duplicateOf: existing.id,
+            },
+          };
+        }
+      }
+
       const admin = createAdminClient();
       const { error: uploadError } = await admin.storage.from("documents").upload(storagePath, fileBytes, {
         contentType: effectiveMime,
@@ -243,8 +271,6 @@ export async function POST(request: Request) {
             : "Nahrání souboru selhalo.";
         return { status: 500, body: { error: message } };
       }
-
-      const fingerprint = await computeDocumentFingerprint(fileBytes).catch(() => null);
 
       const inserted = await withTenantContextFromAuth(
         { tenantId: membership.tenantId, userId: user.id },

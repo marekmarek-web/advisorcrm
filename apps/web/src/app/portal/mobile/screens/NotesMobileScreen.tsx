@@ -44,7 +44,13 @@ export function NotesMobileScreen() {
   }
 
   return (
-    <div className="portal-notes-board-light -mx-4 -mt-4 flex min-h-[60vh] w-full flex-1 flex-col">
+    <div
+      className="portal-notes-board-light flex min-h-0 w-full flex-1 flex-col"
+      style={{
+        paddingRight: "env(safe-area-inset-right, 0px)",
+        paddingLeft: "env(safe-area-inset-left, 0px)",
+      }}
+    >
       <NotesVisionBoard
         initialNotes={notes}
         contacts={contacts}

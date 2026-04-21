@@ -42,6 +42,9 @@ export type UploadResponse = {
   ok?: true;
   documentId?: string;
   processingStatus?: string | null;
+  /** Server označil, že identický fingerprint už v tomto scopu existuje. */
+  duplicate?: boolean;
+  duplicateOf?: string;
 };
 
 type UseFileUploadOptions = {

@@ -60,6 +60,9 @@ export type OpportunityCard = {
   caseType: string;
   contactId: string | null;
   contactName: string;
+  /** Pro „Zavolat“/„Napsat e-mail“ tlačítka na kartě v pipeline — jinak byly dřív „mrtvá“ a vedly jen na detail kontaktu. */
+  contactPhone: string | null;
+  contactEmail: string | null;
   expectedValue: string | null;
   expectedCloseDate: string | null;
   assignedTo?: string | null;
@@ -158,6 +161,8 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
       updatedAt: opportunities.updatedAt,
       firstName: contacts.firstName,
       lastName: contacts.lastName,
+      contactPhone: contacts.phone,
+      contactEmail: contacts.email,
     })
     .from(opportunities)
     .leftJoin(contacts, eq(opportunities.contactId, contacts.id))
@@ -182,6 +187,8 @@ export async function getPipeline(): Promise<StageWithOpportunities[]> {
           caseType: o.caseType ?? "",
           contactId: o.contactId ?? null,
           contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
+          contactPhone: o.contactPhone ?? null,
+          contactEmail: o.contactEmail ?? null,
           expectedValue: o.expectedValue ?? null,
           expectedCloseDate: o.expectedCloseDate ?? null,
           assignedTo: o.assignedTo ?? null,
@@ -250,6 +257,8 @@ export async function getPipelineByContact(contactId: string): Promise<StageWith
       updatedAt: opportunities.updatedAt,
       firstName: contacts.firstName,
       lastName: contacts.lastName,
+      contactPhone: contacts.phone,
+      contactEmail: contacts.email,
     })
     .from(opportunities)
     .leftJoin(contacts, eq(opportunities.contactId, contacts.id))
@@ -275,6 +284,8 @@ export async function getPipelineByContact(contactId: string): Promise<StageWith
           caseType: o.caseType ?? "",
           contactId: o.contactId ?? null,
           contactName: [o.firstName, o.lastName].filter(Boolean).join(" ") || "—",
+          contactPhone: o.contactPhone ?? null,
+          contactEmail: o.contactEmail ?? null,
           expectedValue: o.expectedValue ?? null,
           expectedCloseDate: o.expectedCloseDate ?? null,
           assignedTo: o.assignedTo ?? null,

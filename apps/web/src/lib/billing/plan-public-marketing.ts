@@ -7,15 +7,15 @@ import type { PublicPlanKey } from "@/lib/billing/plan-catalog";
 
 /** Krátký podnadpis pod názvem tarifu na webu. */
 export const PUBLIC_PLAN_TAGLINE: Record<PublicPlanKey, string> = {
-  start: "Aidvisory, kalendář, dokumenty v portálu a základní AI — u Startu bez klientského chatu a bez AI review PDF.",
-  pro: "Gmail, Drive, plný portál (chat, požadavky), AI review PDF a pokročilý asistent; analýzy dle zapnutých modulů.",
+  start: "CRM, kalendář, dokumenty v klientském portálu a základní AI — u Startu bez klientského chatu a bez AI review PDF.",
+  pro: "Méně ruční práce: Gmail, Drive, plný klientský portál (chat, požadavky), AI review PDF a vícekrokový asistent — analýzy podle zapnutých modulů.",
   management: "Navíc týmové přehledy, produkce, KPI a manažerské reporty oproti Pro.",
 };
 
 /** Co balíček obsahuje (řádky s ✓). */
 export const PUBLIC_PLAN_INCLUDES: Record<PublicPlanKey, readonly string[]> = {
   start: [
-    "Aidvisory, pipeline, kalendář a úkoly",
+    "CRM, pipeline, kalendář a úkoly",
     "Google Calendar sync",
     "Klientská zóna pro dokumenty",
     "Základní AI asistent a image intake",

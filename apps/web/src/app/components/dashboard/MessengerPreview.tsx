@@ -59,12 +59,20 @@ export function MessengerPreview({
 }: MessengerPreviewProps) {
   const [conversations, setConversations] = useState<RecentConversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     getRecentConversations(5)
-      .then(setConversations)
-      .catch(() => setConversations([]))
+      .then((rows) => {
+        setConversations(rows);
+      })
+      .catch((err) => {
+        console.error("[MessengerPreview] getRecentConversations failed", err);
+        setConversations([]);
+        setError("Zprávy se nepodařilo načíst.");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -80,6 +88,8 @@ export function MessengerPreview({
         </h3>
         {loading ? (
           <p className="text-sm text-[color:var(--wp-text-secondary)]">Načítám…</p>
+        ) : error ? (
+          <p className="text-sm text-rose-600 font-semibold">{error}</p>
         ) : conversations.length === 0 ? (
           <p className="text-sm text-[color:var(--wp-text-secondary)]">Žádné nedávné zprávy.</p>
         ) : (
@@ -171,6 +181,8 @@ export function MessengerPreview({
 
       {loading ? (
         <p className={`text-sm ${dark ? "text-aidv-text-muted-on-dark" : "text-[color:var(--wp-text-secondary)]"}`}>Načítám…</p>
+      ) : error ? (
+        <p className="text-sm font-semibold text-rose-600">{error}</p>
       ) : conversations.length === 0 ? (
         <p className={`text-sm ${dark ? "text-aidv-text-muted-on-dark" : "text-[color:var(--wp-text-secondary)]"}`}>
           Žádné nedávné zprávy.

@@ -47,6 +47,9 @@ export function LandingFooter({ activeTheme: _activeTheme }: LandingFooterProps)
           <Link href="/legal/ai-disclaimer" className={linkClass}>
             AI disclaimer
           </Link>
+          <Link href="/cookies" className={linkClass}>
+            Cookies
+          </Link>
           <Link href="/#cenik" className={linkClass}>
             Ceník
           </Link>

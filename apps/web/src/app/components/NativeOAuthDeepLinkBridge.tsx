@@ -12,6 +12,52 @@ function logNativeOAuthDebug(...args: unknown[]) {
   console.log(...args);
 }
 
+const CONSUMED_CODE_KEY = "aidv.native_oauth.consumed_code";
+const CONSUMED_CODE_OUTCOME_KEY = "aidv.native_oauth.consumed_code_outcome";
+
+type ConsumedOutcome = { outcome: "ok" | "error"; message?: string };
+
+function readConsumedCode(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem(CONSUMED_CODE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeConsumedCode(code: string, outcome: ConsumedOutcome) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(CONSUMED_CODE_KEY, code);
+    window.sessionStorage.setItem(CONSUMED_CODE_OUTCOME_KEY, JSON.stringify(outcome));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readConsumedOutcome(): ConsumedOutcome | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(CONSUMED_CODE_OUTCOME_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as ConsumedOutcome;
+  } catch {
+    return null;
+  }
+}
+
+function safeReplaceLocation(target: string) {
+  if (typeof window === "undefined") return;
+  // Avoid firing navigations while tab is backgrounded — causes NSURLErrorDomain -999.
+  if (typeof document !== "undefined" && document.visibilityState && document.visibilityState !== "visible") {
+    logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] skip navigate — document hidden:", target);
+    return;
+  }
+  if (window.location.href === target) return;
+  window.location.replace(target);
+}
+
 /**
  * Listens for deep-link events on native platforms and handles:
  *
@@ -81,51 +127,83 @@ export function NativeOAuthDeepLinkBridge() {
         if (parsed.host === "auth" && parsed.pathname.startsWith("/callback")) {
           const code = parsed.searchParams.get("code");
           if (code) {
+            // One-shot guard: never re-exchange the same code across WebView reloads.
+            const previousCode = readConsumedCode();
+            if (previousCode === code) {
+              const outcome = readConsumedOutcome();
+              logNativeOAuthDebug(
+                "[NativeOAuthDeepLinkBridge] code already consumed, short-circuit:",
+                outcome?.outcome ?? "unknown",
+              );
+              if (outcome?.outcome === "ok") {
+                // Only redirect if we aren't already on the portal; otherwise stay put.
+                try {
+                  const supabase = createClient();
+                  const { data } = await supabase.auth.getSession();
+                  if (data?.session) {
+                    // Session exists — do nothing, we're in the app.
+                    return;
+                  }
+                } catch {
+                  /* ignore */
+                }
+                safeReplaceLocation(`${origin}/portal/today`);
+              } else if (outcome?.outcome === "error") {
+                safeReplaceLocation(
+                  `${origin}/prihlaseni?error=${encodeURIComponent(outcome.message ?? "auth_failed")}`,
+                );
+              }
+              return;
+            }
+
             logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] exchanging auth code…");
             try {
               const supabase = createClient();
               const { error } = await supabase.auth.exchangeCodeForSession(code);
               if (error) {
                 console.error("[NativeOAuthDeepLinkBridge] exchangeCodeForSession error:", error.message);
+                writeConsumedCode(code, { outcome: "error", message: error.message });
                 const target = `${origin}/prihlaseni?error=${encodeURIComponent(error.message)}`;
                 logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] navigating to error page:", target);
-                window.location.replace(target);
+                safeReplaceLocation(target);
                 return;
               }
+              writeConsumedCode(code, { outcome: "ok" });
               const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
               if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
                 const nextPath = "/portal/today";
                 const mfaUrl = `${origin}/prihlaseni?pending_mfa=1&native=1&next=${encodeURIComponent(nextPath)}`;
                 logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] MFA required, navigating to:", mfaUrl);
-                window.location.replace(mfaUrl);
+                safeReplaceLocation(mfaUrl);
                 return;
               }
               const target = `${origin}/register/complete?next=%2Fportal%2Ftoday`;
               logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] session exchanged OK, navigating to:", target);
-              window.location.replace(target);
+              safeReplaceLocation(target);
             } catch (e) {
               const msg = e instanceof Error ? e.message : "session_exchange_failed";
               console.error("[NativeOAuthDeepLinkBridge] unexpected error during code exchange:", e);
+              writeConsumedCode(code, { outcome: "error", message: msg });
               const target = `${origin}/prihlaseni?error=${encodeURIComponent(msg)}`;
-              window.location.replace(target);
+              safeReplaceLocation(target);
             }
             return;
           }
           logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] auth/callback without code, navigating to portal");
-          window.location.replace(`${origin}/portal/today`);
+          safeReplaceLocation(`${origin}/portal/today`);
           return;
         }
 
         if (parsed.host === "auth" && parsed.pathname === "/error") {
           const msg = parsed.searchParams.get("message") || "auth_failed";
           console.warn("[NativeOAuthDeepLinkBridge] auth error deep link:", msg);
-          window.location.replace(`${origin}/prihlaseni?error=${encodeURIComponent(msg)}`);
+          safeReplaceLocation(`${origin}/prihlaseni?error=${encodeURIComponent(msg)}`);
           return;
         }
 
         if (parsed.host === "auth" && (parsed.pathname === "/done" || parsed.pathname === "/done/")) {
           logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] auth/done, navigating to portal");
-          window.location.replace(`${origin}/portal/today`);
+          safeReplaceLocation(`${origin}/portal/today`);
           return;
         }
 
@@ -134,9 +212,7 @@ export function NativeOAuthDeepLinkBridge() {
         const normalized = path.startsWith("/") ? path : `/${path}`;
         const target = `${origin}${normalized}${parsed.search}${parsed.hash}`;
         logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] generic deep link, navigating to:", target);
-        if (window.location.href !== target) {
-          window.location.replace(target);
-        }
+        safeReplaceLocation(target);
       } finally {
         handlerInFlight = false;
       }

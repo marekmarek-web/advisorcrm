@@ -877,14 +877,19 @@ const INSURANCE_FIELD_LABEL_OVERRIDES_FOR_INVESTMENT: Record<string, string> = {
   institutionName: "Instituce",
   policyStartDate: "Datum zahájení",
   policyEndDate: "Datum ukončení",
-  policyDuration: "Délka smlouvy",
+  policyDuration: "Investiční horizont",
   existingPolicyNumber: "Číslo smlouvy / reference",
   existingPolicyNumberOrReference: "Číslo smlouvy / reference",
-  premiumAmount: "Výše příspěvku / platby",
-  totalMonthlyPremium: "Měsíční platba",
-  annualPremium: "Roční platba",
+  premiumAmount: "Pravidelná investice",
+  totalMonthlyPremium: "Měsíční investice",
+  annualPremium: "Roční investice",
   riskPremium: "Rizikové pojistné",
-  investmentPremium: "Investiční příspěvek",
+  investmentPremium: "Měsíční investice",
+  intendedInvestment: "Celková investovaná částka",
+  investmentAmount: "Celková investovaná částka",
+  bankAccount: "Účet pro zasílání investice",
+  recipientAccount: "Účet pro zasílání investice",
+  accountNumber: "Účet pro zasílání investice",
 };
 
 /**
@@ -912,6 +917,7 @@ const INVESTMENT_PRIMARY_TYPES = new Set([
   "investment_service_agreement",
   "investment_modelation",
   "life_insurance_investment_contract",
+  "investment_payment_instruction",
 ]);
 
 // Non-life / auto: payment labels should reflect annual premium semantics

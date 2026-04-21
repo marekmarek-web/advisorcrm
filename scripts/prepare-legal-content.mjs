@@ -69,7 +69,7 @@ function preparePrivacy(blocks) {
     if (x.text.startsWith("Pro uplatnění práv nás můžete kontaktovat na e-mailu [doplnit]")) {
       return {
         ...x,
-        text: "Pro uplatnění práv nás můžete kontaktovat na e-mailu support@aidvisora.cz nebo podpora@aidvisora.cz. Před vyřízením žádosti si můžeme ověřit vaši totožnost přiměřeným způsobem.",
+        text: "Pro uplatnění práv nás můžete kontaktovat na e-mailu podpora@aidvisora.cz. Před vyřízením žádosti si můžeme ověřit vaši totožnost přiměřeným způsobem.",
       };
     }
     if (x.text.startsWith("Správce: Marek Marek")) {
@@ -79,7 +79,7 @@ function preparePrivacy(blocks) {
       };
     }
     if (x.text.startsWith("Kontaktní e-mail pro privacy agendu:")) {
-      return { ...x, text: "Kontaktní e-maily pro privacy agendu: support@aidvisora.cz nebo podpora@aidvisora.cz." };
+      return { ...x, text: "Kontaktní e-mail pro privacy agendu: podpora@aidvisora.cz." };
     }
     if (x.text.startsWith("Datum účinnosti dokumentu:")) {
       return { ...x, text: `Datum účinnosti dokumentu: ${EFFECTIVE}.` };

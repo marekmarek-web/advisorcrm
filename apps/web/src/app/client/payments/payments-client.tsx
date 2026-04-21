@@ -127,6 +127,7 @@ export function ClientPaymentsView({
       specificSymbol: payment.specificSymbol,
       constantSymbol: payment.constantSymbol,
       note: payment.note || null,
+      currency: payment.currency,
     };
   }, [selectedIndex, paymentInstructions]);
 

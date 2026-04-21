@@ -71,7 +71,7 @@ function QuickMoveSheet({
   onMove: (toStageId: string) => void;
 }) {
   return (
-    <BottomSheet open title="Přesunout případ" onClose={onClose}>
+    <BottomSheet open title="Přesunout případ" onClose={onClose} compact>
       <p className="text-sm font-bold text-[color:var(--wp-text)] mb-3 truncate">{opp.title}</p>
       <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)] mb-2">Vyberte fázi</p>
       <div className="space-y-1.5 max-h-[min(60vh,420px)] overflow-y-auto">
@@ -515,23 +515,20 @@ export function PipelineScreen({
 
           return (
             <MobileSection key={stage.id} title={stage.name}>
-              <MobileCard className="p-0 overflow-hidden border border-[color:var(--wp-surface-card-border)]/80 shadow-sm">
-                <div className={cx("h-1.5 w-full shrink-0", theme.mobileHeaderBar)} aria-hidden />
+              <MobileCard
+                className={cx(
+                  "p-3 overflow-hidden border border-[color:var(--wp-surface-card-border)]/80 shadow-sm border-l-4 flex items-center gap-3",
+                  theme.mobileBorderL
+                )}
+              >
                 <div
                   className={cx(
-                    "p-3 flex items-center gap-3 border-b",
-                    theme.color,
-                    theme.borderColor
+                    "w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0 text-xs font-black",
+                    theme.solidBg
                   )}
                 >
-                  <div
-                    className={cx(
-                      "w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0 text-xs font-black",
-                      theme.solidBg
-                    )}
-                  >
-                    {stageIdx + 1}
-                  </div>
+                  {stageIdx + 1}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-lg font-black text-[color:var(--wp-text)]">{stage.opportunities.length}</p>
                   <p className="text-xs text-[color:var(--wp-text-secondary)] font-bold">
@@ -539,11 +536,10 @@ export function PipelineScreen({
                   </p>
                 </div>
                 {urgentCount > 0 ? (
-                  <span className="text-[10px] font-black text-rose-600 bg-[color:var(--wp-surface-card)]/80 px-2 py-1 rounded-lg border border-rose-100">
+                  <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100">
                     {urgentCount} prošlé
                   </span>
                 ) : null}
-                </div>
               </MobileCard>
 
               {stage.opportunities.length === 0 ? (
@@ -560,7 +556,9 @@ export function PipelineScreen({
                       className={cx(
                         "flex rounded-2xl border bg-[color:var(--wp-surface-card)] shadow-sm overflow-hidden transition-all border-l-4",
                         theme.mobileBorderL,
-                        isPastDue ? "border-t-rose-200 border-r-rose-200 border-b-rose-200 bg-rose-50/30" : "border-b-[color:var(--wp-surface-card-border)] border-r-[color:var(--wp-surface-card-border)] border-t-[color:var(--wp-surface-card-border)]"
+                        isPastDue
+                          ? "border-rose-200 bg-rose-50/30"
+                          : "border-[color:var(--wp-surface-card-border)]"
                       )}
                     >
                       <button

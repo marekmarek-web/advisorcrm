@@ -43,6 +43,7 @@ import { getTasksByContactId, completeTask, reopenTask, type TaskRow } from "@/a
 import { getPipelineByContact, type StageWithOpportunities } from "@/app/actions/pipeline";
 import { getDocumentsForContact, type DocumentRow } from "@/app/actions/documents";
 import {
+  BottomSheet,
   EmptyState,
   ErrorState,
   FilterChips,
@@ -138,10 +139,13 @@ function formatDate(dateStr?: string | null): string | null {
 function AiProvenanceMobileSection({
   provenance,
   onConfirm,
+  onConfirmAll,
 }: {
   provenance: ContactAiProvenanceResult;
   onConfirm: (fieldKey: string) => void;
+  onConfirmAll: (fieldKeys: string[]) => void;
 }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   if (!provenance) return null;
 
   const hasPending = provenance.pendingFields.length > 0;
@@ -152,23 +156,45 @@ function AiProvenanceMobileSection({
 
   return (
     <MobileSection title="AI Review — stav polí">
-      <MobileCard className="p-3.5">
-        <div className="flex items-center gap-2 mb-2.5">
-          <Sparkles size={14} className="text-indigo-400 shrink-0" />
+      <MobileCard className="p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Sparkles size={14} className="shrink-0 text-indigo-400" />
           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
             Převzato z AI Review
           </p>
         </div>
 
-        {/* Auto-applied fields */}
+        {hasPending ? (
+          <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+            <div className="flex items-start gap-2">
+              <Clock size={16} className="mt-0.5 shrink-0 text-amber-600" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-amber-900">
+                  {provenance.pendingFields.length} pol{provenance.pendingFields.length === 1 ? "e" : provenance.pendingFields.length < 5 ? "e" : "í"} čeká na potvrzení
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold text-amber-800/90">
+                  Zkontrolujte a potvrďte hromadně nebo jednotlivě.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-amber-500 text-sm font-black uppercase tracking-wide text-white shadow-sm active:bg-amber-600"
+            >
+              Zkontrolovat a potvrdit
+            </button>
+          </div>
+        ) : null}
+
         {hasAutoApplied ? (
-          <div className="mb-2.5">
-            <p className="text-[10px] font-bold text-emerald-700 mb-1.5 flex items-center gap-1">
-              <CheckCheck size={10} /> Převzato z AI Review
+          <div className="mb-3">
+            <p className="mb-1.5 flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+              <CheckCheck size={10} /> Automaticky převzato
             </p>
             <div className="flex flex-wrap gap-1">
               {provenance.autoAppliedFields.map((f) => (
-                <span key={f} className="text-[10px] font-bold text-emerald-800 bg-emerald-100 rounded px-1.5 py-0.5">
+                <span key={f} className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
                   {contactFieldLabel(f)}
                 </span>
               ))}
@@ -176,43 +202,14 @@ function AiProvenanceMobileSection({
           </div>
         ) : null}
 
-        {/* Pending confirmation fields */}
-        {hasPending ? (
-          <div className="mb-2.5">
-            <p className="text-[10px] font-black text-amber-800 mb-1.5 flex items-center gap-1">
-              <Clock size={10} /> Předvyplněno k potvrzení
-            </p>
-            <div className="space-y-2">
-              {provenance.pendingFields.map((fieldKey) => (
-                <div
-                  key={fieldKey}
-                  className="flex flex-col gap-2 min-w-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-                >
-                  <span className="text-[11px] font-bold text-amber-800 break-words min-w-0">
-                    {contactFieldLabel(fieldKey)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onConfirm(fieldKey)}
-                    className="w-full min-h-[44px] sm:min-h-[36px] sm:w-auto shrink-0 px-2.5 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-wide"
-                  >
-                    Potvrdit z AI Review
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {/* Manual required fields */}
         {hasManual ? (
           <div>
-            <p className="text-[10px] font-bold text-rose-700 mb-1.5 flex items-center gap-1">
+            <p className="mb-1.5 flex items-center gap-1 text-[10px] font-bold text-rose-700">
               <Pencil size={10} /> Vyžaduje ruční doplnění
             </p>
             <div className="flex flex-wrap gap-1">
               {provenance.manualRequiredFields.map((f) => (
-                <span key={f} className="text-[10px] font-bold text-rose-700 bg-rose-100 rounded px-1.5 py-0.5">
+                <span key={f} className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
                   {contactFieldLabel(f)}
                 </span>
               ))}
@@ -220,6 +217,48 @@ function AiProvenanceMobileSection({
           </div>
         ) : null}
       </MobileCard>
+
+      {sheetOpen ? (
+        <BottomSheet
+          open
+          title="Potvrzení polí z AI Review"
+          onClose={() => setSheetOpen(false)}
+          reserveMobileBottomNav
+        >
+          <p className="mb-3 text-sm font-semibold text-[color:var(--wp-text-secondary)]">
+            Zkontrolujte hodnoty převzaté z AI Review a potvrďte je hromadně, nebo jednotlivě.
+          </p>
+          <div className="space-y-2">
+            {provenance.pendingFields.map((fieldKey) => (
+              <div
+                key={fieldKey}
+                className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-[color:var(--wp-text)]">
+                  {contactFieldLabel(fieldKey)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onConfirm(fieldKey)}
+                  className="min-h-[36px] shrink-0 rounded-lg bg-amber-500 px-3 text-[11px] font-black uppercase tracking-wide text-white active:bg-amber-600"
+                >
+                  Potvrdit
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onConfirmAll(provenance.pendingFields);
+              setSheetOpen(false);
+            }}
+            className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-xl bg-amber-500 text-sm font-black uppercase tracking-wide text-white shadow-sm active:bg-amber-600"
+          >
+            Potvrdit vše ({provenance.pendingFields.length})
+          </button>
+        </BottomSheet>
+      ) : null}
     </MobileSection>
   );
 }
@@ -308,6 +347,7 @@ function OverviewTab({
   provenance,
   onOpenHousehold,
   onConfirmProvenance,
+  onConfirmAllProvenance,
 }: {
   contactId: string;
   contact: ContactDetail;
@@ -318,6 +358,7 @@ function OverviewTab({
   provenance: ContactAiProvenanceResult | null;
   onOpenHousehold: (id: string) => void;
   onConfirmProvenance: (fieldKey: string) => void;
+  onConfirmAllProvenance: (fieldKeys: string[]) => void;
 }) {
   const totalOpportunities = pipeline.reduce((sum, s) => sum + s.opportunities.length, 0);
 
@@ -332,86 +373,76 @@ function OverviewTab({
   ];
 
   return (
-    <div className="space-y-0">
-      {/* Stats */}
-      <MobileSection title="CRM přehled">
-        <div className="grid grid-cols-3 gap-2">
+    <div className="space-y-0 px-3 pt-3 pb-4">
+      {/* Shrnutí — stats + meta + household + tags rolled into one card */}
+      <MobileCard className="p-0 overflow-hidden mb-3">
+        <div className="grid grid-cols-3 divide-x divide-[color:var(--wp-surface-card-border)]">
           {[
             { icon: CheckSquare, label: "Úkoly", value: tasks.length },
-            { icon: Briefcase, label: "Příležitosti", value: totalOpportunities },
+            { icon: Briefcase, label: "Obchody", value: totalOpportunities },
             { icon: FileText, label: "Dokumenty", value: documents.length },
           ].map(({ icon: Icon, label, value }) => (
-            <MobileCard key={label} className="p-3 text-center">
-              <Icon size={16} className="text-indigo-500 mx-auto" />
-              <p className="text-xl font-black mt-1 text-[color:var(--wp-text)]">{value}</p>
-              <p className="text-[10px] uppercase tracking-wider text-[color:var(--wp-text-secondary)] font-bold">{label}</p>
-            </MobileCard>
+            <div key={label} className="flex flex-col items-center justify-center px-2 py-3 text-center">
+              <Icon size={15} className="text-indigo-500" />
+              <p className="mt-1 text-lg font-black leading-none text-[color:var(--wp-text)]">{value}</p>
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-secondary)]">{label}</p>
+            </div>
           ))}
         </div>
-      </MobileSection>
 
-      {/* Meta info */}
-      {metaRows.length > 0 ? (
-        <MobileSection title="Informace">
-          <MobileCard className="divide-y divide-[color:var(--wp-surface-card-border)] py-1 px-3">
-            {metaRows.map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-center gap-3 py-2.5">
-                <Icon size={15} className="text-[color:var(--wp-text-tertiary)] flex-shrink-0" />
-                <span className="text-xs text-[color:var(--wp-text-secondary)] flex-shrink-0 w-28">{label}</span>
-                <span className="text-sm font-semibold text-[color:var(--wp-text)] truncate">{value}</span>
+        {(metaRows.length > 0 || household || (contact.tags ?? []).length > 0) ? (
+          <div className="border-t border-[color:var(--wp-surface-card-border)]">
+            {household ? (
+              <button
+                type="button"
+                onClick={() => onOpenHousehold(household.id)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 border-b border-[color:var(--wp-surface-card-border)] text-left transition-colors hover:bg-[color:var(--wp-surface-muted)]"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Home size={14} className="flex-shrink-0 text-[color:var(--wp-text-tertiary)]" />
+                  <span className="truncate text-sm font-bold text-[color:var(--wp-text)]">{household.name}</span>
+                </div>
+                <span className="flex items-center gap-1 text-xs font-bold text-indigo-600">
+                  Otevřít <ExternalLink size={11} />
+                </span>
+              </button>
+            ) : null}
+            {metaRows.length > 0 ? (
+              <div className="divide-y divide-[color:var(--wp-surface-card-border)]">
+                {metaRows.map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="flex items-center gap-3 px-4 py-2.5">
+                    <Icon size={14} className="flex-shrink-0 text-[color:var(--wp-text-tertiary)]" />
+                    <span className="w-24 flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">{label}</span>
+                    <span className="flex-1 truncate text-sm font-semibold text-[color:var(--wp-text)]">{value}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </MobileCard>
-        </MobileSection>
-      ) : null}
-
-      {/* Tags */}
-      {(contact.tags ?? []).length > 0 ? (
-        <MobileSection title="Štítky">
-          <div className="flex flex-wrap gap-1.5">
-            {(contact.tags ?? []).map((tag) => (
-              <span key={tag} className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg">
-                {tag}
-              </span>
-            ))}
+            ) : null}
+            {(contact.tags ?? []).length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 border-t border-[color:var(--wp-surface-card-border)] px-4 py-3">
+                {(contact.tags ?? []).map((tag) => (
+                  <span key={tag} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
-        </MobileSection>
-      ) : null}
+        ) : null}
+      </MobileCard>
 
       <ContactIdentityMobileSection contact={contact} provenance={provenance} contactId={contactId} />
 
       <MobileContactContractsStrip contactId={contactId} />
 
-      {/* AI Provenance — pending fields and confirmed provenance */}
+      {/* AI Provenance — moved to bottom to reduce noise on overview */}
       {provenance ? (
         <AiProvenanceMobileSection
           provenance={provenance}
           onConfirm={onConfirmProvenance}
+          onConfirmAll={onConfirmAllProvenance}
         />
       ) : null}
-
-      {/* Household */}
-      <MobileSection title="Domácnost">
-        {household ? (
-          <MobileCard className="p-3.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Home size={15} className="text-[color:var(--wp-text-tertiary)]" />
-                <p className="text-sm font-bold text-[color:var(--wp-text)]">{household.name}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenHousehold(household.id)}
-                className="flex items-center gap-1 text-xs font-bold text-indigo-600 min-h-[32px] px-2"
-              >
-                Otevřít <ExternalLink size={11} />
-              </button>
-            </div>
-          </MobileCard>
-        ) : (
-          <EmptyState title="Bez domácnosti" description="Klient není zařazen do domácnosti." />
-        )}
-      </MobileSection>
     </div>
   );
 }
@@ -708,7 +739,6 @@ export function ClientProfileScreen({
         showToast(result.error, "error");
       } else {
         showToast(`Pole "${contactFieldLabel(fieldKey)}" potvrzeno z AI Review.`, "success");
-        // Refresh provenance
         const [updated, refreshedContact] = await Promise.all([
           getContactAiProvenance(contactId),
           getContact(contactId),
@@ -716,6 +746,27 @@ export function ClientProfileScreen({
         setProvenance(updated);
         if (refreshedContact) setContact(refreshedContact as ContactDetail);
       }
+    });
+  }
+
+  async function handleConfirmAllProvenance(fieldKeys: string[]) {
+    if (!provenance || fieldKeys.length === 0) return;
+    startTransition(async () => {
+      const results = await Promise.all(
+        fieldKeys.map((fk) => confirmContactPendingFieldAction(provenance.reviewId, fk))
+      );
+      const errors = results.filter((r) => !r.ok);
+      if (errors.length === 0) {
+        showToast(`Potvrzeno ${fieldKeys.length} polí z AI Review.`, "success");
+      } else {
+        showToast(`Některá pole se nepodařilo potvrdit (${errors.length}).`, "error");
+      }
+      const [updated, refreshedContact] = await Promise.all([
+        getContactAiProvenance(contactId),
+        getContact(contactId),
+      ]);
+      setProvenance(updated);
+      if (refreshedContact) setContact(refreshedContact as ContactDetail);
     });
   }
 
@@ -750,106 +801,117 @@ export function ClientProfileScreen({
 
   const totalOpportunities = pipeline.reduce((sum, s) => sum + s.opportunities.length, 0);
 
-  return (
-    <div className="space-y-0 pb-4">
-      {toast ? <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} /> : null}
-      {/* Hero card */}
-      <div className="bg-gradient-to-br from-[#0a0f29] to-indigo-900 p-4 pb-5 mx-0">
-        <div className="flex items-start gap-3">
-          {/* Avatar */}
-          {contact.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={contact.avatarUrl}
-              alt={fullName}
-              className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 border-2 border-white/20"
-            />
-          ) : (
-            <div className={cx("w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-black flex-shrink-0", avatarColor)}>
-              {initials}
-            </div>
-          )}
+  const quickActions: Array<{ id: string; href?: string; onClick?: () => void; icon: React.ElementType; label: string; primary?: boolean }> = [
+    ...(contact.phone ? [{ id: "call", href: `tel:${contact.phone}`, icon: Phone, label: "Volat" }] : []),
+    ...(contact.email ? [{ id: "email", href: `mailto:${contact.email}`, icon: Mail, label: "E-mail" }] : []),
+    { id: "task", onClick: () => onOpenTaskWizard(contact.id), icon: CheckSquare, label: "Úkol", primary: true },
+    { id: "opp", onClick: () => onOpenOpportunityWizard(contact.id), icon: Briefcase, label: "Obchod" },
+  ];
 
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-black text-white truncate">{fullName}</h2>
-            {provenance ? (() => {
-              const pFirst = resolveContactIdentityFieldProvenanceForHeader("firstName", provenance, contact);
-              const pLast = resolveContactIdentityFieldProvenanceForHeader("lastName", provenance, contact);
-              const p = pFirst ?? pLast;
-              if (!p) return null;
-              return (
-                <div className="mt-2 min-w-0 max-w-full">
-                  <AiReviewProvenanceBadge
-                    kind={p.kind}
-                    reviewId={p.reviewId}
-                    confirmedAt={p.confirmedAt}
-                    className="text-[11px] text-indigo-200/95 [&_a]:text-indigo-100 [&_a]:underline-offset-2 flex-wrap max-w-full [&_a]:break-words"
-                  />
-                </div>
-              );
-            })() : null}
-            {contact.title ? (
-              <p className="text-xs text-indigo-200 mt-0.5">{contact.title}</p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <SegmentBadge stage={contact.lifecycleStage} />
-              {contact.priority ? (
-                <span className={cx(
-                  "text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg",
-                  contact.priority === "high"
-                    ? "bg-rose-500/20 text-rose-300"
-                    : contact.priority === "medium"
-                      ? "bg-amber-500/20 text-amber-300"
-                      : "bg-[color:var(--wp-surface-card)]/10 text-white/60"
-                )}>
-                  {contact.priority === "high" ? "Vysoká priorita" : contact.priority === "medium" ? "Střední priorita" : contact.priority}
-                </span>
+  return (
+    <div className="space-y-0 pb-6">
+      {toast ? <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} /> : null}
+
+      {/* Hero — single rounded card, Revolut-ish */}
+      <div className="px-3 pt-3">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a0f29] via-[#141b3d] to-indigo-900 p-5 shadow-lg">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-indigo-400/20 blur-3xl" aria-hidden />
+          <div className="relative flex items-center gap-3">
+            {contact.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={contact.avatarUrl}
+                alt={fullName}
+                className="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-white/30"
+              />
+            ) : (
+              <div className={cx("flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-sm font-black text-white ring-2 ring-white/20", avatarColor)}>
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-lg font-black leading-tight text-white">{fullName}</h2>
+              {contact.title ? (
+                <p className="mt-0.5 truncate text-[11px] font-semibold text-indigo-200/90">{contact.title}</p>
               ) : null}
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <SegmentBadge stage={contact.lifecycleStage} />
+                {contact.priority ? (
+                  <span className={cx(
+                    "rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-wider",
+                    contact.priority === "high"
+                      ? "bg-rose-500/20 text-rose-200"
+                      : contact.priority === "medium"
+                        ? "bg-amber-500/20 text-amber-200"
+                        : "bg-white/10 text-white/70"
+                  )}>
+                    {contact.priority === "high" ? "Vysoká priorita" : contact.priority === "medium" ? "Střední priorita" : contact.priority}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Quick action bar */}
-        <div className="mt-4 grid grid-cols-4 gap-2">
-          {contact.phone ? (
-            <a
-              href={`tel:${contact.phone}`}
-              className="min-h-[44px] rounded-xl bg-[color:var(--wp-surface-card)]/10 border border-white/20 text-white text-xs font-bold flex flex-col items-center justify-center gap-1"
-            >
-              <Phone size={16} />
-              <span>Volat</span>
-            </a>
-          ) : null}
-          {contact.email ? (
-            <a
-              href={`mailto:${contact.email}`}
-              className="min-h-[44px] rounded-xl bg-[color:var(--wp-surface-card)]/10 border border-white/20 text-white text-xs font-bold flex flex-col items-center justify-center gap-1"
-            >
-              <Mail size={16} />
-              <span>E-mail</span>
-            </a>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => onOpenTaskWizard(contact.id)}
-            className="min-h-[44px] rounded-xl bg-indigo-500/80 border border-indigo-400/40 text-white text-xs font-bold flex flex-col items-center justify-center gap-1"
+          {provenance ? (() => {
+            const pFirst = resolveContactIdentityFieldProvenanceForHeader("firstName", provenance, contact);
+            const pLast = resolveContactIdentityFieldProvenanceForHeader("lastName", provenance, contact);
+            const p = pFirst ?? pLast;
+            if (!p) return null;
+            return (
+              <div className="relative mt-3 min-w-0 max-w-full">
+                <AiReviewProvenanceBadge
+                  kind={p.kind}
+                  reviewId={p.reviewId}
+                  confirmedAt={p.confirmedAt}
+                  className="text-[11px] text-indigo-200/95 [&_a]:text-indigo-100 [&_a]:underline-offset-2 flex-wrap max-w-full [&_a]:break-words"
+                />
+              </div>
+            );
+          })() : null}
+
+          {/* Quick actions pill group */}
+          <div
+            className="relative mt-4 grid gap-1.5 rounded-2xl bg-white/10 p-1.5 backdrop-blur"
+            style={{ gridTemplateColumns: `repeat(${quickActions.length}, minmax(0, 1fr))` }}
           >
-            <CheckSquare size={16} />
-            <span>Úkol</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenOpportunityWizard(contact.id)}
-            className="min-h-[44px] rounded-xl bg-[color:var(--wp-surface-card)]/10 border border-white/20 text-white text-xs font-bold flex flex-col items-center justify-center gap-1"
-          >
-            <Briefcase size={16} />
-            <span>Obchod</span>
-          </button>
+            {quickActions.map(({ id, href, onClick, icon: Icon, label, primary }) =>
+              href ? (
+                <a
+                  key={id}
+                  href={href}
+                  className={cx(
+                    "flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold transition-colors",
+                    primary
+                      ? "bg-indigo-500 text-white shadow-sm active:bg-indigo-600"
+                      : "bg-white/5 text-white/95 active:bg-white/15"
+                  )}
+                >
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </a>
+              ) : (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={onClick}
+                  className={cx(
+                    "flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold transition-colors",
+                    primary
+                      ? "bg-indigo-500 text-white shadow-sm active:bg-indigo-600"
+                      : "bg-white/5 text-white/95 active:bg-white/15"
+                  )}
+                >
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </button>
+              )
+            )}
+          </div>
         </div>
       </div>
 
       {provenance?.mergeConflictFields && provenance.mergeConflictFields.length > 0 ? (
-        <div className="px-4 pt-2 pb-1">
+        <div className="px-3 pt-3">
           <ContactMergeConflictGuard
             mergeConflicts={provenance.mergeConflictFields}
             contactId={contactId}
@@ -858,8 +920,8 @@ export function ClientProfileScreen({
         </div>
       ) : null}
 
-      {/* Tab bar */}
-      <div className="px-4 py-2 bg-[color:var(--wp-surface-card)] border-b border-[color:var(--wp-surface-card-border)] sticky top-0 z-10">
+      {/* Tab bar — sticky, chips only, clean bottom border inside chip container */}
+      <div className="sticky top-0 z-10 mt-3 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/95 px-3 py-2 backdrop-blur">
         <FilterChips
           value={tab}
           onChange={(id) => setTab(id as ProfileTab)}
@@ -885,6 +947,7 @@ export function ClientProfileScreen({
             provenance={provenance}
             onOpenHousehold={onOpenHousehold}
             onConfirmProvenance={handleConfirmProvenance}
+            onConfirmAllProvenance={handleConfirmAllProvenance}
           />
         ) : null}
         {tab === "tasks" ? (

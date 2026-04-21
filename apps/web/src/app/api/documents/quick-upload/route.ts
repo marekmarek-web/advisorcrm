@@ -9,29 +9,27 @@ import { checkRateLimit } from "@/lib/security/rate-limit";
 import { detectMagicMimeTypeFromBytes, mimeMatchesAllowedSignature } from "@/lib/security/file-signature";
 import { isUuid, sanitizeStorageSegment, toTrimmedString } from "@/lib/security/validation";
 import { computeDocumentFingerprint } from "@/lib/documents/processing/fingerprint";
+import { findExistingDocumentByFingerprint } from "@/lib/documents/dedup";
 import { processDocument } from "@/lib/documents/processing/orchestrator";
 import { buildPdfFromImageBuffers } from "@/lib/scan/build-pdf-from-images-server";
 import { logAudit } from "@/lib/audit";
 import { notifyClientAdvisorSharedDocument } from "@/lib/documents/notify-client-visible-document";
+import {
+  ALLOWED_MIME_TYPES_QUICK_IMAGES,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_LABEL,
+} from "@/lib/upload/validation";
 import type { DocumentSourceChannel } from "db";
 
 export const dynamic = "force-dynamic";
 /** Adobe OCR + markdown může trvat; práce běží v `after()`. */
 export const maxDuration = 300;
 
-const ALLOWED_IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-]);
+const ALLOWED_IMAGE_TYPES = new Set<string>(ALLOWED_MIME_TYPES_QUICK_IMAGES);
 
 const MAX_FILES = 20;
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+const MAX_FILE_BYTES = MAX_FILE_SIZE_BYTES;
+const MAX_TOTAL_BYTES = MAX_FILE_SIZE_BYTES;
 
 type QuickUploadSource = "web_quick" | "mobile_quick";
 
@@ -86,11 +84,11 @@ export async function POST(request: Request) {
     for (const f of rawFiles) {
       totalSize += f.size;
       if (f.size > MAX_FILE_BYTES) {
-        return NextResponse.json({ error: "Jeden ze souborů přesahuje 20 MB." }, { status: 400 });
+        return NextResponse.json({ error: `Jeden ze souborů přesahuje ${MAX_FILE_SIZE_LABEL}.` }, { status: 400 });
       }
     }
     if (totalSize > MAX_TOTAL_BYTES) {
-      return NextResponse.json({ error: "Soubory dohromady přesahují 20 MB." }, { status: 400 });
+      return NextResponse.json({ error: `Soubory dohromady přesahují ${MAX_FILE_SIZE_LABEL}.` }, { status: 400 });
     }
 
     const contactIdRaw = formData.get("contactId");
@@ -174,6 +172,32 @@ export async function POST(request: Request) {
       };
     })();
 
+    // Dedup před storage upload: pokud stejný fingerprint (ve scopu
+    // tenant + contact) už existuje, nevytváříme nový objekt ani DB řádek.
+    const fingerprint = await computeDocumentFingerprint(prepared.bytes).catch(() => null);
+    if (fingerprint) {
+      const existing = await findExistingDocumentByFingerprint({
+        tenantId: membership.tenantId,
+        userId: user.id,
+        contactId,
+        fingerprint,
+      }).catch(() => null);
+      if (existing) {
+        return NextResponse.json({
+          ok: true as const,
+          documentId: existing.id,
+          id: existing.id,
+          name: existing.name,
+          mimeType: existing.mimeType,
+          sizeBytes: existing.sizeBytes,
+          processingStatus: existing.processingStatus,
+          backgroundProcessingStarted: false,
+          duplicate: true,
+          duplicateOf: existing.id,
+        });
+      }
+    }
+
     const pathPrefix = sanitizeStorageSegment(contactId || "misc", "misc");
     const safeStem = prepared.displayName.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `${membership.tenantId}/${pathPrefix}/${Date.now()}-${safeStem}`;
@@ -191,7 +215,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    const fingerprint = await computeDocumentFingerprint(prepared.bytes).catch(() => null);
     const docName = toTrimmedString(nameRaw) || prepared.displayName.replace(/\.pdf$/i, "") || "Dokument";
 
     const sourceChannel: DocumentSourceChannel = "portal_quick_upload";

@@ -27,7 +27,7 @@ import { LegalSubprocessorsTable } from "@/app/legal/LegalSubprocessorsTable";
 export const metadata: Metadata = {
   title: "Bezpečnost a ochrana dat | Aidvisora",
   description:
-    "Přehled bezpečnostních opatření Aidvisory — data v EU, řízení přístupu, izolace workspaců, audit stopa, AI governance a seznam subdodavatelů. Poctivý stav podle reality k datu účinnosti.",
+    "Přehled bezpečnostních opatření platformy Aidvisora — data v EU, řízení přístupu, izolace workspaců, audit stopa, AI governance a seznam subdodavatelů. Poctivý stav podle reality k datu účinnosti.",
   alternates: { canonical: "/bezpecnost" },
   robots: { index: true, follow: true },
 };

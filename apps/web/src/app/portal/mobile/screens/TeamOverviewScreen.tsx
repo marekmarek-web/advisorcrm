@@ -8,6 +8,9 @@ import {
   CheckCircle2,
   Target,
   Activity,
+  TrendingUp,
+  Calendar,
+  Briefcase,
 } from "lucide-react";
 import {
   getTeamHierarchy,
@@ -27,12 +30,19 @@ import {
   AIInsightCard,
   BottomSheet,
   EmptyState,
-  ErrorState,
-  FilterChips,
   MobileCard,
   MobileSection,
   StatusBadge,
 } from "@/app/shared/mobile-ui/primitives";
+import {
+  HeroCard,
+  HeroAction,
+  HeroMetaDot,
+  InlineAlert,
+  KpiCard,
+  MetricGrid,
+  SegmentPills,
+} from "@/app/shared/portal-ui/primitives";
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 
@@ -70,20 +80,20 @@ function AlertCard({ alert }: { alert: TeamAlert }) {
   return (
     <MobileCard
       className={cx(
-        "p-3.5 border-l-4",
+        "p-3 border-l-4",
         alert.severity === "critical" ? "border-l-rose-500 bg-rose-50/30" : "border-l-amber-400 bg-amber-50/30"
       )}
     >
       <div className="flex items-start gap-2.5">
         {alert.severity === "critical" ? (
-          <AlertCircle size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
+          <AlertCircle size={15} className="text-rose-500 flex-shrink-0 mt-0.5" />
         ) : (
-          <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[color:var(--wp-text)]">{alert.title}</p>
+          <p className="text-[13px] font-bold text-[color:var(--wp-text)] leading-snug">{alert.title}</p>
           {alert.description ? (
-            <p className="text-xs text-[color:var(--wp-text-secondary)] mt-0.5">{alert.description}</p>
+            <p className="text-[11px] text-[color:var(--wp-text-secondary)] mt-0.5 leading-snug">{alert.description}</p>
           ) : null}
         </div>
         <StatusBadge tone={alert.severity === "critical" ? "danger" : "warning"}>
@@ -94,7 +104,11 @@ function AlertCard({ alert }: { alert: TeamAlert }) {
   );
 }
 
-function MemberCard({
+/**
+ * Kompaktní member row — jednotná výška, avatar + name + roleName + mini-KPI
+ * inline (Schůzky · Produkce · Pipeline). Bez velkých nadpisů, padding 12px.
+ */
+function MemberRow({
   member,
   metrics,
 }: {
@@ -107,49 +121,50 @@ function MemberCard({
   const riskLevel = metrics?.riskLevel;
 
   return (
-    <MobileCard className="p-3.5">
+    <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex items-center gap-3">
-        <div className={cx("w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black flex-shrink-0", avatarColor)}>
+        <div className={cx("w-9 h-9 rounded-xl flex items-center justify-center text-white text-[13px] font-black flex-shrink-0", avatarColor)}>
           {initials}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-[color:var(--wp-text)] truncate">{name}</p>
+            <p className="text-[13px] font-bold text-[color:var(--wp-text)] truncate">{name}</p>
             {riskLevel === "critical" ? (
-              <AlertCircle size={14} className="text-rose-500 flex-shrink-0" />
+              <AlertCircle size={13} className="text-rose-500 flex-shrink-0" />
             ) : riskLevel === "warning" ? (
-              <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+              <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
             ) : (
-              <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0" />
+              <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />
             )}
           </div>
-          <p className="text-xs text-[color:var(--wp-text-secondary)] mt-0.5 truncate">{member.roleName}</p>
+          <p className="text-[11px] text-[color:var(--wp-text-secondary)] truncate">{member.roleName}</p>
         </div>
       </div>
-
+      {metrics ? (
+        <div className="mt-2.5 flex items-center gap-3 border-t border-[color:var(--wp-surface-card-border)] pt-2 text-[11px] font-semibold text-[color:var(--wp-text-secondary)]">
+          <span className="inline-flex items-center gap-1">
+            <Calendar size={11} className="text-indigo-500" />
+            <span className="text-[color:var(--wp-text)] font-black">{metrics.meetingsThisPeriod}</span>
+          </span>
+          <span className="text-[color:var(--wp-text-tertiary)]">·</span>
+          <span className="inline-flex items-center gap-1">
+            <TrendingUp size={11} className="text-emerald-500" />
+            <span className="text-[color:var(--wp-text)] font-black">{fmtCzk(metrics.productionThisPeriod)}</span>
+          </span>
+          <span className="text-[color:var(--wp-text-tertiary)]">·</span>
+          <span className="inline-flex items-center gap-1 truncate">
+            <Briefcase size={11} className="text-amber-500" />
+            <span className="text-[color:var(--wp-text)] font-black truncate">{fmtCzk(metrics.pipelineValue)}</span>
+          </span>
+        </div>
+      ) : null}
       {metrics?.careerEvaluation ? (
-        <p className="mt-2 text-[11px] leading-snug text-[color:var(--wp-text-secondary)] break-words hyphens-auto">
+        <p className="mt-2 text-[11px] leading-snug text-[color:var(--wp-text-secondary)] break-words">
           <span className="font-semibold text-[color:var(--wp-text)]">Kariéra: </span>
           {metrics.careerEvaluation.summaryLine || metrics.careerEvaluation.managerProgressLabel}
         </p>
       ) : null}
-      {metrics ? (
-        <div className="mt-3 grid grid-cols-3 gap-2 pt-2.5 border-t border-[color:var(--wp-surface-card-border)]">
-          <div className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Schůzky</p>
-            <p className="text-sm font-black text-[color:var(--wp-text)] mt-0.5">{metrics.meetingsThisPeriod}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Produkce</p>
-            <p className="text-sm font-black text-[color:var(--wp-text)] mt-0.5">{fmtCzk(metrics.productionThisPeriod)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Hodnota obchodů</p>
-            <p className="text-sm font-black text-[color:var(--wp-text)] mt-0.5">{fmtCzk(metrics.pipelineValue)}</p>
-          </div>
-        </div>
-      ) : null}
-    </MobileCard>
+    </div>
   );
 }
 
@@ -240,28 +255,17 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
 
   if (pending && !kpis) {
     return (
-      <div className="min-h-[50vh] space-y-0 pb-6">
-        <div className="h-28 bg-gradient-to-br from-[#1e293b] to-[#0f172a] animate-pulse rounded-b-2xl" />
-        <div className="px-4 py-3 grid grid-cols-3 gap-2 bg-[color:var(--wp-surface-card)]/80 border-b border-[color:var(--wp-surface-card-border)]">
+      <div className="min-h-[50vh] space-y-3 px-4 pt-4 pb-6">
+        <div className="h-[168px] rounded-[24px] bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
+        <div className="grid grid-cols-3 gap-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded-xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
+            <div key={i} className="h-[92px] rounded-2xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
           ))}
         </div>
-        <div className="px-4 py-3 space-y-2 bg-[color:var(--wp-surface-card)] border-b border-[color:var(--wp-surface-card-border)]">
-          <div className="flex gap-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-8 w-16 rounded-xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse shrink-0" />
-            ))}
-          </div>
-          <div className="flex gap-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-8 w-20 rounded-xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse shrink-0" />
-            ))}
-          </div>
-        </div>
-        <div className="px-4 pt-3 space-y-2">
+        <div className="h-10 rounded-2xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
+        <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-16 rounded-2xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
+            <div key={i} className="h-[72px] rounded-2xl bg-[color:var(--wp-surface-card-border)]/70 animate-pulse" />
           ))}
         </div>
       </div>
@@ -270,71 +274,95 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
 
   return (
     <>
-      {error ? <ErrorState title={error} onRetry={reload} /> : null}
       <div
         className={cx(
-          "pb-6",
+          "space-y-4 px-4 pt-4 pb-6",
           pending && kpis && "opacity-60 pointer-events-none transition-opacity duration-200"
         )}
       >
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] px-4 pt-4 pb-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">
-              Týmový přehled
-            </p>
-            <h2 className="text-base font-black text-white mt-1">
-              {kpis?.periodLabel ?? "Aktuální období"}
-            </h2>
-            {kpis ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="flex items-center gap-1 text-[11px] font-black text-white/70 bg-[color:var(--wp-surface-card)]/10 px-2 py-0.5 rounded-lg">
-                  <Users size={10} /> {kpis.memberCount} členů
+        {error ? (
+          <InlineAlert
+            tone="danger"
+            title="Týmový přehled se nepodařilo načíst"
+            description={error}
+            action={
+              <button
+                type="button"
+                onClick={reload}
+                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-[11px] font-black uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+              >
+                Zkusit znovu
+              </button>
+            }
+          />
+        ) : null}
+
+        {/* Hero briefing */}
+        <HeroCard
+          eyebrow="Týmový přehled"
+          title={kpis?.periodLabel ?? "Aktuální období"}
+          icon={<Users size={20} className="text-white" />}
+          actions={
+            <HeroAction onClick={() => setActionOpen(true)}>
+              <Target size={13} /> Týmová akce
+            </HeroAction>
+          }
+          meta={
+            kpis ? (
+              <>
+                <span className="inline-flex items-center gap-1">
+                  <Users size={11} /> {kpis.memberCount} členů
                 </span>
-                <span className="flex items-center gap-1 text-[11px] font-black text-white/70 bg-[color:var(--wp-surface-card)]/10 px-2 py-0.5 rounded-lg">
-                  <Activity size={10} /> {kpis.activeMemberCount} aktivních
+                <HeroMetaDot />
+                <span className="inline-flex items-center gap-1">
+                  <Activity size={11} /> {kpis.activeMemberCount} aktivních
                 </span>
                 {kpis.riskyMemberCount > 0 ? (
-                  <span className="flex items-center gap-1 text-[11px] font-black text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-lg">
-                    <AlertCircle size={10} /> {kpis.riskyMemberCount} rizikových
-                  </span>
+                  <>
+                    <HeroMetaDot />
+                    <span className="inline-flex items-center gap-1 text-rose-200">
+                      <AlertCircle size={11} /> {kpis.riskyMemberCount} rizikových
+                    </span>
+                  </>
                 ) : null}
+              </>
+            ) : null
+          }
+        >
+          {kpis ? (
+            <div className="grid grid-cols-3 gap-3 border-t border-white/10 pt-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/60">Produkce</p>
+                <p className="mt-0.5 text-[17px] font-black leading-tight text-white">
+                  {fmtCzk(Math.round(kpis.productionThisPeriod))}
+                </p>
               </div>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={() => setActionOpen(true)}
-            className="flex items-center gap-1.5 min-h-[36px] px-3 rounded-xl bg-[color:var(--wp-surface-card)]/10 border border-white/20 text-white text-xs font-bold whitespace-nowrap"
-          >
-            <Target size={13} /> Týmová akce
-          </button>
-        </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/60">Schůzky</p>
+                <p className="mt-0.5 text-[17px] font-black leading-tight text-white">{kpis.meetingsThisWeek}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/60">Uzavřeno</p>
+                <p className="mt-0.5 text-[17px] font-black leading-tight text-white">{kpis.closedDealsThisPeriod}</p>
+              </div>
+            </div>
+          ) : null}
+        </HeroCard>
 
-        {/* KPI row */}
-        {kpis ? (
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Produkce</p>
-              <p className="text-base font-black text-white mt-0.5">{fmtCzk(Math.round(kpis.productionThisPeriod))}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Schůzky</p>
-              <p className="text-base font-black text-white mt-0.5">{kpis.meetingsThisWeek}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-[color:var(--wp-text-tertiary)]">Uzavřeno</p>
-              <p className="text-base font-black text-white mt-0.5">{kpis.closedDealsThisPeriod}</p>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Filters */}
-      <div className="px-4 py-3 bg-[color:var(--wp-surface-card)] border-b border-[color:var(--wp-surface-card-border)] space-y-2">
-        <div className="flex gap-2 overflow-x-auto">
-          <FilterChips
+        {/* Filters – scope + period */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <SegmentPills
+            label="Rozsah"
+            value={scope}
+            onChange={(id) => setScope(id as TeamOverviewScope)}
+            options={[
+              { id: "me", label: "Já" },
+              { id: "my_team", label: "Můj tým" },
+              { id: "full", label: "Celý tým" },
+            ]}
+          />
+          <SegmentPills
+            label="Období"
             value={period}
             onChange={(id) => setPeriod(id as TeamOverviewPeriod)}
             options={[
@@ -344,54 +372,67 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
             ]}
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto">
-          <FilterChips
-            value={scope}
-            onChange={(id) => setScope(id as TeamOverviewScope)}
-            options={[
-              { id: "me", label: "Já" },
-              { id: "my_team", label: "Můj tým" },
-              { id: "full", label: "Celý tým" },
-            ]}
+
+        {/* Hierarchy warning */}
+        {kpis && scope !== "me" && !kpis.hierarchyParentLinksConfigured ? (
+          <InlineAlert
+            tone="warning"
+            title="Hierarchie není kompletně nastavena"
+            description="Chybí vazby nadřízenosti — „Můj tým“ může zobrazit jen vás. Doplňte parent_id u členů v Nastavení → Tým."
           />
-        </div>
-      </div>
+        ) : null}
 
-      {kpis && scope !== "me" && !kpis.hierarchyParentLinksConfigured ? (
-        <MobileCard className="mx-4 mt-3 border-amber-200 bg-amber-50/90 p-3">
-          <p className="text-xs font-bold text-amber-950">Hierarchie není kompletně nastavena</p>
-          <p className="mt-1 text-[11px] leading-snug text-amber-900/90">
-            Chybí vazby nadřízenosti — „Můj tým“ může zobrazit jen vás. Doplňte parent_id u členů v Nastavení → Tým.
-          </p>
-        </MobileCard>
-      ) : null}
+        {/* Kokpit – čtyři klíčové metriky */}
+        {kpis ? (
+          <MetricGrid cols={isTablet ? 4 : 2}>
+            <KpiCard
+              label="Produkce"
+              value={fmtCzk(Math.round(kpis.productionThisPeriod))}
+              icon={<TrendingUp size={13} />}
+              health="neutral"
+            />
+            <KpiCard
+              label="Schůzky"
+              value={kpis.meetingsThisWeek}
+              icon={<Calendar size={13} />}
+              health="neutral"
+            />
+            <KpiCard
+              label="Uzavřeno"
+              value={kpis.closedDealsThisPeriod}
+              icon={<Briefcase size={13} />}
+              health="neutral"
+            />
+            <KpiCard
+              label="Aktivní členové"
+              value={`${kpis.activeMemberCount}/${kpis.memberCount}`}
+              icon={<Activity size={13} />}
+              health={
+                kpis.riskyMemberCount > 0
+                  ? kpis.riskyMemberCount >= Math.max(1, Math.round(kpis.memberCount / 2))
+                    ? "critical"
+                    : "warning"
+                  : "ok"
+              }
+            />
+          </MetricGrid>
+        ) : null}
 
-      {/* Alert banner */}
-      {criticalAlerts.length > 0 ? (
-        <MobileCard className="mx-4 mt-3 border-rose-200 bg-rose-50/60 p-3">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={15} className="text-rose-500 flex-shrink-0" />
-            <p className="text-sm font-bold text-rose-800">
-              {criticalAlerts.length} {criticalAlerts.length === 1 ? "kritický alert" : "kritické alerty"} — {criticalAlerts[0].title}
-            </p>
-          </div>
-        </MobileCard>
-      ) : null}
-
-      {/* AI insight */}
-      {criticalAlerts.length > 0 ? (
-        <MobileSection>
+        {/* AI insight na kritické alerty */}
+        {criticalAlerts.length > 0 ? (
           <AIInsightCard
             title="Rizika týmu"
             insight={criticalAlerts[0].title}
-            action={<p className="text-xs text-violet-800/80">{criticalAlerts[0].description}</p>}
+            action={
+              criticalAlerts[0].description ? (
+                <p className="text-xs text-violet-800/80">{criticalAlerts[0].description}</p>
+              ) : null
+            }
           />
-        </MobileSection>
-      ) : null}
+        ) : null}
 
-      {/* Tabs */}
-      <div className="px-4 py-2 bg-[color:var(--wp-surface-card)] border-b border-[color:var(--wp-surface-card-border)]">
-        <FilterChips
+        {/* Tabs – Členové / Alerty */}
+        <SegmentPills
           value={activeTab}
           onChange={(id) => setActiveTab(id as "members" | "alerts")}
           options={[
@@ -404,44 +445,41 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
             },
           ]}
         />
-      </div>
 
-      {/* Members tab */}
-      {activeTab === "members" ? (
-        <MobileSection title={`Členové týmu (${members.length})`}>
-          {members.length === 0 ? (
-            <EmptyState title="Žádní členové" description="Pro vybraný scope nejsou data." />
-          ) : (
-            <div className={cx("grid gap-2", isTablet ? "grid-cols-2" : "grid-cols-1")}>
-              {members.map((member) => (
-                <MemberCard
-                  key={member.userId}
-                  member={member}
-                  metrics={metricsByUser.get(member.userId)}
-                />
-              ))}
-            </div>
-          )}
-        </MobileSection>
-      ) : null}
+        {activeTab === "members" ? (
+          <MobileSection title={`Členové týmu (${members.length})`}>
+            {members.length === 0 ? (
+              <EmptyState title="Žádní členové" description="Pro vybraný scope nejsou data." />
+            ) : (
+              <div className={cx("grid gap-2", isTablet ? "grid-cols-2" : "grid-cols-1")}>
+                {members.map((member) => (
+                  <MemberRow
+                    key={member.userId}
+                    member={member}
+                    metrics={metricsByUser.get(member.userId)}
+                  />
+                ))}
+              </div>
+            )}
+          </MobileSection>
+        ) : null}
 
-      {/* Alerts tab */}
-      {activeTab === "alerts" ? (
-        <MobileSection title={`Alerty (${alerts.length})`}>
-          {alerts.length === 0 ? (
-            <EmptyState
-              title="Žádné alerty"
-              description="Tým je v pořádku, žádné problémy nezjištěny."
-            />
-          ) : (
-            <div className="space-y-2">
-              {alerts.slice(0, 12).map((alert, idx) => (
-                <AlertCard key={`${alert.memberId}-${alert.type}-${idx}`} alert={alert} />
-              ))}
-            </div>
-          )}
-        </MobileSection>
-      ) : null}
+        {activeTab === "alerts" ? (
+          <MobileSection title={`Alerty (${alerts.length})`}>
+            {alerts.length === 0 ? (
+              <EmptyState
+                title="Žádné alerty"
+                description="Tým je v pořádku, žádné problémy nezjištěny."
+              />
+            ) : (
+              <div className="space-y-2">
+                {alerts.slice(0, 12).map((alert, idx) => (
+                  <AlertCard key={`${alert.memberId}-${alert.type}-${idx}`} alert={alert} />
+                ))}
+              </div>
+            )}
+          </MobileSection>
+        ) : null}
       </div>
 
       {/* Action sheet */}
@@ -451,7 +489,7 @@ export function TeamOverviewScreen({ deviceClass = "phone" }: { deviceClass?: De
         title="Nová týmová akce"
       >
         <div className="space-y-3">
-          <FilterChips
+          <SegmentPills
             value={actionType}
             onChange={(id) => setActionType(id as "task" | "event")}
             options={[

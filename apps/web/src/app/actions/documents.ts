@@ -10,6 +10,12 @@ import { logActivity } from "./activity";
 import { logAudit } from "@/lib/audit";
 import { notifyClientAdvisorSharedDocument } from "@/lib/documents/notify-client-visible-document";
 import { notifyAdvisorClientTrezorUpload } from "@/lib/client-portal/notify-advisor-client-self-service";
+import {
+  ALLOWED_MIME_TYPES_CLIENT_PORTAL,
+  MAX_FILE_SIZE_BYTES_CLIENT_PORTAL,
+  MAX_FILE_SIZE_LABEL_CLIENT_PORTAL,
+  resolveEffectiveMime,
+} from "@/lib/upload/validation";
 
 export type DocumentRow = {
   id: string;
@@ -387,15 +393,14 @@ export async function clientUploadDocument(formData: FormData) {
 
   const file = formData.get("file") as File | null;
   if (!file?.size) throw new Error("Vyberte soubor.");
-  if (file.size > 10 * 1024 * 1024) throw new Error("Soubor je příliš velký (max 10 MB).");
+  if (file.size > MAX_FILE_SIZE_BYTES_CLIENT_PORTAL) {
+    throw new Error(`Soubor je příliš velký (max ${MAX_FILE_SIZE_LABEL_CLIENT_PORTAL}).`);
+  }
 
-  const allowedTypes = new Set([
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]);
-  if (!allowedTypes.has(file.type)) {
+  // Tolerance pro iOS/Safari: prázdný `file.type` nebo `application/octet-stream`
+  // rozhodneme podle přípony proti explicitnímu allowlistu klientské zóny.
+  const effectiveMime = resolveEffectiveMime(file, ALLOWED_MIME_TYPES_CLIENT_PORTAL);
+  if (!effectiveMime) {
     throw new Error("Podporujeme PDF, JPG, PNG a WEBP.");
   }
 
@@ -438,7 +443,7 @@ export async function clientUploadDocument(formData: FormData) {
         name: name || file.name,
         storagePath,
         tags: tags.length ? tags : null,
-        mimeType: file.type || null,
+        mimeType: effectiveMime || file.type || null,
         sizeBytes: file.size,
         visibleToClient: true,
         uploadSource,

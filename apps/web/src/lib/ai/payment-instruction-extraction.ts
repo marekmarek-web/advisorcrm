@@ -43,6 +43,7 @@ reference, paymentNote, firstPaymentDate, paymentChannel, sourceDocumentType,
 confidence (0-1), needsHumanReview (boolean pokud jsou údaje nejasné nebo protichůdné).
 
 Pravidla:
+- SÉMANTIKA ÚČTU: \`accountNumber\` a \`iban\` VŽDY odkazují na účet PŘÍJEMCE (instituce / platformy / pojišťovny), kam klient posílá platbu — NE na klientův vlastní účet. U pokynů k platbě/inkasu/investičních pokynů klient svůj účet v dokumentu obvykle nemá; pokud je uveden čistě informativně, ignoruj ho.
 - IBAN a číslo účtu nikdy nehalucinuj; pokud nejsou čitelné, nech prázdné a needsHumanReview=true.
 - Částku a měnu odvozuj jen z dokumentu.
 - Krátké důvody dej do paymentNote pokud potřebuješ vysvětlit nejistotu.
@@ -142,19 +143,26 @@ export function buildPaymentInstructionEnvelope(params: {
   const { warnings, needsHumanReview } = validatePaymentInstructionExtraction(p);
   const draftPayload = mapPaymentExtractionToPortalDraftPayload(p);
 
+  const isInvestmentPayment = primaryType === "investment_payment_instruction";
   const extractedFields: DocumentReviewEnvelope["extractedFields"] = {
     institutionName: field(str(p.institutionName), conf, str(p.institutionName) ? "extracted" : "missing"),
     productName: field(str(p.productName), conf, str(p.productName) ? "extracted" : "missing"),
-    insurer: field(str(p.institutionName), conf, str(p.institutionName) ? "extracted" : "missing"),
+    // Do NOT populate `insurer` for investment payment instructions — AMUNDI / asset manager is not an insurer.
+    insurer: isInvestmentPayment
+      ? { value: null, status: "not_applicable" as const, confidence: 1 }
+      : field(str(p.institutionName), conf, str(p.institutionName) ? "extracted" : "missing"),
     provider: field(str(p.institutionName), conf, str(p.institutionName) ? "extracted" : "missing"),
     platform: field(str(p.institutionName), conf, str(p.institutionName) ? "extracted" : "missing"),
     fullName: field(str(p.payerName), conf * 0.95, str(p.payerName) ? "extracted" : "missing"),
     clientFullName: field(str(p.payerName), conf * 0.95, str(p.payerName) ? "extracted" : "missing"),
     beneficiaryName: field(str(p.beneficiaryName), conf, str(p.beneficiaryName) ? "extracted" : "missing"),
     iban: field(str(p.iban), conf, str(p.iban) ? "extracted" : "missing"),
+    // For payment instructions the extracted accountNumber is ALWAYS the recipient (institution/platform).
+    // Populate `recipientAccount` (labelled "Účet instituce / příjemce") — NOT `bankAccount` (labelled "Číslo účtu klienta").
     accountNumber: field(str(p.accountNumber), conf, str(p.accountNumber) ? "extracted" : "missing"),
     bankCode: field(str(p.bankCode), conf, str(p.bankCode) ? "extracted" : "missing"),
-    bankAccount: field(str(p.accountNumber), conf, str(p.accountNumber) ? "extracted" : "missing"),
+    recipientAccount: field(str(p.accountNumber), conf, str(p.accountNumber) ? "extracted" : "missing"),
+    bankAccount: { value: null, status: "not_applicable" as const, confidence: 1 },
     variableSymbol: field(str(p.variableSymbol), conf, str(p.variableSymbol) ? "extracted" : "missing"),
     specificSymbol: field(str(p.specificSymbol), conf, str(p.specificSymbol) ? "extracted" : "missing"),
     constantSymbol: field(str(p.constantSymbol), conf, str(p.constantSymbol) ? "extracted" : "missing"),

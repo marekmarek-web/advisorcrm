@@ -40,8 +40,34 @@
     */
     --aidv-mobile-tabbar-inner-h-phone: 3.75rem;
     --aidv-mobile-tabbar-inner-h-tablet: 3.5rem;
-    --aidv-mobile-fab-above-tabbar: 0.75rem;
+    --aidv-mobile-fab-above-tabbar: 1rem;
     --aidv-mobile-secondary-fab-from-bottom: 10.5rem;
+
+    /*
+      Mobilní design tokeny (Revolut/Wise/Monday look):
+      sjednocený radius a jemnější border pro karty.
+      Používejte v mobile primitivech namísto hard-coded hodnot.
+    */
+    --aidv-radius-card: 1.25rem;
+    --aidv-radius-card-sm: 1rem;
+    --aidv-radius-pill: 9999px;
+    --aidv-mobile-card-border: color-mix(in srgb, var(--wp-surface-card-border) 70%, transparent);
+    --aidv-mobile-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.03);
+
+    /*
+      Portal UI 2026 – design tokeny pro novou primitives vrstvu
+      (HeroCard, KpiCard, SegmentPills, StepHeader, SheetChrome, InlineAlert).
+      Ladění jedno místo pravdy – neduplikovat hex barvy ve screenech.
+    */
+    --aidv-hero-radius: 24px;
+    --aidv-card-radius: 20px;
+    --aidv-pill-radius: 16px;
+    --aidv-shadow-card-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+    --aidv-shadow-card-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --aidv-shadow-hero: 0 18px 48px rgba(10, 15, 41, 0.18);
+    --aidv-metric-ok: #10b981;
+    --aidv-metric-warn: #f59e0b;
+    --aidv-metric-crit: #f43f5e;
   }
 }
 

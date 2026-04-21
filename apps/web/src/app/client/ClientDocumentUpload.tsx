@@ -4,14 +4,12 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { UploadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { clientUploadDocument } from "@/app/actions/documents";
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
+import {
+  ALLOWED_MIME_TYPES_CLIENT_PORTAL,
+  MAX_FILE_SIZE_BYTES_CLIENT_PORTAL,
+  MAX_FILE_SIZE_LABEL_CLIENT_PORTAL,
+  validateFile,
+} from "@/lib/upload/validation";
 
 type ClientDocumentUploadProps = {
   onSuccess?: () => void;
@@ -31,14 +29,13 @@ export function ClientDocumentUpload({ onSuccess }: ClientDocumentUploadProps) {
     };
   }, []);
 
-  function validateFile(file: File): string | null {
-    if (file.size > MAX_FILE_SIZE) {
-      return "Soubor je příliš velký (max. 10 MB).";
-    }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return "Podporujeme PDF, JPG, PNG a WEBP.";
-    }
-    return null;
+  function validate(file: File): string | null {
+    const result = validateFile(file, {
+      allowedMimeTypes: ALLOWED_MIME_TYPES_CLIENT_PORTAL,
+      maxSizeBytes: MAX_FILE_SIZE_BYTES_CLIENT_PORTAL,
+      maxSizeLabel: MAX_FILE_SIZE_LABEL_CLIENT_PORTAL,
+    });
+    return result.valid ? null : result.error ?? "Soubor je neplatný.";
   }
 
   function startProgressSimulation() {
@@ -58,7 +55,7 @@ export function ClientDocumentUpload({ onSuccess }: ClientDocumentUploadProps) {
   }
 
   function handleUpload(file: File) {
-    const validationError = validateFile(file);
+    const validationError = validate(file);
     if (validationError) {
       setError(validationError);
       return;
@@ -131,7 +128,7 @@ export function ClientDocumentUpload({ onSuccess }: ClientDocumentUploadProps) {
         />
         <UploadCloud size={34} className="mb-3" />
         <p className="text-sm font-bold">Přetáhněte soubor sem nebo klikněte pro výběr</p>
-        <p className="text-xs mt-1">PDF, JPG, PNG, WEBP • max 10 MB</p>
+        <p className="text-xs mt-1">PDF, JPG, PNG, WEBP • max {MAX_FILE_SIZE_LABEL_CLIENT_PORTAL}</p>
       </label>
 
       {progress > 0 && (

@@ -8,7 +8,6 @@ import {
   LEGAL_ICO,
   LEGAL_PODPORA_EMAIL,
   LEGAL_PRICING_HREF,
-  LEGAL_SUPPORT_EMAIL,
   type LegalDocumentSlug,
 } from "./legal-meta";
 
@@ -48,10 +47,6 @@ export function LegalDocumentLayout(props: {
           </p>
           <p className="mt-3">
             Právní a privacy kontakt:{" "}
-            <a className="text-blue-600 underline dark:text-blue-400" href={`mailto:${LEGAL_SUPPORT_EMAIL}`}>
-              {LEGAL_SUPPORT_EMAIL}
-            </a>{" "}
-            nebo{" "}
             <a className="text-blue-600 underline dark:text-blue-400" href={`mailto:${LEGAL_PODPORA_EMAIL}`}>
               {LEGAL_PODPORA_EMAIL}
             </a>

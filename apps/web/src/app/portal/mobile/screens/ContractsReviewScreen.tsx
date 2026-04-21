@@ -48,6 +48,7 @@ import {
 import type { DeviceClass } from "@/lib/ui/useDeviceClass";
 import { confidenceToPercentForUi } from "@/lib/ai/review-ui-confidence";
 import { mapApiToExtractionDocument, hasMeaningfulReviewContent } from "@/lib/ai-review/mappers";
+import { labelFieldKey } from "@/lib/ai-review/label-dictionary";
 import { aiReviewPdfFileName, buildAiReviewPdfBlob } from "@/lib/ai-review/build-ai-review-pdf";
 import type { ApplyResultPayload } from "@/lib/ai-review/types";
 import { resolveEffectiveFieldStatus } from "@/lib/ai-review/field-visual-status";
@@ -102,8 +103,7 @@ function resolveMatchVerdictFromReviewDetail(d: ReviewDetail): MatchVerdict | nu
 }
 
 function humanizeFieldKey(key: string): string {
-  const s = key.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return labelFieldKey(key);
 }
 
 function parseDraftActionRow(action: unknown): { label: string; type?: string } | null {

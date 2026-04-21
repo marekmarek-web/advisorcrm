@@ -241,24 +241,36 @@ export function FinancialAnalysisLayout() {
           ) : null}
         </div>
 
-        <div className="mt-4 flex flex-col items-stretch gap-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-4 sm:mx-0 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8">
+        <div
+          className={[
+            "mt-4 flex flex-col items-stretch gap-3 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/95 backdrop-blur px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3",
+            "sticky bottom-0 z-20",
+            "sm:static sm:mx-0 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8 sm:backdrop-blur-0",
+          ].join(" ")}
+        >
           <button
             type="button"
             onClick={() => prevStep()}
-            className={currentStep === 1 ? "hidden" : "min-h-[44px] px-6 py-3 border border-[color:var(--wp-surface-card-border)] rounded-xl font-semibold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"}
+            className={
+              currentStep === 1
+                ? "hidden"
+                : "min-h-[48px] px-5 py-3 border border-[color:var(--wp-surface-card-border)] rounded-xl font-semibold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)]"
+            }
           >
-            Zpět
+            ← Zpět
           </button>
           <div className="flex-1 sm:text-right">
             {currentStep === totalSteps ? (
-              <span className="text-[color:var(--wp-text-secondary)] text-sm">Použijte tlačítko v kroku Shrnutí pro export reportu.</span>
+              <span className="block text-[color:var(--wp-text-secondary)] text-xs sm:text-sm leading-snug">
+                Použijte tlačítko v kroku Shrnutí pro export reportu.
+              </span>
             ) : (
               <button
                 type="button"
                 onClick={() => nextStep()}
-                className="min-h-[44px] px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-md"
+                className="min-h-[48px] w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-[0_6px_18px_rgba(79,70,229,0.35)]"
               >
-                Další
+                Další →
               </button>
             )}
           </div>

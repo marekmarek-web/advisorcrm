@@ -34,6 +34,7 @@ import { QUICK_ACTIONS_CATALOG, getDefaultQuickActionsConfig } from "@/lib/quick
 import type { QuickActionId } from "@/lib/quick-actions";
 import { WorkspaceStripeBilling } from "@/app/components/billing/WorkspaceStripeBilling";
 import { PUBLIC_PRICING_SUMMARY_CS } from "@/lib/billing/plan-public-marketing";
+import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
@@ -150,6 +151,7 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
+  const { isNative: isNativeShell } = useNativePlatform();
   const confirm = useConfirm();
   const tabParam = searchParams.get("tab");
   const providerParam = searchParams.get("provider");
@@ -1473,23 +1475,27 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   <div className="flex items-center gap-2 text-sm font-medium text-[color:var(--wp-text-tertiary)]"><CheckCircle size={16} className="text-emerald-400 shrink-0" /> Týmová spolupráce</div>
                   <div className="flex items-center gap-2 text-sm font-medium text-[color:var(--wp-text-tertiary)]"><CheckCircle size={16} className="text-emerald-400 shrink-0" /> Finanční analýzy</div>
                 </div>
-                <div className="text-xs text-[color:var(--wp-text-secondary)] mb-4 space-y-1">
-                  <p>{PUBLIC_PRICING_SUMMARY_CS}</p>
-                  <p>
-                    Více na{" "}
-                    <a href="https://www.aidvisora.cz" target="_blank" rel="noopener noreferrer" className="underline text-indigo-300 hover:text-white">
-                      aidvisora.cz
+                {isNativeShell ? null : (
+                  <>
+                    <div className="text-xs text-[color:var(--wp-text-secondary)] mb-4 space-y-1">
+                      <p>{PUBLIC_PRICING_SUMMARY_CS}</p>
+                      <p>
+                        Více na{" "}
+                        <a href="https://www.aidvisora.cz" target="_blank" rel="noopener noreferrer" className="underline text-indigo-300 hover:text-white">
+                          aidvisora.cz
+                        </a>
+                      </p>
+                    </div>
+                    <a
+                      href="https://www.aidvisora.cz"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[color:var(--wp-surface-muted)] transition-colors min-h-[44px] inline-flex items-center justify-center"
+                    >
+                      Porovnat tarify na webu
                     </a>
-                  </p>
-                </div>
-                <a
-                  href="https://www.aidvisora.cz"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3 bg-[color:var(--wp-surface-card)] text-[color:var(--wp-text)] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[color:var(--wp-surface-muted)] transition-colors min-h-[44px] inline-flex items-center justify-center"
-                >
-                  Porovnat tarify na webu
-                </a>
+                  </>
+                )}
               </div>
             </div>
             <div className="lg:col-span-2 space-y-6">
@@ -1499,7 +1505,9 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
                   <h2 className="text-lg font-black text-[color:var(--wp-text)]">Předplatné a platby</h2>
                 </div>
                 <p className="text-sm text-[color:var(--wp-text-secondary)] mb-6 max-w-xl">
-                  Zde zahájíte předplatné přes Stripe Checkout nebo otevřete Customer Portal (karty, faktury, zrušení).
+                  {isNativeShell
+                    ? "Přehled aktuálního předplatného. Změnu tarifu, fakturaci a správu karet provádějte na webu www.aidvisora.cz."
+                    : "Zde zahájíte předplatné přes Stripe Checkout nebo otevřete Customer Portal (karty, faktury, zrušení)."}
                 </p>
                 {initial.billing ? (
                   <WorkspaceStripeBilling billing={initial.billing} billingContext="setup" showTitle={false} />

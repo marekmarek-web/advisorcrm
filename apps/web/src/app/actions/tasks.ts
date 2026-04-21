@@ -317,6 +317,35 @@ export async function getTasksByOpportunityId(oppId: string): Promise<TaskRow[]>
   }));
 }
 
+/**
+ * Povolené hodnoty `reminder`: relativní hint, který notifikační vrstva převede na
+ * absolutní čas (due_date - offset). `none` = bez připomínky.
+ */
+const TASK_REMINDER_VALUES = new Set([
+  "none",
+  "5m",
+  "10m",
+  "15m",
+  "30m",
+  "1h",
+  "2h",
+  "1d",
+  "2d",
+  "1w",
+]);
+
+function normalizeTaskPriority(value?: string | null): "low" | "normal" | "high" {
+  const v = (value ?? "").trim().toLowerCase();
+  if (v === "low" || v === "normal" || v === "high") return v;
+  return "normal";
+}
+
+function normalizeTaskReminder(value?: string | null): string {
+  const v = (value ?? "").trim().toLowerCase();
+  if (TASK_REMINDER_VALUES.has(v)) return v;
+  return "none";
+}
+
 export async function createTask(data: {
   title: string;
   description?: string;
@@ -324,6 +353,10 @@ export async function createTask(data: {
   dueDate?: string;
   analysisId?: string;
   opportunityId?: string;
+  /** „low“ | „normal“ | „high“ — wizard posílá, dřívější verze to tiše zahazovala. */
+  priority?: string;
+  /** Relativní připomínka (viz `TASK_REMINDER_VALUES`). */
+  reminder?: string;
   /** For team/manager follow-ups: assign to this user (must be in same tenant; requires team_overview:read). */
   assignedTo?: string;
 }): Promise<string | null> {
@@ -357,6 +390,8 @@ export async function createTask(data: {
           opportunityId: data.opportunityId || null,
           assignedTo: assignee,
           createdBy: auth.userId,
+          priority: normalizeTaskPriority(data.priority),
+          reminder: normalizeTaskReminder(data.reminder),
         })
         .returning({ id: tasks.id }),
     );

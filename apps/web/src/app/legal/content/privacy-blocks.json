@@ -233,7 +233,7 @@
   },
   {
     "type": "p",
-    "text": "Pro uplatnění práv nás můžete kontaktovat na e-mailu support@aidvisora.cz nebo podpora@aidvisora.cz. Před vyřízením žádosti si můžeme ověřit vaši totožnost přiměřeným způsobem."
+    "text": "Pro uplatnění práv nás můžete kontaktovat na e-mailu podpora@aidvisora.cz. Před vyřízením žádosti si můžeme ověřit vaši totožnost přiměřeným způsobem."
   },
   {
     "type": "h1",
@@ -269,7 +269,71 @@
   },
   {
     "type": "p",
-    "text": "Kontaktní e-maily pro privacy agendu: support@aidvisora.cz nebo podpora@aidvisora.cz."
+    "text": "Kontaktní e-mail pro privacy agendu: podpora@aidvisora.cz."
+  },
+  {
+    "type": "h1",
+    "text": "13. Mobilní aplikace Aidvisora (iOS a Android)"
+  },
+  {
+    "type": "p",
+    "text": "Mobilní aplikace Aidvisora pro iOS a Android je hybridní aplikace postavená nad platformou Capacitor. Obsah aplikace je z větší části načítán ze zabezpečeného webového rozhraní www.aidvisora.cz ve vestavěném prohlížečovém okně (WKWebView na iOS, WebView na Androidu). Pro účely ochrany osobních údajů platí stejná pravidla jako pro webovou verzi; níže uvedené zpracování vzniká navíc díky nativnímu běhovému prostředí zařízení."
+  },
+  {
+    "type": "p",
+    "text": "Kategorie údajů specifické pro mobilní aplikaci"
+  },
+  {
+    "type": "li",
+    "text": "• Push token přidělený platformou operačního systému (Apple APNs na iOS, v pozdější verzi Google FCM na Androidu). Slouží pouze pro doručení oznámení z aplikace na zařízení uživatele a je vázán na aktivní instalaci aplikace. Uživatel jej může kdykoli odvolat odepřením oprávnění v nastavení operačního systému; aplikace vás o oprávnění žádá samostatným dialogem."
+  },
+  {
+    "type": "li",
+    "text": "• Technické identifikátory zařízení potřebné k provozu aplikace (typ platformy, verze operačního systému, verze aplikace). Tyto údaje jsou používány pro směrování oznámení, telemetrii chyb a ladění."
+  },
+  {
+    "type": "li",
+    "text": "• Soubory a obsah z kamery nebo fotogalerie, které uživatel aktivně zvolí v rámci funkce skenování dokumentu nebo nahrání přílohy. Aplikace ke kameře a fotogalerii přistupuje pouze po udělení oprávnění a pouze pro vybrané soubory; nedochází ke skrytému čtení obsahu zařízení."
+  },
+  {
+    "type": "li",
+    "text": "• Obsah sdílený prostřednictvím systémové funkce \"Sdílet\" (iOS Share Extension, Android Send Intent). Uživatel vědomě volí soubor, který do aplikace přechází. Aplikace přijatý obsah zpracovává dále shodně s nahráním dokumentu přes webové rozhraní."
+  },
+  {
+    "type": "li",
+    "text": "• Minimální diagnostická data o pádech aplikace a provozních chybách uvnitř webového okna (service Sentry). Tato data neobsahují obsah dokumentů ani osobní údaje klientů; obsahují technický kontext incidentu (stack trace, route, verze aplikace)."
+  },
+  {
+    "type": "p",
+    "text": "Aplikace zásadně nevyužívá tracking, reklamní identifikátory ani cross-app tracking. Nesbíráme data pro reklamní účely. Telefon nebo tablet nepoužíváme k profilování mimo účely nezbytné pro provoz služby."
+  },
+  {
+    "type": "p",
+    "text": "Klíčoví poskytovatelé pro mobilní aplikaci: Supabase (Authentication, Database, Storage) jako primární backend, Sentry pro diagnostiku chyb, Apple Push Notification service (APNs) pro iOS oznámení a Google Firebase Cloud Messaging (FCM) pro Android oznámení v případě, že je tato funkce v příslušné verzi aplikace aktivní. Obsah dokumentů zpracovávaný AI funkcemi je nadále předáván zákazníkem zvoleným AI poskytovatelům, zejména Anthropic a OpenAI, jako subprocesorům pro účely extrakce, sumarizace a tříděných výstupů; tyto kategorie odpovídají zpracování popsanému výše pro webovou verzi a zpracovatelské smlouvě."
+  },
+  {
+    "type": "p",
+    "text": "V aplikaci nelze z důvodu pravidel obchodů provozovatelů mobilních platforem dokončit objednávku ani změnu placeného předplatného. Správa tarifu, platebních metod, faktur a promo kódů probíhá výhradně na webu na adrese www.aidvisora.cz. Pro účely ochrany osobních údajů zůstává Stripe odpovědným zpracovatelem platebních údajů shodně s webem."
+  },
+  {
+    "type": "p",
+    "text": "Oprávnění operačního systému, o která mobilní aplikace žádá"
+  },
+  {
+    "type": "li",
+    "text": "• Přístup ke kameře – pouze pro pořízení fotografie dokumentu v rámci skenování nebo nahrání přílohy."
+  },
+  {
+    "type": "li",
+    "text": "• Přístup k fotogalerii / fotkám – pouze pro výběr existujícího souboru pro nahrání."
+  },
+  {
+    "type": "li",
+    "text": "• Přístup k oznámením (push) – pouze pro zasílání provozních oznámení aplikace (požadavky, zprávy, připomenutí)."
+  },
+  {
+    "type": "p",
+    "text": "Každé oprávnění je dobrovolné. Lze jej kdykoli odvolat v systémovém nastavení telefonu nebo tabletu. Odvolání oprávnění neomezí přihlášení do aplikace, pouze znepřístupní příslušnou funkci (např. skenování bez přístupu ke kameře)."
   },
   {
     "type": "p",

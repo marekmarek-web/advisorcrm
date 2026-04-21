@@ -14,16 +14,25 @@ export function CalendarDayTasksStrip({
 }) {
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     void getTasksForDate(dateStr)
       .then((rows) => {
-        if (!cancelled) setTasks(rows.filter((t) => !t.completedAt));
+        if (!cancelled) {
+          setTasks(rows.filter((t) => !t.completedAt));
+          setError(null);
+        }
       })
-      .catch(() => {
-        if (!cancelled) setTasks([]);
+      .catch((err) => {
+        console.error("[CalendarDayTasksStrip] getTasksForDate failed", err);
+        if (!cancelled) {
+          setTasks([]);
+          setError("Úkoly se nepodařilo načíst.");
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -34,7 +43,9 @@ export function CalendarDayTasksStrip({
   }, [dateStr]);
 
   const open = tasks.filter((t) => !t.completedAt);
-  if (!loading && open.length === 0) return null;
+  // V případě chyby zobrazíme lištu, aby uživatel věděl, že něco selhalo (dříve
+  // se prázdný seznam tvářil jako „žádné úkoly dnes“).
+  if (!loading && !error && open.length === 0) return null;
 
   return (
     <div className="shrink-0 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)]/80 px-2 py-2">
@@ -47,7 +58,11 @@ export function CalendarDayTasksStrip({
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--wp-text-tertiary)]">Úkoly v den</p>
           <p className="truncate text-sm font-bold text-[color:var(--wp-text)]">
-            {loading ? "Načítám…" : `${open.length} otevřených úkolů`}
+            {loading
+              ? "Načítám…"
+              : error
+                ? error
+                : `${open.length} otevřených úkolů`}
           </p>
         </div>
         <ChevronRight size={18} className="shrink-0 text-[color:var(--wp-text-tertiary)]" />

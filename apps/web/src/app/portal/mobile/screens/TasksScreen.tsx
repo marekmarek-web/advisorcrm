@@ -206,41 +206,40 @@ function TaskRowCard({
         <button
           type="button"
           onClick={() => onSelectTask(task)}
-          className="flex-1 min-w-0 p-3.5 text-left"
+          className="flex flex-1 min-w-0 items-center gap-2 p-3.5 text-left"
         >
-          <p
-            className={cx(
-              "text-sm font-bold leading-snug",
-              isDone ? "line-through text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text)]"
-            )}
-          >
-            {task.title}
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {task.dueDate ? (
-              <span
-                className={cx(
-                  "text-[10px] font-black uppercase tracking-widest flex items-center gap-1",
-                  isOverdue && !isDone
-                    ? "text-rose-500"
-                    : isToday && !isDone
-                      ? "text-amber-500"
-                      : "text-[color:var(--wp-text-tertiary)]"
-                )}
-              >
-                <CalendarDays size={10} />
-                {label}
-              </span>
-            ) : null}
-            {task.contactName ? (
-              <StatusBadge tone="info">{task.contactName}</StatusBadge>
-            ) : null}
+          <div className="min-w-0 flex-1">
+            <p
+              className={cx(
+                "text-sm font-bold leading-snug",
+                isDone ? "line-through text-[color:var(--wp-text-tertiary)]" : "text-[color:var(--wp-text)]"
+              )}
+            >
+              {task.title}
+            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {task.dueDate ? (
+                <span
+                  className={cx(
+                    "text-[10px] font-black uppercase tracking-widest flex items-center gap-1",
+                    isOverdue && !isDone
+                      ? "text-rose-500"
+                      : isToday && !isDone
+                        ? "text-amber-500"
+                        : "text-[color:var(--wp-text-tertiary)]"
+                  )}
+                >
+                  <CalendarDays size={10} />
+                  {label}
+                </span>
+              ) : null}
+              {task.contactName ? (
+                <StatusBadge tone="info">{task.contactName}</StatusBadge>
+              ) : null}
+            </div>
           </div>
+          <ChevronRight size={16} className="shrink-0 text-[color:var(--wp-text-tertiary)]" aria-hidden />
         </button>
-
-        <div className="flex items-center pr-3 text-[color:var(--wp-text-tertiary)]">
-          <ChevronRight size={16} />
-        </div>
       </div>
     </MobileCard>
   );

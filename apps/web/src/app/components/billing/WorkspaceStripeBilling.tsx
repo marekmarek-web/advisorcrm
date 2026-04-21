@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CreditCard, Tag } from "lucide-react";
+import { CreditCard, Tag, ExternalLink } from "lucide-react";
 import { AdvisorLegalConsentLabel } from "@/app/components/auth/AdvisorLegalConsentLabel";
+import { useNativePlatform } from "@/lib/capacitor/useNativePlatform";
 import {
   isKnownPromoCode,
   PROMO_CODE_COOKIE,
@@ -123,6 +124,7 @@ export function WorkspaceStripeBilling({
   const [billingError, setBillingError] = useState<string | null>(null);
   const [subscriptionLegalConsent, setSubscriptionLegalConsent] = useState(false);
   const [activePromoCode, setActivePromoCode] = useState<string | null>(null);
+  const { isNative } = useNativePlatform();
 
   // Kód pozvánky držíme v běžné cookie, aby UI vědělo, že se sleva uplatní
   // v checkoutu. Server si ji při checkoutu ještě jednou ověří proti
@@ -315,7 +317,34 @@ export function WorkspaceStripeBilling({
         ) : null}
       </dl>
 
-      {usePicker && cat ? (
+      {isNative ? (
+        /**
+         * App Store Review Guideline 3.1.1 + Google Play Payments Policy:
+         * In the native WebView shell we never expose a purchase path. Existing
+         * subscribers still see their status above; the CTA to start / change
+         * the subscription is available only on the public web.
+         */
+        <div className="max-w-xl rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-4 text-sm text-[color:var(--wp-text-secondary)]">
+          <p className="font-bold text-[color:var(--wp-text)]">
+            Správa předplatného probíhá na webu
+          </p>
+          <p className="mt-1.5 leading-relaxed">
+            Tarif a platební metody nelze spravovat z mobilní aplikace. Otevřete{" "}
+            <a
+              href="https://www.aidvisora.cz/portal/setup"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-semibold text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+            >
+              www.aidvisora.cz/portal/setup
+              <ExternalLink size={14} className="shrink-0" />
+            </a>{" "}
+            v prohlížeči a spravujte předplatné, faktury i promo kódy tam.
+          </p>
+        </div>
+      ) : null}
+
+      {!isNative && usePicker && cat ? (
         <div className="space-y-4 max-w-2xl">
           <div className="flex flex-wrap gap-2 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-muted)] p-1">
             <button
@@ -386,7 +415,7 @@ export function WorkspaceStripeBilling({
         </div>
       ) : null}
 
-      {!billing.canManage ? (
+      {isNative ? null : !billing.canManage ? (
         <p className="max-w-xl text-sm text-[color:var(--wp-text-secondary)]">
           Předplatné může spravovat administrátor nebo ředitel workspace.
         </p>

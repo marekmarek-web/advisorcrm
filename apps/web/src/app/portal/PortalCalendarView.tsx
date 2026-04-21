@@ -928,6 +928,7 @@ export function PortalCalendarView() {
   const [selectedDate, setSelectedDate] = useState(todayStrInitial);
   const [dayTasks, setDayTasks] = useState<TaskRow[]>([]);
   const [dayTasksLoading, setDayTasksLoading] = useState(false);
+  const [dayTasksError, setDayTasksError] = useState<string | null>(null);
   /** When set, new-task modal is open with this due date. */
   const [newTaskModal, setNewTaskModal] = useState<{ dueDate: string } | null>(null);
   const [contextPanelCollapsed, setContextPanelCollapsed] = useState(false);
@@ -952,7 +953,20 @@ export function PortalCalendarView() {
 
   const loadDayTasks = useCallback((dateStr: string) => {
     setDayTasksLoading(true);
-    getTasksForDate(dateStr).then(setDayTasks).catch(() => setDayTasks([])).finally(() => setDayTasksLoading(false));
+    setDayTasksError(null);
+    getTasksForDate(dateStr)
+      .then((rows) => {
+        setDayTasks(rows);
+        setDayTasksError(null);
+      })
+      .catch((err) => {
+        console.error("[PortalCalendarView] getTasksForDate failed", err);
+        setDayTasks([]);
+        setDayTasksError(
+          "Úkoly dne se nepodařilo načíst. Zkuste to znovu nebo obnovte stránku.",
+        );
+      })
+      .finally(() => setDayTasksLoading(false));
   }, []);
 
   const closeEventDetail = useCallback(() => {
@@ -1641,6 +1655,8 @@ export function PortalCalendarView() {
               dayEvents={eventsByDate.get(selectedDate) ?? []}
               dayTasks={dayTasks}
               dayTasksLoading={dayTasksLoading}
+              dayTasksError={dayTasksError}
+              onRetryDayTasks={() => loadDayTasks(selectedDate)}
               unreadMessagesCount={unreadMessagesCount}
               onToggleTask={handleToggleDayTask}
               onAddTask={(dateStr) => setNewTaskModal({ dueDate: dateStr })}

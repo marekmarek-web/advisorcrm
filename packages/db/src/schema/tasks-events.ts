@@ -19,6 +19,10 @@ export const tasks = pgTable("tasks", {
   createdBy: text("created_by"),
   teamTaskId: uuid("team_task_id").references(() => teamTasks.id, { onDelete: "set null" }),
   awaitingDocument: boolean("awaiting_document").default(false),
+  /** „low“ | „normal“ | „high“. Viz migrace `tasks-priority-reminder-2026-04-20.sql`. */
+  priority: text("priority").notNull().default("normal"),
+  /** Relativní připomínka („none“, „10m“, „1h“, „1d“, ...); absolutní čas se počítá v notifikační vrstvě. */
+  reminder: text("reminder").notNull().default("none"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

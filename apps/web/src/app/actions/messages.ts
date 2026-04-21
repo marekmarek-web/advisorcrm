@@ -629,8 +629,12 @@ export async function getRecentConversations(limit = 5): Promise<RecentConversat
         unread: Boolean(r.unread),
       };
     });
-  } catch {
-    return [];
+  } catch (err) {
+    // Nespolkneme chybu do `[]` — klient by viděl prázdnou inbox bez varování a nikdy by mu
+    // neupadlo, že načtení selhalo. Logneme pro observability a propagujeme dál do UI,
+    // které má fallback „Konverzace se nepodařilo načíst“.
+    console.error("[getRecentConversations]", err);
+    throw err instanceof Error ? err : new Error("Nepodařilo se načíst konverzace.");
   }
 }
 
