@@ -35,9 +35,22 @@ export function czechPersonalIdMod11Valid(normalizedDigits: string): boolean {
   return Number(normalizedDigits[9]) === expected;
 }
 
+/**
+ * Map the 2-digit "month" part of a Czech rodné číslo back to calendar month.
+ *
+ * F3-4 (H-14): widened to cover the "extended calendar" reserve ranges that
+ * the MVČR assigns when a day's standard block is exhausted:
+ *   - 01–12  standard male month
+ *   - 51–62  standard female month (month + 50)
+ *   - 21–32  extended male month (month + 20, assigned since 2004)
+ *   - 71–82  extended female month (month + 70, assigned since 2004)
+ * Anything else is invalid and returns null.
+ */
 function calendarMonthFromRcMonthRaw(mmRaw: number): number | null {
-  if (mmRaw >= 51 && mmRaw <= 62) return mmRaw - 50;
   if (mmRaw >= 1 && mmRaw <= 12) return mmRaw;
+  if (mmRaw >= 51 && mmRaw <= 62) return mmRaw - 50;
+  if (mmRaw >= 21 && mmRaw <= 32) return mmRaw - 20;
+  if (mmRaw >= 71 && mmRaw <= 82) return mmRaw - 70;
   return null;
 }
 

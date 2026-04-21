@@ -48,6 +48,8 @@ Při **nové** migraci nebo významné úpravě `.sql` přidejte **jeden řádek
 | 2026-04-20 | WS-2/WS-3 Batch 4 Slice 1 — `audit_log` append-only hardening: drop UPDATE/DELETE policies + REVOKE UPDATE/DELETE z `PUBLIC`, `authenticated`, `anon`, `aidvisora_app`. Zachovány jsou tenant SELECT/INSERT politiky. Vzor podle `billing_audit_log` | [audit-log-append-only-2026-04-20.sql](../packages/db/migrations/audit-log-append-only-2026-04-20.sql) |
 | 2026-04-20 | Rodinné role domácnosti: mapování legacy hodnot (`primary`→`partner`, `member`→`jiny`, `child`→`dite`) + CHECK constraint na nové enum (`otec, matka, syn, dcera, partner, partnerka, dite, prarodic, jiny`). Pár řádku běželo bez role → zůstávají `jiny`. | [household_members_family_roles_2026-04-20.sql](../packages/db/migrations/household_members_family_roles_2026-04-20.sql) |
 | 2026-04-21 | Produkce (UX blocker): `contracts.bj_units` (numeric 14,4) + `contracts.bj_calculation` (jsonb) + částečný index `idx_contracts_tenant_advisor_bj` pro rychlé součty BJ za období. Bez toho `getProductionSummary` padal na 42703 a obrazovka Produkce se na mobilu vůbec nenačetla. | [add_bj_units_on_contracts_2026-04-21.sql](../packages/db/migrations/add_bj_units_on_contracts_2026-04-21.sql) |
+| 2026-04-21 | Úklid katalogu: merge duplicitních partnerů case-insensitive (Uniqa/UNIQA → UNIQA, Investika/INVESTIKA → INVESTIKA) s přepisem FK v `contracts`, `payment_accounts` a `client_payment_setups`; dedup produktů v rámci (partner, segment); odstranění ČSOB/HYPO duplicity vs. ČSOB Hypoteční banka; odstranění segmentu ZDRAV (guard na 0 smluv, jinak RAISE EXCEPTION) | [catalog-dedup-partners-products-2026-04-21.sql](../packages/db/migrations/catalog-dedup-partners-products-2026-04-21.sql) |
+| 2026-04-21 | Gap fill (priorita 1–5) + odstranění Moneta: FK `contracts.partner_id` / `payment_accounts.partner_id` / `client_payment_setups.partner_id` → NULL pro Moneta, DELETE globálních produktů Moneta, DELETE globálního partnera Moneta (HYPO + UVER). Nové partnery (Generali Česká pojišťovna, UNIQA Penzijní společnost, Modrá pyramida) a nové segmenty (CEST, FIRMA_POJ) doplní `pnpm run db:seed-catalog` z aktualizovaného `catalog.json` | [catalog-moneta-removal-2026-04-21.sql](../packages/db/migrations/catalog-moneta-removal-2026-04-21.sql) |
 
 ---
 
@@ -106,6 +108,20 @@ Odkaz: [`packages/db/migrations/rls-cleanup-legacy-clients-contracts-tenant-2026
 <summary><strong>advisor-proposals-2026-04-19.sql</strong> — Návrhy od poradce pro klientskou zónu</summary>
 
 Odkaz: [`packages/db/migrations/advisor-proposals-2026-04-19.sql`](../packages/db/migrations/advisor-proposals-2026-04-19.sql)
+
+</details>
+
+<details>
+<summary><strong>catalog-dedup-partners-products-2026-04-21.sql</strong> — Úklid katalogu: merge duplicitních partnerů (Uniqa/UNIQA, Investika/INVESTIKA), dedup produktů, odstranění ZDRAV a ČSOB/HYPO duplicity</summary>
+
+Odkaz: [`packages/db/migrations/catalog-dedup-partners-products-2026-04-21.sql`](../packages/db/migrations/catalog-dedup-partners-products-2026-04-21.sql)
+
+</details>
+
+<details>
+<summary><strong>catalog-moneta-removal-2026-04-21.sql</strong> — Gap fill (priorita 1–5) + odstranění Moneta: FK přepsán na NULL, DELETE globálního partnera/produktů Moneta. Nové partnery (Generali Česká pojišťovna, UNIQA Penzijní společnost, Modrá pyramida) a segmenty CEST + FIRMA_POJ doplní seed script.</summary>
+
+Odkaz: [`packages/db/migrations/catalog-moneta-removal-2026-04-21.sql`](../packages/db/migrations/catalog-moneta-removal-2026-04-21.sql)
 
 </details>
 

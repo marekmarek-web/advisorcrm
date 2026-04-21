@@ -170,17 +170,78 @@ export function resolveFund(
 /**
  * Resolve funds from portfolio attributes (extracted investment data).
  * Takes the first fund from investmentFunds array + strategy and resolves.
+ *
+ * **Kept for backward compatibility.** Používá jen první fond — nové volání
+ * preferuje `resolveFundsFromPortfolioAttributes` (multi-fund), které vybírá
+ * první fund-library hit místo striktně prvního fondu.
  */
 export function resolveFundFromPortfolioAttributes(
   attrs: Record<string, unknown>,
 ): FundResolutionResult {
-  const funds = attrs.investmentFunds as Array<{ name?: string; isin?: string }> | undefined;
-  const firstFund = Array.isArray(funds) && funds.length > 0 ? funds[0] : null;
+  return resolveFundsFromPortfolioAttributes(attrs).aggregate;
+}
+
+/**
+ * F1-4 (BONUS-2): multi-fund resolution.
+ *
+ * Vrací per-fund resolution + aggregate (rollup) metadata pro celé portfolio.
+ * Aggregate preferuje první "fund-library" hit napříč všemi fondy — pokud ani
+ * jeden fond není v library, fallback na první heuristic-fallback, a pokud
+ * není ani ten, vrací `null`.
+ *
+ * Důvod: dříve se bralo striktně `funds[0]` a pokud byl první fond mimo
+ * library (např. oborový podfond), FV se zaručeně spadalo do heuristic i když
+ * druhý fond měl přesný ISIN v library.
+ */
+export type MultiFundResolutionResult = {
+  perFund: Array<FundResolutionResult & { index: number }>;
+  aggregate: FundResolutionResult;
+};
+
+export function resolveFundsFromPortfolioAttributes(
+  attrs: Record<string, unknown>,
+): MultiFundResolutionResult {
+  const funds =
+    (attrs.investmentFunds as Array<{ name?: string; isin?: string }> | undefined) ?? [];
   const strategy = typeof attrs.investmentStrategy === "string" ? attrs.investmentStrategy : null;
 
-  return resolveFund(
-    firstFund?.name ?? null,
-    firstFund?.isin ?? null,
-    strategy,
-  );
+  if (!Array.isArray(funds) || funds.length === 0) {
+    const strategyOnly = resolveFund(null, null, strategy);
+    return {
+      perFund: [],
+      aggregate: strategyOnly,
+    };
+  }
+
+  const perFund = funds.map((f, index) => ({
+    index,
+    ...resolveFund(f?.name ?? null, f?.isin ?? null, strategy),
+  }));
+
+  const firstLibraryHit = perFund.find((r) => r.fvSourceType === "fund-library");
+  if (firstLibraryHit) {
+    return {
+      perFund,
+      aggregate: {
+        resolvedFundId: firstLibraryHit.resolvedFundId,
+        resolvedFundCategory: firstLibraryHit.resolvedFundCategory,
+        fvSourceType: "fund-library",
+      },
+    };
+  }
+  const firstHeuristic = perFund.find((r) => r.fvSourceType === "heuristic-fallback");
+  if (firstHeuristic) {
+    return {
+      perFund,
+      aggregate: {
+        resolvedFundId: firstHeuristic.resolvedFundId,
+        resolvedFundCategory: firstHeuristic.resolvedFundCategory,
+        fvSourceType: "heuristic-fallback",
+      },
+    };
+  }
+  return {
+    perFund,
+    aggregate: { resolvedFundId: null, resolvedFundCategory: null, fvSourceType: null },
+  };
 }

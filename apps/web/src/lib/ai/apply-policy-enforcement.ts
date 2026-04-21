@@ -69,6 +69,10 @@ function resolveDisplayStatus(
 ): "Nalezeno" | "Odvozeno" | "Chybí" | undefined {
   if (!cell) return undefined;
   const s = cell.status;
+  // F0-2 (C-02): "manual" / "manual_edit" / "confirmed" — advisor pole vyplnil
+  // v UI. Musíme ho brát jako plnohodnotně nalezené, aby enforcement NEpouštěl
+  // do_not_apply/manual_required a pole se dostalo do DB.
+  if (s === "manual" || s === "manual_edit" || s === "confirmed") return "Nalezeno";
   if (s === "extracted" || s === "found") return "Nalezeno";
   if (s === "inferred" || s === "derived" || s === "inferred_low_confidence") return "Odvozeno";
   if (s === "missing" || s === "not_found" || !cell.value) return "Chybí";

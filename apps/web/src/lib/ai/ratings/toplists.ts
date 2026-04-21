@@ -53,7 +53,6 @@ function topListForSegment(segmentCode: string): TopListEntry[] | null {
     case "AUTO_HAV":
     case "CEST":
     case "FIRMA_POJ":
-    case "ZDRAV":
       return seed.topLists.pojistovny_top10;
     default:
       return null;

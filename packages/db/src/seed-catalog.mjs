@@ -34,7 +34,12 @@ function isExcluded(partnerName) {
 }
 
 function isTbd(name) {
-  return typeof name === "string" && (name.startsWith("TBD") || name.includes("TBD -"));
+  if (typeof name !== "string") return false;
+  return (
+    name.startsWith("TBD") ||
+    name.includes("TBD -") ||
+    /\(doplnit/i.test(name)
+  );
 }
 
 const sql = postgres(connectionString, { max: 1, prepare: false });

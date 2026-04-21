@@ -11,13 +11,12 @@ import {
   meetingNotes,
   contractUploadReviews,
   documentExtractions,
-  paymentAccounts,
+  clientPaymentSetups,
   consents,
   auditLog,
   opportunities,
   timelineItems,
   userTermsAcceptance,
-  portalFeedback,
   clientContacts,
   advisorProposals,
   portalNotifications,
@@ -86,7 +85,7 @@ type ExportOptions = {
  *
  * Rozsah dle GDPR článku 15 (Právo na přístup) + článku 20 (Portabilita):
  *   - Identifikační údaje (jméno, e-mail, telefon, adresa, datum narození, OP, rodné číslo).
- *   - Smlouvy, portfolio, platební účty.
+ *   - Smlouvy, portfolio, platební pokyny klienta (client_payment_setups).
  *   - Komunikace (messages, meeting notes obsahující tento kontakt).
  *   - AI review dokumentů klienta + extrahovaná pole.
  *   - Doklady o souhlasech (consents, user_terms_acceptance, GDPR consent timestamp).
@@ -119,7 +118,7 @@ async function doExportContactData(
     meetingNoteRows,
     uploadReviewRows,
     extractionRows,
-    paymentAccountRows,
+    clientPaymentSetupRows,
     consentRows,
     opportunityRows,
     timelineRows,
@@ -150,15 +149,21 @@ async function doExportContactData(
     db
       .select({
         id: contractUploadReviews.id,
-        status: contractUploadReviews.status,
+        fileName: contractUploadReviews.fileName,
+        processingStatus: contractUploadReviews.processingStatus,
+        reviewStatus: contractUploadReviews.reviewStatus,
         createdAt: contractUploadReviews.createdAt,
-        documentId: contractUploadReviews.documentId,
       })
       .from(contractUploadReviews)
       .where(
         and(
           eq(contractUploadReviews.tenantId, tenantId),
-          eq(contractUploadReviews.contactId, contactId),
+          or(
+            eq(contractUploadReviews.matchedClientId, contactId),
+            eq(contractUploadReviews.linkedClientOverride, contactId),
+            sql`${contractUploadReviews.applyResultPayload}->>'createdClientId' = ${contactId}`,
+            sql`${contractUploadReviews.applyResultPayload}->>'linkedClientId' = ${contactId}`,
+          ),
         ),
       ),
     db
@@ -166,7 +171,7 @@ async function doExportContactData(
         id: documentExtractions.id,
         documentId: documentExtractions.documentId,
         status: documentExtractions.status,
-        model: documentExtractions.model,
+        extractedAt: documentExtractions.extractedAt,
         createdAt: documentExtractions.createdAt,
       })
       .from(documentExtractions)
@@ -178,8 +183,8 @@ async function doExportContactData(
       ),
     db
       .select()
-      .from(paymentAccounts)
-      .where(and(eq(paymentAccounts.tenantId, tenantId), eq(paymentAccounts.contactId, contactId))),
+      .from(clientPaymentSetups)
+      .where(and(eq(clientPaymentSetups.tenantId, tenantId), eq(clientPaymentSetups.contactId, contactId))),
     db
       .select()
       .from(consents)
@@ -201,10 +206,8 @@ async function doExportContactData(
           eq(userTermsAcceptance.contactId, contactId),
         ),
       ),
-    db
-      .select()
-      .from(portalFeedback)
-      .where(and(eq(portalFeedback.tenantId, tenantId), eq(portalFeedback.contactId, contactId))),
+    // portal_feedback je vázané na user_id (advisor), ne na kontakt — do exportu osobních dat nepatří.
+    Promise.resolve([] as unknown[]),
     db
       .select({ userId: clientContacts.userId })
       .from(clientContacts)
@@ -294,7 +297,7 @@ async function doExportContactData(
       uploadReviews: uploadReviewRows,
       extractions: extractionRows,
     },
-    paymentAccounts: paymentAccountRows,
+    clientPaymentSetups: clientPaymentSetupRows,
     consents: consentRows,
     termsAcceptance: termsAcceptanceRows,
     opportunities: opportunityRows,

@@ -47,6 +47,18 @@ function canApply(processingStatus: string, reviewStatus: string | null): boolea
   );
 }
 
+/**
+ * F0-3 (C-04): Reason-y, které ani advisor-confirmed apply NESMÍ override-nout.
+ * Tyto gate-y indikují strukturální fail (AI neklasifikovala, pipeline failed,
+ * klient match je dvojsmyslný) — nejsou to warning/confidence kategorie, ale
+ * tvrdé bloky. Pokud se dostanou do pendingApply, apply musí failnout.
+ */
+const UNOVERRIDABLE_GATE_REASONS = new Set<string>([
+  "LOW_CLASSIFICATION_CONFIDENCE",
+  "PIPELINE_FAILED_STEP",
+  "LLM_CLIENT_MATCH_AMBIGUOUS",
+]);
+
 function canResolveClientBeforeApply(reviewStatus: string | null): boolean {
   return reviewStatus === null || reviewStatus === "pending" || reviewStatus === "approved";
 }
@@ -376,19 +388,64 @@ export async function applyContractReviewDrafts(
     return { ok: false, error: "U neúspěšné položky nelze aplikovat akce." };
   }
 
+  // F0-3 (C-04): Hard blok pro supporting dokumenty (payslip, tax return,
+  // bank statement, atd.). Tyto dokumenty nesmí vytvořit smlouvu/contract
+  // apply ani když advisor klikl Approve. Bypass přes explicitní
+  // `overrideReason` je ponechaný jako emergency path (audit-logován níže).
+  const supportingPayload =
+    rawRow.extractedPayload && typeof rawRow.extractedPayload === "object"
+      ? (rawRow.extractedPayload as Record<string, unknown>)
+      : null;
+  if (
+    supportingPayload &&
+    isSupportingDocumentOnly(supportingPayload) &&
+    !options?.overrideReason
+  ) {
+    breadcrumbContractReviewPaymentGate({
+      reviewId: id,
+      blockedReasons: ["SUPPORTING_DOCUMENT_ONLY"],
+      hadOverride: false,
+    });
+    return {
+      ok: false,
+      error:
+        "Podpůrný dokument (např. mzdový list, daňové přiznání, výpis z účtu) nelze publikovat jako smlouvu. Nahrajte správný typ dokumentu nebo kontaktujte support.",
+      blockedReasons: ["SUPPORTING_DOCUMENT_ONLY"],
+    };
+  }
+
   const row = injectContractDraftActionIfMissing(regeneratePaymentDraftActions(rawRow));
 
   const { evaluateApplyReadiness, applyReasonsPendingOverride } = await import("@/lib/ai/quality-gates");
   const gate = evaluateApplyReadiness(row);
   const pendingApply = applyReasonsPendingOverride(gate);
   if (pendingApply.length > 0) {
+    // F0-3 (C-04): hard-block důvody, které NIKDO nesmí override-nout, jdou
+    // first — nezávisle na tom, zda je advisor-confirmed apply.
+    const hardBlocks = pendingApply.filter((r) => UNOVERRIDABLE_GATE_REASONS.has(r));
+    if (hardBlocks.length > 0) {
+      breadcrumbContractReviewPaymentGate({
+        reviewId: id,
+        blockedReasons: hardBlocks,
+        hadOverride: false,
+      });
+      return {
+        ok: false,
+        error: `Kritické důvody blokování nelze přeskočit: ${hardBlocks.join(", ")}`,
+        blockedReasons: hardBlocks,
+      };
+    }
     const dbIgnored = Array.isArray(rawRow.ignoredWarnings) ? (rawRow.ignoredWarnings as string[]) : [];
     const explicitOverrides = options?.overrideGateReasons ?? [];
     // Advisor-confirmed flow: when advisor approved the review, auto-override all
-    // publishability/proposal/payment gate reasons. The advisor takes responsibility.
+    // publishability/proposal/payment gate reasons EXCEPT hard-blocks above.
+    // The advisor takes responsibility for the rest.
     const isAdvisorConfirmedApply = rawRow.reviewStatus === "approved";
+    const advisorOverridableReasons = pendingApply.filter(
+      (r) => !UNOVERRIDABLE_GATE_REASONS.has(r),
+    );
     const overrides = isAdvisorConfirmedApply
-      ? Array.from(new Set([...pendingApply, ...explicitOverrides, ...dbIgnored]))
+      ? Array.from(new Set([...advisorOverridableReasons, ...explicitOverrides, ...dbIgnored]))
       : Array.from(new Set([...explicitOverrides, ...dbIgnored]));
     const remaining = pendingApply.filter((r) => !overrides.includes(r));
     if (remaining.length > 0) {

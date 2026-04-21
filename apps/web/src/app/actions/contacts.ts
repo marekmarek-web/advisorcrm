@@ -77,7 +77,13 @@ export async function getContactsList(): Promise<ContactRow[]> {
         leadSourceUrl: contacts.leadSourceUrl,
       })
       .from(contacts)
-      .where(and(eq(contacts.tenantId, auth.tenantId), isNull(contacts.archivedAt)))
+      .where(
+        and(
+          eq(contacts.tenantId, auth.tenantId),
+          isNull(contacts.archivedAt),
+          isNull(contacts.deletedAt),
+        ),
+      )
       .orderBy(asc(contacts.lastName), asc(contacts.firstName));
   });
 }
@@ -89,7 +95,13 @@ async function loadContactsCount(): Promise<number> {
     const [row] = await tx
       .select({ count: sql<number>`count(*)::int` })
       .from(contacts)
-      .where(and(eq(contacts.tenantId, auth.tenantId), isNull(contacts.archivedAt)));
+      .where(
+        and(
+          eq(contacts.tenantId, auth.tenantId),
+          isNull(contacts.archivedAt),
+          isNull(contacts.deletedAt),
+        ),
+      );
     return row?.count ?? 0;
   });
 }
@@ -116,7 +128,13 @@ export async function exportContactsCsv(): Promise<string> {
         lifecycleStage: contacts.lifecycleStage,
       })
       .from(contacts)
-      .where(and(eq(contacts.tenantId, auth.tenantId), isNull(contacts.archivedAt)))
+      .where(
+        and(
+          eq(contacts.tenantId, auth.tenantId),
+          isNull(contacts.archivedAt),
+          isNull(contacts.deletedAt),
+        ),
+      )
       .orderBy(asc(contacts.lastName), asc(contacts.firstName));
   });
 
@@ -331,7 +349,13 @@ export async function getContactNamePickerRows(): Promise<ContactNamePickerRow[]
         phone: contacts.phone,
       })
       .from(contacts)
-      .where(and(eq(contacts.tenantId, auth.tenantId), isNull(contacts.archivedAt)))
+      .where(
+        and(
+          eq(contacts.tenantId, auth.tenantId),
+          isNull(contacts.archivedAt),
+          isNull(contacts.deletedAt),
+        ),
+      )
       .orderBy(asc(contacts.lastName), asc(contacts.firstName));
   });
 }
@@ -361,7 +385,13 @@ export async function getContactEditPageData(contactId: string): Promise<Contact
           phone: contacts.phone,
         })
         .from(contacts)
-        .where(and(eq(contacts.tenantId, auth.tenantId), isNull(contacts.archivedAt)))
+        .where(
+          and(
+            eq(contacts.tenantId, auth.tenantId),
+            isNull(contacts.archivedAt),
+            isNull(contacts.deletedAt),
+          ),
+        )
         .orderBy(asc(contacts.lastName), asc(contacts.firstName)),
       getHouseholdsListWithAuth(auth, tx),
     ]);

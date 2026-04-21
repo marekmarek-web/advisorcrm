@@ -1,0 +1,59 @@
+{
+  "__fixture": "audit-2026-04-21/02",
+  "__bug": "C-02",
+  "__description": "Po manuálním doplnění chybějícího pole přes mergeFieldEditsIntoExtractedPayload zůstává status=missing, takže enforcement stále klasifikuje pole jako Chybí.",
+  "documentClassification": {
+    "primaryType": "life_insurance_contract",
+    "subtype": "final_contract",
+    "lifecycleStatus": "final_contract",
+    "documentIntent": "create_new_contract",
+    "confidence": 0.94,
+    "reasons": ["signed_final_contract"]
+  },
+  "documentMeta": { "scannedVsDigital": "digital", "overallConfidence": 0.94 },
+  "parties": {},
+  "productsOrObligations": [],
+  "financialTerms": {},
+  "serviceTerms": {},
+  "extractedFields": {
+    "contractNumber": { "value": "ZP-2026-NOV-001", "status": "extracted", "confidence": 0.98 },
+    "insurer": { "value": "Kooperativa", "status": "extracted", "confidence": 0.99 },
+    "productName": { "value": "Flexi Život Plus", "status": "extracted", "confidence": 0.95 },
+    "fullName": { "value": "Jan Novák", "status": "extracted", "confidence": 0.93 },
+    "policyStartDate": { "value": "2026-04-01", "status": "extracted", "confidence": 0.9 },
+    "premiumAmount": { "value": "2 500", "status": "extracted", "confidence": 0.9 },
+    "phone": { "value": null, "status": "missing", "confidence": 0 }
+  },
+  "publishHints": { "contractPublishable": true },
+  "evidence": [],
+  "candidateMatches": {
+    "matchedClients": [],
+    "matchedHouseholds": [],
+    "matchedDeals": [],
+    "matchedCompanies": [],
+    "matchedContracts": [],
+    "score": 0,
+    "reason": "no_match",
+    "ambiguityFlags": []
+  },
+  "sectionSensitivity": {},
+  "relationshipInference": {
+    "policyholderVsInsured": [],
+    "childInsured": [],
+    "intermediaryVsClient": [],
+    "employerVsEmployee": [],
+    "companyVsPerson": [],
+    "bankOrLenderVsBorrower": []
+  },
+  "reviewWarnings": [],
+  "suggestedActions": [],
+  "sensitivityProfile": "standard_personal_data",
+  "contentFlags": {
+    "isFinalContract": true,
+    "isProposalOnly": false,
+    "containsPaymentInstructions": false,
+    "containsClientData": true,
+    "containsAdvisorData": false,
+    "containsMultipleDocumentSections": false
+  }
+}

@@ -678,14 +678,69 @@ export function coerceReviewEnvelopeParsedJson(input: unknown, options: CoerceEn
     (lc === "proposal" || lc === "offer") &&
     !isExplicitModelation
   ) {
-    // Promote to final_contract so that isProposalOnly is NOT set in contentFlags.
-    // Keep originalLifecycle in dc for UI display if needed.
-    dc.lifecycleStatus = "final_contract";
-    // Preserve original lifecycle for audit/display in reasons if not already recorded
+    // F1-1 (C-09): proposal/offer se NESMÍ tiše promovat na final_contract.
+    // Předchozí chování povyšovalo jakýkoliv proposal a tím zapínalo apply
+    // flow i pro návrhy bez podpisu. Nyní promujeme JEN pokud je evidence
+    // finality:
+    //   a) extrahované `contractNumber` (ne proposalNumber), nebo
+    //   b) `signatureDate` / podpis v extrakci, nebo
+    //   c) kombinace `policyStartDate` s direct evidence tier.
+    //
+    // Pokud evidence chybí, necháme `proposal` a jen zapíšeme audit reason —
+    // ať downstream (apply + publishability gate) zná důvod.
+    const originalLifecycle = lc;
+    const extractedCell = (key: string): { value?: unknown; status?: string; evidenceTier?: string } | undefined => {
+      const cell = efForFinality[key] as
+        | { value?: unknown; status?: string; evidenceTier?: string }
+        | undefined;
+      return cell;
+    };
+    const hasNonEmptyValue = (key: string): boolean => {
+      const cell = extractedCell(key);
+      if (!cell) return false;
+      const v = cell.value;
+      if (v == null) return false;
+      if (typeof v === "string") return v.trim() !== "";
+      if (typeof v === "number") return Number.isFinite(v);
+      return true;
+    };
+    const isDirectEvidence = (key: string): boolean => {
+      const cell = extractedCell(key);
+      if (!cell) return false;
+      return (
+        cell.status === "extracted" ||
+        cell.status === "manual" ||
+        cell.evidenceTier === "direct"
+      );
+    };
+
+    const hasContractNumber = hasNonEmptyValue("contractNumber");
+    const hasSignature = hasNonEmptyValue("signatureDate") || hasNonEmptyValue("signature");
+    const hasDirectPolicyStart =
+      hasNonEmptyValue("policyStartDate") && isDirectEvidence("policyStartDate");
+    const hasDirectEffective =
+      hasNonEmptyValue("effectiveDate") && isDirectEvidence("effectiveDate");
+
+    const canPromote =
+      hasContractNumber && (hasSignature || hasDirectPolicyStart || hasDirectEffective);
+
     if (!dc.reasons) dc.reasons = [];
-    if (Array.isArray(dc.reasons) && !dc.reasons.includes("lifecycle_promoted_from_proposal")) {
-      (dc.reasons as string[]).push("lifecycle_promoted_from_proposal");
+    const reasons = dc.reasons as unknown;
+    const reasonsArr = Array.isArray(reasons) ? (reasons as string[]) : [];
+
+    if (canPromote) {
+      dc.lifecycleStatus = "final_contract";
+      dc.originalLifecycle = originalLifecycle;
+      if (!reasonsArr.includes("lifecycle_promoted_from_proposal_with_evidence")) {
+        reasonsArr.push("lifecycle_promoted_from_proposal_with_evidence");
+      }
+    } else {
+      dc.originalLifecycle = originalLifecycle;
+      if (!reasonsArr.includes("lifecycle_kept_as_proposal_insufficient_evidence")) {
+        reasonsArr.push("lifecycle_kept_as_proposal_insufficient_evidence");
+      }
     }
+    dc.reasons = reasonsArr;
   }
   // ─────────────────────────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────────────────────────

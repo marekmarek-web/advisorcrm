@@ -275,6 +275,7 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
         and(
           eq(contacts.tenantId, auth.tenantId),
           isNull(contacts.archivedAt),
+          isNull(contacts.deletedAt),
           isNotNull(contacts.birthDate),
           sql`to_char(${contacts.birthDate}, 'MM-DD') = ${pragueToday.mmdd}`
         )

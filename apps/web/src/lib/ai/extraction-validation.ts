@@ -241,11 +241,23 @@ export function validateExtractedContract(payload: {
     }
   }
 
-  // Personal ID (Czech: 9 or 10 digits, optional slash)
+  // Personal ID (Czech RČ):
+  // Accepted formats:
+  //   - 9 digits (pre-1954)                     "841209123"
+  //   - 9 digits + '/' + 1 digit                "841209/1"
+  //   - 10 digits (without slash, post-1954)    "8501020123"   ← F3-4 (H-13)
+  //   - 6 digits + '/' + 3 or 4 digits          "850102/0123"
+  //
+  // Before F3-4 the 10-digit-without-slash form was only accepted implicitly
+  // via the `id.length < 8` short-circuit (which is a correctness accident,
+  // not an explicit format). We now list the format explicitly so the
+  // warning path reports accurate diagnostics.
   const personalId = payload.client?.personalId;
   if (personalId != null && String(personalId).trim() !== "") {
     const id = String(personalId).trim().replace(/\s/g, "");
-    if (!/^\d{9}$|^\d{9}\/\d{1}$|^\d{6}\/\d{3,4}$/.test(id) && id.length < 8) {
+    const VALID_RC =
+      /^\d{9}$|^\d{9}\/\d{1}$|^\d{10}$|^\d{6}\/\d{3,4}$/;
+    if (!VALID_RC.test(id) && id.length < 8) {
       addWarning(
         warnings,
         reasonsForReview,

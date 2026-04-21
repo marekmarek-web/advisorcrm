@@ -2,6 +2,7 @@ import { db } from "db";
 import {
   contacts,
   contracts,
+  contractUploadReviews,
   partners,
   products,
   auditLog,
@@ -9,7 +10,7 @@ import {
   contractSegments,
   type ClientPaymentSetupPaymentType,
 } from "db";
-import { eq, and, or, isNull, isNotNull, ilike } from "db";
+import { eq, and, or, isNull, isNotNull, ilike, sql } from "db";
 import * as Sentry from "@sentry/nextjs";
 import type { ContractReviewRow } from "./review-queue-repository";
 import type { ApplyResultPayload } from "./review-queue-repository";
@@ -21,6 +22,7 @@ import {
   mergePortfolioAttributesWithPhase1Scalars,
 } from "./portfolio-phase1-attributes";
 import { normalizeDateToISO } from "./canonical-date-normalize";
+import { normalizePhone } from "./normalize";
 import {
   buildCanonicalPaymentPayloadFromRaw,
   dedupeCzechAccountTrailingBankCode,
@@ -46,7 +48,7 @@ import {
 } from "./field-merge-policy";
 import { loadContactPortalAccessSnapshot } from "./client-portal-access";
 import { computeAccessVerdict } from "@/lib/auth/access-verdict";
-import { resolveFundFromPortfolioAttributes } from "@/lib/fund-library/fund-resolution";
+import { resolveFundsFromPortfolioAttributes } from "@/lib/fund-library/fund-resolution";
 import { resolveApplyClientContactId } from "@/lib/ai/apply-client-resolution";
 import { buildContactsPiiPatch } from "@/lib/pii/contacts-write-through";
 import { upsertCoverageFromAppliedReview } from "@/lib/ai/apply-coverage-from-review";
@@ -221,9 +223,42 @@ export function pickStrongerInvestmentProductName(
 }
 
 /**
- * Catalog FK resolution: find partnerId/productId by name (case-insensitive fuzzy match).
- * Soft-fail by design — returns nulls when catalog entry not found.
+ * Derive a compact brand core from a messy insurer / institution string.
+ * Př.: "ČSOB Pojišťovna, a. s., člen holdingu ČSOB" → "ČSOB Pojišťovna"
+ *      "Generali Česká pojišťovna a.s."            → "Generali Česká pojišťovna"
+ *      "UNIQA pojišťovna, a.s."                     → "UNIQA pojišťovna"
+ *
+ * Odstraní právní formu, "člen holdingu X", hlavičky typu "pojistitel:", čárky
+ * navíc a whitespace. Ponechá diakritiku — DB match běží přes ILIKE, který ji
+ * ignoruje na case, a ne-diacritic variantu tenant katalogu nemáme.
+ */
+function normalizePartnerBrandCore(raw: string): string {
+  let s = String(raw).trim();
+  if (!s) return "";
+  s = s.replace(/^\s*(pojistitel|institution|company|insurer|pojišťovna)\s*[:\-]\s*/i, "");
+  s = s.replace(/,?\s*(a\.?\s?s\.?|s\.?\s?r\.?\s?o\.?|spol\.?\s*s\s*r\.?\s?o\.?)\b[.]*$/gi, "");
+  s = s.replace(/,?\s*(a\.?\s?s\.?|s\.?\s?r\.?\s?o\.?),/gi, ",");
+  s = s.replace(/,\s*(člen\s+holdingu|group|skupina)\s+[^,]+$/i, "");
+  s = s.replace(/[\u200B-\u200D\uFEFF]/g, "");
+  s = s.replace(/\s{2,}/g, " ").replace(/\s*,\s*$/g, "").trim();
+  return s;
+}
+
+/**
+ * Catalog FK resolution: match partner by name → partnerId (tenant-scoped preferred,
+ * global fallback). Soft-fail by design — returns nulls when catalog entry not found.
  * Generic: does not hardcode any vendor or institution name.
+ *
+ * STRATEGIE (proč tolik kroků):
+ *   Historicky se volalo jen `ilike(partners.name, partnerName)` bez wildcards →
+ *   Drizzle/Postgres `ILIKE` bez `%` je jen case-insensitive EXACT match. Pro vstup
+ *   "ČSOB Pojišťovna, a. s., člen holdingu ČSOB" v katalogu (řádek "ČSOB Pojišťovna")
+ *   to nikdy nematchovalo → partner dropdown zůstal prázdný, i když `institutionName`
+ *   na smlouvě byl vyplněný. Postupně zkoušíme:
+ *     1) exact ILIKE  2) start ILIKE  3) contains ILIKE
+ *     4) segment-agnostic fallback (partner pro ZP použij i pro ODP)
+ *     5) tenant-scoped auto-insert jako poslední pokus (tenant si zakládá vlastní
+ *        katalog → bez rizika duplicit mezi tenanty).
  */
 async function resolveCatalogFKs(
   tenantId: string,
@@ -233,57 +268,136 @@ async function resolveCatalogFKs(
   tx: typeof db
 ): Promise<{ partnerId: string | null; productId: string | null }> {
   if (!partnerName) return { partnerId: null, productId: null };
+  const full = partnerName.trim();
+  if (!full) return { partnerId: null, productId: null };
+  const core = normalizePartnerBrandCore(full);
+  const searchTerms = Array.from(new Set([full, core].filter((t) => t && t.length >= 3)));
 
-  const partnerRows = await tx
-    .select({ id: partners.id, name: partners.name, tenantId: partners.tenantId })
-    .from(partners)
-    .where(
-      and(
-        ilike(partners.name, partnerName.trim()),
-        eq(partners.segment, segment),
-        or(eq(partners.tenantId, tenantId), isNull(partners.tenantId)),
-      )
-    )
-    .limit(10);
+  type Row = { id: string; name: string; tenantId: string | null; segment: string };
 
-  const tenantPartner = partnerRows.find((p) => p.tenantId === tenantId);
-  const globalPartner = partnerRows.find((p) => !p.tenantId);
-  const resolvedPartner = tenantPartner ?? globalPartner ?? null;
+  const tenantOrGlobal = or(eq(partners.tenantId, tenantId), isNull(partners.tenantId));
+
+  // Stage 1: exact case-insensitive match (tenant|global, requested segment).
+  let rows: Row[] = [];
+  for (const term of searchTerms) {
+    const r = await tx
+      .select({ id: partners.id, name: partners.name, tenantId: partners.tenantId, segment: partners.segment })
+      .from(partners)
+      .where(and(ilike(partners.name, term), eq(partners.segment, segment), tenantOrGlobal))
+      .limit(10);
+    if (r.length > 0) { rows = r; break; }
+  }
+
+  // Stage 2: prefix / contains ILIKE match (same segment scope).
+  if (rows.length === 0) {
+    for (const term of searchTerms) {
+      const r = await tx
+        .select({ id: partners.id, name: partners.name, tenantId: partners.tenantId, segment: partners.segment })
+        .from(partners)
+        .where(and(ilike(partners.name, `%${term}%`), eq(partners.segment, segment), tenantOrGlobal))
+        .limit(10);
+      if (r.length > 0) { rows = r; break; }
+    }
+  }
+
+  // Stage 3: segment-agnostic fuzzy match — bankovní/pojišťovací značky často
+  // existují v katalogu pod jiným segmentem (typicky ZP). Je rozumné vrátit ten
+  // samý partner záznam i pro ODP smlouvu — partner_id vede jen na zobrazovaný
+  // název a v DB nemění business logiku segmentu smlouvy.
+  if (rows.length === 0) {
+    for (const term of searchTerms) {
+      const r = await tx
+        .select({ id: partners.id, name: partners.name, tenantId: partners.tenantId, segment: partners.segment })
+        .from(partners)
+        .where(and(ilike(partners.name, `%${term}%`), tenantOrGlobal))
+        .limit(10);
+      if (r.length > 0) { rows = r; break; }
+    }
+  }
+
+  // Pick best: tenant+segment → global+segment → tenant any → global any.
+  let resolvedPartner: Row | null = null;
+  resolvedPartner =
+    rows.find((r) => r.tenantId === tenantId && r.segment === segment) ??
+    rows.find((r) => r.tenantId == null && r.segment === segment) ??
+    rows.find((r) => r.tenantId === tenantId) ??
+    rows.find((r) => r.tenantId == null) ??
+    null;
+
+  // Stage 4: auto-create tenant-scoped partner. Bezpečné — duplicit napříč tenanty
+  // nehrozí, a pokud advisor ručně vybere jiný katalogový partner, UI si poradí.
+  if (!resolvedPartner) {
+    try {
+      const insertName = core || full;
+      const [inserted] = await tx
+        .insert(partners)
+        .values({ tenantId, name: insertName, segment })
+        .returning({ id: partners.id, name: partners.name, tenantId: partners.tenantId, segment: partners.segment });
+      if (inserted) {
+        resolvedPartner = {
+          id: inserted.id,
+          name: inserted.name,
+          tenantId: inserted.tenantId,
+          segment: inserted.segment,
+        };
+        console.info("[apply] catalog partner: auto-created tenant-scoped", {
+          partnerName: insertName.slice(0, 80),
+          segment,
+        });
+      }
+    } catch (err) {
+      console.warn("[apply] catalog partner auto-create failed", {
+        partnerName: (core || full).slice(0, 80),
+        segment,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   if (!resolvedPartner) {
-    console.warn("[apply] catalog partner lookup: no match", {
-      partnerName: partnerName.slice(0, 80),
+    console.warn("[apply] catalog partner lookup: no match after fuzzy + auto-create", {
+      partnerName: full.slice(0, 80),
+      core: core.slice(0, 80),
       segment,
     });
     return { partnerId: null, productId: null };
   }
 
   if (!productName) return { partnerId: resolvedPartner.id, productId: null };
+  const productTrim = productName.trim();
+  if (!productTrim) return { partnerId: resolvedPartner.id, productId: null };
 
-  const productRows = await tx
+  // Product lookup: same staged strategy (exact ILIKE → contains).
+  let productRow: { id: string } | null = null;
+  const productExact = await tx
     .select({ id: products.id })
     .from(products)
-    .where(
-      and(
-        eq(products.partnerId, resolvedPartner.id),
-        ilike(products.name, productName.trim())
-      )
-    )
-    .limit(5);
+    .where(and(eq(products.partnerId, resolvedPartner.id), ilike(products.name, productTrim)))
+    .limit(1);
+  productRow = productExact[0] ?? null;
+  if (!productRow) {
+    const productContains = await tx
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.partnerId, resolvedPartner.id), ilike(products.name, `%${productTrim}%`)))
+      .limit(1);
+    productRow = productContains[0] ?? null;
+  }
 
-  const resolvedProduct = productRows[0] ?? null;
-  if (!resolvedProduct) {
+  if (!productRow) {
     console.warn("[apply] catalog product lookup: partner found but product not matched", {
       partnerId: resolvedPartner.id,
-      productName: productName.slice(0, 80),
+      productName: productTrim.slice(0, 80),
     });
   }
 
   return {
     partnerId: resolvedPartner.id,
-    productId: resolvedProduct?.id ?? null,
+    productId: productRow?.id ?? null,
   };
 }
+// Also export normalizePartnerBrandCore for regression tests.
+export const __test__ = { normalizePartnerBrandCore };
 
 function validateSegment(raw: string | null | undefined): string {
   const trimmed = (raw ?? "").trim();
@@ -366,7 +480,45 @@ function preferExistingValue(
   return null;
 }
 
-function splitContactName(fullName: string | null | undefined): {
+/**
+ * F1-2 (C-04): Opatrný fallback pro low/medium-sensitivity kontraktová pole.
+ *
+ * Když enforcement vyprázdní enforcedPayload (např. proposal → do_not_apply
+ * všechna pole), některá pole (productName, effectiveDate, institutionName)
+ * musí mít možnost fallbacku na `action.payload`, aby advisor-confirmed apply
+ * vytvořil smlouvu s aspoň identifikací produktu, ne prázdný řádek.
+ *
+ * **NESMÍ se používat pro HIGH-sensitivity pole** (premiumAmount, premiumAnnual,
+ * contractNumber, personalId, recipientAccount, iban). Tato pole musí
+ * enforcement dodržet — raději null než halucinace v CRM.
+ */
+function resolveNonSensitiveFieldWithFallback(
+  enforcedPayload: Record<string, unknown>,
+  actionPayload: Record<string, unknown>,
+  key: string,
+): string | null {
+  const fromEp = (enforcedPayload[key] as string | undefined)?.trim();
+  if (fromEp) return fromEp;
+  const fromAction = (actionPayload[key] as string | undefined)?.trim();
+  if (fromAction) return fromAction;
+  return null;
+}
+
+/**
+ * F3-2 (C-05): neutral name splitting with heuristic order detection.
+ *
+ * Before the fix `splitContactName` always assumed "lastName firstName"
+ * (Czech official document order), so western-order inputs like "Jan Novák"
+ * were swapped into firstName="Novák", lastName="Jan". The fix detects the
+ * likely order using a Czech surname suffix heuristic: when the LAST token
+ * looks like a typical Czech surname (ová, ský, cký, ek, …) we treat the
+ * input as western order. Otherwise we preserve the legacy "first token is
+ * surname" behavior so rows already matched via that assumption keep
+ * working (migrations of historical data remain stable).
+ *
+ * This function is pure and unit-tested — never add side effects.
+ */
+export function splitContactName(fullName: string | null | undefined): {
   firstName: string | null;
   lastName: string | null;
 } {
@@ -377,6 +529,48 @@ function splitContactName(fullName: string | null | undefined): {
   if (parts.length === 1) {
     return { firstName: parts[0], lastName: null };
   }
+  const lastWord = parts[parts.length - 1];
+  const firstWord = parts[0];
+
+  // Matches common Czech surname endings. Keep the list conservative — the
+  // fallback path below still catches mis-classified rows through the
+  // existing "first-token = surname" heuristic used by historical data.
+  const SURNAME_SUFFIX =
+    /(ová|ová-.+|ský|ská|cký|cká|nský|nská|ný|ná|ník|ík|ák|ač|áč|ák[aá]|ek|ík[oů]|ič|ovič|ský|čka)$/i;
+
+  // Comma form "Novák, Jan" — always surname first.
+  if (fullName.includes(",")) {
+    const [maybeLast, ...rest] = fullName.split(",").map((p) => p.trim());
+    if (rest.length > 0 && rest.join(" ").trim()) {
+      return {
+        firstName: rest.join(" ").trim(),
+        lastName: maybeLast || null,
+      };
+    }
+  }
+
+  // UPPERCASE first token on form documents → Czech official order
+  // ("NOVÁK Jan"). Only trigger when the token has ≥2 letters and is
+  // fully uppercased; single-letter abbreviations (like "J.") don't count.
+  const isFirstTokenAllUpper =
+    firstWord.length >= 2 && firstWord === firstWord.toLocaleUpperCase("cs-CZ");
+
+  if (isFirstTokenAllUpper) {
+    return {
+      firstName: parts.slice(1).join(" "),
+      lastName: firstWord,
+    };
+  }
+
+  if (SURNAME_SUFFIX.test(lastWord)) {
+    return {
+      firstName: parts.slice(0, -1).join(" "),
+      lastName: lastWord,
+    };
+  }
+
+  // Fallback: legacy Czech-order heuristic (surname first). Historical CRM
+  // rows rely on this, so we keep it as a last resort.
   return {
     firstName: parts.slice(1).join(" "),
     lastName: parts[0],
@@ -647,6 +841,35 @@ async function findExistingContactId(
       .limit(1);
     if (byPersonalId[0]?.id) return byPersonalId[0].id;
   }
+  // F2-3 (H-01): fallback phone + birthDate dedup.
+  //   Strongly conservative: only matches when BOTH normalized phone AND
+  //   birthDate are present + equal. Phone alone is too weak (landlines
+  //   can be shared in a household); birthDate alone is too weak (collisions
+  //   within large client bases). The pair gives a unique identity signal
+  //   comparable to email match without requiring PII envelope changes.
+  const rawPhone = (payload.phone as string | undefined)?.trim();
+  const birthDate = (payload.birthDate as string | undefined)?.trim();
+  if (rawPhone && birthDate) {
+    const phoneNorm = normalizePhone(rawPhone);
+    if (phoneNorm) {
+      // Scope by birthDate first to keep the scan tiny (usually 0–3 rows).
+      const candidates = await tx
+        .select({ id: contacts.id, phone: contacts.phone })
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.tenantId, tenantId),
+            eq(contacts.birthDate, birthDate),
+          ),
+        )
+        .limit(25);
+      for (const c of candidates) {
+        if (c.phone && normalizePhone(c.phone) === phoneNorm) {
+          return c.id;
+        }
+      }
+    }
+  }
   return null;
 }
 
@@ -759,15 +982,23 @@ export async function applyContractReview(
   const attrsFromReview = buildPortfolioAttributesFromExtracted(row.extractedPayload);
   Object.assign(attrsFromReview, mergeIdentityPortfolioFieldsFromExtracted(row.extractedPayload));
 
-  // Fund-library resolution: match extracted fund names/ISINs against catalog.
-  // Runs for every contract (idempotent), only populates when investment data present.
-  const fundResolution = resolveFundFromPortfolioAttributes(attrsFromReview);
+  // F1-4 (BONUS-2): Fund-library resolution — multi-fund aware.
+  // Aggregate vybírá první fund-library hit napříč všemi fondy (původní kód
+  // bral `funds[0]` a když byl mimo library, celé portfolio spadlo do
+  // heuristic-fallback i když další fondy v library byly). Per-fund metadata
+  // ukládáme do `portfolio_attributes.fundsResolved` pro downstream audit
+  // a detailní FV kalkulaci.
+  const fundResolutionMulti = resolveFundsFromPortfolioAttributes(attrsFromReview);
+  const fundResolution = fundResolutionMulti.aggregate;
   if (fundResolution.resolvedFundId) {
     attrsFromReview.resolvedFundId = fundResolution.resolvedFundId;
     attrsFromReview.fvSourceType = fundResolution.fvSourceType;
   } else if (fundResolution.resolvedFundCategory) {
     attrsFromReview.resolvedFundCategory = fundResolution.resolvedFundCategory;
     attrsFromReview.fvSourceType = fundResolution.fvSourceType;
+  }
+  if (fundResolutionMulti.perFund.length > 0) {
+    attrsFromReview.fundsResolved = fundResolutionMulti.perFund;
   }
 
   const extractionConfidence = normalizeExtractionConfidence(row.confidence ?? undefined);
@@ -833,6 +1064,44 @@ export async function applyContractReview(
 
   try {
     await db.transaction(async (tx) => {
+      // F2-2 (H-17): concurrent-apply mutex.
+      // Two parallel apply calls on the same review (e.g. advisor double-click
+      // or browser tab duplication) would otherwise race through the draft
+      // action loop and create duplicate contracts / coverage rows. Acquire
+      // a transaction-scoped pg advisory lock keyed on the reviewId hash —
+      // the second caller blocks until the first transaction commits, at
+      // which point the idempotency short-circuit below (`reviewStatus ===
+      // "applied"` on the refreshed row) returns without re-running inserts.
+      //
+      // `pg_advisory_xact_lock(int4, int4)` uses two 32-bit ints; we pack
+      // the review UUID into two stable int buckets by hashtext().
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${`contract_review_apply:${reviewId}`}))`,
+      );
+
+      // After acquiring the lock, re-check the review status inside the
+      // transaction. If another caller already finished, short-circuit and
+      // return its result via the outer idempotency check.
+      const [latest] = await tx
+        .select({ reviewStatus: contractUploadReviews.reviewStatus, applyResultPayload: contractUploadReviews.applyResultPayload })
+        .from(contractUploadReviews)
+        .where(
+          and(
+            eq(contractUploadReviews.id, reviewId),
+            eq(contractUploadReviews.tenantId, tenantId),
+          ),
+        )
+        .limit(1);
+      if (!latest) {
+        throw new Error("applyContractReview: review not found after lock (tenant or concurrent delete).");
+      }
+      if (latest.reviewStatus === "applied") {
+        const payload = (latest.applyResultPayload as ApplyResultPayload | null) ?? {};
+        Object.assign(resultPayload, payload);
+        (resultPayload as Record<string, unknown>).__idempotentReentry = true;
+        return;
+      }
+
       const createClientAction = draftActions.find(
         (a) => a.type === "create_client" || a.type === "create_new_client"
       );
@@ -933,7 +1202,47 @@ export async function applyContractReview(
         resultPayload.linkedClientId = effectiveContactId;
       }
 
-      let resolvedContractNumberForPaymentSync: string | null = null;
+      // F2-4 (H-10): pre-resolve a primary contract reference hint BEFORE the
+      // action loop. Before the fix, payment_setup actions that appeared
+      // BEFORE create_contract actions in draftActions would write an empty
+      // `contractReference` because `resolvedContractNumberForPaymentSync`
+      // only got populated by the contract branch on the same iteration.
+      // This two-pass hint lets payment actions always see a plausible
+      // contractNumber; the actual contract branch may still overwrite it
+      // with the fully resolved value (which respects enforcement policies).
+      const primaryContractNumberHintForPayment = (() => {
+        for (const action of draftActions) {
+          if (
+            action.type === "create_contract" ||
+            action.type === "create_or_update_contract_record" ||
+            action.type === "create_or_update_contract_production"
+          ) {
+            const cn = (action.payload?.contractNumber as string | undefined)?.trim();
+            if (cn) return cn;
+          }
+        }
+        return null;
+      })();
+
+      let resolvedContractNumberForPaymentSync: string | null = primaryContractNumberHintForPayment;
+
+      // F2-1 (H-09): track every contract created/updated during this apply so that
+      // coverage + document link are persisted per-contract (previous code ran
+      // `upsertCoverageFromAppliedReview` a single time after the loop with the
+      // LAST `resultPayload.createdContractId`, silently dropping coverage for
+      // bundles that produced more than one contract).
+      const createdContractIds: string[] = [];
+      const recordCreatedContractId = (id: string | null | undefined) => {
+        if (!id) return;
+        if (!createdContractIds.includes(id)) createdContractIds.push(id);
+        // keep the scalar field pointing at the FIRST processed contract for
+        // backward compatibility with older callers (payment setup code below
+        // references resultPayload.createdContractId; keeping it stable avoids
+        // payment setup attaching to the wrong contract when a bundle arrives).
+        if (!resultPayload.createdContractId) {
+          resultPayload.createdContractId = id;
+        }
+      };
 
       for (const action of draftActions) {
         if (
@@ -961,11 +1270,20 @@ export async function applyContractReview(
             resolveContractReferenceForApply(ep, action.payload, extractedPayloadForEnforcement) ??
             (ep.contractNumber as string)?.trim() ??
             null;
-          const rawProductName = (ep.productName as string)?.trim() || null;
-          const institutionName =
-            (ep.institutionName as string)?.trim() ||
-            (action.payload.institutionName as string)?.trim() ||
-            null;
+          // F1-2 (C-04): productName a institutionName používají non-sensitive
+          // fallback na action.payload — enforcement je může vyprázdnit při
+          // proposal lifecycle, ale v CRM musí zůstat aspoň identifikace
+          // produktu/partnera, jinak vzniknou "ghost" smlouvy bez názvu.
+          const rawProductName = resolveNonSensitiveFieldWithFallback(
+            ep as Record<string, unknown>,
+            action.payload,
+            "productName",
+          );
+          const institutionName = resolveNonSensitiveFieldWithFallback(
+            ep as Record<string, unknown>,
+            action.payload,
+            "institutionName",
+          );
           // Strip institution name prefix from product name when AI concatenates them
           const productName = (() => {
             if (!rawProductName || !institutionName) return rawProductName;
@@ -977,7 +1295,13 @@ export async function applyContractReview(
             }
             return rawProductName;
           })();
-          const effectiveDate = (ep.effectiveDate as string)?.trim() || null;
+          // F1-2 (C-04): effectiveDate / startDate má fallback na action.payload —
+          // low-sensitivity (datum neumí LLM halucinovat přes enforcement).
+          const effectiveDate = resolveNonSensitiveFieldWithFallback(
+            ep as Record<string, unknown>,
+            action.payload,
+            "effectiveDate",
+          );
           const segment = resolveSegmentForContractApply(action.payload, extractedPayloadForEnforcement);
           const existingContractId = await findExistingContractId(
             tenantId,
@@ -1073,7 +1397,7 @@ export async function applyContractReview(
                 updatedAt: new Date(),
               })
               .where(eq(contracts.id, existingContractId));
-            resultPayload.createdContractId = existingContractId;
+            recordCreatedContractId(existingContractId);
             resolvedContractNumberForPaymentSync =
               preferExistingValue(existingRow?.contractNumber, contractNumberResolved) ?? null;
             continue;
@@ -1172,7 +1496,7 @@ export async function applyContractReview(
             }
           }
           if (insertedContractId) {
-            resultPayload.createdContractId = insertedContractId;
+            recordCreatedContractId(insertedContractId);
             resolvedContractNumberForPaymentSync = contractNumberResolved;
           }
         } else if (action.type === "create_task") {
@@ -1243,7 +1567,7 @@ export async function applyContractReview(
         }
       }
 
-      if (!isSupporting && !resultPayload.createdContractId && effectiveContactId) {
+      if (!isSupporting && createdContractIds.length === 0 && effectiveContactId) {
         const hasContractAction = draftActions.some(
           (a) =>
             a.type === "create_contract" ||
@@ -1257,26 +1581,45 @@ export async function applyContractReview(
         }
       }
 
+      // F2-1 (H-09): expose the full list to callers; keep scalar for compat.
+      if (createdContractIds.length > 0) {
+        resultPayload.createdContractIds = [...createdContractIds];
+        if (!resultPayload.createdContractId) {
+          resultPayload.createdContractId = createdContractIds[0];
+        }
+      }
+
       // FL-1 — canonical transaction: coverage + document link běží ve stejné
       // transakci jako contact/contract/payment zápisy. Pokud tyto pure-DB
       // operace selžou, apply se rolbackuje celé (původní SOFT-fail + Sentry
       // warning pattern zůstal pouze pro notifikace + activity log post-commit,
       // které nelze dát do DB transakce).
-      if (effectiveContactId && resultPayload.createdContractId) {
-        await upsertCoverageFromAppliedReview({
-          tenantId,
-          userId,
-          contactId: effectiveContactId,
-          contractId: resultPayload.createdContractId,
-          row,
-          tx: tx as unknown as typeof db,
-        });
+      //
+      // F2-1 (H-09): iterate EVERY created/updated contract. Before the fix,
+      // bundles that produced two contracts got coverage + document link only
+      // for the last one, silently orphaning the first contract.
+      if (effectiveContactId && createdContractIds.length > 0) {
+        for (const contractId of createdContractIds) {
+          await upsertCoverageFromAppliedReview({
+            tenantId,
+            userId,
+            contactId: effectiveContactId,
+            contractId,
+            row,
+            tx: tx as unknown as typeof db,
+          });
+        }
 
         if (row.storagePath) {
+          // Document link points at the first contract (one PDF, many contracts
+          // is rare — for bundles we still produce a single document row but
+          // coverage is per-contract). Downstream UI fetches contract-level
+          // attachments separately, so this is intentional.
+          const primaryContractId = createdContractIds[0];
           const docLink = await applyDocumentLinkInTx({
             tenantId,
             contactId: effectiveContactId,
-            contractId: resultPayload.createdContractId,
+            contractId: primaryContractId,
             reviewId,
             storagePath: row.storagePath,
             fileName: row.fileName ?? "smlouva.pdf",

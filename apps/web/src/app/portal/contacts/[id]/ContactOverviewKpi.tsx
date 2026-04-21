@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUp, Wallet, Shield, CalendarDays } from "lucide-react";
+import { TrendingUp, Wallet, Shield, CalendarDays, Banknote, Receipt } from "lucide-react";
 import { getContactOverviewKpi } from "@/app/actions/financial";
 
 function fmtCZK(value: number): string {
@@ -14,6 +14,13 @@ type KpiData = {
   personalAum: number;
   monthlyInsurance: number;
   annualInsurance: number;
+  /**
+   * F3-3 (C-10 follow-up): propagated from contact-overview-kpi aggregator —
+   * sum of monthly loan installments (HYPO + UVER) for this contact.
+   */
+  monthlyLoan?: number;
+  /** Remaining loan principal across HYPO + UVER contracts. */
+  outstandingLoanBalance?: number;
 };
 
 const DEFAULT_KPI: KpiData = {
@@ -21,6 +28,8 @@ const DEFAULT_KPI: KpiData = {
   personalAum: 0,
   monthlyInsurance: 0,
   annualInsurance: 0,
+  monthlyLoan: 0,
+  outstandingLoanBalance: 0,
 };
 
 export function ContactOverviewKpi({ contactId }: { contactId: string }) {
@@ -34,7 +43,11 @@ export function ContactOverviewKpi({ contactId }: { contactId: string }) {
 
   const d = data ?? DEFAULT_KPI;
 
-  const kpis = [
+  const monthlyLoan = d.monthlyLoan ?? 0;
+  const outstandingLoanBalance = d.outstandingLoanBalance ?? 0;
+  const hasLoanKpis = monthlyLoan > 0 || outstandingLoanBalance > 0;
+
+  const baseKpis = [
     {
       label: "Měsíční investice",
       value: fmtCZK(d.monthlyInvest),
@@ -63,10 +76,37 @@ export function ContactOverviewKpi({ contactId }: { contactId: string }) {
       accent: "text-[color:var(--wp-text)]",
       bg: "bg-[color:var(--wp-surface-muted)]",
     },
-  ] as const;
+  ];
+
+  // F3-3 (C-10 follow-up): surface loan KPIs only when the contact has at
+  // least one loan contract. Prevents empty "— Kč" tiles dominating the
+  // overview for purely insurance/investment clients.
+  const loanKpis = hasLoanKpis
+    ? [
+        {
+          label: "Měsíční splátka úvěrů",
+          value: fmtCZK(monthlyLoan),
+          icon: Banknote,
+          accent: "text-rose-600",
+          bg: "bg-rose-50 dark:bg-rose-950/40",
+        },
+        {
+          label: "Zbývající jistina",
+          value: fmtCZK(outstandingLoanBalance),
+          icon: Receipt,
+          accent: "text-[color:var(--wp-text)]",
+          bg: "bg-[color:var(--wp-surface-muted)]",
+        },
+      ]
+    : [];
+
+  const kpis = [...baseKpis, ...loanKpis];
+  const gridCols = kpis.length <= 4
+    ? "grid-cols-2 lg:grid-cols-4"
+    : "grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className={`grid ${gridCols} gap-3 sm:gap-4`}>
       {kpis.map(({ label, value, icon: Icon, accent, bg }) => (
         <div
           key={label}

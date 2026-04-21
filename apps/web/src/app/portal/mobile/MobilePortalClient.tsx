@@ -79,6 +79,7 @@ import { MobileSideDrawer } from "@/app/shared/mobile-ui/MobileSideDrawer";
 import { MobileGlobalSearchOverlay } from "./MobileGlobalSearchOverlay";
 import { MobileShellErrorBoundary } from "@/app/shared/mobile-ui/MobileShellErrorBoundary";
 import { ToastProvider } from "@/app/components/Toast";
+import { ForceUpdateGate } from "@/app/components/ForceUpdateGate";
 import { AdvisorInAppNotificationsProvider } from "@/app/portal/AdvisorInAppNotificationsContext";
 import { AdvisorClientRequestToastStack } from "@/app/portal/AdvisorClientRequestToastStack";
 import { PortalFeedbackLauncher } from "@/app/portal/PortalFeedbackLauncher";
@@ -957,6 +958,8 @@ export function MobilePortalClient({
       <AdvisorInAppNotificationsProvider>
       <AdvisorClientRequestToastStack />
     <MobileAppShell deviceClass={deviceClass}>
+      {/* Delta A9+A11: Force-update gate — blokuje UI při zastaralém app buildu. */}
+      <ForceUpdateGate />
       {/* Global banners */}
       <OfflineBanner />
       {toast ? <Toast message={toast.message} variant={toast.variant} onDismiss={dismissToast} /> : null}

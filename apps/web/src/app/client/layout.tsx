@@ -10,6 +10,7 @@ import { getEffectiveTenantSettingsForWorkspaceResolved } from "@/lib/billing/ef
 import { db, contacts, and, eq } from "db";
 import { ClientPortalShell } from "./ClientPortalShell";
 import { ClientMobileApp } from "./mobile/ClientMobileApp";
+import { MaintenanceBanner } from "@/app/components/MaintenanceBanner";
 import { isClientMobileSpaPath } from "@/lib/client-portal/client-mobile-spa-paths";
 import "./client-portal.css";
 
@@ -91,15 +92,19 @@ export default async function ClientZoneLayout({
     : "Klient";
 
   return (
-    <ClientPortalShell
-      unreadNotificationsCount={unreadNotificationsCount + unreadMessagesCount}
-      unreadMessagesCount={unreadMessagesCount}
-      activeProposalsCount={activeProposalsCount}
-      fullName={fullName}
-      advisor={advisor}
-      portalFeatures={portalFeatures}
-    >
-      {children}
-    </ClientPortalShell>
+    <>
+      {/* Delta A23 — client portal maintenance banner (Edge Config kill-switch). */}
+      <MaintenanceBanner />
+      <ClientPortalShell
+        unreadNotificationsCount={unreadNotificationsCount + unreadMessagesCount}
+        unreadMessagesCount={unreadMessagesCount}
+        activeProposalsCount={activeProposalsCount}
+        fullName={fullName}
+        advisor={advisor}
+        portalFeatures={portalFeatures}
+      >
+        {children}
+      </ClientPortalShell>
+    </>
   );
 }

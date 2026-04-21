@@ -155,8 +155,79 @@ function PacketMetaSection({ pm, isApplied }: { pm: NonNullable<CanonicalFields[
 }
 
 // ─── PublishHints section ─────────────────────────────────────────────────────
+//
+// F3-1 (H-16): Display three truthful states based on publishHints flags.
+// Before the fix the banner was always a green "Bude publikován" — even when
+// the document was a supporting attachment that would NOT be published as a
+// contract or when it needs a manual split. Advisors interpreted the green
+// banner as "everything is fine" and clicked Approve on reviews that were
+// about to silently become sensitive-attachment-only or needs-split
+// scenarios.
 
-function PublishHintsSection({ ph }: { ph: NonNullable<CanonicalFields["publishHints"]> }) {
+type PublishHintsFlags = NonNullable<CanonicalFields["publishHints"]>;
+
+type PublishHintBannerState =
+  | "full_publish"
+  | "partial_publish"
+  | "no_contract_publish";
+
+export function resolvePublishHintBannerState(
+  ph: PublishHintsFlags,
+): PublishHintBannerState {
+  // NOTE: `contractPublishable === false` is the hardest signal — the
+  // pipeline explicitly told us this document won't produce a contract.
+  // `sensitiveAttachmentOnly` is next — the document is an attachment (AML,
+  // health questionnaire) that should never publish a contract on its own.
+  if (ph.contractPublishable === false || ph.sensitiveAttachmentOnly === true) {
+    return "no_contract_publish";
+  }
+  if (ph.needsSplit === true || ph.needsManualValidation === true) {
+    return "partial_publish";
+  }
+  return "full_publish";
+}
+
+function PublishHintsSection({ ph }: { ph: PublishHintsFlags }) {
+  const state = resolvePublishHintBannerState(ph);
+
+  if (state === "no_contract_publish") {
+    return (
+      <Section
+        icon={XCircle}
+        title="Stav dokumentu"
+        badgeVariant="error"
+        badge="Nepublikuje smlouvu"
+      >
+        <div className="flex items-start gap-2 text-xs text-slate-700">
+          <XCircle size={12} className="mt-0.5 shrink-0" />
+          <span>
+            Dokument byl klasifikován jako podpůrný / příloha — po schválení se
+            nepropíše jako smlouva do CRM. Nahrajte smlouvu samotnou, pokud má
+            vzniknout smluvní záznam.
+          </span>
+        </div>
+      </Section>
+    );
+  }
+  if (state === "partial_publish") {
+    return (
+      <Section
+        icon={AlertTriangle}
+        title="Stav dokumentu"
+        badgeVariant="warning"
+        badge="Publikuje část"
+      >
+        <div className="flex items-start gap-2 text-xs text-amber-800">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span>
+            {ph.needsSplit
+              ? "Dokument obsahuje více smluv — bude publikován rozdělený; zkontrolujte, zda všechny části vznikly správně."
+              : "Dokument vyžaduje manuální validaci — některá pole budou zapsána jen po potvrzení."}
+          </span>
+        </div>
+      </Section>
+    );
+  }
   return (
     <Section
       icon={CheckCircle2}

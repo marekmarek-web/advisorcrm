@@ -86,7 +86,22 @@ export function ProductPicker({
     acc[cat].push(p);
     return acc;
   }, {});
+  // TBD ("doplnit") produkty patří na konec, aby poradce viděl nejprve reálné produkty.
+  for (const cat of Object.keys(byCategory)) {
+    byCategory[cat].sort((a, b) => {
+      const aTbd = a.isTbd ? 1 : 0;
+      const bTbd = b.isTbd ? 1 : 0;
+      if (aTbd !== bTbd) return aTbd - bTbd;
+      return a.name.localeCompare(b.name, "cs");
+    });
+  }
   const categories = Object.keys(byCategory).sort();
+  const sortedProducts = [...products].sort((a, b) => {
+    const aTbd = a.isTbd ? 1 : 0;
+    const bTbd = b.isTbd ? 1 : 0;
+    if (aTbd !== bTbd) return aTbd - bTbd;
+    return a.name.localeCompare(b.name, "cs");
+  });
 
   const filteredPartners = partners.filter((p) => !segment || p.segment === segment);
   const partnerOptions = filteredPartners.filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i);
@@ -133,7 +148,7 @@ export function ProductPicker({
                       label: (categories.length > 1 ? `${cat || "—"}: ` : "") + p.name + (p.isTbd ? " • doplnit" : ""),
                     }))
                   )
-                : products.map((p) => ({ id: p.id, label: p.name + (p.isTbd ? " • doplnit" : "") }))),
+                : sortedProducts.map((p) => ({ id: p.id, label: p.name + (p.isTbd ? " • doplnit" : "") }))),
             ]}
             placeholder={loadingProducts ? "Načítám…" : "— vyberte"}
             icon={Package}

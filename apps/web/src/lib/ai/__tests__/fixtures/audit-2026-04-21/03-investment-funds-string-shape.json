@@ -1,0 +1,63 @@
+{
+  "__fixture": "audit-2026-04-21/03",
+  "__bug": "BONUS-1",
+  "__description": "DIP smlouva; investmentFunds přišly z LLM jako JSON string (běžný output shape), ne jako pole. buildPortfolioAttributesFromExtracted string nerozbalí → fondy se neuloží do portfolio_attributes.",
+  "documentClassification": {
+    "primaryType": "investment_subscription_document",
+    "subtype": "dip_contract",
+    "lifecycleStatus": "final_contract",
+    "documentIntent": "create_new_contract",
+    "confidence": 0.91,
+    "reasons": ["dip_product_identified"]
+  },
+  "documentMeta": { "scannedVsDigital": "digital", "overallConfidence": 0.91 },
+  "parties": {},
+  "productsOrObligations": [],
+  "financialTerms": {},
+  "serviceTerms": {},
+  "extractedFields": {
+    "contractNumber": { "value": "DIP-ČS-77881122", "status": "extracted", "confidence": 0.96 },
+    "institutionName": { "value": "Generali Investments", "status": "extracted", "confidence": 0.95 },
+    "productName": { "value": "DIP PLUS Dynamický", "status": "extracted", "confidence": 0.93 },
+    "fullName": { "value": "Marie Dvořáková", "status": "extracted", "confidence": 0.9 },
+    "investmentStrategy": { "value": "dynamický", "status": "extracted", "confidence": 0.9 },
+    "intendedInvestment": { "value": "500000", "status": "extracted", "confidence": 0.85 },
+    "investmentFunds": {
+      "value": "[{\"name\":\"Generali Fond globálních akcií\",\"allocation\":\"60\",\"isin\":\"CZ0008471620\"},{\"name\":\"Generali Fond realitních investic\",\"allocation\":\"40\"}]",
+      "status": "extracted",
+      "confidence": 0.82
+    }
+  },
+  "publishHints": { "contractPublishable": true },
+  "evidence": [],
+  "candidateMatches": {
+    "matchedClients": [],
+    "matchedHouseholds": [],
+    "matchedDeals": [],
+    "matchedCompanies": [],
+    "matchedContracts": [],
+    "score": 0,
+    "reason": "no_match",
+    "ambiguityFlags": []
+  },
+  "sectionSensitivity": {},
+  "relationshipInference": {
+    "policyholderVsInsured": [],
+    "childInsured": [],
+    "intermediaryVsClient": [],
+    "employerVsEmployee": [],
+    "companyVsPerson": [],
+    "bankOrLenderVsBorrower": []
+  },
+  "reviewWarnings": [],
+  "suggestedActions": [],
+  "sensitivityProfile": "standard_personal_data",
+  "contentFlags": {
+    "isFinalContract": true,
+    "isProposalOnly": false,
+    "containsPaymentInstructions": false,
+    "containsClientData": true,
+    "containsAdvisorData": false,
+    "containsMultipleDocumentSections": false
+  }
+}

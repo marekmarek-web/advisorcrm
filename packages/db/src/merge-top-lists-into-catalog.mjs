@@ -61,7 +61,7 @@ for (const listName of listNames) {
 
 catalog.catalog = [...byKey.values()].sort((a, b) => a.partner.localeCompare(b.partner) || a.category.localeCompare(b.category));
 if (!catalog.rules.excludePartners.includes("Slavia")) catalog.rules.excludePartners.push("Slavia");
-const newCats = ["CEST", "DIP", "DPS", "ZDRAV"];
+const newCats = ["CEST", "DIP", "DPS"];
 for (const c of newCats) {
   if (!catalog.categories.includes(c)) catalog.categories.push(c);
 }

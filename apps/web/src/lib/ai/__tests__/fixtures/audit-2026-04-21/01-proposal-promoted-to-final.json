@@ -1,0 +1,66 @@
+{
+  "__fixture": "audit-2026-04-21/01",
+  "__bug": "C-09",
+  "__description": "Životní pojištění — vstupní lifecycle=proposal, žádné signály modelace. Coercer má zlomit na final_contract.",
+  "documentClassification": {
+    "primaryType": "life_insurance_contract",
+    "subtype": "navrh_smlouvy",
+    "documentStatus": "Návrh pojistné smlouvy",
+    "lifecycleStatus": "proposal",
+    "documentIntent": "create_new_contract",
+    "confidence": 0.82,
+    "reasons": ["document_title_navrh", "lifecycle_from_source"]
+  },
+  "documentMeta": {
+    "scannedVsDigital": "digital",
+    "overallConfidence": 0.82
+  },
+  "parties": {},
+  "productsOrObligations": [],
+  "financialTerms": {},
+  "serviceTerms": {},
+  "extractedFields": {
+    "contractNumber": { "value": null, "status": "missing", "confidence": 0 },
+    "proposalNumber": { "value": "NAV-2026-001234", "status": "extracted", "confidence": 0.91 },
+    "insurer": { "value": "Generali Česká pojišťovna", "status": "extracted", "confidence": 0.95 },
+    "productName": { "value": "BeneFit Plus", "status": "extracted", "confidence": 0.88 },
+    "fullName": { "value": "Jan Novák", "status": "extracted", "confidence": 0.9 },
+    "policyStartDate": { "value": "2026-05-01", "status": "extracted", "confidence": 0.87 },
+    "premiumAmount": { "value": "1 250", "status": "extracted", "confidence": 0.85 }
+  },
+  "publishHints": {
+    "contractPublishable": true,
+    "sensitiveAttachmentOnly": false
+  },
+  "evidence": [],
+  "candidateMatches": {
+    "matchedClients": [],
+    "matchedHouseholds": [],
+    "matchedDeals": [],
+    "matchedCompanies": [],
+    "matchedContracts": [],
+    "score": 0,
+    "reason": "no_match",
+    "ambiguityFlags": []
+  },
+  "sectionSensitivity": {},
+  "relationshipInference": {
+    "policyholderVsInsured": [],
+    "childInsured": [],
+    "intermediaryVsClient": [],
+    "employerVsEmployee": [],
+    "companyVsPerson": [],
+    "bankOrLenderVsBorrower": []
+  },
+  "reviewWarnings": [],
+  "suggestedActions": [],
+  "sensitivityProfile": "standard_personal_data",
+  "contentFlags": {
+    "isFinalContract": false,
+    "isProposalOnly": true,
+    "containsPaymentInstructions": false,
+    "containsClientData": true,
+    "containsAdvisorData": false,
+    "containsMultipleDocumentSections": false
+  }
+}

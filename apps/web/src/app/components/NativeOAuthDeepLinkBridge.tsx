@@ -226,6 +226,32 @@ export function NativeOAuthDeepLinkBridge() {
         const hostPart = parsed.host ? `/${parsed.host}` : "";
         const path = `${hostPart}${parsed.pathname}`.replace(/\/{2,}/g, "/");
         const normalized = path.startsWith("/") ? path : `/${path}`;
+
+        // Delta A20 — whitelist povolených host segmentů u generic deep linků.
+        // Smyslem je zamezit tomu, aby externí app mohla nativní shell přesměrovat
+        // na libovolnou cestu (např. admin action URL). Auth paths řešíme už výš.
+        const ALLOWED_ROOT_HOSTS = new Set([
+          "portal",
+          "client",
+          "pricing",
+          "ai-review",
+          "proposal",
+          "navrhy",
+          "login",
+          "register",
+          "bezpecnost",
+          "gdpr",
+        ]);
+        const hostForCheck = parsed.host || normalized.split("/")[1] || "";
+        if (hostForCheck && !ALLOWED_ROOT_HOSTS.has(hostForCheck)) {
+          console.warn(
+            "[NativeOAuthDeepLinkBridge] blocked deep link to non-whitelisted host:",
+            hostForCheck,
+          );
+          safeReplaceLocation(`${origin}/portal/today`);
+          return;
+        }
+
         const target = `${origin}${normalized}${parsed.search}${parsed.hash}`;
         logNativeOAuthDebug("[NativeOAuthDeepLinkBridge] generic deep link, navigating to:", target);
         safeReplaceLocation(target);

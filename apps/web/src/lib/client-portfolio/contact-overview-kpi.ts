@@ -10,6 +10,8 @@ import { resolveFvMonthlyContribution } from "./portal-portfolio-display";
 
 const INVEST_SEGMENTS = new Set(["INV", "DIP", "DPS"]);
 const INSURANCE_SEGMENTS = new Set(["ZP", "MAJ", "ODP", "AUTO_PR", "AUTO_HAV", "CEST", "FIRMA_POJ"]);
+/** F0-4 (C-10): úvěrové segmenty — do této opravy se do KPI vůbec nepočítaly. */
+const LOAN_SEGMENTS = new Set(["HYPO", "UVER"]);
 
 /** Zdroje zadané poradcem nebo z AI Review (publikovaná evidence). */
 export const ADVISOR_PRODUCT_SOURCE_KINDS = new Set(["manual", "ai_review"]);
@@ -28,6 +30,14 @@ export type ContactOverviewKpiNumbers = {
   personalAum: number;
   monthlyInsurance: number;
   annualInsurance: number;
+  /** Součet měsíčních splátek úvěrů (HYPO + UVER). */
+  monthlyLoan: number;
+  /**
+   * Hrubý součet jistin úvěrů. Primárně z `segmentDetail.loanPrincipal` (LLM/manual),
+   * fallback z `portfolioAttributes.currentBalance` / `outstandingBalance` pokud dostupné.
+   * TODO: zahrnout amortizovanou zbývající jistinu až bude v datovém modelu.
+   */
+  outstandingLoanBalance: number;
 };
 
 /** Tolerantní parser pro string/číslo typu „1 000 000,50 Kč“. */
@@ -105,12 +115,36 @@ function investmentAumForRow(row: ContractRow, p: CanonicalProduct): number {
   return monthly > 0 ? monthly * 12 : 0;
 }
 
+/**
+ * F0-4 (C-10): jistina úvěru pro jeden řádek.
+ * Primárně z `segmentDetail.loanPrincipal` (z LLM/manual extrakce — string),
+ * fallback z `portfolioAttributes.currentBalance` / `outstandingBalance` /
+ * `loanAmount`. Nepočítá amortizaci — dokud nebudeme mít plán splátek, je to
+ * jediný dostupný proxy.
+ */
+function loanBalanceForRow(row: ContractRow, p: CanonicalProduct): number {
+  if (!LOAN_SEGMENTS.has(p.segment)) return 0;
+  if (p.segmentDetail?.kind === "loan") {
+    const principal = parseAmountLoose(p.segmentDetail.loanPrincipal);
+    if (principal > 0) return principal;
+  }
+  const attrs = (row.portfolioAttributes ?? {}) as Record<string, unknown>;
+  const fromAttrs =
+    parseAmountLoose(attrs.outstandingBalance) ||
+    parseAmountLoose(attrs.currentBalance) ||
+    parseAmountLoose(attrs.loanAmount) ||
+    parseAmountLoose(attrs.loanPrincipal);
+  return fromAttrs;
+}
+
 export function computeContactOverviewKpiFromContracts(contracts: ContractRow[]): ContactOverviewKpiNumbers {
   const filtered = contracts.filter((c) => ADVISOR_PRODUCT_SOURCE_KINDS.has(c.sourceKind));
   let monthlyInvest = 0;
   let personalAum = 0;
   let monthlyInsurance = 0;
   let annualInsurance = 0;
+  let monthlyLoan = 0;
+  let outstandingLoanBalance = 0;
 
   for (const c of filtered) {
     const p = mapContractToCanonicalProduct(c);
@@ -121,8 +155,18 @@ export function computeContactOverviewKpiFromContracts(contracts: ContractRow[])
     } else if (INSURANCE_SEGMENTS.has(seg)) {
       monthlyInsurance += monthlyCashflowForKpi(p);
       annualInsurance += annualInsuranceAmountForKpi(p);
+    } else if (LOAN_SEGMENTS.has(seg)) {
+      monthlyLoan += monthlyCashflowForKpi(p);
+      outstandingLoanBalance += loanBalanceForRow(c, p);
     }
   }
 
-  return { monthlyInvest, personalAum, monthlyInsurance, annualInsurance };
+  return {
+    monthlyInvest,
+    personalAum,
+    monthlyInsurance,
+    annualInsurance,
+    monthlyLoan,
+    outstandingLoanBalance,
+  };
 }

@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { resolveAdvisorMfaEnforcement } from "@/lib/auth/mfa-enforcement";
 import { resolveDunningBanner, type DunningBanner } from "@/lib/billing/dunning";
 import { PortalDunningBanner } from "@/app/components/billing/PortalDunningBanner";
+import { MaintenanceBanner } from "@/app/components/MaintenanceBanner";
 import { getAdvisorAvatarUrl } from "@/app/actions/preferences";
 import { getContactsCount } from "@/app/actions/contacts";
 import { PortalShell } from "./PortalShell";
@@ -180,6 +181,8 @@ export default async function PortalLayout({
       </Script>
       <PortalThemeProvider>
         <PortalAppProviders>
+          {/* Delta A23 — maintenance banner čte Edge Config kill-switch. */}
+          <MaintenanceBanner />
           <PortalDunningBanner state={dunningState} />
           <PortalShell
             showTeamOverview={showTeamOverview}

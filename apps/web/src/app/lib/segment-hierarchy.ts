@@ -110,7 +110,6 @@ export const SEGMENT_TO_CASE_TYPE: Record<string, string> = {
   ODP: "pojištění",
   CEST: "pojištění",
   FIRMA_POJ: "pojištění",
-  ZDRAV: "pojištění",
 };
 
 export function segmentToCaseType(segmentCode: string): string {

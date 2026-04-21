@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 import type { ContractRow } from "@/app/actions/contracts";
 import { mapContractToCanonicalProduct } from "@/lib/products/canonical-product-read";
-import { ADVISOR_PRODUCT_SOURCE_KINDS } from "@/lib/client-portfolio/contact-overview-kpi";
 import { overviewStructuredProductNotesBody } from "@/lib/client-portfolio/portal-portfolio-display";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import { ContractProvenanceLine } from "@/app/components/aidvisora/ContractProvenanceLine";
@@ -728,9 +727,22 @@ export function ContactContractsOverview({
     staleTime: 45_000,
   });
 
+  // Poradce MUSÍ vidět všechny smlouvy kontaktu bez ohledu na `sourceKind`.
+  // Historická verze zde filtrovala na `ADVISOR_PRODUCT_SOURCE_KINDS`
+  // = {"manual","ai_review"}, což schovávalo smlouvy s `sourceKind` "document"
+  // (vytvořené z document-extraction / scan flow) i "import" (legacy bulk
+  // import) — poradce je nikdy neviděl, přestože klient je měl na portálu
+  // (klientský read model `getClientPortfolioForContact` filtruje pouze na
+  // `visibleToClient + portfolioStatus`, nikoli na `sourceKind`). Výsledek:
+  // smlouva existovala v DB, klient ji viděl, poradce ne → poradce netušil,
+  // že smlouvu vůbec má rozjednanou.
+  //
+  // KPI (`contact-overview-kpi.ts`) si svůj přísnější filter záměrně ponechává,
+  // aby nepočítaly rozpracované drafty do Osobní AUM / měsíčních příspěvků.
+  // Seznam v UI tu roli nemá — provenienci kartiček zobrazí
+  // `ContractProvenanceLine` (ruční záznam / AI Review / dokument / import).
   const contracts = useMemo(() => {
-    const list = bundleData?.contracts ?? [];
-    return list.filter((c) => ADVISOR_PRODUCT_SOURCE_KINDS.has(c.sourceKind));
+    return bundleData?.contracts ?? [];
   }, [bundleData?.contracts]);
 
   const loadError = bundleIsError

@@ -157,6 +157,15 @@ export default function ContractReviewDetailPage() {
       const data = await res.json();
       setProcessingStatus(data.processingStatus ?? null);
       setMatchedClientId(typeof data.matchedClientId === "string" ? data.matchedClientId : null);
+      // F0-1 (C-01): snapshot raw envelope tak, aby Approve/Approve+Apply mohl
+      // poslat aktuální snapshot spolu s field edits. Bez tohoto se UI edity
+      // sice zobrazí, ale do DB přes `approveContractReview` nedojdou
+      // (rawExtractedPayload zůstal null a server edity zahodil).
+      setRawExtractedPayload(
+        data.extractedPayload && typeof data.extractedPayload === "object"
+          ? (data.extractedPayload as Record<string, unknown>)
+          : null
+      );
       const mapped = mapApiToExtractionDocument(data, pdfUrlRef.current);
       setDoc(mapped);
     } catch (e) {
@@ -203,6 +212,11 @@ export default function ContractReviewDetailPage() {
         if (status !== "uploaded" && status !== "processing") {
           stopPolling();
           pollBackoffMsRef.current = 2500;
+          setRawExtractedPayload(
+            data.extractedPayload && typeof data.extractedPayload === "object"
+              ? (data.extractedPayload as Record<string, unknown>)
+              : null
+          );
           const mapped = mapApiToExtractionDocument(data, pdfUrlRef.current);
           setDoc(mapped);
           setLoading(false);

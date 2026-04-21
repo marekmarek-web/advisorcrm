@@ -869,6 +869,31 @@ export function buildAllDraftActions(
     }
   }
 
+  // Safety net: pokud model nenastavil contentFlags.containsPaymentInstructions
+  // (reálně se u návrhů životního/odpovědnostního pojištění stalo — dokument má
+  // VS, účet, kód banky i částku, ale flag chybí → fallback výše nezabere a
+  // návrh se ztratí), a jde o lifecycle proposal/offer/final_contract s tvrdými
+  // platebními údaji, draft stejně vygeneruj. Modelace nikdy — ty jsou v
+  // apply flow striktně zablokované v `applyPaymentSetupAction`.
+  if (!isPaymentType && !requested.includes("create_payment_setup")) {
+    const alreadyHasPayment = actions.some((a) => a.type === "create_payment_setup");
+    if (!alreadyHasPayment) {
+      const lifecycle = maybeEnvelope.documentClassification.lifecycleStatus;
+      const eligibleLifecycle =
+        lifecycle === "proposal" ||
+        lifecycle === "offer" ||
+        lifecycle === "final_contract" ||
+        lifecycle === "annex";
+      const infoOnly = maybeEnvelope.contentFlags?.paymentInformationalOnly === true;
+      if (eligibleLifecycle && !infoOnly) {
+        const canonical = buildCanonicalPaymentPayload(maybeEnvelope);
+        if (isPaymentSyncReady(canonical)) {
+          actions.push(buildPaymentSetupDraft(maybeEnvelope));
+        }
+      }
+    }
+  }
+
   if (maybeEnvelope.documentClassification.lifecycleStatus === "final_contract") {
     actions.push({
       type: "create_or_update_business_plan_item",

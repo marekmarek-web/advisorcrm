@@ -110,6 +110,19 @@ async function autoLog(payload: EmailPayload, result: SendResult): Promise<void>
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
+  // Delta A23 — remote kill-switch pro outbound email. Lazy import brání
+  // circular deps při test importu tohoto modulu mimo Next runtime.
+  try {
+    const { getKillSwitch } = await import("@/lib/ops/kill-switch");
+    if (await getKillSwitch("EMAIL_SENDING_DISABLED", false)) {
+      const result: SendResult = { ok: false, error: "EMAIL_SENDING_DISABLED kill-switch active" };
+      await autoLog(payload, result);
+      return result;
+    }
+  } catch {
+    // Edge Config nedostupné → pokračujeme dál.
+  }
+
   let result: SendResult;
   if (process.env.RESEND_API_KEY) {
     result = await sendViaResend(payload);

@@ -16,6 +16,7 @@ import { resolvePaymentSetupClientVisibility } from "../payment-publish-bridge";
 import { tryBuildPaymentSetupDraftFromRawPayload } from "../draft-actions";
 import { buildPaymentInstructionEnvelope } from "../payment-instruction-extraction";
 import { buildAdvisorReviewViewModel } from "../../ai-review/advisor-review-view-model";
+import { buildAllDraftActions } from "../draft-actions";
 
 function minimalEnvelope(
   lifecycle: DocumentReviewEnvelope["documentClassification"]["lifecycleStatus"],
@@ -301,6 +302,113 @@ describe("FUNDOO RYTMUS pravidelná investice — summary nesmí ukázat totál 
     };
     const cp = buildCanonicalPaymentPayload(env);
     expect(cp.amount).toMatch(/1\s?000\s?000/);
+  });
+});
+
+describe("Návrh pojistné smlouvy (proposal) — platební draft MUSÍ vzniknout", () => {
+  // Reál reportovaný uživatelem: ČSOB Pojišťovna "NAŠE ODPOVĚDNOST",
+  // č. 6200253364, 4 959 Kč ročně, VS 6200253364, účet 187078376/0300.
+  // Bug: life_insurance_proposal.suggestedActionRules neměl create_payment_setup
+  // → draft se nevygeneroval → po schválení se do client_payment_setups nic
+  // nezapsalo. Po opravě musí být draft přítomen i u proposal lifecycle.
+  it("life_insurance_proposal s VS + účtem + kódem banky + ročním pojistným generuje create_payment_setup draft", () => {
+    const env = minimalEnvelope("proposal", "life_insurance_proposal");
+    env.contentFlags = {
+      ...env.contentFlags,
+      // Úmyslně simulujeme, že model flag NENASTAVIL (reálný případ, který to
+      // rozbil) — deterministický fix ve schema registry to musí zachytit.
+      containsPaymentInstructions: false,
+      isFinalContract: false,
+      isProposalOnly: true,
+    };
+    env.extractedFields = {
+      insurer: { value: "ČSOB Pojišťovna, a. s., člen holdingu ČSOB", status: "extracted", confidence: 0.95 },
+      productName: { value: "NAŠE ODPOVĚDNOST", status: "extracted", confidence: 0.9 },
+      proposalNumber: { value: "6200253364", status: "extracted", confidence: 0.95 },
+      contractNumber: { value: "6200253364", status: "extracted", confidence: 0.95 },
+      annualPremium: { value: "4 959", status: "extracted", confidence: 0.9 },
+      paymentFrequency: { value: "ročně", status: "extracted", confidence: 0.95 },
+      variableSymbol: { value: "6200253364", status: "extracted", confidence: 0.95 },
+      recipientAccount: { value: "187078376", status: "extracted", confidence: 0.9 },
+      bankCode: { value: "0300", status: "extracted", confidence: 0.95 },
+      currency: { value: "CZK", status: "extracted", confidence: 0.99 },
+    };
+    const drafts = buildAllDraftActions(env);
+    const payment = drafts.find((d) => d.type === "create_payment_setup");
+    expect(payment, "create_payment_setup draft musí být součástí návrhu akcí u návrhu pojistné smlouvy").toBeDefined();
+    expect(payment!.payload.variableSymbol).toBe("6200253364");
+    expect(payment!.payload.bankCode).toBe("0300");
+    expect(String(payment!.payload.regularAmount)).toMatch(/4\s?959/);
+  });
+
+  it("liability_insurance_offer s platebními údaji generuje create_payment_setup draft", () => {
+    const env = minimalEnvelope("offer", "liability_insurance_offer");
+    env.contentFlags = {
+      ...env.contentFlags,
+      containsPaymentInstructions: false,
+      isFinalContract: false,
+      isProposalOnly: true,
+    };
+    env.extractedFields = {
+      insurer: { value: "ČSOB Pojišťovna", status: "extracted", confidence: 0.9 },
+      offerType: { value: "odpovědnost", status: "extracted", confidence: 0.9 },
+      productArea: { value: "liability", status: "extracted", confidence: 0.9 },
+      annualPremium: { value: "4 959", status: "extracted", confidence: 0.9 },
+      paymentFrequency: { value: "ročně", status: "extracted", confidence: 0.95 },
+      variableSymbol: { value: "6200253364", status: "extracted", confidence: 0.95 },
+      recipientAccount: { value: "187078376", status: "extracted", confidence: 0.9 },
+      bankCode: { value: "0300", status: "extracted", confidence: 0.95 },
+      currency: { value: "CZK", status: "extracted", confidence: 0.99 },
+    };
+    const drafts = buildAllDraftActions(env);
+    const payment = drafts.find((d) => d.type === "create_payment_setup");
+    expect(payment).toBeDefined();
+    expect(payment!.payload.variableSymbol).toBe("6200253364");
+  });
+
+  it("safety-net fallback: i pro life_insurance_contract lifecycle=final_contract bez containsPaymentInstructions flag doplní draft, pokud jsou tvrdá pole přítomna", () => {
+    // U některých typů schema create_payment_setup v pravidlech nemá (např.
+    // life_insurance_contract) a model zároveň neoznačí contentFlag — fallback
+    // v buildAllDraftActions tohle podchytí, protože lifecycle=final_contract
+    // a payment payload je sync-ready.
+    const env = minimalEnvelope("final_contract", "life_insurance_contract");
+    env.contentFlags = {
+      ...env.contentFlags,
+      containsPaymentInstructions: false,
+    };
+    env.extractedFields = {
+      insurer: { value: "Generali", status: "extracted", confidence: 0.9 },
+      productName: { value: "Bel Mondo", status: "extracted", confidence: 0.9 },
+      contractNumber: { value: "123", status: "extracted", confidence: 0.9 },
+      totalMonthlyPremium: { value: "1 500", status: "extracted", confidence: 0.9 },
+      paymentFrequency: { value: "měsíčně", status: "extracted", confidence: 0.95 },
+      iban: { value: "CZ6508000000192000145399", status: "extracted", confidence: 0.9 },
+      variableSymbol: { value: "123", status: "extracted", confidence: 0.9 },
+      currency: { value: "CZK", status: "extracted", confidence: 0.99 },
+    };
+    const drafts = buildAllDraftActions(env);
+    const payment = drafts.find((d) => d.type === "create_payment_setup");
+    expect(payment, "Safety-net: lifecycle=final_contract s kompletními platebními údaji NESMÍ přijít o payment draft").toBeDefined();
+  });
+
+  it("modelace NESMÍ vygenerovat draft ani když má kompletní platební pole (apply flow by to stejně zablokoval, ale držíme vrstvenou obranu)", () => {
+    const env = minimalEnvelope("modelation", "investment_modelation");
+    env.contentFlags = {
+      ...env.contentFlags,
+      containsPaymentInstructions: true,
+      paymentInformationalOnly: true,
+    };
+    env.extractedFields = {
+      productName: { value: "Modelace", status: "extracted", confidence: 0.9 },
+      totalMonthlyPremium: { value: "3 000", status: "extracted", confidence: 0.9 },
+      paymentFrequency: { value: "měsíčně", status: "extracted", confidence: 0.95 },
+      iban: { value: "CZ6508000000192000145399", status: "extracted", confidence: 0.9 },
+      variableSymbol: { value: "123", status: "extracted", confidence: 0.9 },
+      currency: { value: "CZK", status: "extracted", confidence: 0.99 },
+    };
+    const drafts = buildAllDraftActions(env);
+    const payment = drafts.find((d) => d.type === "create_payment_setup");
+    expect(payment, "Modelace nesmí generovat payment draft").toBeUndefined();
   });
 });
 

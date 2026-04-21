@@ -1596,9 +1596,28 @@ export function mergeFieldEditsIntoExtractedPayload(
         const ef = rootEf as Record<string, Record<string, unknown>>;
         const cell = ef[key];
         if (cell && typeof cell === "object" && !Array.isArray(cell)) {
+          // F0-2 (C-02): ruční edit musí povýšit status na valid enum
+          // (`extracted`) + doplnit marker `source: "manual_edit"`, jinak
+          // downstream enforcement (`resolveDisplayStatus` v
+          // `apply-policy-enforcement.ts`) vidí původní `missing`/`not_found`
+          // a pole označí jako `do_not_apply`, i když advisor hodnotu vyplnil.
+          // Používáme `extracted` (Zod-valid) místo vlastního `manual` abychom
+          // nerozbili envelope re-parse.
           cell.value = value;
+          cell.status = "extracted";
+          cell.source = "manual_edit";
+          cell.confidence = 1;
+          cell.evidenceTier = "direct";
+          cell.reviewedAt = new Date().toISOString();
         } else {
-          ef[key] = { value, status: "extracted", confidence: 1 };
+          ef[key] = {
+            value,
+            status: "extracted",
+            source: "manual_edit",
+            confidence: 1,
+            evidenceTier: "direct",
+            reviewedAt: new Date().toISOString(),
+          };
         }
         correctedFields.push(fieldId);
       }
@@ -1610,7 +1629,13 @@ export function mergeFieldEditsIntoExtractedPayload(
       if (section && typeof section === "object" && section !== null && !Array.isArray(section)) {
         const slot = (section as Record<string, unknown>)[key];
         if (slot && typeof slot === "object" && !Array.isArray(slot) && "value" in (slot as object)) {
-          (slot as Record<string, unknown>).value = value;
+          const slotObj = slot as Record<string, unknown>;
+          slotObj.value = value;
+          slotObj.status = "extracted";
+          slotObj.source = "manual_edit";
+          slotObj.confidence = 1;
+          slotObj.evidenceTier = "direct";
+          slotObj.reviewedAt = new Date().toISOString();
         } else {
           (section as Record<string, unknown>)[key] = value;
         }

@@ -23,6 +23,7 @@ import {
   writeBillingAudit,
 } from "@/lib/stripe/billing-audit";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { getKillSwitch } from "@/lib/ops/kill-switch";
 import { db, tenants, eq } from "db";
 import Stripe from "stripe";
 
@@ -33,6 +34,14 @@ function canManageWorkspaceBilling(roleName: string) {
 }
 
 export async function POST(request: Request) {
+  // Delta A23 — remote kill-switch: umožní finance/ops vypnout nové checkouty
+  // (např. když se pokazí price-catalog nebo probíhá billing incident).
+  if (await getKillSwitch("STRIPE_CHECKOUT_DISABLED", false)) {
+    return NextResponse.json(
+      { error: "Předplatné je dočasně nedostupné. Zkuste to prosím za chvíli." },
+      { status: 503 },
+    );
+  }
   if (!isStripeCheckoutAvailable()) {
     return NextResponse.json(
       {

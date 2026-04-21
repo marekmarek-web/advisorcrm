@@ -351,6 +351,12 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
         "create_or_link_client",
         "create_opportunity",
         "create_task_followup",
+        // Návrh pojistné smlouvy může nést konkrétní platební instrukce
+        // (VS + účet + roční/měsíční pojistné). Apply flow má lifecycle guard
+        // (`applyPaymentSetupAction`): blokuje jen `modelation` / `illustration`,
+        // proposal projde. Bez této akce se draft pro platební setup
+        // u návrhu nikdy nevygeneruje a `client_payment_setups` zůstane prázdné.
+        "create_payment_setup",
       ],
     },
   },
@@ -890,6 +896,11 @@ export const DOCUMENT_SCHEMA_REGISTRY: Record<
         "create_or_link_client",
         "create_opportunity",
         "create_task_followup",
+        // Nabídka odpovědnostního pojištění obsahuje platební instrukce
+        // (VS + účet + roční/měsíční pojistné) stejně jako návrh životního —
+        // draft platebního setupu musí vzniknout deterministicky (viz poznámka
+        // u life_insurance_proposal).
+        "create_payment_setup",
       ],
     },
   },

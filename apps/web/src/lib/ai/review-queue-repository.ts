@@ -9,6 +9,13 @@ export type ApplyResultPayload = {
   createdClientId?: string;
   linkedClientId?: string;
   createdContractId?: string;
+  /**
+   * F2-1 (H-09): when apply produces >1 contract (bundle uploads),
+   * this array holds every contract id (both new inserts and matched updates)
+   * in the order the actions were processed. `createdContractId` remains the
+   * FIRST id for backward compatibility with existing callers.
+   */
+  createdContractIds?: string[];
   createdPaymentId?: string;
   createdPaymentSetupId?: string;
   createdTaskId?: string;

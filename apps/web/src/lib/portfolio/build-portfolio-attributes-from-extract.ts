@@ -439,10 +439,41 @@ export function buildPortfolioAttributesFromExtracted(extracted: unknown): Recor
   const expectedFv = p.expectedFutureValue;
   if (typeof expectedFv === "string" && expectedFv.trim()) out.expectedFutureValue = expectedFv.trim();
 
+  // F1-3 (BONUS-1): `investmentFunds` může přijít v několika shape-ech:
+  //   1) Array  (preferovaný shape — starý code)
+  //   2) JSON string (LLM v některých prompt variantách serializuje array jako string)
+  //   3) ExtractedField cell `{ value: <array|string> }` (když extraction wrap-uje všechno
+  //      do extractedFields struktury)
+  // Bez tohoto normalizačního kroku se JSON-stringové fondy tiše ztratily a investice
+  // neměly žádné funds (fund resolution pak failovala).
   const rawFunds = p.investmentFunds ?? p.funds;
-  if (Array.isArray(rawFunds) && rawFunds.length > 0) {
+  let fundsInput: unknown[] = [];
+  if (Array.isArray(rawFunds)) {
+    fundsInput = rawFunds;
+  } else if (typeof rawFunds === "string" && rawFunds.trim()) {
+    try {
+      const parsed = JSON.parse(rawFunds);
+      if (Array.isArray(parsed)) fundsInput = parsed;
+    } catch {
+      /* ignore — not JSON */
+    }
+  } else if (rawFunds && typeof rawFunds === "object" && "value" in rawFunds) {
+    const inner = (rawFunds as { value?: unknown }).value;
+    if (Array.isArray(inner)) {
+      fundsInput = inner;
+    } else if (typeof inner === "string" && inner.trim()) {
+      try {
+        const parsed = JSON.parse(inner);
+        if (Array.isArray(parsed)) fundsInput = parsed;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  if (fundsInput.length > 0) {
     const funds: Array<{ name: string; allocation?: string; isin?: string }> = [];
-    for (const f of rawFunds.slice(0, 20)) {
+    for (const f of fundsInput.slice(0, 20)) {
       if (f && typeof f === "object") {
         const r = f as Record<string, unknown>;
         const name = typeof r.name === "string" ? r.name.trim() : undefined;

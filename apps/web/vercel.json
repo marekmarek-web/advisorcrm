@@ -37,6 +37,10 @@
     {
       "path": "/api/cron/grace-period-check",
       "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/cron/trash-purge-contacts",
+      "schedule": "15 3 * * *"
     }
   ]
 }
