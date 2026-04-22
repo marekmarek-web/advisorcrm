@@ -216,7 +216,7 @@ export function FinancialAnalysisLayout() {
   }
 
   return (
-    <div className="flex w-full flex-col items-center px-3 pt-4 sm:px-4 sm:pt-6 pb-[max(6rem,env(safe-area-inset-bottom))] sm:pb-20">
+    <div className="flex w-full flex-col items-center px-3 pt-4 sm:px-4 sm:pt-6 pb-[max(calc(var(--aidv-mobile-tabbar-inner-h-phone,3.75rem)+1.25rem),env(safe-area-inset-bottom))] sm:pb-20">
       <FinancialAnalysisAutoSave />
       <section className="mb-4 w-full max-w-6xl px-1 text-center sm:mb-6">
         <h1 className="text-xl font-extrabold tracking-tight text-[color:var(--wp-text)] sm:text-3xl md:text-4xl">
@@ -243,9 +243,8 @@ export function FinancialAnalysisLayout() {
 
         <div
           className={[
-            "mt-4 flex flex-row items-center gap-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/95 backdrop-blur px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5",
-            "sticky bottom-0 z-20",
-            "sm:static sm:mx-0 sm:mt-8 sm:items-center sm:justify-between sm:gap-4 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8 sm:backdrop-blur-0",
+            "mt-4 flex flex-row items-stretch gap-2 border-t border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)]/95 backdrop-blur px-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5",
+            "sm:mt-8 sm:items-center sm:justify-between sm:gap-4 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8 sm:backdrop-blur-0",
           ].join(" ")}
         >
           <button
@@ -254,21 +253,18 @@ export function FinancialAnalysisLayout() {
             className={
               currentStep === 1
                 ? "hidden"
-                : "min-h-[44px] shrink-0 px-4 py-2.5 border border-[color:var(--wp-surface-card-border)] rounded-xl font-semibold text-[color:var(--wp-text-secondary)] hover:bg-[color:var(--wp-surface-muted)] text-sm"
+                : "min-h-[48px] shrink-0 px-5 py-3 border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] rounded-xl font-bold text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)] text-sm inline-flex items-center justify-center gap-1.5 sm:min-h-[44px] sm:py-2.5 sm:font-semibold sm:text-[color:var(--wp-text-secondary)]"
             }
           >
-            ← Zpět
+            <span aria-hidden>←</span>
+            Zpět
           </button>
           <div className="flex-1 text-right">
-            {currentStep === totalSteps ? (
-              <span className="block text-[color:var(--wp-text-secondary)] text-xs sm:text-sm leading-snug">
-                Použijte tlačítko v kroku Shrnutí pro export reportu.
-              </span>
-            ) : (
+            {currentStep === totalSteps ? null : (
               <button
                 type="button"
                 onClick={() => nextStep()}
-                className="min-h-[44px] inline-flex items-center justify-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-[0_6px_18px_rgba(79,70,229,0.35)] text-sm sm:min-h-[48px] sm:px-6 sm:py-3"
+                className="min-h-[48px] w-full sm:w-auto inline-flex items-center justify-center px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-[0_6px_18px_rgba(79,70,229,0.35)] text-sm sm:min-h-[48px] sm:px-6 sm:py-3"
               >
                 Další →
               </button>

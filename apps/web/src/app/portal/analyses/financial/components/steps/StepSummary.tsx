@@ -9,7 +9,7 @@ import { uploadDocument } from "@/app/actions/documents";
 import { setFinancialAnalysisLastExportedAt } from "@/app/actions/financial-analyses";
 import { getAdvisorReportBranding } from "@/app/actions/preferences";
 import clsx from "clsx";
-import { FileText, Printer, CloudUpload, StickyNote, Monitor, TrendingUp, HelpCircle } from "lucide-react";
+import { FileText, Printer, CloudUpload, StickyNote, Monitor, TrendingUp, HelpCircle, Eye, Share2, X } from "lucide-react";
 import { getClientPortfolioForContact } from "@/app/actions/contracts";
 import {
   buildFaCanonicalInvestmentOverviewRows,
@@ -60,6 +60,9 @@ export function StepSummary() {
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [isPreparingPreview, setIsPreparingPreview] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [crmInvestments, setCrmInvestments] = useState<FaCanonicalInvestmentOverviewRow[]>([]);
   const [crmInvestmentsError, setCrmInvestmentsError] = useState<string | null>(null);
   const [howToReadOpen, setHowToReadOpen] = useState(false);
@@ -138,6 +141,60 @@ export function StepSummary() {
     });
   }, [data, reportOptions, selectedTheme, crmInvestments]);
 
+  const isMobileClient = typeof window !== "undefined"
+    && (/iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent) || Boolean((window as unknown as { Capacitor?: unknown }).Capacitor));
+
+  const handleOpenPreview = async () => {
+    setExportError(null);
+    setIsPreparingPreview(true);
+    try {
+      let html = await generateHTML();
+      html = await embedLocalImages(html);
+      setPreviewHtml(html);
+    } catch (error) {
+      console.error("[StepSummary] handleOpenPreview failed", error);
+      setExportError(normalizeExportError(error, "Nepodařilo se připravit náhled reportu."));
+    } finally {
+      setIsPreparingPreview(false);
+    }
+  };
+
+  const handleShareReport = async () => {
+    setExportError(null);
+    setIsSharing(true);
+    try {
+      let html = previewHtml;
+      if (!html) {
+        html = await generateHTML();
+        html = await embedLocalImages(html);
+      }
+      const filename = financialAnalysisReportFilename(clientName, "html");
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const file = new File([blob], filename, { type: "text/html" });
+      const navAny = window.navigator as Navigator & {
+        canShare?: (data: ShareData) => boolean;
+        share?: (data: ShareData) => Promise<void>;
+      };
+      const shareData: ShareData = { files: [file], title: filename, text: `Finanční report — ${clientName}` };
+      if (navAny.canShare?.(shareData) && navAny.share) {
+        await navAny.share(shareData);
+        return;
+      }
+      // Fallback: open blob in new tab so the user can view/save it manually.
+      const url = URL.createObjectURL(blob);
+      const opened = window.open(url, "_blank");
+      if (!opened) window.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.toLowerCase().includes("abort")) return;
+      console.error("[StepSummary] handleShareReport failed", error);
+      setExportError(normalizeExportError(error, "Sdílení se nezdařilo. Zkuste Stáhnout."));
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const handleDownloadHTML = async () => {
     setExportError(null);
     setIsDownloading(true);
@@ -147,6 +204,13 @@ export function StepSummary() {
       const filename = financialAnalysisReportFilename(clientName, "html");
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
+      // Na mobilním WebView <a download> často nedělá nic — raději report otevřeme.
+      if (isMobileClient) {
+        const opened = window.open(url, "_blank");
+        if (!opened) window.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return;
+      }
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
@@ -393,33 +457,54 @@ export function StepSummary() {
           <ThemeSelector value={selectedTheme} onChange={handleThemeChange} />
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <button
             type="button"
-            onClick={handleDownloadHTML}
-            disabled={isDownloading}
-            aria-busy={isDownloading}
+            onClick={handleOpenPreview}
+            disabled={isPreparingPreview}
+            aria-busy={isPreparingPreview}
             className={clsx(portalPrimaryButtonClassName, "min-h-[56px] flex items-center gap-3 px-5 py-3 disabled:opacity-60")}
           >
-            <Monitor className="w-5 h-5 flex-shrink-0" />
+            <Eye className="w-5 h-5 flex-shrink-0" />
             <div className="text-left">
-              <div className="text-sm font-bold">{isDownloading ? "Stahuji\u2026" : "Prezentace (HTML)"}</div>
-              <div className="text-xs font-normal opacity-75">Stáhne HTML soubor k otevření v prohlížeči</div>
+              <div className="text-sm font-bold">{isPreparingPreview ? "Připravuji\u2026" : "Zobrazit report"}</div>
+              <div className="text-xs font-normal opacity-75">Otevře report přímo v aplikaci</div>
             </div>
           </button>
           <button
             type="button"
-            onClick={handlePrintReport}
-            disabled={isPreparingPrint}
-            aria-busy={isPreparingPrint}
-            className="flex min-h-[56px] items-center gap-3 rounded-xl bg-[color:var(--wp-button-bg)] px-5 py-3 font-bold text-white transition-colors hover:bg-[color:var(--wp-primary-hover)] disabled:opacity-60"
+            onClick={isMobileClient ? handleShareReport : handleDownloadHTML}
+            disabled={isSharing || isDownloading}
+            aria-busy={isSharing || isDownloading}
+            className="flex min-h-[56px] items-center gap-3 rounded-xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-5 py-3 font-bold text-[color:var(--wp-text)] transition-colors hover:bg-[color:var(--wp-surface-muted)] disabled:opacity-60"
           >
-            <Printer className="w-5 h-5 flex-shrink-0" />
+            {isMobileClient ? <Share2 className="w-5 h-5 flex-shrink-0" /> : <Monitor className="w-5 h-5 flex-shrink-0" />}
             <div className="text-left">
-              <div className="text-sm font-bold">{isPreparingPrint ? "Připravuji\u2026" : "PDF (Tisk)"}</div>
-              <div className="text-xs font-normal opacity-75">Otevře tiskový dialog pro uložení do PDF</div>
+              <div className="text-sm font-bold">
+                {isMobileClient
+                  ? (isSharing ? "Sdílím\u2026" : "Sdílet / Uložit")
+                  : (isDownloading ? "Stahuji\u2026" : "Stáhnout (HTML)")}
+              </div>
+              <div className="text-xs font-normal opacity-75">
+                {isMobileClient ? "Odeslat přes systém nebo do Files" : "HTML soubor k otevření v prohlížeči"}
+              </div>
             </div>
           </button>
+          {!isMobileClient && (
+            <button
+              type="button"
+              onClick={handlePrintReport}
+              disabled={isPreparingPrint}
+              aria-busy={isPreparingPrint}
+              className="flex min-h-[56px] items-center gap-3 rounded-xl bg-[color:var(--wp-button-bg)] px-5 py-3 font-bold text-white transition-colors hover:bg-[color:var(--wp-primary-hover)] disabled:opacity-60"
+            >
+              <Printer className="w-5 h-5 flex-shrink-0" />
+              <div className="text-left">
+                <div className="text-sm font-bold">{isPreparingPrint ? "Připravuji\u2026" : "PDF (Tisk)"}</div>
+                <div className="text-xs font-normal opacity-75">Tiskový dialog pro PDF</div>
+              </div>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap justify-center items-center gap-3">
@@ -447,6 +532,49 @@ export function StepSummary() {
           style={{ position: "fixed", left: "-9999px", top: 0, width: "210mm", height: "297mm", border: "none" }}
           title="Finanční report — tisk"
         />
+      )}
+
+      {previewHtml && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Náhled reportu"
+          className="fixed inset-0 z-[100] flex flex-col bg-[color:var(--wp-bg)]"
+        >
+          <div
+            className="flex items-center justify-between gap-2 border-b border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] px-3 py-2"
+            style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewHtml(null)}
+              className="inline-flex items-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg font-semibold text-sm text-[color:var(--wp-text)] hover:bg-[color:var(--wp-surface-muted)]"
+            >
+              <X className="w-4 h-4" />
+              Zavřít
+            </button>
+            <div className="flex-1 min-w-0 text-center">
+              <div className="truncate text-sm font-bold text-[color:var(--wp-text)]">Náhled reportu</div>
+              <div className="truncate text-xs text-[color:var(--wp-text-secondary)]">{clientName}</div>
+            </div>
+            <button
+              type="button"
+              onClick={handleShareReport}
+              disabled={isSharing}
+              className={clsx(portalPrimaryButtonClassName, "inline-flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-sm disabled:opacity-60")}
+            >
+              <Share2 className="w-4 h-4" />
+              {isSharing ? "Sdílím\u2026" : "Sdílet"}
+            </button>
+          </div>
+          <iframe
+            srcDoc={previewHtml}
+            title="Náhled finančního reportu"
+            className="flex-1 w-full border-0 bg-white"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+            sandbox="allow-same-origin allow-popups"
+          />
+        </div>
       )}
     </>
   );
