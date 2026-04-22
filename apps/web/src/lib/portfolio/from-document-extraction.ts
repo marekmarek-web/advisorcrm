@@ -98,6 +98,9 @@ export async function syncPortfolioDraftFromProcessedDocument(
   if (!doc.contactId) return { ok: false, reason: "no_contact" };
   if (!doc.extractJsonPath?.trim()) return { ok: false, reason: "no_extract_json" };
 
+  const docContactId: string = doc.contactId;
+  const docTenantId: string = doc.tenantId;
+
   const jsonText = await readExtractJson(doc.extractJsonPath);
   if (!jsonText?.trim()) return { ok: false, reason: "parse_failed", detail: "empty_file" };
 
@@ -133,8 +136,8 @@ export async function syncPortfolioDraftFromProcessedDocument(
       .insert(documentExtractions)
       .values({
         documentId,
-        tenantId: doc.tenantId,
-        contactId: doc.contactId,
+        tenantId: docTenantId,
+        contactId: docContactId,
         contractId: null,
         status: "extracted",
         extractedAt: new Date(),
@@ -175,8 +178,8 @@ export async function syncPortfolioDraftFromProcessedDocument(
       .from(contracts)
       .where(
         and(
-          eq(contracts.tenantId, doc.tenantId),
-          eq(contracts.contactId, doc.contactId),
+          eq(contracts.tenantId, docTenantId),
+          eq(contracts.contactId, docContactId),
           eq(contracts.sourceDocumentId, documentId)
         )
       )
@@ -212,8 +215,8 @@ export async function syncPortfolioDraftFromProcessedDocument(
       const [inserted] = await tx
         .insert(contracts)
         .values({
-          tenantId: doc.tenantId,
-          contactId: doc.contactId,
+          tenantId: docTenantId,
+          contactId: docContactId,
           advisorId: options?.advisorUserId ?? null,
           segment,
           type: segment,
