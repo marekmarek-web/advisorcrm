@@ -1,8 +1,8 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
 import {
   advisorBusinessPlans,
   advisorBusinessPlanTargets,
@@ -93,7 +93,7 @@ export async function getBusinessPlanWidgetData(): Promise<{
   overallHealth: string;
   metrics: { metricType: string; label: string; actual: number; target: number; health: string; unit: string }[];
 } | null> {
-  const auth = await requireAuthInAction();
+  await requireAuthInAction();
   const plan = await getActivePlan("month");
   if (!plan?.planId || plan.targets.length === 0) return null;
   const result = await getPlanProgress(plan.planId);
@@ -127,37 +127,38 @@ export async function getBusinessPlanWidgetData(): Promise<{
 
 /** List current user's plans (own only). */
 export async function listBusinessPlans(): Promise<PlanListItem[]> {
-  const auth = await requireAuthInAction();
-  const rows = await db
-    .select({
-      id: advisorBusinessPlans.id,
-      periodType: advisorBusinessPlans.periodType,
-      year: advisorBusinessPlans.year,
-      periodNumber: advisorBusinessPlans.periodNumber,
-      title: advisorBusinessPlans.title,
-      status: advisorBusinessPlans.status,
-      createdAt: advisorBusinessPlans.createdAt,
-    })
-    .from(advisorBusinessPlans)
-    .where(
-      and(
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.userId, auth.userId)
-      )    )
-    .orderBy(asc(advisorBusinessPlans.year), asc(advisorBusinessPlans.periodNumber));
-  const periodType = (p: string) => p as PeriodType;
-  return rows.map((r) => {
-    const period = getPlanPeriod(periodType(r.periodType), r.year, r.periodNumber);
-    return {
-      id: r.id,
-      periodType: r.periodType,
-      year: r.year,
-      periodNumber: r.periodNumber,
-      periodLabel: period.label,
-      title: r.title,
-      status: r.status,
-      createdAt: r.createdAt,
-    };
+  return withAuthContext(async (auth, tx) => {
+    const rows = await tx
+      .select({
+        id: advisorBusinessPlans.id,
+        periodType: advisorBusinessPlans.periodType,
+        year: advisorBusinessPlans.year,
+        periodNumber: advisorBusinessPlans.periodNumber,
+        title: advisorBusinessPlans.title,
+        status: advisorBusinessPlans.status,
+        createdAt: advisorBusinessPlans.createdAt,
+      })
+      .from(advisorBusinessPlans)
+      .where(
+        and(
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.userId, auth.userId)
+        )    )
+      .orderBy(asc(advisorBusinessPlans.year), asc(advisorBusinessPlans.periodNumber));
+    const periodType = (p: string) => p as PeriodType;
+    return rows.map((r) => {
+      const period = getPlanPeriod(periodType(r.periodType), r.year, r.periodNumber);
+      return {
+        id: r.id,
+        periodType: r.periodType,
+        year: r.year,
+        periodNumber: r.periodNumber,
+        periodLabel: period.label,
+        title: r.title,
+        status: r.status,
+        createdAt: r.createdAt,
+      };
+    });
   });
 }
 
@@ -165,118 +166,120 @@ export async function listBusinessPlans(): Promise<PlanListItem[]> {
 export async function getActivePlan(
   periodType: PeriodType = "month"
 ): Promise<PlanWithTargetsRow | null> {
-  const auth = await requireAuthInAction();
-  const now = new Date();
-  const y = now.getFullYear();
-  const periodNumber =
-    periodType === "month"
-      ? now.getMonth() + 1
-      : periodType === "quarter"
-        ? Math.floor(now.getMonth() / 3) + 1
-        : 0;
-  const [planRow] = await db
-    .select()
-    .from(advisorBusinessPlans)
-    .where(
-      and(
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.userId, auth.userId),
-        eq(advisorBusinessPlans.periodType, periodType),
-        eq(advisorBusinessPlans.year, y),
-        eq(advisorBusinessPlans.periodNumber, periodNumber),
-        eq(advisorBusinessPlans.status, "active")
-      )    )
-    .limit(1);
-  if (!planRow) return null;
-  const period = getPlanPeriod(
-    periodType as PeriodType,
-    planRow.year,
-    planRow.periodNumber
-  );
-  const targetRows = await db
-    .select({
-      metricType: advisorBusinessPlanTargets.metricType,
-      targetValue: advisorBusinessPlanTargets.targetValue,
-      unit: advisorBusinessPlanTargets.unit,
-    })
-    .from(advisorBusinessPlanTargets)
-    .where(eq(advisorBusinessPlanTargets.planId, planRow.id));
-  const targets = targetRows.map((t) => ({
-    metricType: t.metricType as BusinessPlanMetricType,
-    targetValue: Number(t.targetValue),
-    unit: (t.unit ?? "count") as MetricUnit,
-  }));
-  return {
-    planId: planRow.id,
-    tenantId: planRow.tenantId,
-    userId: planRow.userId,
-    periodType: planRow.periodType,
-    year: planRow.year,
-    periodNumber: planRow.periodNumber,
-    periodLabel: period.label,
-    periodStart: period.start,
-    periodEnd: period.end,
-    targets,
-    manualMetricAdjustments: (planRow.manualMetricAdjustments as Record<string, number> | null) ?? null,
-    targetMixPct: planRow.targetMixPct ?? null,
-  };
+  return withAuthContext(async (auth, tx) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const periodNumber =
+      periodType === "month"
+        ? now.getMonth() + 1
+        : periodType === "quarter"
+          ? Math.floor(now.getMonth() / 3) + 1
+          : 0;
+    const [planRow] = await tx
+      .select()
+      .from(advisorBusinessPlans)
+      .where(
+        and(
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.userId, auth.userId),
+          eq(advisorBusinessPlans.periodType, periodType),
+          eq(advisorBusinessPlans.year, y),
+          eq(advisorBusinessPlans.periodNumber, periodNumber),
+          eq(advisorBusinessPlans.status, "active")
+        )    )
+      .limit(1);
+    if (!planRow) return null;
+    const period = getPlanPeriod(
+      periodType as PeriodType,
+      planRow.year,
+      planRow.periodNumber
+    );
+    const targetRows = await tx
+      .select({
+        metricType: advisorBusinessPlanTargets.metricType,
+        targetValue: advisorBusinessPlanTargets.targetValue,
+        unit: advisorBusinessPlanTargets.unit,
+      })
+      .from(advisorBusinessPlanTargets)
+      .where(eq(advisorBusinessPlanTargets.planId, planRow.id));
+    const targets = targetRows.map((t) => ({
+      metricType: t.metricType as BusinessPlanMetricType,
+      targetValue: Number(t.targetValue),
+      unit: (t.unit ?? "count") as MetricUnit,
+    }));
+    return {
+      planId: planRow.id,
+      tenantId: planRow.tenantId,
+      userId: planRow.userId,
+      periodType: planRow.periodType,
+      year: planRow.year,
+      periodNumber: planRow.periodNumber,
+      periodLabel: period.label,
+      periodStart: period.start,
+      periodEnd: period.end,
+      targets,
+      manualMetricAdjustments: (planRow.manualMetricAdjustments as Record<string, number> | null) ?? null,
+      targetMixPct: planRow.targetMixPct ?? null,
+    };
+  });
 }
 
 /** Get plan by id (own only) with targets. */
 export async function getPlanWithTargets(
   planId: string
 ): Promise<PlanWithTargetsRow | null> {
-  const auth = await requireAuthInAction();
-  const [planRow] = await db
-    .select()
-    .from(advisorBusinessPlans)
-    .where(
-      and(
-        eq(advisorBusinessPlans.id, planId),
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.userId, auth.userId)
-      )    )
-    .limit(1);
-  if (!planRow) return null;
-  const period = getPlanPeriod(
-    planRow.periodType as PeriodType,
-    planRow.year,
-    planRow.periodNumber
-  );
-  const targetRows = await db
-    .select({
-      metricType: advisorBusinessPlanTargets.metricType,
-      targetValue: advisorBusinessPlanTargets.targetValue,
-      unit: advisorBusinessPlanTargets.unit,
-    })
-    .from(advisorBusinessPlanTargets)
-    .where(eq(advisorBusinessPlanTargets.planId, planRow.id));
-  const targets = targetRows.map((t) => ({
-    metricType: t.metricType as BusinessPlanMetricType,
-    targetValue: Number(t.targetValue),
-    unit: (t.unit ?? "count") as MetricUnit,
-  }));
-  return {
-    planId: planRow.id,
-    tenantId: planRow.tenantId,
-    userId: planRow.userId,
-    periodType: planRow.periodType,
-    year: planRow.year,
-    periodNumber: planRow.periodNumber,
-    periodLabel: period.label,
-    periodStart: period.start,
-    periodEnd: period.end,
-    targets,
-    manualMetricAdjustments: (planRow.manualMetricAdjustments as Record<string, number> | null) ?? null,
-    targetMixPct: planRow.targetMixPct ?? null,
-  };
+  return withAuthContext(async (auth, tx) => {
+    const [planRow] = await tx
+      .select()
+      .from(advisorBusinessPlans)
+      .where(
+        and(
+          eq(advisorBusinessPlans.id, planId),
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.userId, auth.userId)
+        )    )
+      .limit(1);
+    if (!planRow) return null;
+    const period = getPlanPeriod(
+      planRow.periodType as PeriodType,
+      planRow.year,
+      planRow.periodNumber
+    );
+    const targetRows = await tx
+      .select({
+        metricType: advisorBusinessPlanTargets.metricType,
+        targetValue: advisorBusinessPlanTargets.targetValue,
+        unit: advisorBusinessPlanTargets.unit,
+      })
+      .from(advisorBusinessPlanTargets)
+      .where(eq(advisorBusinessPlanTargets.planId, planRow.id));
+    const targets = targetRows.map((t) => ({
+      metricType: t.metricType as BusinessPlanMetricType,
+      targetValue: Number(t.targetValue),
+      unit: (t.unit ?? "count") as MetricUnit,
+    }));
+    return {
+      planId: planRow.id,
+      tenantId: planRow.tenantId,
+      userId: planRow.userId,
+      periodType: planRow.periodType,
+      year: planRow.year,
+      periodNumber: planRow.periodNumber,
+      periodLabel: period.label,
+      periodStart: period.start,
+      periodEnd: period.end,
+      targets,
+      manualMetricAdjustments: (planRow.manualMetricAdjustments as Record<string, number> | null) ?? null,
+      targetMixPct: planRow.targetMixPct ?? null,
+    };
+  });
 }
 
 /** Compute progress and recommendations for a plan. Runs metrics/calls/mix sequentially to avoid exhausting DB connection pool. */
 export async function getPlanProgress(
   planId: string
 ): Promise<PlanProgressResult | null> {
-  const auth = await requireAuthInAction();
+  await requireAuthInAction();
   const plan = await getPlanWithTargets(planId);
   if (!plan) return null;
   const actuals = await computeAllMetrics(
@@ -324,27 +327,28 @@ export async function savePlanManualOverrides(
     } | null;
   }
 ): Promise<void> {
-  const auth = await requireAuthInAction();
-  const [row] = await db
-    .select({ id: advisorBusinessPlans.id })
-    .from(advisorBusinessPlans)
-    .where(
-      and(
-        eq(advisorBusinessPlans.id, planId),
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.userId, auth.userId)
+  await withAuthContext(async (auth, tx) => {
+    const [row] = await tx
+      .select({ id: advisorBusinessPlans.id })
+      .from(advisorBusinessPlans)
+      .where(
+        and(
+          eq(advisorBusinessPlans.id, planId),
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.userId, auth.userId)
+        )
       )
-    )
-    .limit(1);
-  if (!row) throw new Error("Plan not found");
-  await db
-    .update(advisorBusinessPlans)
-    .set({
-      manualMetricAdjustments: payload.manualMetricAdjustments,
-      targetMixPct: payload.targetMixPct,
-      updatedAt: new Date(),
-    })
-    .where(eq(advisorBusinessPlans.id, planId));
+      .limit(1);
+    if (!row) throw new Error("Plan not found");
+    await tx
+      .update(advisorBusinessPlans)
+      .set({
+        manualMetricAdjustments: payload.manualMetricAdjustments,
+        targetMixPct: payload.targetMixPct,
+        updatedAt: new Date(),
+      })
+      .where(eq(advisorBusinessPlans.id, planId));
+  });
 }
 
 /** Create a plan for the given period. Returns plan id. */
@@ -354,21 +358,22 @@ export async function createBusinessPlan(params: {
   periodNumber: number;
   title?: string | null;
 }): Promise<string> {
-  const auth = await requireAuthInAction();
-  const [inserted] = await db
-    .insert(advisorBusinessPlans)
-    .values({
-      tenantId: auth.tenantId,
-      userId: auth.userId,
-      periodType: params.periodType,
-      year: params.year,
-      periodNumber: params.periodNumber,
-      title: params.title ?? null,
-      status: "active",
-    })
-    .returning({ id: advisorBusinessPlans.id });
-  if (!inserted?.id) throw new Error("Failed to create plan");
-  return inserted.id;
+  return withAuthContext(async (auth, tx) => {
+    const [inserted] = await tx
+      .insert(advisorBusinessPlans)
+      .values({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        periodType: params.periodType,
+        year: params.year,
+        periodNumber: params.periodNumber,
+        title: params.title ?? null,
+        status: "active",
+      })
+      .returning({ id: advisorBusinessPlans.id });
+    if (!inserted?.id) throw new Error("Failed to create plan");
+    return inserted.id;
+  });
 }
 
 /** Update plan title/status. */
@@ -376,32 +381,34 @@ export async function updateBusinessPlan(
   planId: string,
   updates: { title?: string | null; status?: "active" | "archived" }
 ): Promise<void> {
-  const auth = await requireAuthInAction();
-  await db
-    .update(advisorBusinessPlans)
-    .set({
-      ...updates,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(advisorBusinessPlans.id, planId),
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.userId, auth.userId)
-      )    );
+  await withAuthContext(async (auth, tx) => {
+    await tx
+      .update(advisorBusinessPlans)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(advisorBusinessPlans.id, planId),
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.userId, auth.userId)
+        )    );
+  });
 }
 
 /** Delete plan (cascades to targets). */
 export async function deleteBusinessPlan(planId: string): Promise<void> {
-  const auth = await requireAuthInAction();
-  await db
-    .delete(advisorBusinessPlans)
-    .where(
-      and(
-        eq(advisorBusinessPlans.id, planId),
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.userId, auth.userId)
-      )    );
+  await withAuthContext(async (auth, tx) => {
+    await tx
+      .delete(advisorBusinessPlans)
+      .where(
+        and(
+          eq(advisorBusinessPlans.id, planId),
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.userId, auth.userId)
+        )    );
+  });
 }
 
 /** Set targets for a plan (replaces existing). */
@@ -409,56 +416,58 @@ export async function setPlanTargets(
   planId: string,
   targets: { metricType: BusinessPlanMetricType; targetValue: number; unit: MetricUnit }[]
 ): Promise<void> {
-  const auth = await requireAuthInAction();
-  const [plan] = await db
-    .select({ id: advisorBusinessPlans.id })
-    .from(advisorBusinessPlans)
-    .where(
-      and(
-        eq(advisorBusinessPlans.id, planId),
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.userId, auth.userId)
-      )    )
-    .limit(1);
-  if (!plan) throw new Error("Plan not found");
-  await db
-    .delete(advisorBusinessPlanTargets)
-    .where(eq(advisorBusinessPlanTargets.planId, planId));
-  if (targets.length === 0) return;
-  await db.insert(advisorBusinessPlanTargets).values(
-    targets.map((t) => ({
-      planId,
-      metricType: t.metricType,
-      targetValue: String(t.targetValue),
-      unit: t.unit,
-    }))
-  );
+  await withAuthContext(async (auth, tx) => {
+    const [plan] = await tx
+      .select({ id: advisorBusinessPlans.id })
+      .from(advisorBusinessPlans)
+      .where(
+        and(
+          eq(advisorBusinessPlans.id, planId),
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.userId, auth.userId)
+        )    )
+      .limit(1);
+    if (!plan) throw new Error("Plan not found");
+    await tx
+      .delete(advisorBusinessPlanTargets)
+      .where(eq(advisorBusinessPlanTargets.planId, planId));
+    if (targets.length === 0) return;
+    await tx.insert(advisorBusinessPlanTargets).values(
+      targets.map((t) => ({
+        planId,
+        metricType: t.metricType,
+        targetValue: String(t.targetValue),
+        unit: t.unit,
+      }))
+    );
+  });
 }
 
 /** Get current user's vision goals for business plan. */
 export async function getVisionGoals(): Promise<VisionGoalRow[]> {
-  const auth = await requireAuthInAction();
-  const rows = await db
-    .select({
-      id: advisorVisionGoals.id,
-      title: advisorVisionGoals.title,
-      progressPct: advisorVisionGoals.progressPct,
-      sortOrder: advisorVisionGoals.sortOrder,
-    })
-    .from(advisorVisionGoals)
-    .where(
-      and(
-        eq(advisorVisionGoals.tenantId, auth.tenantId),
-        eq(advisorVisionGoals.userId, auth.userId)
+  return withAuthContext(async (auth, tx) => {
+    const rows = await tx
+      .select({
+        id: advisorVisionGoals.id,
+        title: advisorVisionGoals.title,
+        progressPct: advisorVisionGoals.progressPct,
+        sortOrder: advisorVisionGoals.sortOrder,
+      })
+      .from(advisorVisionGoals)
+      .where(
+        and(
+          eq(advisorVisionGoals.tenantId, auth.tenantId),
+          eq(advisorVisionGoals.userId, auth.userId)
+        )
       )
-    )
-    .orderBy(asc(advisorVisionGoals.sortOrder), asc(advisorVisionGoals.createdAt));
-  return rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    progressPct: r.progressPct,
-    sortOrder: r.sortOrder,
-  }));
+      .orderBy(asc(advisorVisionGoals.sortOrder), asc(advisorVisionGoals.createdAt));
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      progressPct: r.progressPct,
+      sortOrder: r.sortOrder,
+    }));
+  });
 }
 
 export type TeamBusinessPlanMemberSummary = {
@@ -495,44 +504,48 @@ export async function getTeamBusinessPlanSummary(
 
   const memberIds = members.map((m) => m.userId);
 
-  const planRows = await db
-    .select()
-    .from(advisorBusinessPlans)
-    .where(
-      and(
-        eq(advisorBusinessPlans.tenantId, auth.tenantId),
-        eq(advisorBusinessPlans.periodType, periodType),
-        eq(advisorBusinessPlans.year, y),
-        eq(advisorBusinessPlans.periodNumber, periodNumber),
-        eq(advisorBusinessPlans.status, "active"),
-        inArray(advisorBusinessPlans.userId, memberIds)
-      )
-    );
+  const { planRows, targetsByPlanId } = await withTenantContextFromAuth(auth, async (tx) => {
+    const planRows = await tx
+      .select()
+      .from(advisorBusinessPlans)
+      .where(
+        and(
+          eq(advisorBusinessPlans.tenantId, auth.tenantId),
+          eq(advisorBusinessPlans.periodType, periodType),
+          eq(advisorBusinessPlans.year, y),
+          eq(advisorBusinessPlans.periodNumber, periodNumber),
+          eq(advisorBusinessPlans.status, "active"),
+          inArray(advisorBusinessPlans.userId, memberIds)
+        )
+      );
 
-  const planIds = planRows.map((p) => p.id);
-  const targetsByPlanId = new Map<string, { metricType: BusinessPlanMetricType; targetValue: number; unit: MetricUnit }[]>();
+    const planIds = planRows.map((p) => p.id);
+    const targetsByPlanId = new Map<string, { metricType: BusinessPlanMetricType; targetValue: number; unit: MetricUnit }[]>();
 
-  if (planIds.length > 0) {
-    const targetRows = await db
-      .select({
-        planId: advisorBusinessPlanTargets.planId,
-        metricType: advisorBusinessPlanTargets.metricType,
-        targetValue: advisorBusinessPlanTargets.targetValue,
-        unit: advisorBusinessPlanTargets.unit,
-      })
-      .from(advisorBusinessPlanTargets)
-      .where(inArray(advisorBusinessPlanTargets.planId, planIds));
+    if (planIds.length > 0) {
+      const targetRows = await tx
+        .select({
+          planId: advisorBusinessPlanTargets.planId,
+          metricType: advisorBusinessPlanTargets.metricType,
+          targetValue: advisorBusinessPlanTargets.targetValue,
+          unit: advisorBusinessPlanTargets.unit,
+        })
+        .from(advisorBusinessPlanTargets)
+        .where(inArray(advisorBusinessPlanTargets.planId, planIds));
 
-    for (const t of targetRows) {
-      const list = targetsByPlanId.get(t.planId) ?? [];
-      list.push({
-        metricType: t.metricType as BusinessPlanMetricType,
-        targetValue: Number(t.targetValue),
-        unit: (t.unit ?? "count") as MetricUnit,
-      });
-      targetsByPlanId.set(t.planId, list);
+      for (const t of targetRows) {
+        const list = targetsByPlanId.get(t.planId) ?? [];
+        list.push({
+          metricType: t.metricType as BusinessPlanMetricType,
+          targetValue: Number(t.targetValue),
+          unit: (t.unit ?? "count") as MetricUnit,
+        });
+        targetsByPlanId.set(t.planId, list);
+      }
     }
-  }
+
+    return { planRows, targetsByPlanId };
+  });
 
   const plansByUserId = new Map(planRows.map((p) => [p.userId, p]));
 
@@ -610,37 +623,38 @@ export async function getTeamBusinessPlanSummary(
 export async function upsertVisionGoals(
   goals: { id?: string; title: string; progressPct: number; sortOrder: number }[]
 ): Promise<VisionGoalRow[]> {
-  const auth = await requireAuthInAction();
-  await db
-    .delete(advisorVisionGoals)
-    .where(
-      and(
-        eq(advisorVisionGoals.tenantId, auth.tenantId),
-        eq(advisorVisionGoals.userId, auth.userId)
+  return withAuthContext(async (auth, tx) => {
+    await tx
+      .delete(advisorVisionGoals)
+      .where(
+        and(
+          eq(advisorVisionGoals.tenantId, auth.tenantId),
+          eq(advisorVisionGoals.userId, auth.userId)
+        )
+      );
+    if (goals.length === 0) return [];
+    const inserted = await tx
+      .insert(advisorVisionGoals)
+      .values(
+        goals.map((g, i) => ({
+          tenantId: auth.tenantId,
+          userId: auth.userId,
+          title: g.title,
+          progressPct: g.progressPct,
+          sortOrder: g.sortOrder ?? i,
+        }))
       )
-    );
-  if (goals.length === 0) return [];
-  const inserted = await db
-    .insert(advisorVisionGoals)
-    .values(
-      goals.map((g, i) => ({
-        tenantId: auth.tenantId,
-        userId: auth.userId,
-        title: g.title,
-        progressPct: g.progressPct,
-        sortOrder: g.sortOrder ?? i,
-      }))
-    )
-    .returning({
-      id: advisorVisionGoals.id,
-      title: advisorVisionGoals.title,
-      progressPct: advisorVisionGoals.progressPct,
-      sortOrder: advisorVisionGoals.sortOrder,
-    });
-  return inserted.map((r) => ({
-    id: r.id,
-    title: r.title,
-    progressPct: r.progressPct,
-    sortOrder: r.sortOrder,
-  }));
+      .returning({
+        id: advisorVisionGoals.id,
+        title: advisorVisionGoals.title,
+        progressPct: advisorVisionGoals.progressPct,
+        sortOrder: advisorVisionGoals.sortOrder,
+      });
+    return inserted.map((r) => ({
+      id: r.id,
+      title: r.title,
+      progressPct: r.progressPct,
+      sortOrder: r.sortOrder,
+    }));
+  });
 }

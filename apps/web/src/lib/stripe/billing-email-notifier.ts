@@ -1,7 +1,7 @@
 import "server-only";
 import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db-client";
+import { dbService } from "@/lib/db/service-db";
 import { tenants } from "db";
 import { sendEmail } from "@/lib/email/send-email";
 import {
@@ -33,7 +33,7 @@ type BillingRecipient = {
 async function resolveTenantNotificationRecipient(
   tenantId: string,
 ): Promise<BillingRecipient | null> {
-  const rows = await db
+  const rows = await dbService
     .select({
       notificationEmail: tenants.notificationEmail,
       name: tenants.name,

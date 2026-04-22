@@ -1,8 +1,8 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
 import { contracts, documents, documentExtractions } from "db";
 import { eq, and } from "db";
 import { getContractsByContact } from "./contracts";
@@ -74,7 +74,7 @@ export async function mergeDuplicateContracts(keepContractId: string, removeCont
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
   if (keepContractId === removeContractId) throw new Error("Nelze sloučit stejný záznam.");
 
-  await db.transaction(async (tx) => {
+  await withTenantContextFromAuth(auth, async (tx) => {
     const [keep] = await tx
       .select()
       .from(contracts)

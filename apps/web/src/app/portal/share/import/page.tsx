@@ -42,11 +42,15 @@ export default function ShareImportPage() {
   const [uploadRows, setUploadRows] = useState<UploadRow[]>([]);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
+  /**
+   * Bez okamžitého `router.replace("/portal/today")`.
+   * Dřívější verze způsobovala „kliknu v nativním share a Aidvisora mě rovnou
+   * hodí na dashboard“ — když share intent plugin krátce oznámil prázdný stav
+   * dřív, než doručil soubory. Nyní jen naplníme řádky když jsou soubory;
+   * prázdný stav render komponenta níže dá uživateli explicitní tlačítko.
+   */
   useEffect(() => {
-    if (!hasSharedFiles) {
-      router.replace("/portal/today");
-      return;
-    }
+    if (!hasSharedFiles) return;
     setUploadRows(
       sharedFiles.map((file) => ({
         key: fileKey(file),
@@ -56,7 +60,7 @@ export default function ShareImportPage() {
         error: null,
       })),
     );
-  }, [hasSharedFiles, router, sharedFiles]);
+  }, [hasSharedFiles, sharedFiles]);
 
   useEffect(() => {
     if (!activeKey) return;
@@ -123,6 +127,34 @@ export default function ShareImportPage() {
       setIsUploading(false);
     }
   };
+
+  if (!hasSharedFiles) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-8 pt-4 sm:px-6">
+        <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-6 text-center">
+          <h1 className="text-lg font-semibold text-[color:var(--wp-text)]">Žádné sdílené dokumenty</h1>
+          <p className="mt-2 text-sm text-[color:var(--wp-text-secondary)]">
+            Nenašli jsme žádné soubory ze share intentu. Otevřete dokument v jiné
+            aplikaci a zvolte „Sdílet → Aidvisora“, nebo se vraťte zpět.
+          </p>
+          {shareError ? (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-sm text-amber-700">
+              {shareError}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              router.push("/portal/today");
+            }}
+            className="mt-4 inline-flex h-11 items-center justify-center rounded-lg border border-[color:var(--wp-border-strong)] bg-[color:var(--wp-surface-card)] px-5 text-sm font-semibold text-[color:var(--wp-text)]"
+          >
+            Zpět na Dnešek
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-8 pt-4 sm:px-6">

@@ -13,6 +13,7 @@ import type { PaymentInstruction } from "@/app/actions/payment-pdf";
 import type { PortalNotificationRow } from "@/app/actions/portal-notifications";
 import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
+import type { PortalFvContractAuxMap } from "@/lib/client-portfolio/portal-portfolio-fv-precompute.types";
 
 /** Jeden řádek kontaktu pro klientský portál (dashboard + mobilní profil). */
 export type ClientPortalContactRow = {
@@ -57,4 +58,11 @@ export type ClientPortalSessionBundle = {
   visiblePortfolioSourceDocs: Record<string, { name: string }>;
   /** Návrhy od poradce publikované do Klientské zóny (aktivní + historické, bez withdrawn/draft). */
   advisorProposals: ClientAdvisorProposal[];
+  /**
+   * Server-předpočítané FV/logo pomocné hodnoty pro `contracts` — umožňuje
+   * klientskému bundlu obejít se bez `BASE_FUNDS` (viz
+   * `portal-portfolio-fv-precompute.ts` a `shared-future-value-pure.ts`).
+   * Klíč = `contract.id`.
+   */
+  fvContractAux: PortalFvContractAuxMap;
 };

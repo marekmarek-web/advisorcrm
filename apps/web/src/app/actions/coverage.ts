@@ -1,8 +1,8 @@
 "use server";
 
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
 import { contactCoverage, opportunityStages } from "db";
 import { eq, and, asc } from "db";
 import { getContractsByContact } from "./contracts";
@@ -43,10 +43,12 @@ export async function getCoverageForContact(contactId: string): Promise<GetCover
 
     let coverageRows: (typeof contactCoverage.$inferSelect)[] = [];
     try {
-      coverageRows = await db
-        .select()
-        .from(contactCoverage)
-        .where(and(eq(contactCoverage.tenantId, auth.tenantId), eq(contactCoverage.contactId, contactId)));
+      coverageRows = await withTenantContextFromAuth(auth, async (tx) => {
+        return tx
+          .select()
+          .from(contactCoverage)
+          .where(and(eq(contactCoverage.tenantId, auth.tenantId), eq(contactCoverage.contactId, contactId)));
+      });
     } catch (coverageErr) {
       const msg = coverageErr instanceof Error ? coverageErr.message : String(coverageErr);
       if (!isRecoverableContactCoverageSchemaError(msg)) throw coverageErr;
@@ -145,59 +147,60 @@ export async function setCoverageStatus(
     isRelevant?: boolean;
   }
 ): Promise<string | null> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-
   const info = getItemInfo(itemKey);
   if (!info) throw new Error("Unknown coverage item key");
 
-  const existing = await db
-    .select()
-    .from(contactCoverage)
-    .where(
-      and(
-        eq(contactCoverage.tenantId, auth.tenantId),
-        eq(contactCoverage.contactId, contactId),
-        eq(contactCoverage.itemKey, itemKey)
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+
+    const existing = await tx
+      .select()
+      .from(contactCoverage)
+      .where(
+        and(
+          eq(contactCoverage.tenantId, auth.tenantId),
+          eq(contactCoverage.contactId, contactId),
+          eq(contactCoverage.itemKey, itemKey)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  const status = payload.status ?? "none";
-  const values = {
-    tenantId: auth.tenantId,
-    contactId,
-    itemKey,
-    segmentCode: info.segmentCode,
-    status,
-    linkedContractId: payload.linkedContractId ?? null,
-    linkedOpportunityId: payload.linkedOpportunityId ?? null,
-    notes: payload.notes ?? null,
-    isRelevant: payload.isRelevant ?? true,
-    updatedAt: new Date(),
-    updatedBy: auth.userId,
-  };
+    const status = payload.status ?? "none";
+    const values = {
+      tenantId: auth.tenantId,
+      contactId,
+      itemKey,
+      segmentCode: info.segmentCode,
+      status,
+      linkedContractId: payload.linkedContractId ?? null,
+      linkedOpportunityId: payload.linkedOpportunityId ?? null,
+      notes: payload.notes ?? null,
+      isRelevant: payload.isRelevant ?? true,
+      updatedAt: new Date(),
+      updatedBy: auth.userId,
+    };
 
-  if (existing.length > 0) {
-    await db
-      .update(contactCoverage)
-      .set({
-        status: values.status,
-        linkedContractId: values.linkedContractId,
-        linkedOpportunityId: values.linkedOpportunityId,
-        notes: values.notes,
-        isRelevant: values.isRelevant,
-        updatedAt: values.updatedAt,
-        updatedBy: values.updatedBy,
-      })
-      .where(eq(contactCoverage.id, existing[0].id));
-    return existing[0].id ?? null;
-  }
-  const inserted = await db
-    .insert(contactCoverage)
-    .values(values)
-    .returning({ id: contactCoverage.id });
-  return inserted[0]?.id ?? null;
+    if (existing.length > 0) {
+      await tx
+        .update(contactCoverage)
+        .set({
+          status: values.status,
+          linkedContractId: values.linkedContractId,
+          linkedOpportunityId: values.linkedOpportunityId,
+          notes: values.notes,
+          isRelevant: values.isRelevant,
+          updatedAt: values.updatedAt,
+          updatedBy: values.updatedBy,
+        })
+        .where(eq(contactCoverage.id, existing[0].id));
+      return existing[0].id ?? null;
+    }
+    const inserted = await tx
+      .insert(contactCoverage)
+      .values(values)
+      .returning({ id: contactCoverage.id });
+    return inserted[0]?.id ?? null;
+  });
 }
 
 export async function linkCoverageToContract(
@@ -226,20 +229,20 @@ export async function createOpportunityFromCoverageItem(
   contactId: string,
   itemKey: string
 ): Promise<string | null> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
-
   const segmentCode = getItemSegmentCode(itemKey);
   const info = getItemInfo(itemKey);
   if (!segmentCode || !info) throw new Error("Unknown coverage item");
 
-  const stages = await db
-    .select({ id: opportunityStages.id })
-    .from(opportunityStages)
-    .where(eq(opportunityStages.tenantId, auth.tenantId))
-    .orderBy(asc(opportunityStages.sortOrder))
-    .limit(1);
-  const firstStageId = stages[0]?.id;
+  const firstStageId = await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
+    const stages = await tx
+      .select({ id: opportunityStages.id })
+      .from(opportunityStages)
+      .where(eq(opportunityStages.tenantId, auth.tenantId))
+      .orderBy(asc(opportunityStages.sortOrder))
+      .limit(1);
+    return stages[0]?.id;
+  });
   if (!firstStageId) throw new Error("No pipeline stages configured");
 
   const caseType = segmentToCaseType(segmentCode);
@@ -280,127 +283,133 @@ export async function importFaItemsToCoverage(
   analysisId: string,
   itemIds: string[]
 ): Promise<number> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-
   const { faPlanItems, financialAnalyses } = await import("db");
   const { inArray } = await import("db");
 
-  const [fa] = await db
-    .select({ contactId: financialAnalyses.contactId })
-    .from(financialAnalyses)
-    .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, analysisId)))
-    .limit(1);
-  if (!fa?.contactId) throw new Error("FA nemá napojený kontakt.");
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
 
-  const items = await db
-    .select()
-    .from(faPlanItems)
-    .where(and(eq(faPlanItems.tenantId, auth.tenantId), inArray(faPlanItems.id, itemIds)));
-
-  let count = 0;
-  for (const item of items) {
-    if (!item.itemKey || !item.segmentCode) continue;
-    const coverageStatus = FA_STATUS_TO_COVERAGE[item.status] ?? "opportunity";
-    const existing = await db
-      .select({ id: contactCoverage.id })
-      .from(contactCoverage)
-      .where(
-        and(
-          eq(contactCoverage.tenantId, auth.tenantId),
-          eq(contactCoverage.contactId, fa.contactId!),
-          eq(contactCoverage.itemKey, item.itemKey)
-        )
-      )
+    const [fa] = await tx
+      .select({ contactId: financialAnalyses.contactId })
+      .from(financialAnalyses)
+      .where(and(eq(financialAnalyses.tenantId, auth.tenantId), eq(financialAnalyses.id, analysisId)))
       .limit(1);
+    if (!fa?.contactId) throw new Error("FA nemá napojený kontakt.");
 
-    if (existing.length > 0) {
-      await db
-        .update(contactCoverage)
-        .set({
+    const items = await tx
+      .select()
+      .from(faPlanItems)
+      .where(and(eq(faPlanItems.tenantId, auth.tenantId), inArray(faPlanItems.id, itemIds)));
+
+    let count = 0;
+    for (const item of items) {
+      if (!item.itemKey || !item.segmentCode) continue;
+      const coverageStatus = FA_STATUS_TO_COVERAGE[item.status] ?? "opportunity";
+      const existing = await tx
+        .select({ id: contactCoverage.id })
+        .from(contactCoverage)
+        .where(
+          and(
+            eq(contactCoverage.tenantId, auth.tenantId),
+            eq(contactCoverage.contactId, fa.contactId!),
+            eq(contactCoverage.itemKey, item.itemKey)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await tx
+          .update(contactCoverage)
+          .set({
+            status: coverageStatus,
+            faAnalysisId: analysisId,
+            faItemId: item.id,
+            updatedAt: new Date(),
+            updatedBy: auth.userId,
+          })
+          .where(eq(contactCoverage.id, existing[0].id));
+      } else {
+        await tx.insert(contactCoverage).values({
+          tenantId: auth.tenantId,
+          contactId: fa.contactId!,
+          itemKey: item.itemKey,
+          segmentCode: item.segmentCode,
           status: coverageStatus,
           faAnalysisId: analysisId,
           faItemId: item.id,
-          updatedAt: new Date(),
           updatedBy: auth.userId,
-        })
-        .where(eq(contactCoverage.id, existing[0].id));
-    } else {
-      await db.insert(contactCoverage).values({
-        tenantId: auth.tenantId,
-        contactId: fa.contactId!,
-        itemKey: item.itemKey,
-        segmentCode: item.segmentCode,
-        status: coverageStatus,
-        faAnalysisId: analysisId,
-        faItemId: item.id,
-        updatedBy: auth.userId,
-      });
+        });
+      }
+      count++;
     }
-    count++;
-  }
-  return count;
+    return count;
+  });
 }
 
 export async function createOpportunityFromFaItem(
   faItemId: string,
   stageId?: string
 ): Promise<string | null> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
-
   const { faPlanItems, financialAnalyses, opportunities } = await import("db");
 
-  const [item] = await db
-    .select()
-    .from(faPlanItems)
-    .where(and(eq(faPlanItems.tenantId, auth.tenantId), eq(faPlanItems.id, faItemId)))
-    .limit(1);
-  if (!item) throw new Error("Plan item nenalezen.");
+  const prep = await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
 
-  const [fa] = await db
-    .select({ contactId: financialAnalyses.contactId })
-    .from(financialAnalyses)
-    .where(
-      and(
-        eq(financialAnalyses.tenantId, auth.tenantId),
-        eq(financialAnalyses.id, item.analysisId)
+    const [item] = await tx
+      .select()
+      .from(faPlanItems)
+      .where(and(eq(faPlanItems.tenantId, auth.tenantId), eq(faPlanItems.id, faItemId)))
+      .limit(1);
+    if (!item) throw new Error("Plan item nenalezen.");
+
+    const [fa] = await tx
+      .select({ contactId: financialAnalyses.contactId })
+      .from(financialAnalyses)
+      .where(
+        and(
+          eq(financialAnalyses.tenantId, auth.tenantId),
+          eq(financialAnalyses.id, item.analysisId)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  let targetStageId = stageId;
-  if (!targetStageId) {
-    const stages = await db
-      .select({ id: opportunityStages.id })
-      .from(opportunityStages)
-      .where(eq(opportunityStages.tenantId, auth.tenantId))
-      .orderBy(asc(opportunityStages.sortOrder))
-      .limit(3);
-    targetStageId = stages[2]?.id ?? stages[0]?.id;
-  }
-  if (!targetStageId) throw new Error("Žádné pipeline stages.");
+    let targetStageId = stageId;
+    if (!targetStageId) {
+      const stages = await tx
+        .select({ id: opportunityStages.id })
+        .from(opportunityStages)
+        .where(eq(opportunityStages.tenantId, auth.tenantId))
+        .orderBy(asc(opportunityStages.sortOrder))
+        .limit(3);
+      targetStageId = stages[2]?.id ?? stages[0]?.id;
+    }
+    if (!targetStageId) throw new Error("Žádné pipeline stages.");
 
-  const caseType = item.segmentCode ? segmentToCaseType(item.segmentCode) : "Ostatní";
-  const title = item.label ?? `${item.itemType} z FA`;
+    return { item, faContactId: fa?.contactId ?? undefined, targetStageId };
+  });
+
+  const caseType = prep.item.segmentCode ? segmentToCaseType(prep.item.segmentCode) : "Ostatní";
+  const title = prep.item.label ?? `${prep.item.itemType} z FA`;
 
   const newId = await createOpportunity({
     title,
     caseType,
-    contactId: fa?.contactId ?? undefined,
-    stageId: targetStageId,
+    contactId: prep.faContactId,
+    stageId: prep.targetStageId,
   });
 
   if (newId) {
-    await db
-      .update(faPlanItems)
-      .set({ opportunityId: newId, status: "in_progress", updatedAt: new Date() })
-      .where(eq(faPlanItems.id, faItemId));
+    await withAuthContext(async (_auth, tx) => {
+      await tx
+        .update(faPlanItems)
+        .set({ opportunityId: newId, status: "in_progress", updatedAt: new Date() })
+        .where(eq(faPlanItems.id, faItemId));
 
-    await db
-      .update(opportunities)
-      .set({ faSourceId: item.analysisId })
-      .where(eq(opportunities.id, newId));
+      await tx
+        .update(opportunities)
+        .set({ faSourceId: prep.item.analysisId })
+        .where(eq(opportunities.id, newId));
+    });
   }
   return newId;
 }

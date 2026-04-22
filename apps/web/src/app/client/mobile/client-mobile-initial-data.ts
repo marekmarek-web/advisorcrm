@@ -9,6 +9,7 @@ import type { ClientHouseholdDetail } from "@/app/actions/households";
 import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
 import type { ClientPortalSessionBundle } from "@/lib/client-portal/client-portal-session-bundle.model";
+import type { PortalFvContractAuxMap } from "@/lib/client-portfolio/portal-portfolio-fv-precompute.types";
 
 export type ClientMobileInitialData = {
   contactId: string;
@@ -48,6 +49,12 @@ export type ClientMobileInitialData = {
   financialSummaryRaw: ClientFinancialSummaryView | null;
   /** Aktivní / odmítnuté / vypršelé návrhy od poradce (viditelné klientovi). */
   advisorProposals: ClientAdvisorProposal[];
+  /**
+   * Server-předpočítané hodnoty pro FV a loga fondů — viz
+   * `portal-portfolio-fv-precompute.ts`. Umožňuje klientskému bundlu
+   * nepřitahovat `BASE_FUNDS`.
+   */
+  fvContractAux: PortalFvContractAuxMap;
 };
 
 export function toClientMobileInitialData(bundle: ClientPortalSessionBundle): ClientMobileInitialData {
@@ -81,5 +88,6 @@ export function toClientMobileInitialData(bundle: ClientPortalSessionBundle): Cl
     advisorMaterialRequests: bundle.advisorMaterialRequests,
     financialSummaryRaw: bundle.financialSummaryRaw ?? null,
     advisorProposals: bundle.advisorProposals,
+    fvContractAux: bundle.fvContractAux,
   };
 }

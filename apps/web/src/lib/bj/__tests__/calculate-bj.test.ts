@@ -131,12 +131,13 @@ const RULES: BjCoefficientRule[] = [
   },
 
   // ── LIFE_INSURANCE_REGULAR ────────────────────────────────────
+  // Standard: 100 BJ / 12 000 Kč ročního pojistného (1/120 ≈ 0,00833).
   {
     productCategory: "LIFE_INSURANCE_REGULAR",
     partnerPattern: null,
     subtype: "regular_payment",
     formula: "annual_premium",
-    coefficient: 0.1,
+    coefficient: 0.00833333,
     divisor: null,
     cap: null,
     floor: null,
@@ -430,6 +431,37 @@ describe("calculateBj — reference hodnoty z kariérního plánu", () => {
     );
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.bjUnits).toBeCloseTo(0.6, 2);
+  });
+
+  it("Standard ŽP (bez per-partner override) roční 12 000 Kč → 100,00 BJ", () => {
+    const res = calculateBj(
+      {
+        category: "LIFE_INSURANCE_REGULAR",
+        subtypes: ["regular_payment"],
+        haystack: "česká pojišťovna život pravidelné pojistné",
+        amounts: { annualPremium: 12000 },
+      },
+      RULES,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.bjUnits).toBeCloseTo(100.0, 0);
+      expect(res.snapshot.coefficient).toBeCloseTo(0.00833333, 6);
+    }
+  });
+
+  it("Standard ŽP roční 24 000 Kč → 200,00 BJ (lineární)", () => {
+    const res = calculateBj(
+      {
+        category: "LIFE_INSURANCE_REGULAR",
+        subtypes: ["regular_payment"],
+        haystack: "česká pojišťovna život pravidelné pojistné",
+        amounts: { annualPremium: 24000 },
+      },
+      RULES,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.bjUnits).toBeCloseTo(200.0, 0);
   });
 
   it("NN Život roční 12 000 Kč → 93,60 BJ", () => {

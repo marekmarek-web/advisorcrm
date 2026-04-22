@@ -8,16 +8,26 @@ import type { RoleName } from "@/shared/rolePermissions";
 export type TeamOverviewScope = "me" | "my_team" | "full";
 
 export type TeamHierarchyMember = {
+  /**
+   * Logický primární klíč v celém Team Overview pipeline (auth userId pro internal,
+   * sentinel `ext:<teamMemberId>` pro external_manual — ať funguje existující
+   * collectUserStats/visibility kód beze změny).
+   */
   userId: string;
   parentId: string | null;
   roleName: string;
   joinedAt: Date;
   displayName: string | null;
   email: string | null;
-  /** Kariérní vrstva — nullable dokud není vyplněno v memberships */
   careerProgram: string | null;
   careerTrack: string | null;
   careerPositionCode: string | null;
+  /** F1 canonical team_members.id — source of truth pro manual periods a career log. */
+  teamMemberId: string | null;
+  /** Vazba na auth uživatele. Null → external_manual bez Aidvisora účtu. */
+  authUserId: string | null;
+  memberKind: "internal_user" | "external_manual";
+  status: "active" | "paused" | "offboarded" | "planned";
 };
 
 export type TeamTreeNode = TeamHierarchyMember & {

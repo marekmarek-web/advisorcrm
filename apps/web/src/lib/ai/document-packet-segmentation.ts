@@ -123,7 +123,10 @@ const SECTION_SIGNALS: SectionSignal[] = [
       /číslo\s+návrhu/i,
       /tento\s+návrh\s+platí/i,
     ],
-    publishable: false,
+    // Business rule (finality rule): "Návrh" je v 99 % případů finální smlouva,
+    // kterou poradce po kontrole publikuje. Modelace/kalkulace/ilustrace jsou
+    // řešeny samostatným `modelation` signálem níže (publishable: false).
+    publishable: true,
   },
   {
     type: "final_contract",
@@ -467,12 +470,14 @@ export function segmentDocumentPacket(
 
   // 5. Determine if this is a bundle
   const sensitiveTypes: PacketSubdocumentType[] = ["health_questionnaire", "aml_fatca_form"];
+  // NOTE: `contract_proposal` is NOT listed here — per the finality rule, a "Návrh
+  // pojistné smlouvy" is treated as a final publishable contract after advisor
+  // confirmation. Only true non-binding projections (`modelation`) stay here.
   const unpublishableTypes: PacketSubdocumentType[] = [
     "health_questionnaire",
     "aml_fatca_form",
     "payment_instruction",
     "modelation",
-    "contract_proposal",
     "annex",
     "service_document",
     "unpublishable_attachment",
@@ -551,9 +556,16 @@ export function derivePublishHintsFromPacket(
 ): import("./document-packet-types").PublishHints {
   const reasons: string[] = [];
 
-  const isProposal =
-    lifecycleStatus === "proposal" ||
-    lifecycleStatus === "offer" ||
+  // Business rule (finality rule):
+  //   - "proposal" / "offer"  → 99 % případů finální smlouva, poradce jen potvrdí.
+  //                             Publikujeme jako smlouvu, ale UI zobrazí info
+  //                             alert "dokument je návrh — je to finální smlouva?".
+  //   - "modelation" / "illustration" / "non_binding_projection" → nezávazná
+  //                             projekce, nikdy nepublikovat jako smlouvu.
+  const isActiveProposal =
+    lifecycleStatus === "proposal" || lifecycleStatus === "offer";
+
+  const isIllustrativeOnly =
     lifecycleStatus === "modelation" ||
     lifecycleStatus === "illustration" ||
     lifecycleStatus === "non_binding_projection";
@@ -565,26 +577,46 @@ export function derivePublishHintsFromPacket(
 
   const hasSensitiveAttachment = packetMeta?.hasSensitiveAttachment ?? isSensitive;
   const needsSplit = !!(packetMeta?.isBundle && packetMeta?.hasSensitiveAttachment);
+  // Proposals still require manual validation so the advisor consciously
+  // confirms "ano, toto je finální smlouva" before apply.
   const needsManualValidation = !!(
     (packetMeta?.bundleConfidence ?? 0) > 0.3 ||
     hasSensitiveAttachment ||
-    isProposal
+    isActiveProposal ||
+    isIllustrativeOnly
   );
 
   let contractPublishable = false;
   let reviewOnly = false;
   let sensitiveAttachmentOnly = false;
 
-  if (isProposal) {
+  const hasAnyPublishableSection = packetMeta?.subdocumentCandidates.some((c) => c.publishable) ?? false;
+  const primaryIsContractLike =
+    packetMeta?.primarySubdocumentType === "final_contract" ||
+    packetMeta?.primarySubdocumentType === "contract_proposal" ||
+    packetMeta?.primarySubdocumentType === "investment_section";
+
+  if (isIllustrativeOnly) {
     reviewOnly = true;
-    reasons.push("lifecycle_proposal_or_modelation");
-  } else if (hasSensitiveAttachment && !packetMeta?.subdocumentCandidates.some((c) => c.publishable)) {
+    reasons.push("lifecycle_illustration_or_modelation");
+  } else if (hasSensitiveAttachment && !hasAnyPublishableSection) {
     sensitiveAttachmentOnly = true;
     reasons.push("only_sensitive_sections_detected");
-  } else if (packetMeta?.primarySubdocumentType === "final_contract") {
+  } else if (primaryIsContractLike) {
     contractPublishable = true;
+    if (isActiveProposal) {
+      reasons.push("proposal_treated_as_final_contract");
+    }
   } else if (!packetMeta) {
-    contractPublishable = !isProposal && !isSensitive;
+    contractPublishable = !isIllustrativeOnly && !isSensitive;
+    if (isActiveProposal && contractPublishable) {
+      reasons.push("proposal_treated_as_final_contract");
+    }
+  } else if (isActiveProposal) {
+    // packetMeta present but primary is something unusual (e.g. payment_instruction);
+    // still honor the finality rule — the advisor confirms the návrh is final.
+    contractPublishable = true;
+    reasons.push("proposal_treated_as_final_contract");
   }
 
   if (needsSplit) {

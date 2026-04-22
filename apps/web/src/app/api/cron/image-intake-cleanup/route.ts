@@ -31,7 +31,8 @@
 
 import { NextResponse } from "next/server";
 import { cronAuthResponse } from "@/lib/cron-auth";
-import { db, aiGenerations, eq, and, lt } from "db";
+import { aiGenerations, eq, and, lt } from "db";
+import { dbService } from "@/lib/db/service-db";
 import { logAuditAction } from "@/lib/audit";
 import { getImageIntakeConfig } from "@/lib/ai/image-intake/image-intake-config";
 import { sendCronHealthWebhook } from "@/lib/ai/image-intake/cron-webhook";
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
 
   try {
     // Delete cross-session artifacts (uses crossSessionTtlMs)
-    const artifactResult = await db
+    const artifactResult = await dbService
       .delete(aiGenerations)
       .where(
         and(
@@ -115,7 +116,7 @@ export async function GET(request: Request) {
       );
 
     // Delete intent-assist cache entries (Phase 10: uses intentAssistCacheTtlMs, default 30 min)
-    const cacheResult = await db
+    const cacheResult = await dbService
       .delete(aiGenerations)
       .where(
         and(

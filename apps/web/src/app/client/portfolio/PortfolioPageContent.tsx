@@ -38,7 +38,14 @@ import {
 } from "@/lib/client-portfolio/portal-portfolio-display";
 import { institutionInitials } from "@/lib/institutions/institution-logo";
 import type { CanonicalProduct } from "@/lib/products/canonical-product-read";
-import { computeSharedFutureValue, SHARED_FV_DISCLAIMER } from "@/lib/fund-library/shared-future-value";
+import {
+  computeSharedFutureValueFromRate,
+  SHARED_FV_DISCLAIMER,
+} from "@/lib/fund-library/shared-future-value-pure";
+import type {
+  PortalFvContractAux,
+  PortalFvContractAuxMap,
+} from "@/lib/client-portfolio/portal-portfolio-fv-precompute.types";
 
 type VisibleDocMap = Record<string, { name: string }>;
 
@@ -105,14 +112,17 @@ type ProductCardProps = {
   contract: ContractRow;
   canonical: CanonicalProduct;
   visibleSourceDocs: VisibleDocMap;
+  fvAux: PortalFvContractAux | null;
 };
 
-function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardProps) {
+function ProductCard({ contract, canonical: p, visibleSourceDocs, fvAux }: ProductCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
   const st = portfolioContractStatusLabelCs(contract.portfolioStatus, contract.startDate);
-  const displayLogo = resolvePortalProductDisplayLogo(p);
+  const displayLogo = resolvePortalProductDisplayLogo(p, {
+    fundLogoPath: fvAux?.fundLogoPath ?? null,
+  });
   const logoPath = displayLogo?.src ?? null;
   const logoAlt = displayLogo?.alt ?? "Logo instituce";
 
@@ -121,7 +131,7 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
     p.segmentDetail?.kind === "investment" && p.segmentDetail.paymentType === "one_time";
   const fvShared =
     fvEligible && p.fvReadiness.fvSourceType
-      ? computeSharedFutureValue({
+      ? computeSharedFutureValueFromRate({
           fvSourceType: p.fvReadiness.fvSourceType,
           resolvedFundId: p.fvReadiness.resolvedFundId,
           resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
@@ -129,6 +139,8 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
           monthlyContribution: resolveFvMonthlyContribution(p),
           annualContribution: isOneTimeInvestment ? null : p.premiumAnnual,
           lumpContribution: isOneTimeInvestment ? p.premiumMonthly : null,
+          resolvedAnnualRatePercent: fvAux?.resolvedAnnualRatePercent ?? null,
+          resolvedFundDisplayName: fvAux?.resolvedFundDisplayName ?? null,
         })
       : null;
   const fv =
@@ -427,9 +439,10 @@ function ProductCard({ contract, canonical: p, visibleSourceDocs }: ProductCardP
 type PortfolioPageContentProps = {
   contracts: ContractRow[];
   visibleSourceDocs: VisibleDocMap;
+  fvContractAux: PortalFvContractAuxMap;
 };
 
-export function PortfolioPageContent({ contracts, visibleSourceDocs }: PortfolioPageContentProps) {
+export function PortfolioPageContent({ contracts, visibleSourceDocs, fvContractAux }: PortfolioPageContentProps) {
   const metrics = aggregatePortfolioMetrics(
     contracts.map((c) => ({
       segment: c.segment,
@@ -497,13 +510,16 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
   for (const c of contracts) {
     const p = canonicalById.get(c.id);
     if (!p || !isFvEligibleSegment(c.segment) || !p.fvReadiness.fvSourceType) continue;
-    const hit = computeSharedFutureValue({
+    const aux = fvContractAux[c.id] ?? null;
+    const hit = computeSharedFutureValueFromRate({
       fvSourceType: p.fvReadiness.fvSourceType,
       resolvedFundId: p.fvReadiness.resolvedFundId,
       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
       investmentHorizon: p.fvReadiness.investmentHorizon,
       monthlyContribution: resolveFvMonthlyContribution(p),
       annualContribution: p.premiumAnnual,
+      resolvedAnnualRatePercent: aux?.resolvedAnnualRatePercent ?? null,
+      resolvedFundDisplayName: aux?.resolvedFundDisplayName ?? null,
     });
     if (hit.projectionState === "complete" && hit.projectedFutureValue != null) {
       anyFvShown = true;
@@ -763,6 +779,7 @@ export function PortfolioPageContent({ contracts, visibleSourceDocs }: Portfolio
                         contract={contract}
                         canonical={canonical}
                         visibleSourceDocs={visibleSourceDocs}
+                        fvAux={fvContractAux[contract.id] ?? null}
                       />
                     );
                   })}

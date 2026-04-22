@@ -1,18 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
+import dynamic from "next/dynamic";
 import { useFinancialAnalysisStore as useStore } from "@/lib/analyses/financial/store";
 import { selectTotalMonthlySavings, selectTotalTargetCapital } from "@/lib/analyses/financial/selectors";
 import { getGoalChartData } from "@/lib/analyses/financial/charts";
@@ -22,7 +11,20 @@ import clsx from "clsx";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { portalPrimaryButtonClassName } from "@/lib/ui/create-action-button-styles";
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+/**
+ * Chart komponenta je těžká (`chart.js` + `react-chartjs-2` ≈ 200 kB).
+ * Dynamický import s `ssr: false` sebere ji z hlavního bundlu wizardu a
+ * stáhne teprve když uživatel dorazí ke kroku Cíle a má co vykreslit.
+ */
+const StepGoalsChart = dynamic(
+  () => import("./StepGoalsChart").then((m) => m.StepGoalsChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 w-full animate-pulse rounded-xl bg-[color:var(--wp-surface-muted)]" />
+    ),
+  },
+);
 
 const GOAL_TYPES = [
   { value: "renta", label: "Finanční nezávislost (Renta)" },
@@ -275,17 +277,7 @@ export function StepGoals() {
               </div>
               {chartData && (
                 <div className="h-64 w-full">
-                  <Line
-                    data={chartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      scales: {
-                        x: { title: { display: true, text: "Rok" } },
-                        y: { title: { display: true, text: "Kč" }, ticks: { callback: (v) => (typeof v === "number" ? formatCzk(v) : v) } },
-                      },
-                    }}
-                  />
+                  <StepGoalsChart data={chartData} />
                 </div>
               )}
             </div>

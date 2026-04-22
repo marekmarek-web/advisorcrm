@@ -1,8 +1,9 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import {
   contacts,
   contracts,
@@ -26,12 +27,13 @@ import { logAuditAction } from "@/lib/audit";
 
 /** Uložení souhlasu s GDPR (registrace / kontakt). */
 export async function recordGdprConsent(contactId: string): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  await db
-    .update(contacts)
-    .set({ gdprConsentAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)));
+  await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    await tx
+      .update(contacts)
+      .set({ gdprConsentAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)));
+  });
 }
 
 /** Export dat kontaktu (pro GDPR – na žádost). Vrátí JSON. */
@@ -42,7 +44,9 @@ export async function exportContactData(contactId: string): Promise<Record<strin
   } else if (!hasPermission(auth.roleName, "contacts:read")) {
     throw new Error("Forbidden");
   }
-  const data = await doExportContactData(auth.tenantId, contactId);
+  const data = await withTenantContextFromAuth(auth, (tx) =>
+    doExportContactData(tx, auth.tenantId, contactId),
+  );
   logAuditAction({
     tenantId: auth.tenantId,
     userId: auth.userId,
@@ -58,9 +62,11 @@ export async function exportContactData(contactId: string): Promise<Record<strin
 export async function exportContactDataForClient(): Promise<Record<string, unknown>> {
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || !auth.contactId) throw new Error("Forbidden");
-  const data = await doExportContactData(auth.tenantId, auth.contactId, {
-    includeAdvisorAuditMetadata: false,
-  });
+  const data = await withTenantContextFromAuth(auth, (tx) =>
+    doExportContactData(tx, auth.tenantId, auth.contactId!, {
+      includeAdvisorAuditMetadata: false,
+    }),
+  );
   logAuditAction({
     tenantId: auth.tenantId,
     userId: auth.userId,
@@ -100,11 +106,12 @@ type ExportOptions = {
  *   - Obsah messages odeslaných **mezi advisory** bez účasti klienta.
  */
 async function doExportContactData(
+  tx: TenantContextDb,
   tenantId: string,
   contactId: string,
   options: ExportOptions = {},
 ): Promise<Record<string, unknown>> {
-  const [contact] = await db
+  const [contact] = await tx
     .select()
     .from(contacts)
     .where(and(eq(contacts.tenantId, tenantId), eq(contacts.id, contactId)))
@@ -129,8 +136,8 @@ async function doExportContactData(
     portalNotificationRows,
     auditLogRows,
   ] = await Promise.all([
-    db.select().from(contracts).where(and(eq(contracts.tenantId, tenantId), eq(contracts.contactId, contactId))),
-    db
+    tx.select().from(contracts).where(and(eq(contracts.tenantId, tenantId), eq(contracts.contactId, contactId))),
+    tx
       .select({
         id: documents.id,
         name: documents.name,
@@ -141,12 +148,12 @@ async function doExportContactData(
       })
       .from(documents)
       .where(and(eq(documents.tenantId, tenantId), eq(documents.contactId, contactId))),
-    db.select().from(messages).where(and(eq(messages.tenantId, tenantId), eq(messages.contactId, contactId))),
-    db
+    tx.select().from(messages).where(and(eq(messages.tenantId, tenantId), eq(messages.contactId, contactId))),
+    tx
       .select()
       .from(meetingNotes)
       .where(and(eq(meetingNotes.tenantId, tenantId), eq(meetingNotes.contactId, contactId))),
-    db
+    tx
       .select({
         id: contractUploadReviews.id,
         fileName: contractUploadReviews.fileName,
@@ -166,7 +173,7 @@ async function doExportContactData(
           ),
         ),
       ),
-    db
+    tx
       .select({
         id: documentExtractions.id,
         documentId: documentExtractions.documentId,
@@ -181,23 +188,23 @@ async function doExportContactData(
           eq(documentExtractions.contactId, contactId),
         ),
       ),
-    db
+    tx
       .select()
       .from(clientPaymentSetups)
       .where(and(eq(clientPaymentSetups.tenantId, tenantId), eq(clientPaymentSetups.contactId, contactId))),
-    db
+    tx
       .select()
       .from(consents)
       .where(and(eq(consents.tenantId, tenantId), eq(consents.contactId, contactId))),
-    db
+    tx
       .select()
       .from(opportunities)
       .where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.contactId, contactId))),
-    db
+    tx
       .select()
       .from(timelineItems)
       .where(and(eq(timelineItems.tenantId, tenantId), eq(timelineItems.contactId, contactId))),
-    db
+    tx
       .select()
       .from(userTermsAcceptance)
       .where(
@@ -208,15 +215,15 @@ async function doExportContactData(
       ),
     // portal_feedback je vázané na user_id (advisor), ne na kontakt — do exportu osobních dat nepatří.
     Promise.resolve([] as unknown[]),
-    db
+    tx
       .select({ userId: clientContacts.userId })
       .from(clientContacts)
       .where(and(eq(clientContacts.tenantId, tenantId), eq(clientContacts.contactId, contactId))),
-    db
+    tx
       .select()
       .from(advisorProposals)
       .where(and(eq(advisorProposals.tenantId, tenantId), eq(advisorProposals.contactId, contactId))),
-    db
+    tx
       .select()
       .from(portalNotifications)
       .where(
@@ -226,7 +233,7 @@ async function doExportContactData(
         ),
       ),
     options.includeAdvisorAuditMetadata
-      ? db
+      ? tx
           .select({
             action: auditLog.action,
             entityType: auditLog.entityType,

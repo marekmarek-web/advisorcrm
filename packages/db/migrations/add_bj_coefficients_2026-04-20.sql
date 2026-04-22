@@ -22,6 +22,7 @@
 --   Investika  vstupní poplatek 1 000 Kč → 4,00 BJ      (× 0,00400)
 --   Conseq PS  příspěvek účastníka 1 000 Kč → 11,00 BJ  (× 0,01100, cap 1 700)
 --   Pillow     roční pojistné 1 000 Kč → 0,60 BJ        (× 0,00060)
+--   Standard ŽP roční pojistné 12 000 Kč → 100 BJ       (× 0,00833)
 --   NN Život   roční pojistné 12 000 Kč → 93,60 BJ      (× 0,00780)
 --   Maxima     roční pojistné 12 000 Kč → 94,00 BJ      (× 0,00783)
 --   Uniqa      roční pojistné 12 000 Kč → ~99 BJ        (× 0,00825, + follow-up)
@@ -173,8 +174,8 @@ VALUES
     -- Standard z kariérního plánu: 100 BJ / 1 000 Kč ročně = 0,1.
     -- Konkrétní partneři mají vlastní (nižší) sazby.
     (NULL, 'LIFE_INSURANCE_REGULAR', NULL, 'regular_payment',
-        'annual_premium', 0.10000000, NULL, NULL, NULL,
-        'Standard: 100 BJ / 1 000 Kč ročního pojistného.'),
+        'annual_premium', 0.00833333, NULL, NULL, NULL,
+        'Standard: 100 BJ / 12 000 Kč ročního pojistného (≈ 0,00833).'),
     (NULL, 'LIFE_INSURANCE_REGULAR', '^nn|nn [zž]ivot', NULL,
         'annual_premium', 0.00780000, NULL, NULL, NULL,
         'NN Život 100: 12 000 Kč ročně → 93,60 BJ.'),
@@ -184,11 +185,6 @@ VALUES
     (NULL, 'LIFE_INSURANCE_REGULAR', '^uniqa', NULL,
         'annual_premium', 0.00825000, NULL, NULL, NULL,
         'Uniqa Život a radost (investiční 100): 12 000 Kč ročně → ~99 BJ.'),
-
-    -- ── Životní pojištění jednorázové ──────────────────────────────────
-    (NULL, 'LIFE_INSURANCE_SINGLE', NULL, 'single_payment',
-        'annual_premium', 0.10500000, NULL, NULL, NULL,
-        'Standard: 105 BJ / 1 000 Kč jednorázového pojistného.'),
 
     -- ── Autopojištění ──────────────────────────────────────────────────
     (NULL, 'MOTOR_INSURANCE', NULL, NULL,

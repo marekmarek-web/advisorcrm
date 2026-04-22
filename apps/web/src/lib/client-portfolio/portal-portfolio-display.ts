@@ -5,8 +5,19 @@
 
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import type { CanonicalProduct } from "@/lib/products/canonical-product-read";
-import { fundLibraryLogoPathForPortal } from "@/lib/fund-library/shared-future-value";
 import { resolveInstitutionLogo } from "@/lib/institutions/institution-logo";
+
+/**
+ * Rozlišení loga fondové knihovny musí explicitně zajistit volající, aby se
+ * do klientského bundlu netahal server-only `BASE_FUNDS` (stovky kB).
+ * - Klientská cesta (např. mobil): `fundLogoPath` je předpočítané na serveru a
+ *   přichází součástí read-modelu session bundle.
+ * - Serverová cesta (např. advisor dashboard): caller volá `fundLibraryLogoPathForPortal`
+ *   z `shared-future-value.ts` sám a výsledek předá sem.
+ */
+type PortalProductLogoOptions = {
+  fundLogoPath?: string | null;
+};
 
 export function formatPortalPremiumLineCs(
   monthly: string | null,
@@ -75,20 +86,18 @@ function collectInstitutionNameCandidates(p: CanonicalProduct): string[] {
  * Pořadí je záměrně „instituce před fondem“, aby u AMUNDI / platform nezůstalo generické logo fondu.
  * Logo fondu se nebere z `fvReadiness` u neinvestičních segmentů (např. ŽP s omylem vyplněným fondem).
  */
-export function resolvePortalProductDisplayLogo(p: CanonicalProduct): { src: string; alt: string } | null {
+export function resolvePortalProductDisplayLogo(
+  p: CanonicalProduct,
+  opts?: PortalProductLogoOptions,
+): { src: string; alt: string } | null {
   for (const name of collectInstitutionNameCandidates(p)) {
     const logo = resolveInstitutionLogo(name);
     if (logo) return { src: logo.src, alt: `Logo ${logo.alt}` };
   }
 
-  const fundId =
-    p.segmentDetail?.kind === "investment"
-      ? (p.segmentDetail.resolvedFundId || p.fvReadiness.resolvedFundId)
-      : null;
-  const fundPath = fundLibraryLogoPathForPortal(fundId);
-  if (fundPath) {
-    const fundName =
-      p.segmentDetail?.kind === "investment" ? p.segmentDetail.fundName?.trim() ?? null : null;
+  const fundPath = opts?.fundLogoPath?.trim() || null;
+  if (fundPath && p.segmentDetail?.kind === "investment") {
+    const fundName = p.segmentDetail.fundName?.trim() ?? null;
     return {
       src: fundPath,
       alt: fundName ? `Logo fondu ${fundName}` : "Logo fondu",
@@ -99,8 +108,11 @@ export function resolvePortalProductDisplayLogo(p: CanonicalProduct): { src: str
 }
 
 /** Vrací jen cestu k obrázku (stejná logika jako `resolvePortalProductDisplayLogo`). */
-export function resolvePortalFundLogoPath(p: CanonicalProduct): string | null {
-  return resolvePortalProductDisplayLogo(p)?.src ?? null;
+export function resolvePortalFundLogoPath(
+  p: CanonicalProduct,
+  opts?: PortalProductLogoOptions,
+): string | null {
+  return resolvePortalProductDisplayLogo(p, opts)?.src ?? null;
 }
 
 /**

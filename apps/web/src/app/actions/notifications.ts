@@ -1,10 +1,9 @@
 "use server";
 
-import { withAuthContext } from "@/lib/auth/with-auth-context";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { contacts, unsubscribeTokens } from "db";
 import { eq, and, lte, isNotNull, isNull, or, lt, sql } from "db";
-import { db } from "db";
 import { sendEmail } from "@/lib/email/send-email";
 import { clientServiceDueReminderTemplate } from "@/lib/email/templates";
 import { loadAdvisorMailHeadersForCurrentUser } from "@/lib/email/advisor-mail-headers";
@@ -43,9 +42,9 @@ export async function processServiceReminders(): Promise<{
     Date.now() - SERVICE_REMINDER_COOLDOWN_DAYS * 24 * 60 * 60 * 1000,
   );
 
-  const dueContacts = await withAuthContext(async (auth, tx) => {
+  const { auth, dueContacts } = await withAuthContext(async (auth, tx) => {
     if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
-    return tx
+    const rows = await tx
       .select({
         id: contacts.id,
         firstName: contacts.firstName,
@@ -69,6 +68,7 @@ export async function processServiceReminders(): Promise<{
           ),
         ),
       );
+    return { auth, dueContacts: rows };
   });
 
   const errors: string[] = [];
@@ -85,11 +85,13 @@ export async function processServiceReminders(): Promise<{
     let unsubscribeUrl: string | undefined;
     try {
       const token = makeUnsubscribeToken();
-      await db.insert(unsubscribeTokens).values({
-        contactId: c.id,
-        token,
-        expiresAt: unsubscribeTokenExpiry(),
-      });
+      await withTenantContextFromAuth(auth, (tx) =>
+        tx.insert(unsubscribeTokens).values({
+          contactId: c.id,
+          token,
+          expiresAt: unsubscribeTokenExpiry(),
+        }),
+      );
       unsubscribeUrl = `${base}/client/unsubscribe?token=${token}`;
     } catch (e) {
       errors.push(`${contactName}: unsubscribe token mint failed`);
@@ -116,10 +118,12 @@ export async function processServiceReminders(): Promise<{
     });
     if (result.ok) {
       try {
-        await db
-          .update(contacts)
-          .set({ lastServiceReminderSentAt: new Date(), updatedAt: new Date() })
-          .where(eq(contacts.id, c.id));
+        await withTenantContextFromAuth(auth, (tx) =>
+          tx
+            .update(contacts)
+            .set({ lastServiceReminderSentAt: new Date(), updatedAt: new Date() })
+            .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, c.id))),
+        );
         sent++;
       } catch (e) {
         errors.push(`${contactName}: stamp failed`);

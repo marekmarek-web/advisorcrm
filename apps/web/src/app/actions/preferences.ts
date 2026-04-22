@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { db } from "db";
+import { withAuthContext } from "@/lib/auth/with-auth-context";
 import { advisorPreferences } from "db";
 import { eq, and } from "db";
 import { getDefaultQuickActionsConfig } from "@/lib/quick-actions";
@@ -41,41 +41,9 @@ export async function setQuickActionsConfig(
   order: string[],
   visible: Record<string, boolean>
 ): Promise<void> {
-  const auth = await requireAuthInAction();
-  const existing = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId)
-      )
-    )
-    .limit(1);
-
-  const quickActions = { order, visible };
-  if (existing.length > 0) {
-    await db
-      .update(advisorPreferences)
-      .set({
-        quickActions,
-        updatedAt: new Date(),
-      })
-      .where(eq(advisorPreferences.id, existing[0].id));
-  } else {
-    await db.insert(advisorPreferences).values({
-      userId: auth.userId,
-      tenantId: auth.tenantId,
-      quickActions,
-    });
-  }
-}
-
-export async function getAdvisorAvatarUrl(): Promise<string | null> {
-  try {
-    const auth = await requireAuthInAction();
-    const row = await db
-      .select({ avatarUrl: advisorPreferences.avatarUrl })
+  await withAuthContext(async (auth, tx) => {
+    const existing = await tx
+      .select({ id: advisorPreferences.id })
       .from(advisorPreferences)
       .where(
         and(
@@ -84,7 +52,41 @@ export async function getAdvisorAvatarUrl(): Promise<string | null> {
         )
       )
       .limit(1);
-    return row[0]?.avatarUrl ?? null;
+
+    const quickActions = { order, visible };
+    if (existing.length > 0) {
+      await tx
+        .update(advisorPreferences)
+        .set({
+          quickActions,
+          updatedAt: new Date(),
+        })
+        .where(eq(advisorPreferences.id, existing[0].id));
+    } else {
+      await tx.insert(advisorPreferences).values({
+        userId: auth.userId,
+        tenantId: auth.tenantId,
+        quickActions,
+      });
+    }
+  });
+}
+
+export async function getAdvisorAvatarUrl(): Promise<string | null> {
+  try {
+    return await withAuthContext(async (auth, tx) => {
+      const row = await tx
+        .select({ avatarUrl: advisorPreferences.avatarUrl })
+        .from(advisorPreferences)
+        .where(
+          and(
+            eq(advisorPreferences.tenantId, auth.tenantId),
+            eq(advisorPreferences.userId, auth.userId)
+          )
+        )
+        .limit(1);
+      return row[0]?.avatarUrl ?? null;
+    });
   } catch {
     return null;
   }
@@ -108,28 +110,30 @@ export async function uploadAdvisorAvatar(formData: FormData): Promise<string | 
     throw new Error(msg);
   }
   // WS-2 Batch 5 / W4: ukládáme storage path (ne 365-denní signed URL).
-  const existing = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId)
+  await withAuthContext(async (innerAuth, tx) => {
+    const existing = await tx
+      .select({ id: advisorPreferences.id })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, innerAuth.tenantId),
+          eq(advisorPreferences.userId, innerAuth.userId)
+        )
       )
-    )
-    .limit(1);
-  if (existing.length > 0) {
-    await db
-      .update(advisorPreferences)
-      .set({ avatarUrl: path, updatedAt: new Date() })
-      .where(eq(advisorPreferences.id, existing[0].id));
-  } else {
-    await db.insert(advisorPreferences).values({
-      userId: auth.userId,
-      tenantId: auth.tenantId,
-      avatarUrl: path,
-    });
-  }
+      .limit(1);
+    if (existing.length > 0) {
+      await tx
+        .update(advisorPreferences)
+        .set({ avatarUrl: path, updatedAt: new Date() })
+        .where(eq(advisorPreferences.id, existing[0].id));
+    } else {
+      await tx.insert(advisorPreferences).values({
+        userId: innerAuth.userId,
+        tenantId: innerAuth.tenantId,
+        avatarUrl: path,
+      });
+    }
+  });
   return buildAvatarProxyUrl(path);
 }
 
@@ -139,7 +143,6 @@ const PDF_REPORT_FOOTER_FALLBACK = "Marek Marek - Privátní finanční plánov�
 /** Vrátí branding pro PDF report: jméno z profilu, řádek zápatí (jméno | web | telefon), URL loga. */
 export async function getAdvisorReportBranding(): Promise<AdvisorReportBranding> {
   try {
-    const auth = await requireAuthInAction();
     const supabase = await createClient();
     const {
       data: { user },
@@ -147,21 +150,23 @@ export async function getAdvisorReportBranding(): Promise<AdvisorReportBranding>
     const authorName =
       (user?.user_metadata?.full_name as string | undefined)?.trim() || PDF_REPORT_AUTHOR_FALLBACK;
 
-    const row = await db
-      .select({
-        phone: advisorPreferences.phone,
-        website: advisorPreferences.website,
-        reportContactEmail: advisorPreferences.reportContactEmail,
-        reportLogoUrl: advisorPreferences.reportLogoUrl,
-      })
-      .from(advisorPreferences)
-      .where(
-        and(
-          eq(advisorPreferences.tenantId, auth.tenantId),
-          eq(advisorPreferences.userId, auth.userId)
+    const row = await withAuthContext(async (auth, tx) => {
+      return tx
+        .select({
+          phone: advisorPreferences.phone,
+          website: advisorPreferences.website,
+          reportContactEmail: advisorPreferences.reportContactEmail,
+          reportLogoUrl: advisorPreferences.reportLogoUrl,
+        })
+        .from(advisorPreferences)
+        .where(
+          and(
+            eq(advisorPreferences.tenantId, auth.tenantId),
+            eq(advisorPreferences.userId, auth.userId)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
+    });
 
     const phone = row[0]?.phone?.trim() || "";
     const website = row[0]?.website?.trim() || "";
@@ -214,26 +219,27 @@ export async function getAdvisorReportFields(): Promise<{
   reportContactEmail: string | null;
 }> {
   try {
-    const auth = await requireAuthInAction();
-    const row = await db
-      .select({
-        phone: advisorPreferences.phone,
-        website: advisorPreferences.website,
-        reportContactEmail: advisorPreferences.reportContactEmail,
-      })
-      .from(advisorPreferences)
-      .where(
-        and(
-          eq(advisorPreferences.tenantId, auth.tenantId),
-          eq(advisorPreferences.userId, auth.userId)
+    return await withAuthContext(async (auth, tx) => {
+      const row = await tx
+        .select({
+          phone: advisorPreferences.phone,
+          website: advisorPreferences.website,
+          reportContactEmail: advisorPreferences.reportContactEmail,
+        })
+        .from(advisorPreferences)
+        .where(
+          and(
+            eq(advisorPreferences.tenantId, auth.tenantId),
+            eq(advisorPreferences.userId, auth.userId)
+          )
         )
-      )
-      .limit(1);
-    return {
-      phone: row[0]?.phone?.trim() || null,
-      website: row[0]?.website?.trim() || null,
-      reportContactEmail: row[0]?.reportContactEmail?.trim() || null,
-    };
+        .limit(1);
+      return {
+        phone: row[0]?.phone?.trim() || null,
+        website: row[0]?.website?.trim() || null,
+        reportContactEmail: row[0]?.reportContactEmail?.trim() || null,
+      };
+    });
   } catch {
     return { phone: null, website: null, reportContactEmail: null };
   }
@@ -245,43 +251,44 @@ export async function updateAdvisorReportBranding(update: {
   website?: string | null;
   reportContactEmail?: string | null;
 }): Promise<void> {
-  const auth = await requireAuthInAction();
-  const existing = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId)
+  await withAuthContext(async (auth, tx) => {
+    const existing = await tx
+      .select({ id: advisorPreferences.id })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, auth.tenantId),
+          eq(advisorPreferences.userId, auth.userId)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  const set: {
-    phone?: string | null;
-    website?: string | null;
-    reportContactEmail?: string | null;
-    updatedAt: Date;
-  } = {
-    updatedAt: new Date(),
-  };
-  if (Object.prototype.hasOwnProperty.call(update, "phone")) set.phone = update.phone ?? null;
-  if (Object.prototype.hasOwnProperty.call(update, "website")) set.website = update.website ?? null;
-  if (Object.prototype.hasOwnProperty.call(update, "reportContactEmail")) {
-    set.reportContactEmail = update.reportContactEmail?.trim() || null;
-  }
+    const set: {
+      phone?: string | null;
+      website?: string | null;
+      reportContactEmail?: string | null;
+      updatedAt: Date;
+    } = {
+      updatedAt: new Date(),
+    };
+    if (Object.prototype.hasOwnProperty.call(update, "phone")) set.phone = update.phone ?? null;
+    if (Object.prototype.hasOwnProperty.call(update, "website")) set.website = update.website ?? null;
+    if (Object.prototype.hasOwnProperty.call(update, "reportContactEmail")) {
+      set.reportContactEmail = update.reportContactEmail?.trim() || null;
+    }
 
-  if (existing.length > 0) {
-    await db.update(advisorPreferences).set(set).where(eq(advisorPreferences.id, existing[0].id));
-  } else {
-    await db.insert(advisorPreferences).values({
-      userId: auth.userId,
-      tenantId: auth.tenantId,
-      phone: set.phone ?? null,
-      website: set.website ?? null,
-      reportContactEmail: set.reportContactEmail ?? null,
-    });
-  }
+    if (existing.length > 0) {
+      await tx.update(advisorPreferences).set(set).where(eq(advisorPreferences.id, existing[0].id));
+    } else {
+      await tx.insert(advisorPreferences).values({
+        userId: auth.userId,
+        tenantId: auth.tenantId,
+        phone: set.phone ?? null,
+        website: set.website ?? null,
+        reportContactEmail: set.reportContactEmail ?? null,
+      });
+    }
+  });
 }
 
 /** Nahraje logo do reportu PDF do Storage a uloží URL do advisor_preferences.report_logo_url. */
@@ -304,28 +311,30 @@ export async function uploadReportLogo(formData: FormData): Promise<string | nul
     throw new Error(msg);
   }
   // WS-2 Batch 5 / W4: ukládáme storage path (ne 365-denní signed URL).
-  const existing = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId)
+  await withAuthContext(async (innerAuth, tx) => {
+    const existing = await tx
+      .select({ id: advisorPreferences.id })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, innerAuth.tenantId),
+          eq(advisorPreferences.userId, innerAuth.userId)
+        )
       )
-    )
-    .limit(1);
-  if (existing.length > 0) {
-    await db
-      .update(advisorPreferences)
-      .set({ reportLogoUrl: path, updatedAt: new Date() })
-      .where(eq(advisorPreferences.id, existing[0].id));
-  } else {
-    await db.insert(advisorPreferences).values({
-      userId: auth.userId,
-      tenantId: auth.tenantId,
-      reportLogoUrl: path,
-    });
-  }
+      .limit(1);
+    if (existing.length > 0) {
+      await tx
+        .update(advisorPreferences)
+        .set({ reportLogoUrl: path, updatedAt: new Date() })
+        .where(eq(advisorPreferences.id, existing[0].id));
+    } else {
+      await tx.insert(advisorPreferences).values({
+        userId: innerAuth.userId,
+        tenantId: innerAuth.tenantId,
+        reportLogoUrl: path,
+      });
+    }
+  });
   return buildAvatarProxyUrl(path);
 }
 
@@ -360,24 +369,25 @@ export type AdvisorBirthdayEmailPrefs = {
 
 export async function getAdvisorBirthdayEmailPrefs(): Promise<AdvisorBirthdayEmailPrefs> {
   try {
-    const auth = await requireAuthInAction();
-    const row = await db
-      .select({
-        birthdaySignatureName: advisorPreferences.birthdaySignatureName,
-        birthdaySignatureRole: advisorPreferences.birthdaySignatureRole,
-        birthdayReplyToEmail: advisorPreferences.birthdayReplyToEmail,
-        birthdayEmailTheme: advisorPreferences.birthdayEmailTheme,
-      })
-      .from(advisorPreferences)
-      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
-      .limit(1);
-    const t = row[0]?.birthdayEmailTheme?.trim();
-    return {
-      birthdaySignatureName: row[0]?.birthdaySignatureName?.trim() || null,
-      birthdaySignatureRole: row[0]?.birthdaySignatureRole?.trim() || null,
-      birthdayReplyToEmail: row[0]?.birthdayReplyToEmail?.trim() || null,
-      birthdayEmailTheme: t && isBirthdayEmailTheme(t) ? t : null,
-    };
+    return await withAuthContext(async (auth, tx) => {
+      const row = await tx
+        .select({
+          birthdaySignatureName: advisorPreferences.birthdaySignatureName,
+          birthdaySignatureRole: advisorPreferences.birthdaySignatureRole,
+          birthdayReplyToEmail: advisorPreferences.birthdayReplyToEmail,
+          birthdayEmailTheme: advisorPreferences.birthdayEmailTheme,
+        })
+        .from(advisorPreferences)
+        .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+        .limit(1);
+      const t = row[0]?.birthdayEmailTheme?.trim();
+      return {
+        birthdaySignatureName: row[0]?.birthdaySignatureName?.trim() || null,
+        birthdaySignatureRole: row[0]?.birthdaySignatureRole?.trim() || null,
+        birthdayReplyToEmail: row[0]?.birthdayReplyToEmail?.trim() || null,
+        birthdayEmailTheme: t && isBirthdayEmailTheme(t) ? t : null,
+      };
+    });
   } catch {
     return {
       birthdaySignatureName: null,
@@ -394,53 +404,54 @@ export async function updateAdvisorBirthdayEmailPrefs(update: {
   birthdayReplyToEmail?: string | null;
   birthdayEmailTheme?: string | null;
 }): Promise<void> {
-  const auth = await requireAuthInAction();
   if (update.birthdayEmailTheme != null && update.birthdayEmailTheme !== "" && !isBirthdayEmailTheme(update.birthdayEmailTheme)) {
     throw new Error("Neplatné téma e-mailu.");
   }
-  const existing = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
-    .limit(1);
+  await withAuthContext(async (auth, tx) => {
+    const existing = await tx
+      .select({ id: advisorPreferences.id })
+      .from(advisorPreferences)
+      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+      .limit(1);
 
-  const set: Record<string, unknown> = { updatedAt: new Date() };
-  if (Object.prototype.hasOwnProperty.call(update, "birthdaySignatureName")) {
-    set.birthdaySignatureName = update.birthdaySignatureName?.trim() || null;
-  }
-  if (Object.prototype.hasOwnProperty.call(update, "birthdaySignatureRole")) {
-    set.birthdaySignatureRole = update.birthdaySignatureRole?.trim() || null;
-  }
-  if (Object.prototype.hasOwnProperty.call(update, "birthdayReplyToEmail")) {
-    set.birthdayReplyToEmail = update.birthdayReplyToEmail?.trim() || null;
-  }
-  if (Object.prototype.hasOwnProperty.call(update, "birthdayEmailTheme")) {
-    const v = update.birthdayEmailTheme?.trim();
-    set.birthdayEmailTheme = v && isBirthdayEmailTheme(v) ? v : null;
-  }
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    if (Object.prototype.hasOwnProperty.call(update, "birthdaySignatureName")) {
+      set.birthdaySignatureName = update.birthdaySignatureName?.trim() || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(update, "birthdaySignatureRole")) {
+      set.birthdaySignatureRole = update.birthdaySignatureRole?.trim() || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(update, "birthdayReplyToEmail")) {
+      set.birthdayReplyToEmail = update.birthdayReplyToEmail?.trim() || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(update, "birthdayEmailTheme")) {
+      const v = update.birthdayEmailTheme?.trim();
+      set.birthdayEmailTheme = v && isBirthdayEmailTheme(v) ? v : null;
+    }
 
-  if (existing.length > 0) {
-    await db
-      .update(advisorPreferences)
-      .set(set as Partial<typeof advisorPreferences.$inferInsert>)
-      .where(eq(advisorPreferences.id, existing[0].id));
-    return;
-  }
-  await db.insert(advisorPreferences).values({
-    userId: auth.userId,
-    tenantId: auth.tenantId,
-    birthdaySignatureName:
-      update.birthdaySignatureName !== undefined ? update.birthdaySignatureName?.trim() || null : null,
-    birthdaySignatureRole:
-      update.birthdaySignatureRole !== undefined ? update.birthdaySignatureRole?.trim() || null : null,
-    birthdayReplyToEmail:
-      update.birthdayReplyToEmail !== undefined ? update.birthdayReplyToEmail?.trim() || null : null,
-    birthdayEmailTheme:
-      update.birthdayEmailTheme !== undefined
-        ? update.birthdayEmailTheme?.trim() && isBirthdayEmailTheme(update.birthdayEmailTheme.trim())
-          ? update.birthdayEmailTheme.trim()
-          : null
-        : null,
+    if (existing.length > 0) {
+      await tx
+        .update(advisorPreferences)
+        .set(set as Partial<typeof advisorPreferences.$inferInsert>)
+        .where(eq(advisorPreferences.id, existing[0].id));
+      return;
+    }
+    await tx.insert(advisorPreferences).values({
+      userId: auth.userId,
+      tenantId: auth.tenantId,
+      birthdaySignatureName:
+        update.birthdaySignatureName !== undefined ? update.birthdaySignatureName?.trim() || null : null,
+      birthdaySignatureRole:
+        update.birthdaySignatureRole !== undefined ? update.birthdaySignatureRole?.trim() || null : null,
+      birthdayReplyToEmail:
+        update.birthdayReplyToEmail !== undefined ? update.birthdayReplyToEmail?.trim() || null : null,
+      birthdayEmailTheme:
+        update.birthdayEmailTheme !== undefined
+          ? update.birthdayEmailTheme?.trim() && isBirthdayEmailTheme(update.birthdayEmailTheme.trim())
+            ? update.birthdayEmailTheme.trim()
+            : null
+          : null,
+    });
   });
 }
 

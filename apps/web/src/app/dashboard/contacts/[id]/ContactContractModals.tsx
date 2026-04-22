@@ -184,6 +184,12 @@ export function ContactContractModals({ contactId }: { contactId: string }) {
       note: c.note ?? "",
       paymentType,
       paymentFrequency,
+      entryFee: typeof attrs.entryFee === "string" ? attrs.entryFee : "",
+      loanPrincipal: typeof attrs.loanPrincipal === "string" ? attrs.loanPrincipal : "",
+      participantContribution:
+        typeof attrs.participantContribution === "string" ? attrs.participantContribution : "",
+      hasPpi: typeof attrs.hasPpi === "boolean" ? attrs.hasPpi : null,
+      productCategory: null,
     });
     setPickerValue({
       partnerId: c.partnerId ?? "",

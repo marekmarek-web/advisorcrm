@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import { findAuthUserByEmail } from "@/lib/auth/client-invite-account";
 import { getServerAppBaseUrl } from "@/lib/url/server-app-base-url";
 import { sendEmail } from "@/lib/email/send-email";
@@ -56,54 +58,56 @@ export type TenantMemberRow = {
 
 /** List members of the current user's tenant (for Settings > Tým). */
 export async function listTenantMembers(): Promise<TenantMemberRow[]> {
-  const auth = await requireAuthInAction();
-  const rows = await db
-    .select({
-      membershipId: memberships.id,
-      userId: memberships.userId,
-      parentId: memberships.parentId,
-      roleName: roles.name,
-      joinedAt: memberships.joinedAt,
-      displayName: userProfiles.fullName,
-      email: userProfiles.email,
-      careerProgram: memberships.careerProgram,
-      careerTrack: memberships.careerTrack,
-      careerPositionCode: memberships.careerPositionCode,
-    })
-    .from(memberships)
-    .innerJoin(roles, eq(memberships.roleId, roles.id))
-    .leftJoin(userProfiles, eq(userProfiles.userId, memberships.userId))
-    .where(eq(memberships.tenantId, auth.tenantId))
-    .orderBy(asc(memberships.joinedAt));
-  return rows.map((r) => {
-    const norm = normalizeCareerProgramFromDb(r.careerProgram);
-    return {
-      membershipId: r.membershipId,
-      userId: r.userId,
-      parentId: r.parentId ?? null,
-      roleName: r.roleName,
-      joinedAt: r.joinedAt,
-      displayName: r.displayName?.trim() || null,
-      email: r.email?.trim() || null,
-      careerProgram: r.careerProgram ?? null,
-      careerTrack: r.careerTrack ?? null,
-      careerPositionCode: r.careerPositionCode ?? null,
-      careerHasLegacyProgram: norm.legacyRaw != null,
-    };
+  return withAuthContext(async (auth, tx) => {
+    const rows = await tx
+      .select({
+        membershipId: memberships.id,
+        userId: memberships.userId,
+        parentId: memberships.parentId,
+        roleName: roles.name,
+        joinedAt: memberships.joinedAt,
+        displayName: userProfiles.fullName,
+        email: userProfiles.email,
+        careerProgram: memberships.careerProgram,
+        careerTrack: memberships.careerTrack,
+        careerPositionCode: memberships.careerPositionCode,
+      })
+      .from(memberships)
+      .innerJoin(roles, eq(memberships.roleId, roles.id))
+      .leftJoin(userProfiles, eq(userProfiles.userId, memberships.userId))
+      .where(eq(memberships.tenantId, auth.tenantId))
+      .orderBy(asc(memberships.joinedAt));
+    return rows.map((r) => {
+      const norm = normalizeCareerProgramFromDb(r.careerProgram);
+      return {
+        membershipId: r.membershipId,
+        userId: r.userId,
+        parentId: r.parentId ?? null,
+        roleName: r.roleName,
+        joinedAt: r.joinedAt,
+        displayName: r.displayName?.trim() || null,
+        email: r.email?.trim() || null,
+        careerProgram: r.careerProgram ?? null,
+        careerTrack: r.careerTrack ?? null,
+        careerPositionCode: r.careerPositionCode ?? null,
+        careerHasLegacyProgram: norm.legacyRaw != null,
+      };
+    });
   });
 }
 
 export async function getTenantTeamCareerDefaults(): Promise<{ defaultCareerProgram: string | null }> {
-  const auth = await requireAuthInAction();
-  const [row] = await db
-    .select({ value: tenantSettings.value })
-    .from(tenantSettings)
-    .where(and(eq(tenantSettings.tenantId, auth.tenantId), eq(tenantSettings.key, TENANT_TEAM_CAREER_KEY)))
-    .limit(1);
-  const raw = row?.value as TeamCareerDefaultsJson | undefined;
-  const p = raw?.defaultCareerProgram ?? null;
-  if (p === "beplan" || p === "premium_brokers") return { defaultCareerProgram: p };
-  return { defaultCareerProgram: null };
+  return withAuthContext(async (auth, tx) => {
+    const [row] = await tx
+      .select({ value: tenantSettings.value })
+      .from(tenantSettings)
+      .where(and(eq(tenantSettings.tenantId, auth.tenantId), eq(tenantSettings.key, TENANT_TEAM_CAREER_KEY)))
+      .limit(1);
+    const raw = row?.value as TeamCareerDefaultsJson | undefined;
+    const p = raw?.defaultCareerProgram ?? null;
+    if (p === "beplan" || p === "premium_brokers") return { defaultCareerProgram: p };
+    return { defaultCareerProgram: null };
+  });
 }
 
 export async function setTenantTeamCareerDefaultProgram(
@@ -116,32 +120,34 @@ export async function setTenantTeamCareerDefaultProgram(
   const defaultCareerProgram = program === "beplan" || program === "premium_brokers" ? program : null;
   const value: TeamCareerDefaultsJson = { defaultCareerProgram };
 
-  const [existing] = await db
-    .select({ id: tenantSettings.id, version: tenantSettings.version })
-    .from(tenantSettings)
-    .where(and(eq(tenantSettings.tenantId, auth.tenantId), eq(tenantSettings.key, TENANT_TEAM_CAREER_KEY)))
-    .limit(1);
+  await withTenantContextFromAuth(auth, async (tx) => {
+    const [existing] = await tx
+      .select({ id: tenantSettings.id, version: tenantSettings.version })
+      .from(tenantSettings)
+      .where(and(eq(tenantSettings.tenantId, auth.tenantId), eq(tenantSettings.key, TENANT_TEAM_CAREER_KEY)))
+      .limit(1);
 
-  if (existing) {
-    await db
-      .update(tenantSettings)
-      .set({
+    if (existing) {
+      await tx
+        .update(tenantSettings)
+        .set({
+          value: value as unknown as Record<string, unknown>,
+          updatedBy: auth.userId,
+          updatedAt: new Date(),
+          version: (existing.version ?? 0) + 1,
+        })
+        .where(eq(tenantSettings.id, existing.id));
+    } else {
+      await tx.insert(tenantSettings).values({
+        tenantId: auth.tenantId,
+        key: TENANT_TEAM_CAREER_KEY,
         value: value as unknown as Record<string, unknown>,
+        domain: TENANT_TEAM_CAREER_DOMAIN,
         updatedBy: auth.userId,
-        updatedAt: new Date(),
-        version: (existing.version ?? 0) + 1,
-      })
-      .where(eq(tenantSettings.id, existing.id));
-  } else {
-    await db.insert(tenantSettings).values({
-      tenantId: auth.tenantId,
-      key: TENANT_TEAM_CAREER_KEY,
-      value: value as unknown as Record<string, unknown>,
-      domain: TENANT_TEAM_CAREER_DOMAIN,
-      updatedBy: auth.userId,
-      version: 1,
-    });
-  }
+        version: 1,
+      });
+    }
+  });
   return { ok: true };
 }
 
@@ -154,35 +160,37 @@ export async function updateMemberCareer(
     return { ok: false, error: "Nemáte oprávnění upravovat kariérní údaje." };
   }
 
-  const [target] = await db
-    .select({ tenantId: memberships.tenantId })
-    .from(memberships)
-    .where(eq(memberships.id, membershipId))
-    .limit(1);
+  return withTenantContextFromAuth(auth, async (tx) => {
+    const [target] = await tx
+      .select({ tenantId: memberships.tenantId })
+      .from(memberships)
+      .where(eq(memberships.id, membershipId))
+      .limit(1);
 
-  if (!target || target.tenantId !== auth.tenantId) {
-    return { ok: false, error: "Člen nenalezen." };
-  }
+    if (!target || target.tenantId !== auth.tenantId) {
+      return { ok: false, error: "Člen nenalezen." };
+    }
 
-  const validated = validateCareerFieldsForWrite(
-    input.careerProgram,
-    input.careerTrack,
-    input.careerPositionCode
-  );
-  if (!validated.ok) {
-    return { ok: false, error: validated.error };
-  }
+    const validated = validateCareerFieldsForWrite(
+      input.careerProgram,
+      input.careerTrack,
+      input.careerPositionCode
+    );
+    if (!validated.ok) {
+      return { ok: false, error: validated.error };
+    }
 
-  await db
-    .update(memberships)
-    .set({
-      careerProgram: validated.data.careerProgram,
-      careerTrack: validated.data.careerTrack,
-      careerPositionCode: validated.data.careerPositionCode,
-    })
-    .where(eq(memberships.id, membershipId));
+    await tx
+      .update(memberships)
+      .set({
+        careerProgram: validated.data.careerProgram,
+        careerTrack: validated.data.careerTrack,
+        careerPositionCode: validated.data.careerPositionCode,
+      })
+      .where(eq(memberships.id, membershipId));
 
-  return { ok: true };
+    return { ok: true };
+  });
 }
 
 export async function updateMemberRole(
@@ -208,46 +216,58 @@ export async function updateMemberRole(
     }
   }
 
-  const [target] = await db
-    .select({ tenantId: memberships.tenantId, userId: memberships.userId })
-    .from(memberships)
-    .where(eq(memberships.id, membershipId))
-    .limit(1);
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [target] = await tx
+      .select({ tenantId: memberships.tenantId, userId: memberships.userId })
+      .from(memberships)
+      .where(eq(memberships.id, membershipId))
+      .limit(1);
 
-  if (!target || target.tenantId !== auth.tenantId) {
-    return { ok: false, error: "Člen nenalezen." };
+    if (!target || target.tenantId !== auth.tenantId) {
+      return { ok: false as const, error: "Člen nenalezen." };
+    }
+
+    if (target.userId === auth.userId) {
+      return { ok: false as const, error: "Nemůžete změnit svou vlastní roli." };
+    }
+
+    const [roleRow] = await tx
+      .select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.tenantId, auth.tenantId), eq(roles.name, newRoleName)))
+      .limit(1);
+
+    if (!roleRow) {
+      return { ok: false as const, error: `Role "${newRoleName}" neexistuje.` };
+    }
+
+    if (!isRoleAtLeast(auth.roleName, newRoleName as RoleName)) {
+      return { ok: false as const, error: "Nemůžete přidělit roli vyšší než vlastní." };
+    }
+
+    // Načteme původní roli pro audit log (interní, informativní — není to rozhodnutí o klientovi).
+    const [previousRole] = await tx
+      .select({ name: roles.name })
+      .from(memberships)
+      .innerJoin(roles, eq(memberships.roleId, roles.id))
+      .where(eq(memberships.id, membershipId))
+      .limit(1);
+
+    await tx
+      .update(memberships)
+      .set({ roleId: roleRow.id })
+      .where(eq(memberships.id, membershipId));
+
+    return {
+      ok: true as const,
+      targetUserId: target.userId,
+      previousRoleName: previousRole?.name ?? null,
+    };
+  });
+
+  if (!result.ok) {
+    return result;
   }
-
-  if (target.userId === auth.userId) {
-    return { ok: false, error: "Nemůžete změnit svou vlastní roli." };
-  }
-
-  const [roleRow] = await db
-    .select({ id: roles.id })
-    .from(roles)
-    .where(and(eq(roles.tenantId, auth.tenantId), eq(roles.name, newRoleName)))
-    .limit(1);
-
-  if (!roleRow) {
-    return { ok: false, error: `Role "${newRoleName}" neexistuje.` };
-  }
-
-  if (!isRoleAtLeast(auth.roleName, newRoleName as RoleName)) {
-    return { ok: false, error: "Nemůžete přidělit roli vyšší než vlastní." };
-  }
-
-  // Načteme původní roli pro audit log (interní, informativní — není to rozhodnutí o klientovi).
-  const [previousRole] = await db
-    .select({ name: roles.name })
-    .from(memberships)
-    .innerJoin(roles, eq(memberships.roleId, roles.id))
-    .where(eq(memberships.id, membershipId))
-    .limit(1);
-
-  await db
-    .update(memberships)
-    .set({ roleId: roleRow.id })
-    .where(eq(memberships.id, membershipId));
 
   // WS-2 Batch 2 / minimal audit coverage — role change.
   logAuditAction({
@@ -257,8 +277,8 @@ export async function updateMemberRole(
     entityType: "membership",
     entityId: membershipId,
     meta: {
-      targetUserId: target.userId,
-      previousRole: previousRole?.name ?? null,
+      targetUserId: result.targetUserId,
+      previousRole: result.previousRoleName,
       newRole: newRoleName,
       performedByRole: auth.roleName,
     },
@@ -276,26 +296,28 @@ export async function updateMemberParent(
     return { ok: false, error: "Nemáte oprávnění měnit hierarchii." };
   }
 
-  const [target] = await db
-    .select({ tenantId: memberships.tenantId, userId: memberships.userId })
-    .from(memberships)
-    .where(eq(memberships.id, membershipId))
-    .limit(1);
+  return withTenantContextFromAuth(auth, async (tx) => {
+    const [target] = await tx
+      .select({ tenantId: memberships.tenantId, userId: memberships.userId })
+      .from(memberships)
+      .where(eq(memberships.id, membershipId))
+      .limit(1);
 
-  if (!target || target.tenantId !== auth.tenantId) {
-    return { ok: false, error: "Člen nenalezen." };
-  }
+    if (!target || target.tenantId !== auth.tenantId) {
+      return { ok: false, error: "Člen nenalezen." };
+    }
 
-  if (parentUserId && parentUserId === target.userId) {
-    return { ok: false, error: "Člen nemůže být svým vlastním nadřízeným." };
-  }
+    if (parentUserId && parentUserId === target.userId) {
+      return { ok: false, error: "Člen nemůže být svým vlastním nadřízeným." };
+    }
 
-  await db
-    .update(memberships)
-    .set({ parentId: parentUserId })
-    .where(eq(memberships.id, membershipId));
+    await tx
+      .update(memberships)
+      .set({ parentId: parentUserId })
+      .where(eq(memberships.id, membershipId));
 
-  return { ok: true };
+    return { ok: true };
+  });
 }
 
 /**
@@ -312,11 +334,14 @@ export async function getMemberOffboardingPreview(
   if (!hasPermission(auth.roleName, "team_members:write")) {
     return { ok: false, error: "Nemáte oprávnění odebírat členy." };
   }
-  const [target] = await db
-    .select({ tenantId: memberships.tenantId, userId: memberships.userId })
-    .from(memberships)
-    .where(eq(memberships.id, membershipId))
-    .limit(1);
+  const target = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({ tenantId: memberships.tenantId, userId: memberships.userId })
+      .from(memberships)
+      .where(eq(memberships.id, membershipId))
+      .limit(1);
+    return row;
+  });
   if (!target || target.tenantId !== auth.tenantId) {
     return { ok: false, error: "Člen nenalezen." };
   }
@@ -350,11 +375,14 @@ export async function removeMember(
     }
   }
 
-  const [target] = await db
-    .select({ tenantId: memberships.tenantId, userId: memberships.userId })
-    .from(memberships)
-    .where(eq(memberships.id, membershipId))
-    .limit(1);
+  const target = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({ tenantId: memberships.tenantId, userId: memberships.userId })
+      .from(memberships)
+      .where(eq(memberships.id, membershipId))
+      .limit(1);
+    return row;
+  });
 
   if (!target || target.tenantId !== auth.tenantId) {
     return { ok: false, error: "Člen nenalezen." };
@@ -407,7 +435,9 @@ export async function removeMember(
     );
   }
 
-  await db.delete(memberships).where(eq(memberships.id, membershipId));
+  await withTenantContextFromAuth(auth, (tx) =>
+    tx.delete(memberships).where(eq(memberships.id, membershipId)),
+  );
 
   logAuditAction({
     action: "team.remove_member",
@@ -428,8 +458,12 @@ export type SendTeamMemberInvitationResult =
   | { ok: true; inviteLink: string; emailSent: boolean; emailError?: string }
   | { ok: false; error: string };
 
-async function revokePendingStaffInvitationsForEmail(tenantId: string, normalizedEmail: string) {
-  await db
+async function revokePendingStaffInvitationsForEmail(
+  tx: TenantContextDb,
+  tenantId: string,
+  normalizedEmail: string,
+) {
+  await tx
     .update(staffInvitations)
     .set({ revokedAt: new Date() })
     .where(
@@ -442,8 +476,8 @@ async function revokePendingStaffInvitationsForEmail(tenantId: string, normalize
     );
 }
 
-async function getTenantEmailContext(tenantId: string) {
-  const [row] = await db
+async function getTenantEmailContext(tx: TenantContextDb, tenantId: string) {
+  const [row] = await tx
     .select({ name: tenants.name, notificationEmail: tenants.notificationEmail })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
@@ -451,15 +485,19 @@ async function getTenantEmailContext(tenantId: string) {
   return row;
 }
 
-async function updateStaffInvitationEmailStatus(invitationId: string, sendResult: SendResult) {
+async function updateStaffInvitationEmailStatus(
+  tx: TenantContextDb,
+  invitationId: string,
+  sendResult: SendResult,
+) {
   if (sendResult.ok) {
-    await db
+    await tx
       .update(staffInvitations)
       .set({ emailSentAt: new Date(), lastEmailError: null })
       .where(eq(staffInvitations.id, invitationId));
     return;
   }
-  await db
+  await tx
     .update(staffInvitations)
     .set({ lastEmailError: sendResult.error ?? "send failed" })
     .where(eq(staffInvitations.id, invitationId));
@@ -502,46 +540,57 @@ export async function sendTeamMemberInvitation(
     return { ok: false, error: "Nemůžete přidělit roli vyšší než vlastní." };
   }
 
-  const [roleRow] = await db
-    .select({ id: roles.id, name: roles.name })
-    .from(roles)
-    .where(and(eq(roles.tenantId, auth.tenantId), eq(roles.name, roleName)))
-    .limit(1);
+  // Phase 1: resolve role + preflight on existing memberships (Supabase Auth lookup done separately).
+  const preflight = await withTenantContextFromAuth(auth, async (tx) => {
+    const [roleRow] = await tx
+      .select({ id: roles.id, name: roles.name })
+      .from(roles)
+      .where(and(eq(roles.tenantId, auth.tenantId), eq(roles.name, roleName)))
+      .limit(1);
 
-  if (!roleRow) {
-    return { ok: false, error: `Role „${roleName}“ v tomto workspace neexistuje.` };
-  }
-
-  const [existingProfile] = await db
-    .select({ userId: userProfiles.userId })
-    .from(userProfiles)
-    .where(sql`lower(${userProfiles.email}) = ${email}`)
-    .limit(1);
-
-  if (existingProfile?.userId) {
-    const existingMemberships = await db
-      .select({ tenantId: memberships.tenantId })
-      .from(memberships)
-      .where(eq(memberships.userId, existingProfile.userId));
-
-    if (existingMemberships.some((m) => m.tenantId === auth.tenantId)) {
-      return { ok: false, error: "Tento uživatel už je členem vašeho týmu." };
+    if (!roleRow) {
+      return { kind: "error" as const, error: `Role „${roleName}“ v tomto workspace neexistuje.` };
     }
-    if (existingMemberships.length > 0) {
-      return {
-        ok: false,
-        error:
-          "Tento e-mail je už zaregistrován v jiném workspace Aidvisora. Více tenantů na jeden účet zatím nepodporujeme — použijte prosím jiný e-mail.",
-      };
+
+    const [existingProfile] = await tx
+      .select({ userId: userProfiles.userId })
+      .from(userProfiles)
+      .where(sql`lower(${userProfiles.email}) = ${email}`)
+      .limit(1);
+
+    if (existingProfile?.userId) {
+      const existingMemberships = await tx
+        .select({ tenantId: memberships.tenantId })
+        .from(memberships)
+        .where(eq(memberships.userId, existingProfile.userId));
+
+      if (existingMemberships.some((m) => m.tenantId === auth.tenantId)) {
+        return { kind: "error" as const, error: "Tento uživatel už je členem vašeho týmu." };
+      }
+      if (existingMemberships.length > 0) {
+        return {
+          kind: "error" as const,
+          error:
+            "Tento e-mail je už zaregistrován v jiném workspace Aidvisora. Více tenantů na jeden účet zatím nepodporujeme — použijte prosím jiný e-mail.",
+        };
+      }
     }
+
+    return { kind: "ok" as const, roleId: roleRow.id };
+  });
+
+  if (preflight.kind === "error") {
+    return { ok: false, error: preflight.error };
   }
 
   const authUser = await findAuthUserByEmail(email);
   if (authUser) {
-    const mRows = await db
-      .select({ tenantId: memberships.tenantId })
-      .from(memberships)
-      .where(eq(memberships.userId, authUser.id));
+    const mRows = await withTenantContextFromAuth(auth, (tx) =>
+      tx
+        .select({ tenantId: memberships.tenantId })
+        .from(memberships)
+        .where(eq(memberships.userId, authUser.id)),
+    );
     if (mRows.some((m) => m.tenantId === auth.tenantId)) {
       return { ok: false, error: "Tento uživatel už je členem vašeho týmu." };
     }
@@ -554,41 +603,47 @@ export async function sendTeamMemberInvitation(
     }
   }
 
-  await revokePendingStaffInvitationsForEmail(auth.tenantId, email);
-
   const token = crypto.randomUUID().replace(/-/g, "");
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + STAFF_INVITE_EXPIRY_DAYS);
 
-  const [inserted] = await db
-    .insert(staffInvitations)
-    .values({
-      tenantId: auth.tenantId,
-      roleId: roleRow.id,
-      email,
-      token,
-      expiresAt,
-      invitedByUserId: auth.userId,
-    })
-    .returning({ id: staffInvitations.id });
+  // Phase 2: revoke previous invitations, insert new one, resolve mail context + inviter profile.
+  const prep = await withTenantContextFromAuth(auth, async (tx) => {
+    await revokePendingStaffInvitationsForEmail(tx, auth.tenantId, email);
+
+    const [inserted] = await tx
+      .insert(staffInvitations)
+      .values({
+        tenantId: auth.tenantId,
+        roleId: preflight.roleId,
+        email,
+        token,
+        expiresAt,
+        invitedByUserId: auth.userId,
+      })
+      .returning({ id: staffInvitations.id });
+
+    const tenantRow = await getTenantEmailContext(tx, auth.tenantId);
+
+    const [inviterProfile] = await tx
+      .select({ fullName: userProfiles.fullName })
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, auth.userId))
+      .limit(1);
+
+    return { insertedId: inserted?.id, tenantRow, inviterProfile };
+  });
 
   const baseUrl = getServerAppBaseUrl();
   const inviteLink = `${baseUrl}/prihlaseni?${STAFF_INVITE_QUERY_PARAM}=${encodeURIComponent(token)}`;
 
-  const tenantRow = await getTenantEmailContext(auth.tenantId);
   const roleLabel = ROLE_LABEL_CS[targetRole] ?? roleName;
-
-  const [inviterProfile] = await db
-    .select({ fullName: userProfiles.fullName })
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, auth.userId))
-    .limit(1);
   const metaFullName =
     typeof inviterUser?.user_metadata?.full_name === "string"
       ? inviterUser.user_metadata.full_name.trim()
       : "";
   const inviterDisplayName =
-    inviterProfile?.fullName?.trim() || metaFullName || inviterUser?.email?.trim() || "člen týmu";
+    prep.inviterProfile?.fullName?.trim() || metaFullName || inviterUser?.email?.trim() || "člen týmu";
 
   const { subject, html } = staffTeamInviteTemplate({
     loginUrl: inviteLink,
@@ -598,7 +653,7 @@ export async function sendTeamMemberInvitation(
     expiresInDays: STAFF_INVITE_EXPIRY_DAYS,
   });
 
-  const replyTo = resolveResendReplyTo(tenantRow?.notificationEmail ?? undefined);
+  const replyTo = resolveResendReplyTo(prep.tenantRow?.notificationEmail ?? undefined);
   const sendResult = await sendEmail({
     to: email,
     subject,
@@ -606,9 +661,11 @@ export async function sendTeamMemberInvitation(
     replyTo,
   });
 
-  if (inserted?.id) {
+  if (prep.insertedId) {
     try {
-      await updateStaffInvitationEmailStatus(inserted.id, sendResult);
+      await withTenantContextFromAuth(auth, (tx) =>
+        updateStaffInvitationEmailStatus(tx, prep.insertedId!, sendResult),
+      );
     } catch (e) {
       console.error("[sendTeamMemberInvitation] email status update failed:", e);
     }
@@ -625,6 +682,17 @@ export async function sendTeamMemberInvitation(
 /**
  * Po přihlášení / registraci: přidá membership podle platné staff pozvánky.
  * Volá se z /register/complete před provisionWorkspaceIfNeeded.
+ *
+ * Bootstrap pre-tenant flow: uživatel je přihlášený v Supabase (máme `auth.uid()`),
+ * ale ještě nemá membership ⇒ neznáme `tenantId` pro GUC. Runtime pod `aidvisora_app`
+ * (NOBYPASSRLS, FORCE RLS) by raw `db.*` volání proti `staff_invitations` /
+ * `memberships` nepovolil. Používáme proto SECURITY DEFINER funkci
+ * `public.accept_staff_invitation_v1` (rls-m9-bootstrap-sd-functions), která
+ * uvnitř ownerské identity ověří token + expiraci + revoke + email match
+ * a atomicky vloží membership + stampne invitation.
+ *
+ * Nepoužívá `withAuthContext`, protože `requireAuthInAction` redirectuje uživatele
+ * bez membership na /register/complete (dokud neproběhne tato funkce).
  */
 export async function finalizePendingStaffInvitation(
   token: string,
@@ -644,72 +712,50 @@ export async function finalizePendingStaffInvitation(
 
   const userEmail = user.email.trim().toLowerCase();
 
-  const [inv] = await db
-    .select({
-      id: staffInvitations.id,
-      tenantId: staffInvitations.tenantId,
-      roleId: staffInvitations.roleId,
-      email: staffInvitations.email,
-      expiresAt: staffInvitations.expiresAt,
-      acceptedAt: staffInvitations.acceptedAt,
-      revokedAt: staffInvitations.revokedAt,
-      invitedByUserId: staffInvitations.invitedByUserId,
-    })
-    .from(staffInvitations)
-    .where(eq(staffInvitations.token, t))
-    .limit(1);
+  type AcceptRow = {
+    ok: boolean;
+    error_code: string | null;
+    tenant_id: string | null;
+    already_member: boolean;
+  };
 
-  if (!inv) {
-    return { ok: false, error: "Pozvánka neexistuje nebo už byla zrušena." };
+  const rows = (await db.execute(
+    sql`select ok, error_code, tenant_id, already_member
+        from public.accept_staff_invitation_v1(${t}::text, ${user.id}::text, ${userEmail}::text)`,
+  )) as unknown as AcceptRow[];
+  const row = rows[0];
+  if (!row) {
+    return { ok: false, error: "Pozvánku nelze zpracovat." };
   }
-  if (inv.revokedAt) {
-    return { ok: false, error: "Tato pozvánka byla zrušena. Požádejte o novou." };
-  }
-  if (inv.expiresAt <= new Date()) {
-    return { ok: false, error: "Pozvánka vypršela. Požádejte o novou pozvánku." };
-  }
-  if (userEmail !== inv.email.trim().toLowerCase()) {
-    return {
-      ok: false,
-      error: `Přihlaste se e-mailem ${inv.email}, na který byla pozvánka odeslána.`,
-    };
-  }
-
-  const userMemberships = await db
-    .select({ tenantId: memberships.tenantId })
-    .from(memberships)
-    .where(eq(memberships.userId, user.id));
-
-  const alreadyInTarget = userMemberships.some((m) => m.tenantId === inv.tenantId);
-  if (alreadyInTarget) {
-    if (!inv.acceptedAt) {
-      await db
-        .update(staffInvitations)
-        .set({ acceptedAt: new Date(), authUserId: user.id })
-        .where(eq(staffInvitations.id, inv.id));
-    }
+  if (row.ok) {
     return { ok: true };
   }
-
-  if (userMemberships.length > 0) {
-    return {
-      ok: false,
-      error:
-        "Váš účet je už propojený s jiným workspace. Pozvánku do tohoto týmu nelze použít — použijte jiný e-mail nebo kontaktujte administrátora.",
-    };
+  const code = row.error_code ?? "unknown";
+  switch (code) {
+    case "not_authenticated":
+      return { ok: false, error: "Nejste přihlášeni." };
+    case "missing_email":
+      return { ok: false, error: "Váš účet nemá nastavený e-mail." };
+    case "invalid_token":
+      return { ok: false, error: "Neplatný token pozvánky." };
+    case "not_found":
+      return { ok: false, error: "Pozvánka neexistuje nebo už byla zrušena." };
+    case "revoked":
+      return { ok: false, error: "Tato pozvánka byla zrušena. Požádejte o novou." };
+    case "expired":
+      return { ok: false, error: "Pozvánka vypršela. Požádejte o novou pozvánku." };
+    case "email_mismatch":
+      return {
+        ok: false,
+        error: "Přihlaste se e-mailem, na který byla pozvánka odeslána.",
+      };
+    case "already_in_other_workspace":
+      return {
+        ok: false,
+        error:
+          "Váš účet je už propojený s jiným workspace. Pozvánku do tohoto týmu nelze použít — použijte jiný e-mail nebo kontaktujte administrátora.",
+      };
+    default:
+      return { ok: false, error: "Pozvánku nelze zpracovat." };
   }
-
-  await db.insert(memberships).values({
-    tenantId: inv.tenantId,
-    userId: user.id,
-    roleId: inv.roleId,
-    invitedBy: inv.invitedByUserId ?? null,
-  });
-
-  await db
-    .update(staffInvitations)
-    .set({ acceptedAt: new Date(), authUserId: user.id })
-    .where(eq(staffInvitations.id, inv.id));
-
-  return { ok: true };
 }

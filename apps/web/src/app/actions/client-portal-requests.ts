@@ -2,11 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { withAuthContext } from "@/lib/auth/with-auth-context";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
 import { newPortalRequestAdvisorTemplate } from "@/lib/email/templates";
-import { db } from "db";
 import {
   opportunities,
   opportunityStages,
@@ -46,21 +45,32 @@ async function notifyAdvisorNewPortalRequest(params: {
   caseTypeLabel: string;
   descriptionPreview: string;
 }): Promise<void> {
-  const [c] = await db
-    .select({ firstName: contacts.firstName, lastName: contacts.lastName })
-    .from(contacts)
-    .where(and(eq(contacts.tenantId, params.tenantId), eq(contacts.id, params.contactId)))
-    .limit(1);
-  const displayName = c
-    ? [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || "Klient"
-    : "Klient";
+  /**
+   * Helper běží fire-and-forget (`.catch(() => {})`) z `createClientPortalRequest`,
+   * takže auth už nemá — nastavíme tenant GUC explicitně kolem DB čtení, aby projdeme
+   * RLS policy tvaru `tenant_id = current_setting('app.tenant_id', true)::uuid`.
+   */
+  const { displayName, notificationEmail } = await withTenantContextFromAuth(
+    { tenantId: params.tenantId, userId: null },
+    async (tx) => {
+      const [c] = await tx
+        .select({ firstName: contacts.firstName, lastName: contacts.lastName })
+        .from(contacts)
+        .where(and(eq(contacts.tenantId, params.tenantId), eq(contacts.id, params.contactId)))
+        .limit(1);
+      const displayName = c
+        ? [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || "Klient"
+        : "Klient";
 
-  const [tenant] = await db
-    .select({ notificationEmail: tenants.notificationEmail })
-    .from(tenants)
-    .where(eq(tenants.id, params.tenantId))
-    .limit(1);
-  const email = tenant?.notificationEmail?.trim();
+      const [tenant] = await tx
+        .select({ notificationEmail: tenants.notificationEmail })
+        .from(tenants)
+        .where(eq(tenants.id, params.tenantId))
+        .limit(1);
+      return { displayName, notificationEmail: tenant?.notificationEmail ?? null };
+    },
+  );
+  const email = notificationEmail?.trim();
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.aidvisora.cz");
@@ -377,38 +387,48 @@ export async function createClientPortalRequest(params: {
     throw e;
   }
 
-  const [firstStage] = await db
-    .select({ id: opportunityStages.id })
-    .from(opportunityStages)
-    .where(eq(opportunityStages.tenantId, auth.tenantId))
-    .orderBy(asc(opportunityStages.sortOrder))
-    .limit(1);
-
-  if (!firstStage) return { success: false, error: "Žádný krok pipeline není k dispozici. Kontaktujte poradce." };
-
   const caseTypeLabel = caseTypeToLabel(params.caseType);
   const subjectTrim = params.subject?.trim() ?? "";
   const descTrim = params.description?.trim() ?? "";
   const title = subjectTrim || `Požadavek z portálu: ${caseTypeLabel}`;
 
-  const [row] = await db
-    .insert(opportunities)
-    .values({
-      tenantId: auth.tenantId,
-      contactId,
-      title: title.trim(),
-      caseType: params.caseType.trim() || "jiné",
-      stageId: firstStage.id,
-      customFields: {
-        client_portal_request: true,
-        client_request_subject: subjectTrim || null,
-        client_description: descTrim || null,
-      },
-    })
-    .returning({ id: opportunities.id });
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [firstStage] = await tx
+      .select({ id: opportunityStages.id })
+      .from(opportunityStages)
+      .where(eq(opportunityStages.tenantId, auth.tenantId))
+      .orderBy(asc(opportunityStages.sortOrder))
+      .limit(1);
 
-  const newId = row?.id;
-  if (!newId) return { success: false, error: "Nepodařilo se vytvořit požadavek." };
+    if (!firstStage) return { kind: "no_stage" as const };
+
+    const [row] = await tx
+      .insert(opportunities)
+      .values({
+        tenantId: auth.tenantId,
+        contactId,
+        title: title.trim(),
+        caseType: params.caseType.trim() || "jiné",
+        stageId: firstStage.id,
+        customFields: {
+          client_portal_request: true,
+          client_request_subject: subjectTrim || null,
+          client_description: descTrim || null,
+        },
+      })
+      .returning({ id: opportunities.id });
+
+    if (!row) return { kind: "insert_failed" as const };
+    return { kind: "ok" as const, id: row.id };
+  });
+
+  if (result.kind === "no_stage") {
+    return { success: false, error: "Žádný krok pipeline není k dispozici. Kontaktujte poradce." };
+  }
+  if (result.kind === "insert_failed") {
+    return { success: false, error: "Nepodařilo se vytvořit požadavek." };
+  }
+  const newId = result.id;
 
   try {
     await logActivity("opportunity", newId, "create", {
@@ -421,14 +441,16 @@ export async function createClientPortalRequest(params: {
   }
 
   try {
-    await db.insert(auditLog).values({
-      tenantId: auth.tenantId,
-      userId: auth.userId,
-      action: "portal_request_create",
-      entityType: "opportunity",
-      entityId: newId,
-      meta: { contactId, caseType: params.caseType },
-    });
+    await withTenantContextFromAuth(auth, (tx) =>
+      tx.insert(auditLog).values({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        action: "portal_request_create",
+        entityType: "opportunity",
+        entityId: newId,
+        meta: { contactId, caseType: params.caseType },
+      }),
+    );
   } catch {
     // non-fatal
   }
@@ -475,19 +497,23 @@ async function persistClientPortalRequestFiles(
   if (auth.roleName !== "Client" || !auth.contactId) {
     return files.map((f) => ({ fileName: f.name, status: "upload_failed" as const }));
   }
+  const clientContactId = auth.contactId;
 
-  const [opp] = await db
-    .select({ id: opportunities.id })
-    .from(opportunities)
-    .where(
-      and(
-        eq(opportunities.tenantId, auth.tenantId),
-        eq(opportunities.id, opportunityId),
-        eq(opportunities.contactId, auth.contactId),
-      ),
-    )
-    .limit(1);
-  if (!opp) {
+  const oppExists = await withTenantContextFromAuth(auth, async (tx) => {
+    const [opp] = await tx
+      .select({ id: opportunities.id })
+      .from(opportunities)
+      .where(
+        and(
+          eq(opportunities.tenantId, auth.tenantId),
+          eq(opportunities.id, opportunityId),
+          eq(opportunities.contactId, clientContactId),
+        ),
+      )
+      .limit(1);
+    return Boolean(opp);
+  });
+  if (!oppExists) {
     return files.map((f) => ({ fileName: f.name, status: "upload_failed" as const }));
   }
 
@@ -504,7 +530,7 @@ async function persistClientPortalRequestFiles(
       continue;
     }
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const storagePath = `${auth.tenantId}/${auth.contactId}/portal-request-${opportunityId}-${Date.now()}-${safeName}`;
+    const storagePath = `${auth.tenantId}/${clientContactId}/portal-request-${opportunityId}-${Date.now()}-${safeName}`;
     const { error: uploadError } = await admin.storage.from("documents").upload(storagePath, file, { upsert: false });
     if (uploadError) {
       console.error("[client-portal-request] upload failed", file.name, uploadError);
@@ -513,38 +539,40 @@ async function persistClientPortalRequestFiles(
     }
 
     try {
-      const [docRow] = await db
-        .insert(documents)
-        .values({
-          tenantId: auth.tenantId,
-          contactId: auth.contactId,
-          contractId: null,
-          opportunityId,
-          name: file.name,
-          storagePath,
-          tags: ["požadavek portálu"],
-          mimeType: file.type || null,
-          sizeBytes: file.size,
-          visibleToClient: true,
-          uploadSource: "web",
-          uploadedBy: auth.userId,
-        })
-        .returning({ id: documents.id });
+      const documentId = await withTenantContextFromAuth(auth, async (tx) => {
+        const [docRow] = await tx
+          .insert(documents)
+          .values({
+            tenantId: auth.tenantId,
+            contactId: clientContactId,
+            contractId: null,
+            opportunityId,
+            name: file.name,
+            storagePath,
+            tags: ["požadavek portálu"],
+            mimeType: file.type || null,
+            sizeBytes: file.size,
+            visibleToClient: true,
+            uploadSource: "web",
+            uploadedBy: auth.userId,
+          })
+          .returning({ id: documents.id });
+        return docRow?.id ?? null;
+      });
 
-      const documentId = docRow?.id;
       if (!documentId) {
         outcomes.push({ fileName: file.name, status: "db_failed" });
         continue;
       }
 
       await logActivity("document", documentId, "upload", {
-        contactId: auth.contactId,
+        contactId: clientContactId,
         opportunityId,
         source: "client_portal_request",
       }).catch(() => {});
       await notifyAdvisorClientTrezorUpload({
         tenantId: auth.tenantId,
-        contactId: auth.contactId,
+        contactId: clientContactId,
         documentId,
         documentLabel: file.name,
       }).catch(() => {});
@@ -592,37 +620,44 @@ export async function setAdvisorPortalRequestHandling(
   opportunityId: string,
   handling: AdvisorPortalRequestHandling | null
 ): Promise<{ success: true } | { success: false; error: string }> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "opportunities:write")) {
-    return { success: false, error: "Forbidden" };
-  }
+  const result = await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "opportunities:write")) {
+      return { kind: "forbidden" as const };
+    }
 
-  const [row] = await db
-    .select({ id: opportunities.id, customFields: opportunities.customFields })
-    .from(opportunities)
-    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
-    .limit(1);
+    const [row] = await tx
+      .select({ id: opportunities.id, customFields: opportunities.customFields })
+      .from(opportunities)
+      .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
+      .limit(1);
 
-  if (!row) return { success: false, error: "Obchod nebyl nalezen." };
+    if (!row) return { kind: "not_found" as const };
 
-  const custom: Record<string, unknown> = {
-    ...((row.customFields as Record<string, unknown> | null) ?? {}),
-  };
-  const isPortal = custom.client_portal_request === true || custom.client_portal_request === "true";
-  if (!isPortal) {
+    const custom: Record<string, unknown> = {
+      ...((row.customFields as Record<string, unknown> | null) ?? {}),
+    };
+    const isPortal = custom.client_portal_request === true || custom.client_portal_request === "true";
+    if (!isPortal) return { kind: "not_portal" as const };
+
+    if (handling === null) {
+      delete custom[ADVISOR_PORTAL_HANDLING_KEY];
+    } else {
+      custom[ADVISOR_PORTAL_HANDLING_KEY] = handling;
+    }
+
+    await tx
+      .update(opportunities)
+      .set({ customFields: custom, updatedAt: new Date() })
+      .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
+
+    return { kind: "ok" as const };
+  });
+
+  if (result.kind === "forbidden") return { success: false, error: "Forbidden" };
+  if (result.kind === "not_found") return { success: false, error: "Obchod nebyl nalezen." };
+  if (result.kind === "not_portal") {
     return { success: false, error: "Tento záznam není požadavkem z klientského portálu." };
   }
-
-  if (handling === null) {
-    delete custom[ADVISOR_PORTAL_HANDLING_KEY];
-  } else {
-    custom[ADVISOR_PORTAL_HANDLING_KEY] = handling;
-  }
-
-  await db
-    .update(opportunities)
-    .set({ customFields: custom, updatedAt: new Date() })
-    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
 
   try {
     await logActivity("opportunity", opportunityId, "update", {
@@ -649,41 +684,48 @@ export async function cancelClientPortalRequest(
     (hasPermission(auth.roleName, "client_zone:request_cancel") ||
       hasPermission(auth.roleName, "client_zone:*"));
   if (!canCancel || !auth.contactId) return { success: false, error: "Forbidden" };
+  const clientContactId = auth.contactId;
 
-  const [row] = await db
-    .select({
-      id: opportunities.id,
-      contactId: opportunities.contactId,
-      closedAt: opportunities.closedAt,
-      customFields: opportunities.customFields,
-    })
-    .from(opportunities)
-    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
-    .limit(1);
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({
+        id: opportunities.id,
+        contactId: opportunities.contactId,
+        closedAt: opportunities.closedAt,
+        customFields: opportunities.customFields,
+      })
+      .from(opportunities)
+      .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
+      .limit(1);
 
-  if (!row || row.contactId !== auth.contactId) {
-    return { success: false, error: "Požadavek nebyl nalezen." };
-  }
+    if (!row || row.contactId !== clientContactId) return { kind: "not_found" as const };
 
-  const custom: Record<string, unknown> = {
-    ...((row.customFields as Record<string, unknown> | null) ?? {}),
-  };
-  if (!(custom.client_portal_request === true || custom.client_portal_request === "true")) {
-    return { success: false, error: "Tento záznam není požadavkem z portálu." };
-  }
-  if (row.closedAt) return { success: false, error: "Požadavek už je uzavřený." };
+    const custom: Record<string, unknown> = {
+      ...((row.customFields as Record<string, unknown> | null) ?? {}),
+    };
+    if (!(custom.client_portal_request === true || custom.client_portal_request === "true")) {
+      return { kind: "not_portal" as const };
+    }
+    if (row.closedAt) return { kind: "already_closed" as const };
 
-  custom.client_portal_cancelled = true;
-  const now = new Date();
-  await db
-    .update(opportunities)
-    .set({
-      closedAt: now,
-      closedAs: "lost",
-      customFields: custom,
-      updatedAt: now,
-    })
-    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
+    custom.client_portal_cancelled = true;
+    const now = new Date();
+    await tx
+      .update(opportunities)
+      .set({
+        closedAt: now,
+        closedAs: "lost",
+        customFields: custom,
+        updatedAt: now,
+      })
+      .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
+
+    return { kind: "ok" as const };
+  });
+
+  if (result.kind === "not_found") return { success: false, error: "Požadavek nebyl nalezen." };
+  if (result.kind === "not_portal") return { success: false, error: "Tento záznam není požadavkem z portálu." };
+  if (result.kind === "already_closed") return { success: false, error: "Požadavek už je uzavřený." };
 
   try {
     await logActivity("opportunity", opportunityId, "update", { source: "client_portal_cancel" });
@@ -692,14 +734,16 @@ export async function cancelClientPortalRequest(
   }
 
   try {
-    await db.insert(auditLog).values({
-      tenantId: auth.tenantId,
-      userId: auth.userId,
-      action: "portal_request_cancel",
-      entityType: "opportunity",
-      entityId: opportunityId,
-      meta: { contactId: auth.contactId },
-    });
+    await withTenantContextFromAuth(auth, (tx) =>
+      tx.insert(auditLog).values({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        action: "portal_request_cancel",
+        entityType: "opportunity",
+        entityId: opportunityId,
+        meta: { contactId: clientContactId },
+      }),
+    );
   } catch {
     /* non-fatal */
   }

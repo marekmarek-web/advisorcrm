@@ -3,6 +3,8 @@
  * Per-advisor operational metrics for manager view.
  */
 
+import { withTenantContext } from "@/lib/db/with-tenant-context";
+
 export type AdvisorOperationalMetrics = {
   advisorId: string;
   advisorName?: string;
@@ -32,17 +34,19 @@ export async function getTeamOperationsSummary(
   const advisorMetrics: AdvisorOperationalMetrics[] = [];
 
   try {
-    const { db, contractUploadReviews, eq, sql } = await import("db");
+    const { contractUploadReviews, eq, sql } = await import("db");
 
-    const reviewStats = await db
-      .select({
-        uploadedBy: contractUploadReviews.uploadedBy,
-        count: sql<number>`count(*)::int`,
-        avgAge: sql<number>`COALESCE(avg(extract(epoch from (now() - ${contractUploadReviews.createdAt})) / 3600), 0)::float`,
-      })
-      .from(contractUploadReviews)
-      .where(eq(contractUploadReviews.tenantId, tenantId))
-      .groupBy(contractUploadReviews.uploadedBy);
+    const reviewStats = await withTenantContext({ tenantId }, async (tx) => {
+      return await tx
+        .select({
+          uploadedBy: contractUploadReviews.uploadedBy,
+          count: sql<number>`count(*)::int`,
+          avgAge: sql<number>`COALESCE(avg(extract(epoch from (now() - ${contractUploadReviews.createdAt})) / 3600), 0)::float`,
+        })
+        .from(contractUploadReviews)
+        .where(eq(contractUploadReviews.tenantId, tenantId))
+        .groupBy(contractUploadReviews.uploadedBy);
+    });
 
     for (const stat of reviewStats) {
       if (!stat.uploadedBy) continue;
@@ -86,13 +90,15 @@ export async function reassignReview(
   tenantId: string,
 ): Promise<boolean> {
   try {
-    const { db, contractUploadReviews, eq, and } = await import("db");
-    await db.update(contractUploadReviews).set({
-      uploadedBy: toAdvisorId,
-    }).where(and(
-      eq(contractUploadReviews.id, reviewId),
-      eq(contractUploadReviews.tenantId, tenantId),
-    ));
+    const { contractUploadReviews, eq, and } = await import("db");
+    await withTenantContext({ tenantId }, async (tx) => {
+      await tx.update(contractUploadReviews).set({
+        uploadedBy: toAdvisorId,
+      }).where(and(
+        eq(contractUploadReviews.id, reviewId),
+        eq(contractUploadReviews.tenantId, tenantId),
+      ));
+    });
     return true;
   } catch {
     return false;
@@ -105,13 +111,15 @@ export async function reassignFollowUp(
   tenantId: string,
 ): Promise<boolean> {
   try {
-    const { db, tasks, eq, and } = await import("db");
-    await db.update(tasks).set({
-      assignedTo: toAdvisorId,
-    }).where(and(
-      eq(tasks.id, taskId),
-      eq(tasks.tenantId, tenantId),
-    ));
+    const { tasks, eq, and } = await import("db");
+    await withTenantContext({ tenantId }, async (tx) => {
+      await tx.update(tasks).set({
+        assignedTo: toAdvisorId,
+      }).where(and(
+        eq(tasks.id, taskId),
+        eq(tasks.tenantId, tenantId),
+      ));
+    });
     return true;
   } catch {
     return false;

@@ -4,6 +4,7 @@
  */
 
 import { logAudit } from "@/lib/audit";
+import { withServiceTenantContext } from "@/lib/db/service-db";
 
 export type ActionFamily =
   | "communication_send" | "communication_schedule"
@@ -53,40 +54,51 @@ function generateExecutionId(): string {
 
 async function persistAction(action: ExecutionAction): Promise<void> {
   try {
-    const { db, executionActions } = await import("db");
-    await db.insert(executionActions).values({
-      id: action.executionId,
-      tenantId: action.tenantId,
-      sourceType: action.sourceType,
-      sourceId: action.sourceId,
-      actionType: action.actionType,
-      executionMode: action.executionMode,
-      status: action.status,
-      scheduledFor: action.scheduledFor,
-      executedAt: action.executedAt,
-      executedBy: action.executedBy,
-      approvedBy: action.approvedBy,
-      riskLevel: action.riskLevel,
-      metadata: action.metadata,
-      resultPayload: action.resultPayload,
-      failureCode: action.failureCode,
-      retryCount: action.retryCount ?? 0,
-    });
+    const { executionActions } = await import("db");
+    await withServiceTenantContext(
+      { tenantId: action.tenantId, userId: action.executedBy ?? null },
+      async (tx) => {
+        await tx.insert(executionActions).values({
+          id: action.executionId,
+          tenantId: action.tenantId,
+          sourceType: action.sourceType,
+          sourceId: action.sourceId,
+          actionType: action.actionType,
+          executionMode: action.executionMode,
+          status: action.status,
+          scheduledFor: action.scheduledFor,
+          executedAt: action.executedAt,
+          executedBy: action.executedBy,
+          approvedBy: action.approvedBy,
+          riskLevel: action.riskLevel,
+          metadata: action.metadata,
+          resultPayload: action.resultPayload,
+          failureCode: action.failureCode,
+          retryCount: action.retryCount ?? 0,
+        });
+      },
+    );
   } catch { /* persistence is best-effort in v1 */ }
 }
 
 async function updateActionStatus(
+  tenantId: string,
   executionId: string,
   status: ExecutionStatus,
   extra?: { resultPayload?: Record<string, unknown>; failureCode?: string; executedAt?: Date },
 ): Promise<void> {
   try {
-    const { db, executionActions, eq } = await import("db");
-    await db.update(executionActions).set({
-      status,
-      ...extra,
-      updatedAt: new Date(),
-    }).where(eq(executionActions.id, executionId));
+    const { executionActions, eq, and } = await import("db");
+    await withServiceTenantContext({ tenantId }, async (tx) => {
+      await tx.update(executionActions).set({
+        status,
+        ...extra,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(executionActions.id, executionId),
+        eq(executionActions.tenantId, tenantId),
+      ));
+    });
   } catch { /* best-effort */ }
 }
 
@@ -119,11 +131,11 @@ export async function executeAction(
     const result = await dispatchAction(fullAction, context);
     fullAction.status = "completed";
     fullAction.resultPayload = result;
-    await updateActionStatus(executionId, "completed", { resultPayload: result, executedAt: new Date() });
+    await updateActionStatus(fullAction.tenantId, executionId, "completed", { resultPayload: result, executedAt: new Date() });
   } catch (err) {
     fullAction.status = "failed";
     fullAction.failureCode = err instanceof Error ? err.message.slice(0, 100) : "UNKNOWN_ERROR";
-    await updateActionStatus(executionId, "failed", { failureCode: fullAction.failureCode });
+    await updateActionStatus(fullAction.tenantId, executionId, "failed", { failureCode: fullAction.failureCode });
   }
 
   logAudit({
@@ -155,13 +167,17 @@ export async function scheduleAction(
 
 export async function cancelAction(executionId: string, tenantId: string): Promise<boolean> {
   try {
-    const { db, executionActions, eq, and } = await import("db");
-    const [row] = await db.select().from(executionActions)
-      .where(and(eq(executionActions.id, executionId), eq(executionActions.tenantId, tenantId)))
-      .limit(1);
-    if (!row) return false;
-    if (row.status !== "pending" && row.status !== "scheduled") return false;
-    await updateActionStatus(executionId, "cancelled");
+    const { executionActions, eq, and } = await import("db");
+    const allowed = await withServiceTenantContext({ tenantId }, async (tx) => {
+      const [row] = await tx.select().from(executionActions)
+        .where(and(eq(executionActions.id, executionId), eq(executionActions.tenantId, tenantId)))
+        .limit(1);
+      if (!row) return false;
+      if (row.status !== "pending" && row.status !== "scheduled") return false;
+      return true;
+    });
+    if (!allowed) return false;
+    await updateActionStatus(tenantId, executionId, "cancelled");
     return true;
   } catch {
     return false;

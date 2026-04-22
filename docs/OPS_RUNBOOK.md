@@ -223,6 +223,82 @@ V repu je manuální setup podle [sentry-for-ai `sentry-nextjs-sdk/SKILL.md`](ht
 
 **Bez Adobe credentials systém funguje normálně** – upload, viewer a AI review s fallback kvalitou. Adobe je volitelný enhancement.
 
+### AI Review — klasifikační pipelines (V1 legacy vs V2 aktivní)
+
+Aidvisora má **dvě klasifikační cesty**, které běží paralelně. Pro support a troubleshooting je důležité rozlišit, která cesta byla použita.
+
+| Pipeline | Entry point | Kdo ji volá | Override funkce |
+|----------|-------------|-------------|-----------------|
+| **V2 (aktivní — Plán 3)** | `apps/web/src/lib/ai/ai-review-pipeline-v2.ts` | `/app/api/contract-reviews/[id]/extract`, quick-upload processor, scan upload | `applyProductFamilyTextOverride`, `applyRouterInputTextOverrides` |
+| **V1 (legacy)** | `apps/web/src/lib/ai/contract-understanding-pipeline.ts` | staré volání z `/contract-intake-combined.ts`, specifické golden eval harnessy | `applyRuleBasedClassificationOverride` (RULES[]) |
+
+**Pravidlo**: Každý nový override musí být přidaný do **obou** cest, jinak je mrtvý v produkci (nebo v V1 — podle toho, kterou cestu běžně pipeline používá). Golden eval často volá V1, produkční upload volá V2.
+
+**V2 router-input overrides — pořadí priorit** (`applyRouterInputTextOverrides`):
+
+1. **AML/FATCA compliance** → `compliance/consent_or_identification_document/aml_kyc_form`
+   - Guard 2a: přeskočí, pokud ≥2 markery ŽP smluv (je to hlavní kontrakt s AML přílohou).
+   - Guard 2b: přeskočí, pokud ≥2 markery investment service smlouvy (Komisionářská s AML přílohou — poletí dál do Priority 4).
+2. **Leasing** → `leasing/contract/leasing_contract`
+3. **Life insurance modelation → contract** (reclassify když modelace má ≥2 headery smlouvy)
+4. **Investment service agreement** → `investment/contract/investment_service_agreement`
+   - Markers: Komisionářská, mandátní, obhospodařování, zprostředkování investic.
+   - Guards: přeskočí already-correct investment/contract, a všechny non-investment produkty (DIP/DPS/PP/loan/mortgage/leasing/non-life).
+
+Testy: `apps/web/src/lib/ai/__tests__/document-classification-overrides.test.ts` (R01–R16).
+
+### Attach-only silent-fail guard (apply contract review)
+
+Apply flow pro supporting/attach-only dokumenty (AML/FATCA, souhlas, prohlášení) dřív tiše vracel `ok=true + "Uloženo"` toast, i když dokument zůstal bez napojení. Od P2-S1:
+
+- `apply-contract-review.ts` nastaví `resultPayload.documentLinkWarning` s konkrétním důvodem:
+  - `attach_only_missing_contact` — attach akce bez resolvnutého klienta
+  - `attach_only_missing_storage_path` — chybí zdrojový soubor
+  - `attach_only_link_not_persisted` — in-tx link neproběhl
+  - `document_link_failed` / `document_link_exception` — pre-existing kódy (z write-through layer)
+- `contract-review.ts` action tyto důvody převede na `warning: {code, message}` přes pure mapper `apply-warning-mapper.ts` → UI zobrazí error toast místo success.
+- `AIReviewExtractionShell` zobrazí amber badge "⚠ Dok. link selhal".
+
+**H3 audit log enrichment**: Audit záznam `apply_contract_review` teď v `meta` nese:
+- `documentLinkWarning` (string | undefined) — pro dohledání silent-fail patternu napřímo v audit logu bez bridge přes payload dump.
+- `hasAttachOnlyAction` (true | undefined) — indikátor, že apply běžel přes attach handlery (umožní filtrovat "attach-only plans" v dashboardu).
+
+Mapper sám má 12 unit tests (`apps/web/src/lib/ai/__tests__/apply-warning-mapper.test.ts`), včetně garantie, že unknown/future kódy neprojdou tiše, ale surfujou přes generic fallback.
+
+### `/portal/scan` quick-upload retry + diagnostics (H1–H4)
+
+**Retry button**: Když processing status dokumentu spadne do `failed` nebo `preprocessing_failed`, `/portal/scan` zobrazí tlačítko **Zkusit zpracovat znovu**. Tlačítko POST na `/api/documents/[id]/process`, což spustí pipeline znovu (bez nového uploadu). Už uložený dokument zůstane.
+
+**Retry diagnostics (H2)**: Retry banner teď mapuje backend signály na actionable cause+remedy. Poller `/portal/scan` pollne `GET /api/documents/[id]/process` a z odpovědi čte:
+- `processingError` — raw error message z orchestrátoru
+- `detectedInputMode` — `text | image_only | scan_low_text | …`
+- `readabilityScore` — 0–1 estimate text-layer coverage
+
+Helper `quickFailureDetails` převede tyto signály na:
+- `scan_or_ocr_unusable | scan_quality` → "Scan má příliš nízkou kvalitu pro OCR" + "Přefoťte při lepším světle"
+- `heic | unsupported` → "HEIC / nepodporovaný typ" + "Zkuste JPEG nebo PDF"
+- `adobe | ocr_timeout | timeout` → "Adobe neodpověděl včas" + "Zkuste zpracování znovu"
+- `too_large | size_limit` → "Soubor je větší, než pipeline akceptuje" + "Rozdělte dokument"
+- `image_only | scan_low_text` + readability < 0.25 → image-only message s readability score
+
+**Completed-but-low-readability warning (H4)**: Pokud processing proběhne (`completed`) ale `readabilityScore < 0.25`, banner zobrazí amber notice, že AI Review tohle flagne jako `scan_or_ocr_unusable` a vytěžení bude jen orientační. Advisor dostane signál ještě před otevřením review.
+
+### Komisionářská V2 integration test (H1)
+
+E2E integration test `komisionarska-pipeline-integration.test.ts` prokazuje, že oprava P1-K1 drží napříč celou V2 cestou:
+
+`classifier (mis-classified) → applyRouterInputTextOverrides (Priority 4) → mapAiClassifierToClassificationResult → resolveAiReviewExtractionRoute (§3) → investmentContractExtraction`
+
+Pokryté mis-classification scénáře:
+- K01: `compliance / consent_or_identification_document / declaration`
+- K02: `life_insurance / contract / forte` (IŽP look-alike s mandátní smlouvou)
+- K03: `unknown / unknown / unknown` (fallback bucket)
+- K04: false-positive guard (čistá ŽP smlouva NEsmí triggernout Priority 4)
+- K05: idempotence (already correctly classified)
+- K06: DIP guard (komisionářské slovo uvnitř DIP smlouvy NEsmí přebít DIP extraction)
+
+Každý krok stage-gate asserts se testuje, takže regrese kdekoli v chainu rozbije test.
+
 ## Backup
 
 - **Automatické**: Supabase provádí denní zálohy (viz Supabase Dashboard → Database → Backups)

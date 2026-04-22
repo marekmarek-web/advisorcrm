@@ -1,6 +1,8 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import { hasPermission, type RoleName } from "@/lib/auth/permissions";
 import {
   getTeamTree,
@@ -10,7 +12,6 @@ import {
   type TeamOverviewScope,
   type TeamTreeNode,
 } from "@/lib/team-hierarchy";
-import { db } from "db";
 import {
   contracts,
   events,
@@ -57,7 +58,10 @@ import {
   buildTeamAlertsFromMemberMetrics,
   type TeamAlert,
   type TeamMemberMetrics,
+  type MetricSourceMap,
+  type MetricSource,
 } from "@/lib/team-overview-alerts";
+import { listManualPeriodsForMembers, type ManualPeriodRow } from "@/lib/team-members/read";
 
 export type TeamOverviewPeriod = "week" | "month" | "quarter";
 
@@ -123,6 +127,22 @@ function getPeriodRange(
   return { start, end, label: `Q${q + 1} ${y}` };
 }
 
+/**
+ * F3 — převod (period, refDate) → canonical period_index použitý v team_member_manual_periods.
+ *   week: ISO week (1..53), month: 1..12, quarter: 1..4.
+ */
+function getPeriodIndexForManual(period: TeamOverviewPeriod, ref: Date): { year: number; periodIndex: number } {
+  if (period === "month") return { year: ref.getFullYear(), periodIndex: ref.getMonth() + 1 };
+  if (period === "quarter") return { year: ref.getFullYear(), periodIndex: Math.floor(ref.getMonth() / 3) + 1 };
+  // week — ISO week
+  const d = new Date(Date.UTC(ref.getFullYear(), ref.getMonth(), ref.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return { year: d.getUTCFullYear(), periodIndex: week };
+}
+
 export type TeamMemberInfo = {
   userId: string;
   membershipId: string;
@@ -177,6 +197,7 @@ type UserStats = {
 };
 
 async function collectUserStats(
+  tx: TenantContextDb,
   tenantId: string,
   userId: string,
   period: TeamOverviewPeriod
@@ -204,7 +225,7 @@ async function collectUserStats(
     pipelineRows,
     newContactsRows,
   ] = await Promise.all([
-    db
+    tx
       .select({
         count: sql<number>`count(*)::int`,
         totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
@@ -212,7 +233,7 @@ async function collectUserStats(
       })
       .from(contracts)
       .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), contractProdDateGte(startStr), contractProdDateLt(endStr))),
-    db
+    tx
       .select({
         count: sql<number>`count(*)::int`,
         totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
@@ -220,50 +241,50 @@ async function collectUserStats(
       })
       .from(contracts)
       .where(and(eq(contracts.tenantId, tenantId), eq(contracts.advisorId, userId), contractProdDateGte(prevStartStr), contractProdDateLt(prevEndStr))),
-    db
+    tx
       .select({ eventType: events.eventType })
       .from(events)
       .where(and(eq(events.tenantId, tenantId), eq(events.assignedTo, userId), gte(events.startAt, current.start), lt(events.startAt, current.end))),
-    db
+    tx
       .select({ eventType: events.eventType })
       .from(events)
       .where(and(eq(events.tenantId, tenantId), eq(events.assignedTo, userId), gte(events.startAt, previous.start), lt(events.startAt, previous.end))),
-    db
+    tx
       .select({ id: activityLog.id })
       .from(activityLog)
       .where(and(eq(activityLog.tenantId, tenantId), eq(activityLog.userId, userId), gte(activityLog.createdAt, current.start), lt(activityLog.createdAt, current.end))),
-    db
+    tx
       .select({ createdAt: activityLog.createdAt })
       .from(activityLog)
       .where(and(eq(activityLog.tenantId, tenantId), eq(activityLog.userId, userId)))
       .orderBy(desc(activityLog.createdAt))
       .limit(1),
-    db
+    tx
       .select({ startAt: events.startAt })
       .from(events)
       .where(and(eq(events.tenantId, tenantId), eq(events.assignedTo, userId), eq(events.eventType, "schuzka")))
       .orderBy(desc(events.startAt))
       .limit(1),
-    db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNull(tasks.completedAt))),
-    db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNotNull(tasks.completedAt))),
-    db
+    tx.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNull(tasks.completedAt))),
+    tx.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNotNull(tasks.completedAt))),
+    tx
       .select({ id: tasks.id })
       .from(tasks)
       .where(and(eq(tasks.tenantId, tenantId), eq(tasks.assignedTo, userId), isNotNull(tasks.completedAt), gte(tasks.completedAt, current.start), lt(tasks.completedAt, current.end))),
-    db.select({ id: opportunities.id }).from(opportunities).where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), isNull(opportunities.closedAt))),
-    db
+    tx.select({ id: opportunities.id }).from(opportunities).where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), isNull(opportunities.closedAt))),
+    tx
       .select({ id: opportunities.id })
       .from(opportunities)
       .where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), isNotNull(opportunities.closedAt), gte(opportunities.closedAt, current.start), lt(opportunities.closedAt, current.end))),
-    db
+    tx
       .select({ id: opportunities.id })
       .from(opportunities)
       .where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), eq(opportunities.closedAs, "won"), isNotNull(opportunities.closedAt), gte(opportunities.closedAt, current.start), lt(opportunities.closedAt, current.end))),
-    db
+    tx
       .select({ sumExpected: sql<number>`coalesce(sum(${opportunities.expectedValue}::numeric), 0)` })
       .from(opportunities)
       .where(and(eq(opportunities.tenantId, tenantId), eq(opportunities.assignedTo, userId), isNull(opportunities.closedAt))),
-    db
+    tx
       .select({ id: activityLog.id })
       .from(activityLog)
       .where(
@@ -332,34 +353,51 @@ export async function getTeamOverviewKpis(
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
-  const [metrics, newcomers, activeCountRows, meetingsThisWeekRows] = await Promise.all([
-    getTeamMemberMetrics(period, ctx.scope),
-    getNewcomerAdaptation(ctx.scope),
-    db
-      .select({ userId: activityLog.userId })
-      .from(activityLog)
-      .where(
-        and(
-          eq(activityLog.tenantId, ctx.auth.tenantId),
-          inArray(activityLog.userId, ctx.visibleUserIds),
-          gte(activityLog.createdAt, start),
-          lt(activityLog.createdAt, end)
+  const metrics = await getTeamMemberMetrics(period, ctx.scope);
+  const newcomers = await getNewcomerAdaptation(ctx.scope);
+
+  const { activeCountRows, meetingsThisWeekRows, goal } = await withTenantContextFromAuth(ctx.auth, async (tx) => {
+    const [activeCountRowsInner, meetingsThisWeekRowsInner] = await Promise.all([
+      tx
+        .select({ userId: activityLog.userId })
+        .from(activityLog)
+        .where(
+          and(
+            eq(activityLog.tenantId, ctx.auth.tenantId),
+            inArray(activityLog.userId, ctx.visibleUserIds),
+            gte(activityLog.createdAt, start),
+            lt(activityLog.createdAt, end)
+          )
         )
-      )
-      .groupBy(activityLog.userId),
-    db
-      .select({ id: events.id })
-      .from(events)
-      .where(
-        and(
-          eq(events.tenantId, ctx.auth.tenantId),
-          inArray(events.assignedTo, ctx.visibleUserIds),
-          eq(events.eventType, "schuzka"),
-          gte(events.startAt, weekStart),
-          lt(events.startAt, weekEnd)
-        )
-      ),
-  ]);
+        .groupBy(activityLog.userId),
+      tx
+        .select({ id: events.id })
+        .from(events)
+        .where(
+          and(
+            eq(events.tenantId, ctx.auth.tenantId),
+            inArray(events.assignedTo, ctx.visibleUserIds),
+            eq(events.eventType, "schuzka"),
+            gte(events.startAt, weekStart),
+            lt(events.startAt, weekEnd)
+          )
+        ),
+    ]);
+
+    const periodYear = start.getFullYear();
+    const periodMonth = period === "month" ? start.getMonth() + 1 : Math.floor(start.getMonth() / 3) + 1;
+    const goalRows = await tx
+      .select({ goalType: teamGoals.goalType, targetValue: teamGoals.targetValue })
+      .from(teamGoals)
+      .where(and(eq(teamGoals.tenantId, ctx.auth.tenantId), eq(teamGoals.period, period), eq(teamGoals.year, periodYear), eq(teamGoals.month, periodMonth)))
+      .limit(1);
+
+    return {
+      activeCountRows: activeCountRowsInner,
+      meetingsThisWeekRows: meetingsThisWeekRowsInner,
+      goal: goalRows[0],
+    };
+  });
 
   const alerts = buildTeamAlertsFromMemberMetrics(metrics);
   const hierarchyParentLinksConfigured = ctx.tenantMembers.some((m) => !!m.parentId);
@@ -376,14 +414,6 @@ export async function getTeamOverviewKpis(
   const closedOppTotal = metrics.reduce((sum, m) => sum + m.closedOpportunitiesThisPeriod, 0);
   const conversionRate = closedOppTotal > 0 ? metrics.reduce((sum, m) => sum + m.conversionRate * m.closedOpportunitiesThisPeriod, 0) / closedOppTotal : 0;
 
-  const periodYear = start.getFullYear();
-  const periodMonth = period === "month" ? start.getMonth() + 1 : Math.floor(start.getMonth() / 3) + 1;
-  const goalRows = await db
-    .select({ goalType: teamGoals.goalType, targetValue: teamGoals.targetValue })
-    .from(teamGoals)
-    .where(and(eq(teamGoals.tenantId, ctx.auth.tenantId), eq(teamGoals.period, period), eq(teamGoals.year, periodYear), eq(teamGoals.month, periodMonth)))
-    .limit(1);
-  const goal = goalRows[0];
   let teamGoalTarget: number | null = null;
   let teamGoalActual: number | null = null;
   let teamGoalProgressPercent: number | null = null;
@@ -437,24 +467,26 @@ export async function getTeamHierarchy(scope?: TeamOverviewScope): Promise<TeamT
 
 export async function listTeamMembersWithNames(scope?: TeamOverviewScope): Promise<TeamMemberInfo[]> {
   const ctx = await getScopeContext(scope);
-  const rows = await db
-    .select({
-      membershipId: memberships.id,
-      userId: memberships.userId,
-      parentId: memberships.parentId,
-      roleName: roles.name,
-      joinedAt: memberships.joinedAt,
-      fullName: userProfiles.fullName,
-      email: userProfiles.email,
-      careerProgram: memberships.careerProgram,
-      careerTrack: memberships.careerTrack,
-      careerPositionCode: memberships.careerPositionCode,
-    })
-    .from(memberships)
-    .innerJoin(roles, eq(memberships.roleId, roles.id))
-    .leftJoin(userProfiles, eq(memberships.userId, userProfiles.userId))
-    .where(and(eq(memberships.tenantId, ctx.auth.tenantId), inArray(memberships.userId, ctx.visibleUserIds), inArray(roles.name, TEAM_ROLE_NAMES as unknown as string[])))
-    .orderBy(memberships.joinedAt);
+  const rows = await withTenantContextFromAuth(ctx.auth, (tx) =>
+    tx
+      .select({
+        membershipId: memberships.id,
+        userId: memberships.userId,
+        parentId: memberships.parentId,
+        roleName: roles.name,
+        joinedAt: memberships.joinedAt,
+        fullName: userProfiles.fullName,
+        email: userProfiles.email,
+        careerProgram: memberships.careerProgram,
+        careerTrack: memberships.careerTrack,
+        careerPositionCode: memberships.careerPositionCode,
+      })
+      .from(memberships)
+      .innerJoin(roles, eq(memberships.roleId, roles.id))
+      .leftJoin(userProfiles, eq(memberships.userId, userProfiles.userId))
+      .where(and(eq(memberships.tenantId, ctx.auth.tenantId), inArray(memberships.userId, ctx.visibleUserIds), inArray(roles.name, TEAM_ROLE_NAMES as unknown as string[])))
+      .orderBy(memberships.joinedAt),
+  );
 
   const byUser = new Map(ctx.tenantMembers.map((m) => [m.userId, m]));
   return rows.map((r) => {
@@ -490,9 +522,42 @@ export async function getTeamMemberMetrics(
     ])
   );
 
-  const allStats = await Promise.all(
-    ctx.visibleMembers.map((mem) => collectUserStats(ctx.auth.tenantId, mem.userId, period))
-  );
+  const { allStats, teamGoalRow } = await withTenantContextFromAuth(ctx.auth, async (tx) => {
+    const allStatsInner = await Promise.all(
+      ctx.visibleMembers.map((mem) => collectUserStats(tx, ctx.auth.tenantId, mem.userId, period))
+    );
+
+    const { start: rangeStart } = getPeriodRange(period);
+    const periodYear = rangeStart.getFullYear();
+    const periodMonth =
+      period === "month" ? rangeStart.getMonth() + 1 : Math.floor(rangeStart.getMonth() / 3) + 1;
+    const [teamGoalRowInner] = await tx
+      .select({ goalType: teamGoals.goalType, targetValue: teamGoals.targetValue })
+      .from(teamGoals)
+      .where(
+        and(
+          eq(teamGoals.tenantId, ctx.auth.tenantId),
+          eq(teamGoals.period, period),
+          eq(teamGoals.year, periodYear),
+          eq(teamGoals.month, periodMonth)
+        )
+      )
+      .limit(1);
+
+    return { allStats: allStatsInner, teamGoalRow: teamGoalRowInner };
+  });
+
+  // F3 — manual periods overlay pro aktu\u00e1ln\u00ed obdob\u00ed
+  const { start: manualRangeStart } = getPeriodRange(period);
+  const { year: manualYear, periodIndex: manualIdx } = getPeriodIndexForManual(period, manualRangeStart);
+  const visibleTeamMemberIds = ctx.visibleMembers.map((m) => m.teamMemberId).filter((x): x is string => !!x);
+  const manualAll = await listManualPeriodsForMembers(ctx.auth.tenantId, visibleTeamMemberIds);
+  const manualByMember = new Map<string, ManualPeriodRow>();
+  for (const mp of manualAll) {
+    if (mp.period === period && mp.year === manualYear && mp.periodIndex === manualIdx) {
+      manualByMember.set(mp.teamMemberId, mp);
+    }
+  }
 
   const result: TeamMemberMetrics[] = ctx.visibleMembers.map((mem, i) => {
     const stats = allStats[i]!;
@@ -523,61 +588,103 @@ export async function getTeamMemberMetrics(
       }
     );
 
+    const manualRow = mem.teamMemberId ? manualByMember.get(mem.teamMemberId) ?? null : null;
+    const manualConf: MetricSource =
+      manualRow?.confidence === "manual_estimated" ? "manual_estimated" : "manual_confirmed";
+
+    const autoEmpty = mem.memberKind === "external_manual";
+    const sources: MetricSourceMap = {};
+
+    function pickNum(autoVal: number, manualVal: number | null | undefined, key: keyof MetricSourceMap): number {
+      if (manualVal != null && !Number.isNaN(manualVal)) {
+        sources[key] = manualConf;
+        return Number(manualVal);
+      }
+      if (autoEmpty) {
+        sources[key] = "missing";
+        return 0;
+      }
+      return autoVal;
+    }
+
+    const unitsThisPeriod = pickNum(stats.unitsThisPeriod, manualRow?.unitsCount ?? null, "unitsThisPeriod");
+    const productionThisPeriod = pickNum(
+      stats.productionThisPeriod,
+      manualRow?.productionAmount != null ? Number(manualRow.productionAmount) : null,
+      "productionThisPeriod"
+    );
+    const meetingsThisPeriod = pickNum(stats.meetingsThisPeriod, manualRow?.meetingsCount ?? null, "meetingsThisPeriod");
+    const closedDealsThisPeriod = pickNum(
+      stats.closedDealsThisPeriod,
+      manualRow?.contractsCount ?? null,
+      "closedDealsThisPeriod"
+    );
+    const activityCount = pickNum(stats.activityCount, manualRow?.activitiesCount ?? null, "activityCount");
+
+    if (autoEmpty) {
+      // external_manual — metriky bez p\u0159\u00edmo-manual overlay jsou missing.
+      if (sources.unitsThisPeriod == null) sources.unitsThisPeriod = "missing";
+      if (sources.productionThisPeriod == null) sources.productionThisPeriod = "missing";
+      if (sources.meetingsThisPeriod == null) sources.meetingsThisPeriod = "missing";
+      if (sources.closedDealsThisPeriod == null) sources.closedDealsThisPeriod = "missing";
+      if (sources.activityCount == null) sources.activityCount = "missing";
+      sources.callsThisPeriod = "missing";
+      sources.newContactsThisPeriod = "missing";
+      sources.followUpsThisPeriod = "missing";
+      sources.closedOpportunitiesThisPeriod = "missing";
+      sources.pipelineValue = "missing";
+      sources.unitsTrend = "missing";
+      sources.productionTrend = "missing";
+      sources.meetingsTrend = "missing";
+    }
+
     const metricBase: TeamMemberMetrics = {
       userId: mem.userId,
+      teamMemberId: mem.teamMemberId,
+      memberKind: mem.memberKind,
+      sources,
       roleName: mem.roleName,
       parentId: mem.parentId,
       managerName: managerByUser.get(mem.userId)?.displayName || managerByUser.get(mem.userId)?.email || null,
       joinedAt: mem.joinedAt,
-      unitsThisPeriod: stats.unitsThisPeriod,
-      productionThisPeriod: stats.productionThisPeriod,
-      meetingsThisPeriod: stats.meetingsThisPeriod,
-      callsThisPeriod: stats.callsThisPeriod,
-      newContactsThisPeriod: stats.newContactsThisPeriod,
-      followUpsThisPeriod: stats.followUpsThisPeriod,
-      closedDealsThisPeriod: stats.closedDealsThisPeriod,
-      closedOpportunitiesThisPeriod: stats.closedOpportunitiesThisPeriod,
-      conversionRate: stats.conversionRate,
-      pipelineValue: stats.pipelineValue,
+      unitsThisPeriod,
+      productionThisPeriod,
+      meetingsThisPeriod,
+      callsThisPeriod: autoEmpty ? 0 : stats.callsThisPeriod,
+      newContactsThisPeriod: autoEmpty ? 0 : stats.newContactsThisPeriod,
+      followUpsThisPeriod: autoEmpty ? 0 : stats.followUpsThisPeriod,
+      closedDealsThisPeriod,
+      closedOpportunitiesThisPeriod: autoEmpty ? 0 : stats.closedOpportunitiesThisPeriod,
+      conversionRate: autoEmpty ? 0 : stats.conversionRate,
+      pipelineValue: autoEmpty ? 0 : stats.pipelineValue,
       targetProgressPercent: null,
-      activityCount: stats.activityCount,
-      tasksOpen: stats.tasksOpen,
-      tasksCompleted: stats.tasksCompleted,
-      opportunitiesOpen: stats.opportunitiesOpen,
-      lastActivityAt: stats.lastActivityAt,
-      daysSinceMeeting: stats.daysSinceMeeting,
-      daysWithoutActivity: stats.daysWithoutActivity,
-      unitsTrend: stats.unitsTrend,
-      productionTrend: stats.productionTrend,
-      meetingsTrend: stats.meetingsTrend,
+      activityCount,
+      tasksOpen: autoEmpty ? 0 : stats.tasksOpen,
+      tasksCompleted: autoEmpty ? 0 : stats.tasksCompleted,
+      opportunitiesOpen: autoEmpty ? 0 : stats.opportunitiesOpen,
+      lastActivityAt: autoEmpty ? null : stats.lastActivityAt,
+      daysSinceMeeting: autoEmpty ? 999 : stats.daysSinceMeeting,
+      daysWithoutActivity: autoEmpty ? 999 : stats.daysWithoutActivity,
+      unitsTrend: autoEmpty ? 0 : stats.unitsTrend,
+      productionTrend: autoEmpty ? 0 : stats.productionTrend,
+      meetingsTrend: autoEmpty ? 0 : stats.meetingsTrend,
       riskLevel: "ok",
       directReportsCount,
       careerEvaluation,
     };
 
-    const memberAlerts = buildAlertsFromMetric(metricBase);
-    const hasCritical = memberAlerts.some((a) => a.severity === "critical");
-    metricBase.riskLevel = hasCritical ? "critical" : memberAlerts.length > 0 ? "warning" : "ok";
+    if (autoEmpty) {
+      // external_manual \u2014 CRM-based alerty jsou irelevantn\u00ed (data chyb\u00ed). Risk level nech\u00e1me
+      // na \"ok\"; F5 recommendation-engine bude generovat data_completion doporu\u010den\u00ed zvl\u00e1\u0161\u0165.
+      metricBase.riskLevel = "ok";
+    } else {
+      const memberAlerts = buildAlertsFromMetric(metricBase);
+      const hasCritical = memberAlerts.some((a) => a.severity === "critical");
+      metricBase.riskLevel = hasCritical ? "critical" : memberAlerts.length > 0 ? "warning" : "ok";
+    }
 
     return metricBase;
   });
-
-  const { start: rangeStart } = getPeriodRange(period);
-  const periodYear = rangeStart.getFullYear();
-  const periodMonth =
-    period === "month" ? rangeStart.getMonth() + 1 : Math.floor(rangeStart.getMonth() / 3) + 1;
-  const [teamGoalRow] = await db
-    .select({ goalType: teamGoals.goalType, targetValue: teamGoals.targetValue })
-    .from(teamGoals)
-    .where(
-      and(
-        eq(teamGoals.tenantId, ctx.auth.tenantId),
-        eq(teamGoals.period, period),
-        eq(teamGoals.year, periodYear),
-        eq(teamGoals.month, periodMonth)
-      )
-    )
-    .limit(1);
 
   if (
     teamGoalRow &&
@@ -611,58 +718,59 @@ export async function getAdvisorProductionMix(
   advisorUserId: string,
   period: TeamOverviewPeriod = "month"
 ): Promise<AdvisorProductionMix> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName as RoleName, "team_overview:read")) throw new Error("Forbidden");
 
-  const { start, end } = getPeriodRange(period);
-  const { startStr, endStr } = toDateRangeStr(start, end);
+    const { start, end } = getPeriodRange(period);
+    const { startStr, endStr } = toDateRangeStr(start, end);
 
-  const rows = await db
-    .select({
-      segment: contracts.segment,
-      amount: sql<number>`coalesce(sum(coalesce(${contracts.premiumAnnual}::numeric, ${contracts.premiumAmount}::numeric, 0)), 0)`,
-    })
-    .from(contracts)
-    .where(
-      and(
-        eq(contracts.tenantId, auth.tenantId),
-        eq(contracts.advisorId, advisorUserId),
-        contractProdDateGte(startStr),
-        contractProdDateLt(endStr)
+    const rows = await tx
+      .select({
+        segment: contracts.segment,
+        amount: sql<number>`coalesce(sum(coalesce(${contracts.premiumAnnual}::numeric, ${contracts.premiumAmount}::numeric, 0)), 0)`,
+      })
+      .from(contracts)
+      .where(
+        and(
+          eq(contracts.tenantId, auth.tenantId),
+          eq(contracts.advisorId, advisorUserId),
+          contractProdDateGte(startStr),
+          contractProdDateLt(endStr)
+        )
       )
-    )
-    .groupBy(contracts.segment);
+      .groupBy(contracts.segment);
 
-  const empty: AdvisorProductionMix = {
-    investice: 0,
-    penze: 0,
-    zivot: 0,
-    hypoteky: 0,
-    other: 0,
-    total: 0,
-  };
+    const empty: AdvisorProductionMix = {
+      investice: 0,
+      penze: 0,
+      zivot: 0,
+      hypoteky: 0,
+      other: 0,
+      total: 0,
+    };
 
-  for (const r of rows) {
-    const v = Number(r.amount) || 0;
-    const seg = (r.segment ?? "").toUpperCase();
-    if (seg === "INV" || seg === "DIP") empty.investice += v;
-    else if (seg === "DPS") empty.penze += v;
-    else if (seg === "HYPO" || seg === "UVER") empty.hypoteky += v;
-    else if (
-      seg === "ZP" ||
-      seg === "MAJ" ||
-      seg === "ODP" ||
-      seg === "AUTO_PR" ||
-      seg === "AUTO_HAV" ||
-      seg === "CEST" ||
-      seg === "FIRMA_POJ"
-    )
-      empty.zivot += v;
-    else empty.other += v;
-    empty.total += v;
-  }
+    for (const r of rows) {
+      const v = Number(r.amount) || 0;
+      const seg = (r.segment ?? "").toUpperCase();
+      if (seg === "INV" || seg === "DIP") empty.investice += v;
+      else if (seg === "DPS") empty.penze += v;
+      else if (seg === "HYPO" || seg === "UVER") empty.hypoteky += v;
+      else if (
+        seg === "ZP" ||
+        seg === "MAJ" ||
+        seg === "ODP" ||
+        seg === "AUTO_PR" ||
+        seg === "AUTO_HAV" ||
+        seg === "CEST" ||
+        seg === "FIRMA_POJ"
+      )
+        empty.zivot += v;
+      else empty.other += v;
+      empty.total += v;
+    }
 
-  return empty;
+    return empty;
+  });
 }
 
 export async function getTeamAlerts(
@@ -722,86 +830,90 @@ export async function getNewcomerAdaptation(scope?: TeamOverviewScope): Promise<
     .filter((m) => (m.roleName === "Advisor" || m.roleName === "Manager") && m.joinedAt >= cutoff)
     .map((m) => ({ userId: m.userId, joinedAt: m.joinedAt }));
 
-  const result: NewcomerAdaptation[] = [];
+  if (newcomerRows.length === 0) return [];
 
-  for (const row of newcomerRows) {
-    const joinedAt = new Date(row.joinedAt);
-    const daysInTeam = Math.floor((Date.now() - joinedAt.getTime()) / (24 * 60 * 60 * 1000));
+  return withTenantContextFromAuth(ctx.auth, async (tx) => {
+    const result: NewcomerAdaptation[] = [];
 
-    const [firstActivity, lastActivityRow, firstMeeting, firstAnalysis, firstContract, recentActivity] = await Promise.all([
-      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(asc(activityLog.createdAt)).limit(1),
-      db.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(desc(activityLog.createdAt)).limit(1),
-      db.select({ startAt: events.startAt }).from(events).where(and(eq(events.tenantId, ctx.auth.tenantId), eq(events.assignedTo, row.userId))).orderBy(asc(events.startAt)).limit(1),
-      db.select({ createdAt: financialAnalyses.createdAt }).from(financialAnalyses).where(and(eq(financialAnalyses.tenantId, ctx.auth.tenantId), eq(financialAnalyses.createdBy, row.userId))).orderBy(asc(financialAnalyses.createdAt)).limit(1),
-      db.select({ startDate: contracts.startDate }).from(contracts).where(and(eq(contracts.tenantId, ctx.auth.tenantId), eq(contracts.advisorId, row.userId))).orderBy(contracts.startDate).limit(1),
-      db.select({ id: activityLog.id }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId), gte(activityLog.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))),
-    ]);
+    for (const row of newcomerRows) {
+      const joinedAt = new Date(row.joinedAt);
+      const daysInTeam = Math.floor((Date.now() - joinedAt.getTime()) / (24 * 60 * 60 * 1000));
 
-    const checklist: AdaptationStep[] = [
-      { key: "profile_created", label: getStepLabel("profile_created"), completed: true, completedAt: joinedAt },
-      {
-        key: "first_activity",
-        label: getStepLabel("first_activity"),
-        completed: firstActivity.length > 0,
-        completedAt: firstActivity[0]?.createdAt ?? null,
-      },
-      {
-        key: "first_meeting",
-        label: getStepLabel("first_meeting"),
-        completed: firstMeeting.length > 0,
-        completedAt: firstMeeting[0]?.startAt ?? null,
-      },
-      {
-        key: "first_analysis",
-        label: getStepLabel("first_analysis"),
-        completed: firstAnalysis.length > 0,
-        completedAt: firstAnalysis[0]?.createdAt ?? null,
-      },
-      {
-        key: "first_contract",
-        label: getStepLabel("first_contract"),
-        completed: firstContract.length > 0,
-        completedAt: firstContract[0]?.startDate ? new Date(firstContract[0].startDate) : null,
-      },
-      {
-        key: "regular_crm",
-        label: getStepLabel("regular_crm"),
-        completed: recentActivity.length >= 5,
-        completedAt: recentActivity.length >= 5 ? new Date() : null,
-      },
-    ];
+      const [firstActivity, lastActivityRow, firstMeeting, firstAnalysis, firstContract, recentActivity] = await Promise.all([
+        tx.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(asc(activityLog.createdAt)).limit(1),
+        tx.select({ createdAt: activityLog.createdAt }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId))).orderBy(desc(activityLog.createdAt)).limit(1),
+        tx.select({ startAt: events.startAt }).from(events).where(and(eq(events.tenantId, ctx.auth.tenantId), eq(events.assignedTo, row.userId))).orderBy(asc(events.startAt)).limit(1),
+        tx.select({ createdAt: financialAnalyses.createdAt }).from(financialAnalyses).where(and(eq(financialAnalyses.tenantId, ctx.auth.tenantId), eq(financialAnalyses.createdBy, row.userId))).orderBy(asc(financialAnalyses.createdAt)).limit(1),
+        tx.select({ startDate: contracts.startDate }).from(contracts).where(and(eq(contracts.tenantId, ctx.auth.tenantId), eq(contracts.advisorId, row.userId))).orderBy(contracts.startDate).limit(1),
+        tx.select({ id: activityLog.id }).from(activityLog).where(and(eq(activityLog.tenantId, ctx.auth.tenantId), eq(activityLog.userId, row.userId), gte(activityLog.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))),
+      ]);
 
-    const weightedScore = checklist.reduce(
-      (sum, s) => sum + (s.completed ? (ADAPTATION_WEIGHTS[s.key] ?? 0) : 0),
-      0
-    );
-    const adaptationScore = Math.round(weightedScore);
-    let adaptationStatus: NewcomerAdaptation["adaptationStatus"] = "Začíná";
-    if (adaptationScore >= 90) adaptationStatus = "Stabilizovaný";
-    else if (adaptationScore >= 70) adaptationStatus = "Aktivní";
-    else if (adaptationScore >= 40) adaptationStatus = "V adaptaci";
-    else if (daysInTeam > 30 && adaptationScore < 30) adaptationStatus = "Rizikový";
-    else adaptationStatus = "V adaptaci";
+      const checklist: AdaptationStep[] = [
+        { key: "profile_created", label: getStepLabel("profile_created"), completed: true, completedAt: joinedAt },
+        {
+          key: "first_activity",
+          label: getStepLabel("first_activity"),
+          completed: firstActivity.length > 0,
+          completedAt: firstActivity[0]?.createdAt ?? null,
+        },
+        {
+          key: "first_meeting",
+          label: getStepLabel("first_meeting"),
+          completed: firstMeeting.length > 0,
+          completedAt: firstMeeting[0]?.startAt ?? null,
+        },
+        {
+          key: "first_analysis",
+          label: getStepLabel("first_analysis"),
+          completed: firstAnalysis.length > 0,
+          completedAt: firstAnalysis[0]?.createdAt ?? null,
+        },
+        {
+          key: "first_contract",
+          label: getStepLabel("first_contract"),
+          completed: firstContract.length > 0,
+          completedAt: firstContract[0]?.startDate ? new Date(firstContract[0].startDate) : null,
+        },
+        {
+          key: "regular_crm",
+          label: getStepLabel("regular_crm"),
+          completed: recentActivity.length >= 5,
+          completedAt: recentActivity.length >= 5 ? new Date() : null,
+        },
+      ];
 
-    const lastActivityAt = lastActivityRow.length > 0 ? lastActivityRow[0].createdAt : null;
-    const warnings: string[] = [];
-    if (daysInTeam >= 14 && !firstMeeting.length) warnings.push("Zatím žádná schůzka");
-    if (daysInTeam >= 30 && !firstContract.length) warnings.push("Zatím žádný uzavřený obchod");
-    if (recentActivity.length < 2 && daysInTeam >= 7) warnings.push("Nízká aktivita v CRM");
+      const weightedScore = checklist.reduce(
+        (sum, s) => sum + (s.completed ? (ADAPTATION_WEIGHTS[s.key] ?? 0) : 0),
+        0
+      );
+      const adaptationScore = Math.round(weightedScore);
+      let adaptationStatus: NewcomerAdaptation["adaptationStatus"] = "Začíná";
+      if (adaptationScore >= 90) adaptationStatus = "Stabilizovaný";
+      else if (adaptationScore >= 70) adaptationStatus = "Aktivní";
+      else if (adaptationScore >= 40) adaptationStatus = "V adaptaci";
+      else if (daysInTeam > 30 && adaptationScore < 30) adaptationStatus = "Rizikový";
+      else adaptationStatus = "V adaptaci";
 
-    result.push({
-      userId: row.userId,
-      joinedAt,
-      daysInTeam,
-      adaptationScore,
-      adaptationStatus,
-      checklist,
-      lastActivityAt,
-      warnings,
-    });
-  }
+      const lastActivityAt = lastActivityRow.length > 0 ? lastActivityRow[0].createdAt : null;
+      const warnings: string[] = [];
+      if (daysInTeam >= 14 && !firstMeeting.length) warnings.push("Zatím žádná schůzka");
+      if (daysInTeam >= 30 && !firstContract.length) warnings.push("Zatím žádný uzavřený obchod");
+      if (recentActivity.length < 2 && daysInTeam >= 7) warnings.push("Nízká aktivita v CRM");
 
-  return result;
+      result.push({
+        userId: row.userId,
+        joinedAt,
+        daysInTeam,
+        adaptationScore,
+        adaptationStatus,
+        checklist,
+        lastActivityAt,
+        warnings,
+      });
+    }
+
+    return result;
+  });
 }
 
 export type TeamPerformancePoint = {
@@ -816,43 +928,46 @@ export async function getTeamPerformanceOverTime(
   scope?: TeamOverviewScope
 ): Promise<TeamPerformancePoint[]> {
   const ctx = await getScopeContext(scope);
-  const points: TeamPerformancePoint[] = [];
   const now = new Date();
 
-  for (let i = 5; i >= 0; i--) {
-    const ref = new Date(now);
-    if (period === "month") {
-      ref.setMonth(ref.getMonth() - i);
-    } else if (period === "quarter") {
-      ref.setMonth(ref.getMonth() - i * 3);
-    } else {
-      ref.setDate(ref.getDate() - i * 7);
+  return withTenantContextFromAuth(ctx.auth, async (tx) => {
+    const points: TeamPerformancePoint[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const ref = new Date(now);
+      if (period === "month") {
+        ref.setMonth(ref.getMonth() - i);
+      } else if (period === "quarter") {
+        ref.setMonth(ref.getMonth() - i * 3);
+      } else {
+        ref.setDate(ref.getDate() - i * 7);
+      }
+      const { start, end, label } = getPeriodRange(period, ref);
+      const startStr = start.toISOString().slice(0, 10);
+      const endStr = end.toISOString().slice(0, 10);
+
+      const rows = await tx
+        .select({
+          count: sql<number>`count(*)::int`,
+          totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
+          totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+        })
+        .from(contracts)
+        .where(
+          and(
+            eq(contracts.tenantId, ctx.auth.tenantId),
+            inArray(contracts.advisorId, ctx.visibleUserIds),
+            contractProdDateGte(startStr),
+            contractProdDateLt(endStr)
+          )
+        );
+      const units = Number(rows[0]?.count ?? 0);
+      const production = Number(rows[0]?.totalAnnual ?? rows[0]?.totalPremium ?? 0) || Number(rows[0]?.totalPremium ?? 0);
+      points.push({ label, units, production });
     }
-    const { start, end, label } = getPeriodRange(period, ref);
-    const startStr = start.toISOString().slice(0, 10);
-    const endStr = end.toISOString().slice(0, 10);
 
-    const rows = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-        totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
-        totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
-      })
-      .from(contracts)
-      .where(
-        and(
-          eq(contracts.tenantId, ctx.auth.tenantId),
-          inArray(contracts.advisorId, ctx.visibleUserIds),
-          contractProdDateGte(startStr),
-          contractProdDateLt(endStr)
-        )
-      );
-    const units = Number(rows[0]?.count ?? 0);
-    const production = Number(rows[0]?.totalAnnual ?? rows[0]?.totalPremium ?? 0) || Number(rows[0]?.totalPremium ?? 0);
-    points.push({ label, units, production });
-  }
-
-  return points;
+    return points;
+  });
 }
 
 export type TeamMemberDetail = {
@@ -970,33 +1085,36 @@ export async function getTeamMemberDetail(
     memberAlerts.map((a) => a.title)
   );
 
-  const advisorPoints: TeamPerformancePoint[] = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const ref = new Date(now);
-    ref.setMonth(ref.getMonth() - i);
-    const { start, end, label } = getPeriodRange("month", ref);
-    const startStr = start.toISOString().slice(0, 10);
-    const endStr = end.toISOString().slice(0, 10);
-    const rows = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-        totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
-        totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
-      })
-      .from(contracts)
-      .where(
-        and(
-          eq(contracts.tenantId, auth.tenantId),
-          eq(contracts.advisorId, userId),
-          contractProdDateGte(startStr),
-          contractProdDateLt(endStr)
-        )
-      );
-    const units = Number(rows[0]?.count ?? 0);
-    const production = Number(rows[0]?.totalAnnual ?? rows[0]?.totalPremium ?? 0) || Number(rows[0]?.totalPremium ?? 0);
-    advisorPoints.push({ label, units, production });
-  }
+  const advisorPoints = await withTenantContextFromAuth({ tenantId: auth.tenantId, userId: auth.userId }, async (tx) => {
+    const points: TeamPerformancePoint[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const ref = new Date(now);
+      ref.setMonth(ref.getMonth() - i);
+      const { start, end, label } = getPeriodRange("month", ref);
+      const startStr = start.toISOString().slice(0, 10);
+      const endStr = end.toISOString().slice(0, 10);
+      const rows = await tx
+        .select({
+          count: sql<number>`count(*)::int`,
+          totalAnnual: sql<number>`coalesce(sum(${contracts.premiumAnnual}::numeric), 0)`,
+          totalPremium: sql<number>`coalesce(sum(${contracts.premiumAmount}::numeric), 0)`,
+        })
+        .from(contracts)
+        .where(
+          and(
+            eq(contracts.tenantId, auth.tenantId),
+            eq(contracts.advisorId, userId),
+            contractProdDateGte(startStr),
+            contractProdDateLt(endStr)
+          )
+        );
+      const units = Number(rows[0]?.count ?? 0);
+      const production = Number(rows[0]?.totalAnnual ?? rows[0]?.totalPremium ?? 0) || Number(rows[0]?.totalPremium ?? 0);
+      points.push({ label, units, production });
+    }
+    return points;
+  });
 
   return {
     userId: member.userId,
@@ -1039,43 +1157,46 @@ export async function getTeamRhythmCalendarData(scope?: TeamOverviewScope) {
   const overdueCutoff = new Date(now);
   overdueCutoff.setDate(overdueCutoff.getDate() - 90);
 
-  const [evRows, taskRows] = await Promise.all([
-    db
-      .select({
-        id: teamEvents.id,
-        title: teamEvents.title,
-        startAt: teamEvents.startAt,
-        targetUserIds: teamEvents.targetUserIds,
-      })
-      .from(teamEvents)
-      .where(
-        and(
-          eq(teamEvents.tenantId, ctx.auth.tenantId),
-          isNull(teamEvents.cancelledAt),
-          gte(teamEvents.startAt, past),
-          lte(teamEvents.startAt, future)
-        )
-      ),
-    db
-      .select({
-        id: teamTasks.id,
-        title: teamTasks.title,
-        dueDate: teamTasks.dueDate,
-        targetUserIds: teamTasks.targetUserIds,
-      })
-      .from(teamTasks)
-      .where(
-        and(
-          eq(teamTasks.tenantId, ctx.auth.tenantId),
-          isNull(teamTasks.cancelledAt),
-          isNotNull(teamTasks.dueDate),
-          or(
-            and(lt(teamTasks.dueDate, startOfToday), gte(teamTasks.dueDate, overdueCutoff)),
-            and(gte(teamTasks.dueDate, startOfToday), lte(teamTasks.dueDate, future))
+  const { evRows, taskRows } = await withTenantContextFromAuth(ctx.auth, async (tx) => {
+    const [evRowsInner, taskRowsInner] = await Promise.all([
+      tx
+        .select({
+          id: teamEvents.id,
+          title: teamEvents.title,
+          startAt: teamEvents.startAt,
+          targetUserIds: teamEvents.targetUserIds,
+        })
+        .from(teamEvents)
+        .where(
+          and(
+            eq(teamEvents.tenantId, ctx.auth.tenantId),
+            isNull(teamEvents.cancelledAt),
+            gte(teamEvents.startAt, past),
+            lte(teamEvents.startAt, future)
           )
-        )
-      ),
-  ]);
+        ),
+      tx
+        .select({
+          id: teamTasks.id,
+          title: teamTasks.title,
+          dueDate: teamTasks.dueDate,
+          targetUserIds: teamTasks.targetUserIds,
+        })
+        .from(teamTasks)
+        .where(
+          and(
+            eq(teamTasks.tenantId, ctx.auth.tenantId),
+            isNull(teamTasks.cancelledAt),
+            isNotNull(teamTasks.dueDate),
+            or(
+              and(lt(teamTasks.dueDate, startOfToday), gte(teamTasks.dueDate, overdueCutoff)),
+              and(gte(teamTasks.dueDate, startOfToday), lte(teamTasks.dueDate, future))
+            )
+          )
+        ),
+    ]);
+    return { evRows: evRowsInner, taskRows: taskRowsInner };
+  });
 
   const events = evRows
     .filter((r) => teamRhythmTargetsOverlapScope(r.targetUserIds ?? [], ctx.visibleSet))
@@ -1121,11 +1242,13 @@ export async function listTeamGoals(year?: number, period?: string): Promise<Tea
   const conditions = [eq(teamGoals.tenantId, auth.tenantId)];
   if (year) conditions.push(eq(teamGoals.year, year));
   if (period) conditions.push(eq(teamGoals.period, period));
-  const rows = await db
-    .select()
-    .from(teamGoals)
-    .where(and(...conditions))
-    .orderBy(asc(teamGoals.year), asc(teamGoals.month));
+  const rows = await withTenantContextFromAuth(auth, (tx) =>
+    tx
+      .select()
+      .from(teamGoals)
+      .where(and(...conditions))
+      .orderBy(asc(teamGoals.year), asc(teamGoals.month)),
+  );
   return rows.map((r) => ({
     id: r.id,
     period: r.period,
@@ -1148,24 +1271,26 @@ export async function upsertTeamGoal(input: {
     return { ok: false, error: "Nedostatečná oprávnění." };
   }
   await assertCapabilityForAction(auth, "team_goals_events");
-  const [existing] = await db
-    .select({ id: teamGoals.id })
-    .from(teamGoals)
-    .where(
-      and(
-        eq(teamGoals.tenantId, auth.tenantId),
-        eq(teamGoals.period, input.period),
-        eq(teamGoals.goalType, input.goalType),
-        eq(teamGoals.year, input.year),
-        eq(teamGoals.month, input.month),
+  await withTenantContextFromAuth(auth, async (tx) => {
+    const [existing] = await tx
+      .select({ id: teamGoals.id })
+      .from(teamGoals)
+      .where(
+        and(
+          eq(teamGoals.tenantId, auth.tenantId),
+          eq(teamGoals.period, input.period),
+          eq(teamGoals.goalType, input.goalType),
+          eq(teamGoals.year, input.year),
+          eq(teamGoals.month, input.month),
+        )
       )
-    )
-    .limit(1);
-  if (existing) {
-    await db.update(teamGoals).set({ targetValue: input.targetValue, updatedAt: new Date() }).where(eq(teamGoals.id, existing.id));
-  } else {
-    await db.insert(teamGoals).values({ tenantId: auth.tenantId, ...input });
-  }
+      .limit(1);
+    if (existing) {
+      await tx.update(teamGoals).set({ targetValue: input.targetValue, updatedAt: new Date() }).where(eq(teamGoals.id, existing.id));
+    } else {
+      await tx.insert(teamGoals).values({ tenantId: auth.tenantId, ...input });
+    }
+  });
   return { ok: true };
 }
 
@@ -1175,10 +1300,12 @@ export async function deleteTeamGoal(goalId: string): Promise<{ ok: boolean; err
     return { ok: false, error: "Nedostatečná oprávnění." };
   }
   await assertCapabilityForAction(auth, "team_goals_events");
-  const [row] = await db.select({ tenantId: teamGoals.tenantId }).from(teamGoals).where(eq(teamGoals.id, goalId)).limit(1);
-  if (!row || row.tenantId !== auth.tenantId) return { ok: false, error: "Cíl nenalezen." };
-  await db.delete(teamGoals).where(eq(teamGoals.id, goalId));
-  return { ok: true };
+  return withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx.select({ tenantId: teamGoals.tenantId }).from(teamGoals).where(eq(teamGoals.id, goalId)).limit(1);
+    if (!row || row.tenantId !== auth.tenantId) return { ok: false, error: "Cíl nenalezen." };
+    await tx.delete(teamGoals).where(eq(teamGoals.id, goalId));
+    return { ok: true };
+  });
 }
 
 /** Jeden paralelní read pro Team Overview — stejné zdroje jako stránka; bez duplicitního shaping v klientovi. */

@@ -5,6 +5,7 @@
 
 import { validateExecution } from "./execution-guards";
 import type { ExecutionContext } from "./execution-service";
+import { withTenantContext } from "@/lib/db/with-tenant-context";
 
 export type CalendarEventParams = {
   title: string;
@@ -93,19 +94,25 @@ export async function createFollowupEvent(
   }
 
   try {
-    const { db, events } = await import("db");
-    const [row] = await db.insert(events).values({
-      tenantId: params.tenantId,
-      title: params.title,
-      startAt: params.startAt,
-      endAt: params.endAt,
-      contactId: params.contactId,
-      assignedTo: params.assignedTo,
-      notes: params.notes,
-      eventType: params.eventType ?? "followup",
-      status: "scheduled",
-    }).returning({ id: events.id });
-    return { ok: true, eventId: row?.id };
+    const { events } = await import("db");
+    const insertedId = await withTenantContext(
+      { tenantId: params.tenantId, userId: context.userId },
+      async (tx) => {
+        const [row] = await tx.insert(events).values({
+          tenantId: params.tenantId,
+          title: params.title,
+          startAt: params.startAt,
+          endAt: params.endAt,
+          contactId: params.contactId,
+          assignedTo: params.assignedTo,
+          notes: params.notes,
+          eventType: params.eventType ?? "followup",
+          status: "scheduled",
+        }).returning({ id: events.id });
+        return row?.id;
+      },
+    );
+    return { ok: true, eventId: insertedId };
   } catch {
     return { ok: false, blockedReasons: ["CALENDAR_CREATE_FAILED"] };
   }

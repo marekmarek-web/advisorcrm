@@ -1,6 +1,8 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import {
   getContractReviewById,
@@ -12,6 +14,7 @@ import { mergeFieldEditsIntoExtractedPayload } from "@/lib/ai-review/mappers";
 import { applyContractReview } from "@/lib/ai/apply-contract-review";
 import { isSupportingDocumentOnly } from "@/lib/ai/apply-policy-enforcement";
 import { mapContractReviewToBridgePayload, computePublishOutcome } from "@/lib/ai/write-through-contract";
+import { mapDocumentLinkWarningToApplyWarning } from "@/lib/ai/apply-warning-mapper";
 import { tryBuildPaymentSetupDraftFromRawPayload } from "@/lib/ai/draft-actions";
 import { resolveSegmentForContractApply } from "@/lib/ai/apply-contract-review";
 import {
@@ -21,7 +24,6 @@ import {
 import { capturePublishGuardFailure } from "@/lib/observability/portal-sentry";
 import * as Sentry from "@sentry/nextjs";
 import { logActivity } from "./activity";
-import { db } from "db";
 import { contacts, documents, contracts, clientPaymentSetups, auditLog } from "db";
 import { eq, and } from "db";
 import { notifyClientAdvisorSharedDocument } from "@/lib/documents/notify-client-visible-document";
@@ -158,11 +160,14 @@ export async function selectMatchedClient(
   if (!canResolveClientBeforeApply(row.reviewStatus ?? null)) {
     return { ok: false, error: "Klienta lze změnit jen do okamžiku zápisu do CRM." };
   }
-  const [contact] = await db
-    .select({ id: contacts.id })
-    .from(contacts)
-    .where(and(eq(contacts.id, clientId), eq(contacts.tenantId, auth.tenantId)))
-    .limit(1);
+  const contact = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, clientId), eq(contacts.tenantId, auth.tenantId)))
+      .limit(1);
+    return row ?? null;
+  });
   if (!contact) {
     return { ok: false, error: "Klient nenalezen." };
   }
@@ -725,6 +730,23 @@ export async function applyContractReviewDrafts(
     // Soft fail — publishOutcome is returned in payload even if persist fails
   }
 
+  // P2-S1: surface attach-only silent-fail as a toast warning. Without this,
+  // apply returned ok=true + generic "Údaje propsány do Aidvisory" toast while
+  // the document was silently left unlinked. The `documentLinkWarning` badge in
+  // AIReviewExtractionShell is not enough — advisor must see an immediate
+  // error-style toast on apply.
+  //
+  // Mapping is kept in `apply-warning-mapper.ts` so it can be unit-tested
+  // without "use server" boundary mocking, and so all warning codes share
+  // one canonical Czech copy.
+  const applyWarning = mapDocumentLinkWarningToApplyWarning(
+    bridgedPayload.documentLinkWarning ?? null
+  );
+
+  if (applyWarning) {
+    return { ok: true, payload: bridgedPayload, warning: applyWarning };
+  }
+
   return { ok: true, payload: bridgedPayload };
 }
 
@@ -760,67 +782,79 @@ export async function linkContractReviewFileToContactDocuments(
     return { ok: false, error: "Publish guard: dokument nelze zveřejnit bez schválené review." };
   }
 
-  const [dup] = await db
-    .select({ id: documents.id })
-    .from(documents)
-    .where(
-      and(
-        eq(documents.tenantId, auth.tenantId),
-        eq(documents.contactId, contactId),
-        eq(documents.storagePath, row.storagePath)
-      )
-    )
-    .limit(1);
-  if (dup) {
-    const [curr] = await db
-      .select({ vis: documents.visibleToClient, contractId: documents.contractId })
+  const linkResult = await withTenantContextFromAuth(auth, async (tx) => {
+    const [dup] = await tx
+      .select({ id: documents.id })
       .from(documents)
-      .where(eq(documents.id, dup.id))
+      .where(
+        and(
+          eq(documents.tenantId, auth.tenantId),
+          eq(documents.contactId, contactId),
+          eq(documents.storagePath, row.storagePath)
+        )
+      )
       .limit(1);
-    const updates: Record<string, unknown> = {};
-    if (visible && curr && !curr.vis) updates.visibleToClient = true;
-    if (options?.contractId && !curr?.contractId) updates.contractId = options.contractId;
-    if (Object.keys(updates).length > 0) {
-      await db
-        .update(documents)
-        .set(updates)
-        .where(eq(documents.id, dup.id));
-      if (updates.visibleToClient) {
-        try {
-          await notifyClientAdvisorSharedDocument({
-            tenantId: auth.tenantId,
-            contactId,
-            documentId: dup.id,
-            documentName: row.fileName,
-            reason: "visibility_on",
-          });
-        } catch {
-          /* best-effort */
-        }
+    if (dup) {
+      const [curr] = await tx
+        .select({ vis: documents.visibleToClient, contractId: documents.contractId })
+        .from(documents)
+        .where(eq(documents.id, dup.id))
+        .limit(1);
+      const updates: Record<string, unknown> = {};
+      if (visible && curr && !curr.vis) updates.visibleToClient = true;
+      if (options?.contractId && !curr?.contractId) updates.contractId = options.contractId;
+      if (Object.keys(updates).length > 0) {
+        await tx
+          .update(documents)
+          .set(updates)
+          .where(eq(documents.id, dup.id));
+      }
+      return {
+        kind: "dup" as const,
+        id: dup.id,
+        notifyVisibility: Boolean(updates.visibleToClient),
+      };
+    }
+
+    const [inserted] = await tx
+      .insert(documents)
+      .values({
+        tenantId: auth.tenantId,
+        contactId,
+        contractId: options?.contractId ?? null,
+        name: row.fileName,
+        storagePath: row.storagePath,
+        mimeType: row.mimeType ?? "application/pdf",
+        sizeBytes: row.sizeBytes ?? null,
+        visibleToClient: visible,
+        uploadSource: "api",
+        uploadedBy: auth.userId,
+        sourceChannel: "api",
+        tags: ["ai-smlouva", `review:${reviewId}`],
+      })
+      .returning({ id: documents.id });
+
+    return { kind: "new" as const, id: inserted?.id ?? null };
+  });
+
+  if (linkResult.kind === "dup") {
+    if (linkResult.notifyVisibility) {
+      try {
+        await notifyClientAdvisorSharedDocument({
+          tenantId: auth.tenantId,
+          contactId,
+          documentId: linkResult.id,
+          documentName: row.fileName,
+          reason: "visibility_on",
+        });
+      } catch {
+        /* best-effort */
       }
     }
-    return { ok: true, documentId: dup.id };
+    return { ok: true, documentId: linkResult.id };
   }
 
-  const [inserted] = await db
-    .insert(documents)
-    .values({
-      tenantId: auth.tenantId,
-      contactId,
-      contractId: options?.contractId ?? null,
-      name: row.fileName,
-      storagePath: row.storagePath,
-      mimeType: row.mimeType ?? "application/pdf",
-      sizeBytes: row.sizeBytes ?? null,
-      visibleToClient: visible,
-      uploadSource: "api",
-      uploadedBy: auth.userId,
-      sourceChannel: "api",
-      tags: ["ai-smlouva", `review:${reviewId}`],
-    })
-    .returning({ id: documents.id });
-
-  const newId = inserted?.id;
+  const newId = linkResult.id;
   if (newId) {
     try {
       await logActivity("document", newId, "upload", {
@@ -858,6 +892,7 @@ export async function linkContractReviewFileToContactDocuments(
  * needsHumanReview flip are handled by the callers (idempotent rules differ).
  */
 async function applyConfirmationCrmWrite(
+  tx: TenantContextDb,
   tenantId: string,
   scope: "contact" | "contract" | "payment",
   targetId: string | null,
@@ -885,7 +920,7 @@ async function applyConfirmationCrmWrite(
       contactPatch[fieldKey] = normalizedValue;
     }
     if (Object.keys(contactPatch).length > 1) {
-      await db
+      await tx
         .update(contacts)
         .set(contactPatch)
         .where(and(eq(contacts.id, targetId), eq(contacts.tenantId, tenantId)));
@@ -908,7 +943,7 @@ async function applyConfirmationCrmWrite(
       contractPatch.premiumAnnual = normalizedValue;
     }
     if (Object.keys(contractPatch).length > 1) {
-      await db
+      await tx
         .update(contracts)
         .set(contractPatch)
         .where(and(eq(contracts.id, targetId), eq(contracts.tenantId, tenantId)));
@@ -1005,49 +1040,48 @@ export async function confirmPendingField(
     targetId = row.applyResultPayload?.createdPaymentSetupId ?? null;
   }
 
-  // Pro payment scope: nastav needsHumanReview = false v clientPaymentSetups
-  // (jen pokud jsou všechna pending payment pole potvrzena)
-  if (scope === "payment" && targetId) {
-    const allPaymentPending = scopeEnforcement.pendingConfirmationFields;
-    const alreadyConfirmedPayment = Object.entries(existingConfirmed)
-      .filter(([, v]) => (v as { scope: string }).scope === "payment")
-      .map(([k]) => k);
-    // Po přidání tohoto pole — zbývají ještě jiná?
-    const remainingPending = allPaymentPending.filter(
-      (f) => f !== fieldKey && !alreadyConfirmedPayment.includes(f)
-    );
-    if (remainingPending.length === 0) {
-      // Všechna payment pending pole jsou potvrzena → odblokuj payment setup a publikuj do portálu
-      await db
-        .update(clientPaymentSetups)
-        .set({ needsHumanReview: false, visibleToClient: true, updatedAt: new Date() })
-        .where(
-          and(
-            eq(clientPaymentSetups.id, targetId),
-            eq(clientPaymentSetups.tenantId, auth.tenantId),
-          )
-        );
+  await withTenantContextFromAuth(auth, async (tx) => {
+    // Pro payment scope: nastav needsHumanReview = false v clientPaymentSetups
+    // (jen pokud jsou všechna pending payment pole potvrzena)
+    if (scope === "payment" && targetId) {
+      const allPaymentPending = scopeEnforcement.pendingConfirmationFields;
+      const alreadyConfirmedPayment = Object.entries(existingConfirmed)
+        .filter(([, v]) => (v as { scope: string }).scope === "payment")
+        .map(([k]) => k);
+      const remainingPending = allPaymentPending.filter(
+        (f) => f !== fieldKey && !alreadyConfirmedPayment.includes(f)
+      );
+      if (remainingPending.length === 0) {
+        await tx
+          .update(clientPaymentSetups)
+          .set({ needsHumanReview: false, visibleToClient: true, updatedAt: new Date() })
+          .where(
+            and(
+              eq(clientPaymentSetups.id, targetId),
+              eq(clientPaymentSetups.tenantId, auth.tenantId),
+            )
+          );
+      }
     }
-  }
 
-  if ((scope === "contact" || scope === "contract") && targetId && normalizedValue) {
-    await applyConfirmationCrmWrite(auth.tenantId, scope, targetId, fieldKey, normalizedValue);
-  }
+    if ((scope === "contact" || scope === "contract") && targetId && normalizedValue) {
+      await applyConfirmationCrmWrite(tx, auth.tenantId, scope, targetId, fieldKey, normalizedValue);
+    }
 
-  // Zapíše audit log
-  await db.insert(auditLog).values({
-    tenantId: auth.tenantId,
-    userId: auth.userId,
-    action: "confirm_pending_field",
-    entityType: "contract_review",
-    entityId: reviewId,
-    meta: {
-      reviewId,
-      fieldKey,
-      scope,
-      targetId,
-      fromValue: normalizedValue,
-    },
+    await tx.insert(auditLog).values({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: "confirm_pending_field",
+      entityType: "contract_review",
+      entityId: reviewId,
+      meta: {
+        reviewId,
+        fieldKey,
+        scope,
+        targetId,
+        fromValue: normalizedValue,
+      },
+    });
   });
 
   // Aktualizuj applyResultPayload — přidej do confirmedFieldsTrace
@@ -1163,16 +1197,18 @@ export async function acknowledgeContactMergeConflicts(
     return { ok: true };
   }
 
-  await db.insert(auditLog).values({
-    tenantId: auth.tenantId,
-    userId: auth.userId,
-    action: "acknowledge_contact_merge_conflict",
-    entityType: "contract_review",
-    entityId: reviewId,
-    meta: {
-      reviewId,
-      fieldKeys: uniqueKeys,
-    },
+  await withTenantContextFromAuth(auth, async (tx) => {
+    await tx.insert(auditLog).values({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: "acknowledge_contact_merge_conflict",
+      entityType: "contract_review",
+      entityId: reviewId,
+      meta: {
+        reviewId,
+        fieldKeys: uniqueKeys,
+      },
+    });
   });
 
   await updateContractReview(reviewId, auth.tenantId, {
@@ -1256,105 +1292,104 @@ export async function confirmManualField(
     targetId = row.applyResultPayload?.createdPaymentSetupId ?? null;
   }
 
-  // Zapiš hodnotu do příslušné DB tabulky
-  if (targetId) {
-    if (scope === "contact") {
-      const contactPatch: Record<string, unknown> = { updatedAt: new Date() };
-      if (fieldKey === "fullName") {
-        const parts = trimmedValue.split(/\s+/).filter(Boolean);
-        if (parts.length === 1) {
-          contactPatch.firstName = parts[0];
-        } else {
-          contactPatch.firstName = parts.slice(0, -1).join(" ");
-          contactPatch.lastName = parts.slice(-1).join(" ");
+  await withTenantContextFromAuth(auth, async (tx) => {
+    if (targetId) {
+      if (scope === "contact") {
+        const contactPatch: Record<string, unknown> = { updatedAt: new Date() };
+        if (fieldKey === "fullName") {
+          const parts = trimmedValue.split(/\s+/).filter(Boolean);
+          if (parts.length === 1) {
+            contactPatch.firstName = parts[0];
+          } else {
+            contactPatch.firstName = parts.slice(0, -1).join(" ");
+            contactPatch.lastName = parts.slice(-1).join(" ");
+          }
+        } else if (fieldKey === "address") {
+          contactPatch.street = trimmedValue;
+        } else if ([
+          "firstName", "lastName", "email", "phone", "personalId", "birthDate",
+          "idCardNumber", "idCardIssuedBy", "idCardValidUntil", "idCardIssuedAt",
+          "generalPractitioner", "city", "zip", "street",
+        ].includes(fieldKey)) {
+          contactPatch[fieldKey] = trimmedValue;
         }
-      } else if (fieldKey === "address") {
-        contactPatch.street = trimmedValue;
-      } else if ([
-        "firstName", "lastName", "email", "phone", "personalId", "birthDate",
-        "idCardNumber", "idCardIssuedBy", "idCardValidUntil", "idCardIssuedAt",
-        "generalPractitioner", "city", "zip", "street",
-      ].includes(fieldKey)) {
-        contactPatch[fieldKey] = trimmedValue;
+        if (Object.keys(contactPatch).length > 1) {
+          await tx
+            .update(contacts)
+            .set(contactPatch)
+            .where(and(eq(contacts.id, targetId), eq(contacts.tenantId, auth.tenantId)));
+        }
       }
-      if (Object.keys(contactPatch).length > 1) {
-        await db
-          .update(contacts)
-          .set(contactPatch)
-          .where(and(eq(contacts.id, targetId), eq(contacts.tenantId, auth.tenantId)));
+
+      if (scope === "contract") {
+        const contractPatch: Record<string, unknown> = { updatedAt: new Date() };
+        if (fieldKey === "institutionName" || fieldKey === "insurer" || fieldKey === "provider") {
+          contractPatch.partnerName = trimmedValue;
+        } else if (fieldKey === "productName") {
+          contractPatch.productName = trimmedValue;
+        } else if (fieldKey === "contractNumber") {
+          contractPatch.contractNumber = trimmedValue;
+        } else if (fieldKey === "policyStartDate" || fieldKey === "effectiveDate" || fieldKey === "startDate") {
+          contractPatch.startDate = trimmedValue;
+        } else if (fieldKey === "premiumAmount" || fieldKey === "totalMonthlyPremium") {
+          contractPatch.premiumAmount = trimmedValue;
+        } else if (fieldKey === "premiumAnnual" || fieldKey === "annualPremium") {
+          contractPatch.premiumAnnual = trimmedValue;
+        }
+        if (Object.keys(contractPatch).length > 1) {
+          await tx
+            .update(contracts)
+            .set(contractPatch)
+            .where(and(eq(contracts.id, targetId), eq(contracts.tenantId, auth.tenantId)));
+        }
+      }
+
+      if (scope === "payment") {
+        const paymentPatch: Record<string, unknown> = { updatedAt: new Date() };
+        if (fieldKey === "variableSymbol" || fieldKey === "vs") {
+          paymentPatch.variableSymbol = trimmedValue;
+        } else if (fieldKey === "iban" || fieldKey === "accountNumber") {
+          paymentPatch.iban = trimmedValue;
+        } else if (fieldKey === "paymentAmount" || fieldKey === "monthlyPremium" || fieldKey === "premiumAmount") {
+          paymentPatch.amount = trimmedValue;
+        } else if (fieldKey === "paymentFrequency" || fieldKey === "frequency") {
+          paymentPatch.frequency = trimmedValue;
+        }
+        if (Object.keys(paymentPatch).length > 1) {
+          await tx
+            .update(clientPaymentSetups)
+            .set(paymentPatch)
+            .where(and(eq(clientPaymentSetups.id, targetId), eq(clientPaymentSetups.tenantId, auth.tenantId)));
+        }
+
+        const existingConfirmedPayment = row.applyResultPayload?.confirmedFieldsTrace ?? {};
+        const alreadyConfirmedManual = Object.keys(existingConfirmedPayment).filter(
+          (k) => (existingConfirmedPayment[k] as { scope: string })?.scope === "payment" &&
+            scopeEnforcement.manualRequiredFields.includes(k)
+        );
+        const remainingManual = scopeEnforcement.manualRequiredFields.filter(
+          (f) => f !== fieldKey && !alreadyConfirmedManual.includes(f)
+        );
+        const allPaymentPendingConfirmed = (scopeEnforcement.pendingConfirmationFields ?? []).every(
+          (f) => existingConfirmedPayment[f]
+        );
+        if (remainingManual.length === 0 && allPaymentPendingConfirmed) {
+          await tx
+            .update(clientPaymentSetups)
+            .set({ needsHumanReview: false, visibleToClient: true, updatedAt: new Date() })
+            .where(and(eq(clientPaymentSetups.id, targetId), eq(clientPaymentSetups.tenantId, auth.tenantId)));
+        }
       }
     }
 
-    if (scope === "contract") {
-      const contractPatch: Record<string, unknown> = { updatedAt: new Date() };
-      if (fieldKey === "institutionName" || fieldKey === "insurer" || fieldKey === "provider") {
-        contractPatch.partnerName = trimmedValue;
-      } else if (fieldKey === "productName") {
-        contractPatch.productName = trimmedValue;
-      } else if (fieldKey === "contractNumber") {
-        contractPatch.contractNumber = trimmedValue;
-      } else if (fieldKey === "policyStartDate" || fieldKey === "effectiveDate" || fieldKey === "startDate") {
-        contractPatch.startDate = trimmedValue;
-      } else if (fieldKey === "premiumAmount" || fieldKey === "totalMonthlyPremium") {
-        contractPatch.premiumAmount = trimmedValue;
-      } else if (fieldKey === "premiumAnnual" || fieldKey === "annualPremium") {
-        contractPatch.premiumAnnual = trimmedValue;
-      }
-      if (Object.keys(contractPatch).length > 1) {
-        await db
-          .update(contracts)
-          .set(contractPatch)
-          .where(and(eq(contracts.id, targetId), eq(contracts.tenantId, auth.tenantId)));
-      }
-    }
-
-    if (scope === "payment") {
-      const paymentPatch: Record<string, unknown> = { updatedAt: new Date() };
-      if (fieldKey === "variableSymbol" || fieldKey === "vs") {
-        paymentPatch.variableSymbol = trimmedValue;
-      } else if (fieldKey === "iban" || fieldKey === "accountNumber") {
-        paymentPatch.iban = trimmedValue;
-      } else if (fieldKey === "paymentAmount" || fieldKey === "monthlyPremium" || fieldKey === "premiumAmount") {
-        paymentPatch.amount = trimmedValue;
-      } else if (fieldKey === "paymentFrequency" || fieldKey === "frequency") {
-        paymentPatch.frequency = trimmedValue;
-      }
-      if (Object.keys(paymentPatch).length > 1) {
-        await db
-          .update(clientPaymentSetups)
-          .set(paymentPatch)
-          .where(and(eq(clientPaymentSetups.id, targetId), eq(clientPaymentSetups.tenantId, auth.tenantId)));
-      }
-
-      // Ověř, zda jsou všechna manual_required payment pole nyní potvrzena
-      const existingConfirmed = row.applyResultPayload?.confirmedFieldsTrace ?? {};
-      const alreadyConfirmedManual = Object.keys(existingConfirmed).filter(
-        (k) => (existingConfirmed[k] as { scope: string })?.scope === "payment" &&
-          scopeEnforcement.manualRequiredFields.includes(k)
-      );
-      const remainingManual = scopeEnforcement.manualRequiredFields.filter(
-        (f) => f !== fieldKey && !alreadyConfirmedManual.includes(f)
-      );
-      const allPaymentPendingConfirmed = (scopeEnforcement.pendingConfirmationFields ?? []).every(
-        (f) => existingConfirmed[f]
-      );
-      if (remainingManual.length === 0 && allPaymentPendingConfirmed) {
-        await db
-          .update(clientPaymentSetups)
-          .set({ needsHumanReview: false, visibleToClient: true, updatedAt: new Date() })
-          .where(and(eq(clientPaymentSetups.id, targetId), eq(clientPaymentSetups.tenantId, auth.tenantId)));
-      }
-    }
-  }
-
-  // Audit log
-  await db.insert(auditLog).values({
-    tenantId: auth.tenantId,
-    userId: auth.userId,
-    action: "confirm_manual_field",
-    entityType: "contract_review",
-    entityId: reviewId,
-    meta: { reviewId, fieldKey, scope, targetId, value: trimmedValue },
+    await tx.insert(auditLog).values({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: "confirm_manual_field",
+      entityType: "contract_review",
+      entityId: reviewId,
+      meta: { reviewId, fieldKey, scope, targetId, value: trimmedValue },
+    });
   });
 
   // Aktualizuj trace — přesuň pole z manualRequiredFields do autoAppliedFields
@@ -1439,67 +1474,94 @@ export async function confirmAllPendingFields(
   let updatedPolicyTrace = { ...trace };
   let confirmedCount = 0;
 
-  for (const { scope, enforcement } of scopeKeys) {
-    if (!enforcement) continue;
-    if (trace.supportingDocumentGuard && (scope === "contract" || scope === "payment")) continue;
+  await withTenantContextFromAuth(auth, async (tx) => {
+    for (const { scope, enforcement } of scopeKeys) {
+      if (!enforcement) continue;
+      if (trace.supportingDocumentGuard && (scope === "contract" || scope === "payment")) continue;
 
-    let targetId: string | null = null;
-    if (scope === "contact") {
-      targetId = row.applyResultPayload?.createdClientId ?? row.applyResultPayload?.linkedClientId ?? null;
-    } else if (scope === "contract") {
-      targetId = row.applyResultPayload?.createdContractId ?? null;
-    } else if (scope === "payment") {
-      targetId = row.applyResultPayload?.createdPaymentSetupId ?? null;
-    }
-
-    const pendingFields = enforcement.pendingConfirmationFields.filter((f) => !updatedTrace[f]);
-
-    for (const fieldKey of pendingFields) {
-      const extractedFields = (row.extractedPayload as Record<string, unknown> | null)?.extractedFields as
-        | Record<string, { value?: unknown } | undefined>
-        | undefined;
-      const fromValue = extractedFields?.[fieldKey]?.value ?? null;
-      const normalizedValue =
-        fromValue == null ? null : typeof fromValue === "string" ? fromValue.trim() : String(fromValue);
-
-      if ((scope === "contact" || scope === "contract") && targetId && normalizedValue) {
-        await applyConfirmationCrmWrite(auth.tenantId, scope, targetId, fieldKey, normalizedValue);
+      let targetId: string | null = null;
+      if (scope === "contact") {
+        targetId = row.applyResultPayload?.createdClientId ?? row.applyResultPayload?.linkedClientId ?? null;
+      } else if (scope === "contract") {
+        targetId = row.applyResultPayload?.createdContractId ?? null;
+      } else if (scope === "payment") {
+        targetId = row.applyResultPayload?.createdPaymentSetupId ?? null;
       }
 
-      updatedTrace = {
-        ...updatedTrace,
-        [fieldKey]: {
-          confirmedAt: new Date().toISOString(),
-          confirmedBy: auth.userId,
-          scope,
-          targetId,
-          fromValue: normalizedValue,
-        },
-      };
-      confirmedCount++;
+      const pendingFields = enforcement.pendingConfirmationFields.filter((f) => !updatedTrace[f]);
+
+      for (const fieldKey of pendingFields) {
+        const extractedFields = (row.extractedPayload as Record<string, unknown> | null)?.extractedFields as
+          | Record<string, { value?: unknown } | undefined>
+          | undefined;
+        const fromValue = extractedFields?.[fieldKey]?.value ?? null;
+        const normalizedValue =
+          fromValue == null ? null : typeof fromValue === "string" ? fromValue.trim() : String(fromValue);
+
+        if ((scope === "contact" || scope === "contract") && targetId && normalizedValue) {
+          await applyConfirmationCrmWrite(tx, auth.tenantId, scope, targetId, fieldKey, normalizedValue);
+        }
+
+        updatedTrace = {
+          ...updatedTrace,
+          [fieldKey]: {
+            confirmedAt: new Date().toISOString(),
+            confirmedBy: auth.userId,
+            scope,
+            targetId,
+            fromValue: normalizedValue,
+          },
+        };
+        confirmedCount++;
+      }
+
+      if (pendingFields.length > 0) {
+        const enforcementKey = scope === "contact" ? "contactEnforcement" : scope === "contract" ? "contractEnforcement" : "paymentEnforcement";
+        updatedPolicyTrace = {
+          ...updatedPolicyTrace,
+          [enforcementKey]: {
+            ...enforcement,
+            pendingConfirmationFields: enforcement.pendingConfirmationFields.filter((f) => !updatedTrace[f]),
+            autoAppliedFields: [...enforcement.autoAppliedFields, ...pendingFields],
+          },
+        };
+
+        if (scope === "payment" && targetId) {
+          await tx
+            .update(clientPaymentSetups)
+            .set({ needsHumanReview: false, visibleToClient: true, updatedAt: new Date() })
+            .where(and(eq(clientPaymentSetups.id, targetId), eq(clientPaymentSetups.tenantId, auth.tenantId)));
+        }
+      }
     }
 
-    if (pendingFields.length > 0) {
-      const enforcementKey = scope === "contact" ? "contactEnforcement" : scope === "contract" ? "contractEnforcement" : "paymentEnforcement";
+    if (confirmedCount > 0) {
+      const totalPending = Object.values(updatedPolicyTrace).reduce((acc, v) => {
+        if (v && typeof v === "object" && "pendingConfirmationFields" in v) {
+          return acc + (v as { pendingConfirmationFields: string[] }).pendingConfirmationFields.length;
+        }
+        return acc;
+      }, 0);
+
       updatedPolicyTrace = {
         ...updatedPolicyTrace,
-        [enforcementKey]: {
-          ...enforcement,
-          // Keep only fields NOT yet in updatedTrace (not yet confirmed).
-          pendingConfirmationFields: enforcement.pendingConfirmationFields.filter((f) => !updatedTrace[f]),
-          autoAppliedFields: [...enforcement.autoAppliedFields, ...pendingFields],
+        summary: {
+          ...trace.summary,
+          totalPendingConfirmation: totalPending,
+          totalAutoApplied: trace.summary.totalAutoApplied + confirmedCount,
         },
       };
 
-      // Pro payment scope — odblokuj setup pokud jsou všechna pending potvrzena
-      if (scope === "payment" && targetId) {
-        await db
-          .update(clientPaymentSetups)
-          .set({ needsHumanReview: false, visibleToClient: true, updatedAt: new Date() })
-          .where(and(eq(clientPaymentSetups.id, targetId), eq(clientPaymentSetups.tenantId, auth.tenantId)));
-      }
+      await tx.insert(auditLog).values({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        action: "confirm_all_pending_fields",
+        entityType: "contract_review",
+        entityId: reviewId,
+        meta: { reviewId, confirmedCount },
+      });
     }
-  }
+  });
 
   if (confirmedCount === 0) {
     return {
@@ -1508,31 +1570,6 @@ export async function confirmAllPendingFields(
       updatedPayload: row.applyResultPayload!,
     };
   }
-
-  const totalPending = Object.values(updatedPolicyTrace).reduce((acc, v) => {
-    if (v && typeof v === "object" && "pendingConfirmationFields" in v) {
-      return acc + (v as { pendingConfirmationFields: string[] }).pendingConfirmationFields.length;
-    }
-    return acc;
-  }, 0);
-
-  updatedPolicyTrace = {
-    ...updatedPolicyTrace,
-    summary: {
-      ...trace.summary,
-      totalPendingConfirmation: totalPending,
-      totalAutoApplied: trace.summary.totalAutoApplied + confirmedCount,
-    },
-  };
-
-  await db.insert(auditLog).values({
-    tenantId: auth.tenantId,
-    userId: auth.userId,
-    action: "confirm_all_pending_fields",
-    entityType: "contract_review",
-    entityId: reviewId,
-    meta: { reviewId, confirmedCount },
-  });
 
   const updatedPayload = {
     ...row.applyResultPayload!,

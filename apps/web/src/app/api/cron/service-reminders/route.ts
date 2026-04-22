@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "db";
+import { dbService, withServiceTenantContext } from "@/lib/db/service-db";
 import { contacts, tenants, unsubscribeTokens } from "db";
 import { lte, isNotNull, isNull, and, eq, or, lt, sql } from "db";
 import { Resend } from "resend";
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     Date.now() - SERVICE_REMINDER_COOLDOWN_DAYS * 24 * 60 * 60 * 1000,
   );
 
-  const rows = await db
+  const rows = await dbService
     .select({
       id: contacts.id,
       tenantId: contacts.tenantId,
@@ -83,10 +83,12 @@ export async function GET(request: Request) {
 
     const unsubToken = makeUnsubscribeToken();
     try {
-      await db.insert(unsubscribeTokens).values({
-        contactId: c.id,
-        token: unsubToken,
-        expiresAt: unsubscribeTokenExpiry(),
+      await withServiceTenantContext({ tenantId: c.tenantId }, async (tx) => {
+        await tx.insert(unsubscribeTokens).values({
+          contactId: c.id,
+          token: unsubToken,
+          expiresAt: unsubscribeTokenExpiry(),
+        });
       });
     } catch (e) {
       console.error("[service-reminders] failed to mint unsubscribe token", { contactId: c.id, error: e });
@@ -117,10 +119,12 @@ export async function GET(request: Request) {
     }
 
     try {
-      await db
-        .update(contacts)
-        .set({ lastServiceReminderSentAt: new Date(), updatedAt: new Date() })
-        .where(eq(contacts.id, c.id));
+      await withServiceTenantContext({ tenantId: c.tenantId }, async (tx) => {
+        await tx
+          .update(contacts)
+          .set({ lastServiceReminderSentAt: new Date(), updatedAt: new Date() })
+          .where(eq(contacts.id, c.id));
+      });
       sent += 1;
     } catch (e) {
       console.error("[service-reminders] failed to stamp lastServiceReminderSentAt", { contactId: c.id, error: e });

@@ -1,7 +1,43 @@
 import type { CareerEvaluationViewModel } from "@/lib/career/career-evaluation-vm";
 
+/**
+ * Origin/confidence indikátor pro každý KPI slot (F3 — hybrid KPI badges).
+ * - `auto` — odvozeno plně z CRM (contracts/events/activity_log).
+ * - `manual_confirmed` — manager explicitně potvrdil hodnotu za období.
+ * - `manual_estimated` — manager zadal, ale označil jako odhad / neúplné.
+ * - `derived` — vypočítáno z jiných polí (např. trend z auto + prev).
+ * - `missing` — data nejsou k dispozici (zatím).
+ */
+export type MetricSource = "auto" | "manual_confirmed" | "manual_estimated" | "derived" | "missing";
+
+export type MetricSourceMap = Partial<
+  Record<
+    | "unitsThisPeriod"
+    | "productionThisPeriod"
+    | "meetingsThisPeriod"
+    | "callsThisPeriod"
+    | "newContactsThisPeriod"
+    | "followUpsThisPeriod"
+    | "closedDealsThisPeriod"
+    | "closedOpportunitiesThisPeriod"
+    | "activityCount"
+    | "pipelineValue"
+    | "careerEvaluation"
+    | "unitsTrend"
+    | "productionTrend"
+    | "meetingsTrend"
+    | "targetProgressPercent",
+    MetricSource
+  >
+>;
+
 export type TeamMemberMetrics = {
   userId: string;
+  /** F1 canonical team_members.id; null pro synteticke externi (pred F1 dokoncenim) */
+  teamMemberId: string | null;
+  memberKind: "internal_user" | "external_manual";
+  /** F3 hybrid KPI map — chybějící klíč = `auto`. */
+  sources: MetricSourceMap;
   roleName: string;
   parentId: string | null;
   managerName: string | null;
@@ -144,6 +180,7 @@ export function buildAlertsFromMetric(metric: TeamMemberMetrics): TeamAlert[] {
 /** Sdílené odvození alertů z metrik (Team Overview, AI kontext, detail člena). */
 export function buildTeamAlertsFromMemberMetrics(metrics: TeamMemberMetrics[]): TeamAlert[] {
   return metrics
+    .filter((m) => m.memberKind !== "external_manual")
     .flatMap((m) => buildAlertsFromMetric(m))
     .sort((a, b) => {
       if (a.severity === b.severity) return 0;

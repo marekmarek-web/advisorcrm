@@ -1,8 +1,8 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
 import { contracts, contacts, clientPaymentSetups, unsubscribeTokens } from "db";
 import { eq, and, sql } from "db";
 import { getPaymentAccountForContract } from "./payment-accounts";
@@ -152,100 +152,117 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
   } else if (!hasPermission(auth.roleName, "contacts:read")) {
     throw new Error("Forbidden");
   }
-  // DŮLEŽITÉ: Nepoužívat `db.select()` bez sloupců — rozbalí se na VŠECHNY sloupce
-  // definované v `contacts` schématu. Pokud produkce nemá zmigrované pozdější sloupce
-  // (PII enc/fingerprint, service-reminder cooldown…), query shoří a chyba se jen tiše
-  // zachytí v page.tsx → klient uvidí "Platební údaje se nepodařilo načíst".
-  // Explicitní seznam = odolné vůči schema drift.
-  const [contact] = await db
-    .select({ id: contacts.id })
-    .from(contacts)
-    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)))
-    .limit(1);
-  if (!contact) return [];
 
-  const aiReviewPaymentRows = await db
-    .select({
-      id: clientPaymentSetups.id,
-      paymentType: clientPaymentSetups.paymentType,
-      providerName: clientPaymentSetups.providerName,
-      productName: clientPaymentSetups.productName,
-      contractNumber: clientPaymentSetups.contractNumber,
-      accountNumber: clientPaymentSetups.accountNumber,
-      bankCode: clientPaymentSetups.bankCode,
-      iban: clientPaymentSetups.iban,
-      variableSymbol: clientPaymentSetups.variableSymbol,
-      specificSymbol: clientPaymentSetups.specificSymbol,
-      constantSymbol: clientPaymentSetups.constantSymbol,
-      currency: clientPaymentSetups.currency,
-      amount: clientPaymentSetups.amount,
-      frequency: clientPaymentSetups.frequency,
-      firstPaymentDate: clientPaymentSetups.firstPaymentDate,
-      paymentInstructionsText: clientPaymentSetups.paymentInstructionsText,
-      rowSegment: clientPaymentSetups.segment,
-      contractSegment: sql<string | null>`(
-        SELECT c.segment FROM contracts c
-        WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
-          AND c.client_id = ${clientPaymentSetups.contactId}
-          AND c.contract_number = ${clientPaymentSetups.contractNumber}
-          AND c.archived_at IS NULL
-        LIMIT 1
-      )`,
-      contractPortfolioStatus: sql<string | null>`(
-        SELECT c.portfolio_status FROM contracts c
-        WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
-          AND c.client_id = ${clientPaymentSetups.contactId}
-          AND c.contract_number = ${clientPaymentSetups.contractNumber}
-          AND c.archived_at IS NULL
-        LIMIT 1
-      )`,
-    })
-    .from(clientPaymentSetups)
-    .where(
-      and(
-        eq(clientPaymentSetups.tenantId, auth.tenantId),
-        eq(clientPaymentSetups.contactId, contactId),
-        eq(clientPaymentSetups.status, "active"),
-        // Client portal: only show rows explicitly marked visible_to_client
-        // Advisor view: show all active rows (including AI Review)
-        ...(isClient
-          ? [eq(clientPaymentSetups.visibleToClient, true)]
-          : [eq(clientPaymentSetups.needsHumanReview, false)]
+  const { contactFound, fromAi, visibleContractRows } = await withTenantContextFromAuth(auth, async (tx) => {
+    // DŮLEŽITÉ: Nepoužívat `tx.select()` bez sloupců — rozbalí se na VŠECHNY sloupce
+    // definované v `contacts` schématu. Pokud produkce nemá zmigrované pozdější sloupce
+    // (PII enc/fingerprint, service-reminder cooldown…), query shoří a chyba se jen tiše
+    // zachytí v page.tsx → klient uvidí "Platební údaje se nepodařilo načíst".
+    // Explicitní seznam = odolné vůči schema drift.
+    const [contact] = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)))
+      .limit(1);
+    if (!contact) {
+      return { contactFound: false, fromAi: [] as PaymentInstruction[], visibleContractRows: [] as Array<{
+        id: string;
+        segment: string | null;
+        partnerId: string | null;
+        partnerName: string | null;
+        productName: string | null;
+        contractNumber: string | null;
+        premiumAmount: string | null;
+        portfolioStatus: string | null;
+      }> };
+    }
+
+    const aiReviewPaymentRows = await tx
+      .select({
+        id: clientPaymentSetups.id,
+        paymentType: clientPaymentSetups.paymentType,
+        providerName: clientPaymentSetups.providerName,
+        productName: clientPaymentSetups.productName,
+        contractNumber: clientPaymentSetups.contractNumber,
+        accountNumber: clientPaymentSetups.accountNumber,
+        bankCode: clientPaymentSetups.bankCode,
+        iban: clientPaymentSetups.iban,
+        variableSymbol: clientPaymentSetups.variableSymbol,
+        specificSymbol: clientPaymentSetups.specificSymbol,
+        constantSymbol: clientPaymentSetups.constantSymbol,
+        currency: clientPaymentSetups.currency,
+        amount: clientPaymentSetups.amount,
+        frequency: clientPaymentSetups.frequency,
+        firstPaymentDate: clientPaymentSetups.firstPaymentDate,
+        paymentInstructionsText: clientPaymentSetups.paymentInstructionsText,
+        rowSegment: clientPaymentSetups.segment,
+        contractSegment: sql<string | null>`(
+          SELECT c.segment FROM contracts c
+          WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
+            AND c.client_id = ${clientPaymentSetups.contactId}
+            AND c.contract_number = ${clientPaymentSetups.contractNumber}
+            AND c.archived_at IS NULL
+          LIMIT 1
+        )`,
+        contractPortfolioStatus: sql<string | null>`(
+          SELECT c.portfolio_status FROM contracts c
+          WHERE c.tenant_id = ${clientPaymentSetups.tenantId}
+            AND c.client_id = ${clientPaymentSetups.contactId}
+            AND c.contract_number = ${clientPaymentSetups.contractNumber}
+            AND c.archived_at IS NULL
+          LIMIT 1
+        )`,
+      })
+      .from(clientPaymentSetups)
+      .where(
+        and(
+          eq(clientPaymentSetups.tenantId, auth.tenantId),
+          eq(clientPaymentSetups.contactId, contactId),
+          eq(clientPaymentSetups.status, "active"),
+          // Client portal: only show rows explicitly marked visible_to_client
+          // Advisor view: show all active rows (including AI Review)
+          ...(isClient
+            ? [eq(clientPaymentSetups.visibleToClient, true)]
+            : [eq(clientPaymentSetups.needsHumanReview, false)]
+          )
         )
-      )
-    );
+      );
 
-  const fromAi = aiReviewPaymentRows
-    .map(mapAiPaymentSetupToInstruction)
-    .filter((instruction): instruction is PaymentInstruction => instruction !== null);
+    const fromAi = aiReviewPaymentRows
+      .map(mapAiPaymentSetupToInstruction)
+      .filter((instruction): instruction is PaymentInstruction => instruction !== null);
 
-  // Explicitní sloupce (schema drift safety – viz komentář u `contacts` selectu výše).
-  const contractRows = await db
-    .select({
-      id: contracts.id,
-      segment: contracts.segment,
-      partnerId: contracts.partnerId,
-      partnerName: contracts.partnerName,
-      productName: contracts.productName,
-      contractNumber: contracts.contractNumber,
-      premiumAmount: contracts.premiumAmount,
-      portfolioStatus: contracts.portfolioStatus,
-    })
-    .from(contracts)
-    .where(
-      and(
-        eq(contracts.tenantId, auth.tenantId),
-        eq(contracts.contactId, contactId),
-        ...(isClient
-          ? [
-              eq(contracts.visibleToClient, true),
-              sql`${contracts.portfolioStatus} IN ('active', 'ended')`,
-              sql`${contracts.archivedAt} IS NULL`,
-            ]
-          : []),
-      ),
-    );
-  const visibleContractRows = contractRows;
+    // Explicitní sloupce (schema drift safety – viz komentář u `contacts` selectu výše).
+    const contractRows = await tx
+      .select({
+        id: contracts.id,
+        segment: contracts.segment,
+        partnerId: contracts.partnerId,
+        partnerName: contracts.partnerName,
+        productName: contracts.productName,
+        contractNumber: contracts.contractNumber,
+        premiumAmount: contracts.premiumAmount,
+        portfolioStatus: contracts.portfolioStatus,
+      })
+      .from(contracts)
+      .where(
+        and(
+          eq(contracts.tenantId, auth.tenantId),
+          eq(contracts.contactId, contactId),
+          ...(isClient
+            ? [
+                eq(contracts.visibleToClient, true),
+                sql`${contracts.portfolioStatus} IN ('active', 'ended')`,
+                sql`${contracts.archivedAt} IS NULL`,
+              ]
+            : []),
+        ),
+      );
+
+    return { contactFound: true, fromAi, visibleContractRows: contractRows };
+  });
+
+  if (!contactFound) return [];
 
   const publishedContractNumberKeys = new Set<string>();
   for (const c of visibleContractRows) {
@@ -305,7 +322,14 @@ export async function getPaymentInstructionsForContact(contactId: string): Promi
 export async function generatePaymentPdfBuffer(contactId: string): Promise<Buffer> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
-  const [contact] = await db.select({ firstName: contacts.firstName, lastName: contacts.lastName }).from(contacts).where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId))).limit(1);
+  const contact = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({ firstName: contacts.firstName, lastName: contacts.lastName })
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)))
+      .limit(1);
+    return row;
+  });
   if (!contact) throw new Error("Kontakt nenalezen");
   const instructions = await getPaymentInstructionsForContact(contactId);
   const doc = await PDFDocument.create();
@@ -339,7 +363,19 @@ export async function generatePaymentPdfBuffer(contactId: string): Promise<Buffe
 export async function sendPaymentPdfToClient(contactId: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false, error: "Forbidden" };
-  const [contact] = await db.select({ email: contacts.email, firstName: contacts.firstName, lastName: contacts.lastName, notificationUnsubscribedAt: contacts.notificationUnsubscribedAt }).from(contacts).where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId))).limit(1);
+  const contact = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({
+        email: contacts.email,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        notificationUnsubscribedAt: contacts.notificationUnsubscribedAt,
+      })
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)))
+      .limit(1);
+    return row;
+  });
   if (!contact) return { ok: false, error: "Kontakt nenalezen" };
   if (!contact.email) return { ok: false, error: "U kontaktu chybí e-mail" };
   if (contact.notificationUnsubscribedAt) return { ok: false, error: "Klient se odhlásil z notifikací" };
@@ -351,11 +387,13 @@ export async function sendPaymentPdfToClient(contactId: string): Promise<{ ok: t
     const resend = new Resend(apiKey);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const unsubToken = crypto.randomUUID().replace(/-/g, "");
-    await db.insert(unsubscribeTokens).values({
-      contactId,
-      token: unsubToken,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    });
+    await withTenantContextFromAuth(auth, (tx) =>
+      tx.insert(unsubscribeTokens).values({
+        contactId,
+        token: unsubToken,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }),
+    );
     const unsubLink = `${baseUrl}/client/unsubscribe?token=${unsubToken}`;
     const mail = await loadAdvisorMailHeadersForCurrentUser();
     const { subject, html } = paymentPdfAttachmentClientTemplate({

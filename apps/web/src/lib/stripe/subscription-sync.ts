@@ -1,6 +1,7 @@
 import "server-only";
 import type Stripe from "stripe";
-import { db, subscriptions, invoices, tenants, eq, desc } from "db";
+import { subscriptions, invoices, tenants, eq, desc } from "db";
+import { dbService, withServiceTenantContext } from "@/lib/db/service-db";
 
 /**
  * Jak dlouho po překročení Stripe smart-retries dát uživateli ještě přístup
@@ -20,7 +21,7 @@ export async function resolveTenantIdForSubscription(
     typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
   if (!customerId) return null;
 
-  const [row] = await db
+  const [row] = await dbService
     .select({ id: tenants.id })
     .from(tenants)
     .where(eq(tenants.stripeCustomerId, customerId))
@@ -31,7 +32,7 @@ export async function resolveTenantIdForSubscription(
 export async function resolveTenantIdByCustomer(
   customerId: string,
 ): Promise<string | null> {
-  const [row] = await db
+  const [row] = await dbService
     .select({ id: tenants.id })
     .from(tenants)
     .where(eq(tenants.stripeCustomerId, customerId))
@@ -67,28 +68,30 @@ export async function upsertSubscriptionFromStripe(
 
   const promoCode = sub.metadata?.promo_code?.trim() || null;
 
-  await db
-    .insert(subscriptions)
-    .values({
-      tenantId,
-      stripeSubscriptionId: sub.id,
-      plan,
-      status: sub.status,
-      currentPeriodEnd,
-      cancelAtPeriodEnd: sub.cancel_at_period_end ? "true" : "false",
-      promoCode,
-    })
-    .onConflictDoUpdate({
-      target: subscriptions.stripeSubscriptionId,
-      set: {
+  await withServiceTenantContext({ tenantId }, async (tx) => {
+    await tx
+      .insert(subscriptions)
+      .values({
+        tenantId,
+        stripeSubscriptionId: sub.id,
         plan,
         status: sub.status,
         currentPeriodEnd,
         cancelAtPeriodEnd: sub.cancel_at_period_end ? "true" : "false",
-        // promoCode sem vědomě nedáváme — nechceme přepsat hodnotu, která přišla z checkout/audit flow.
-        updatedAt: new Date(),
-      },
-    });
+        promoCode,
+      })
+      .onConflictDoUpdate({
+        target: subscriptions.stripeSubscriptionId,
+        set: {
+          plan,
+          status: sub.status,
+          currentPeriodEnd,
+          cancelAtPeriodEnd: sub.cancel_at_period_end ? "true" : "false",
+          // promoCode sem vědomě nedáváme — nechceme přepsat hodnotu, která přišla z checkout/audit flow.
+          updatedAt: new Date(),
+        },
+      });
+  });
 }
 
 export type FailedInvoiceDunningOutcome = {
@@ -106,51 +109,53 @@ export type FailedInvoiceDunningOutcome = {
 export async function applyFailedInvoiceToSubscription(
   tenantId: string,
 ): Promise<FailedInvoiceDunningOutcome> {
-  const [row] = await db
-    .select({
-      id: subscriptions.id,
-      failedPaymentAttempts: subscriptions.failedPaymentAttempts,
-      gracePeriodEndsAt: subscriptions.gracePeriodEndsAt,
-    })
-    .from(subscriptions)
-    .where(eq(subscriptions.tenantId, tenantId))
-    .orderBy(desc(subscriptions.updatedAt))
-    .limit(1);
+  return await withServiceTenantContext({ tenantId }, async (tx) => {
+    const [row] = await tx
+      .select({
+        id: subscriptions.id,
+        failedPaymentAttempts: subscriptions.failedPaymentAttempts,
+        gracePeriodEndsAt: subscriptions.gracePeriodEndsAt,
+      })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, tenantId))
+      .orderBy(desc(subscriptions.updatedAt))
+      .limit(1);
 
-  if (!row) {
-    return { failedPaymentAttempts: 0, gracePeriodEndsAt: null, graceStarted: false };
-  }
+    if (!row) {
+      return { failedPaymentAttempts: 0, gracePeriodEndsAt: null, graceStarted: false };
+    }
 
-  const nextAttempts = (row.failedPaymentAttempts ?? 0) + 1;
-  const now = new Date();
-  let gracePeriodEndsAt = row.gracePeriodEndsAt;
-  let graceStarted = false;
+    const nextAttempts = (row.failedPaymentAttempts ?? 0) + 1;
+    const now = new Date();
+    let gracePeriodEndsAt = row.gracePeriodEndsAt;
+    let graceStarted = false;
 
-  if (
-    nextAttempts >= DUNNING_GRACE_TRIGGER_ATTEMPTS &&
-    !gracePeriodEndsAt
-  ) {
-    gracePeriodEndsAt = new Date(
-      now.getTime() + DUNNING_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000,
-    );
-    graceStarted = true;
-  }
+    if (
+      nextAttempts >= DUNNING_GRACE_TRIGGER_ATTEMPTS &&
+      !gracePeriodEndsAt
+    ) {
+      gracePeriodEndsAt = new Date(
+        now.getTime() + DUNNING_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000,
+      );
+      graceStarted = true;
+    }
 
-  await db
-    .update(subscriptions)
-    .set({
+    await tx
+      .update(subscriptions)
+      .set({
+        failedPaymentAttempts: nextAttempts,
+        lastPaymentFailedAt: now,
+        gracePeriodEndsAt,
+        updatedAt: now,
+      })
+      .where(eq(subscriptions.id, row.id));
+
+    return {
       failedPaymentAttempts: nextAttempts,
-      lastPaymentFailedAt: now,
       gracePeriodEndsAt,
-      updatedAt: now,
-    })
-    .where(eq(subscriptions.id, row.id));
-
-  return {
-    failedPaymentAttempts: nextAttempts,
-    gracePeriodEndsAt,
-    graceStarted,
-  };
+      graceStarted,
+    };
+  });
 }
 
 export type SucceededInvoiceRecoveryOutcome = {
@@ -170,50 +175,52 @@ export type SucceededInvoiceRecoveryOutcome = {
 export async function applySucceededInvoiceToSubscription(
   tenantId: string,
 ): Promise<SucceededInvoiceRecoveryOutcome> {
-  const [row] = await db
-    .select({
-      id: subscriptions.id,
-      failedPaymentAttempts: subscriptions.failedPaymentAttempts,
-      gracePeriodEndsAt: subscriptions.gracePeriodEndsAt,
-      restrictedAt: subscriptions.restrictedAt,
-    })
-    .from(subscriptions)
-    .where(eq(subscriptions.tenantId, tenantId))
-    .orderBy(desc(subscriptions.updatedAt))
-    .limit(1);
+  return await withServiceTenantContext({ tenantId }, async (tx) => {
+    const [row] = await tx
+      .select({
+        id: subscriptions.id,
+        failedPaymentAttempts: subscriptions.failedPaymentAttempts,
+        gracePeriodEndsAt: subscriptions.gracePeriodEndsAt,
+        restrictedAt: subscriptions.restrictedAt,
+      })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, tenantId))
+      .orderBy(desc(subscriptions.updatedAt))
+      .limit(1);
 
-  if (!row) {
-    return { recoveredFromDunning: false, previous: null };
-  }
+    if (!row) {
+      return { recoveredFromDunning: false, previous: null };
+    }
 
-  const wasInDunning =
-    (row.failedPaymentAttempts ?? 0) > 0 ||
-    row.gracePeriodEndsAt !== null ||
-    row.restrictedAt !== null;
+    const wasInDunning =
+      (row.failedPaymentAttempts ?? 0) > 0 ||
+      row.gracePeriodEndsAt !== null ||
+      row.restrictedAt !== null;
 
-  if (!wasInDunning) {
-    return { recoveredFromDunning: false, previous: null };
-  }
+    if (!wasInDunning) {
+      return { recoveredFromDunning: false, previous: null };
+    }
 
-  const now = new Date();
-  await db
-    .update(subscriptions)
-    .set({
-      failedPaymentAttempts: 0,
-      gracePeriodEndsAt: null,
-      restrictedAt: null,
-      updatedAt: now,
-    })
-    .where(eq(subscriptions.id, row.id));
+    const now = new Date();
+    await tx
+      .update(subscriptions)
+      .set({
+        failedPaymentAttempts: 0,
+        gracePeriodEndsAt: null,
+        restrictedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(subscriptions.id, row.id));
 
-  return {
-    recoveredFromDunning: true,
-    previous: {
-      failedPaymentAttempts: row.failedPaymentAttempts ?? 0,
-      gracePeriodEndsAt: row.gracePeriodEndsAt?.toISOString() ?? null,
-      restrictedAt: row.restrictedAt?.toISOString() ?? null,
-    },
-  };
+    return {
+      recoveredFromDunning: true,
+      previous: {
+        failedPaymentAttempts: row.failedPaymentAttempts ?? 0,
+        gracePeriodEndsAt: row.gracePeriodEndsAt?.toISOString() ?? null,
+        restrictedAt: row.restrictedAt?.toISOString() ?? null,
+      },
+    };
+  });
 }
 
 
@@ -228,44 +235,50 @@ export async function upsertInvoiceFromStripe(
   const periodStart = inv.period_start ? new Date(inv.period_start * 1000) : null;
   const periodEnd = inv.period_end ? new Date(inv.period_end * 1000) : null;
 
-  await db
-    .insert(invoices)
-    .values({
-      tenantId,
-      stripeInvoiceId: inv.id,
-      amount,
-      currency: inv.currency ?? "czk",
-      status: inv.status ?? "draft",
-      invoiceUrl: inv.hosted_invoice_url ?? null,
-      paidAt,
-      periodStart,
-      periodEnd,
-    })
-    .onConflictDoUpdate({
-      target: invoices.stripeInvoiceId,
-      set: {
+  await withServiceTenantContext({ tenantId }, async (tx) => {
+    await tx
+      .insert(invoices)
+      .values({
+        tenantId,
+        stripeInvoiceId: inv.id,
         amount,
+        currency: inv.currency ?? "czk",
         status: inv.status ?? "draft",
         invoiceUrl: inv.hosted_invoice_url ?? null,
         paidAt,
-      },
-    });
+        periodStart,
+        periodEnd,
+      })
+      .onConflictDoUpdate({
+        target: invoices.stripeInvoiceId,
+        set: {
+          amount,
+          status: inv.status ?? "draft",
+          invoiceUrl: inv.hosted_invoice_url ?? null,
+          paidAt,
+        },
+      });
+  });
 }
 
 export async function setTenantStripeCustomer(
   tenantId: string,
   customerId: string
 ): Promise<void> {
-  await db
-    .update(tenants)
-    .set({ stripeCustomerId: customerId, updatedAt: new Date() })
-    .where(eq(tenants.id, tenantId));
+  await withServiceTenantContext({ tenantId }, async (tx) => {
+    await tx
+      .update(tenants)
+      .set({ stripeCustomerId: customerId, updatedAt: new Date() })
+      .where(eq(tenants.id, tenantId));
+  });
 }
 
 /** Marks workspace trial as consumed when a Stripe subscription exists (Phase 2: idempotent job). */
 export async function markTenantTrialConverted(tenantId: string): Promise<void> {
-  await db
-    .update(tenants)
-    .set({ trialConvertedAt: new Date(), updatedAt: new Date() })
-    .where(eq(tenants.id, tenantId));
+  await withServiceTenantContext({ tenantId }, async (tx) => {
+    await tx
+      .update(tenants)
+      .set({ trialConvertedAt: new Date(), updatedAt: new Date() })
+      .where(eq(tenants.id, tenantId));
+  });
 }

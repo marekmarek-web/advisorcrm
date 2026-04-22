@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { cronAuthResponse } from "@/lib/cron-auth";
-import { db } from "@/lib/db-client";
+import { dbService, withServiceTenantContext } from "@/lib/db/service-db";
 import { contacts, auditLog } from "db";
 
 /**
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
   const threshold = new Date(Date.now() - TRASH_RETENTION_DAYS * 86400_000);
 
-  const due = await db
+  const due = await dbService
     .select({
       id: contacts.id,
       tenantId: contacts.tenantId,
@@ -52,29 +52,29 @@ export async function GET(request: Request) {
 
   for (const row of due) {
     try {
-      await db
-        .delete(contacts)
-        .where(and(eq(contacts.tenantId, row.tenantId), eq(contacts.id, row.id)));
+      await withServiceTenantContext({ tenantId: row.tenantId, userId: row.deletedBy ?? null }, async (tx) => {
+        await tx
+          .delete(contacts)
+          .where(and(eq(contacts.tenantId, row.tenantId), eq(contacts.id, row.id)));
 
-      await db.insert(auditLog).values({
-        tenantId: row.tenantId,
-        userId: row.deletedBy ?? "system",
-        action: "contact.purge_from_trash",
-        entityType: "contact",
-        entityId: row.id,
-        meta: {
-          deletedAt: row.deletedAt?.toISOString() ?? null,
-          retentionDays: TRASH_RETENTION_DAYS,
-          source: "cron.trash_purge_contacts",
-        },
+        await tx.insert(auditLog).values({
+          tenantId: row.tenantId,
+          userId: row.deletedBy ?? "system",
+          action: "contact.purge_from_trash",
+          entityType: "contact",
+          entityId: row.id,
+          meta: {
+            deletedAt: row.deletedAt?.toISOString() ?? null,
+            retentionDays: TRASH_RETENTION_DAYS,
+            source: "cron.trash_purge_contacts",
+          },
+        });
       });
 
       purged += 1;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       errors.push({ contactId: row.id, error: msg });
-      // Pokud selže hard-delete kvůli FK constraint (23503), kontakt zůstane v trashi.
-      // Ops alert přes Sentry / logs.
       console.error("[cron.trash_purge_contacts] purge failed", row.id, msg);
     }
   }

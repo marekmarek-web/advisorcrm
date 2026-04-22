@@ -2,8 +2,8 @@
 
 import { unstable_cache } from "next/cache";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
 import { tasks, advisorNotifications } from "db";
 import { and, eq, inArray, isNull, sql } from "db";
 import { ADVISOR_NOTIFICATION_TYPES } from "@/lib/advisor-in-app/advisor-notification-types";
@@ -23,56 +23,58 @@ async function fetchBadgeCounts(
   userId: string,
   canReadContacts: boolean
 ): Promise<PortalShellBadgeCounts> {
-  let openTasksResult: { count?: number }[] = [{ count: 0 }];
-  let notificationRows: { c?: number }[] = [{ c: 0 }];
-  try {
-    [openTasksResult, notificationRows] = await Promise.all([
-      canReadContacts
-        ? db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(tasks)
-            .where(and(eq(tasks.tenantId, tenantId), isNull(tasks.completedAt)))
-        : Promise.resolve([{ count: 0 }]),
-      db
-        .select({ c: sql<number>`count(*)::int` })
-        .from(advisorNotifications)
-        .where(
-          and(
-            eq(advisorNotifications.tenantId, tenantId),
-            eq(advisorNotifications.targetUserId, userId),
-            eq(advisorNotifications.status, "unread"),
-            inArray(advisorNotifications.type, [...ADVISOR_NOTIFICATION_TYPES])
-          )
-        ),
-    ]);
-  } catch {
-    /* DB nedostupná — vrátíme nuly, nepádíme s HTTP 500 */
-  }
-
-  const openTasks = canReadContacts ? Number((openTasksResult[0] as { count?: number })?.count ?? 0) : 0;
-
-  let unreadConversations = 0;
-  if (canReadContacts) {
+  return withTenantContextFromAuth({ tenantId, userId }, async (tx) => {
+    let openTasksResult: { count?: number }[] = [{ count: 0 }];
+    let notificationRows: { c?: number }[] = [{ c: 0 }];
     try {
-      const unreadMessagesResult = await db.execute(sql`
-        SELECT COUNT(DISTINCT m.contact_id)::int AS cnt
-        FROM messages m
-        WHERE m.tenant_id = ${tenantId}
-          AND m.sender_type = 'client'
-          AND m.read_at IS NULL
-      `);
-      const execRows = Array.isArray(unreadMessagesResult)
-        ? unreadMessagesResult
-        : (unreadMessagesResult as { rows?: { cnt: number }[] }).rows ?? [];
-      const row = execRows[0] as { cnt?: number } | undefined;
-      unreadConversations = row?.cnt ?? 0;
+      [openTasksResult, notificationRows] = await Promise.all([
+        canReadContacts
+          ? tx
+              .select({ count: sql<number>`count(*)::int` })
+              .from(tasks)
+              .where(and(eq(tasks.tenantId, tenantId), isNull(tasks.completedAt)))
+          : Promise.resolve([{ count: 0 }]),
+        tx
+          .select({ c: sql<number>`count(*)::int` })
+          .from(advisorNotifications)
+          .where(
+            and(
+              eq(advisorNotifications.tenantId, tenantId),
+              eq(advisorNotifications.targetUserId, userId),
+              eq(advisorNotifications.status, "unread"),
+              inArray(advisorNotifications.type, [...ADVISOR_NOTIFICATION_TYPES])
+            )
+          ),
+      ]);
     } catch {
-      unreadConversations = 0;
+      /* DB nedostupná — vrátíme nuly, nepádíme s HTTP 500 */
     }
-  }
 
-  const notifications = Number(notificationRows[0]?.c ?? 0);
-  return { openTasks, unreadConversations, notifications };
+    const openTasks = canReadContacts ? Number((openTasksResult[0] as { count?: number })?.count ?? 0) : 0;
+
+    let unreadConversations = 0;
+    if (canReadContacts) {
+      try {
+        const unreadMessagesResult = await tx.execute(sql`
+          SELECT COUNT(DISTINCT m.contact_id)::int AS cnt
+          FROM messages m
+          WHERE m.tenant_id = ${tenantId}
+            AND m.sender_type = 'client'
+            AND m.read_at IS NULL
+        `);
+        const execRows = Array.isArray(unreadMessagesResult)
+          ? unreadMessagesResult
+          : (unreadMessagesResult as { rows?: { cnt: number }[] }).rows ?? [];
+        const row = execRows[0] as { cnt?: number } | undefined;
+        unreadConversations = row?.cnt ?? 0;
+      } catch {
+        unreadConversations = 0;
+      }
+    }
+
+    const notifications = Number(notificationRows[0]?.c ?? 0);
+    return { openTasks, unreadConversations, notifications };
+  });
 }
 
 /**

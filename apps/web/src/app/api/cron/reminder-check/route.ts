@@ -10,9 +10,10 @@ export async function GET(request: Request) {
 
   try {
     const { evaluateDueDatePolicy, createReminder } = await import("@/lib/execution/reminder-engine");
-    const { db, contractUploadReviews, reminders, sql } = await import("db");
+    const { dbService, withServiceTenantContext } = await import("@/lib/db/service-db");
+    const { contractUploadReviews, reminders, sql } = await import("db");
 
-    const reviews = await db
+    const reviews = await dbService
       .select({
         id: contractUploadReviews.id,
         tenantId: contractUploadReviews.tenantId,
@@ -40,18 +41,20 @@ export async function GET(request: Request) {
       });
 
       try {
-        await db.insert(reminders).values({
-          tenantId: reminder.tenantId,
-          reminderType: reminder.reminderType,
-          title: reminder.title,
-          description: reminder.description,
-          dueAt: reminder.dueAt,
-          severity: reminder.severity,
-          relatedEntityType: reminder.relatedEntityType,
-          relatedEntityId: reminder.relatedEntityId,
-          assignedTo: reminder.assignedTo,
-          suggestionOrigin: reminder.suggestionOrigin,
-          status: reminder.status,
+        await withServiceTenantContext({ tenantId: review.tenantId }, async (tx) => {
+          await tx.insert(reminders).values({
+            tenantId: reminder.tenantId,
+            reminderType: reminder.reminderType,
+            title: reminder.title,
+            description: reminder.description,
+            dueAt: reminder.dueAt,
+            severity: reminder.severity,
+            relatedEntityType: reminder.relatedEntityType,
+            relatedEntityId: reminder.relatedEntityId,
+            assignedTo: reminder.assignedTo,
+            suggestionOrigin: reminder.suggestionOrigin,
+            status: reminder.status,
+          });
         });
         created++;
       } catch { /* dedup / constraint */ }

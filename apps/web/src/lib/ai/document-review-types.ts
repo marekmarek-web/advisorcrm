@@ -136,6 +136,7 @@ export const EVIDENCE_TIERS = [
   "cross_section_inference",   // inferred by combining data across sections
   "classifier_fallback",       // produced by a classifier prompt, not an extraction prompt
   "model_inference_only",      // model guess, no explicit textual evidence
+  "recovered_from_image",      // re-extracted from page image after primary pass left field empty/low-conf
   "missing",                   // not found / not applicable
 ] as const;
 
@@ -165,6 +166,7 @@ export const SOURCE_KINDS = [
   "attachment_block",      // obecná příloha
   "parties_record",        // extracted from envelope.parties by role
   "pipeline_normalized",   // set by alias normalization / pipeline post-processing
+  "page_image_fallback",   // recovered by re-running extraction over rasterized page image
   "unknown",
 ] as const;
 
@@ -209,6 +211,7 @@ export function sourceKindDisplayLabel(kind: SourceKind | undefined): string {
     attachment_block: "z přílohy",
     parties_record: "ze seznamu účastníků",
     pipeline_normalized: "odvozeno z kontextu",
+    page_image_fallback: "doplněno z obrázku stránky",
     unknown: "",
   };
   return MAP[kind] ?? "";

@@ -11,7 +11,8 @@
  * webhookem (viz `/api/resend/webhook`).
  */
 
-import { db, notificationLog } from "db";
+import { notificationLog } from "db";
+import { withServiceTenantContext } from "@/lib/db/service-db";
 import { resolveResendReplyTo } from "@/lib/email/resend-reply-to";
 
 export interface EmailPayload {
@@ -90,20 +91,24 @@ async function sendViaConsole(payload: EmailPayload): Promise<SendResult> {
 async function autoLog(payload: EmailPayload, result: SendResult): Promise<void> {
   if (!payload.audit) return;
   try {
-    await db.insert(notificationLog).values({
-      tenantId: payload.audit.tenantId,
-      contactId: payload.audit.contactId ?? null,
-      channel: "email",
-      template: payload.audit.template ?? null,
-      subject: payload.subject,
-      recipient: payload.to,
-      status: result.ok ? "sent" : "failed",
-      providerMessageId: result.messageId ?? null,
-      lastStatus: result.ok ? "sent" : "failed",
-      lastStatusAt: new Date(),
-      lastError: result.ok ? null : (result.error?.slice(0, 500) ?? null),
-      meta: payload.audit.meta ?? null,
-    });
+    await withServiceTenantContext(
+      { tenantId: payload.audit.tenantId },
+      (tx) =>
+        tx.insert(notificationLog).values({
+          tenantId: payload.audit!.tenantId,
+          contactId: payload.audit!.contactId ?? null,
+          channel: "email",
+          template: payload.audit!.template ?? null,
+          subject: payload.subject,
+          recipient: payload.to,
+          status: result.ok ? "sent" : "failed",
+          providerMessageId: result.messageId ?? null,
+          lastStatus: result.ok ? "sent" : "failed",
+          lastStatusAt: new Date(),
+          lastError: result.ok ? null : (result.error?.slice(0, 500) ?? null),
+          meta: payload.audit!.meta ?? null,
+        }),
+    );
   } catch {
     // logování se nesmí zlomit o samotný send
   }
@@ -153,19 +158,23 @@ export async function logNotification(params: {
   meta?: Record<string, unknown>;
 }) {
   try {
-    await db.insert(notificationLog).values({
-      tenantId: params.tenantId,
-      contactId: params.contactId || null,
-      channel: params.channel || "email",
-      template: params.template || null,
-      subject: params.subject,
-      recipient: params.recipient,
-      status: params.status,
-      providerMessageId: params.providerMessageId ?? null,
-      lastStatus: params.status,
-      lastStatusAt: new Date(),
-      meta: params.meta ?? null,
-    });
+    await withServiceTenantContext(
+      { tenantId: params.tenantId },
+      (tx) =>
+        tx.insert(notificationLog).values({
+          tenantId: params.tenantId,
+          contactId: params.contactId || null,
+          channel: params.channel || "email",
+          template: params.template || null,
+          subject: params.subject,
+          recipient: params.recipient,
+          status: params.status,
+          providerMessageId: params.providerMessageId ?? null,
+          lastStatus: params.status,
+          lastStatusAt: new Date(),
+          meta: params.meta ?? null,
+        }),
+    );
   } catch {
     // silently swallow – notification logging must never break the main flow
   }

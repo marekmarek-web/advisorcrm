@@ -459,12 +459,23 @@ function OverlayContainer({
 
   // Integrate with browser history — push a state when opened, close on popstate.
   // Gives Android hardware back + iOS edge-swipe a way to dismiss sheets.
+  //
+  // Defensive guard (proti „kliknu v sheetu a vrátí mě to zpátky“):
+  // 1. Pokud mezitím router.push přidal další entry (length vzrostla), cleanup
+  //    už nesmí volat `history.back()` — jinak uživatele vrátíme o skutečný
+  //    krok, ne o dummy sheet marker.
+  // 2. Pokud URL sheetu ≠ current URL, také nic nedělat (uživatel navigoval).
+  // 3. Jedině když top entry je pořád `__aidvSheet` a URL/length sedí,
+  //    "uklidíme" dummy entry bezpečně.
   useEffect(() => {
     if (!open) return;
     if (typeof window === "undefined") return;
     const marker = { __aidvSheet: true };
+    const openedUrl = window.location.href;
+    let historyLenAtPush: number;
     try {
       window.history.pushState(marker, "");
+      historyLenAtPush = window.history.length;
     } catch {
       return;
     }
@@ -476,15 +487,17 @@ function OverlayContainer({
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
-      if (!popped) {
-        try {
-          // We pushed a state; pop it back when the sheet closes via UI.
-          if (window.history.state && (window.history.state as { __aidvSheet?: boolean }).__aidvSheet) {
-            window.history.back();
-          }
-        } catch {
-          /* ignore */
+      if (popped) return;
+      try {
+        const currentState = window.history.state as { __aidvSheet?: boolean } | null;
+        const stillOnSheetEntry = currentState?.__aidvSheet === true;
+        const didNotNavigateForward = window.history.length === historyLenAtPush;
+        const urlUnchanged = window.location.href === openedUrl;
+        if (stillOnSheetEntry && didNotNavigateForward && urlUnchanged) {
+          window.history.back();
         }
+      } catch {
+        /* ignore */
       }
     };
   }, [open, onClose]);

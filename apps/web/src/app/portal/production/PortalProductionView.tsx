@@ -185,8 +185,8 @@ export function PortalProductionView() {
   }, [data]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 w-full" style={{ animation: "wp-fade-in 0.3s ease" }}>
-      <div className="wp-projects-section flex-1 min-w-0 pb-8">
+    <div className="flex flex-col w-full" style={{ animation: "wp-fade-in 0.3s ease" }}>
+      <div className="wp-projects-section min-w-0 pb-20 md:pb-16">
         {/* --- Header: compact on mobile --- */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6" style={{ marginBottom: "var(--wp-space-6)" }}>
           <div>

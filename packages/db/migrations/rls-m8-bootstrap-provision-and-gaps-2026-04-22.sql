@@ -752,6 +752,9 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_insert', tbl);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_update', tbl);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_delete', tbl);
+    -- Legacy FOR ALL naming (rls-unify-guc / supabase-performance-advisor používaly `_tenant_isolation`)
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_isolation', tbl);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_all', tbl);
 
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated, aidvisora_app ' ||
@@ -1001,6 +1004,9 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_insert', tbl);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_update', tbl);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_delete', tbl);
+    -- Legacy FOR ALL naming (rls-unify-guc / supabase-performance-advisor používaly `_tenant_isolation`)
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_isolation', tbl);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', tbl || '_tenant_all', tbl);
 
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated, aidvisora_app ' ||
@@ -1521,32 +1527,37 @@ BEGIN
   -- E.4 Každá policy na core tabulkách, která používá `current_setting('app.tenant_id', ...)`,
   --     musí zároveň obsahovat `NULLIF` guard. Jakákoli policy bez NULLIF je fail-open hazard
   --     (SQLSTATE 22P02 při chybějící GUC místo 0 řádků).
-  SELECT count(*) INTO v_cnt
-    FROM pg_policies
-   WHERE schemaname = 'public'
-     AND tablename IN (
-       'contacts','households','documents','document_extractions',
-       'document_extraction_fields','contract_upload_reviews',
-       'contract_review_corrections','contact_coverage','tasks','opportunities',
-       'financial_analyses','financial_shared_facts','fa_plan_items','fa_sync_log',
-       'consents','processing_purposes','aml_checklists','exports',
-       'audit_log','activity_log','communication_drafts','reminders',
-       'meeting_notes','portal_notifications','tenant_settings','contracts',
-       'messages','message_attachments','advisor_proposals','advisor_notifications',
-       'assistant_conversations','assistant_messages',
-       'client_requests','client_request_files',
-       'user_terms_acceptance','user_devices','unsubscribe_tokens',
-       'opportunity_stages','partners','products','fund_add_requests',
-       'dead_letter_items','ai_generations','ai_feedback',
-       'analysis_import_jobs','analysis_versions'
-     )
-     AND (
-       (qual IS NOT NULL AND qual LIKE '%current_setting%app.tenant_id%' AND qual NOT LIKE '%NULLIF%')
-       OR (with_check IS NOT NULL AND with_check LIKE '%current_setting%app.tenant_id%' AND with_check NOT LIKE '%NULLIF%')
-     );
-  IF v_cnt > 0 THEN
-    RAISE EXCEPTION 'rls-m8: % policy stále používá non-NULLIF current_setting pattern — normalizace nedokončena.', v_cnt;
-  END IF;
+  DECLARE
+    v_offending text;
+  BEGIN
+    SELECT string_agg(tablename || '.' || policyname, ', ' ORDER BY tablename, policyname)
+      INTO v_offending
+      FROM pg_policies
+     WHERE schemaname = 'public'
+       AND tablename IN (
+         'contacts','households','documents','document_extractions',
+         'document_extraction_fields','contract_upload_reviews',
+         'contract_review_corrections','contact_coverage','tasks','opportunities',
+         'financial_analyses','financial_shared_facts','fa_plan_items','fa_sync_log',
+         'consents','processing_purposes','aml_checklists','exports',
+         'audit_log','activity_log','communication_drafts','reminders',
+         'meeting_notes','portal_notifications','tenant_settings','contracts',
+         'messages','message_attachments','advisor_proposals','advisor_notifications',
+         'assistant_conversations','assistant_messages',
+         'client_requests','client_request_files',
+         'user_terms_acceptance','user_devices','unsubscribe_tokens',
+         'opportunity_stages','partners','products','fund_add_requests',
+         'dead_letter_items','ai_generations','ai_feedback',
+         'analysis_import_jobs','analysis_versions'
+       )
+       AND (
+         (qual IS NOT NULL AND qual LIKE '%current_setting%app.tenant_id%' AND qual NOT LIKE '%NULLIF%')
+         OR (with_check IS NOT NULL AND with_check LIKE '%current_setting%app.tenant_id%' AND with_check NOT LIKE '%NULLIF%')
+       );
+    IF v_offending IS NOT NULL THEN
+      RAISE EXCEPTION 'rls-m8: non-NULLIF current_setting policies zůstávají: %', v_offending;
+    END IF;
+  END;
 
   -- E.5 FORCE RLS musí být aktivní na všech gap tabulkách
   FOREACH v_table IN ARRAY v_gap_tables LOOP

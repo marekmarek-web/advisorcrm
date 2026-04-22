@@ -10,9 +10,10 @@ export async function GET(request: Request) {
 
   try {
     const { evaluateEscalations } = await import("@/lib/execution/escalation-engine");
-    const { db, contractUploadReviews, memberships, roles, eq, and, sql } = await import("db");
+    const { dbService, withServiceTenantContext } = await import("@/lib/db/service-db");
+    const { contractUploadReviews, memberships, roles, eq, and, sql } = await import("db");
 
-    const reviews = await db
+    const reviews = await dbService
       .select({
         id: contractUploadReviews.id,
         tenantId: contractUploadReviews.tenantId,
@@ -30,12 +31,15 @@ export async function GET(request: Request) {
 
     let escalationsCreated = 0;
     for (const [tenantId, items] of tenantItems) {
-      const managers = await db.select({ userId: memberships.userId })
-        .from(memberships)
-        .innerJoin(roles, eq(memberships.roleId, roles.id))
-        .where(and(eq(memberships.tenantId, tenantId), eq(roles.name, "Manager")))
-        .limit(1);
-      const targetUserId = managers[0]?.userId;
+      const targetUserId = await withServiceTenantContext({ tenantId }, async (tx) => {
+        const managers = await tx
+          .select({ userId: memberships.userId })
+          .from(memberships)
+          .innerJoin(roles, eq(memberships.roleId, roles.id))
+          .where(and(eq(memberships.tenantId, tenantId), eq(roles.name, "Manager")))
+          .limit(1);
+        return managers[0]?.userId ?? null;
+      });
       if (!targetUserId) continue;
 
       const events = await evaluateEscalations(tenantId, items, targetUserId);

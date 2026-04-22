@@ -2,9 +2,21 @@
  * Central audit logging for sensitive operations.
  * Phase 0: document upload/delete, extraction lifecycle, corrections.
  * Do not log document content, full prompts, or PII in meta.
+ *
+ * Runtime pod `aidvisora_app` (NOBYPASSRLS, FORCE RLS):
+ *   `audit_log` tenant-scoped policy (rls-m8 core-tier) vyžaduje
+ *   `app.tenant_id = tenant_id`. Audit callery jsou ale různorodé (actions,
+ *   cron joby, webhooks) a píšou mimo caller-transakci. Abychom audit
+ *   nepodmiňovali wrapperem v každém callsite, zapisujeme přes service-role
+ *   (`dbService`) a vždy nastavíme GUC přes `withServiceTenantContext` —
+ *   tím i po případném downgrade service role na NOBYPASSRLS policy projde.
+ *
+ *   Legacy hodnoty `tenantId = "system"` (image-intake cronu) nejsou platné
+ *   UUID a do `audit_log.tenant_id (uuid)` by neprošly. V těch případech
+ *   audit rovnou zahodíme + zalogujeme do console (fire-and-forget historie).
  */
-import { db } from "db";
 import { auditLog } from "db";
+import { withServiceTenantContext } from "@/lib/db/service-db";
 
 export type AuditMeta = Record<string, unknown>;
 
@@ -13,6 +25,12 @@ export type AuditRequestContext = {
   userAgent?: string | null;
   requestId?: string | null;
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidTenantId(tenantId: string): boolean {
+  return UUID_RE.test(tenantId);
+}
 
 /** Exported for background jobs that cannot keep the original Request alive. */
 export function buildRequestContext(request: Request): AuditRequestContext {
@@ -39,16 +57,27 @@ export async function logAudit(params: {
     ...(meta ?? {}),
     ...(ctx.requestId ? { requestId: ctx.requestId } : {}),
   };
-  await db.insert(auditLog).values({
-    tenantId,
-    userId: userId ?? undefined,
-    action,
-    entityType: entityType ?? undefined,
-    entityId: entityId ?? undefined,
-    meta: finalMeta,
-    ipAddress: ctx.ipAddress ?? undefined,
-    userAgent: ctx.userAgent ?? undefined,
-  });
+
+  if (!isValidTenantId(tenantId)) {
+    console.warn("[audit] skipping log for non-uuid tenantId", { tenantId, action });
+    return;
+  }
+
+  await withServiceTenantContext(
+    { tenantId, userId: userId ?? null },
+    async (tx) => {
+      await tx.insert(auditLog).values({
+        tenantId,
+        userId: userId ?? undefined,
+        action,
+        entityType: entityType ?? undefined,
+        entityId: entityId ?? undefined,
+        meta: finalMeta,
+        ipAddress: ctx.ipAddress ?? undefined,
+        userAgent: ctx.userAgent ?? undefined,
+      });
+    },
+  );
 }
 
 /**
@@ -63,15 +92,27 @@ export function logAuditAction(params: {
   entityId?: string;
   meta?: Record<string, unknown>;
 }): void {
-  db.insert(auditLog)
-    .values({
+  if (!isValidTenantId(params.tenantId)) {
+    console.info("[audit] action (non-uuid tenant, skip DB)", {
       tenantId: params.tenantId,
-      userId: params.userId,
       action: params.action,
-      entityType: params.entityType ?? undefined,
-      entityId: params.entityId ?? undefined,
-      meta: params.meta ?? undefined,
-    })
+    });
+    return;
+  }
+
+  withServiceTenantContext(
+    { tenantId: params.tenantId, userId: params.userId },
+    async (tx) => {
+      await tx.insert(auditLog).values({
+        tenantId: params.tenantId,
+        userId: params.userId,
+        action: params.action,
+        entityType: params.entityType ?? undefined,
+        entityId: params.entityId ?? undefined,
+        meta: params.meta ?? undefined,
+      });
+    },
+  )
     .then(() => {})
     .catch(() => {});
 }

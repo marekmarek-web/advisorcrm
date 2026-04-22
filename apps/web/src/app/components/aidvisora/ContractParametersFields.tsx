@@ -17,6 +17,12 @@ import {
   annualPremiumFromMonthlyInput,
   monthlyPremiumFromAnnualInput,
 } from "@/lib/contracts/annual-premium-from-monthly";
+import {
+  PRODUCT_CATEGORIES,
+  PRODUCT_CATEGORY_LABELS,
+  classifyProduct,
+  type ProductCategory,
+} from "@/lib/ai/product-categories";
 
 type FieldClasses = { label: string; input: string };
 
@@ -155,6 +161,28 @@ export function ContractParametersFields({ form, setForm, classes }: Props) {
   const frequencyOptions = frequencyOptionsForSegment(form.segment);
   const showFrequency = showPremium && frequencyOptions.length > 1 && !annualPrimary;
 
+  const segmentGroup = getSegmentUiGroup(form.segment);
+  const isInvestment = form.segment === "INV" || form.segment === "DIP";
+  const isPension = form.segment === "DPS";
+  const isMortgage = form.segment === "HYPO";
+  const isConsumerLoan = form.segment === "UVER";
+  const isLending = segmentGroup === "lending";
+  const showEntryFee = isInvestment;
+  const showParticipantContribution = isPension;
+  const showLoanPrincipal = isLending;
+  const showPpiToggle = isConsumerLoan;
+
+  // Auto-detekce kategorie pro preview (používá stejnou logiku jako server action).
+  const detected = classifyProduct({
+    providerName: form.partnerName,
+    productName: form.productName,
+    segment: form.segment,
+    paymentType: form.paymentType ?? undefined,
+    hasEntryFee: form.entryFee ? Number(form.entryFee.replace(",", ".")) > 0 : undefined,
+    hasPpi: form.hasPpi ?? undefined,
+  });
+  const effectiveCategory: ProductCategory = form.productCategory ?? detected.category;
+
   return (
     <div className="space-y-6">
       {showFrequency ? (
@@ -256,6 +284,128 @@ export function ContractParametersFields({ form, setForm, classes }: Props) {
           </p>
         </div>
       ) : null}
+
+      {/* ─── BJ kalkulátor — vstupní pole specifická pro segment ─── */}
+      {showEntryFee ? (
+        <div>
+          <label className={classes.label}>Vstupní poplatek (Kč)</label>
+          <input
+            type="number"
+            step="0.01"
+            min={0}
+            inputMode="decimal"
+            value={form.entryFee}
+            onChange={(e) => setForm((f) => ({ ...f, entryFee: e.target.value }))}
+            placeholder="např. 10000"
+            className={classes.input}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            Pro BJ přepočet u investic s VP (Amundi 4,2 BJ / 1 000 Kč, Edward 3,6, Codya 4,0, Investika 4,0).
+          </p>
+        </div>
+      ) : null}
+
+      {showParticipantContribution ? (
+        <div>
+          <label className={classes.label}>Měsíční příspěvek účastníka (Kč)</label>
+          <input
+            type="number"
+            step="0.01"
+            min={0}
+            inputMode="decimal"
+            value={form.participantContribution}
+            onChange={(e) => setForm((f) => ({ ...f, participantContribution: e.target.value }))}
+            placeholder="např. 1700"
+            className={classes.input}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            Pro BJ přepočet DPS (1,1 BJ / 100 Kč měs., cap 1 700 Kč/měs). Pokud je vyplněno, má přednost před pojistným.
+          </p>
+        </div>
+      ) : null}
+
+      {showLoanPrincipal ? (
+        <div>
+          <label className={classes.label}>Jistina úvěru (Kč)</label>
+          <input
+            type="number"
+            step="0.01"
+            min={0}
+            inputMode="decimal"
+            value={form.loanPrincipal}
+            onChange={(e) => setForm((f) => ({ ...f, loanPrincipal: e.target.value }))}
+            placeholder="např. 3500000"
+            className={classes.input}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            {isMortgage
+              ? "Pro BJ přepočet hypotéky (RB fix 1-2 roky 44,8 BJ / 1 mil, standard 70 BJ / 1 mil)."
+              : "Pro BJ přepočet spotřebitelského úvěru (112–132 BJ / 1 mil dle PPI)."}
+          </p>
+        </div>
+      ) : null}
+
+      {showPpiToggle ? (
+        <div>
+          <label className={classes.label}>Pojištění schopnosti splácet (PPI)</label>
+          <div role="radiogroup" aria-label="PPI" className="flex flex-wrap gap-2">
+            {[
+              { value: true, label: "Ano" },
+              { value: false, label: "Ne" },
+              { value: null, label: "Neuvedeno" },
+            ].map((opt) => {
+              const active = form.hasPpi === opt.value;
+              return (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setForm((f) => ({ ...f, hasPpi: opt.value }))}
+                  className={`inline-flex min-h-[40px] items-center rounded-full px-4 py-1 text-sm font-semibold transition ${
+                    active
+                      ? "bg-slate-900 text-white border border-slate-900"
+                      : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            S PPI má úvěr vyšší BJ sazbu (+20 BJ / 1 mil u RSTS).
+          </p>
+        </div>
+      ) : null}
+
+      {/* ─── Kategorie pro provize / BJ přepočet ─── */}
+      <div>
+        <label className={classes.label}>Typ produktu pro provize</label>
+        <select
+          value={form.productCategory ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            setForm((f) => ({
+              ...f,
+              productCategory: v === "" ? null : (v as ProductCategory),
+            }));
+          }}
+          className={classes.input}
+        >
+          <option value="">Auto-detekce ({PRODUCT_CATEGORY_LABELS[effectiveCategory]})</option>
+          {PRODUCT_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {PRODUCT_CATEGORY_LABELS[cat]}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-slate-400 mt-1">
+          {form.productCategory
+            ? "Ručně nastavená kategorie (přepíše auto-detekci)."
+            : `Automaticky odvozeno z partnera + segmentu. Aktuálně: ${PRODUCT_CATEGORY_LABELS[effectiveCategory]}.`}
+        </p>
+      </div>
 
       <div>
         <label className={classes.label}>Číslo smlouvy</label>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cronAuthResponse } from "@/lib/cron-auth";
-import { db } from "db";
+import { dbService, withServiceTenantContext } from "@/lib/db/service-db";
 import { analyticsSnapshots, tenants } from "db";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   try {
-    const allTenants = await db.select({ id: tenants.id }).from(tenants);
+    const allTenants = await dbService.select({ id: tenants.id }).from(tenants);
 
     for (const tenant of allTenants) {
       const payload: Record<string, unknown> = {};
@@ -44,11 +44,13 @@ export async function GET(request: Request) {
         /* skip */
       }
 
-      await db.insert(analyticsSnapshots).values({
-        tenantId: tenant.id,
-        snapshotType: "daily",
-        snapshotDate: new Date(),
-        payload,
+      await withServiceTenantContext({ tenantId: tenant.id }, async (tx) => {
+        await tx.insert(analyticsSnapshots).values({
+          tenantId: tenant.id,
+          snapshotType: "daily",
+          snapshotDate: new Date(),
+          payload,
+        });
       });
     }
 

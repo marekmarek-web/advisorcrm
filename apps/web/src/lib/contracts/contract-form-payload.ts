@@ -10,6 +10,10 @@ import {
   segmentUsesAnnualPremiumPrimaryInput,
 } from "@/lib/contracts/contract-segment-wizard-config";
 import {
+  PRODUCT_CATEGORIES,
+  type ProductCategory,
+} from "@/lib/ai/product-categories";
+import {
   annualPremiumFromMonthlyInput,
   annualPremiumPillLabel,
   monthlyPremiumFromAnnualInput,
@@ -54,6 +58,20 @@ export type ContractFormState = {
    * a obou částek. Monthly = default, pokud advisor neurčí jinak.
    */
   paymentFrequency: ContractPaymentFrequency;
+  // ─── BJ inputs (uloží se do portfolio_attributes + productCategory) ─────
+  /** Vstupní poplatek v Kč (INV s VP — Amundi, Edward, CODYA, Investika). */
+  entryFee: string;
+  /** Jistina úvěru / hypotéky v Kč (HYPO, UVER). */
+  loanPrincipal: string;
+  /** Měsíční příspěvek účastníka (DPS / DIP). */
+  participantContribution: string;
+  /** Pojištění schopnosti splácet u spotřebitelských úvěrů. null = neví se. */
+  hasPpi: boolean | null;
+  /**
+   * Override kategorie pro BJ přepočet. null = auto-detect z partnera/produktu/segmentu.
+   * Když advisor explicitně nastaví, má přednost před classifyProduct.
+   */
+  productCategory: ProductCategory | null;
 };
 
 /** Payload pro createContract / updateContract (normalizovaný). */
@@ -75,6 +93,12 @@ export type ContractPersistPayload = {
   paymentFrequency?: ContractPaymentFrequency;
   /** Čitelný label pro portfolio_attributes (cs) — derivuje se z paymentFrequency. */
   paymentFrequencyLabel?: string;
+  // ─── BJ inputs (propsat do contracts.product_category + portfolio_attributes) ──
+  entryFee?: string;
+  loanPrincipal?: string;
+  participantContribution?: string;
+  hasPpi?: boolean;
+  productCategory?: ProductCategory;
 };
 
 const PAYMENT_FREQUENCY_LABELS_CS: Record<ContractPaymentFrequency, string> = {
@@ -179,6 +203,17 @@ export function normalizeContractFormForSave(form: ContractFormState): ContractP
   // Produkt v DB vždy patří partnerovi — osiřelé productId po změně partnera způsobovalo falešné chyby
   if (!partnerId && productId) productId = undefined;
 
+  const group = getSegmentUiGroup(segment);
+  const entryFee = form.entryFee?.trim() || undefined;
+  const loanPrincipal = group === "lending" ? form.loanPrincipal?.trim() || undefined : undefined;
+  const participantContribution =
+    segment === "DPS" || segment === "DIP" ? form.participantContribution?.trim() || undefined : undefined;
+  const hasPpi = segment === "UVER" && form.hasPpi != null ? form.hasPpi : undefined;
+  const productCategory =
+    form.productCategory && PRODUCT_CATEGORIES.includes(form.productCategory)
+      ? form.productCategory
+      : undefined;
+
   return {
     segment,
     partnerId,
@@ -194,8 +229,17 @@ export function normalizeContractFormForSave(form: ContractFormState): ContractP
     paymentType,
     paymentFrequency: frequency,
     paymentFrequencyLabel: paymentFrequencyLabelCs(frequency),
+    entryFee,
+    loanPrincipal,
+    participantContribution,
+    hasPpi,
+    productCategory,
   };
 }
+
+const productCategorySchema = z.enum(
+  PRODUCT_CATEGORIES as unknown as [ProductCategory, ...ProductCategory[]],
+);
 
 const persistSchema = z.object({
   segment: segmentSchema,
@@ -212,6 +256,11 @@ const persistSchema = z.object({
   paymentType: z.enum(["one_time", "regular"]).optional(),
   paymentFrequency: z.enum(["monthly", "annual", "quarterly", "semiannual", "one_time"]).optional(),
   paymentFrequencyLabel: optionalTrimmed,
+  entryFee: optionalTrimmed,
+  loanPrincipal: optionalTrimmed,
+  participantContribution: optionalTrimmed,
+  hasPpi: z.boolean().optional(),
+  productCategory: productCategorySchema.optional(),
 });
 
 /** Validace před uložením (klient i server). */
@@ -344,6 +393,11 @@ const EMPTY_STEP2: Pick<
   | "note"
   | "paymentType"
   | "paymentFrequency"
+  | "entryFee"
+  | "loanPrincipal"
+  | "participantContribution"
+  | "hasPpi"
+  | "productCategory"
 > = {
   premiumAmount: "",
   premiumAnnual: "",
@@ -353,6 +407,11 @@ const EMPTY_STEP2: Pick<
   note: "",
   paymentType: "regular",
   paymentFrequency: "monthly",
+  entryFee: "",
+  loanPrincipal: "",
+  participantContribution: "",
+  hasPpi: null,
+  productCategory: null,
 };
 
 /** Po změně segmentu: partner/produkt + pole kroku 2 vyčistit (volá se z wizardu). */
@@ -387,4 +446,9 @@ export const initialContractFormState = (): ContractFormState => ({
   // (jednorázovky se počítaly jako měsíční, protože paymentType = null → fallback "regular").
   paymentType: "regular",
   paymentFrequency: "monthly",
+  entryFee: "",
+  loanPrincipal: "",
+  participantContribution: "",
+  hasPpi: null,
+  productCategory: null,
 });

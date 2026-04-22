@@ -92,13 +92,18 @@ export async function getDeliveryStatus(
   tenantId: string,
 ): Promise<{ status: string; failureCode?: string } | null> {
   try {
-    const { db, executionActions, eq, and } = await import("db");
-    const [row] = await db.select({
-      status: executionActions.status,
-      failureCode: executionActions.failureCode,
-    }).from(executionActions)
-      .where(and(eq(executionActions.id, executionId), eq(executionActions.tenantId, tenantId)))
-      .limit(1);
+    const { executionActions, eq, and } = await import("db");
+    const { withServiceTenantContext } = await import("@/lib/db/service-db");
+    const [row] = await withServiceTenantContext({ tenantId }, (tx) =>
+      tx
+        .select({
+          status: executionActions.status,
+          failureCode: executionActions.failureCode,
+        })
+        .from(executionActions)
+        .where(and(eq(executionActions.id, executionId), eq(executionActions.tenantId, tenantId)))
+        .limit(1),
+    );
     if (!row) return null;
     return {
       status: row.status,

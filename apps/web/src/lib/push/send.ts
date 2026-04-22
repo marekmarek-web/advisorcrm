@@ -1,7 +1,8 @@
 import "server-only";
 
 import { GoogleAuth } from "google-auth-library";
-import { and, clientContacts, db, eq, isNull, notificationLog, userDevices } from "db";
+import { and, clientContacts, eq, isNull, notificationLog, userDevices } from "db";
+import { dbService, withServiceTenantContext } from "@/lib/db/service-db";
 import { PushEventPayloadSchema, type PushEventPayload } from "./events";
 
 const PUSH_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
@@ -82,20 +83,24 @@ export async function sendPushToUser(eventInput: PushEventPayload): Promise<Push
   const accessToken = await getAccessToken(account);
   if (!accessToken) return { sent: 0, failed: 0, skipped: true };
 
-  const devices = await db
-    .select({
-      pushToken: userDevices.pushToken,
-      id: userDevices.id,
-    })
-    .from(userDevices)
-    .where(
-      and(
-        eq(userDevices.tenantId, event.tenantId),
-        eq(userDevices.userId, event.userId),
-        eq(userDevices.pushEnabled, true),
-        isNull(userDevices.revokedAt)
-      )
-    );
+  const devices = await withServiceTenantContext(
+    { tenantId: event.tenantId, userId: event.userId },
+    (tx) =>
+      tx
+        .select({
+          pushToken: userDevices.pushToken,
+          id: userDevices.id,
+        })
+        .from(userDevices)
+        .where(
+          and(
+            eq(userDevices.tenantId, event.tenantId),
+            eq(userDevices.userId, event.userId),
+            eq(userDevices.pushEnabled, true),
+            isNull(userDevices.revokedAt),
+          ),
+        ),
+  );
 
   if (devices.length === 0) {
     return { sent: 0, failed: 0, skipped: false };
@@ -130,8 +135,14 @@ export async function sendPushToUser(eventInput: PushEventPayload): Promise<Push
 
       if (isUnregistered) {
         try {
-          await db.update(userDevices).set({ revokedAt: new Date() })
-            .where(eq(userDevices.id, device.id));
+          await withServiceTenantContext(
+            { tenantId: event.tenantId, userId: event.userId },
+            (tx) =>
+              tx
+                .update(userDevices)
+                .set({ revokedAt: new Date() })
+                .where(eq(userDevices.id, device.id)),
+          );
         } catch { /* best-effort revoke */ }
         finalStatus = "token_revoked";
         break;
@@ -143,19 +154,23 @@ export async function sendPushToUser(eventInput: PushEventPayload): Promise<Push
       }
     }
 
-    await db.insert(notificationLog).values({
-      tenantId: event.tenantId,
-      channel: "push",
-      template: event.type,
-      subject: event.title,
-      recipient: device.pushToken,
-      status: finalStatus,
-      meta: {
-        userId: event.userId,
-        deviceId: device.id,
-        attempts: attempts + 1,
-      },
-    });
+    await withServiceTenantContext(
+      { tenantId: event.tenantId, userId: event.userId },
+      (tx) =>
+        tx.insert(notificationLog).values({
+          tenantId: event.tenantId,
+          channel: "push",
+          template: event.type,
+          subject: event.title,
+          recipient: device.pushToken,
+          status: finalStatus,
+          meta: {
+            userId: event.userId,
+            deviceId: device.id,
+            attempts: attempts + 1,
+          },
+        }),
+    );
 
     if (finalStatus === "sent") sent += 1;
     else failed += 1;
@@ -177,7 +192,7 @@ export async function sendPushForPortalNotification(params: {
   body?: string | null;
   relatedEntityId?: string | null;
 }): Promise<void> {
-  const recipients = await db
+  const recipients = await dbService
     .select({
       userId: clientContacts.userId,
     })

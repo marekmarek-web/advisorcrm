@@ -27,6 +27,7 @@ import {
 import { breadcrumbContractAiReviewMissingSourceReview } from "@/lib/observability/contract-review-sentry";
 import { ensureUserProfileRowForAdvisor } from "@/lib/db/ensure-user-profile-for-contract-fk";
 import { recomputeBjForContract } from "@/lib/bj/recompute-bj-for-contract";
+import { classifyProduct, type ProductCategory } from "@/lib/ai/product-categories";
 
 export type ContractRow = {
   id: string;
@@ -424,6 +425,12 @@ export async function createContract(
     paymentType?: "one_time" | "regular" | null;
     /** Explicitní frekvence platby ze segmented controlu (F2). */
     paymentFrequency?: "monthly" | "annual" | "quarterly" | "semiannual" | "one_time";
+    // ── BJ vstupy ────────────────────────────────────────────────────────
+    entryFee?: string;
+    loanPrincipal?: string;
+    participantContribution?: string;
+    hasPpi?: boolean | null;
+    productCategory?: ProductCategory | null;
   }
 ): Promise<CreateContractResult> {
   try {
@@ -510,6 +517,29 @@ export async function createContract(
       if (normalized.paymentFrequencyLabel) {
         initialPortfolioAttributes.paymentFrequencyLabel = normalized.paymentFrequencyLabel;
       }
+      if (normalized.entryFee) initialPortfolioAttributes.entryFee = normalized.entryFee;
+      if (normalized.loanPrincipal) initialPortfolioAttributes.loanPrincipal = normalized.loanPrincipal;
+      if (normalized.participantContribution) {
+        initialPortfolioAttributes.participantContribution = normalized.participantContribution;
+      }
+      if (typeof normalized.hasPpi === "boolean") initialPortfolioAttributes.hasPpi = normalized.hasPpi;
+
+      // ── Klasifikace produktu pro BJ přepočet ────────────────────────────
+      // Auto-detect z partnera/produktu/segmentu; override z formuláře má přednost.
+      const hasEntryFee =
+        normalized.entryFee != null &&
+        normalized.entryFee !== "" &&
+        Number(normalized.entryFee.replace(",", ".")) > 0;
+      const classification = classifyProduct({
+        providerName: partnerName,
+        productName,
+        segment,
+        paymentType: normalized.paymentType,
+        hasEntryFee,
+        hasPpi: normalized.hasPpi,
+      });
+      const resolvedCategory = normalized.productCategory ?? classification.category;
+      const resolvedSubtypes = classification.subtypes.length > 0 ? classification.subtypes : null;
 
       const [row] = await tx
         .insert(contracts)
@@ -535,6 +565,8 @@ export async function createContract(
           advisorConfirmedAt: new Date(),
           confirmedByUserId: advisorUid,
           portfolioAttributes: initialPortfolioAttributes,
+          productCategory: resolvedCategory,
+          productSubtype: resolvedSubtypes,
         })
         .returning({ id: contracts.id });
       const newId = row?.id ?? null;
@@ -547,10 +579,8 @@ export async function createContract(
       try {
         await logActivity("contract", outcome.id, "create", { segment, contactId });
       } catch {}
-      // BJ se zatím u ručně zakládaných smluv počítá jen pokud má vyplněnou
-      // productCategory — ta u createContract typicky není (formulář ji
-      // ještě nenastavuje). Přesto zavoláme recompute, aby i smlouvy, u nichž
-      // někdo doplní kategorii přímo v DB, šly refreshnout.
+      // createContract nyní plní productCategory (auto-detect + user override),
+      // takže recompute BJ spočítá BJ jednotky pokud jsou vstupní částky k dispozici.
       try {
         await recomputeBjForContract({ tenantId: auth.tenantId, contractId: outcome.id });
       } catch {}
@@ -646,6 +676,12 @@ export async function updateContract(
     paymentType?: "one_time" | "regular" | null;
     /** Explicitní frekvence platby ze segmented controlu (F2). */
     paymentFrequency?: "monthly" | "annual" | "quarterly" | "semiannual" | "one_time";
+    // ── BJ vstupy ────────────────────────────────────────────────────────
+    entryFee?: string;
+    loanPrincipal?: string;
+    participantContribution?: string;
+    hasPpi?: boolean | null;
+    productCategory?: ProductCategory | null;
   }
 ) {
   try {
@@ -669,6 +705,11 @@ export async function updateContract(
       paymentFrequency:
         form.paymentFrequency ??
         (form.paymentType === "one_time" ? "one_time" : "monthly"),
+      entryFee: form.entryFee ?? "",
+      loanPrincipal: form.loanPrincipal ?? "",
+      participantContribution: form.participantContribution ?? "",
+      hasPpi: form.hasPpi ?? null,
+      productCategory: form.productCategory ?? null,
     };
 
     const validation = validateContractFormForSubmit(full);
@@ -691,14 +732,23 @@ export async function updateContract(
         portfolioPatch.portfolioStatus = ps;
       }
     }
-    // Při změně typu platby / frekvence slijeme hodnoty do existujícího portfolio_attributes JSONB
-    // (Postgres `||` operátor), abychom nepřepisovali ostatní klíče.
-    if (normalized.paymentType || normalized.paymentFrequencyLabel) {
-      const patch: Record<string, string> = {};
+    // Při změně typu platby / frekvence / BJ vstupů slijeme hodnoty do
+    // existujícího portfolio_attributes JSONB (`||` operátor), abychom
+    // nepřepisovali ostatní klíče.
+    {
+      const patch: Record<string, unknown> = {};
       if (normalized.paymentType) patch.paymentType = normalized.paymentType;
       if (normalized.paymentFrequencyLabel) patch.paymentFrequencyLabel = normalized.paymentFrequencyLabel;
-      const patchJson = JSON.stringify(patch);
-      portfolioPatch.portfolioAttributes = sql`COALESCE(${contracts.portfolioAttributes}, '{}'::jsonb) || ${patchJson}::jsonb`;
+      if (normalized.entryFee) patch.entryFee = normalized.entryFee;
+      if (normalized.loanPrincipal) patch.loanPrincipal = normalized.loanPrincipal;
+      if (normalized.participantContribution) {
+        patch.participantContribution = normalized.participantContribution;
+      }
+      if (typeof normalized.hasPpi === "boolean") patch.hasPpi = normalized.hasPpi;
+      if (Object.keys(patch).length > 0) {
+        const patchJson = JSON.stringify(patch);
+        portfolioPatch.portfolioAttributes = sql`COALESCE(${contracts.portfolioAttributes}, '{}'::jsonb) || ${patchJson}::jsonb`;
+      }
     }
     const touchPortfolioMeta =
       form.visibleToClient !== undefined || form.portfolioStatus !== undefined;
@@ -732,6 +782,23 @@ export async function updateContract(
         throw new Error(updateRef.message);
       }
 
+      // Klasifikace — auto-detect + user override (jako v createContract).
+      const hasEntryFeeUpd =
+        normalized.entryFee != null &&
+        normalized.entryFee !== "" &&
+        Number(normalized.entryFee.replace(",", ".")) > 0;
+      const classificationUpd = classifyProduct({
+        providerName: partnerName,
+        productName,
+        segment,
+        paymentType: normalized.paymentType,
+        hasEntryFee: hasEntryFeeUpd,
+        hasPpi: normalized.hasPpi,
+      });
+      const resolvedCategoryUpd = normalized.productCategory ?? classificationUpd.category;
+      const resolvedSubtypesUpd =
+        classificationUpd.subtypes.length > 0 ? classificationUpd.subtypes : null;
+
       await tx
         .update(contracts)
         .set({
@@ -747,6 +814,8 @@ export async function updateContract(
           startDate: normalized.startDate || null,
           anniversaryDate: normalized.anniversaryDate || null,
           note: normalized.note?.trim() || null,
+          productCategory: resolvedCategoryUpd,
+          productSubtype: resolvedSubtypesUpd,
           ...portfolioPatch,
           ...(touchPortfolioMeta
             ? { advisorConfirmedAt: new Date(), confirmedByUserId: auth.userId }

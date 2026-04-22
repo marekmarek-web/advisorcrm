@@ -1,8 +1,8 @@
 "use server";
 
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
 import { financialSharedFacts } from "db";
 import { eq, and } from "db";
 import type { SharedFactRecord } from "@/lib/analyses/shared-facts/sharedFactsMapper";
@@ -26,33 +26,35 @@ export type SharedFactRow = {
 };
 
 export async function getSharedFactsForContact(contactId: string): Promise<SharedFactRow[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select()
-    .from(financialSharedFacts)
-    .where(
-      and(
-        eq(financialSharedFacts.tenantId, auth.tenantId),
-        eq(financialSharedFacts.contactId, contactId)
-      )
-    );
-  return rows as SharedFactRow[];
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select()
+      .from(financialSharedFacts)
+      .where(
+        and(
+          eq(financialSharedFacts.tenantId, auth.tenantId),
+          eq(financialSharedFacts.contactId, contactId)
+        )
+      );
+    return rows as SharedFactRow[];
+  });
 }
 
 export async function getSharedFactsForCompany(companyId: string): Promise<SharedFactRow[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select()
-    .from(financialSharedFacts)
-    .where(
-      and(
-        eq(financialSharedFacts.tenantId, auth.tenantId),
-        eq(financialSharedFacts.companyId, companyId)
-      )
-    );
-  return rows as SharedFactRow[];
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select()
+      .from(financialSharedFacts)
+      .where(
+        and(
+          eq(financialSharedFacts.tenantId, auth.tenantId),
+          eq(financialSharedFacts.companyId, companyId)
+        )
+      );
+    return rows as SharedFactRow[];
+  });
 }
 
 export async function upsertSharedFact(fact: {
@@ -67,55 +69,58 @@ export async function upsertSharedFact(fact: {
   sourcePayloadPath?: string | null;
   createdBy?: string | null;
 }): Promise<string> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  const now = new Date();
-  const row = await db
-    .insert(financialSharedFacts)
-    .values({
-      tenantId: auth.tenantId,
-      contactId: fact.contactId ?? null,
-      companyId: fact.companyId,
-      companyPersonLinkId: fact.companyPersonLinkId ?? null,
-      factType: fact.factType,
-      value: fact.value,
-      source: fact.source,
-      sourceAnalysisId: fact.sourceAnalysisId ?? null,
-      sourcePayloadPath: fact.sourcePayloadPath ?? null,
-      updatedAt: now,
-      createdBy: fact.createdBy ?? auth.userId,
-    })
-    .returning({ id: financialSharedFacts.id });
-  return row[0]!.id;
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    const now = new Date();
+    const row = await tx
+      .insert(financialSharedFacts)
+      .values({
+        tenantId: auth.tenantId,
+        contactId: fact.contactId ?? null,
+        companyId: fact.companyId,
+        companyPersonLinkId: fact.companyPersonLinkId ?? null,
+        factType: fact.factType,
+        value: fact.value,
+        source: fact.source,
+        sourceAnalysisId: fact.sourceAnalysisId ?? null,
+        sourcePayloadPath: fact.sourcePayloadPath ?? null,
+        updatedAt: now,
+        createdBy: fact.createdBy ?? auth.userId,
+      })
+      .returning({ id: financialSharedFacts.id });
+    return row[0]!.id;
+  });
 }
 
 export async function deleteSharedFact(id: string): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  await db
-    .delete(financialSharedFacts)
-    .where(
-      and(
-        eq(financialSharedFacts.tenantId, auth.tenantId),
-        eq(financialSharedFacts.id, id)
-      )
-    );
+  await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    await tx
+      .delete(financialSharedFacts)
+      .where(
+        and(
+          eq(financialSharedFacts.tenantId, auth.tenantId),
+          eq(financialSharedFacts.id, id)
+        )
+      );
+  });
 }
 
 /** Delete all shared facts for a company (e.g. before re-extracting from company FA). */
 export async function deleteSharedFactsForCompany(companyId: string): Promise<number> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
-  const deleted = await db
-    .delete(financialSharedFacts)
-    .where(
-      and(
-        eq(financialSharedFacts.tenantId, auth.tenantId),
-        eq(financialSharedFacts.companyId, companyId)
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+    const deleted = await tx
+      .delete(financialSharedFacts)
+      .where(
+        and(
+          eq(financialSharedFacts.tenantId, auth.tenantId),
+          eq(financialSharedFacts.companyId, companyId)
+        )
       )
-    )
-    .returning({ id: financialSharedFacts.id });
-  return deleted.length;
+      .returning({ id: financialSharedFacts.id });
+    return deleted.length;
+  });
 }
 
 /**
@@ -131,6 +136,7 @@ export async function extractAndUpsertSharedFactsFromCompany(
 ): Promise<number> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) throw new Error("Forbidden");
+
   const links = await getCompanyPersonLinks(companyId);
   const linkRows = links.map((l) => ({
     id: l.id,
@@ -150,20 +156,22 @@ export async function extractAndUpsertSharedFactsFromCompany(
   );
   await deleteSharedFactsForCompany(companyId);
   const now = new Date();
-  for (const r of records) {
-    await db.insert(financialSharedFacts).values({
-      tenantId: auth.tenantId,
-      contactId: r.contactId ?? null,
-      companyId: r.companyId,
-      companyPersonLinkId: r.companyPersonLinkId ?? null,
-      factType: r.factType,
-      value: r.value as Record<string, unknown>,
-      source: r.source,
-      sourceAnalysisId: r.sourceAnalysisId ?? null,
-      sourcePayloadPath: r.sourcePayloadPath ?? null,
-      updatedAt: now,
-      createdBy: auth.userId,
-    });
-  }
+  await withTenantContextFromAuth(auth, async (tx) => {
+    for (const r of records) {
+      await tx.insert(financialSharedFacts).values({
+        tenantId: auth.tenantId,
+        contactId: r.contactId ?? null,
+        companyId: r.companyId,
+        companyPersonLinkId: r.companyPersonLinkId ?? null,
+        factType: r.factType,
+        value: r.value as Record<string, unknown>,
+        source: r.source,
+        sourceAnalysisId: r.sourceAnalysisId ?? null,
+        sourcePayloadPath: r.sourcePayloadPath ?? null,
+        updatedAt: now,
+        createdBy: auth.userId,
+      });
+    }
+  });
   return records.length;
 }

@@ -1722,6 +1722,27 @@ export async function applyContractReview(
           docLink.visibilityTurnedOn;
         resultPayload.linkedClientId = effectiveContactId;
       }
+
+      // P2-S1: surface silent-fail scenarios for attach-only flows. Without this,
+      // apply returns ok=true + generic "Uloženo" toast even when the document
+      // cannot be persisted (no contact / no storagePath / in-tx link skipped).
+      // Downstream UI reads `documentLinkWarning` and shows amber badge.
+      if (
+        hasAttachOnlyAction &&
+        createdContractIds.length === 0 &&
+        !resultPayload.linkedDocumentId
+      ) {
+        if (!effectiveContactId) {
+          resultPayload.documentLinkWarning = "attach_only_missing_contact";
+        } else if (!row.storagePath) {
+          resultPayload.documentLinkWarning = "attach_only_missing_storage_path";
+        } else {
+          // All preconditions were present but the in-tx link call did not
+          // produce a documentId — defensive fall-through. Keeps the partial
+          // state visible in UI instead of silently returning ok=true.
+          resultPayload.documentLinkWarning = "attach_only_link_not_persisted";
+        }
+      }
     });
 
     // Slice 2: Propagate pending conflict fields into resultPayload
@@ -1791,6 +1812,19 @@ export async function applyContractReview(
         supportingDocumentGuard: enforcementTrace.supportingDocumentGuard,
         // S2-PB1: attach-only apply trail (jinak neviditelná cesta přes attach handlers).
         ...(attachAuditEntries.length > 0 ? { attachAuditEntries } : {}),
+        // H3 hardening: expose documentLinkWarning v audit logu, ať jde dohledat
+        // silent-fail pattern v attach-only flow bez bridging přes payload dump.
+        // Podchycené kódy:
+        //   - attach_only_missing_contact
+        //   - attach_only_missing_storage_path
+        //   - attach_only_link_not_persisted
+        //   - document_link_failed / document_link_exception (pre-existing)
+        ...(resultPayload.documentLinkWarning
+          ? { documentLinkWarning: resultPayload.documentLinkWarning }
+          : {}),
+        // Indicator, že attach-only flow proběhl (i když warning nenastal) — umožní
+        // filtrovat audit log podle "attach-only plans" v dashboardu bez heuristiky.
+        hasAttachOnlyAction: attachAuditEntries.length > 0 ? true : undefined,
       },
     });
   } catch (err) {

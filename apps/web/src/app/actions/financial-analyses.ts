@@ -5,7 +5,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { FA_ERROR_NO_READ, FA_ERROR_NO_WRITE } from "@/lib/analyses/financial/financialAnalysisErrors";
 import { db } from "db";
 import { financialAnalyses, householdMembers, contacts, households } from "db";
-import { eq, and, desc } from "db";
+import { eq, and, desc, sql } from "db";
 
 export type FinancialAnalysisStatus = "draft" | "completed" | "exported" | "archived";
 
@@ -27,20 +27,6 @@ export type FinancialAnalysisRow = {
 };
 
 const FINANCIAL_WIZARD_TOTAL_STEPS = 8;
-
-function financialAnalysisListDisplayName(type: string, payload: Record<string, unknown>): string {
-  const data = payload.data as { client?: { name?: string }; notes?: string | null } | undefined;
-  const personal = typeof data?.client?.name === "string" ? data.client.name.trim() : "";
-  if (personal) return personal;
-  if (type === "company") {
-    const co = payload.company as { name?: string } | undefined;
-    const cn = typeof co?.name === "string" ? co.name.trim() : "";
-    if (cn) return cn;
-  }
-  const notes = typeof data?.notes === "string" ? data.notes.trim() : "";
-  if (notes) return notes.length > 72 ? `${notes.slice(0, 69)}…` : notes;
-  return "Analýza bez názvu";
-}
 
 function financialAnalysisTypeLabel(type: string): string {
   if (type === "company") return "Firemní analýza";
@@ -116,22 +102,48 @@ export async function getFinancialAnalysis(id: string): Promise<FinancialAnalysi
   }
 }
 
+/**
+ * Lean list — bez celého `payload` JSONu (ten umí být stovky kB na jednu FA).
+ * Pro UI list potřebujeme jen `clientName` + `currentStep`, které vyzobneme
+ * JSON path selectorem rovnou v Postgresu. Limit 50 brání nekonečnému scrollu
+ * při tenantech se stovkami FA (dashboard widget ukazuje jen top-N).
+ */
 export async function listFinancialAnalyses(): Promise<FinancialAnalysisListItem[]> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "financial_analyses:read")) throw new Error(FA_ERROR_NO_READ);
   try {
     const rows = await db
-      .select(financialAnalysisBaseSelection)
+      .select({
+        id: financialAnalyses.id,
+        type: financialAnalyses.type,
+        status: financialAnalyses.status,
+        contactId: financialAnalyses.contactId,
+        householdId: financialAnalyses.householdId,
+        createdAt: financialAnalyses.createdAt,
+        updatedAt: financialAnalyses.updatedAt,
+        lastExportedAt: financialAnalyses.lastExportedAt,
+        linkedCompanyId: financialAnalyses.linkedCompanyId,
+        lastRefreshedFromSharedAt: financialAnalyses.lastRefreshedFromSharedAt,
+        clientNameRaw: sql<string | null>`${financialAnalyses.payload}->'data'->'client'->>'name'`,
+        companyNameRaw: sql<string | null>`${financialAnalyses.payload}->'company'->>'name'`,
+        notesRaw: sql<string | null>`${financialAnalyses.payload}->'data'->>'notes'`,
+        currentStepRaw: sql<number>`coalesce((${financialAnalyses.payload}->>'currentStep')::int, 0)`,
+      })
       .from(financialAnalyses)
       .where(eq(financialAnalyses.tenantId, auth.tenantId))
-      .orderBy(desc(financialAnalyses.updatedAt));
+      .orderBy(desc(financialAnalyses.updatedAt))
+      .limit(50);
     return rows.map((r) => {
-      const payload =
-        typeof r.payload === "string"
-          ? (() => { try { return JSON.parse(r.payload as string); } catch { return {}; } })()
-          : (r.payload ?? {});
-      const clientName = financialAnalysisListDisplayName(r.type, payload as Record<string, unknown>);
-      const currentStep = Number(payload?.currentStep) || 0;
+      const personal = (r.clientNameRaw ?? "").trim();
+      let clientName = personal;
+      if (!clientName && r.type === "company") {
+        clientName = (r.companyNameRaw ?? "").trim();
+      }
+      if (!clientName) {
+        const notes = (r.notesRaw ?? "").trim();
+        clientName = notes ? (notes.length > 72 ? `${notes.slice(0, 69)}…` : notes) : "Analýza bez názvu";
+      }
+      const currentStep = Number(r.currentStepRaw) || 0;
       const progress =
         r.status === "draft" || r.status === "archived"
           ? Math.min(100, Math.round((currentStep / FINANCIAL_WIZARD_TOTAL_STEPS) * 100))

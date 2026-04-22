@@ -97,9 +97,12 @@ function minimalBundle(
     unreadNotificationsCount: 2,
     unreadMessagesCount: 3,
     paymentInstructions: [],
+    paymentsLoadFailed: false,
     advisorMaterialRequests: [],
     financialSummaryRaw,
     visiblePortfolioSourceDocs: {},
+    advisorProposals: [],
+    fvContractAux: {},
     ...overrides,
   };
 }

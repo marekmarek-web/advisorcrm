@@ -18,7 +18,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { db, auditLog, and, eq, desc, gte } from "db";
+import { auditLog, and, eq, desc, gte } from "db";
+import { dbService } from "@/lib/db/service-db";
 import { createClient } from "@/lib/supabase/server";
 import { getMembership } from "@/lib/auth/get-membership";
 import { getImageIntakeConfig } from "@/lib/ai/image-intake/image-intake-config";
@@ -46,7 +47,7 @@ export async function GET(_request: Request) {
   const since = new Date(Date.now() - HEALTH_WINDOW_HOURS * 60 * 60 * 1000);
 
   try {
-    const rows = await db
+    const rows = await dbService
       .select({
         action: auditLog.action,
         meta: auditLog.meta,

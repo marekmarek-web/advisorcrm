@@ -1,9 +1,10 @@
 "use server";
 
 import { requireAuth, requireAuthInAction, type AuthContext } from "@/lib/auth/require-auth";
+import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import type { RoleName } from "@/shared/rolePermissions";
-import { db } from "db";
 import {
   contracts,
   contacts,
@@ -87,12 +88,13 @@ function isTerminationWizardResumableStatus(status: string): boolean {
 
 /** Výběr instituce z registru ve wizardu — doplní mailing pro koncept i náhled před rules. */
 async function resolveInsurerRegistryRowForHint(
+  tx: TenantContextDb,
   hintId: string | null | undefined,
   tenantId: string
 ): Promise<{ id: string; mailing: Record<string, unknown> | null } | null> {
   const id = hintId?.trim();
   if (!id) return null;
-  const [ir] = await db
+  const [ir] = await tx
     .select({
       id: insurerTerminationRegistry.id,
       mailingAddress: insurerTerminationRegistry.mailingAddress,
@@ -129,60 +131,73 @@ export async function getTerminationWizardPrefill(
     throw new Error("Forbidden");
   }
 
-  if (contractId) {
-    const [c] = await db
-      .select()
-      .from(contracts)
-      .where(and(eq(contracts.id, contractId), eq(contracts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!c) {
+  return withTenantContextFromAuth(auth, async (tx) => {
+    if (contractId) {
+      const [c] = await tx
+        .select()
+        .from(contracts)
+        .where(and(eq(contracts.id, contractId), eq(contracts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!c) {
+        return {
+          mode: "standalone",
+          contactId: null,
+          contactLabel: null,
+          contractId: null,
+          insurerName: "",
+          contractNumber: null,
+          productSegment: null,
+          contractStartDate: null,
+          contractAnniversaryDate: null,
+        };
+      }
+      const [person] = await tx
+        .select({
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+        })
+        .from(contacts)
+        .where(and(eq(contacts.id, c.contactId), eq(contacts.tenantId, auth.tenantId)))
+        .limit(1);
       return {
-        mode: "standalone",
-        contactId: null,
-        contactLabel: null,
-        contractId: null,
-        insurerName: "",
-        contractNumber: null,
-        productSegment: null,
-        contractStartDate: null,
-        contractAnniversaryDate: null,
+        mode: "crm",
+        contactId: c.contactId,
+        contactLabel: person ? `${person.firstName} ${person.lastName}` : null,
+        contractId: c.id,
+        insurerName: c.partnerName ?? c.productName ?? "",
+        contractNumber: c.contractNumber ?? null,
+        productSegment: c.segment ?? null,
+        contractStartDate: c.startDate ?? null,
+        contractAnniversaryDate: c.anniversaryDate ?? null,
       };
     }
-    const [person] = await db
-      .select({
-        firstName: contacts.firstName,
-        lastName: contacts.lastName,
-      })
-      .from(contacts)
-      .where(and(eq(contacts.id, c.contactId), eq(contacts.tenantId, auth.tenantId)))
-      .limit(1);
-    return {
-      mode: "crm",
-      contactId: c.contactId,
-      contactLabel: person ? `${person.firstName} ${person.lastName}` : null,
-      contractId: c.id,
-      insurerName: c.partnerName ?? c.productName ?? "",
-      contractNumber: c.contractNumber ?? null,
-      productSegment: c.segment ?? null,
-      contractStartDate: c.startDate ?? null,
-      contractAnniversaryDate: c.anniversaryDate ?? null,
-    };
-  }
 
-  if (contactId) {
-    const [person] = await db
-      .select({
-        firstName: contacts.firstName,
-        lastName: contacts.lastName,
-      })
-      .from(contacts)
-      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!person) {
+    if (contactId) {
+      const [person] = await tx
+        .select({
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+        })
+        .from(contacts)
+        .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!person) {
+        return {
+          mode: "standalone",
+          contactId: null,
+          contactLabel: null,
+          contractId: null,
+          insurerName: "",
+          contractNumber: null,
+          productSegment: null,
+          contractStartDate: null,
+          contractAnniversaryDate: null,
+        };
+      }
       return {
-        mode: "standalone",
-        contactId: null,
-        contactLabel: null,
+        mode: "contact_only",
+        contactId,
+        contactLabel: `${person.firstName} ${person.lastName}`,
         contractId: null,
         insurerName: "",
         contractNumber: null,
@@ -191,10 +206,11 @@ export async function getTerminationWizardPrefill(
         contractAnniversaryDate: null,
       };
     }
+
     return {
-      mode: "contact_only",
-      contactId,
-      contactLabel: `${person.firstName} ${person.lastName}`,
+      mode: "standalone",
+      contactId: null,
+      contactLabel: null,
       contractId: null,
       insurerName: "",
       contractNumber: null,
@@ -202,19 +218,7 @@ export async function getTerminationWizardPrefill(
       contractStartDate: null,
       contractAnniversaryDate: null,
     };
-  }
-
-  return {
-    mode: "standalone",
-    contactId: null,
-    contactLabel: null,
-    contractId: null,
-    insurerName: "",
-    contractNumber: null,
-    productSegment: null,
-    contractStartDate: null,
-    contractAnniversaryDate: null,
-  };
+  });
 }
 
 export type TerminationReasonOption = {
@@ -272,27 +276,29 @@ export async function searchTerminationInsurerRegistryAction(
 
   const pattern = `%${escapeIlikeLiteral(q)}%`;
 
-  const rows = await db
-    .select({
-      id: insurerTerminationRegistry.id,
-      insurerName: insurerTerminationRegistry.insurerName,
-      mailingAddress: insurerTerminationRegistry.mailingAddress,
-      allowedChannels: insurerTerminationRegistry.allowedChannels,
-      email: insurerTerminationRegistry.email,
-    })
-    .from(insurerTerminationRegistry)
-    .where(
-      and(
-        eq(insurerTerminationRegistry.active, true),
-        or(isNull(insurerTerminationRegistry.tenantId), eq(insurerTerminationRegistry.tenantId, auth.tenantId)),
-        sql`(
-          ${insurerTerminationRegistry.insurerName} ILIKE ${pattern} ESCAPE '\\'
-          OR ${insurerTerminationRegistry.catalogKey} ILIKE ${pattern} ESCAPE '\\'
-        )`,
-      ),
-    )
-    .orderBy(asc(insurerTerminationRegistry.insurerName))
-    .limit(4);
+  const rows = await withTenantContextFromAuth(auth, (tx) =>
+    tx
+      .select({
+        id: insurerTerminationRegistry.id,
+        insurerName: insurerTerminationRegistry.insurerName,
+        mailingAddress: insurerTerminationRegistry.mailingAddress,
+        allowedChannels: insurerTerminationRegistry.allowedChannels,
+        email: insurerTerminationRegistry.email,
+      })
+      .from(insurerTerminationRegistry)
+      .where(
+        and(
+          eq(insurerTerminationRegistry.active, true),
+          or(isNull(insurerTerminationRegistry.tenantId), eq(insurerTerminationRegistry.tenantId, auth.tenantId)),
+          sql`(
+            ${insurerTerminationRegistry.insurerName} ILIKE ${pattern} ESCAPE '\\'
+            OR ${insurerTerminationRegistry.catalogKey} ILIKE ${pattern} ESCAPE '\\'
+          )`,
+        ),
+      )
+      .orderBy(asc(insurerTerminationRegistry.insurerName))
+      .limit(4),
+  );
 
   return {
     ok: true,
@@ -333,28 +339,30 @@ export async function listTerminationInsurerRegistryDirectoryAction(): Promise<
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
 
-  const rows = await db
-    .select({
-      id: insurerTerminationRegistry.id,
-      catalogKey: insurerTerminationRegistry.catalogKey,
-      insurerName: insurerTerminationRegistry.insurerName,
-      mailingAddress: insurerTerminationRegistry.mailingAddress,
-      email: insurerTerminationRegistry.email,
-      webFormUrl: insurerTerminationRegistry.webFormUrl,
-      clientPortalUrl: insurerTerminationRegistry.clientPortalUrl,
-      allowedChannels: insurerTerminationRegistry.allowedChannels,
-      officialFormNotes: insurerTerminationRegistry.officialFormNotes,
-      requiresOfficialForm: insurerTerminationRegistry.requiresOfficialForm,
-      freeformLetterAllowed: insurerTerminationRegistry.freeformLetterAllowed,
-    })
-    .from(insurerTerminationRegistry)
-    .where(
-      and(
-        eq(insurerTerminationRegistry.active, true),
-        or(isNull(insurerTerminationRegistry.tenantId), eq(insurerTerminationRegistry.tenantId, auth.tenantId)),
-      ),
-    )
-    .orderBy(asc(insurerTerminationRegistry.insurerName));
+  const rows = await withTenantContextFromAuth(auth, (tx) =>
+    tx
+      .select({
+        id: insurerTerminationRegistry.id,
+        catalogKey: insurerTerminationRegistry.catalogKey,
+        insurerName: insurerTerminationRegistry.insurerName,
+        mailingAddress: insurerTerminationRegistry.mailingAddress,
+        email: insurerTerminationRegistry.email,
+        webFormUrl: insurerTerminationRegistry.webFormUrl,
+        clientPortalUrl: insurerTerminationRegistry.clientPortalUrl,
+        allowedChannels: insurerTerminationRegistry.allowedChannels,
+        officialFormNotes: insurerTerminationRegistry.officialFormNotes,
+        requiresOfficialForm: insurerTerminationRegistry.requiresOfficialForm,
+        freeformLetterAllowed: insurerTerminationRegistry.freeformLetterAllowed,
+      })
+      .from(insurerTerminationRegistry)
+      .where(
+        and(
+          eq(insurerTerminationRegistry.active, true),
+          or(isNull(insurerTerminationRegistry.tenantId), eq(insurerTerminationRegistry.tenantId, auth.tenantId)),
+        ),
+      )
+      .orderBy(asc(insurerTerminationRegistry.insurerName)),
+  );
 
   return {
     ok: true,
@@ -467,22 +475,6 @@ export async function createTerminationDraft(
   }
 
   const resumeId = payload.resumeRequestId?.trim() || null;
-  if (resumeId) {
-    const [existingResume] = await db
-      .select({ id: terminationRequests.id, status: terminationRequests.status })
-      .from(terminationRequests)
-      .where(and(eq(terminationRequests.id, resumeId), eq(terminationRequests.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!existingResume) {
-      return { ok: false, error: "Koncept nenalezen." };
-    }
-    if (!isTerminationWizardResumableStatus(existingResume.status)) {
-      return {
-        ok: false,
-        error: "Tuto žádost z průvodce v tomto stavu uložit nelze.",
-      };
-    }
-  }
 
   const insurerName = payload.insurerName?.trim();
   if (!insurerName) {
@@ -495,37 +487,62 @@ export async function createTerminationDraft(
     };
   }
 
-  if (payload.contractId && payload.contactId) {
-    const [c] = await db
-      .select({ contactId: contracts.contactId })
-      .from(contracts)
-      .where(and(eq(contracts.id, payload.contractId), eq(contracts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!c || c.contactId !== payload.contactId) {
-      return { ok: false, error: "Smlouva nepatří k vybranému kontaktu." };
+  const validation = await withTenantContextFromAuth(auth, async (tx) => {
+    if (resumeId) {
+      const [existingResume] = await tx
+        .select({ id: terminationRequests.id, status: terminationRequests.status })
+        .from(terminationRequests)
+        .where(and(eq(terminationRequests.id, resumeId), eq(terminationRequests.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!existingResume) {
+        return { ok: false as const, error: "Koncept nenalezen." };
+      }
+      if (!isTerminationWizardResumableStatus(existingResume.status)) {
+        return {
+          ok: false as const,
+          error: "Tuto žádost z průvodce v tomto stavu uložit nelze.",
+        };
+      }
     }
-  }
 
-  if (payload.contactId) {
-    const [p] = await db
-      .select({ id: contacts.id })
-      .from(contacts)
-      .where(and(eq(contacts.id, payload.contactId), eq(contacts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!p) {
-      return { ok: false, error: "Kontakt neexistuje." };
+    if (payload.contractId && payload.contactId) {
+      const [c] = await tx
+        .select({ contactId: contracts.contactId })
+        .from(contracts)
+        .where(and(eq(contracts.id, payload.contractId), eq(contracts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!c || c.contactId !== payload.contactId) {
+        return { ok: false as const, error: "Smlouva nepatří k vybranému kontaktu." };
+      }
     }
-  }
 
-  if (payload.sourceDocumentId) {
-    const [doc] = await db
-      .select({ id: documents.id })
-      .from(documents)
-      .where(and(eq(documents.id, payload.sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!doc) {
-      return { ok: false, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
+    if (payload.contactId) {
+      const [p] = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(and(eq(contacts.id, payload.contactId), eq(contacts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!p) {
+        return { ok: false as const, error: "Kontakt neexistuje." };
+      }
     }
+
+    if (payload.sourceDocumentId) {
+      const [doc] = await tx
+        .select({ id: documents.id })
+        .from(documents)
+        .where(and(eq(documents.id, payload.sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!doc) {
+        return { ok: false as const, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
+      }
+    }
+
+    return { ok: true as const };
+  });
+
+  if (!validation.ok) {
+    return { ok: false, error: validation.error };
   }
 
   let rulesInput: TerminationRulesInput;
@@ -586,33 +603,38 @@ export async function createTerminationDraft(
 
   const status = mapOutcomeToStatus(rules);
 
-  let mailing: unknown = null;
-  if (rules.insurerRegistryId) {
-    const [ir] = await db
-      .select({ mailingAddress: insurerTerminationRegistry.mailingAddress })
-      .from(insurerTerminationRegistry)
-      .where(
-        and(
-          eq(insurerTerminationRegistry.id, rules.insurerRegistryId),
-          or(
-            isNull(insurerTerminationRegistry.tenantId),
-            eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+  const { mailing, insurerRegistryIdResolved } = await withTenantContextFromAuth(auth, async (tx) => {
+    let mailingInner: unknown = null;
+    if (rules.insurerRegistryId) {
+      const [ir] = await tx
+        .select({ mailingAddress: insurerTerminationRegistry.mailingAddress })
+        .from(insurerTerminationRegistry)
+        .where(
+          and(
+            eq(insurerTerminationRegistry.id, rules.insurerRegistryId),
+            or(
+              isNull(insurerTerminationRegistry.tenantId),
+              eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+            )
           )
         )
-      )
-      .limit(1);
-    mailing = ir?.mailingAddress ?? null;
-  }
-  const hintRow = await resolveInsurerRegistryRowForHint(payload.insurerRegistryIdHint ?? null, auth.tenantId);
-  if (hintRow?.mailing) {
-    mailing = mergeRegistryMailingWithSnapshot(
-      mailing && typeof mailing === "object" && !Array.isArray(mailing)
-        ? (mailing as Record<string, unknown>)
-        : null,
-      hintRow.mailing
-    );
-  }
-  const insurerRegistryIdResolved = rules.insurerRegistryId ?? hintRow?.id ?? null;
+        .limit(1);
+      mailingInner = ir?.mailingAddress ?? null;
+    }
+    const hintRow = await resolveInsurerRegistryRowForHint(tx, payload.insurerRegistryIdHint ?? null, auth.tenantId);
+    if (hintRow?.mailing) {
+      mailingInner = mergeRegistryMailingWithSnapshot(
+        mailingInner && typeof mailingInner === "object" && !Array.isArray(mailingInner)
+          ? (mailingInner as Record<string, unknown>)
+          : null,
+        hintRow.mailing
+      );
+    }
+    return {
+      mailing: mailingInner,
+      insurerRegistryIdResolved: rules.insurerRegistryId ?? hintRow?.id ?? null,
+    };
+  });
 
   const rowValues = {
     contactId: payload.contactId,
@@ -657,7 +679,7 @@ export async function createTerminationDraft(
   };
 
   try {
-    const requestId = await db.transaction(async (tx) => {
+    const requestId = await withTenantContextFromAuth(auth, async (tx) => {
       let id: string;
 
       if (resumeId) {
@@ -749,37 +771,6 @@ export async function saveTerminationIntakePartialAction(
 
   const partialId = payload.partialRequestId?.trim() || null;
 
-  if (payload.contractId && payload.contactId) {
-    const [c] = await db
-      .select({ contactId: contracts.contactId })
-      .from(contracts)
-      .where(and(eq(contracts.id, payload.contractId), eq(contracts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!c || c.contactId !== payload.contactId) {
-      return { ok: false, error: "Smlouva nepatří k vybranému kontaktu." };
-    }
-  }
-
-  if (payload.contactId) {
-    const [p] = await db
-      .select({ id: contacts.id })
-      .from(contacts)
-      .where(and(eq(contacts.id, payload.contactId), eq(contacts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!p) return { ok: false, error: "Kontakt neexistuje." };
-  }
-
-  if (payload.sourceDocumentId) {
-    const [doc] = await db
-      .select({ id: documents.id })
-      .from(documents)
-      .where(and(eq(documents.id, payload.sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!doc) {
-      return { ok: false, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
-    }
-  }
-
   const insurerName =
     payload.insurerName?.trim() || TERMINATION_PARTIAL_INSURER_PLACEHOLDER;
 
@@ -788,19 +779,61 @@ export async function saveTerminationIntakePartialAction(
     uncertainInsurer: payload.uncertainInsurer ? true : undefined,
   };
 
-  let insurerRegistryIdPartial: string | null = null;
-  let deliverySnapshotPartial: Record<string, unknown> | null = null;
-  const regHint = payload.insurerRegistryIdHint?.trim();
-  if (regHint) {
-    const resolved = await resolveInsurerRegistryRowForHint(regHint, auth.tenantId);
-    if (resolved) {
-      insurerRegistryIdPartial = resolved.id;
-      deliverySnapshotPartial = resolved.mailing;
+  const preCheck = await withTenantContextFromAuth(auth, async (tx) => {
+    if (payload.contractId && payload.contactId) {
+      const [c] = await tx
+        .select({ contactId: contracts.contactId })
+        .from(contracts)
+        .where(and(eq(contracts.id, payload.contractId), eq(contracts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!c || c.contactId !== payload.contactId) {
+        return { ok: false as const, error: "Smlouva nepatří k vybranému kontaktu." };
+      }
     }
+
+    if (payload.contactId) {
+      const [p] = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(and(eq(contacts.id, payload.contactId), eq(contacts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!p) return { ok: false as const, error: "Kontakt neexistuje." };
+    }
+
+    if (payload.sourceDocumentId) {
+      const [doc] = await tx
+        .select({ id: documents.id })
+        .from(documents)
+        .where(and(eq(documents.id, payload.sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!doc) {
+        return { ok: false as const, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
+      }
+    }
+
+    let insurerRegistryIdPartial: string | null = null;
+    let deliverySnapshotPartial: Record<string, unknown> | null = null;
+    const regHint = payload.insurerRegistryIdHint?.trim();
+    if (regHint) {
+      const resolved = await resolveInsurerRegistryRowForHint(tx, regHint, auth.tenantId);
+      if (resolved) {
+        insurerRegistryIdPartial = resolved.id;
+        deliverySnapshotPartial = resolved.mailing;
+      }
+    }
+
+    return { ok: true as const, insurerRegistryIdPartial, deliverySnapshotPartial };
+  });
+
+  if (!preCheck.ok) {
+    return { ok: false, error: preCheck.error };
   }
 
+  const insurerRegistryIdPartial = preCheck.insurerRegistryIdPartial;
+  const deliverySnapshotPartial = preCheck.deliverySnapshotPartial;
+
   try {
-    const requestId = await db.transaction(async (tx) => {
+    const requestId = await withTenantContextFromAuth(auth, async (tx) => {
       if (partialId) {
         const [ex] = await tx
           .select({ id: terminationRequests.id, status: terminationRequests.status })
@@ -941,11 +974,43 @@ export async function getTerminationIntakeDraftForWizard(
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
 
-  const [row] = await db
-    .select()
-    .from(terminationRequests)
-    .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
-    .limit(1);
+  const loaded = await withTenantContextFromAuth(auth, async (tx) => {
+    const [rowInner] = await tx
+      .select()
+      .from(terminationRequests)
+      .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!rowInner) return { row: null as typeof rowInner | null, ir: null };
+
+    let irInner: {
+      mailingAddress: unknown;
+      allowedChannels: unknown;
+      email: string | null;
+    } | null = null;
+    if (rowInner.insurerRegistryId) {
+      const [foundIr] = await tx
+        .select({
+          mailingAddress: insurerTerminationRegistry.mailingAddress,
+          allowedChannels: insurerTerminationRegistry.allowedChannels,
+          email: insurerTerminationRegistry.email,
+        })
+        .from(insurerTerminationRegistry)
+        .where(
+          and(
+            eq(insurerTerminationRegistry.id, rowInner.insurerRegistryId),
+            or(
+              isNull(insurerTerminationRegistry.tenantId),
+              eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+            )
+          )
+        )
+        .limit(1);
+      irInner = foundIr ?? null;
+    }
+    return { row: rowInner, ir: irInner };
+  });
+
+  const row = loaded.row;
   if (!row) return { ok: false, error: "Koncept nenalezen." };
   if (!isTerminationWizardResumableStatus(row.status)) {
     return { ok: false, error: "Tuto žádost z průvodce nadále upravovat nelze (stav se změnil)." };
@@ -957,33 +1022,14 @@ export async function getTerminationIntakeDraftForWizard(
 
   let insurerRegistryOneLine: string | null = null;
   let insurerRegistryChannelHint: string | null = null;
-  if (row.insurerRegistryId) {
-    const [ir] = await db
-      .select({
-        mailingAddress: insurerTerminationRegistry.mailingAddress,
-        allowedChannels: insurerTerminationRegistry.allowedChannels,
-        email: insurerTerminationRegistry.email,
-      })
-      .from(insurerTerminationRegistry)
-      .where(
-        and(
-          eq(insurerTerminationRegistry.id, row.insurerRegistryId),
-          or(
-            isNull(insurerTerminationRegistry.tenantId),
-            eq(insurerTerminationRegistry.tenantId, auth.tenantId)
-          )
-        )
-      )
-      .limit(1);
-    if (ir) {
-      insurerRegistryOneLine = formatTerminationRegistryMailingOneLine(
-        (ir.mailingAddress as Record<string, unknown> | null) ?? null
-      );
-      insurerRegistryChannelHint = formatTerminationChannelHint(
-        ir.allowedChannels as string[] | null | undefined,
-        ir.email
-      );
-    }
+  if (loaded.ir) {
+    insurerRegistryOneLine = formatTerminationRegistryMailingOneLine(
+      (loaded.ir.mailingAddress as Record<string, unknown> | null) ?? null
+    );
+    insurerRegistryChannelHint = formatTerminationChannelHint(
+      loaded.ir.allowedChannels as string[] | null | undefined,
+      loaded.ir.email
+    );
   }
 
   return {
@@ -1048,23 +1094,68 @@ export async function updateTerminationRequestFieldsAndReevaluateAction(
     return { ok: false, error: "Nemáte oprávnění." };
   }
 
-  const [existing] = await db
-    .select()
-    .from(terminationRequests)
-    .where(
-      and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
-    )
-    .limit(1);
-  if (!existing) return { ok: false, error: "Žádost nenalezena." };
-  if (existing.status === "completed" || existing.status === "cancelled") {
-    return { ok: false, error: "Dokončenou nebo zrušenou žádost nelze tímto způsobem měnit." };
-  }
-
   const insurerName = payload.insurerName?.trim();
   if (!insurerName) return { ok: false, error: "Vyplňte název pojišťovny." };
   if (insurerName === TERMINATION_PARTIAL_INSURER_PLACEHOLDER) {
     return { ok: false, error: "Vyplňte skutečný název pojišťovny." };
   }
+
+  const validation = await withTenantContextFromAuth(auth, async (tx) => {
+    const [existingInner] = await tx
+      .select()
+      .from(terminationRequests)
+      .where(
+        and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+      )
+      .limit(1);
+    if (!existingInner) return { ok: false as const, error: "Žádost nenalezena." };
+    if (existingInner.status === "completed" || existingInner.status === "cancelled") {
+      return { ok: false as const, error: "Dokončenou nebo zrušenou žádost nelze tímto způsobem měnit." };
+    }
+
+    const contactIdInner = payload.contactId !== undefined ? payload.contactId : existingInner.contactId;
+    const contractIdInner = payload.contractId !== undefined ? payload.contractId : existingInner.contractId;
+    const sourceDocumentIdInner =
+      payload.sourceDocumentId !== undefined ? payload.sourceDocumentId : existingInner.sourceDocumentId;
+
+    if (contractIdInner && contactIdInner) {
+      const [c] = await tx
+        .select({ contactId: contracts.contactId })
+        .from(contracts)
+        .where(and(eq(contracts.id, contractIdInner), eq(contracts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!c || c.contactId !== contactIdInner) {
+        return { ok: false as const, error: "Smlouva nepatří k vybranému kontaktu." };
+      }
+    }
+
+    if (contactIdInner) {
+      const [p] = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(and(eq(contacts.id, contactIdInner), eq(contacts.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!p) return { ok: false as const, error: "Kontakt neexistuje." };
+    }
+
+    if (sourceDocumentIdInner) {
+      const [doc] = await tx
+        .select({ id: documents.id })
+        .from(documents)
+        .where(and(eq(documents.id, sourceDocumentIdInner), eq(documents.tenantId, auth.tenantId)))
+        .limit(1);
+      if (!doc) {
+        return { ok: false as const, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
+      }
+    }
+
+    return { ok: true as const, existing: existingInner };
+  });
+
+  if (!validation.ok) {
+    return { ok: false, error: validation.error };
+  }
+  const existing = validation.existing;
 
   const contactId = payload.contactId !== undefined ? payload.contactId : existing.contactId;
   const contractId = payload.contractId !== undefined ? payload.contractId : existing.contractId;
@@ -1072,37 +1163,6 @@ export async function updateTerminationRequestFieldsAndReevaluateAction(
     payload.sourceDocumentId !== undefined ? payload.sourceDocumentId : existing.sourceDocumentId;
   const sourceKind = payload.sourceKind ?? existing.sourceKind;
   const sourceConversationId = existing.sourceConversationId;
-
-  if (contractId && contactId) {
-    const [c] = await db
-      .select({ contactId: contracts.contactId })
-      .from(contracts)
-      .where(and(eq(contracts.id, contractId), eq(contracts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!c || c.contactId !== contactId) {
-      return { ok: false, error: "Smlouva nepatří k vybranému kontaktu." };
-    }
-  }
-
-  if (contactId) {
-    const [p] = await db
-      .select({ id: contacts.id })
-      .from(contacts)
-      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!p) return { ok: false, error: "Kontakt neexistuje." };
-  }
-
-  if (sourceDocumentId) {
-    const [doc] = await db
-      .select({ id: documents.id })
-      .from(documents)
-      .where(and(eq(documents.id, sourceDocumentId), eq(documents.tenantId, auth.tenantId)))
-      .limit(1);
-    if (!doc) {
-      return { ok: false, error: "Zdrojový dokument neexistuje nebo nepatří k vašemu účtu." };
-    }
-  }
 
   let rulesInput: TerminationRulesInput;
   if (contractId && contactId) {
@@ -1162,9 +1222,9 @@ export async function updateTerminationRequestFieldsAndReevaluateAction(
 
   const status = mapOutcomeToStatus(rules);
 
-  let mailing: unknown = null;
-  if (rules.insurerRegistryId) {
-    const [ir] = await db
+  const mailing = await withTenantContextFromAuth(auth, async (tx) => {
+    if (!rules.insurerRegistryId) return null;
+    const [ir] = await tx
       .select({ mailingAddress: insurerTerminationRegistry.mailingAddress })
       .from(insurerTerminationRegistry)
       .where(
@@ -1177,8 +1237,8 @@ export async function updateTerminationRequestFieldsAndReevaluateAction(
         )
       )
       .limit(1);
-    mailing = ir?.mailingAddress ?? null;
-  }
+    return ir?.mailingAddress ?? null;
+  });
 
   const rowValues = {
     contactId,
@@ -1220,7 +1280,7 @@ export async function updateTerminationRequestFieldsAndReevaluateAction(
   };
 
   try {
-    await db.transaction(async (tx) => {
+    await withTenantContextFromAuth(auth, async (tx) => {
       await tx
         .delete(terminationRequiredAttachments)
         .where(
@@ -1282,107 +1342,134 @@ async function loadTerminationLetterBuildResult(
   requestId: string,
   auth: AuthContext
 ): Promise<TerminationLetterPreviewResponse> {
-  const [req] = await db
-    .select()
-    .from(terminationRequests)
-    .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
-    .limit(1);
+  const loaded = await withTenantContextFromAuth(auth, async (tx) => {
+    const [reqInner] = await tx
+      .select()
+      .from(terminationRequests)
+      .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!reqInner) {
+      return {
+        req: null,
+        contact: null,
+        contract: null,
+        insurerRegistry: null,
+        reasonLabel: null,
+        attRows: [] as { label: string }[],
+      } as const;
+    }
 
+    let contactInner: ContactRowLike | null = null;
+    if (reqInner.contactId) {
+      const [c] = await tx
+        .select({
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+          title: contacts.title,
+          birthDate: contacts.birthDate,
+          personalId: contacts.personalId,
+          street: contacts.street,
+          city: contacts.city,
+          zip: contacts.zip,
+          email: contacts.email,
+          phone: contacts.phone,
+        })
+        .from(contacts)
+        .where(and(eq(contacts.id, reqInner.contactId), eq(contacts.tenantId, auth.tenantId)))
+        .limit(1);
+      contactInner = c ?? null;
+    }
+
+    let contractInner: ContractRowLike | null = null;
+    if (reqInner.contractId) {
+      const [ct] = await tx
+        .select({
+          productName: contracts.productName,
+          partnerName: contracts.partnerName,
+        })
+        .from(contracts)
+        .where(and(eq(contracts.id, reqInner.contractId), eq(contracts.tenantId, auth.tenantId)))
+        .limit(1);
+      contractInner = ct ?? null;
+    }
+
+    let insurerRegistryInner: InsurerRegistryRowLike | null = null;
+    if (reqInner.insurerRegistryId) {
+      const [ir] = await tx
+        .select({
+          insurerName: insurerTerminationRegistry.insurerName,
+          officialFormName: insurerTerminationRegistry.officialFormName,
+          officialFormNotes: insurerTerminationRegistry.officialFormNotes,
+          mailingAddress: insurerTerminationRegistry.mailingAddress,
+        })
+        .from(insurerTerminationRegistry)
+        .where(
+          and(
+            eq(insurerTerminationRegistry.id, reqInner.insurerRegistryId),
+            or(
+              isNull(insurerTerminationRegistry.tenantId),
+              eq(insurerTerminationRegistry.tenantId, auth.tenantId)
+            )
+          )
+        )
+        .limit(1);
+      if (ir) {
+        insurerRegistryInner = {
+          insurerName: ir.insurerName,
+          officialFormName: ir.officialFormName,
+          officialFormNotes: ir.officialFormNotes,
+          mailingAddress: (ir.mailingAddress as Record<string, unknown> | null) ?? null,
+        };
+      }
+    }
+
+    let reasonLabelInner: string | null = reqInner.terminationReasonCode;
+    if (reqInner.reasonCatalogId) {
+      const [rc] = await tx
+        .select({ labelCs: terminationReasonCatalog.labelCs })
+        .from(terminationReasonCatalog)
+        .where(
+          and(
+            eq(terminationReasonCatalog.id, reqInner.reasonCatalogId),
+            or(
+              isNull(terminationReasonCatalog.tenantId),
+              eq(terminationReasonCatalog.tenantId, auth.tenantId)
+            )
+          )
+        )
+        .limit(1);
+      if (rc?.labelCs) reasonLabelInner = rc.labelCs;
+    }
+
+    const attRowsInner = await tx
+      .select({ label: terminationRequiredAttachments.label })
+      .from(terminationRequiredAttachments)
+      .where(
+        and(
+          eq(terminationRequiredAttachments.requestId, requestId),
+          eq(terminationRequiredAttachments.tenantId, auth.tenantId)
+        )
+      );
+
+    return {
+      req: reqInner,
+      contact: contactInner,
+      contract: contractInner,
+      insurerRegistry: insurerRegistryInner,
+      reasonLabel: reasonLabelInner,
+      attRows: attRowsInner,
+    } as const;
+  });
+
+  const req = loaded.req;
   if (!req) {
     return { ok: false, error: "Žádost nenalezena." };
   }
-
-  let contact: ContactRowLike | null = null;
-  if (req.contactId) {
-    const [c] = await db
-      .select({
-        firstName: contacts.firstName,
-        lastName: contacts.lastName,
-        title: contacts.title,
-        birthDate: contacts.birthDate,
-        personalId: contacts.personalId,
-        street: contacts.street,
-        city: contacts.city,
-        zip: contacts.zip,
-        email: contacts.email,
-        phone: contacts.phone,
-      })
-      .from(contacts)
-      .where(and(eq(contacts.id, req.contactId), eq(contacts.tenantId, auth.tenantId)))
-      .limit(1);
-    contact = c ?? null;
-  }
-
-  let contract: ContractRowLike | null = null;
-  if (req.contractId) {
-    const [ct] = await db
-      .select({
-        productName: contracts.productName,
-        partnerName: contracts.partnerName,
-      })
-      .from(contracts)
-      .where(and(eq(contracts.id, req.contractId), eq(contracts.tenantId, auth.tenantId)))
-      .limit(1);
-    contract = ct ?? null;
-  }
-
-  let insurerRegistry: InsurerRegistryRowLike | null = null;
-  if (req.insurerRegistryId) {
-    const [ir] = await db
-      .select({
-        insurerName: insurerTerminationRegistry.insurerName,
-        officialFormName: insurerTerminationRegistry.officialFormName,
-        officialFormNotes: insurerTerminationRegistry.officialFormNotes,
-        mailingAddress: insurerTerminationRegistry.mailingAddress,
-      })
-      .from(insurerTerminationRegistry)
-      .where(
-        and(
-          eq(insurerTerminationRegistry.id, req.insurerRegistryId),
-          or(
-            isNull(insurerTerminationRegistry.tenantId),
-            eq(insurerTerminationRegistry.tenantId, auth.tenantId)
-          )
-        )
-      )
-      .limit(1);
-    if (ir) {
-      insurerRegistry = {
-        insurerName: ir.insurerName,
-        officialFormName: ir.officialFormName,
-        officialFormNotes: ir.officialFormNotes,
-        mailingAddress: (ir.mailingAddress as Record<string, unknown> | null) ?? null,
-      };
-    }
-  }
-
-  let reasonLabel = req.terminationReasonCode;
-  if (req.reasonCatalogId) {
-    const [rc] = await db
-      .select({ labelCs: terminationReasonCatalog.labelCs })
-      .from(terminationReasonCatalog)
-      .where(
-        and(
-          eq(terminationReasonCatalog.id, req.reasonCatalogId),
-          or(
-            isNull(terminationReasonCatalog.tenantId),
-            eq(terminationReasonCatalog.tenantId, auth.tenantId)
-          )
-        )
-      )
-      .limit(1);
-    if (rc?.labelCs) reasonLabel = rc.labelCs;
-  }
-
-  const attRows = await db
-    .select({ label: terminationRequiredAttachments.label })
-    .from(terminationRequiredAttachments)
-    .where(
-      and(
-        eq(terminationRequiredAttachments.requestId, requestId),
-        eq(terminationRequiredAttachments.tenantId, auth.tenantId)
-      )
-    );
+  const contact = loaded.contact;
+  const contract = loaded.contract;
+  const insurerRegistry = loaded.insurerRegistry;
+  const reasonLabel = loaded.reasonLabel;
+  const attRows = loaded.attRows;
 
   const extras = parseDocumentBuilderExtras(req.documentBuilderExtras);
 
@@ -1475,16 +1562,18 @@ export async function saveTerminationGeneratedDocumentAction(
     };
   }
 
-  const [reqRow] = await db
-    .select({
-      id: terminationRequests.id,
-      contractNumber: terminationRequests.contractNumber,
-      contactId: terminationRequests.contactId,
-      contractId: terminationRequests.contractId,
-    })
-    .from(terminationRequests)
-    .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
-    .limit(1);
+  const [reqRow] = await withTenantContextFromAuth(auth, (tx) =>
+    tx
+      .select({
+        id: terminationRequests.id,
+        contractNumber: terminationRequests.contractNumber,
+        contactId: terminationRequests.contactId,
+        contractId: terminationRequests.contractId,
+      })
+      .from(terminationRequests)
+      .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
+      .limit(1),
+  );
   if (!reqRow) return { ok: false, error: "Žádost nenalezena." };
 
   const labelShort = (reqRow.contractNumber ?? requestId.slice(0, 8)).replace(/[^\w\d\-./]/g, "_");
@@ -1515,7 +1604,7 @@ export async function saveTerminationGeneratedDocumentAction(
   }
 
   try {
-    const documentId = await db.transaction(async (tx) => {
+    const documentId = await withTenantContextFromAuth(auth, async (tx) => {
       await tx
         .update(terminationGeneratedDocuments)
         .set({ isCurrent: false })
@@ -1623,44 +1712,50 @@ export async function getTerminationRequestDetail(requestId: string): Promise<Te
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
 
-  const [req] = await db
-    .select()
-    .from(terminationRequests)
-    .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
-    .limit(1);
-  if (!req) return { ok: false, error: "Žádost nenalezena." };
+  const loaded = await withTenantContextFromAuth(auth, async (tx) => {
+    const [reqInner] = await tx
+      .select()
+      .from(terminationRequests)
+      .where(and(eq(terminationRequests.id, requestId), eq(terminationRequests.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!reqInner) return { req: null, evRows: [], dispRows: [] } as const;
 
-  const evRows = await db
-    .select()
-    .from(terminationRequestEvents)
-    .where(
-      and(
-        eq(terminationRequestEvents.requestId, requestId),
-        eq(terminationRequestEvents.tenantId, auth.tenantId)
+    const evRowsInner = await tx
+      .select()
+      .from(terminationRequestEvents)
+      .where(
+        and(
+          eq(terminationRequestEvents.requestId, requestId),
+          eq(terminationRequestEvents.tenantId, auth.tenantId)
+        )
       )
-    )
-    .orderBy(desc(terminationRequestEvents.createdAt));
+      .orderBy(desc(terminationRequestEvents.createdAt));
 
-  const dispRows = await db
-    .select()
-    .from(terminationDispatchLog)
-    .where(
-      and(eq(terminationDispatchLog.requestId, requestId), eq(terminationDispatchLog.tenantId, auth.tenantId))
-    )
-    .orderBy(desc(terminationDispatchLog.createdAt));
+    const dispRowsInner = await tx
+      .select()
+      .from(terminationDispatchLog)
+      .where(
+        and(eq(terminationDispatchLog.requestId, requestId), eq(terminationDispatchLog.tenantId, auth.tenantId))
+      )
+      .orderBy(desc(terminationDispatchLog.createdAt));
+
+    return { req: reqInner, evRows: evRowsInner, dispRows: dispRowsInner } as const;
+  });
+
+  if (!loaded.req) return { ok: false, error: "Žádost nenalezena." };
 
   return {
     ok: true,
     data: {
-      request: req,
-      events: evRows.map((e) => ({
+      request: loaded.req,
+      events: loaded.evRows.map((e) => ({
         id: e.id,
         eventType: e.eventType,
         payload: (e.payload as Record<string, unknown> | null) ?? null,
         actorUserId: e.actorUserId ?? null,
         createdAt: e.createdAt.toISOString(),
       })),
-      dispatchLog: dispRows.map((d) => ({
+      dispatchLog: loaded.dispRows.map((d) => ({
         id: d.id,
         channel: d.channel,
         status: d.status,
@@ -1697,16 +1792,16 @@ export async function updateTerminationRequestStatusAction(
     return { ok: false, error: "Neplatný stav." };
   }
 
-  const [existing] = await db
-    .select({ id: terminationRequests.id, status: terminationRequests.status })
-    .from(terminationRequests)
-    .where(
-      and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
-    )
-    .limit(1);
-  if (!existing) return { ok: false, error: "Žádost nenalezena." };
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [existingInner] = await tx
+      .select({ id: terminationRequests.id, status: terminationRequests.status })
+      .from(terminationRequests)
+      .where(
+        and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+      )
+      .limit(1);
+    if (!existingInner) return { ok: false as const, error: "Žádost nenalezena." };
 
-  await db.transaction(async (tx) => {
     await tx
       .update(terminationRequests)
       .set({
@@ -1723,14 +1818,17 @@ export async function updateTerminationRequestStatusAction(
       requestId: payload.requestId,
       eventType: "status_changed",
       payload: {
-        from: existing.status,
+        from: existingInner.status,
         to: payload.status,
         note: payload.note?.trim() || undefined,
       },
       actorUserId: auth.userId,
     });
+
+    return { ok: true as const };
   });
 
+  if (!result.ok) return { ok: false, error: result.error };
   return { ok: true };
 }
 
@@ -1753,17 +1851,17 @@ export async function appendTerminationDispatchLogAction(
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!canWriteContacts(auth.roleName)) return { ok: false, error: "Nemáte oprávnění." };
 
-  const [existing] = await db
-    .select({ id: terminationRequests.id })
-    .from(terminationRequests)
-    .where(
-      and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
-    )
-    .limit(1);
-  if (!existing) return { ok: false, error: "Žádost nenalezena." };
-
   const now = new Date();
-  await db.transaction(async (tx) => {
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [existingInner] = await tx
+      .select({ id: terminationRequests.id })
+      .from(terminationRequests)
+      .where(
+        and(eq(terminationRequests.id, payload.requestId), eq(terminationRequests.tenantId, auth.tenantId))
+      )
+      .limit(1);
+    if (!existingInner) return { ok: false as const, error: "Žádost nenalezena." };
+
     await tx.insert(terminationDispatchLog).values({
       tenantId: auth.tenantId,
       requestId: payload.requestId,
@@ -1787,50 +1885,56 @@ export async function appendTerminationDispatchLogAction(
       },
       actorUserId: auth.userId,
     });
+
+    return { ok: true as const };
   });
+
+  if (!result.ok) return { ok: false, error: result.error };
 
   if (payload.status === "sent" || payload.status === "delivered") {
     try {
-      const [pendingDup] = await db
-        .select({ id: reminders.id })
-        .from(reminders)
-        .where(
-          and(
-            eq(reminders.tenantId, auth.tenantId),
-            eq(reminders.reminderType, "termination_delivery_check"),
-            eq(reminders.relatedEntityType, "termination_request"),
-            eq(reminders.relatedEntityId, payload.requestId),
-            eq(reminders.status, "pending")
+      await withTenantContextFromAuth(auth, async (tx) => {
+        const [pendingDup] = await tx
+          .select({ id: reminders.id })
+          .from(reminders)
+          .where(
+            and(
+              eq(reminders.tenantId, auth.tenantId),
+              eq(reminders.reminderType, "termination_delivery_check"),
+              eq(reminders.relatedEntityType, "termination_request"),
+              eq(reminders.relatedEntityId, payload.requestId),
+              eq(reminders.status, "pending")
+            )
           )
-        )
-        .limit(1);
-      if (!pendingDup) {
-        const r = createReminder({
-          tenantId: auth.tenantId,
-          reminderType: "termination_delivery_check",
-          title: "Zkontrolovat doručení výpovědi",
-          description: `Kanál: ${payload.channel}. Sledování: ${payload.trackingReference?.trim() || "—"}.`,
-          dueAt: new Date(Date.now() + 7 * 86400000),
-          severity: "medium",
-          relatedEntityType: "termination_request",
-          relatedEntityId: payload.requestId,
-          assignedTo: auth.userId,
-          suggestionOrigin: "rule",
-        });
-        await db.insert(reminders).values({
-          tenantId: r.tenantId,
-          reminderType: r.reminderType,
-          title: r.title,
-          description: r.description,
-          dueAt: r.dueAt,
-          severity: r.severity,
-          relatedEntityType: r.relatedEntityType,
-          relatedEntityId: r.relatedEntityId,
-          assignedTo: r.assignedTo,
-          suggestionOrigin: r.suggestionOrigin,
-          status: r.status,
-        });
-      }
+          .limit(1);
+        if (!pendingDup) {
+          const r = createReminder({
+            tenantId: auth.tenantId,
+            reminderType: "termination_delivery_check",
+            title: "Zkontrolovat doručení výpovědi",
+            description: `Kanál: ${payload.channel}. Sledování: ${payload.trackingReference?.trim() || "—"}.`,
+            dueAt: new Date(Date.now() + 7 * 86400000),
+            severity: "medium",
+            relatedEntityType: "termination_request",
+            relatedEntityId: payload.requestId,
+            assignedTo: auth.userId,
+            suggestionOrigin: "rule",
+          });
+          await tx.insert(reminders).values({
+            tenantId: r.tenantId,
+            reminderType: r.reminderType,
+            title: r.title,
+            description: r.description,
+            dueAt: r.dueAt,
+            severity: r.severity,
+            relatedEntityType: r.relatedEntityType,
+            relatedEntityId: r.relatedEntityId,
+            assignedTo: r.assignedTo,
+            suggestionOrigin: r.suggestionOrigin,
+            status: r.status,
+          });
+        }
+      });
     } catch (e) {
       console.error("appendTerminationDispatchLogAction reminder", e);
     }
@@ -1890,11 +1994,13 @@ export async function extractTerminationFieldsFromDocumentAction(
     return { ok: false, error: "Forbidden" };
   }
 
-  const [doc] = await db
-    .select({ id: documents.id, storagePath: documents.storagePath, mimeType: documents.mimeType, tenantId: documents.tenantId })
-    .from(documents)
-    .where(and(eq(documents.id, documentId), eq(documents.tenantId, auth.tenantId)))
-    .limit(1);
+  const [doc] = await withTenantContextFromAuth(auth, (tx) =>
+    tx
+      .select({ id: documents.id, storagePath: documents.storagePath, mimeType: documents.mimeType, tenantId: documents.tenantId })
+      .from(documents)
+      .where(and(eq(documents.id, documentId), eq(documents.tenantId, auth.tenantId)))
+      .limit(1),
+  );
   if (!doc) return { ok: false, error: "Dokument nenalezen." };
 
   const { createSignedStorageUrl } = await import("@/lib/storage/signed-url");
@@ -2017,21 +2123,23 @@ export async function listTerminationRequestsAction(): Promise<ListTerminationRe
   if (auth.roleName === "Client") return { ok: false, error: "Nepovoleno." };
   if (!hasPermission(auth.roleName, "contacts:read")) return { ok: false, error: "Forbidden" };
 
-  const rows = await db
-    .select({
-      id: terminationRequests.id,
-      insurerName: terminationRequests.insurerName,
-      contractNumber: terminationRequests.contractNumber,
-      productSegment: terminationRequests.productSegment,
-      status: terminationRequests.status,
-      createdAt: terminationRequests.createdAt,
-      updatedAt: terminationRequests.updatedAt,
-      requestedEffectiveDate: terminationRequests.requestedEffectiveDate,
-    })
-    .from(terminationRequests)
-    .where(eq(terminationRequests.tenantId, auth.tenantId))
-    .orderBy(desc(terminationRequests.createdAt))
-    .limit(200);
+  const rows = await withTenantContextFromAuth(auth, (tx) =>
+    tx
+      .select({
+        id: terminationRequests.id,
+        insurerName: terminationRequests.insurerName,
+        contractNumber: terminationRequests.contractNumber,
+        productSegment: terminationRequests.productSegment,
+        status: terminationRequests.status,
+        createdAt: terminationRequests.createdAt,
+        updatedAt: terminationRequests.updatedAt,
+        requestedEffectiveDate: terminationRequests.requestedEffectiveDate,
+      })
+      .from(terminationRequests)
+      .where(eq(terminationRequests.tenantId, auth.tenantId))
+      .orderBy(desc(terminationRequests.createdAt))
+      .limit(200),
+  );
 
   return {
     ok: true,

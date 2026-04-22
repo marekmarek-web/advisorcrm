@@ -32,6 +32,7 @@ import type { ClientRequestItem } from "@/app/lib/client-portal/request-types";
 import { requireClientZoneAuth } from "@/lib/auth/require-auth";
 import type { MaterialRequestListItem } from "@/lib/advisor-material-requests/display";
 import type { ClientFinancialSummaryView } from "@/app/actions/client-financial-summary";
+import { buildPortalFvContractAuxMap } from "@/lib/client-portfolio/portal-portfolio-fv-precompute";
 import type { ClientPortalSessionBundle } from "./client-portal-session-bundle.model";
 
 export type {
@@ -162,5 +163,6 @@ export const loadClientPortalSessionBundle = cache(async function loadClientPort
     financialSummaryRaw,
     visiblePortfolioSourceDocs,
     advisorProposals,
+    fvContractAux: buildPortalFvContractAuxMap(contracts),
   };
 });

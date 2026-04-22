@@ -1,8 +1,9 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import {
   advisorMaterialRequests,
   advisorMaterialRequestMessages,
@@ -40,49 +41,56 @@ export async function createAdvisorMaterialRequest(params: {
   if (!hasPermission(auth.roleName, "contacts:write")) {
     return { ok: false, error: "Nemáte oprávnění." };
   }
-  const [c] = await db
-    .select({ id: contacts.id })
-    .from(contacts)
-    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, params.contactId)))
-    .limit(1);
-  if (!c) return { ok: false, error: "Kontakt nenalezen." };
 
   const priority = params.priority ?? "normal";
   const responseMode = params.responseMode ?? "both";
   const description = params.description?.trim() ?? null;
 
-  const [row] = await db
-    .insert(advisorMaterialRequests)
-    .values({
+  const insertResult = await withTenantContextFromAuth(auth, async (tx) => {
+    const [c] = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, params.contactId)))
+      .limit(1);
+    if (!c) return { ok: false as const, error: "Kontakt nenalezen." };
+
+    const [row] = await tx
+      .insert(advisorMaterialRequests)
+      .values({
+        tenantId: auth.tenantId,
+        contactId: params.contactId,
+        createdByUserId: auth.userId,
+        category: params.category.trim() || "ostatni",
+        title: params.title.trim(),
+        description,
+        priority,
+        dueAt: params.dueAt ?? null,
+        responseMode,
+        status: "new",
+        opportunityId: params.opportunityId ?? null,
+      })
+      .returning({ id: advisorMaterialRequests.id });
+
+    const id = row?.id;
+    if (!id) return { ok: false as const, error: "Nepodařilo se vytvořit požadavek." };
+
+    const initialBody =
+      description && description.length > 0
+        ? `${params.title.trim()}\n\n${description}`
+        : params.title.trim();
+
+    await tx.insert(advisorMaterialRequestMessages).values({
       tenantId: auth.tenantId,
-      contactId: params.contactId,
-      createdByUserId: auth.userId,
-      category: params.category.trim() || "ostatni",
-      title: params.title.trim(),
-      description,
-      priority,
-      dueAt: params.dueAt ?? null,
-      responseMode,
-      status: "new",
-      opportunityId: params.opportunityId ?? null,
-    })
-    .returning({ id: advisorMaterialRequests.id });
+      requestId: id,
+      authorRole: "advisor",
+      authorUserId: auth.userId,
+      body: initialBody,
+    });
 
-  const id = row?.id;
-  if (!id) return { ok: false, error: "Nepodařilo se vytvořit požadavek." };
-
-  const initialBody =
-    description && description.length > 0
-      ? `${params.title.trim()}\n\n${description}`
-      : params.title.trim();
-
-  await db.insert(advisorMaterialRequestMessages).values({
-    tenantId: auth.tenantId,
-    requestId: id,
-    authorRole: "advisor",
-    authorUserId: auth.userId,
-    body: initialBody,
+    return { ok: true as const, id, initialBody };
   });
+
+  if (!insertResult.ok) return insertResult;
 
   try {
     await createPortalNotification({
@@ -90,64 +98,66 @@ export async function createAdvisorMaterialRequest(params: {
       contactId: params.contactId,
       type: "advisor_material_request",
       title: "Nový požadavek na podklady",
-      body: initialBody,
+      body: insertResult.initialBody,
       relatedEntityType: "advisor_material_request",
-      relatedEntityId: id,
+      relatedEntityId: insertResult.id,
     });
   } catch {
     /* best-effort */
   }
 
-  return { ok: true, id };
+  return { ok: true, id: insertResult.id };
 }
 
 export async function listAdvisorMaterialRequestsForContact(
   contactId: string
 ): Promise<MaterialRequestListItem[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
-  const [c] = await db
-    .select({ id: contacts.id })
-    .from(contacts)
-    .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)))
-    .limit(1);
-  if (!c) throw new Error("Kontakt nenalezen.");
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+    const [c] = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, auth.tenantId), eq(contacts.id, contactId)))
+      .limit(1);
+    if (!c) throw new Error("Kontakt nenalezen.");
 
-  const rows = await db
-    .select({
-      id: advisorMaterialRequests.id,
-      title: advisorMaterialRequests.title,
-      category: advisorMaterialRequests.category,
-      status: advisorMaterialRequests.status,
-      priority: advisorMaterialRequests.priority,
-      dueAt: advisorMaterialRequests.dueAt,
-      createdAt: advisorMaterialRequests.createdAt,
-      updatedAt: advisorMaterialRequests.updatedAt,
-    })
-    .from(advisorMaterialRequests)
-    .where(
-      and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.contactId, contactId))
-    )
-    .orderBy(desc(advisorMaterialRequests.updatedAt));
+    const rows = await tx
+      .select({
+        id: advisorMaterialRequests.id,
+        title: advisorMaterialRequests.title,
+        category: advisorMaterialRequests.category,
+        status: advisorMaterialRequests.status,
+        priority: advisorMaterialRequests.priority,
+        dueAt: advisorMaterialRequests.dueAt,
+        createdAt: advisorMaterialRequests.createdAt,
+        updatedAt: advisorMaterialRequests.updatedAt,
+      })
+      .from(advisorMaterialRequests)
+      .where(
+        and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.contactId, contactId))
+      )
+      .orderBy(desc(advisorMaterialRequests.updatedAt));
 
-  return rows.map((r) => ({
-    ...r,
-    categoryLabel: materialRequestCategoryLabel(r.category),
-  }));
+    return rows.map((r) => ({
+      ...r,
+      categoryLabel: materialRequestCategoryLabel(r.category),
+    }));
+  });
 }
 
 async function buildMaterialRequestDetail(
+  tx: TenantContextDb,
   tenantId: string,
   requestId: string
 ): Promise<MaterialRequestDetail | null> {
-  const [req] = await db
+  const [req] = await tx
     .select()
     .from(advisorMaterialRequests)
     .where(and(eq(advisorMaterialRequests.tenantId, tenantId), eq(advisorMaterialRequests.id, requestId)))
     .limit(1);
   if (!req) return null;
 
-  const msgs = await db
+  const msgs = await tx
     .select({
       id: advisorMaterialRequestMessages.id,
       authorRole: advisorMaterialRequestMessages.authorRole,
@@ -163,7 +173,7 @@ async function buildMaterialRequestDetail(
     )
     .orderBy(asc(advisorMaterialRequestMessages.createdAt));
 
-  const docLinks = await db
+  const docLinks = await tx
     .select({
       documentId: advisorMaterialRequestDocuments.documentId,
       attachmentRole: advisorMaterialRequestDocuments.attachmentRole,
@@ -180,7 +190,7 @@ async function buildMaterialRequestDetail(
   const docMeta =
     docIds.length === 0
       ? []
-      : await db
+      : await tx
           .select({
             id: documents.id,
             name: documents.name,
@@ -229,28 +239,30 @@ async function buildMaterialRequestDetail(
 export async function getAdvisorMaterialRequestDetail(
   requestId: string
 ): Promise<MaterialRequestDetail | null> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
-  return buildMaterialRequestDetail(auth.tenantId, requestId);
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:read")) throw new Error("Forbidden");
+    return buildMaterialRequestDetail(tx, auth.tenantId, requestId);
+  });
 }
 
 export async function updateAdvisorMaterialRequestInternalNote(
   requestId: string,
   internalNote: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false, error: "Forbidden" };
-  const [row] = await db
-    .select({ id: advisorMaterialRequests.id })
-    .from(advisorMaterialRequests)
-    .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
-    .limit(1);
-  if (!row) return { ok: false, error: "Nenalezeno." };
-  await db
-    .update(advisorMaterialRequests)
-    .set({ internalNote: internalNote?.trim() || null, updatedAt: new Date() })
-    .where(eq(advisorMaterialRequests.id, requestId));
-  return { ok: true };
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false as const, error: "Forbidden" };
+    const [row] = await tx
+      .select({ id: advisorMaterialRequests.id })
+      .from(advisorMaterialRequests)
+      .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
+      .limit(1);
+    if (!row) return { ok: false as const, error: "Nenalezeno." };
+    await tx
+      .update(advisorMaterialRequests)
+      .set({ internalNote: internalNote?.trim() || null, updatedAt: new Date() })
+      .where(eq(advisorMaterialRequests.id, requestId));
+    return { ok: true as const };
+  });
 }
 
 export async function setAdvisorMaterialRequestStatus(
@@ -259,31 +271,39 @@ export async function setAdvisorMaterialRequestStatus(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false, error: "Forbidden" };
-  const [row] = await db
-    .select({ id: advisorMaterialRequests.id })
-    .from(advisorMaterialRequests)
-    .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
-    .limit(1);
-  if (!row) return { ok: false, error: "Nenalezeno." };
-  const [prev] = await db
-    .select({
-      contactId: advisorMaterialRequests.contactId,
-      status: advisorMaterialRequests.status,
-    })
-    .from(advisorMaterialRequests)
-    .where(eq(advisorMaterialRequests.id, requestId))
-    .limit(1);
 
-  await db
-    .update(advisorMaterialRequests)
-    .set({
-      status,
-      closedAt: status === "closed" ? new Date() : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(advisorMaterialRequests.id, requestId));
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({ id: advisorMaterialRequests.id })
+      .from(advisorMaterialRequests)
+      .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
+      .limit(1);
+    if (!row) return { ok: false as const, error: "Nenalezeno." };
+    const [prev] = await tx
+      .select({
+        contactId: advisorMaterialRequests.contactId,
+        status: advisorMaterialRequests.status,
+      })
+      .from(advisorMaterialRequests)
+      .where(eq(advisorMaterialRequests.id, requestId))
+      .limit(1);
+
+    await tx
+      .update(advisorMaterialRequests)
+      .set({
+        status,
+        closedAt: status === "closed" ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(advisorMaterialRequests.id, requestId));
+
+    return { ok: true as const, prev };
+  });
+
+  if (!result.ok) return result;
 
   // 5B: Notify client when advisor resolves or closes the request
+  const prev = result.prev;
   if (prev && (status === "done" || status === "closed") && prev.status !== status) {
     try {
       await createPortalNotification({
@@ -311,39 +331,40 @@ export async function setAdvisorMaterialRequestStatus(
 export async function deleteAdvisorMaterialRequest(
   requestId: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false, error: "Forbidden" };
-  const [row] = await db
-    .select({
-      id: advisorMaterialRequests.id,
-      contactId: advisorMaterialRequests.contactId,
-      status: advisorMaterialRequests.status,
-    })
-    .from(advisorMaterialRequests)
-    .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
-    .limit(1);
-  if (!row) return { ok: false, error: "Nenalezeno." };
-  if (row.status !== "done") {
-    return { ok: false, error: "Smazat lze jen požadavky ve stavu Splněno." };
-  }
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false as const, error: "Forbidden" };
+    const [row] = await tx
+      .select({
+        id: advisorMaterialRequests.id,
+        contactId: advisorMaterialRequests.contactId,
+        status: advisorMaterialRequests.status,
+      })
+      .from(advisorMaterialRequests)
+      .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
+      .limit(1);
+    if (!row) return { ok: false as const, error: "Nenalezeno." };
+    if (row.status !== "done") {
+      return { ok: false as const, error: "Smazat lze jen požadavky ve stavu Splněno." };
+    }
 
-  try {
-    await db
-      .delete(portalNotifications)
-      .where(
-        and(
-          eq(portalNotifications.tenantId, auth.tenantId),
-          eq(portalNotifications.contactId, row.contactId),
-          eq(portalNotifications.type, "advisor_material_request"),
-          eq(portalNotifications.relatedEntityId, requestId)
-        )
-      );
-  } catch {
-    /* best-effort */
-  }
+    try {
+      await tx
+        .delete(portalNotifications)
+        .where(
+          and(
+            eq(portalNotifications.tenantId, auth.tenantId),
+            eq(portalNotifications.contactId, row.contactId),
+            eq(portalNotifications.type, "advisor_material_request"),
+            eq(portalNotifications.relatedEntityId, requestId)
+          )
+        );
+    } catch {
+      /* best-effort */
+    }
 
-  await db.delete(advisorMaterialRequests).where(eq(advisorMaterialRequests.id, requestId));
-  return { ok: true };
+    await tx.delete(advisorMaterialRequests).where(eq(advisorMaterialRequests.id, requestId));
+    return { ok: true as const };
+  });
 }
 
 export async function addAdvisorMaterialRequestReply(
@@ -354,29 +375,36 @@ export async function addAdvisorMaterialRequestReply(
   if (!hasPermission(auth.roleName, "contacts:write")) return { ok: false, error: "Forbidden" };
   const trimmed = body.trim();
   if (!trimmed) return { ok: false, error: "Zadejte text." };
-  const [req] = await db
-    .select({ id: advisorMaterialRequests.id, contactId: advisorMaterialRequests.contactId })
-    .from(advisorMaterialRequests)
-    .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
-    .limit(1);
-  if (!req) return { ok: false, error: "Nenalezeno." };
 
-  await db.insert(advisorMaterialRequestMessages).values({
-    tenantId: auth.tenantId,
-    requestId,
-    authorRole: "advisor",
-    authorUserId: auth.userId,
-    body: trimmed,
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [req] = await tx
+      .select({ id: advisorMaterialRequests.id, contactId: advisorMaterialRequests.contactId })
+      .from(advisorMaterialRequests)
+      .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
+      .limit(1);
+    if (!req) return { ok: false as const, error: "Nenalezeno." };
+
+    await tx.insert(advisorMaterialRequestMessages).values({
+      tenantId: auth.tenantId,
+      requestId,
+      authorRole: "advisor",
+      authorUserId: auth.userId,
+      body: trimmed,
+    });
+    await tx
+      .update(advisorMaterialRequests)
+      .set({ status: "needs_more", updatedAt: new Date() })
+      .where(eq(advisorMaterialRequests.id, requestId));
+
+    return { ok: true as const, contactId: req.contactId };
   });
-  await db
-    .update(advisorMaterialRequests)
-    .set({ status: "needs_more", updatedAt: new Date() })
-    .where(eq(advisorMaterialRequests.id, requestId));
+
+  if (!result.ok) return result;
 
   try {
     await createPortalNotification({
       tenantId: auth.tenantId,
-      contactId: req.contactId,
+      contactId: result.contactId,
       type: "advisor_material_request",
       title: "Doplňující informace od poradce",
       body: trimmed.slice(0, 280),
@@ -397,43 +425,50 @@ export async function linkMaterialRequestDocumentToClientVault(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const auth = await requireAuthInAction();
   if (!hasPermission(auth.roleName, "documents:write")) return { ok: false, error: "Forbidden" };
-  const [req] = await db
-    .select({
-      id: advisorMaterialRequests.id,
-      contactId: advisorMaterialRequests.contactId,
-    })
-    .from(advisorMaterialRequests)
-    .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
-    .limit(1);
-  if (!req) return { ok: false, error: "Požadavek nenalezen." };
-
-  const [doc] = await db
-    .select({
-      id: documents.id,
-      contactId: documents.contactId,
-      name: documents.name,
-      visibleToClient: documents.visibleToClient,
-    })
-    .from(documents)
-    .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.id, documentId)))
-    .limit(1);
-  if (!doc || doc.contactId !== req.contactId) {
-    return { ok: false, error: "Dokument nepatří k tomuto klientovi." };
-  }
-
   const visible = options?.visibleToClient ?? true;
-  await db
-    .update(documents)
-    .set({ visibleToClient: visible, updatedAt: new Date() })
-    .where(eq(documents.id, documentId));
 
-  if (visible && req.contactId) {
+  const result = await withTenantContextFromAuth(auth, async (tx) => {
+    const [req] = await tx
+      .select({
+        id: advisorMaterialRequests.id,
+        contactId: advisorMaterialRequests.contactId,
+      })
+      .from(advisorMaterialRequests)
+      .where(and(eq(advisorMaterialRequests.tenantId, auth.tenantId), eq(advisorMaterialRequests.id, requestId)))
+      .limit(1);
+    if (!req) return { ok: false as const, error: "Požadavek nenalezen." };
+
+    const [doc] = await tx
+      .select({
+        id: documents.id,
+        contactId: documents.contactId,
+        name: documents.name,
+        visibleToClient: documents.visibleToClient,
+      })
+      .from(documents)
+      .where(and(eq(documents.tenantId, auth.tenantId), eq(documents.id, documentId)))
+      .limit(1);
+    if (!doc || doc.contactId !== req.contactId) {
+      return { ok: false as const, error: "Dokument nepatří k tomuto klientovi." };
+    }
+
+    await tx
+      .update(documents)
+      .set({ visibleToClient: visible, updatedAt: new Date() })
+      .where(eq(documents.id, documentId));
+
+    return { ok: true as const, contactId: req.contactId, docName: doc.name };
+  });
+
+  if (!result.ok) return result;
+
+  if (visible && result.contactId) {
     try {
       await notifyClientAdvisorSharedDocument({
         tenantId: auth.tenantId,
-        contactId: req.contactId,
+        contactId: result.contactId,
         documentId,
-        documentName: doc.name,
+        documentName: result.docName,
         reason: "visibility_on",
       });
     } catch {
@@ -449,65 +484,69 @@ export async function listClientMaterialRequests(): Promise<MaterialRequestListI
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || !auth.contactId) throw new Error("Forbidden");
 
-  const rows = await db
-    .select({
-      id: advisorMaterialRequests.id,
-      title: advisorMaterialRequests.title,
-      category: advisorMaterialRequests.category,
-      status: advisorMaterialRequests.status,
-      priority: advisorMaterialRequests.priority,
-      dueAt: advisorMaterialRequests.dueAt,
-      createdAt: advisorMaterialRequests.createdAt,
-      updatedAt: advisorMaterialRequests.updatedAt,
-    })
-    .from(advisorMaterialRequests)
-    .where(
-      and(
-        eq(advisorMaterialRequests.tenantId, auth.tenantId),
-        eq(advisorMaterialRequests.contactId, auth.contactId)
+  return withTenantContextFromAuth(auth, async (tx) => {
+    const rows = await tx
+      .select({
+        id: advisorMaterialRequests.id,
+        title: advisorMaterialRequests.title,
+        category: advisorMaterialRequests.category,
+        status: advisorMaterialRequests.status,
+        priority: advisorMaterialRequests.priority,
+        dueAt: advisorMaterialRequests.dueAt,
+        createdAt: advisorMaterialRequests.createdAt,
+        updatedAt: advisorMaterialRequests.updatedAt,
+      })
+      .from(advisorMaterialRequests)
+      .where(
+        and(
+          eq(advisorMaterialRequests.tenantId, auth.tenantId),
+          eq(advisorMaterialRequests.contactId, auth.contactId!)
+        )
       )
-    )
-    .orderBy(desc(advisorMaterialRequests.updatedAt));
+      .orderBy(desc(advisorMaterialRequests.updatedAt));
 
-  return rows.map((r) => ({
-    ...r,
-    categoryLabel: materialRequestCategoryLabel(r.category),
-  }));
+    return rows.map((r) => ({
+      ...r,
+      categoryLabel: materialRequestCategoryLabel(r.category),
+    }));
+  });
 }
 
 export async function getClientMaterialRequestDetail(requestId: string): Promise<MaterialRequestDetail | null> {
   const auth = await requireAuthInAction();
   if (auth.roleName !== "Client" || !auth.contactId) throw new Error("Forbidden");
 
-  const [req] = await db
-    .select()
-    .from(advisorMaterialRequests)
-    .where(
-      and(
-        eq(advisorMaterialRequests.tenantId, auth.tenantId),
-        eq(advisorMaterialRequests.id, requestId),
-        eq(advisorMaterialRequests.contactId, auth.contactId)
+  return withTenantContextFromAuth(auth, async (tx) => {
+    const [req] = await tx
+      .select()
+      .from(advisorMaterialRequests)
+      .where(
+        and(
+          eq(advisorMaterialRequests.tenantId, auth.tenantId),
+          eq(advisorMaterialRequests.id, requestId),
+          eq(advisorMaterialRequests.contactId, auth.contactId!)
+        )
       )
-    )
-    .limit(1);
-  if (!req) return null;
+      .limit(1);
+    if (!req) return null;
 
-  if (!req.readByClientAt) {
-    await db
-      .update(advisorMaterialRequests)
-      .set({
-        readByClientAt: new Date(),
-        status: req.status === "new" ? "seen" : req.status,
-        updatedAt: new Date(),
-      })
-      .where(eq(advisorMaterialRequests.id, requestId));
-  }
+    if (!req.readByClientAt) {
+      await tx
+        .update(advisorMaterialRequests)
+        .set({
+          readByClientAt: new Date(),
+          status: req.status === "new" ? "seen" : req.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(advisorMaterialRequests.id, requestId));
+    }
 
-  const detail = await buildMaterialRequestDetail(auth.tenantId, requestId);
-  if (detail) {
-    detail.internalNote = null;
-  }
-  return detail;
+    const detail = await buildMaterialRequestDetail(tx, auth.tenantId, requestId);
+    if (detail) {
+      detail.internalNote = null;
+    }
+    return detail;
+  });
 }
 
 export async function respondClientMaterialRequest(
@@ -523,23 +562,28 @@ export async function respondClientMaterialRequest(
     return { ok: false, error: "Napište odpověď nebo přiložte soubor." };
   }
 
-  const [req] = await db
-    .select({
-      id: advisorMaterialRequests.id,
-      contactId: advisorMaterialRequests.contactId,
-      tenantId: advisorMaterialRequests.tenantId,
-      status: advisorMaterialRequests.status,
-    })
-    .from(advisorMaterialRequests)
-    .where(
-      and(
-        eq(advisorMaterialRequests.tenantId, auth.tenantId),
-        eq(advisorMaterialRequests.id, requestId),
-        eq(advisorMaterialRequests.contactId, auth.contactId)
+  const reqResult = await withTenantContextFromAuth(auth, async (tx) => {
+    const [req] = await tx
+      .select({
+        id: advisorMaterialRequests.id,
+        contactId: advisorMaterialRequests.contactId,
+        tenantId: advisorMaterialRequests.tenantId,
+        status: advisorMaterialRequests.status,
+      })
+      .from(advisorMaterialRequests)
+      .where(
+        and(
+          eq(advisorMaterialRequests.tenantId, auth.tenantId),
+          eq(advisorMaterialRequests.id, requestId),
+          eq(advisorMaterialRequests.contactId, auth.contactId!)
+        )
       )
-    )
-    .limit(1);
-  if (!req) return { ok: false, error: "Požadavek nenalezen." };
+      .limit(1);
+    return req ?? null;
+  });
+
+  if (!reqResult) return { ok: false, error: "Požadavek nenalezen." };
+  const req = reqResult;
   if (req.status === "closed" || req.status === "done") {
     captureRequestReplyFailure({
       tenantId: auth.tenantId,
@@ -551,12 +595,14 @@ export async function respondClientMaterialRequest(
   }
 
   if (trimmed.length > 0) {
-    await db.insert(advisorMaterialRequestMessages).values({
-      tenantId: auth.tenantId,
-      requestId,
-      authorRole: "client",
-      authorUserId: auth.userId,
-      body: trimmed,
+    await withTenantContextFromAuth(auth, async (tx) => {
+      await tx.insert(advisorMaterialRequestMessages).values({
+        tenantId: auth.tenantId,
+        requestId,
+        authorRole: "client",
+        authorUserId: auth.userId,
+        body: trimmed,
+      });
     });
   }
 
@@ -568,11 +614,14 @@ export async function respondClientMaterialRequest(
     try {
       const res = await clientUploadDocument(fd);
       if (res.success && res.id) {
-        await db.insert(advisorMaterialRequestDocuments).values({
-          tenantId: auth.tenantId,
-          requestId,
-          documentId: res.id,
-          attachmentRole: "client",
+        const uploadedId = res.id;
+        await withTenantContextFromAuth(auth, async (tx) => {
+          await tx.insert(advisorMaterialRequestDocuments).values({
+            tenantId: auth.tenantId,
+            requestId,
+            documentId: uploadedId,
+            attachmentRole: "client",
+          });
         });
       }
     } catch (e) {
@@ -586,24 +635,28 @@ export async function respondClientMaterialRequest(
     }
   }
 
-  await db
-    .update(advisorMaterialRequests)
-    .set({
-      status: "answered",
-      updatedAt: new Date(),
-    })
-    .where(eq(advisorMaterialRequests.id, requestId));
+  await withTenantContextFromAuth(auth, async (tx) => {
+    await tx
+      .update(advisorMaterialRequests)
+      .set({
+        status: "answered",
+        updatedAt: new Date(),
+      })
+      .where(eq(advisorMaterialRequests.id, requestId));
+  });
 
   const advisorUserId = await getTargetAdvisorUserIdForContact(req.tenantId, req.contactId);
   if (advisorUserId) {
-    const [cn] = await db
-      .select({ firstName: contacts.firstName, lastName: contacts.lastName })
-      .from(contacts)
-      .where(and(eq(contacts.tenantId, req.tenantId), eq(contacts.id, req.contactId)))
-      .limit(1);
-    const clientName = cn
-      ? [cn.firstName, cn.lastName].filter(Boolean).join(" ").trim() || "Klient"
-      : "Klient";
+    const clientName = await withTenantContextFromAuth(auth, async (tx) => {
+      const [cn] = await tx
+        .select({ firstName: contacts.firstName, lastName: contacts.lastName })
+        .from(contacts)
+        .where(and(eq(contacts.tenantId, req.tenantId), eq(contacts.id, req.contactId)))
+        .limit(1);
+      return cn
+        ? [cn.firstName, cn.lastName].filter(Boolean).join(" ").trim() || "Klient"
+        : "Klient";
+    });
     try {
       await emitNotification({
         tenantId: req.tenantId,

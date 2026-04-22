@@ -1,6 +1,7 @@
 import { requireClientZoneAuth } from "@/lib/auth/require-auth";
 import { getClientPortfolioForContact } from "@/app/actions/contracts";
 import { getClientVisiblePortfolioDocumentNames } from "@/app/actions/documents";
+import { buildPortalFvContractAuxMap } from "@/lib/client-portfolio/portal-portfolio-fv-precompute";
 import { PortfolioPageContent } from "./PortfolioPageContent";
 
 export default async function ClientPortfolioPage() {
@@ -15,5 +16,12 @@ export default async function ClientPortfolioPage() {
     sourceDocIds.length > 0
       ? await getClientVisiblePortfolioDocumentNames(auth.contactId, sourceDocIds)
       : {};
-  return <PortfolioPageContent contracts={contracts} visibleSourceDocs={visibleSourceDocs} />;
+  const fvContractAux = buildPortalFvContractAuxMap(contracts);
+  return (
+    <PortfolioPageContent
+      contracts={contracts}
+      visibleSourceDocs={visibleSourceDocs}
+      fvContractAux={fvContractAux}
+    />
+  );
 }

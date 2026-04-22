@@ -240,6 +240,25 @@ const LIFE_CONTRACT_HEADER_MARKERS: RegExp[] = [
   /cislo\s+pojistne\s+smlouvy/,
 ];
 
+// Investment service agreement (komisionářská / mandátní / obhospodařování)
+// markers — used as:
+//  • Guard for Priority 1 (AML) so smíšené komisionářské smlouvy s AML přílohou
+//    nezmizí jako pure AML form.
+//  • Priority 4 rule that promotes such documents z consent_or_declaration /
+//    life_insurance / generic na investment_service_agreement.
+// Haystack is NFD-stripped (diacritics removed) + lowercased, so markers are
+// written without diacritics.
+const INVESTMENT_SERVICE_AGREEMENT_MARKERS: RegExp[] = [
+  /komisionar(ska|sky|ske|skou|e)?\s+smlouv/,
+  /\bkomisionar(e|stvi)?\b/,
+  /smlouva\s+o\s+obhospodarovani/,
+  /obhospodarovani\s+(maj(etku|etek)|cennych\s+papir)/,
+  /mandatni\s+smlouv/,
+  /smlouva\s+o\s+zprostredkovani\s+(investic|cennych\s+papir)/,
+  /smlouva\s+o\s+poskytovani\s+investicnich\s+sluzeb/,
+  /investicni\s+(sluzby|poradenstvi|mandat)/,
+];
+
 /**
  * Rule-based override for router input fields (productFamily / documentType / productSubtype).
  * Called in the V2 pipeline AFTER the LLM classifier and BEFORE resolveAiReviewExtractionRoute.
@@ -282,13 +301,22 @@ export function applyRouterInputTextOverrides(
         if (amlHits >= 2) break;
       }
       if (amlHits >= 2) {
-        // Guard 2: if document has ≥2 insurance contract headers, it's a primary insurance
+        // Guard 2a: if document has ≥2 insurance contract headers, it's a primary insurance
         // contract with an embedded AML section — skip the override.
         let contractHits = 0;
         for (const m of LIFE_CONTRACT_HEADER_MARKERS) {
           if (m.test(haystack)) contractHits++;
         }
-        if (contractHits < 2) {
+        // Guard 2b: if document has ≥2 investment service agreement markers
+        // (komisionářská / mandátní / obhospodařování), it's a primary investment
+        // contract with a mandatory AML section — skip the AML override so
+        // Priority 4 can correctly route it to investment_service_agreement.
+        let investmentServiceHits = 0;
+        for (const m of INVESTMENT_SERVICE_AGREEMENT_MARKERS) {
+          if (m.test(haystack)) investmentServiceHits++;
+          if (investmentServiceHits >= 2) break;
+        }
+        if (contractHits < 2 && investmentServiceHits < 2) {
           return {
             productFamily: "compliance",
             documentType: "consent_or_identification_document",
@@ -344,6 +372,60 @@ export function applyRouterInputTextOverrides(
           productSubtype: currentProductSubtype,
           overrideApplied: true,
           overrideReasons: ["life_contract_modelation_correction"],
+        };
+      }
+    }
+  }
+
+  // Priority 4: Investment service agreement (komisionářská / mandátní / obhospodařování)
+  // commonly misclassified by the LLM as consent_or_declaration, life_insurance
+  // or generic_financial_product. When we see ≥2 strong investment service
+  // markers, promote to productFamily="investment" + documentType="contract"
+  // so mapAiClassifierToPrimaryType returns "investment_service_agreement"
+  // and the router picks investmentContractExtraction.
+  //
+  // Guards:
+  //  • Skip already-correct investment contracts (no-op).
+  //  • Skip families that are specific non-investment products (DIP/DPS/PP/loan/
+  //    mortgage/leasing/non-life insurance) — those have their own extractors.
+  {
+    const NON_INVESTMENT_FAMILIES = new Set([
+      "dip",
+      "dps",
+      "pp",
+      "loan",
+      "mortgage",
+      "building_savings",
+      "leasing",
+      "non_life_insurance",
+      "car_insurance",
+      "motor_insurance",
+      "household_insurance",
+      "home_insurance",
+      "property_insurance",
+      "liability_insurance",
+      "travel_insurance",
+    ]);
+    const alreadyInvestmentContract =
+      currentProductFamily === "investment" &&
+      (currentDocumentType === "contract" ||
+        currentDocumentType === "investment_service_agreement");
+    if (
+      !NON_INVESTMENT_FAMILIES.has(currentProductFamily) &&
+      !alreadyInvestmentContract
+    ) {
+      let hits = 0;
+      for (const m of INVESTMENT_SERVICE_AGREEMENT_MARKERS) {
+        if (m.test(haystack)) hits++;
+        if (hits >= 2) break;
+      }
+      if (hits >= 2) {
+        return {
+          productFamily: "investment",
+          documentType: "contract",
+          productSubtype: "investment_service_agreement",
+          overrideApplied: true,
+          overrideReasons: ["investment_service_agreement_override"],
         };
       }
     }

@@ -39,6 +39,9 @@ export type TeamAiContextRaw = {
     lastActivityAt: Date | null;
     daysWithoutActivity: number;
     riskLevel: "ok" | "warning" | "critical";
+    /** F7 source-aware prompt: pomohne AI rozli\u0161it CRM auto vs. manu\u00e1ln\u011b veden\u00e9 \u010dleny. */
+    memberKind?: "internal_user" | "external_manual";
+    sources?: Partial<Record<string, string>>;
   }[];
   alerts: { memberId: string; title: string; description: string; severity: string }[];
   newcomers: {
@@ -149,6 +152,18 @@ export function renderTeamAiPromptVariables(raw: TeamAiContextRaw): Record<strin
     parts.push(`trend jednotek: ${(met?.unitsTrend ?? 0) >= 0 ? "+" : ""}${met?.unitsTrend ?? 0}`);
     parts.push(`riziko: ${met?.riskLevel ?? "—"}`);
     if (newcomer) parts.push("nováček");
+    if (met?.memberKind === "external_manual") {
+      parts.push("typ: externí (manuálně vedený, CRM data se nedoplňují automaticky)");
+      const missingKeys = met.sources
+        ? Object.entries(met.sources).filter(([, v]) => v === "missing").map(([k]) => k)
+        : [];
+      if (missingKeys.length > 0) parts.push(`chybějící data: ${missingKeys.join(", ")}`);
+    } else if (met?.sources) {
+      const manualKeys = Object.entries(met.sources)
+        .filter(([, v]) => v === "manual_confirmed" || v === "manual_estimated")
+        .map(([k, v]) => `${k}=${v}`);
+      if (manualKeys.length > 0) parts.push(`zdroje (manual override): ${manualKeys.join(", ")}`);
+    }
     memberLines.push(`- ${parts.join(" | ")}`);
   }
   const team_members =

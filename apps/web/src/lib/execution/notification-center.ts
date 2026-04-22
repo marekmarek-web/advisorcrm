@@ -4,6 +4,7 @@
  */
 
 import type { PushEventType } from "@/lib/push/events";
+import { withServiceTenantContext } from "@/lib/db/service-db";
 
 export type NotificationSeverity = "info" | "warning" | "urgent";
 export type NotificationStatus = "unread" | "read" | "dismissed" | "archived";
@@ -59,25 +60,31 @@ export async function emitNotification(
   recordGroupKey(item.groupKey);
 
   try {
-    const { db, advisorNotifications } = await import("db");
-    const [inserted] = await db
-      .insert(advisorNotifications)
-      .values({
-        tenantId: notification.tenantId,
-        type: notification.type,
-        title: notification.title,
-        body: notification.body,
-        severity: notification.severity,
-        targetUserId: notification.targetUserId,
-        channels: notification.channels,
-        relatedEntityType: notification.relatedEntityType,
-        relatedEntityId: notification.relatedEntityId,
-        status: notification.status,
-        groupKey: notification.groupKey,
-      })
-      .returning({ id: advisorNotifications.id });
-    if (inserted?.id) {
-      notification.id = inserted.id;
+    const { advisorNotifications } = await import("db");
+    const insertedId = await withServiceTenantContext(
+      { tenantId: notification.tenantId, userId: notification.targetUserId },
+      async (tx) => {
+        const [inserted] = await tx
+          .insert(advisorNotifications)
+          .values({
+            tenantId: notification.tenantId,
+            type: notification.type,
+            title: notification.title,
+            body: notification.body,
+            severity: notification.severity,
+            targetUserId: notification.targetUserId,
+            channels: notification.channels,
+            relatedEntityType: notification.relatedEntityType,
+            relatedEntityId: notification.relatedEntityId,
+            status: notification.status,
+            groupKey: notification.groupKey,
+          })
+          .returning({ id: advisorNotifications.id });
+        return inserted?.id ?? null;
+      },
+    );
+    if (insertedId) {
+      notification.id = insertedId;
     }
   } catch { /* best-effort persist */ }
 
@@ -114,15 +121,17 @@ export async function markNotificationRead(
   targetUserId: string,
 ): Promise<boolean> {
   try {
-    const { db, advisorNotifications, eq, and } = await import("db");
-    await db.update(advisorNotifications).set({
-      status: "read",
-      readAt: new Date(),
-    }).where(and(
-      eq(advisorNotifications.id, notificationId),
-      eq(advisorNotifications.tenantId, tenantId),
-      eq(advisorNotifications.targetUserId, targetUserId),
-    ));
+    const { advisorNotifications, eq, and } = await import("db");
+    await withServiceTenantContext({ tenantId, userId: targetUserId }, async (tx) => {
+      await tx.update(advisorNotifications).set({
+        status: "read",
+        readAt: new Date(),
+      }).where(and(
+        eq(advisorNotifications.id, notificationId),
+        eq(advisorNotifications.tenantId, tenantId),
+        eq(advisorNotifications.targetUserId, targetUserId),
+      ));
+    });
     return true;
   } catch {
     return false;
@@ -135,22 +144,24 @@ export async function markAllNotificationsReadForUser(
   options?: { type?: string; types?: string[] },
 ): Promise<boolean> {
   try {
-    const { db, advisorNotifications, eq, and, inArray } = await import("db");
-    const conditions = [
-      eq(advisorNotifications.tenantId, tenantId),
-      eq(advisorNotifications.targetUserId, targetUserId),
-      eq(advisorNotifications.status, "unread"),
-    ];
-    const types = options?.types?.filter((t) => t.trim().length > 0) ?? [];
-    if (types.length > 0) {
-      conditions.push(inArray(advisorNotifications.type, types));
-    } else if (options?.type?.trim()) {
-      conditions.push(eq(advisorNotifications.type, options.type.trim()));
-    }
-    await db.update(advisorNotifications).set({
-      status: "read",
-      readAt: new Date(),
-    }).where(and(...conditions));
+    const { advisorNotifications, eq, and, inArray } = await import("db");
+    await withServiceTenantContext({ tenantId, userId: targetUserId }, async (tx) => {
+      const conditions = [
+        eq(advisorNotifications.tenantId, tenantId),
+        eq(advisorNotifications.targetUserId, targetUserId),
+        eq(advisorNotifications.status, "unread"),
+      ];
+      const types = options?.types?.filter((t) => t.trim().length > 0) ?? [];
+      if (types.length > 0) {
+        conditions.push(inArray(advisorNotifications.type, types));
+      } else if (options?.type?.trim()) {
+        conditions.push(eq(advisorNotifications.type, options.type.trim()));
+      }
+      await tx.update(advisorNotifications).set({
+        status: "read",
+        readAt: new Date(),
+      }).where(and(...conditions));
+    });
     return true;
   } catch {
     return false;
@@ -163,15 +174,17 @@ export async function dismissNotification(
   targetUserId: string,
 ): Promise<boolean> {
   try {
-    const { db, advisorNotifications, eq, and } = await import("db");
-    await db.update(advisorNotifications).set({
-      status: "dismissed",
-      dismissedAt: new Date(),
-    }).where(and(
-      eq(advisorNotifications.id, notificationId),
-      eq(advisorNotifications.tenantId, tenantId),
-      eq(advisorNotifications.targetUserId, targetUserId),
-    ));
+    const { advisorNotifications, eq, and } = await import("db");
+    await withServiceTenantContext({ tenantId, userId: targetUserId }, async (tx) => {
+      await tx.update(advisorNotifications).set({
+        status: "dismissed",
+        dismissedAt: new Date(),
+      }).where(and(
+        eq(advisorNotifications.id, notificationId),
+        eq(advisorNotifications.tenantId, tenantId),
+        eq(advisorNotifications.targetUserId, targetUserId),
+      ));
+    });
     return true;
   } catch {
     return false;

@@ -5,6 +5,7 @@
 
 import { checkSLABreaches, type SLABreachItem } from "./sla-policies";
 import { emitNotification } from "./notification-center";
+import { withServiceTenantContext } from "@/lib/db/service-db";
 
 export type EscalationEvent = {
   id: string;
@@ -31,8 +32,7 @@ export async function evaluateEscalations(
   const events: EscalationEvent[] = [];
 
   for (const breach of breaches) {
-    const dedupKey = `${tenantId}:${breach.policyCode}:${breach.entityId}`;
-    if (await isAlreadyEscalated(dedupKey)) continue;
+    if (await isAlreadyEscalated(tenantId, breach.policyCode, breach.entityId)) continue;
 
     const event: EscalationEvent = {
       id: `esc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -66,21 +66,25 @@ export async function evaluateEscalations(
   return events;
 }
 
-async function isAlreadyEscalated(dedupKey: string): Promise<boolean> {
+async function isAlreadyEscalated(
+  tenantId: string,
+  policyCode: string,
+  entityId: string,
+): Promise<boolean> {
   try {
-    const parts = dedupKey.split(":");
-    const [tenantId, policyCode, entityId] = parts;
-    const { db, escalationEvents, eq, and } = await import("db");
-    const [row] = await db.select({ id: escalationEvents.id })
-      .from(escalationEvents)
-      .where(and(
-        eq(escalationEvents.tenantId, tenantId),
-        eq(escalationEvents.policyCode, policyCode),
-        eq(escalationEvents.entityId, entityId),
-        eq(escalationEvents.status, "pending"),
-      ))
-      .limit(1);
-    return !!row;
+    const { escalationEvents, eq, and } = await import("db");
+    return await withServiceTenantContext({ tenantId }, async (tx) => {
+      const [row] = await tx.select({ id: escalationEvents.id })
+        .from(escalationEvents)
+        .where(and(
+          eq(escalationEvents.tenantId, tenantId),
+          eq(escalationEvents.policyCode, policyCode),
+          eq(escalationEvents.entityId, entityId),
+          eq(escalationEvents.status, "pending"),
+        ))
+        .limit(1);
+      return !!row;
+    });
   } catch {
     return false;
   }
@@ -88,16 +92,18 @@ async function isAlreadyEscalated(dedupKey: string): Promise<boolean> {
 
 async function persistEscalation(event: EscalationEvent): Promise<void> {
   try {
-    const { db, escalationEvents } = await import("db");
-    await db.insert(escalationEvents).values({
-      tenantId: event.tenantId,
-      policyCode: event.policyCode,
-      entityType: event.entityType,
-      entityId: event.entityId,
-      triggerReason: event.triggerReason,
-      thresholdCrossed: event.thresholdCrossed,
-      escalatedTo: event.escalatedTo,
-      status: event.status,
+    const { escalationEvents } = await import("db");
+    await withServiceTenantContext({ tenantId: event.tenantId }, async (tx) => {
+      await tx.insert(escalationEvents).values({
+        tenantId: event.tenantId,
+        policyCode: event.policyCode,
+        entityType: event.entityType,
+        entityId: event.entityId,
+        triggerReason: event.triggerReason,
+        thresholdCrossed: event.thresholdCrossed,
+        escalatedTo: event.escalatedTo,
+        status: event.status,
+      });
     });
   } catch { /* best-effort */ }
 }
@@ -107,14 +113,16 @@ export async function acknowledgeEscalation(
   tenantId: string,
 ): Promise<boolean> {
   try {
-    const { db, escalationEvents, eq, and } = await import("db");
-    await db.update(escalationEvents).set({
-      status: "acknowledged",
-      acknowledgedAt: new Date(),
-    }).where(and(
-      eq(escalationEvents.id, escalationId),
-      eq(escalationEvents.tenantId, tenantId),
-    ));
+    const { escalationEvents, eq, and } = await import("db");
+    await withServiceTenantContext({ tenantId }, async (tx) => {
+      await tx.update(escalationEvents).set({
+        status: "acknowledged",
+        acknowledgedAt: new Date(),
+      }).where(and(
+        eq(escalationEvents.id, escalationId),
+        eq(escalationEvents.tenantId, tenantId),
+      ));
+    });
     return true;
   } catch {
     return false;
@@ -126,14 +134,16 @@ export async function resolveEscalation(
   tenantId: string,
 ): Promise<boolean> {
   try {
-    const { db, escalationEvents, eq, and } = await import("db");
-    await db.update(escalationEvents).set({
-      status: "resolved",
-      resolvedAt: new Date(),
-    }).where(and(
-      eq(escalationEvents.id, escalationId),
-      eq(escalationEvents.tenantId, tenantId),
-    ));
+    const { escalationEvents, eq, and } = await import("db");
+    await withServiceTenantContext({ tenantId }, async (tx) => {
+      await tx.update(escalationEvents).set({
+        status: "resolved",
+        resolvedAt: new Date(),
+      }).where(and(
+        eq(escalationEvents.id, escalationId),
+        eq(escalationEvents.tenantId, tenantId),
+      ));
+    });
     return true;
   } catch {
     return false;

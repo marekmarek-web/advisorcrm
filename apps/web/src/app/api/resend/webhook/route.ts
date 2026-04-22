@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { db } from "@/lib/db-client";
+import { dbService } from "@/lib/db/service-db";
 import { notificationLog } from "db";
 
 /**
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         : null;
 
   try {
-    await db
+    await dbService
       .update(notificationLog)
       .set({
         lastStatus: statusLabel,

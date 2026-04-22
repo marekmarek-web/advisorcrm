@@ -27,7 +27,8 @@
 
 import { NextResponse } from "next/server";
 import { cronAuthResponse } from "@/lib/cron-auth";
-import { db, aiGenerations, eq, and, lt } from "db";
+import { aiGenerations, eq, and, lt } from "db";
+import { dbService } from "@/lib/db/service-db";
 import { logAuditAction } from "@/lib/audit";
 import { getImageIntakeConfig } from "@/lib/ai/image-intake/image-intake-config";
 import { sendCronHealthWebhook } from "@/lib/ai/image-intake/cron-webhook";
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
   });
 
   try {
-    const cacheResult = await db
+    const cacheResult = await dbService
       .delete(aiGenerations)
       .where(
         and(

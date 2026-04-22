@@ -15,6 +15,7 @@ import {
   resolvePortalProductDisplayLogo,
   isFvEligibleSegment,
 } from "@/lib/client-portfolio/portal-portfolio-display";
+import { fundLibraryLogoPathForPortal } from "@/lib/fund-library/shared-future-value";
 import { formatDisplayDateCs } from "@/lib/date/format-display-cs";
 import {
   Building2,
@@ -218,7 +219,12 @@ export function CanonicalProductAdvisorOverviewCard({
   publishBusy,
 }: CanonicalProductAdvisorOverviewCardProps) {
   const primary = advisorPrimaryAmountPresentation(product, contract);
-  const displayLogo = resolvePortalProductDisplayLogo(product);
+  const advisorFundLogoPath = (() => {
+    const d = product.segmentDetail;
+    if (d?.kind !== "investment") return null;
+    return fundLibraryLogoPathForPortal(d.resolvedFundId || product.fvReadiness.resolvedFundId);
+  })();
+  const displayLogo = resolvePortalProductDisplayLogo(product, { fundLogoPath: advisorFundLogoPath });
   const logoPath = displayLogo?.src ?? null;
   const LeadIcon = productIcon(contract.segment);
   const logoAlt = displayLogo?.alt ?? "Logo instituce";

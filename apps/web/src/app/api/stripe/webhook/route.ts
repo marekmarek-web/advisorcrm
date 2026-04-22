@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { db, eq, stripeWebhookEvents, sql } from "db";
+import { eq, stripeWebhookEvents, sql } from "db";
+import { dbService } from "@/lib/db/service-db";
 import { getStripe } from "@/lib/stripe/server";
 import {
   resolveTenantIdForSubscription,
@@ -310,7 +311,7 @@ export async function POST(request: Request) {
   //  - duplicitní `completed`: nic nedělat, vrátit duplicate=true
   //  - dřívější `failed`/`processing`: znovu převzít (Stripe retry) a inkrementovat attempts
   const now = new Date();
-  const claimed = await db
+  const claimed = await dbService
     .insert(stripeWebhookEvents)
     .values({
       id: event.id,
@@ -342,13 +343,13 @@ export async function POST(request: Request) {
 
   try {
     await handleStripeEvent(event);
-    await db
+    await dbService
       .update(stripeWebhookEvents)
       .set({ status: "completed", processedAt: new Date(), updatedAt: new Date(), lastError: null })
       .where(eq(stripeWebhookEvents.id, event.id));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await db
+    await dbService
       .update(stripeWebhookEvents)
       .set({ status: "failed", updatedAt: new Date(), lastError: message.slice(0, 2000) })
       .where(eq(stripeWebhookEvents.id, event.id));

@@ -30,8 +30,9 @@ export async function GET(request: Request) {
   const denied = cronAuthResponse(request);
   if (denied) return denied;
 
-  const { db, events, userProfiles, tenants, eq, and, isNull, lte, gte, gt, or, ne, isNotNull } =
+  const { events, userProfiles, tenants, eq, and, isNull, lte, gte, gt, or, ne, isNotNull } =
     await import("db");
+  const { dbService, withServiceTenantContext } = await import("@/lib/db/service-db");
   const { sendPushToUser } = await import("@/lib/push/send");
   const { emitNotification } = await import("@/lib/execution/notification-center");
 
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
   const graceMin = reminderGracePastMinutes();
   const notBefore = new Date(now.getTime() - graceMin * 60_000);
 
-  const rows = await db
+  const rows = await dbService
     .select({
       id: events.id,
       tenantId: events.tenantId,
@@ -166,10 +167,12 @@ export async function GET(request: Request) {
 
     const delivered = inAppOk || pushDelivered || emailDelivered;
     if (delivered) {
-      await db
-        .update(events)
-        .set({ reminderNotifiedAt: new Date(), updatedAt: new Date() })
-        .where(eq(events.id, row.id));
+      await withServiceTenantContext({ tenantId: row.tenantId }, async (tx) => {
+        await tx
+          .update(events)
+          .set({ reminderNotifiedAt: new Date(), updatedAt: new Date() })
+          .where(eq(events.id, row.id));
+      });
       markedNotified += 1;
     } else {
       skippedNoChannel += 1;

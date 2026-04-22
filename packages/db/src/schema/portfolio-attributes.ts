@@ -115,6 +115,12 @@ export type PortfolioAttributes = {
   // ─── Loans extended (Phase 3 / Slice 1) ─────────────────────────────────────
   /** Úroková sazba úvěru/hypotéky */
   loanInterestRate?: string;
+  /** Pojištění schopnosti splácet (PPI) — ovlivňuje BJ sazbu u spotřebitelských úvěrů. */
+  hasPpi?: boolean;
+
+  // ─── BJ calculator inputs ──────────────────────────────────────────────────
+  /** Vstupní poplatek v Kč (INV s VP — Amundi, Edward, CODYA, Investika). */
+  entryFee?: string;
 
   [key: string]: unknown;
 };

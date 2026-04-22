@@ -1,16 +1,20 @@
 "use server";
 
-import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withAuthContext } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
 import { noteTemplates, meetingNotes, contacts, opportunities } from "db";
 import { eq, and, desc } from "db";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import { createOpportunity } from "./pipeline";
 
 export type TemplateRow = { id: string; name: string; domain: string };
 
-async function ensureContactBelongsToTenant(tenantId: string, contactId: string): Promise<void> {
-  const [row] = await db
+async function ensureContactBelongsToTenant(
+  tx: TenantContextDb,
+  tenantId: string,
+  contactId: string
+): Promise<void> {
+  const [row] = await tx
     .select({ id: contacts.id })
     .from(contacts)
     .where(and(eq(contacts.tenantId, tenantId), eq(contacts.id, contactId)))
@@ -41,21 +45,50 @@ export type MeetingNoteRow = {
 };
 
 export async function getNoteTemplates(): Promise<TemplateRow[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
-  const rows = await db.select({ id: noteTemplates.id, name: noteTemplates.name, domain: noteTemplates.domain }).from(noteTemplates).where(eq(noteTemplates.tenantId, auth.tenantId));
-  return rows;
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select({ id: noteTemplates.id, name: noteTemplates.name, domain: noteTemplates.domain })
+      .from(noteTemplates)
+      .where(eq(noteTemplates.tenantId, auth.tenantId));
+    return rows;
+  });
 }
 
 export async function getMeetingNotesList(contactId?: string): Promise<MeetingNoteRow[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
-  const cond = contactId ? and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.contactId, contactId)) : eq(meetingNotes.tenantId, auth.tenantId);
-  const rows = await db.select({ id: meetingNotes.id, meetingAt: meetingNotes.meetingAt, domain: meetingNotes.domain, contactId: meetingNotes.contactId, createdAt: meetingNotes.createdAt }).from(meetingNotes).where(cond).orderBy(desc(meetingNotes.meetingAt)).limit(50);
-  const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
-  const contactList = contactIds.length ? await db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName }).from(contacts).where(eq(contacts.tenantId, auth.tenantId)) : [];
-  const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
-  return rows.map((r) => ({ id: r.id, meetingAt: r.meetingAt, domain: r.domain, contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek", createdAt: r.createdAt }));
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+    const cond = contactId
+      ? and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.contactId, contactId))
+      : eq(meetingNotes.tenantId, auth.tenantId);
+    const rows = await tx
+      .select({
+        id: meetingNotes.id,
+        meetingAt: meetingNotes.meetingAt,
+        domain: meetingNotes.domain,
+        contactId: meetingNotes.contactId,
+        createdAt: meetingNotes.createdAt,
+      })
+      .from(meetingNotes)
+      .where(cond)
+      .orderBy(desc(meetingNotes.meetingAt))
+      .limit(50);
+    const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
+    const contactList = contactIds.length
+      ? await tx
+          .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName })
+          .from(contacts)
+          .where(eq(contacts.tenantId, auth.tenantId))
+      : [];
+    const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
+    return rows.map((r) => ({
+      id: r.id,
+      meetingAt: r.meetingAt,
+      domain: r.domain,
+      contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek",
+      createdAt: r.createdAt,
+    }));
+  });
 }
 
 function previewTextFromMeetingNoteContent(content: unknown): string | null {
@@ -83,25 +116,26 @@ export type MeetingNoteFeedItem = {
 
 /** Zápisky kontaktu s náhledem textu — feed v detailu nástěnky. */
 export async function getMeetingNotesFeedForContact(contactId: string): Promise<MeetingNoteFeedItem[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select({
-      id: meetingNotes.id,
-      meetingAt: meetingNotes.meetingAt,
-      domain: meetingNotes.domain,
-      content: meetingNotes.content,
-    })
-    .from(meetingNotes)
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.contactId, contactId)))
-    .orderBy(desc(meetingNotes.meetingAt))
-    .limit(40);
-  return rows.map((r) => ({
-    id: r.id,
-    meetingAt: r.meetingAt,
-    domain: r.domain,
-    preview: previewTextFromMeetingNoteContent(r.content),
-  }));
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select({
+        id: meetingNotes.id,
+        meetingAt: meetingNotes.meetingAt,
+        domain: meetingNotes.domain,
+        content: meetingNotes.content,
+      })
+      .from(meetingNotes)
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.contactId, contactId)))
+      .orderBy(desc(meetingNotes.meetingAt))
+      .limit(40);
+    return rows.map((r) => ({
+      id: r.id,
+      meetingAt: r.meetingAt,
+      domain: r.domain,
+      preview: previewTextFromMeetingNoteContent(r.content),
+    }));
+  });
 }
 
 /** Pro Vision Board: zápisky včetně content pro náhled karet */
@@ -113,35 +147,41 @@ export type MeetingNoteForBoard = MeetingNoteRow & {
 };
 
 export async function getMeetingNotesForBoard(): Promise<MeetingNoteForBoard[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select({
-      id: meetingNotes.id,
-      meetingAt: meetingNotes.meetingAt,
-      domain: meetingNotes.domain,
-      contactId: meetingNotes.contactId,
-      opportunityId: meetingNotes.opportunityId,
-      content: meetingNotes.content,
-      createdAt: meetingNotes.createdAt,
-    })
-    .from(meetingNotes)
-    .where(eq(meetingNotes.tenantId, auth.tenantId))
-    .orderBy(desc(meetingNotes.meetingAt))
-    .limit(100);
-  const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
-  const contactList = contactIds.length ? await db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName }).from(contacts).where(eq(contacts.tenantId, auth.tenantId)) : [];
-  const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
-  return rows.map((r) => ({
-    id: r.id,
-    meetingAt: r.meetingAt,
-    domain: r.domain,
-    contactId: r.contactId ?? undefined,
-    opportunityId: r.opportunityId ?? null,
-    contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek",
-    createdAt: r.createdAt,
-    content: r.content as Record<string, unknown> | null,
-  }));
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select({
+        id: meetingNotes.id,
+        meetingAt: meetingNotes.meetingAt,
+        domain: meetingNotes.domain,
+        contactId: meetingNotes.contactId,
+        opportunityId: meetingNotes.opportunityId,
+        content: meetingNotes.content,
+        createdAt: meetingNotes.createdAt,
+      })
+      .from(meetingNotes)
+      .where(eq(meetingNotes.tenantId, auth.tenantId))
+      .orderBy(desc(meetingNotes.meetingAt))
+      .limit(100);
+    const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
+    const contactList = contactIds.length
+      ? await tx
+          .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName })
+          .from(contacts)
+          .where(eq(contacts.tenantId, auth.tenantId))
+      : [];
+    const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
+    return rows.map((r) => ({
+      id: r.id,
+      meetingAt: r.meetingAt,
+      domain: r.domain,
+      contactId: r.contactId ?? undefined,
+      opportunityId: r.opportunityId ?? null,
+      contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek",
+      createdAt: r.createdAt,
+      content: r.content as Record<string, unknown> | null,
+    }));
+  });
 }
 
 export type MeetingNoteRowWithContent = MeetingNoteRow & {
@@ -151,34 +191,40 @@ export type MeetingNoteRowWithContent = MeetingNoteRow & {
 export async function getMeetingNotesByOpportunityId(
   opportunityId: string,
 ): Promise<MeetingNoteRowWithContent[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select({
-      id: meetingNotes.id,
-      meetingAt: meetingNotes.meetingAt,
-      domain: meetingNotes.domain,
-      contactId: meetingNotes.contactId,
-      createdAt: meetingNotes.createdAt,
-      content: meetingNotes.content,
-    })
-    .from(meetingNotes)
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.opportunityId, opportunityId)))
-    .orderBy(desc(meetingNotes.meetingAt))
-    .limit(50);
-  const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
-  const contactList = contactIds.length ? await db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName }).from(contacts).where(eq(contacts.tenantId, auth.tenantId)) : [];
-  const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
-  return rows.map((r) => {
-    const preview = meetingNoteContentPreview(r.content);
-    return {
-      id: r.id,
-      meetingAt: r.meetingAt,
-      domain: r.domain,
-      contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek",
-      createdAt: r.createdAt,
-      contentPreview: preview,
-    };
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select({
+        id: meetingNotes.id,
+        meetingAt: meetingNotes.meetingAt,
+        domain: meetingNotes.domain,
+        contactId: meetingNotes.contactId,
+        createdAt: meetingNotes.createdAt,
+        content: meetingNotes.content,
+      })
+      .from(meetingNotes)
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.opportunityId, opportunityId)))
+      .orderBy(desc(meetingNotes.meetingAt))
+      .limit(50);
+    const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
+    const contactList = contactIds.length
+      ? await tx
+          .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName })
+          .from(contacts)
+          .where(eq(contacts.tenantId, auth.tenantId))
+      : [];
+    const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
+    return rows.map((r) => {
+      const preview = meetingNoteContentPreview(r.content);
+      return {
+        id: r.id,
+        meetingAt: r.meetingAt,
+        domain: r.domain,
+        contactName: r.contactId ? (nameMap[r.contactId] ?? "—") : "Obecný zápisek",
+        createdAt: r.createdAt,
+        contentPreview: preview,
+      };
+    });
   });
 }
 
@@ -190,19 +236,23 @@ export async function createMeetingNote(form: {
   content: Record<string, unknown>;
   opportunityId?: string;
 }) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
-  const [row] = await db.insert(meetingNotes).values({
-    tenantId: auth.tenantId,
-    contactId: form.contactId ?? null,
-    opportunityId: form.opportunityId || null,
-    templateId: form.templateId || null,
-    meetingAt: new Date(form.meetingAt),
-    domain: form.domain,
-    content: form.content as Record<string, unknown>,
-    createdBy: auth.userId,
-  }).returning({ id: meetingNotes.id });
-  return row?.id ?? null;
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
+    const [row] = await tx
+      .insert(meetingNotes)
+      .values({
+        tenantId: auth.tenantId,
+        contactId: form.contactId ?? null,
+        opportunityId: form.opportunityId || null,
+        templateId: form.templateId || null,
+        meetingAt: new Date(form.meetingAt),
+        domain: form.domain,
+        content: form.content as Record<string, unknown>,
+        createdBy: auth.userId,
+      })
+      .returning({ id: meetingNotes.id });
+    return row?.id ?? null;
+  });
 }
 
 export type MeetingNoteDetail = {
@@ -216,21 +266,22 @@ export type MeetingNoteDetail = {
 };
 
 export async function getMeetingNote(id: string): Promise<MeetingNoteDetail | null> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select({
-      id: meetingNotes.id,
-      contactId: meetingNotes.contactId,
-      templateId: meetingNotes.templateId,
-      meetingAt: meetingNotes.meetingAt,
-      domain: meetingNotes.domain,
-      content: meetingNotes.content,
-      createdAt: meetingNotes.createdAt,
-    })
-    .from(meetingNotes)
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, id)));
-  return rows[0] ?? null;
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select({
+        id: meetingNotes.id,
+        contactId: meetingNotes.contactId,
+        templateId: meetingNotes.templateId,
+        meetingAt: meetingNotes.meetingAt,
+        domain: meetingNotes.domain,
+        content: meetingNotes.content,
+        createdAt: meetingNotes.createdAt,
+      })
+      .from(meetingNotes)
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, id)));
+    return rows[0] ?? null;
+  });
 }
 
 export async function updateMeetingNote(
@@ -242,29 +293,30 @@ export async function updateMeetingNote(
     contactId?: string | null;
   },
 ) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
+  await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
 
-  let contactPatch: { contactId: string | null } | Record<string, never> = {};
-  if (data.contactId !== undefined) {
-    if (data.contactId === null || data.contactId === "") {
-      contactPatch = { contactId: null };
-    } else {
-      await ensureContactBelongsToTenant(auth.tenantId, data.contactId);
-      contactPatch = { contactId: data.contactId };
+    let contactPatch: { contactId: string | null } | Record<string, never> = {};
+    if (data.contactId !== undefined) {
+      if (data.contactId === null || data.contactId === "") {
+        contactPatch = { contactId: null };
+      } else {
+        await ensureContactBelongsToTenant(tx, auth.tenantId, data.contactId);
+        contactPatch = { contactId: data.contactId };
+      }
     }
-  }
 
-  await db
-    .update(meetingNotes)
-    .set({
-      content: data.content,
-      ...contactPatch,
-      ...(data.domain != null && { domain: data.domain }),
-      ...(data.meetingAt != null && { meetingAt: new Date(data.meetingAt) }),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, id)));
+    await tx
+      .update(meetingNotes)
+      .set({
+        content: data.content,
+        ...contactPatch,
+        ...(data.domain != null && { domain: data.domain }),
+        ...(data.meetingAt != null && { meetingAt: new Date(data.meetingAt) }),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, id)));
+  });
 }
 
 function caseTypeFromMeetingNoteDomain(domain: string): string {
@@ -303,23 +355,25 @@ export async function createOpportunityFromMeetingNote(
   stageId: string,
   titleOverride?: string | null
 ): Promise<string | null> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
-  if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
+  const note = await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
+    if (!hasPermission(auth.roleName, "opportunities:write")) throw new Error("Forbidden");
 
-  const [note] = await db
-    .select({
-      id: meetingNotes.id,
-      domain: meetingNotes.domain,
-      content: meetingNotes.content,
-      contactId: meetingNotes.contactId,
-      opportunityId: meetingNotes.opportunityId,
-    })
-    .from(meetingNotes)
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, noteId)))
-    .limit(1);
-  if (!note) throw new Error("Zápisek nebyl nalezen.");
-  if (note.opportunityId) throw new Error("Zápisek je už přiřazen k obchodu.");
+    const [note] = await tx
+      .select({
+        id: meetingNotes.id,
+        domain: meetingNotes.domain,
+        content: meetingNotes.content,
+        contactId: meetingNotes.contactId,
+        opportunityId: meetingNotes.opportunityId,
+      })
+      .from(meetingNotes)
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, noteId)))
+      .limit(1);
+    if (!note) throw new Error("Zápisek nebyl nalezen.");
+    if (note.opportunityId) throw new Error("Zápisek je už přiřazen k obchodu.");
+    return note;
+  });
 
   const rawTitle = (titleOverride?.trim() || meetingNoteTitleFromContent(note.content) || "Obchod ze zápisku").trim();
   const title = rawTitle.slice(0, 500);
@@ -339,69 +393,76 @@ export async function createOpportunityFromMeetingNote(
 
 /** Přiřadí zápisek k existujícímu obchodu; contact_id převezme z obchodu. */
 export async function attachMeetingNoteToOpportunity(noteId: string, opportunityId: string) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
-  if (!hasPermission(auth.roleName, "opportunities:read")) throw new Error("Forbidden");
+  await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
+    if (!hasPermission(auth.roleName, "opportunities:read")) throw new Error("Forbidden");
 
-  const [opp] = await db
-    .select({
-      id: opportunities.id,
-      contactId: opportunities.contactId,
-      tenantId: opportunities.tenantId,
-    })
-    .from(opportunities)
-    .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
-    .limit(1);
-  if (!opp) throw new Error("Obchod nebyl nalezen.");
+    const [opp] = await tx
+      .select({
+        id: opportunities.id,
+        contactId: opportunities.contactId,
+        tenantId: opportunities.tenantId,
+      })
+      .from(opportunities)
+      .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)))
+      .limit(1);
+    if (!opp) throw new Error("Obchod nebyl nalezen.");
 
-  const [note] = await db
-    .select({ id: meetingNotes.id })
-    .from(meetingNotes)
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, noteId)))
-    .limit(1);
-  if (!note) throw new Error("Zápisek nebyl nalezen.");
+    const [note] = await tx
+      .select({ id: meetingNotes.id })
+      .from(meetingNotes)
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, noteId)))
+      .limit(1);
+    if (!note) throw new Error("Zápisek nebyl nalezen.");
 
-  await db
-    .update(meetingNotes)
-    .set({
-      opportunityId,
-      contactId: opp.contactId,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, noteId)));
+    await tx
+      .update(meetingNotes)
+      .set({
+        opportunityId,
+        contactId: opp.contactId,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, noteId)));
+  });
 }
 
 export async function deleteMeetingNote(id: string) {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
-  await db
-    .delete(meetingNotes)
-    .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, id)));
+  await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:write")) throw new Error("Forbidden");
+    await tx
+      .delete(meetingNotes)
+      .where(and(eq(meetingNotes.tenantId, auth.tenantId), eq(meetingNotes.id, id)));
+  });
 }
 
 export async function summarizeMeetingNotes(): Promise<string> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
-  const rows = await db
-    .select({
-      id: meetingNotes.id,
-      meetingAt: meetingNotes.meetingAt,
-      domain: meetingNotes.domain,
-      content: meetingNotes.content,
-      contactId: meetingNotes.contactId,
-    })
-    .from(meetingNotes)
-    .where(eq(meetingNotes.tenantId, auth.tenantId))
-    .orderBy(desc(meetingNotes.meetingAt))
-    .limit(20);
+  const { rows, nameMap } = await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) throw new Error("Forbidden");
+    const rows = await tx
+      .select({
+        id: meetingNotes.id,
+        meetingAt: meetingNotes.meetingAt,
+        domain: meetingNotes.domain,
+        content: meetingNotes.content,
+        contactId: meetingNotes.contactId,
+      })
+      .from(meetingNotes)
+      .where(eq(meetingNotes.tenantId, auth.tenantId))
+      .orderBy(desc(meetingNotes.meetingAt))
+      .limit(20);
+
+    const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
+    const contactList = contactIds.length
+      ? await tx
+          .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName })
+          .from(contacts)
+          .where(eq(contacts.tenantId, auth.tenantId))
+      : [];
+    const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
+    return { rows, nameMap };
+  });
 
   if (rows.length === 0) return "Žádné zápisky k sumarizaci.";
-
-  const contactIds = [...new Set(rows.map((r) => r.contactId).filter(Boolean))] as string[];
-  const contactList = contactIds.length
-    ? await db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName }).from(contacts).where(eq(contacts.tenantId, auth.tenantId))
-    : [];
-  const nameMap = Object.fromEntries(contactList.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
 
   const domainLabels: Record<string, string> = {
     hypo: "Hypotéka",

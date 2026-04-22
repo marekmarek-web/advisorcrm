@@ -1616,20 +1616,26 @@ export function SetupView({ initial }: { initial: SetupInitial }) {
               </div>
               <div className="p-6 space-y-4">
                 {[
-                  { title: "Denní souhrn (Agenda)", desc: "Každé ráno v 8:00 zašleme přehled schůzek a úkolů na daný den.", id: "daily" },
-                  { title: "Nová zpráva od klienta", desc: "Okamžité upozornění, pokud vám klient zanechá vzkaz v portálu.", id: "message" },
-                  { title: "Zpožděné úkoly", desc: "Upozornění na úkoly, které jsou více než 24 hodin po termínu.", id: "tasks" },
-                  { title: "Expirace smluv", desc: "Týdenní souhrn smluv, kterým se blíží konec fixace nebo výročí.", id: "contracts" },
+                  { title: "Denní souhrn (Agenda)", desc: "Každé ráno v 8:00 zašleme přehled schůzek a úkolů na daný den.", id: "daily", status: "coming_soon" as const },
+                  { title: "Nová zpráva od klienta", desc: "Okamžité upozornění, pokud vám klient zanechá vzkaz v portálu.", id: "message", status: "live" as const },
+                  { title: "Zpožděné úkoly", desc: "Upozornění na úkoly, které jsou více než 24 hodin po termínu.", id: "tasks", status: "coming_soon" as const },
+                  { title: "Expirace smluv", desc: "Týdenní souhrn smluv, kterým se blíží konec fixace nebo výročí.", id: "contracts", status: "coming_soon" as const },
                 ].map((notif) => (
                   <div key={notif.id} className="flex items-center justify-between p-4 rounded-xl border border-[color:var(--wp-surface-card-border)] hover:bg-[color:var(--wp-surface-muted)] transition-colors min-h-[44px] gap-3">
                     <div>
                       <h4 className="font-bold text-[color:var(--wp-text)] text-sm mb-1">{notif.title}</h4>
                       <p className="text-xs font-medium text-[color:var(--wp-text-secondary)]">{notif.desc}</p>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer ml-2 shrink-0">
-                      <input type="checkbox" className="sr-only peer" checked={notifPrefs[notif.id] ?? true} onChange={() => handleNotifToggle(notif.id)} />
-                      <div className="w-11 h-6 bg-[color:var(--wp-surface-card-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[color:var(--wp-surface-card)] after:border-[color:var(--wp-border-strong)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-aidv-create" />
-                    </label>
+                    {notif.status === "live" ? (
+                      <label className="relative inline-flex items-center cursor-pointer ml-2 shrink-0">
+                        <input type="checkbox" className="sr-only peer" checked={notifPrefs[notif.id] ?? true} onChange={() => handleNotifToggle(notif.id)} />
+                        <div className="w-11 h-6 bg-[color:var(--wp-surface-card-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[color:var(--wp-surface-card)] after:border-[color:var(--wp-border-strong)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-aidv-create" />
+                      </label>
+                    ) : (
+                      <span className="px-4 py-2.5 border border-[color:var(--wp-surface-card-border)] text-[color:var(--wp-text-tertiary)] font-bold text-xs rounded-xl bg-[color:var(--wp-surface-muted)] shadow-sm min-h-[44px] inline-flex items-center justify-center select-none shrink-0">
+                        Připravujeme
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

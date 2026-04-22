@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { cronAuthResponse } from "@/lib/cron-auth";
-import { db } from "@/lib/db-client";
+import { dbService, withServiceTenantContext } from "@/lib/db/service-db";
 import { sendGracePeriodReminderEmail } from "@/lib/stripe/billing-email-notifier";
 
 /**
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   // `grace_period_ends_at`. Pokud by schéma mělo jiný název, musí se tu
   // dorovnat — toto je jen shell pro reminder cron; viz billing-audit-log jako
   // jediný zdroj pravdy, pokud subscription schema neuchovává grace_period_ends_at.
-  const due = await db.execute<{
+  const due = await dbService.execute<{
     tenant_id: string;
     grace_period_ends_at: Date;
   }>(sql`
@@ -56,11 +56,13 @@ export async function GET(request: Request) {
         tenantId: row.tenant_id,
         gracePeriodEndsAt: new Date(row.grace_period_ends_at),
       });
-      await db.execute(sql`
-        UPDATE subscriptions
-        SET grace_period_reminder_sent_at = now()
-        WHERE tenant_id = ${row.tenant_id}
-      `);
+      await withServiceTenantContext({ tenantId: row.tenant_id }, async (tx) => {
+        await tx.execute(sql`
+          UPDATE subscriptions
+          SET grace_period_reminder_sent_at = now()
+          WHERE tenant_id = ${row.tenant_id}
+        `);
+      });
       sent += 1;
     } catch (err) {
       console.error("[grace-period-check] send failed", {

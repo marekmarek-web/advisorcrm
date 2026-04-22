@@ -5,7 +5,6 @@ import { requireAuthInAction } from "@/lib/auth/require-auth";
 import { getMembership } from "@/lib/auth/get-membership";
 import { provisionWorkspaceIfNeeded } from "@/lib/auth/ensure-workspace";
 import type { EnsureMembershipResult } from "@/lib/auth/ensure-workspace";
-import { db } from "db";
 import {
   tenants,
   roles,
@@ -17,6 +16,15 @@ import {
   advisorPreferences,
 } from "db";
 import { eq, and, ne, gt, inArray, isNull, sql } from "db";
+import {
+  withTenantContext,
+  withUserContext,
+  type TenantContextDb,
+} from "@/lib/db/with-tenant-context";
+import {
+  withAuthContext,
+  withTenantContextFromAuth,
+} from "@/lib/auth/with-auth-context";
 import { sendEmail } from "@/lib/email/send-email";
 import type { SendResult } from "@/lib/email/send-email";
 import { clientPortalInviteTemplate, clientPortalReminderTemplate } from "@/lib/email/templates";
@@ -157,9 +165,13 @@ function isMissingTenantOptionalColumnError(err: unknown): boolean {
   return message.includes("tenants") && TENANT_OPTIONAL_COLUMNS.some((column) => message.includes(column));
 }
 
-async function revokePendingClientInvitations(tenantId: string, contactId: string) {
+async function revokePendingClientInvitations(
+  tx: TenantContextDb,
+  tenantId: string,
+  contactId: string,
+) {
   try {
-    await db
+    await tx
       .update(clientInvitations as any)
       .set({ revokedAt: new Date() })
       .where(
@@ -176,19 +188,22 @@ async function revokePendingClientInvitations(tenantId: string, contactId: strin
   }
 }
 
-async function insertClientInvitation(params: {
-  tenantId: string;
-  contactId: string;
-  email: string;
-  authUserId: string;
-  token: string;
-  expiresAt: Date;
-  invitedByUserId: string;
-  temporaryPasswordSentAt: Date;
-  passwordChangeRequiredAt: Date;
-}) {
+async function insertClientInvitation(
+  tx: TenantContextDb,
+  params: {
+    tenantId: string;
+    contactId: string;
+    email: string;
+    authUserId: string;
+    token: string;
+    expiresAt: Date;
+    invitedByUserId: string;
+    temporaryPasswordSentAt: Date;
+    passwordChangeRequiredAt: Date;
+  },
+) {
   try {
-    const [inserted] = await db
+    const [inserted] = await tx
       .insert(clientInvitations as any)
       .values({
         tenantId: params.tenantId,
@@ -206,7 +221,7 @@ async function insertClientInvitation(params: {
   } catch (err) {
     if (!isMissingClientInvitationAuditColumnError(err)) throw err;
     console.warn("[sendClientZoneInvitation] client_invitations audit columns missing; inserting legacy row");
-    const [inserted] = await db
+    const [inserted] = await tx
       .insert(clientInvitations as any)
       .values({
         tenantId: params.tenantId,
@@ -220,9 +235,12 @@ async function insertClientInvitation(params: {
   }
 }
 
-async function getClientInvitationByToken(token: string): Promise<ClientInvitationRecord | null> {
+async function getClientInvitationByToken(
+  tx: TenantContextDb,
+  token: string,
+): Promise<ClientInvitationRecord | null> {
   try {
-    const rows = await db
+    const rows = await tx
       .select({
         id: clientInvitations.id,
         tenantId: clientInvitations.tenantId,
@@ -242,7 +260,7 @@ async function getClientInvitationByToken(token: string): Promise<ClientInvitati
     return (rows[0] as ClientInvitationRecord | undefined) ?? null;
   } catch (err) {
     if (!isMissingClientInvitationAuditColumnError(err)) throw err;
-    const rows = await db
+    const rows = await tx
       .select({
         id: clientInvitations.id,
         tenantId: clientInvitations.tenantId,
@@ -269,9 +287,13 @@ async function getClientInvitationByToken(token: string): Promise<ClientInvitati
   }
 }
 
-async function updateClientInvitationState(invitationId: string, values: Record<string, unknown>) {
+async function updateClientInvitationState(
+  tx: TenantContextDb,
+  invitationId: string,
+  values: Record<string, unknown>,
+) {
   try {
-    await db
+    await tx
       .update(clientInvitations as any)
       .set(values)
       .where(eq(clientInvitations.id, invitationId) as any);
@@ -283,19 +305,22 @@ async function updateClientInvitationState(invitationId: string, values: Record<
     if ("lastEmailError" in values) fallbackValues.lastEmailError = values.lastEmailError;
     if ("revokedAt" in values) fallbackValues.revokedAt = values.revokedAt;
     if (Object.keys(fallbackValues).length === 0) return;
-    await db
+    await tx
       .update(clientInvitations as any)
       .set(fallbackValues)
       .where(eq(clientInvitations.id, invitationId) as any);
   }
 }
 
-async function findPendingClientPasswordChangeTokenByEmail(email: string | null | undefined) {
+async function findPendingClientPasswordChangeTokenByEmail(
+  tx: TenantContextDb,
+  email: string | null | undefined,
+) {
   const normalizedEmail = email?.trim().toLowerCase();
   if (!normalizedEmail) return null;
 
   try {
-    const rows = await db
+    const rows = await tx
       .select({ token: clientInvitations.token } as any)
       .from(clientInvitations as any)
       .where(
@@ -314,8 +339,8 @@ async function findPendingClientPasswordChangeTokenByEmail(email: string | null 
   }
 }
 
-async function ensureClientRole(tenantId: string) {
-  const [clientRole] = await db
+async function ensureClientRole(tx: TenantContextDb, tenantId: string) {
+  const [clientRole] = await tx
     .select({ id: roles.id } as any)
     .from(roles as any)
     .where(and(eq(roles.tenantId, tenantId), eq(roles.name, "Client")) as any)
@@ -323,8 +348,13 @@ async function ensureClientRole(tenantId: string) {
   return clientRole;
 }
 
-async function finalizeClientInvitationAccess(invitation: ClientInvitationRecord, userId: string, gdprConsent?: boolean) {
-  const membershipRows = await db
+async function finalizeClientInvitationAccess(
+  tx: TenantContextDb,
+  invitation: ClientInvitationRecord,
+  userId: string,
+  gdprConsent?: boolean,
+) {
+  const membershipRows = await tx
     .select({ id: memberships.id, roleName: roles.name } as any)
     .from(memberships as any)
     .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
@@ -337,16 +367,16 @@ async function finalizeClientInvitationAccess(invitation: ClientInvitationRecord
   }
 
   if (!membershipRow) {
-    const clientRole = await ensureClientRole(invitation.tenantId);
+    const clientRole = await ensureClientRole(tx, invitation.tenantId);
     if (!clientRole) return { ok: false as const, error: "Role Client v tenantu chybí" };
-    await db.insert(memberships as any).values({
+    await tx.insert(memberships as any).values({
       tenantId: invitation.tenantId,
       userId,
       roleId: clientRole.id,
     });
   }
 
-  const [linkedContact] = await db
+  const [linkedContact] = await tx
     .select({ userId: clientContacts.userId } as any)
     .from(clientContacts as any)
     .where(and(eq(clientContacts.tenantId, invitation.tenantId), eq(clientContacts.contactId, invitation.contactId)) as any)
@@ -357,20 +387,20 @@ async function finalizeClientInvitationAccess(invitation: ClientInvitationRecord
   }
 
   if (!linkedContact) {
-    await db.insert(clientContacts as any).values({
+    await tx.insert(clientContacts as any).values({
       tenantId: invitation.tenantId,
       userId,
       contactId: invitation.contactId,
     });
   }
 
-  await updateClientInvitationState(invitation.id, {
+  await updateClientInvitationState(tx, invitation.id, {
     acceptedAt: invitation.acceptedAt ?? new Date(),
     authUserId: userId,
   });
 
   if (gdprConsent) {
-    await db
+    await tx
       .update(contacts as any)
       .set({ gdprConsentAt: new Date(), updatedAt: new Date() })
       .where(eq(contacts.id, invitation.contactId) as any);
@@ -379,16 +409,20 @@ async function finalizeClientInvitationAccess(invitation: ClientInvitationRecord
   return { ok: true as const };
 }
 
-async function updateClientInvitationEmailStatus(invitationId: string, sendResult: SendResult) {
+async function updateClientInvitationEmailStatus(
+  tx: TenantContextDb,
+  invitationId: string,
+  sendResult: SendResult,
+) {
   try {
     if (sendResult.ok) {
-      await db
+      await tx
         .update(clientInvitations as any)
         .set({ emailSentAt: new Date(), lastEmailError: null })
         .where(eq(clientInvitations.id, invitationId) as any);
       return;
     }
-    await db
+    await tx
       .update(clientInvitations as any)
       .set({ lastEmailError: sendResult.error ?? "send failed" })
       .where(eq(clientInvitations.id, invitationId) as any);
@@ -401,9 +435,9 @@ async function updateClientInvitationEmailStatus(invitationId: string, sendResul
   }
 }
 
-async function getTenantInviteEmailContext(tenantId: string) {
+async function getTenantInviteEmailContext(tx: TenantContextDb, tenantId: string) {
   try {
-    const [tenantRow] = await db
+    const [tenantRow] = await tx
       .select({ name: tenants.name, notificationEmail: tenants.notificationEmail } as any)
       .from(tenants as any)
       .where(eq(tenants.id, tenantId))
@@ -412,7 +446,7 @@ async function getTenantInviteEmailContext(tenantId: string) {
   } catch (err) {
     if (!isMissingTenantOptionalColumnError(err)) throw err;
     console.warn("[sendClientZoneInvitation] tenants.notification_email missing; continuing without tenant reply-to");
-    const [tenantRow] = await db
+    const [tenantRow] = await tx
       .select({ name: tenants.name } as any)
       .from(tenants as any)
       .where(eq(tenants.id, tenantId))
@@ -431,29 +465,53 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
     if (!user) return { ok: false, error: "Unauthorized" };
     const membership = await getMembership(user.id);
     if (!membership || membership.roleName === "Client") return { ok: false, error: "Forbidden" };
-    const [contact] = await db
-      .select({
-        id: contacts.id,
-        email: contacts.email,
-        tenantId: contacts.tenantId,
-        firstName: contacts.firstName,
-        lastName: contacts.lastName,
-      } as any)
-      .from(contacts as any)
-      .where(and(eq(contacts.tenantId, membership.tenantId), eq(contacts.id, contactId)) as any)
-      .limit(1);
-    if (!contact) return { ok: false, error: "Kontakt nenalezen" };
-    if (!contact.email) return { ok: false, error: "U kontaktu chybí e-mail" };
 
-    const [inviterProfile] = await db
-      .select({ fullName: userProfiles.fullName })
-      .from(userProfiles as any)
-      .where(eq(userProfiles.userId, user.id))
-      .limit(1);
+    // tx1: lookup kontaktu + inviterProfile pod tenant GUCs (advisor vidí vlastní contacts).
+    const preContext = await withTenantContext(
+      { tenantId: membership.tenantId, userId: user.id },
+      async (tx) => {
+        const [contact] = await tx
+          .select({
+            id: contacts.id,
+            email: contacts.email,
+            tenantId: contacts.tenantId,
+            firstName: contacts.firstName,
+            lastName: contacts.lastName,
+          } as any)
+          .from(contacts as any)
+          .where(and(eq(contacts.tenantId, membership.tenantId), eq(contacts.id, contactId)) as any)
+          .limit(1);
+        if (!contact) return { kind: "not-found" as const };
+        if (!contact.email) return { kind: "missing-email" as const };
+
+        const [inviterProfile] = await tx
+          .select({ fullName: userProfiles.fullName })
+          .from(userProfiles as any)
+          .where(eq(userProfiles.userId, user.id))
+          .limit(1);
+        return {
+          kind: "ok" as const,
+          contact: contact as {
+            id: string;
+            email: string;
+            tenantId: string;
+            firstName: string | null;
+            lastName: string | null;
+          },
+          inviterProfile: inviterProfile as { fullName: string | null } | undefined,
+        };
+      },
+    );
+
+    if (preContext.kind === "not-found") return { ok: false, error: "Kontakt nenalezen" };
+    if (preContext.kind === "missing-email") return { ok: false, error: "U kontaktu chybí e-mail" };
+
+    const { contact, inviterProfile } = preContext;
     const metaFullName =
       typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
     const advisorDisplayName = inviterProfile?.fullName?.trim() || metaFullName || undefined;
 
+    // External: Supabase Auth + interní ops v provisionClientInviteAccount (vlastní DB kontext).
     const preparedAccount = await provisionClientInviteAccount({
       email: contact.email.trim(),
       fullName: `${contact.firstName?.trim() ?? ""} ${contact.lastName?.trim() ?? ""}`.trim() || null,
@@ -461,12 +519,48 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
       contactId: contact.id,
     });
 
-    await revokePendingClientInvitations(contact.tenantId, contact.id);
-
     const baseUrl = getServerAppBaseUrl();
-    const tenantRow = await getTenantInviteEmailContext(contact.tenantId);
     const gdprUrl = `${baseUrl}/gdpr`;
     const termsUrl = `${baseUrl}/terms`;
+
+    // tx2: revoke předchozích pozvánek, načti tenant context, případně založ nový invitation.
+    const tx2 = await withTenantContext(
+      { tenantId: membership.tenantId, userId: user.id },
+      async (tx) => {
+        await revokePendingClientInvitations(tx, contact.tenantId, contact.id);
+        const tenantRow = await getTenantInviteEmailContext(tx, contact.tenantId);
+
+        if (preparedAccount.alreadyOnboarded) {
+          return {
+            tenantRow,
+            insertedId: null as string | null,
+            token: null as string | null,
+          };
+        }
+
+        const token = crypto.randomUUID().replace(/-/g, "");
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+        const passwordChangeRequiredAt = new Date();
+        const inserted = await insertClientInvitation(tx, {
+          tenantId: contact.tenantId,
+          contactId: contact.id,
+          email: contact.email.trim().toLowerCase(),
+          authUserId: preparedAccount.userId,
+          token,
+          expiresAt,
+          invitedByUserId: user.id,
+          temporaryPasswordSentAt: new Date(),
+          passwordChangeRequiredAt,
+        });
+        return {
+          tenantRow,
+          insertedId: (inserted?.id as string | undefined) ?? null,
+          token: token as string | null,
+        };
+      },
+    );
+    const { tenantRow, insertedId, token } = tx2;
 
     if (preparedAccount.alreadyOnboarded) {
       const loginUrl = `${baseUrl}/prihlaseni`;
@@ -480,6 +574,7 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
         termsUrl,
       });
       const replyTo = resolveResendReplyTo(tenantRow?.notificationEmail ?? undefined);
+      // External: Resend / SMTP.
       const sendResult = await sendEmail({
         to: contact.email.trim(),
         subject,
@@ -497,21 +592,10 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
       };
     }
 
-    const token = crypto.randomUUID().replace(/-/g, "");
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
-    const passwordChangeRequiredAt = new Date();
-    const inserted = await insertClientInvitation({
-      tenantId: contact.tenantId,
-      contactId: contact.id,
-      email: contact.email.trim().toLowerCase(),
-      authUserId: preparedAccount.userId,
-      token,
-      expiresAt,
-      invitedByUserId: user.id,
-      temporaryPasswordSentAt: new Date(),
-      passwordChangeRequiredAt,
-    });
+    if (!token) {
+      // Chráněný kodek: pokud není alreadyOnboarded, tx2 vždy vrátí token + insertedId.
+      return { ok: false, error: "Nepodařilo se vytvořit pozvánku. Zkuste to znovu." };
+    }
 
     const inviteLink = `${baseUrl}/prihlaseni?${buildClientInviteLoginSearch(token)}`;
 
@@ -529,6 +613,7 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
     });
 
     const replyTo = resolveResendReplyTo(tenantRow?.notificationEmail ?? undefined);
+    // External: Resend / SMTP.
     const sendResult = await sendEmail({
       to: contact.email.trim(),
       subject,
@@ -536,9 +621,12 @@ export async function sendClientZoneInvitation(contactId: string): Promise<SendC
       replyTo,
     });
 
-    if (inserted?.id) {
+    if (insertedId) {
       try {
-        await updateClientInvitationEmailStatus(inserted.id, sendResult);
+        await withTenantContext(
+          { tenantId: membership.tenantId, userId: user.id },
+          (tx) => updateClientInvitationEmailStatus(tx, insertedId, sendResult),
+        );
       } catch (dbErr) {
         console.error("[sendClientZoneInvitation] failed to update email status:", dbErr);
       }
@@ -577,12 +665,20 @@ export async function acceptClientInvitation(token: string, gdprConsent?: boolea
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Nejprve se přihlaste nebo zaregistrujte" };
-  const inv = await getClientInvitationByToken(token);
+
+  // Bootstrap lookup: tenant ještě neznáme, nastavíme jen app.user_id → RLS
+  // policy `client_invitations_self_bootstrap_select` pustí self-select přes
+  // `auth_user_id = NULLIF(current_setting('app.user_id',true),'')`.
+  const inv = await withUserContext(user.id, (tx) => getClientInvitationByToken(tx, token));
   if (!inv) return { ok: false, error: "Pozvánka neexistuje nebo vypršela" };
   if (inv.expiresAt <= new Date() || inv.revokedAt) return { ok: false, error: "Pozvánka neexistuje nebo vypršela" };
   const email = user.email?.toLowerCase();
   if (email !== inv.email.toLowerCase()) return { ok: false, error: "E-mail se neshoduje s pozvánkou" };
-  const access = await finalizeClientInvitationAccess(inv, user.id, gdprConsent);
+
+  const access = await withTenantContext(
+    { tenantId: inv.tenantId, userId: user.id },
+    (tx) => finalizeClientInvitationAccess(tx, inv, user.id, gdprConsent),
+  );
   return access.ok ? { ok: true } : access;
 }
 
@@ -595,7 +691,8 @@ export async function continueClientInvitationAfterLogin(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Nejprve se přihlaste." };
 
-  const invitation = await getClientInvitationByToken(token);
+  // Bootstrap lookup: viz acceptClientInvitation.
+  const invitation = await withUserContext(user.id, (tx) => getClientInvitationByToken(tx, token));
   if (!invitation || invitation.expiresAt <= new Date() || invitation.revokedAt) {
     return { ok: false, error: "Pozvánka neexistuje nebo vypršela" };
   }
@@ -606,15 +703,20 @@ export async function continueClientInvitationAfterLogin(
     return { ok: false, error: "Pozvánka je připravená pro jiný klientský účet." };
   }
 
-  await updateClientInvitationState(invitation.id, { authUserId: user.id });
+  return withTenantContext(
+    { tenantId: invitation.tenantId, userId: user.id },
+    async (tx) => {
+      await updateClientInvitationState(tx, invitation.id, { authUserId: user.id });
 
-  if (invitation.passwordChangeRequiredAt && !invitation.passwordChangedAt) {
-    return { ok: true, nextStep: "change_password" };
-  }
+      if (invitation.passwordChangeRequiredAt && !invitation.passwordChangedAt) {
+        return { ok: true as const, nextStep: "change_password" as const };
+      }
 
-  const access = await finalizeClientInvitationAccess(invitation, user.id);
-  if (!access.ok) return access;
-  return { ok: true, nextStep: "portal" };
+      const access = await finalizeClientInvitationAccess(tx, invitation, user.id);
+      if (!access.ok) return access;
+      return { ok: true as const, nextStep: "portal" as const };
+    },
+  );
 }
 
 export async function completeClientInvitationFirstLogin(
@@ -628,7 +730,8 @@ export async function completeClientInvitationFirstLogin(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Nejprve se přihlaste." };
 
-  const invitation = await getClientInvitationByToken(token);
+  // Bootstrap lookup: viz acceptClientInvitation.
+  const invitation = await withUserContext(user.id, (tx) => getClientInvitationByToken(tx, token));
   if (!invitation || invitation.expiresAt <= new Date() || invitation.revokedAt) {
     return { ok: false, error: "Pozvánka neexistuje nebo vypršela" };
   }
@@ -643,19 +746,25 @@ export async function completeClientInvitationFirstLogin(
     return { ok: false, error: "Před dokončením přístupu potvrďte zásady zpracování osobních údajů." };
   }
 
+  // External: Supabase Auth password change.
   const { error } = await supabase.auth.updateUser({ password: trimmedPassword });
   if (error) return { ok: false, error: error.message };
 
-  const access = await finalizeClientInvitationAccess(invitation, user.id, gdprConsent);
-  if (!access.ok) return access;
+  return withTenantContext(
+    { tenantId: invitation.tenantId, userId: user.id },
+    async (tx) => {
+      const access = await finalizeClientInvitationAccess(tx, invitation, user.id, gdprConsent);
+      if (!access.ok) return access;
 
-  await updateClientInvitationState(invitation.id, {
-    authUserId: user.id,
-    passwordChangedAt: new Date(),
-    acceptedAt: invitation.acceptedAt ?? new Date(),
-  });
+      await updateClientInvitationState(tx, invitation.id, {
+        authUserId: user.id,
+        passwordChangedAt: new Date(),
+        acceptedAt: invitation.acceptedAt ?? new Date(),
+      });
 
-  return { ok: true };
+      return { ok: true as const };
+    },
+  );
 }
 
 /** Po přihlášení do klientské zóny bez pozvánky: ověří existující roli Client. */
@@ -679,7 +788,12 @@ export async function ensureClientPortalAccess(): Promise<
   if (m && m.roleName === "Client" && m.contactId) {
     return { ok: true };
   }
-  const pendingPasswordChangeToken = await findPendingClientPasswordChangeTokenByEmail(user.email);
+  // Bootstrap lookup (ještě bez membership / tenantu) — použijeme self-select
+  // přes app.user_id GUC.
+  const pendingPasswordChangeToken = await withUserContext(
+    user.id,
+    (tx) => findPendingClientPasswordChangeTokenByEmail(tx, user.email),
+  );
   if (pendingPasswordChangeToken) {
     return {
       ok: true,
@@ -719,82 +833,94 @@ export async function updatePortalProfile(
   if (extra?.correspondenceAddress !== undefined) {
     metaUpdate.correspondence_address = extra.correspondenceAddress.trim() || null;
   }
+  // External: Supabase Auth user_metadata update.
   const { error } = await supabase.auth.updateUser({ data: metaUpdate });
   if (error) throw new Error(error.message);
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const email = user?.email ?? null;
-  await db
-    .insert(userProfiles as any)
-    .values({
-      userId: auth.userId,
-      fullName: fullName.trim() || null,
-      email,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: userProfiles.userId as any,
-      set: { fullName: fullName.trim() || null, email, updatedAt: new Date() },
-    });
-  if (extra?.phone !== undefined) {
-    const existing = await db
-      .select({ id: advisorPreferences.id })
-      .from(advisorPreferences)
-      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
-      .limit(1);
-    if (existing.length > 0) {
-      await db.update(advisorPreferences).set({ phone: extra.phone.trim() || null, updatedAt: new Date() }).where(eq(advisorPreferences.id, existing[0].id));
-    } else {
-      await db.insert(advisorPreferences).values({ userId: auth.userId, tenantId: auth.tenantId, phone: extra.phone.trim() || null });
+
+  await withTenantContextFromAuth(auth, async (tx) => {
+    await tx
+      .insert(userProfiles as any)
+      .values({
+        userId: auth.userId,
+        fullName: fullName.trim() || null,
+        email,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: userProfiles.userId as any,
+        set: { fullName: fullName.trim() || null, email, updatedAt: new Date() },
+      });
+
+    if (extra?.phone !== undefined) {
+      const existing = await tx
+        .select({ id: advisorPreferences.id })
+        .from(advisorPreferences)
+        .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+        .limit(1);
+      if (existing.length > 0) {
+        await tx
+          .update(advisorPreferences)
+          .set({ phone: extra.phone.trim() || null, updatedAt: new Date() })
+          .where(eq(advisorPreferences.id, existing[0].id));
+      } else {
+        await tx.insert(advisorPreferences).values({
+          userId: auth.userId,
+          tenantId: auth.tenantId,
+          phone: extra.phone.trim() || null,
+        });
+      }
     }
-  }
 
-  if (supervisorUserId !== undefined) {
-    const selfMembership = await db
-      .select({ id: memberships.id, roleName: roles.name, userId: memberships.userId })
-      .from(memberships as any)
-      .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
-      .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any)
-      .limit(1);
-    const selfRoleName = selfMembership[0]?.roleName as string | undefined;
-    if (!selfRoleName) throw new Error("Membership not found.");
-
-    const nextParent: string | null = supervisorUserId ?? null;
-    if (nextParent === auth.userId) throw new Error("Nadřízený nemůže být stejný uživatel.");
-    if (nextParent) {
-      const supervisorRows = await db
-        .select({ userId: memberships.userId, roleName: roles.name })
+    if (supervisorUserId !== undefined) {
+      const selfMembership = await tx
+        .select({ id: memberships.id, roleName: roles.name, userId: memberships.userId })
         .from(memberships as any)
         .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
-        .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, nextParent)) as any)
+        .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any)
         .limit(1);
-      const supervisorRole = supervisorRows[0]?.roleName as string | undefined;
-      if (!supervisorRole) throw new Error("Vybraný nadřízený není v organizaci.");
-      const isAdvisor = selfRoleName === "Advisor";
-      const isManager = selfRoleName === "Manager";
-      if (isAdvisor && !["Manager", "Director", "Admin"].includes(supervisorRole)) {
-        throw new Error("Poradce může mít nadřízeného pouze Manager/Director/Admin.");
-      }
-      if (isManager && !["Director", "Admin"].includes(supervisorRole)) {
-        throw new Error("Manažer může mít nadřízeného pouze Director/Admin.");
-      }
-      if (selfRoleName === "Director" && supervisorRole !== "Admin") {
-        throw new Error("Ředitel může mít nadřízeného pouze Admin.");
-      }
-      if (selfRoleName === "Admin" && supervisorRole !== "Admin") {
-        throw new Error("Admin může mít nadřízeného pouze jiného Admina.");
-      }
-      if (selfRoleName === "Viewer") {
-        throw new Error("Role prohlížeče nemá týmového nadřízeného.");
-      }
-    }
+      const selfRoleName = selfMembership[0]?.roleName as string | undefined;
+      if (!selfRoleName) throw new Error("Membership not found.");
 
-    await db
-      .update(memberships as any)
-      .set({ parentId: nextParent })
-      .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any);
-  }
+      const nextParent: string | null = supervisorUserId ?? null;
+      if (nextParent === auth.userId) throw new Error("Nadřízený nemůže být stejný uživatel.");
+      if (nextParent) {
+        const supervisorRows = await tx
+          .select({ userId: memberships.userId, roleName: roles.name })
+          .from(memberships as any)
+          .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
+          .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, nextParent)) as any)
+          .limit(1);
+        const supervisorRole = supervisorRows[0]?.roleName as string | undefined;
+        if (!supervisorRole) throw new Error("Vybraný nadřízený není v organizaci.");
+        const isAdvisor = selfRoleName === "Advisor";
+        const isManager = selfRoleName === "Manager";
+        if (isAdvisor && !["Manager", "Director", "Admin"].includes(supervisorRole)) {
+          throw new Error("Poradce může mít nadřízeného pouze Manager/Director/Admin.");
+        }
+        if (isManager && !["Director", "Admin"].includes(supervisorRole)) {
+          throw new Error("Manažer může mít nadřízeného pouze Director/Admin.");
+        }
+        if (selfRoleName === "Director" && supervisorRole !== "Admin") {
+          throw new Error("Ředitel může mít nadřízeného pouze Admin.");
+        }
+        if (selfRoleName === "Admin" && supervisorRole !== "Admin") {
+          throw new Error("Admin může mít nadřízeného pouze jiného Admina.");
+        }
+        if (selfRoleName === "Viewer") {
+          throw new Error("Role prohlížeče nemá týmového nadřízeného.");
+        }
+      }
+
+      await tx
+        .update(memberships as any)
+        .set({ parentId: nextParent })
+        .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any);
+    }
+  });
 }
 
 export type SupervisorOption = {
@@ -804,47 +930,48 @@ export type SupervisorOption = {
 };
 
 export async function listSupervisorOptions(): Promise<SupervisorOption[]> {
-  const auth = await requireAuthInAction();
-  const selfRows = await db
-    .select({ roleName: roles.name })
-    .from(memberships as any)
-    .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
-    .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any)
-    .limit(1);
-  const selfRole = (selfRows[0]?.roleName as string | undefined) ?? "Advisor";
-  const allowedRoles =
-    selfRole === "Advisor"
-      ? ["Manager", "Director", "Admin"]
-      : selfRole === "Manager"
-        ? ["Director", "Admin"]
-        : selfRole === "Director"
-          ? ["Admin"]
-          : [];
-  if (allowedRoles.length === 0) return [];
+  return withAuthContext(async (auth, tx) => {
+    const selfRows = await tx
+      .select({ roleName: roles.name })
+      .from(memberships as any)
+      .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
+      .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)) as any)
+      .limit(1);
+    const selfRole = (selfRows[0]?.roleName as string | undefined) ?? "Advisor";
+    const allowedRoles =
+      selfRole === "Advisor"
+        ? ["Manager", "Director", "Admin"]
+        : selfRole === "Manager"
+          ? ["Director", "Admin"]
+          : selfRole === "Director"
+            ? ["Admin"]
+            : [];
+    if (allowedRoles.length === 0) return [];
 
-  const rows = await db
-    .select({
-      userId: memberships.userId,
-      roleName: roles.name,
-      fullName: userProfiles.fullName,
-      email: userProfiles.email,
-    })
-    .from(memberships as any)
-    .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
-    .leftJoin(userProfiles as any, eq(userProfiles.userId, memberships.userId) as any)
-    .where(
-      and(
-        eq(memberships.tenantId, auth.tenantId),
-        inArray(roles.name as any, allowedRoles as any),
-        ne(memberships.userId, auth.userId)
-      ) as any
-    );
+    const rows = await tx
+      .select({
+        userId: memberships.userId,
+        roleName: roles.name,
+        fullName: userProfiles.fullName,
+        email: userProfiles.email,
+      })
+      .from(memberships as any)
+      .innerJoin(roles as any, eq(memberships.roleId, roles.id) as any)
+      .leftJoin(userProfiles as any, eq(userProfiles.userId, memberships.userId) as any)
+      .where(
+        and(
+          eq(memberships.tenantId, auth.tenantId),
+          inArray(roles.name as any, allowedRoles as any),
+          ne(memberships.userId, auth.userId)
+        ) as any
+      );
 
-  return rows.map((r: any) => ({
-    userId: r.userId,
-    roleName: r.roleName,
-    displayName: r.fullName?.trim() || r.email || r.userId,
-  }));
+    return rows.map((r: any) => ({
+      userId: r.userId,
+      roleName: r.roleName,
+      displayName: r.fullName?.trim() || r.email || r.userId,
+    }));
+  });
 }
 
 function mapPortalPasswordUpdateError(err: { message: string; code?: string }): string {
@@ -877,9 +1004,10 @@ export async function updatePortalPassword(newPassword: string): Promise<void> {
 
 /** Synchronizace příznaku 2FA v memberships (reporting / tenant) s reálným stavem v Supabase Auth. */
 export async function syncMembershipMfaEnabled(enabled: boolean): Promise<void> {
-  const auth = await requireAuthInAction();
-  await db
-    .update(memberships)
-    .set({ mfaEnabled: enabled })
-    .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)));
+  await withAuthContext(async (auth, tx) => {
+    await tx
+      .update(memberships)
+      .set({ mfaEnabled: enabled })
+      .where(and(eq(memberships.tenantId, auth.tenantId), eq(memberships.userId, auth.userId)));
+  });
 }

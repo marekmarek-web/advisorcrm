@@ -13,6 +13,8 @@ import {
   opportunityStages,
   tasks,
   advisorMaterialRequests,
+  memberships,
+  roles,
   eq,
   and,
   asc,
@@ -25,6 +27,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, logNotification } from "@/lib/email/send-email";
 import { newMessageAdvisorTemplate } from "@/lib/email/templates";
+import { getUserNotificationPref } from "@/lib/notifications/prefs";
 import { assertCapabilityForAction } from "@/lib/billing/server-action-plan-guard";
 import { PlanAccessError } from "@/lib/billing/plan-access-errors";
 
@@ -462,10 +465,27 @@ export async function notifyAdvisorNewMessage(
       .from(tenants)
       .where(eq(tenants.id, tenantId))
       .limit(1);
-    return { name, notificationEmail: tenant?.notificationEmail ?? null };
+    /**
+     * Najdeme Admin user_id tohoto tenantu — je to ten, kdo typicky `notificationEmail`
+     * konfiguroval. Jeho `notification_prefs.message` použijeme jako per-user gate.
+     * Pro multi-admin tým bereme prvního (joined-first) — prag pro solo/majority případ.
+     */
+    const [adminMember] = await tx
+      .select({ userId: memberships.userId })
+      .from(memberships)
+      .innerJoin(roles, eq(memberships.roleId, roles.id))
+      .where(and(eq(memberships.tenantId, tenantId), eq(roles.name, "Admin")))
+      .orderBy(asc(memberships.joinedAt))
+      .limit(1);
+    return {
+      name,
+      notificationEmail: tenant?.notificationEmail ?? null,
+      adminUserId: adminMember?.userId ?? null,
+    };
   });
   displayName = tenantLookup.name;
   const email = tenantLookup.notificationEmail?.trim();
+  const adminUserId = tenantLookup.adminUserId;
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.aidvisora.cz");
@@ -477,6 +497,22 @@ export async function notifyAdvisorNewMessage(
   });
 
   if (email) {
+    /**
+     * Respektujeme `message` toggle v `/portal/setup?tab=notifikace`. Gate na úrovni
+     * Admina tenantu (viz lookup výše). Fail-open — když helper selže, pošleme raději.
+     */
+    const messageOptIn = adminUserId ? await getUserNotificationPref(adminUserId, "message") : true;
+    if (!messageOptIn) {
+      await logNotification({
+        tenantId,
+        contactId,
+        template: "new_message_advisor",
+        subject,
+        recipient: email,
+        status: "skipped_user_pref",
+      });
+      return;
+    }
     const result = await sendEmail({ to: email, subject, html });
     await logNotification({
       tenantId,

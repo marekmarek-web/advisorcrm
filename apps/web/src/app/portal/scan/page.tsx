@@ -196,6 +196,12 @@ export default function ScanPage() {
   const [quickDocId, setQuickDocId] = useState<string | null>(null);
   const [quickProcessingStatus, setQuickProcessingStatus] = useState<string | null>(null);
   const [quickProcessingStage, setQuickProcessingStage] = useState<string | null>(null);
+  const [quickProcessingError, setQuickProcessingError] = useState<string | null>(null);
+  const [quickDetectedInputMode, setQuickDetectedInputMode] = useState<string | null>(null);
+  const [quickReadabilityScore, setQuickReadabilityScore] = useState<number | null>(null);
+  const [quickRetryPending, setQuickRetryPending] = useState(false);
+  const [quickRetryError, setQuickRetryError] = useState<string | null>(null);
+  const [quickRetryNonce, setQuickRetryNonce] = useState(0);
   const [iosPdfEmbedUnreliable, setIosPdfEmbedUnreliable] = useState(false);
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
 
@@ -243,9 +249,17 @@ export default function ScanPage() {
         const data = (await res.json()) as {
           processingStatus?: string | null;
           processingStage?: string | null;
+          processingError?: string | null;
+          detectedInputMode?: string | null;
+          readabilityScore?: number | null;
         };
         setQuickProcessingStatus(data.processingStatus ?? null);
         setQuickProcessingStage(data.processingStage ?? null);
+        setQuickProcessingError(data.processingError ?? null);
+        setQuickDetectedInputMode(data.detectedInputMode ?? null);
+        setQuickReadabilityScore(
+          typeof data.readabilityScore === "number" ? data.readabilityScore : null,
+        );
         if (data.processingStatus && TERMINAL_STATUSES.has(data.processingStatus)) {
           cancelled = true;
           window.clearInterval(id);
@@ -267,7 +281,7 @@ export default function ScanPage() {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [quickDocId]);
+  }, [quickDocId, quickRetryNonce]);
 
   useEffect(() => {
     if (typeof navigator === "undefined") return;
@@ -496,6 +510,60 @@ export default function ScanPage() {
       return "Ve frontě na zpracování…";
     })();
 
+    // Maps backend signals (processingError / detectedInputMode / readabilityScore)
+    // to an actionable cause+remedy so advisor knows WHY the scan failed. Falls
+    // back to generic wording when no signals are available.
+    const quickFailureDetails = (() => {
+      if (
+        quickProcessingStatus !== "failed" &&
+        quickProcessingStatus !== "preprocessing_failed" &&
+        quickProcessingStatus !== "unknown"
+      ) {
+        return null;
+      }
+      const err = (quickProcessingError ?? "").toLowerCase();
+      const mode = (quickDetectedInputMode ?? "").toLowerCase();
+      const readability =
+        typeof quickReadabilityScore === "number" ? quickReadabilityScore : null;
+
+      if (err.includes("scan_or_ocr_unusable") || err.includes("scan_quality")) {
+        return {
+          cause: "Scan má příliš nízkou kvalitu pro OCR (rozmazaný / tmavý / šikmý).",
+          remedy: "Přefoťte dokument při lepším světle, rovně a bez stínů.",
+        };
+      }
+      if (err.includes("heic") || err.includes("unsupported")) {
+        return {
+          cause: "Zdrojový formát se nepodařilo převést (HEIC / nepodporovaný typ).",
+          remedy: "Zkuste nahrát JPEG nebo PDF.",
+        };
+      }
+      if (err.includes("adobe") || err.includes("ocr_timeout") || err.includes("timeout")) {
+        return {
+          cause: "OCR provider (Adobe PDF Services) neodpověděl včas.",
+          remedy: "Obvykle stačí zkusit zpracování znovu.",
+        };
+      }
+      if (err.includes("too_large") || err.includes("size_limit")) {
+        return {
+          cause: "Soubor je větší, než pipeline akceptuje.",
+          remedy: "Rozdělte dokument, nebo nahrajte komprimovanou variantu.",
+        };
+      }
+      if (
+        (mode === "image_only" || mode === "scan_low_text") &&
+        readability !== null &&
+        readability < 0.25
+      ) {
+        return {
+          cause: `Image-only scan s velmi nízkou text-layer coverage (readability ${readability.toFixed(2)}).`,
+          remedy:
+            "Použijte nativní scanner v mobilní appce nebo přefoťte při lepším světle; OCR nemá dostatek textu.",
+        };
+      }
+      return null;
+    })();
+
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-8 pt-4 sm:px-6">
         <div className="rounded-2xl border border-[color:var(--wp-surface-card-border)] bg-[color:var(--wp-surface-card)] p-4">
@@ -510,6 +578,12 @@ export default function ScanPage() {
           onClick={() => {
             setQuickDocId(null);
             setQuickProcessingStatus(null);
+            setQuickProcessingStage(null);
+            setQuickProcessingError(null);
+            setQuickDetectedInputMode(null);
+            setQuickReadabilityScore(null);
+            setQuickRetryError(null);
+            setQuickRetryPending(false);
             setStep("mode");
           }}
           className="inline-flex min-h-[44px] w-fit items-center text-sm font-semibold text-[color:var(--wp-text-secondary)] underline-offset-2 hover:underline"
@@ -618,6 +692,98 @@ export default function ScanPage() {
               Úplný stav uvidíte v sekci dokumentů (u klienta, pokud jste ho vybrali). Obnovení stránky tady ukončí
               sledování — dokument v systému zůstane.
             </p>
+
+            {quickProcessingStatus === "completed" &&
+            typeof quickReadabilityScore === "number" &&
+            quickReadabilityScore < 0.25 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-medium">
+                  Dokument byl zpracován, ale kvalita OCR je nízká (readability{" "}
+                  {quickReadabilityScore.toFixed(2)}).
+                </p>
+                <p className="mt-1 text-xs">
+                  AI Review tohle flagne jako <code>scan_or_ocr_unusable</code> — vytěžení bude jen orientační, review
+                  zůstává manuálně schvalitelný. Pro plné automatické zpracování použijte nativní scanner v mobilní
+                  appce nebo přefoťte dokument při lepším světle.
+                </p>
+                {quickDetectedInputMode ? (
+                  <p className="mt-1 text-[11px] text-amber-700">
+                    Detekovaný režim: <code>{quickDetectedInputMode}</code>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {quickProcessingStatus === "failed" ||
+            quickProcessingStatus === "preprocessing_failed" ||
+            quickProcessingStatus === "unknown" ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-medium">Zpracování se nepodařilo dokončit.</p>
+                {quickFailureDetails ? (
+                  <div className="mt-1 space-y-1 text-xs">
+                    <p>
+                      <strong>Důvod:</strong> {quickFailureDetails.cause}
+                    </p>
+                    <p>
+                      <strong>Co zkusit:</strong> {quickFailureDetails.remedy}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs">
+                    Nejčastější příčiny: nekvalitní scan, příliš velký soubor, dočasný výpadek OCR. Dokument je
+                    uložený — můžete zkusit zpracování znovu spustit.
+                  </p>
+                )}
+                {quickProcessingError && !quickFailureDetails ? (
+                  <p className="mt-1 text-[11px] text-amber-700">
+                    Interní kód: <code>{quickProcessingError}</code>
+                  </p>
+                ) : null}
+                {quickRetryError ? (
+                  <p className="mt-1 text-xs text-red-700">{quickRetryError}</p>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={quickRetryPending || !quickDocId}
+                  onClick={() => {
+                    if (!quickDocId) return;
+                    void (async () => {
+                      setQuickRetryPending(true);
+                      setQuickRetryError(null);
+                      try {
+                        const res = await fetch(`/api/documents/${quickDocId}/process`, {
+                          method: "POST",
+                          credentials: "same-origin",
+                        });
+                        const data = (await res
+                          .json()
+                          .catch(() => ({}))) as {
+                          error?: string;
+                          processingStatus?: string;
+                          processingStage?: string;
+                          alreadyProcessing?: boolean;
+                        };
+                        if (!res.ok && res.status !== 202) {
+                          setQuickRetryError(data.error ?? "Opakované zpracování se nepodařilo spustit.");
+                          return;
+                        }
+                        setQuickProcessingStatus(data.processingStatus ?? "queued");
+                        setQuickProcessingStage(data.processingStage ?? null);
+                        setQuickRetryNonce((n) => n + 1);
+                      } catch {
+                        setQuickRetryError("Opakované zpracování se nepodařilo spustit.");
+                      } finally {
+                        setQuickRetryPending(false);
+                      }
+                    })();
+                  }}
+                  className="mt-3 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-amber-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {quickRetryPending ? "Spouštím zpracování…" : "Zkusit zpracovat znovu"}
+                </button>
+              </div>
+            ) : null}
+
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link
                 href={selectedContact ? `/portal/contacts/${selectedContact.id}` : "/portal/documents"}
@@ -633,6 +799,11 @@ export default function ScanPage() {
                   setQuickName("");
                   setQuickProcessingStatus(null);
                   setQuickProcessingStage(null);
+                  setQuickProcessingError(null);
+                  setQuickDetectedInputMode(null);
+                  setQuickReadabilityScore(null);
+                  setQuickRetryError(null);
+                  setQuickRetryPending(false);
                   setStep("mode");
                 }}
                 className="min-h-[44px] flex-1 rounded-lg border border-[color:var(--wp-border-strong)] px-4 text-sm font-semibold text-[color:var(--wp-text-secondary)]"

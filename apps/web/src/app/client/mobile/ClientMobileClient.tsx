@@ -69,7 +69,11 @@ import {
 } from "@/lib/client-portfolio/portal-portfolio-display";
 import { institutionInitials } from "@/lib/institutions/institution-logo";
 import type { CanonicalProduct } from "@/lib/products/canonical-product-read";
-import { computeSharedFutureValue, SHARED_FV_DISCLAIMER } from "@/lib/fund-library/shared-future-value";
+import {
+  computeSharedFutureValueFromRate,
+  SHARED_FV_DISCLAIMER,
+} from "@/lib/fund-library/shared-future-value-pure";
+import type { PortalFvContractAux } from "@/lib/client-portfolio/portal-portfolio-fv-precompute.types";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
 import {
@@ -579,12 +583,16 @@ function contractToCanonicalMobile(c: ClientMobileInitialData["contracts"][numbe
 function PortfolioProductLeadVisual({
   contract,
   canonical: p,
+  fvAux,
 }: {
   contract: ContractRow;
   canonical: CanonicalProduct;
+  fvAux: PortalFvContractAux | null;
 }) {
   const [logoFailed, setLogoFailed] = useState(false);
-  const displayLogo = resolvePortalProductDisplayLogo(p);
+  const displayLogo = resolvePortalProductDisplayLogo(p, {
+    fundLogoPath: fvAux?.fundLogoPath ?? null,
+  });
   const logoPath = displayLogo?.src && !logoFailed ? displayLogo.src : null;
   const logoAlt = displayLogo?.alt ?? "Logo instituce";
   const initials = institutionInitials(contract.partnerName ?? p.productName);
@@ -611,9 +619,11 @@ function PortfolioProductLeadVisual({
 function PortfolioScreen({
   contracts,
   visibleSourceDocs,
+  fvContractAux,
 }: {
   contracts: ClientMobileInitialData["contracts"];
   visibleSourceDocs: ClientMobileInitialData["visiblePortfolioSourceDocs"];
+  fvContractAux: ClientMobileInitialData["fvContractAux"];
 }) {
   if (contracts.length === 0) {
     return (
@@ -645,7 +655,8 @@ function PortfolioScreen({
     if (!p || !isFvEligibleSegment(c.segment) || !p.fvReadiness.fvSourceType) continue;
     const isOneTime =
       p.segmentDetail?.kind === "investment" && p.segmentDetail.paymentType === "one_time";
-    const hit = computeSharedFutureValue({
+    const aux = fvContractAux[c.id] ?? null;
+    const hit = computeSharedFutureValueFromRate({
       fvSourceType: p.fvReadiness.fvSourceType,
       resolvedFundId: p.fvReadiness.resolvedFundId,
       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
@@ -653,6 +664,8 @@ function PortfolioScreen({
       monthlyContribution: resolveFvMonthlyContribution(p),
       annualContribution: isOneTime ? null : p.premiumAnnual,
       lumpContribution: isOneTime ? p.premiumMonthly : null,
+      resolvedAnnualRatePercent: aux?.resolvedAnnualRatePercent ?? null,
+      resolvedFundDisplayName: aux?.resolvedFundDisplayName ?? null,
     });
     if (hit.projectionState === "complete" && hit.projectedFutureValue != null) {
       anyFvShown = true;
@@ -714,9 +727,10 @@ function PortfolioScreen({
                     : "bg-amber-50 text-amber-800 border-amber-100";
               const isOneTimeInv =
                 p.segmentDetail?.kind === "investment" && p.segmentDetail.paymentType === "one_time";
+              const aux = fvContractAux[contract.id] ?? null;
               const fvShared =
                 isFvEligibleSegment(contract.segment) && p.fvReadiness.fvSourceType
-                  ? computeSharedFutureValue({
+                  ? computeSharedFutureValueFromRate({
                       fvSourceType: p.fvReadiness.fvSourceType,
                       resolvedFundId: p.fvReadiness.resolvedFundId,
                       resolvedFundCategory: p.fvReadiness.resolvedFundCategory,
@@ -724,6 +738,8 @@ function PortfolioScreen({
                       monthlyContribution: resolveFvMonthlyContribution(p),
                       annualContribution: isOneTimeInv ? null : p.premiumAnnual,
                       lumpContribution: isOneTimeInv ? p.premiumMonthly : null,
+                      resolvedAnnualRatePercent: aux?.resolvedAnnualRatePercent ?? null,
+                      resolvedFundDisplayName: aux?.resolvedFundDisplayName ?? null,
                     })
                   : null;
               const fv =
@@ -755,7 +771,7 @@ function PortfolioScreen({
               return (
                 <MobileCard key={contract.id} className="p-3.5 space-y-3">
                   <div className="flex items-center gap-2.5">
-                    <PortfolioProductLeadVisual contract={contract} canonical={p} />
+                    <PortfolioProductLeadVisual contract={contract} canonical={p} fvAux={aux} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -1545,7 +1561,11 @@ export function ClientMobileClient({ initialData }: { initialData: ClientMobileI
         ) : null}
 
         {onPortfolioRoute ? (
-          <PortfolioScreen contracts={contracts} visibleSourceDocs={initialData.visiblePortfolioSourceDocs} />
+          <PortfolioScreen
+            contracts={contracts}
+            visibleSourceDocs={initialData.visiblePortfolioSourceDocs}
+            fvContractAux={initialData.fvContractAux}
+          />
         ) : null}
 
         {onPaymentsRoute ? (

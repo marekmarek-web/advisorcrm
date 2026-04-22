@@ -169,11 +169,23 @@ type PublishHintsFlags = NonNullable<CanonicalFields["publishHints"]>;
 type PublishHintBannerState =
   | "full_publish"
   | "partial_publish"
+  | "proposal_confirmation"
   | "no_contract_publish";
 
 export function resolvePublishHintBannerState(
   ph: PublishHintsFlags,
 ): PublishHintBannerState {
+  // Finality rule (business decision): "Návrh pojistné smlouvy" se v 99 % případů
+  // rovná finální smlouvě. Místo blokujícího "Nepublikuje smlouvu" ukážeme info
+  // banner, kde poradce potvrdí, že jde o finální verzi a dokument se propíše.
+  const reasons = ph.reasons ?? [];
+  const isProposalAwaitingConfirmation =
+    ph.contractPublishable === true &&
+    reasons.includes("proposal_treated_as_final_contract");
+  if (isProposalAwaitingConfirmation) {
+    return "proposal_confirmation";
+  }
+
   // NOTE: `contractPublishable === false` is the hardest signal — the
   // pipeline explicitly told us this document won't produce a contract.
   // `sensitiveAttachmentOnly` is next — the document is an attachment (AML,
@@ -189,6 +201,28 @@ export function resolvePublishHintBannerState(
 
 function PublishHintsSection({ ph }: { ph: PublishHintsFlags }) {
   const state = resolvePublishHintBannerState(ph);
+
+  if (state === "proposal_confirmation") {
+    return (
+      <Section
+        icon={Info}
+        title="Stav dokumentu"
+        badgeVariant="warning"
+        badge="Potvrďte finálnost"
+      >
+        <div className="flex items-start gap-2 text-xs text-amber-900">
+          <Info size={12} className="mt-0.5 shrink-0" />
+          <span>
+            Dokument je označený jako <strong>„Návrh pojistné smlouvy"</strong>.
+            Pokud jde o finální verzi, klikněte na <strong>„Schválit a propsat
+            do Aidvisory"</strong> — dokument se propíše jako smlouva. Pokud
+            jde pouze o nezávaznou nabídku / modelaci, použijte
+            <strong> „Zamítnout"</strong>.
+          </span>
+        </div>
+      </Section>
+    );
+  }
 
   if (state === "no_contract_publish") {
     return (

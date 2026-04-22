@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { db, faPlanItems, financialAnalyses, tasks, contacts, eq, and, isNull, lte, sql } from "db";
+import { faPlanItems, financialAnalyses, tasks, eq, and, isNull, lte, sql } from "db";
+import { dbService, withServiceTenantContext } from "@/lib/db/service-db";
 import { cronAuthResponse } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
 
   const inProgressCutoff = new Date();
   inProgressCutoff.setDate(inProgressCutoff.getDate() - IN_PROGRESS_DAYS);
-  const staleInProgress = await db
+  const staleInProgress = await dbService
     .select({
       id: faPlanItems.id,
       tenantId: faPlanItems.tenantId,
@@ -36,32 +37,34 @@ export async function GET(request: Request) {
 
   for (const item of staleInProgress) {
     if (!item.contactId) continue;
-    const existing = await db
-      .select({ id: tasks.id })
-      .from(tasks)
-      .where(
-        and(
-          eq(tasks.tenantId, item.tenantId),
-          eq(tasks.analysisId, item.analysisId),
-          sql`${tasks.title} LIKE ${"Follow-up: %" + (item.label ?? "").slice(0, 30) + "%"}`
+    await withServiceTenantContext({ tenantId: item.tenantId }, async (tx) => {
+      const existing = await tx
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.tenantId, item.tenantId),
+            eq(tasks.analysisId, item.analysisId),
+            sql`${tasks.title} LIKE ${"Follow-up: %" + (item.label ?? "").slice(0, 30) + "%"}`
+          )
         )
-      )
-      .limit(1);
-    if (existing.length > 0) continue;
+        .limit(1);
+      if (existing.length > 0) return;
 
-    await db.insert(tasks).values({
-      tenantId: item.tenantId,
-      contactId: item.contactId,
-      analysisId: item.analysisId,
-      title: `Follow-up: ${item.label ?? "položka z FA"}`,
-      description: `Rozjednaný produkt z finanční analýzy je starší než ${IN_PROGRESS_DAYS} dní bez aktualizace.`,
+      await tx.insert(tasks).values({
+        tenantId: item.tenantId,
+        contactId: item.contactId!,
+        analysisId: item.analysisId,
+        title: `Follow-up: ${item.label ?? "položka z FA"}`,
+        description: `Rozjednaný produkt z finanční analýzy je starší než ${IN_PROGRESS_DAYS} dní bez aktualizace.`,
+      });
+      tasksCreated++;
     });
-    tasksCreated++;
   }
 
   const waitingCutoff = new Date();
   waitingCutoff.setDate(waitingCutoff.getDate() - WAITING_SIGNATURE_DAYS);
-  const staleWaiting = await db
+  const staleWaiting = await dbService
     .select({
       id: faPlanItems.id,
       tenantId: faPlanItems.tenantId,
@@ -80,32 +83,34 @@ export async function GET(request: Request) {
 
   for (const item of staleWaiting) {
     if (!item.contactId) continue;
-    const existing = await db
-      .select({ id: tasks.id })
-      .from(tasks)
-      .where(
-        and(
-          eq(tasks.tenantId, item.tenantId),
-          eq(tasks.analysisId, item.analysisId),
-          sql`${tasks.title} LIKE ${"Chybí smlouva: %" + (item.provider ?? item.label ?? "").slice(0, 30) + "%"}`
+    await withServiceTenantContext({ tenantId: item.tenantId }, async (tx) => {
+      const existing = await tx
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.tenantId, item.tenantId),
+            eq(tasks.analysisId, item.analysisId),
+            sql`${tasks.title} LIKE ${"Chybí smlouva: %" + (item.provider ?? item.label ?? "").slice(0, 30) + "%"}`
+          )
         )
-      )
-      .limit(1);
-    if (existing.length > 0) continue;
+        .limit(1);
+      if (existing.length > 0) return;
 
-    await db.insert(tasks).values({
-      tenantId: item.tenantId,
-      contactId: item.contactId,
-      analysisId: item.analysisId,
-      title: `Chybí smlouva: ${item.provider ?? item.label ?? "produkt z FA"}`,
-      description: `Produkt čeká na podpis/smlouvu déle než ${WAITING_SIGNATURE_DAYS} dní.`,
+      await tx.insert(tasks).values({
+        tenantId: item.tenantId,
+        contactId: item.contactId!,
+        analysisId: item.analysisId,
+        title: `Chybí smlouva: ${item.provider ?? item.label ?? "produkt z FA"}`,
+        description: `Produkt čeká na podpis/smlouvu déle než ${WAITING_SIGNATURE_DAYS} dní.`,
+      });
+      tasksCreated++;
     });
-    tasksCreated++;
   }
 
   const draftCutoff = new Date();
   draftCutoff.setDate(draftCutoff.getDate() - DRAFT_DAYS);
-  const staleDrafts = await db
+  const staleDrafts = await dbService
     .select({
       id: financialAnalyses.id,
       tenantId: financialAnalyses.tenantId,
@@ -122,28 +127,30 @@ export async function GET(request: Request) {
 
   for (const draft of staleDrafts) {
     if (!draft.contactId) continue;
-    const existing = await db
-      .select({ id: tasks.id })
-      .from(tasks)
-      .where(
-        and(
-          eq(tasks.tenantId, draft.tenantId),
-          eq(tasks.analysisId, draft.id),
-          isNull(tasks.completedAt)
+    await withServiceTenantContext({ tenantId: draft.tenantId }, async (tx) => {
+      const existing = await tx
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.tenantId, draft.tenantId),
+            eq(tasks.analysisId, draft.id),
+            isNull(tasks.completedAt)
+          )
         )
-      )
-      .limit(1);
-    if (existing.length > 0) continue;
+        .limit(1);
+      if (existing.length > 0) return;
 
-    const clientName = (draft.payload as { data?: { client?: { name?: string } } })?.data?.client?.name ?? "klient";
-    await db.insert(tasks).values({
-      tenantId: draft.tenantId,
-      contactId: draft.contactId,
-      analysisId: draft.id,
-      title: `Dokončit finanční analýzu: ${clientName}`,
-      description: `Analýza je v draftu déle než ${DRAFT_DAYS} dní.`,
+      const clientName = (draft.payload as { data?: { client?: { name?: string } } })?.data?.client?.name ?? "klient";
+      await tx.insert(tasks).values({
+        tenantId: draft.tenantId,
+        contactId: draft.contactId!,
+        analysisId: draft.id,
+        title: `Dokončit finanční analýzu: ${clientName}`,
+        description: `Analýza je v draftu déle než ${DRAFT_DAYS} dní.`,
+      });
+      tasksCreated++;
     });
-    tasksCreated++;
   }
 
   return NextResponse.json({ ok: true, tasksCreated });

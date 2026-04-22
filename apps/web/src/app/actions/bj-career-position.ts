@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAuthInAction } from "@/lib/auth/require-auth";
-import { db } from "db";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { advisorPreferences } from "db";
 import { eq, and } from "db";
 import {
@@ -69,19 +69,22 @@ export async function listCareerPositionOptions(): Promise<CareerPositionOption[
 export async function getMyCareerPosition(): Promise<MyCareerPositionPayload> {
   const auth = await requireAuthInAction();
 
-  const [pref] = await db
-    .select({
-      careerPositionKey: advisorPreferences.careerPositionKey,
-      careerBjBonusCzk: advisorPreferences.careerBjBonusCzk,
-    })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId),
-      ),
-    )
-    .limit(1);
+  const pref = await withTenantContextFromAuth(auth, async (tx) => {
+    const [row] = await tx
+      .select({
+        careerPositionKey: advisorPreferences.careerPositionKey,
+        careerBjBonusCzk: advisorPreferences.careerBjBonusCzk,
+      })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, auth.tenantId),
+          eq(advisorPreferences.userId, auth.userId),
+        ),
+      )
+      .limit(1);
+    return row ?? null;
+  });
 
   const bonus = parseNumericCzk(pref?.careerBjBonusCzk ?? null);
   const positionKey = pref?.careerPositionKey?.trim() || null;
@@ -115,29 +118,31 @@ export async function setMyCareerPosition(positionKey: string | null): Promise<M
     }
   }
 
-  const [existing] = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId),
-      ),
-    )
-    .limit(1);
+  await withTenantContextFromAuth(auth, async (tx) => {
+    const [existing] = await tx
+      .select({ id: advisorPreferences.id })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, auth.tenantId),
+          eq(advisorPreferences.userId, auth.userId),
+        ),
+      )
+      .limit(1);
 
-  if (existing) {
-    await db
-      .update(advisorPreferences)
-      .set({ careerPositionKey: trimmed, updatedAt: new Date() })
-      .where(eq(advisorPreferences.id, existing.id));
-  } else {
-    await db.insert(advisorPreferences).values({
-      tenantId: auth.tenantId,
-      userId: auth.userId,
-      careerPositionKey: trimmed,
-    });
-  }
+    if (existing) {
+      await tx
+        .update(advisorPreferences)
+        .set({ careerPositionKey: trimmed, updatedAt: new Date() })
+        .where(eq(advisorPreferences.id, existing.id));
+    } else {
+      await tx.insert(advisorPreferences).values({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        careerPositionKey: trimmed,
+      });
+    }
+  });
 
   return getMyCareerPosition();
 }
@@ -147,8 +152,6 @@ export async function setMyCareerPosition(positionKey: string | null): Promise<M
  * Platí jen spolu s kariérní pozicí v produkčním přepočtu; lze uložit i bez pozice.
  */
 export async function setMyCareerBjBonusCzk(bonusCzk: number | null): Promise<MyCareerPositionPayload> {
-  const auth = await requireAuthInAction();
-
   let stored: string | null = null;
   if (bonusCzk != null) {
     if (!Number.isFinite(bonusCzk)) {
@@ -156,7 +159,7 @@ export async function setMyCareerBjBonusCzk(bonusCzk: number | null): Promise<My
     }
     const rounded = Math.round(bonusCzk * 100) / 100;
     if (rounded < 0 || rounded > 99_999.99) {
-      throw new Error("Výjimka musí být v rozmezí 0 až 99 999,99 Kč / BJ.");
+      throw new Error("Výjimka musí být v rozmezí 0 až 99 999,99 Kč / BJ.");
     }
     if (rounded === 0) {
       stored = null;
@@ -165,29 +168,31 @@ export async function setMyCareerBjBonusCzk(bonusCzk: number | null): Promise<My
     }
   }
 
-  const [existing] = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(
-      and(
-        eq(advisorPreferences.tenantId, auth.tenantId),
-        eq(advisorPreferences.userId, auth.userId),
-      ),
-    )
-    .limit(1);
+  await withAuthContext(async (auth, tx) => {
+    const [existing] = await tx
+      .select({ id: advisorPreferences.id })
+      .from(advisorPreferences)
+      .where(
+        and(
+          eq(advisorPreferences.tenantId, auth.tenantId),
+          eq(advisorPreferences.userId, auth.userId),
+        ),
+      )
+      .limit(1);
 
-  if (existing) {
-    await db
-      .update(advisorPreferences)
-      .set({ careerBjBonusCzk: stored, updatedAt: new Date() })
-      .where(eq(advisorPreferences.id, existing.id));
-  } else {
-    await db.insert(advisorPreferences).values({
-      tenantId: auth.tenantId,
-      userId: auth.userId,
-      careerBjBonusCzk: stored,
-    });
-  }
+    if (existing) {
+      await tx
+        .update(advisorPreferences)
+        .set({ careerBjBonusCzk: stored, updatedAt: new Date() })
+        .where(eq(advisorPreferences.id, existing.id));
+    } else {
+      await tx.insert(advisorPreferences).values({
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        careerBjBonusCzk: stored,
+      });
+    }
+  });
 
   return getMyCareerPosition();
 }

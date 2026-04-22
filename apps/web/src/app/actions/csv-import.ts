@@ -2,8 +2,9 @@
 
 import * as XLSX from "xlsx";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db } from "db";
+import type { TenantContextDb } from "@/lib/db/with-tenant-context";
 import { contacts } from "db";
 import { eq } from "db";
 import type { ContactRowInput, ColumnMapping } from "@/lib/contacts/import-types";
@@ -21,13 +22,17 @@ export type CsvPreview = {
 };
 
 /** Shared insert logic: duplicate check by email/phone, then insert. Used by CSV, Excel and AI (PDF) flows. */
-async function importContactRows(rows: ContactRowInput[], tenantId: string): Promise<CsvImportResult> {
+async function importContactRows(
+  tx: TenantContextDb,
+  rows: ContactRowInput[],
+  tenantId: string,
+): Promise<CsvImportResult> {
   const errors: { row: number; message: string }[] = [];
   let imported = 0;
   let skipped = 0;
   const existingByEmail = new Set<string>();
   const existingByPhone = new Set<string>();
-  const existing = await db
+  const existing = await tx
     .select({ email: contacts.email, phone: contacts.phone })
     .from(contacts)
     .where(eq(contacts.tenantId, tenantId));
@@ -53,7 +58,7 @@ async function importContactRows(rows: ContactRowInput[], tenantId: string): Pro
       continue;
     }
     try {
-      await db.insert(contacts).values({
+      await tx.insert(contacts).values({
         tenantId,
         firstName,
         lastName,
@@ -133,7 +138,7 @@ export async function importContactsCsv(
     const cols = parseCsvLine(lines[i]);
     rows.push(mapColumnsToContact(cols, mapping));
   }
-  return importContactRows(rows, auth.tenantId);
+  return withTenantContextFromAuth(auth, (tx) => importContactRows(tx, rows, auth.tenantId));
 }
 
 function cellToString(v: unknown): string {
@@ -198,5 +203,5 @@ export async function importContactsFromSpreadsheet(formData: FormData, mapping:
     const cols = toRow(r as unknown[]);
     return mapColumnsToContact(cols, mapping);
   });
-  return importContactRows(rows, auth.tenantId);
+  return withTenantContextFromAuth(auth, (tx) => importContactRows(tx, rows, auth.tenantId));
 }

@@ -1,8 +1,8 @@
 "use server";
 
-import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withAuthContext } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { db, advisorPreferences, eq, and } from "db";
+import { advisorPreferences, eq, and } from "db";
 
 /**
  * `order` je volitelný index v mobilním masonry feedu. Když chybí, UI odvodí
@@ -50,39 +50,41 @@ function sanitizePositions(raw: unknown): Record<string, NotesBoardStoredPositio
 
 /** Načte uložené pozice boardu Zápisků (0–1 vůči plátnu). */
 export async function getNotesBoardPositions(): Promise<Record<string, NotesBoardStoredPosition>> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:read")) return {};
-  const row = await db
-    .select({ notesBoardPositions: advisorPreferences.notesBoardPositions })
-    .from(advisorPreferences)
-    .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
-    .limit(1);
-  return sanitizePositions(row[0]?.notesBoardPositions ?? {});
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:read")) return {};
+    const row = await tx
+      .select({ notesBoardPositions: advisorPreferences.notesBoardPositions })
+      .from(advisorPreferences)
+      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+      .limit(1);
+    return sanitizePositions(row[0]?.notesBoardPositions ?? {});
+  });
 }
 
 /** Uloží celou mapu pozic (nahradí předchozí). */
 export async function saveNotesBoardPositions(positions: Record<string, NotesBoardStoredPosition>): Promise<void> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "meeting_notes:write")) {
-    throw new Error("Forbidden");
-  }
-  const clean = sanitizePositions(positions);
-  const existing = await db
-    .select({ id: advisorPreferences.id })
-    .from(advisorPreferences)
-    .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
-    .limit(1);
+  await withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "meeting_notes:write")) {
+      throw new Error("Forbidden");
+    }
+    const clean = sanitizePositions(positions);
+    const existing = await tx
+      .select({ id: advisorPreferences.id })
+      .from(advisorPreferences)
+      .where(and(eq(advisorPreferences.tenantId, auth.tenantId), eq(advisorPreferences.userId, auth.userId)))
+      .limit(1);
 
-  if (existing.length > 0) {
-    await db
-      .update(advisorPreferences)
-      .set({ notesBoardPositions: clean, updatedAt: new Date() })
-      .where(eq(advisorPreferences.id, existing[0].id));
-  } else {
-    await db.insert(advisorPreferences).values({
-      userId: auth.userId,
-      tenantId: auth.tenantId,
-      notesBoardPositions: clean,
-    });
-  }
+    if (existing.length > 0) {
+      await tx
+        .update(advisorPreferences)
+        .set({ notesBoardPositions: clean, updatedAt: new Date() })
+        .where(eq(advisorPreferences.id, existing[0].id));
+    } else {
+      await tx.insert(advisorPreferences).values({
+        userId: auth.userId,
+        tenantId: auth.tenantId,
+        notesBoardPositions: clean,
+      });
+    }
+  });
 }

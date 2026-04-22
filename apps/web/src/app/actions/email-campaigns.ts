@@ -1,10 +1,10 @@
 "use server";
 
-import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { requireAuthInAction, type AuthContext } from "@/lib/auth/require-auth";
+import { withAuthContext, withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import {
-  db,
   emailCampaigns,
   emailCampaignRecipients,
   contacts,
@@ -84,14 +84,19 @@ function appBaseUrl(): string {
   ).replace(/\/$/, "");
 }
 
-async function mintUnsubscribeUrlForContact(contactId: string): Promise<string | null> {
+async function mintUnsubscribeUrlForContact(
+  auth: AuthContext,
+  contactId: string,
+): Promise<string | null> {
   try {
     const token = makeUnsubscribeToken();
-    await db.insert(unsubscribeTokens).values({
-      contactId,
-      token,
-      expiresAt: unsubscribeTokenExpiry(),
-    });
+    await withTenantContextFromAuth(auth, (tx) =>
+      tx.insert(unsubscribeTokens).values({
+        contactId,
+        token,
+        expiresAt: unsubscribeTokenExpiry(),
+      }),
+    );
     return `${appBaseUrl()}/client/unsubscribe?token=${token}`;
   } catch (e) {
     console.error("[email-campaigns] unsubscribe token mint failed", { contactId, error: e });
@@ -100,107 +105,109 @@ async function mintUnsubscribeUrlForContact(contactId: string): Promise<string |
 }
 
 export async function listEmailCampaigns(): Promise<EmailCampaignRow[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) {
-    throw new Error("Nemáte oprávnění.");
-  }
-  const rows = await db
-    .select({
-      id: emailCampaigns.id,
-      name: emailCampaigns.name,
-      subject: emailCampaigns.subject,
-      status: emailCampaigns.status,
-      createdAt: emailCampaigns.createdAt,
-      sentAt: emailCampaigns.sentAt,
-    })
-    .from(emailCampaigns)
-    .where(eq(emailCampaigns.tenantId, auth.tenantId))
-    .orderBy(desc(emailCampaigns.createdAt))
-    .limit(50);
-  return rows;
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:read")) {
+      throw new Error("Nemáte oprávnění.");
+    }
+    return tx
+      .select({
+        id: emailCampaigns.id,
+        name: emailCampaigns.name,
+        subject: emailCampaigns.subject,
+        status: emailCampaigns.status,
+        createdAt: emailCampaigns.createdAt,
+        sentAt: emailCampaigns.sentAt,
+      })
+      .from(emailCampaigns)
+      .where(eq(emailCampaigns.tenantId, auth.tenantId))
+      .orderBy(desc(emailCampaigns.createdAt))
+      .limit(50);
+  });
 }
 
 /** Rozšířené data pro novou UI (historie + pokračování draftu). */
 export async function listEmailCampaignsFull(): Promise<CampaignListRow[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) {
-    throw new Error("Nemáte oprávnění.");
-  }
-  const rows = await db
-    .select({
-      id: emailCampaigns.id,
-      name: emailCampaigns.name,
-      subject: emailCampaigns.subject,
-      status: emailCampaigns.status,
-      createdAt: emailCampaigns.createdAt,
-      sentAt: emailCampaigns.sentAt,
-      bodyHtml: emailCampaigns.bodyHtml,
-    })
-    .from(emailCampaigns)
-    .where(eq(emailCampaigns.tenantId, auth.tenantId))
-    .orderBy(desc(emailCampaigns.createdAt))
-    .limit(50);
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:read")) {
+      throw new Error("Nemáte oprávnění.");
+    }
+    const rows = await tx
+      .select({
+        id: emailCampaigns.id,
+        name: emailCampaigns.name,
+        subject: emailCampaigns.subject,
+        status: emailCampaigns.status,
+        createdAt: emailCampaigns.createdAt,
+        sentAt: emailCampaigns.sentAt,
+        bodyHtml: emailCampaigns.bodyHtml,
+      })
+      .from(emailCampaigns)
+      .where(eq(emailCampaigns.tenantId, auth.tenantId))
+      .orderBy(desc(emailCampaigns.createdAt))
+      .limit(50);
 
-  if (rows.length === 0) return [];
+    if (rows.length === 0) return [];
 
-  const ids = rows.map((r) => r.id);
-  const stats = await db
-    .select({
-      campaignId: emailCampaignRecipients.campaignId,
-      status: emailCampaignRecipients.status,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(emailCampaignRecipients)
-    .where(
-      and(
-        eq(emailCampaignRecipients.tenantId, auth.tenantId),
-        sql`${emailCampaignRecipients.campaignId} = ANY(${ids}::uuid[])`
+    const ids = rows.map((r) => r.id);
+    const stats = await tx
+      .select({
+        campaignId: emailCampaignRecipients.campaignId,
+        status: emailCampaignRecipients.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(emailCampaignRecipients)
+      .where(
+        and(
+          eq(emailCampaignRecipients.tenantId, auth.tenantId),
+          sql`${emailCampaignRecipients.campaignId} = ANY(${ids}::uuid[])`
+        )
       )
-    )
-    .groupBy(emailCampaignRecipients.campaignId, emailCampaignRecipients.status);
+      .groupBy(emailCampaignRecipients.campaignId, emailCampaignRecipients.status);
 
-  const sentMap = new Map<string, number>();
-  const failedMap = new Map<string, number>();
-  for (const s of stats) {
-    if (s.status === "sent") sentMap.set(s.campaignId, s.count);
-    if (s.status === "failed") failedMap.set(s.campaignId, s.count);
-  }
+    const sentMap = new Map<string, number>();
+    const failedMap = new Map<string, number>();
+    for (const s of stats) {
+      if (s.status === "sent") sentMap.set(s.campaignId, s.count);
+      if (s.status === "failed") failedMap.set(s.campaignId, s.count);
+    }
 
-  return rows.map((r) => ({
-    ...r,
-    sentCount: sentMap.get(r.id) ?? 0,
-    failedCount: failedMap.get(r.id) ?? 0,
-  }));
+    return rows.map((r) => ({
+      ...r,
+      sentCount: sentMap.get(r.id) ?? 0,
+      failedCount: failedMap.get(r.id) ?? 0,
+    }));
+  });
 }
 
 /** Spočítá počet "eligible" příjemců pro každý segment v aktuálním tenantu. */
 export async function getSegmentCounts(): Promise<SegmentCount[]> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:read")) {
-    throw new Error("Nemáte oprávnění.");
-  }
-  const baseEligible = and(
-    eq(contacts.tenantId, auth.tenantId),
-    isNull(contacts.archivedAt),
-    eq(contacts.doNotEmail, false),
-    isNull(contacts.notificationUnsubscribedAt),
-    isNotNull(contacts.email),
-    sql`trim(${contacts.email}) <> ''`
-  );
-
-  const results: SegmentCount[] = [];
-  for (const seg of CAMPAIGN_SEGMENTS) {
-    if (seg.id === "test") {
-      results.push({ id: seg.id, label: seg.label, count: 1 });
-      continue;
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:read")) {
+      throw new Error("Nemáte oprávnění.");
     }
-    const [row] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(contacts)
-      .where(and(baseEligible, tagFilterSql(seg.tags)));
-    results.push({ id: seg.id, label: seg.label, count: row?.count ?? 0 });
-  }
-  return results;
+    const baseEligible = and(
+      eq(contacts.tenantId, auth.tenantId),
+      isNull(contacts.archivedAt),
+      eq(contacts.doNotEmail, false),
+      isNull(contacts.notificationUnsubscribedAt),
+      isNotNull(contacts.email),
+      sql`trim(${contacts.email}) <> ''`
+    );
+
+    const results: SegmentCount[] = [];
+    for (const seg of CAMPAIGN_SEGMENTS) {
+      if (seg.id === "test") {
+        results.push({ id: seg.id, label: seg.label, count: 1 });
+        continue;
+      }
+      const [row] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(contacts)
+        .where(and(baseEligible, tagFilterSql(seg.tags)));
+      results.push({ id: seg.id, label: seg.label, count: row?.count ?? 0 });
+    }
+    return results;
+  });
 }
 
 export async function createEmailCampaignDraft(input: {
@@ -208,29 +215,30 @@ export async function createEmailCampaignDraft(input: {
   subject: string;
   bodyHtml: string;
 }): Promise<{ id: string }> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) {
-    throw new Error("Nemáte oprávnění vytvářet kampaň.");
-  }
-  const name = input.name?.trim();
-  const subject = input.subject?.trim();
-  const bodyHtml = input.bodyHtml?.trim();
-  if (!name || !subject || !bodyHtml) {
-    throw new Error("Vyplňte název, předmět a tělo zprávy.");
-  }
-  const [row] = await db
-    .insert(emailCampaigns)
-    .values({
-      tenantId: auth.tenantId,
-      createdByUserId: auth.userId,
-      name,
-      subject,
-      bodyHtml,
-      status: "draft",
-    })
-    .returning({ id: emailCampaigns.id });
-  if (!row) throw new Error("Kampaň se nepodařilo vytvořit.");
-  return { id: row.id };
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) {
+      throw new Error("Nemáte oprávnění vytvářet kampaň.");
+    }
+    const name = input.name?.trim();
+    const subject = input.subject?.trim();
+    const bodyHtml = input.bodyHtml?.trim();
+    if (!name || !subject || !bodyHtml) {
+      throw new Error("Vyplňte název, předmět a tělo zprávy.");
+    }
+    const [row] = await tx
+      .insert(emailCampaigns)
+      .values({
+        tenantId: auth.tenantId,
+        createdByUserId: auth.userId,
+        name,
+        subject,
+        bodyHtml,
+        status: "draft",
+      })
+      .returning({ id: emailCampaigns.id });
+    if (!row) throw new Error("Kampaň se nepodařilo vytvořit.");
+    return { id: row.id };
+  });
 }
 
 /**
@@ -255,44 +263,52 @@ export async function sendEmailCampaign(
     throw new Error("Pro testovací odeslání použijte 'Odeslat test'.");
   }
 
-  const [campaign] = await db
-    .select()
-    .from(emailCampaigns)
-    .where(and(eq(emailCampaigns.id, campaignId), eq(emailCampaigns.tenantId, auth.tenantId)))
-    .limit(1);
-  if (!campaign) throw new Error("Kampaň nebyla nalezena.");
-  if (campaign.status !== "draft") {
-    throw new Error("Odeslat lze jen koncept (draft).");
-  }
+  /**
+   * Fáze 1 — čistě DB: ověř kampaň, načti publikum, převeď status na `sending`.
+   * Držíme krátkou transakci, abychom nezamykali spojení po dobu externího `sendEmail` loopu.
+   */
+  const { campaign, targets, capped } = await withTenantContextFromAuth(auth, async (tx) => {
+    const [campaign] = await tx
+      .select()
+      .from(emailCampaigns)
+      .where(and(eq(emailCampaigns.id, campaignId), eq(emailCampaigns.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!campaign) throw new Error("Kampaň nebyla nalezena.");
+    if (campaign.status !== "draft") {
+      throw new Error("Odeslat lze jen koncept (draft).");
+    }
 
-  const audience = await db
-    .select({
-      id: contacts.id,
-      email: contacts.email,
-      firstName: contacts.firstName,
-      lastName: contacts.lastName,
-    })
-    .from(contacts)
-    .where(
-      and(
-        eq(contacts.tenantId, auth.tenantId),
-        isNull(contacts.archivedAt),
-        eq(contacts.doNotEmail, false),
-        isNull(contacts.notificationUnsubscribedAt),
-        isNotNull(contacts.email),
-        sql`trim(${contacts.email}) <> ''`,
-        tagFilterSql(segment.tags)
+    const audience = await tx
+      .select({
+        id: contacts.id,
+        email: contacts.email,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+      })
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.tenantId, auth.tenantId),
+          isNull(contacts.archivedAt),
+          eq(contacts.doNotEmail, false),
+          isNull(contacts.notificationUnsubscribedAt),
+          isNotNull(contacts.email),
+          sql`trim(${contacts.email}) <> ''`,
+          tagFilterSql(segment.tags)
+        )
       )
-    )
-    .limit(MAX_RECIPIENTS_PER_SEND + 1);
+      .limit(MAX_RECIPIENTS_PER_SEND + 1);
 
-  const capped = audience.length > MAX_RECIPIENTS_PER_SEND;
-  const targets = capped ? audience.slice(0, MAX_RECIPIENTS_PER_SEND) : audience;
+    const capped = audience.length > MAX_RECIPIENTS_PER_SEND;
+    const targets = capped ? audience.slice(0, MAX_RECIPIENTS_PER_SEND) : audience;
 
-  await db
-    .update(emailCampaigns)
-    .set({ status: "sending", updatedAt: new Date() })
-    .where(eq(emailCampaigns.id, campaignId));
+    await tx
+      .update(emailCampaigns)
+      .set({ status: "sending", updatedAt: new Date() })
+      .where(eq(emailCampaigns.id, campaignId));
+
+    return { campaign, targets, capped };
+  });
 
   let sent = 0;
   let failed = 0;
@@ -304,14 +320,16 @@ export async function sendEmailCampaign(
     terminalWritten = true;
     const finalStatus = failed > 0 && sent === 0 ? "failed" : "sent";
     try {
-      await db
-        .update(emailCampaigns)
-        .set({
-          status: finalStatus,
-          updatedAt: new Date(),
-          sentAt: new Date(),
-        })
-        .where(eq(emailCampaigns.id, campaignId));
+      await withTenantContextFromAuth(auth, (tx) =>
+        tx
+          .update(emailCampaigns)
+          .set({
+            status: finalStatus,
+            updatedAt: new Date(),
+            sentAt: new Date(),
+          })
+          .where(eq(emailCampaigns.id, campaignId)),
+      );
     } catch (e) {
       console.error("[sendEmailCampaign] failed to write terminal status", { campaignId, error: e });
     }
@@ -320,7 +338,7 @@ export async function sendEmailCampaign(
   try {
     for (const c of targets) {
       const email = c.email!.trim();
-      const unsubscribeUrl = (await mintUnsubscribeUrlForContact(c.id)) ?? undefined;
+      const unsubscribeUrl = (await mintUnsubscribeUrlForContact(auth, c.id)) ?? undefined;
       const html = personalizeHtml(
         campaign.bodyHtml,
         c.firstName ?? "",
@@ -328,16 +346,19 @@ export async function sendEmailCampaign(
         unsubscribeUrl,
       );
 
-      const [recRow] = await db
-        .insert(emailCampaignRecipients)
-        .values({
-          tenantId: auth.tenantId,
-          campaignId,
-          contactId: c.id,
-          email,
-          status: "pending",
-        })
-        .returning({ id: emailCampaignRecipients.id });
+      const recRow = await withTenantContextFromAuth(auth, async (tx) => {
+        const [row] = await tx
+          .insert(emailCampaignRecipients)
+          .values({
+            tenantId: auth.tenantId,
+            campaignId,
+            contactId: c.id,
+            email,
+            status: "pending",
+          })
+          .returning({ id: emailCampaignRecipients.id });
+        return row;
+      });
 
       if (!recRow) {
         skipped += 1;
@@ -352,14 +373,16 @@ export async function sendEmailCampaign(
 
       if (result.ok) {
         sent += 1;
-        await db
-          .update(emailCampaignRecipients)
-          .set({
-            status: "sent",
-            providerMessageId: result.messageId ?? null,
-            sentAt: new Date(),
-          })
-          .where(eq(emailCampaignRecipients.id, recRow.id));
+        await withTenantContextFromAuth(auth, (tx) =>
+          tx
+            .update(emailCampaignRecipients)
+            .set({
+              status: "sent",
+              providerMessageId: result.messageId ?? null,
+              sentAt: new Date(),
+            })
+            .where(eq(emailCampaignRecipients.id, recRow.id)),
+        );
         await logNotification({
           tenantId: auth.tenantId,
           contactId: c.id,
@@ -371,13 +394,15 @@ export async function sendEmailCampaign(
         });
       } else {
         failed += 1;
-        await db
-          .update(emailCampaignRecipients)
-          .set({
-            status: "failed",
-            errorMessage: result.error ?? "unknown",
-          })
-          .where(eq(emailCampaignRecipients.id, recRow.id));
+        await withTenantContextFromAuth(auth, (tx) =>
+          tx
+            .update(emailCampaignRecipients)
+            .set({
+              status: "failed",
+              errorMessage: result.error ?? "unknown",
+            })
+            .where(eq(emailCampaignRecipients.id, recRow.id)),
+        );
         await logNotification({
           tenantId: auth.tenantId,
           contactId: c.id,
@@ -413,44 +438,45 @@ const SENDING_WATCHDOG_MINUTES = 15;
 export async function reapStuckSendingCampaigns(
   minutes: number = SENDING_WATCHDOG_MINUTES,
 ): Promise<{ reaped: number }> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) {
-    throw new Error("Nemáte oprávnění spustit reclamation kampaní.");
-  }
-  const cutoff = new Date(Date.now() - minutes * 60 * 1000);
-  const stuck = await db
-    .select({
-      id: emailCampaigns.id,
-      sent: sql<number>`count(*) filter (where ${emailCampaignRecipients.status} = 'sent')::int`,
-      failed: sql<number>`count(*) filter (where ${emailCampaignRecipients.status} = 'failed')::int`,
-    })
-    .from(emailCampaigns)
-    .leftJoin(
-      emailCampaignRecipients,
-      and(
-        eq(emailCampaignRecipients.campaignId, emailCampaigns.id),
-        eq(emailCampaignRecipients.tenantId, auth.tenantId),
-      ),
-    )
-    .where(
-      and(
-        eq(emailCampaigns.tenantId, auth.tenantId),
-        eq(emailCampaigns.status, "sending"),
-        lt(emailCampaigns.updatedAt, cutoff),
-      ),
-    )
-    .groupBy(emailCampaigns.id);
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) {
+      throw new Error("Nemáte oprávnění spustit reclamation kampaní.");
+    }
+    const cutoff = new Date(Date.now() - minutes * 60 * 1000);
+    const stuck = await tx
+      .select({
+        id: emailCampaigns.id,
+        sent: sql<number>`count(*) filter (where ${emailCampaignRecipients.status} = 'sent')::int`,
+        failed: sql<number>`count(*) filter (where ${emailCampaignRecipients.status} = 'failed')::int`,
+      })
+      .from(emailCampaigns)
+      .leftJoin(
+        emailCampaignRecipients,
+        and(
+          eq(emailCampaignRecipients.campaignId, emailCampaigns.id),
+          eq(emailCampaignRecipients.tenantId, auth.tenantId),
+        ),
+      )
+      .where(
+        and(
+          eq(emailCampaigns.tenantId, auth.tenantId),
+          eq(emailCampaigns.status, "sending"),
+          lt(emailCampaigns.updatedAt, cutoff),
+        ),
+      )
+      .groupBy(emailCampaigns.id);
 
-  let reaped = 0;
-  for (const s of stuck) {
-    const terminal = s.failed > 0 && s.sent === 0 ? "failed" : "sent";
-    await db
-      .update(emailCampaigns)
-      .set({ status: terminal, updatedAt: new Date(), sentAt: new Date() })
-      .where(eq(emailCampaigns.id, s.id));
-    reaped += 1;
-  }
-  return { reaped };
+    let reaped = 0;
+    for (const s of stuck) {
+      const terminal = s.failed > 0 && s.sent === 0 ? "failed" : "sent";
+      await tx
+        .update(emailCampaigns)
+        .set({ status: terminal, updatedAt: new Date(), sentAt: new Date() })
+        .where(eq(emailCampaigns.id, s.id));
+      reaped += 1;
+    }
+    return { reaped };
+  });
 }
 
 /**
@@ -474,11 +500,14 @@ export async function sendTestCampaign(input: {
   let bodyHtml = input.bodyHtml?.trim() ?? "";
 
   if (input.campaignId) {
-    const [row] = await db
-      .select({ subject: emailCampaigns.subject, bodyHtml: emailCampaigns.bodyHtml })
-      .from(emailCampaigns)
-      .where(and(eq(emailCampaigns.id, input.campaignId), eq(emailCampaigns.tenantId, auth.tenantId)))
-      .limit(1);
+    const row = await withTenantContextFromAuth(auth, async (tx) => {
+      const [found] = await tx
+        .select({ subject: emailCampaigns.subject, bodyHtml: emailCampaigns.bodyHtml })
+        .from(emailCampaigns)
+        .where(and(eq(emailCampaigns.id, input.campaignId!), eq(emailCampaigns.tenantId, auth.tenantId)))
+        .limit(1);
+      return found;
+    });
     if (!row) return { ok: false, error: "Kampaň nebyla nalezena." };
     if (!subject) subject = row.subject;
     if (!bodyHtml) bodyHtml = row.bodyHtml;
@@ -542,47 +571,49 @@ export async function updateEmailCampaignDraft(input: {
   subject: string;
   bodyHtml: string;
 }): Promise<{ ok: true }> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) {
-    throw new Error("Nemáte oprávnění upravovat kampaň.");
-  }
-  const name = input.name?.trim();
-  const subject = input.subject?.trim();
-  const bodyHtml = input.bodyHtml?.trim();
-  if (!name || !subject || !bodyHtml) {
-    throw new Error("Vyplňte název, předmět a tělo zprávy.");
-  }
-  const [existing] = await db
-    .select({ status: emailCampaigns.status })
-    .from(emailCampaigns)
-    .where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.tenantId, auth.tenantId)))
-    .limit(1);
-  if (!existing) throw new Error("Kampaň nebyla nalezena.");
-  if (existing.status !== "draft") {
-    throw new Error("Upravovat lze jen koncept (draft).");
-  }
-  await db
-    .update(emailCampaigns)
-    .set({ name, subject, bodyHtml, updatedAt: new Date() })
-    .where(eq(emailCampaigns.id, input.id));
-  return { ok: true };
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) {
+      throw new Error("Nemáte oprávnění upravovat kampaň.");
+    }
+    const name = input.name?.trim();
+    const subject = input.subject?.trim();
+    const bodyHtml = input.bodyHtml?.trim();
+    if (!name || !subject || !bodyHtml) {
+      throw new Error("Vyplňte název, předmět a tělo zprávy.");
+    }
+    const [existing] = await tx
+      .select({ status: emailCampaigns.status })
+      .from(emailCampaigns)
+      .where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!existing) throw new Error("Kampaň nebyla nalezena.");
+    if (existing.status !== "draft") {
+      throw new Error("Upravovat lze jen koncept (draft).");
+    }
+    await tx
+      .update(emailCampaigns)
+      .set({ name, subject, bodyHtml, updatedAt: new Date() })
+      .where(eq(emailCampaigns.id, input.id));
+    return { ok: true };
+  });
 }
 
 /** Smaže koncept kampaně. */
 export async function deleteEmailCampaignDraft(id: string): Promise<{ ok: true }> {
-  const auth = await requireAuthInAction();
-  if (!hasPermission(auth.roleName, "contacts:write")) {
-    throw new Error("Nemáte oprávnění mazat kampaň.");
-  }
-  const [existing] = await db
-    .select({ status: emailCampaigns.status })
-    .from(emailCampaigns)
-    .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, auth.tenantId)))
-    .limit(1);
-  if (!existing) throw new Error("Kampaň nebyla nalezena.");
-  if (existing.status !== "draft") {
-    throw new Error("Smazat lze jen koncept (draft).");
-  }
-  await db.delete(emailCampaigns).where(eq(emailCampaigns.id, id));
-  return { ok: true };
+  return withAuthContext(async (auth, tx) => {
+    if (!hasPermission(auth.roleName, "contacts:write")) {
+      throw new Error("Nemáte oprávnění mazat kampaň.");
+    }
+    const [existing] = await tx
+      .select({ status: emailCampaigns.status })
+      .from(emailCampaigns)
+      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!existing) throw new Error("Kampaň nebyla nalezena.");
+    if (existing.status !== "draft") {
+      throw new Error("Smazat lze jen koncept (draft).");
+    }
+    await tx.delete(emailCampaigns).where(eq(emailCampaigns.id, id));
+    return { ok: true };
+  });
 }

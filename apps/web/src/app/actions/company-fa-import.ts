@@ -1,9 +1,9 @@
 "use server";
 
-import { db } from "db";
 import { contacts } from "db";
 import { eq, and, or, sql } from "db";
 import { requireAuthInAction } from "@/lib/auth/require-auth";
+import { withTenantContextFromAuth } from "@/lib/auth/with-auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { createCompany } from "./companies";
 import { getCompanyByIco } from "./companies";
@@ -41,29 +41,32 @@ export async function getCompanyFaImportPreview(normalizedPayload: CompanyFaPayl
     if (existing) suggestedCompanyId = existing.id;
   }
 
-  const directorContactSuggestions: { index: number; contactId: string }[] = [];
-  for (let i = 0; i < directors.length; i++) {
-    const name = (directors[i]?.name ?? "").trim();
-    if (!name) continue;
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length === 0) continue;
-    const rows = await db
-      .select({ id: contacts.id })
-      .from(contacts)
-      .where(
-        and(
-          eq(contacts.tenantId, auth.tenantId),
-          or(
-            sql`${contacts.firstName} ILIKE ${`%${parts[0]}%`}`,
-            sql`${contacts.lastName} ILIKE ${`%${parts[0]}%`}`
+  const directorContactSuggestions = await withTenantContextFromAuth(auth, async (tx) => {
+    const suggestions: { index: number; contactId: string }[] = [];
+    for (let i = 0; i < directors.length; i++) {
+      const name = (directors[i]?.name ?? "").trim();
+      if (!name) continue;
+      const parts = name.split(/\s+/).filter(Boolean);
+      if (parts.length === 0) continue;
+      const rows = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.tenantId, auth.tenantId),
+            or(
+              sql`${contacts.firstName} ILIKE ${`%${parts[0]}%`}`,
+              sql`${contacts.lastName} ILIKE ${`%${parts[0]}%`}`
+            )
           )
         )
-      )
-      .limit(5);
-    if (rows.length >= 1) {
-      directorContactSuggestions.push({ index: i, contactId: rows[0].id });
+        .limit(5);
+      if (rows.length >= 1) {
+        suggestions.push({ index: i, contactId: rows[0].id });
+      }
     }
-  }
+    return suggestions;
+  });
 
   return buildCompanyFaImportPreview(normalizedPayload, {
     suggestedCompanyId,
@@ -91,8 +94,10 @@ export async function executeCompanyFaImport(
     completedAt: null as Date | null,
   };
 
-  const [jobRow] = await db.insert(analysisImportJobs).values(jobPayload).returning({ id: analysisImportJobs.id });
-  const jobId = jobRow?.id;
+  const jobId = await withTenantContextFromAuth(auth, async (tx) => {
+    const [jobRow] = await tx.insert(analysisImportJobs).values(jobPayload).returning({ id: analysisImportJobs.id });
+    return jobRow?.id ?? null;
+  });
 
   try {
     let companyId: string;
@@ -146,29 +151,33 @@ export async function executeCompanyFaImport(
     await extractAndUpsertSharedFactsFromCompany(companyId, normalizedPayload, analysisId, "json_import");
 
     if (jobId) {
-      await db
-        .update(analysisImportJobs)
-        .set({
-          status: "success",
-          analysisId,
-          errors: null,
-          completedAt: new Date(),
-        })
-        .where(eq(analysisImportJobs.id, jobId));
+      await withTenantContextFromAuth(auth, async (tx) => {
+        await tx
+          .update(analysisImportJobs)
+          .set({
+            status: "success",
+            analysisId,
+            errors: null,
+            completedAt: new Date(),
+          })
+          .where(eq(analysisImportJobs.id, jobId));
+      });
     }
 
     return { analysisId, companyId, version };
   } catch (err) {
     const errors = err instanceof Error ? [err.message] : [String(err)];
     if (jobId) {
-      await db
-        .update(analysisImportJobs)
-        .set({
-          status: "failed",
-          errors: errors as unknown as typeof analysisImportJobs.$inferInsert.errors,
-          completedAt: new Date(),
-        })
-        .where(eq(analysisImportJobs.id, jobId));
+      await withTenantContextFromAuth(auth, async (tx) => {
+        await tx
+          .update(analysisImportJobs)
+          .set({
+            status: "failed",
+            errors: errors as unknown as typeof analysisImportJobs.$inferInsert.errors,
+            completedAt: new Date(),
+          })
+          .where(eq(analysisImportJobs.id, jobId));
+      });
     }
     throw new Error(errors.join("; "));
   }

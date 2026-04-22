@@ -436,6 +436,59 @@ export function buildPortfolioAttributesFromExtracted(extracted: unknown): Recor
   const targetAmt = p.targetAmount ?? p.intendedInvestment ?? p.investmentAmount;
   if (targetAmt != null && targetAmt !== "") out.targetAmount = typeof targetAmt === "string" ? targetAmt : String(targetAmt);
 
+  // Vstupní poplatek v Kč — potřebný pro BJ výpočet u INVESTMENT_ENTRY_FEE (Amundi,
+  // CODYA, Edward, Investika …). AI extrakce dodává buď `entryFeePercent` (%),
+  // nebo `amountToPay` (celková úhrada včetně poplatku), nebo přímo `entryFee`
+  // (absolutní Kč). Derivaci pro BJ dodáváme zde, aby `portfolio_attributes.entryFee`
+  // existovalo pro `buildBjCalculationInput`.
+  const parseNumLoose = (v: unknown): number | undefined => {
+    if (v == null || v === "") return undefined;
+    if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? v : undefined;
+    if (typeof v !== "string") return undefined;
+    const cleaned = v
+      .trim()
+      .replace(/[\u00A0\u202F]/g, "")
+      .replace(/\s+/g, "")
+      .replace(/kč|czk|%/gi, "")
+      .replace(/'/g, "");
+    if (!cleaned) return undefined;
+    const lastComma = cleaned.lastIndexOf(",");
+    const lastDot = cleaned.lastIndexOf(".");
+    const decimalPos = Math.max(lastComma, lastDot);
+    const normalized =
+      decimalPos === -1
+        ? cleaned
+        : cleaned.slice(0, decimalPos).replace(/[.,]/g, "") +
+          "." +
+          cleaned.slice(decimalPos + 1);
+    const n = Number.parseFloat(normalized);
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
+
+  let entryFeeCzk: number | undefined;
+  const entryFeeAbs = p.entryFeeAmount ?? p.entryFeeCzk ?? p.vstupniPoplatekKc;
+  const directEntryFee = parseNumLoose(entryFeeAbs);
+  if (directEntryFee != null && directEntryFee >= 1) {
+    entryFeeCzk = directEntryFee;
+  }
+  if (entryFeeCzk == null) {
+    const amountToPay = parseNumLoose(p.amountToPay);
+    const intended = parseNumLoose(p.intendedInvestment ?? p.investmentAmount);
+    if (amountToPay != null && intended != null && amountToPay > intended) {
+      entryFeeCzk = amountToPay - intended;
+    }
+  }
+  if (entryFeeCzk == null) {
+    const feePctRaw = parseNumLoose(p.entryFeePercent);
+    const intended = parseNumLoose(p.intendedInvestment ?? p.investmentAmount ?? p.targetAmount);
+    if (feePctRaw != null && intended != null && feePctRaw > 0 && feePctRaw <= 20) {
+      entryFeeCzk = Math.round(intended * (feePctRaw / 100));
+    }
+  }
+  if (entryFeeCzk != null && entryFeeCzk > 0) {
+    out.entryFee = String(entryFeeCzk);
+  }
+
   const expectedFv = p.expectedFutureValue;
   if (typeof expectedFv === "string" && expectedFv.trim()) out.expectedFutureValue = expectedFv.trim();
 

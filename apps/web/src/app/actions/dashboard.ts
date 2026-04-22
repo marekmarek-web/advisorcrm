@@ -79,9 +79,9 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
 
   const [
     meetingsList,
-    tasksList,
-    opportunitiesList,
-    contactsCountList,
+    tasksOpenCountRows,
+    opportunitiesOpenCountRows,
+    contactsTotalCountRows,
     overdueTasksList,
     tasksDueTodayList,
     anniversariesList,
@@ -114,13 +114,13 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
       )
       .orderBy(asc(events.startAt)),
     tx
-      .select({ id: tasks.id })
+      .select({ cnt: sql<number>`count(*)::int` })
       .from(tasks)
       .where(
         and(eq(tasks.tenantId, auth.tenantId), isNull(tasks.completedAt))
       ),
     tx
-      .select({ id: opportunities.id })
+      .select({ cnt: sql<number>`count(*)::int` })
       .from(opportunities)
       .where(
         and(
@@ -129,7 +129,7 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
         )
       ),
     tx
-      .select({ id: contacts.id })
+      .select({ cnt: sql<number>`count(*)::int` })
       .from(contacts)
       .where(eq(contacts.tenantId, auth.tenantId)),
     tx
@@ -475,9 +475,9 @@ async function loadDashboardKpis(): Promise<DashboardKpis> {
 
   return {
     meetingsToday: meetingsList.length,
-    tasksOpen: tasksList.length,
-    opportunitiesOpen: opportunitiesList.length,
-    totalContacts: contactsCountList.length,
+    tasksOpen: Number(tasksOpenCountRows[0]?.cnt ?? 0),
+    opportunitiesOpen: Number(opportunitiesOpenCountRows[0]?.cnt ?? 0),
+    totalContacts: Number(contactsTotalCountRows[0]?.cnt ?? 0),
     todayEvents,
     overdueTasks,
     upcomingAnniversaries,

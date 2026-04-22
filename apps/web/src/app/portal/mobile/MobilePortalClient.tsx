@@ -403,23 +403,31 @@ export function MobilePortalClient({
     });
   }, [pipeline]);
 
+  /**
+   * Sloučený hydrate — dřív to bylo ve dvou `Promise.allSettled` po sobě
+   * (waterfall), což zbytečně prodlužovalo čas k plně hydratovanému mobilnímu
+   * UI. Jedna vlna je měřitelně rychlejší a dispatchuje všechny setters
+   * naráz (méně renderů).
+   */
   useEffect(() => {
     if (!deferDataHydration) return;
     let cancelled = false;
     async function hydrate() {
-      const [tasksRes, countsRes, contactsRes, pipelineRes] = await Promise.allSettled([
+      const [
+        tasksRes,
+        countsRes,
+        contactsRes,
+        pipelineRes,
+        serviceRes,
+        notesRes,
+        analysesRes,
+        productionRes,
+        businessPlanRes,
+      ] = await Promise.allSettled([
         getTasksList("all"),
         getTasksCounts(),
         getContactsList(),
         getPipeline(),
-      ]);
-      if (cancelled) return;
-      if (tasksRes.status === "fulfilled") setTasks(tasksRes.value);
-      if (countsRes.status === "fulfilled") setTaskCounts(countsRes.value);
-      if (contactsRes.status === "fulfilled") setContacts(contactsRes.value);
-      if (pipelineRes.status === "fulfilled") setPipeline(pipelineRes.value);
-
-      const [serviceRes, notesRes, analysesRes, productionRes, businessPlanRes] = await Promise.allSettled([
         getServiceRecommendationsForDashboard(10),
         getMeetingNotesForBoard(),
         listFinancialAnalyses(),
@@ -427,6 +435,10 @@ export function MobilePortalClient({
         getBusinessPlanWidgetData(),
       ]);
       if (cancelled) return;
+      if (tasksRes.status === "fulfilled") setTasks(tasksRes.value);
+      if (countsRes.status === "fulfilled") setTaskCounts(countsRes.value);
+      if (contactsRes.status === "fulfilled") setContacts(contactsRes.value);
+      if (pipelineRes.status === "fulfilled") setPipeline(pipelineRes.value);
       if (serviceRes.status === "fulfilled") setServiceRecommendations(serviceRes.value);
       if (notesRes.status === "fulfilled") setMeetingNotes(notesRes.value);
       if (analysesRes.status === "fulfilled") setFinancialAnalyses(analysesRes.value);
@@ -520,20 +532,45 @@ export function MobilePortalClient({
     }
   }, [pathname, selectedOpportunityPathId]);
 
+  /**
+   * Badge refetch — nezávislý na `pathname`. Dřívější varianta refetchovala
+   * při každé změně cesty (tj. prakticky při každém kliknutí v portálu),
+   * což přidávalo 2 round-tripy na každou navigaci. Nyní jen při vstupu do
+   * obrazovky + každých 60 s, a když se okno vrátí do fokusu / tab se
+   * probudí. To je přesnější i levnější.
+   */
   useEffect(() => {
-    startTransition(async () => {
-      try {
-        const [notificationLogBadge, unreadInbox] = await Promise.all([
-          getNotificationBadgeCount(),
-          getUnreadConversationsCount(),
-        ]);
-        setUnreadMessagesCount(unreadInbox);
-        setNotificationBadgeCount(notificationLogBadge + unreadInbox);
-      } catch {
-        setNotificationBadgeCount(0);
-      }
-    });
-  }, [pathname]);
+    let cancelled = false;
+    const refresh = () => {
+      startTransition(async () => {
+        try {
+          const [notificationLogBadge, unreadInbox] = await Promise.all([
+            getNotificationBadgeCount(),
+            getUnreadConversationsCount(),
+          ]);
+          if (cancelled) return;
+          setUnreadMessagesCount(unreadInbox);
+          setNotificationBadgeCount(notificationLogBadge + unreadInbox);
+        } catch {
+          if (!cancelled) setNotificationBadgeCount(0);
+        }
+      });
+    };
+    refresh();
+    const intervalId = window.setInterval(refresh, 60_000);
+    const onFocus = () => refresh();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   const selectedContact = useMemo(
     () => (selectedContactId ? contacts.find((c) => c.id === selectedContactId) ?? null : null),

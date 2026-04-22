@@ -12,7 +12,20 @@ import type {
   TeamPerformancePoint,
 } from "@/app/actions/team-overview";
 import type { TeamMemberMetrics, TeamAlert } from "@/lib/team-overview-alerts";
-import type { TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
+import type { TeamHierarchyMember, TeamOverviewScope, TeamTreeNode } from "@/lib/team-hierarchy-types";
+
+function flattenTree(nodes: TeamTreeNode[]): TeamHierarchyMember[] {
+  const out: TeamHierarchyMember[] = [];
+  const walk = (ns: TeamTreeNode[]) => {
+    for (const n of ns) {
+      // TeamTreeNode extends TeamHierarchyMember (plus depth/children)
+      out.push(n);
+      if (n.children?.length) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
+}
 import {
   getTeamOverviewPageSnapshot,
   getTeamMemberDetail,
@@ -36,6 +49,8 @@ import { TeamOverviewCareerSummarySection } from "./components/TeamOverviewCaree
 import { TeamOverviewAdaptationSection } from "./components/TeamOverviewAdaptationSection";
 import { TeamOverviewPeopleFiltersBar } from "./components/TeamOverviewPeopleFiltersBar";
 import { TeamManagementPanel } from "./TeamManagementPanel";
+import { ExternalMembersPanel } from "./components/ExternalMembersPanel";
+import { TeamOverviewAttentionCard } from "./components/TeamOverviewAttentionCard";
 import {
   TeamOverviewPremiumShell,
   TeamOverviewPremiumBriefingDark,
@@ -530,12 +545,15 @@ export function TeamOverviewView({
   );
 
   const teamAdminOnly = (
-    <TeamManagementPanel
-      currentUserId={currentUserId}
-      currentUserEmail={currentUserEmail}
-      currentUserFullName={currentUserFullName}
-      roleName={currentRole}
-    />
+    <div className="space-y-6">
+      <TeamManagementPanel
+        currentUserId={currentUserId}
+        currentUserEmail={currentUserEmail}
+        currentUserFullName={currentUserFullName}
+        roleName={currentRole}
+      />
+      <ExternalMembersPanel roleName={currentRole} members={flattenTree(hierarchy)} />
+    </div>
   );
 
   const cockpitBody = (
@@ -547,6 +565,15 @@ export function TeamOverviewView({
         priorityItems={priorityItems}
       />
       <TeamOverviewCockpitFourCards kpis={kpis} inProductionCount={inProductionCount} loading={loading} />
+      <TeamOverviewAttentionCard
+        metrics={metrics}
+        members={flattenTree(hierarchy)}
+        newcomers={(newcomers ?? []).map((n) => ({
+          userId: n.userId,
+          adaptationStatus: n.adaptationStatus,
+          daysSinceJoin: n.daysInTeam,
+        }))}
+      />
       <TeamOverviewPerformanceTrendSection performanceOverTime={performanceOverTime} />
       <div className="grid gap-6 xl:grid-cols-2">
         <TeamOverviewAttentionSection

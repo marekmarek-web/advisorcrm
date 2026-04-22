@@ -8,6 +8,14 @@
 
 **Stav synchronizace s kódem (2026-04-09):** Kritické pasáže o **scope / `parent_id`**, **AI kontextu** a **výpisu signálů** byly zarovnány s implementací po **Fázi 7** (QA / release readiness). Podrobný checklist a known limitations: [`docs/team-overview-release-checklist.md`](./team-overview-release-checklist.md). Starší auditní odstavce (např. executive summary §1) popisují stav před dokončením vlny MVP — ber je jako historický kontext, ne jako aktuální screenshot produktu.
 
+**Update 2026-04-22 (F1–F5 cockpit wave):**
+
+- **F1 canonical data model:** nová `team_members` tabulka (source of truth pro osobu v týmu, `auth_user_id` nullable → external/manual členové bez Aidvisora účtu) + `team_member_manual_periods` (period snapshoty s `confidence: manual_confirmed | manual_estimated`) + `team_member_career_log` (audit kariérních změn). Shadow-copy trigger `sync_team_member_from_membership` drží `team_members` konzistentní při změnách `memberships` — backward compat, po F4 otočíme směr zápisu. Migrace: [`team-members-canonical-2026-04-22.sql`](../packages/db/migrations/team-members-canonical-2026-04-22.sql).
+- **F2 read adapter:** `listTenantHierarchyMembers` nyní čte z `team_members` LEFT JOIN `memberships`; vrací `teamMemberId`, `authUserId`, `memberKind: internal_user | external_manual`, `status`. Pro external se do pipeline protéká sentinel `userId = "ext:<teamMemberId>"`, takže existující collectUserStats / visibility kód funguje beze změny (auto metriky vyjdou nula → F3 sources map to označí jako `missing`).
+- **F3 sources/confidence:** `TeamMemberMetrics` má nové `sources` mapy (`auto | manual_confirmed | manual_estimated | derived | missing`) a `memberKind`. `getTeamMemberMetrics` overlayuje manuální snapshoty nad auto daty (manual má precedenci, confidence určuje badge). UI: `SourceBadge` komponenta v `portal/team-overview/components/SourceBadge.tsx`.
+- **F4 manual UI:** `apps/web/src/app/actions/team-members-manual.ts` — `createExternalTeamMember`, `updateExternalTeamMember`, `upsertManualPeriod`, `deleteManualPeriod`, `confirmCareerManually`. UI: `components/ExternalMembersPanel.tsx` zapojený v Správě týmu.
+- **F5 recommendation engine:** `lib/team-overview/recommendation-engine.ts` (pure, explainable) + `TeamOverviewAttentionCard` + `ExplanationDrawer`. Doporučení mají kind / priority / owner / timing / strukturovaný `explanation` a `cta`. External-manual členové dostávají primárně `data_completion` doporučení, interní členové CRM-based (`no_activity`, `production_dip`, `meeting_dip`, `celebrate_win`, `career_review`, `career_promote`).
+
 ---
 
 ## 0. Search audit (povinné dotazy)

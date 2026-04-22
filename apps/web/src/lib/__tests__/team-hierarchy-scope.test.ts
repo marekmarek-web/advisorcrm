@@ -21,6 +21,10 @@ function member(
     careerProgram: null,
     careerTrack: null,
     careerPositionCode: null,
+    teamMemberId: null,
+    authUserId: userId,
+    memberKind: "internal_user",
+    status: "active",
   };
 }
 

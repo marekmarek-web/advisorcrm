@@ -1,6 +1,7 @@
 import "server-only";
 
-import { db, billingAuditLog } from "db";
+import { billingAuditLog } from "db";
+import { withServiceTenantContext } from "@/lib/db/service-db";
 
 /**
  * Stabilní kódy billingových událostí. Používej je při logování, at máš v logu
@@ -49,18 +50,23 @@ export type BillingAuditInput = {
  */
 export async function writeBillingAudit(input: BillingAuditInput): Promise<void> {
   try {
-    await db.insert(billingAuditLog).values({
-      tenantId: input.tenantId,
-      action: input.action,
-      actorKind: input.actorKind,
-      actorUserId: input.actorUserId ?? null,
-      fromState: (input.fromState ?? null) as unknown as object | null,
-      toState: (input.toState ?? null) as unknown as object | null,
-      stripeEventId: input.stripeEventId ?? null,
-      stripeObjectId: input.stripeObjectId ?? null,
-      metadata: (input.metadata ?? null) as unknown as object | null,
-      ipAddress: input.ipAddress ?? null,
-    });
+    await withServiceTenantContext(
+      { tenantId: input.tenantId, userId: input.actorUserId ?? null },
+      async (tx) => {
+        await tx.insert(billingAuditLog).values({
+          tenantId: input.tenantId,
+          action: input.action,
+          actorKind: input.actorKind,
+          actorUserId: input.actorUserId ?? null,
+          fromState: (input.fromState ?? null) as unknown as object | null,
+          toState: (input.toState ?? null) as unknown as object | null,
+          stripeEventId: input.stripeEventId ?? null,
+          stripeObjectId: input.stripeObjectId ?? null,
+          metadata: (input.metadata ?? null) as unknown as object | null,
+          ipAddress: input.ipAddress ?? null,
+        });
+      },
+    );
   } catch (err) {
     console.error("[billing-audit] insert failed", {
       action: input.action,

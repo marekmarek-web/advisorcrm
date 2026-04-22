@@ -1090,11 +1090,19 @@ function applyPrimaryTypeSpecificAliases(primary: PrimaryDocumentType, ef: Recor
         "zamyslenaInvestice",
       ]);
       mergeFromAliases(ef, "entryFeePercent", [
+        "vstupniPoplatekProcento",
+        "poplatekVstupniProcento",
+        "frontendFeePercent",
+        "subscriptionFeePercent",
+      ]);
+      mergeFromAliases(ef, "entryFeeAmount", [
         "vstupniPoplatek",
         "poplatekVstupni",
         "entryFee",
-        "frontendFeePercent",
-        "subscriptionFeePercent",
+        "entryFeeCzk",
+        "vstupniPoplatekKc",
+        "poplatekVstupniKc",
+        "feeAmount",
       ]);
       mergeFromAliases(ef, "amountToPay", [
         "castkaKUhrade",
