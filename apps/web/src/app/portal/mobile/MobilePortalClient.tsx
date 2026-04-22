@@ -46,8 +46,7 @@ import { getMeetingNotesForBoard } from "@/app/actions/meeting-notes";
 import { listFinancialAnalyses } from "@/app/actions/financial-analyses";
 import { getProductionSummary } from "@/app/actions/production";
 import { getBusinessPlanWidgetData } from "@/app/actions/business-plan";
-import { getNotificationBadgeCount } from "@/app/actions/notification-log";
-import { getUnreadConversationsCount } from "@/app/actions/messages";
+import { getPortalShellBadgeCounts } from "@/app/actions/portal-badges";
 import { defaultTaskDueDateYmd, localCalendarTodayYmd } from "@/lib/date/date-only";
 import { CustomDropdown } from "@/app/components/ui/CustomDropdown";
 import { CreateActionButton } from "@/app/components/ui/CreateActionButton";
@@ -544,13 +543,18 @@ export function MobilePortalClient({
     const refresh = () => {
       startTransition(async () => {
         try {
-          const [notificationLogBadge, unreadInbox] = await Promise.all([
-            getNotificationBadgeCount(),
-            getUnreadConversationsCount(),
-          ]);
+          /**
+           * Dříve jsme sčítali `notification_log` (tenant-wide odchozí notifikace
+           * za posledních 7 dní, bez konceptu unread) + `getUnreadConversationsCount`.
+           * To držel bell trvale nenulový i poté, co poradce všechno vyřešil.
+           * Nyní používáme stejný zdroj jako desktop: `advisor_notifications`
+           * kde `status = 'unread'` a `target_user_id = <já>` + nepřečtené zprávy.
+           */
+          const { notifications: unreadNotifications, unreadConversations } =
+            await getPortalShellBadgeCounts();
           if (cancelled) return;
-          setUnreadMessagesCount(unreadInbox);
-          setNotificationBadgeCount(notificationLogBadge + unreadInbox);
+          setUnreadMessagesCount(unreadConversations);
+          setNotificationBadgeCount(unreadNotifications + unreadConversations);
         } catch {
           if (!cancelled) setNotificationBadgeCount(0);
         }

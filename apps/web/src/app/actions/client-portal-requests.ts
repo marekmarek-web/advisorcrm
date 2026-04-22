@@ -650,6 +650,29 @@ export async function setAdvisorPortalRequestHandling(
       .set({ customFields: custom, updatedAt: new Date() })
       .where(and(eq(opportunities.tenantId, auth.tenantId), eq(opportunities.id, opportunityId)));
 
+    /**
+     * Když poradce označí portálový požadavek jako vyřešený/zamítnutý, nemá smysl držet
+     * "unread" odznak na zvonku. Auto-read příslušné advisor_notifications řádky, aby
+     * se badge vyčistil. Pro ostatní stavy (in_progress, none/null) necháváme status být.
+     */
+    if (handling === "resolved" || handling === "rejected") {
+      try {
+        await tx
+          .update(advisorNotifications)
+          .set({ status: "read", readAt: new Date() })
+          .where(
+            and(
+              eq(advisorNotifications.tenantId, auth.tenantId),
+              eq(advisorNotifications.relatedEntityType, "opportunity"),
+              eq(advisorNotifications.relatedEntityId, opportunityId),
+              eq(advisorNotifications.status, "unread")
+            )
+          );
+      } catch {
+        /* non-fatal */
+      }
+    }
+
     return { kind: "ok" as const };
   });
 
