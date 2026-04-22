@@ -15,6 +15,7 @@ import {
 } from "./assistant-session";
 import { buildSuggestedActionsFromUrgent, computePriorityItems } from "./dashboard-priority";
 import type { ActionPayload } from "./action-catalog";
+import { mapSuggestedActionsToActionPayloads } from "./map-action-payload-to-suggested";
 import { extractAssistantIntent, extractCanonicalIntent } from "./assistant-intent-extract";
 import { formatProactiveHintsBlock, loadProactiveHintsForContact } from "./assistant-proactive-hints";
 import {
@@ -56,17 +57,9 @@ import { AssistantTelemetryAction, logAssistantTelemetry } from "./assistant-tel
 import { tryRatingLookupReply } from "./ratings/toplists";
 import type { ImageAssetPayload } from "./assistant-chat-request";
 
-import type { StepPreviewItem } from "./assistant-execution-ui";
+import type { StepPreviewItem, StepOutcomeSummary } from "./assistant-execution-ui";
 
-export type { StepPreviewItem } from "./assistant-execution-ui";
-
-export type StepOutcomeSummary = {
-  label: string;
-  status: "succeeded" | "failed" | "skipped" | "idempotent_hit" | "requires_input";
-  entityId?: string | null;
-  error?: string | null;
-  retryable?: boolean;
-};
+export type { StepPreviewItem, StepOutcomeSummary } from "./assistant-execution-ui";
 
 function stepPreviewContextHint(step: ExecutionStep): string | undefined {
   return productDomainChipLabel(step.params.productDomain as string | undefined);
@@ -619,7 +612,7 @@ export async function routeAssistantMessage(
         ? "Odpověď není k dispozici. Zkuste to později, nebo vyberte jednu z prioritních akcí níže."
         : "Odpověď není k dispozici. Zkuste to za chvíli znovu.",
       referencedEntities: [],
-      suggestedActions: hasFallback ? fallbackActions : [],
+      suggestedActions: hasFallback ? mapSuggestedActionsToActionPayloads(fallbackActions) : [],
       warnings: ["Služba AI dočasně nedostupná."],
       confidence: 0,
       sourcesSummary: [],
@@ -829,7 +822,7 @@ export async function handleAssistantAwaitingConfirmation(
       steps: prepared.steps.map((step) => {
         const overrides = body.stepParamOverrides![step.stepId];
         if (!overrides) return step;
-        const allowed = INLINE_OVERRIDE_ALLOWLIST[step.actionType];
+        const allowed = INLINE_OVERRIDE_ALLOWLIST[step.action];
         if (!allowed) {
           overrideDropped += Object.keys(overrides).length;
           return step;

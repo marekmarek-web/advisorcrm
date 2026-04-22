@@ -54,8 +54,15 @@ export function getExecutionStatusInfo(status: ExecutionStatus): ExecutionStatus
 export type StepOutcomeSummary = {
   label: string;
   status: StepOutcomeStatus;
+  /** Odpovídá `ExecutionStep.stepId` — historie, výběr kroků 6C. */
+  stepId?: string;
+  /** Kanonický identifikátor akce / toolu. */
+  action?: string;
   entityId?: string | null;
+  entityType?: string | null;
   error?: string | null;
+  /** Varování z adaptéru u daného kroku (ne globální seznam). */
+  warnings?: string[];
   retryable?: boolean;
 };
 

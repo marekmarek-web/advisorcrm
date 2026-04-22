@@ -152,7 +152,7 @@ export async function findLatestAcceptance(params: {
   // Čtení je idempotentní a hodí se i před vytvořením workspace (re-prompt
   // modalů). Když máme userId, nastavíme `app.user_id` pro bootstrap policy.
   if (params.userId) {
-    const rows = await withUserContext(params.userId, (tx) => fetch(tx as typeof db));
+    const rows = await withUserContext(params.userId, (tx) => fetch(tx as unknown as typeof db));
     return rows[0] ?? null;
   }
   const rows = await fetch(db);
